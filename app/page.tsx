@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
 type Collection = {
   title: string;
   subtitle: string;
@@ -5,7 +9,36 @@ type Collection = {
   image: string;
 };
 
-const heroSlides = [
+type HeroMedia = {
+  type: "image" | "video";
+  url: string;
+  label?: string;
+};
+
+type HomepageConfig = {
+  branding?: {
+    site_title?: string;
+    header_cta_text?: string;
+    home_title?: string;
+    home_subtitle?: string;
+    contact_phone?: string;
+    contact_email?: string;
+    logo_url?: string;
+  };
+  hero_media?: HeroMedia[];
+  menu_groups?: Array<{
+    title?: string;
+    image_url?: string;
+    items?: string[];
+  }>;
+  price_cards?: Array<{
+    title?: string;
+    price_from?: string;
+    note?: string;
+  }>;
+};
+
+const fallbackHeroSlides = [
   "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=2200&q=80",
   "https://images.unsplash.com/photo-1600210492493-0946911123ea?auto=format&fit=crop&w=2200&q=80",
   "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=2200&q=80",
@@ -44,7 +77,7 @@ const collections: Collection[] = [
   },
 ];
 
-const process = [
+const processSteps = [
   {
     title: "1. Wybór stylu",
     text: "Wybierasz typ osłony i klimat wnętrza. Od razu widzisz realne inspiracje.",
@@ -66,19 +99,117 @@ const trustMetrics = [
   { value: "100%", label: "na wymiar" },
 ];
 
+function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
+  const value = String(rawUrl || "").trim();
+  if (!value) return "";
+  try {
+    if (value.startsWith("//")) return `https:${value}`;
+    if (/^https?:\/\//i.test(value)) return value;
+    const base = fallbackOrigin || "https://crm-keika.groovemedia.pl";
+    return new URL(value, base).toString();
+  } catch {
+    return value;
+  }
+}
+
 export default function Home() {
+  const [config, setConfig] = useState<HomepageConfig | null>(null);
+  const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
+  const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchConfig = (endpoint: string) =>
+      fetch(`${endpoint}?_ts=${Date.now()}`, { cache: "no-store" }).then((res) => res.json());
+
+    fetchConfig(configEndpoint)
+      .then((json) => {
+        if (!mounted || !json?.ok || typeof json.config !== "object") return;
+        setConfig(json.config as HomepageConfig);
+      })
+      .catch(() => {
+        if (configEndpoint === defaultConfigEndpoint) return;
+        fetchConfig(defaultConfigEndpoint)
+          .then((json) => {
+            if (!mounted || !json?.ok || typeof json.config !== "object") return;
+            setConfig(json.config as HomepageConfig);
+          })
+          .catch(() => {
+            // Fallback zostaje z kodu.
+          });
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [configEndpoint, defaultConfigEndpoint]);
+
+  const branding = config?.branding || {};
+  const endpointOrigin = useMemo(() => {
+    try {
+      return new URL(configEndpoint).origin;
+    } catch {
+      return "https://crm-keika.groovemedia.pl";
+    }
+  }, [configEndpoint]);
+
+  const siteTitle = branding.site_title || "KEIKA";
+  const logoUrl = absolutizeUrl(branding.logo_url || "", endpointOrigin);
+  const headerCtaText = branding.header_cta_text || "Darmowa wycena";
+  const homeTitle =
+    branding.home_title || "Strona główna z efektem premium i mocnym nastawieniem na konwersję";
+  const homeSubtitle =
+    branding.home_subtitle ||
+    "Pełna szerokość, dynamiczne tło i czytelna ścieżka decyzji. Najpierw wybierasz kierunek, potem przechodzisz do konfiguratora.";
+  const contactPhone = branding.contact_phone || "+48 123 456 789";
+  const contactEmail = branding.contact_email || "kontakt@keika.pl";
+
+  const heroMedia = useMemo(() => {
+    if (Array.isArray(config?.hero_media) && config!.hero_media!.length > 0) {
+      return config!.hero_media!
+        .map((item) => ({
+          type: item?.type === "video" ? "video" : "image",
+          url: absolutizeUrl(String(item?.url || "").trim(), endpointOrigin),
+          label: String(item?.label || "").trim(),
+        }))
+        .filter((item) => item.url !== "");
+    }
+    return fallbackHeroSlides.map((url) => ({ type: "image" as const, url, label: "" }));
+  }, [config, endpointOrigin]);
+
+  const dynamicCollections = useMemo(() => {
+    if (!Array.isArray(config?.menu_groups) || config.menu_groups.length === 0) {
+      return collections;
+    }
+    return config.menu_groups.map((group, idx) => {
+      const fallback = collections[idx % collections.length];
+      return {
+        title: group?.title || fallback.title,
+        subtitle: fallback.subtitle,
+        bullets:
+          Array.isArray(group?.items) && group!.items!.length
+            ? group!.items!.slice(0, 6)
+            : fallback.bullets,
+        image: absolutizeUrl(group?.image_url || "", endpointOrigin) || fallback.image,
+      };
+    });
+  }, [config, endpointOrigin]);
+
   return (
     <div className="home-root">
       <header className="hero-header">
         <a className="brand" href="/" aria-label="KEIKA strona główna">
-          KEIKA
+          {logoUrl ? (
+            <img src={logoUrl} alt={siteTitle} className="brand-logo" />
+          ) : (
+            siteTitle
+          )}
         </a>
         <div className="header-actions">
-          <a className="phone" href="tel:+48123456789">
-            +48 123 456 789
+          <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
+            {contactPhone}
           </a>
           <a className="header-cta" href="#wycena">
-            Darmowa wycena
+            {headerCtaText}
           </a>
         </div>
       </header>
@@ -86,16 +217,33 @@ export default function Home() {
       <main>
         <section className="hero-full" id="start">
           <div className="hero-slides" aria-hidden="true">
-            {heroSlides.map((slide, index) => (
-              <div
-                key={slide}
-                className="hero-slide"
-                style={{
-                  backgroundImage: `url(${slide})`,
-                  animationDelay: `${index * 5}s`,
-                }}
-              />
-            ))}
+            {heroMedia.map((media, index) =>
+              media.type === "video" ? (
+                <div
+                  key={`${media.url}-${index}`}
+                  className="hero-slide video-slide"
+                  style={{ animationDelay: `${index * 5}s` }}
+                >
+                  <video
+                    src={media.url}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                  />
+                </div>
+              ) : (
+                <div
+                  key={`${media.url}-${index}`}
+                  className="hero-slide"
+                  style={{
+                    backgroundImage: `url(${media.url})`,
+                    animationDelay: `${index * 5}s`,
+                  }}
+                />
+              ),
+            )}
           </div>
 
           <div className="hero-dim" aria-hidden="true" />
@@ -105,13 +253,9 @@ export default function Home() {
             <div className="hero-copy">
               <p className="eyebrow">Nowoczesne osłony dla nowoczesnych domów</p>
               <h1>
-                Strona główna z efektem premium
-                <span> i mocnym nastawieniem na konwersję</span>
+                {homeTitle}
               </h1>
-              <p>
-                Pełna szerokość, dynamiczne tło i czytelna ścieżka decyzji.
-                Najpierw wybierasz kierunek, potem przechodzisz do konfiguratora.
-              </p>
+              <p>{homeSubtitle}</p>
               <div className="hero-buttons">
                 <a className="btn-primary" href="#wycena">
                   Rozpocznij konfigurację
@@ -174,7 +318,7 @@ export default function Home() {
           </div>
 
           <div className="collection-grid">
-            {collections.map((item) => (
+            {dynamicCollections.map((item) => (
               <article key={item.title} className="collection-card">
                 <div
                   className="collection-media"
@@ -202,7 +346,7 @@ export default function Home() {
             <h2>Proces zakupowy bez chaosu</h2>
           </div>
           <div className="process-grid">
-            {process.map((item) => (
+            {processSteps.map((item) => (
               <article key={item.title}>
                 <h3>{item.title}</h3>
                 <p>{item.text}</p>
@@ -217,8 +361,8 @@ export default function Home() {
             <h2>Powiedz, co chcesz osłonić. My dobierzemy cały system.</h2>
           </div>
           <div className="final-actions">
-            <a href="tel:+48123456789">Zadzwoń teraz</a>
-            <a href="mailto:kontakt@keika.pl">Napisz do nas</a>
+            <a href={`tel:${contactPhone.replace(/\s+/g, "")}`}>Zadzwoń teraz</a>
+            <a href={`mailto:${contactEmail}`}>Napisz do nas</a>
           </div>
         </section>
       </main>
