@@ -6,13 +6,59 @@ type Tile = {
   href: string;
 };
 
+type MenuGroup = {
+  id: string;
+  title: string;
+  items: { label: string; href: string }[];
+};
+
+const menuGroups: MenuGroup[] = [
+  {
+    id: "oslony-wewnetrzne",
+    title: "Osłony wewnętrzne",
+    items: [
+      { label: "Rolety tradycyjne", href: "#konfigurator" },
+      { label: "Rolety dzień noc", href: "#konfigurator" },
+      { label: "Plisy", href: "#konfigurator" },
+      { label: "Żaluzje", href: "#konfigurator" },
+      { label: "Rolety rzymskie", href: "#konfigurator" },
+      { label: "Rolety do okien dachowych", href: "#konfigurator" },
+    ],
+  },
+  {
+    id: "oslony-zewnetrzne",
+    title: "Osłony zewnętrzne",
+    items: [
+      { label: "Rolety zewnętrzne", href: "#konfigurator" },
+      { label: "Żaluzje fasadowe", href: "#konfigurator" },
+      { label: "Screeny", href: "#konfigurator" },
+    ],
+  },
+  {
+    id: "taras",
+    title: "Taras",
+    items: [
+      { label: "Markizy", href: "#konfigurator" },
+      { label: "Zadaszenia", href: "#konfigurator" },
+      { label: "Shuttersy", href: "#konfigurator" },
+    ],
+  },
+];
+
+const heroSlides = [
+  "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=2200&q=80",
+  "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2200&q=80",
+  "https://images.unsplash.com/photo-1615529162924-f860538846cc?auto=format&fit=crop&w=2200&q=80",
+  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2200&q=80",
+];
+
 const categories: Tile[] = [
   {
     title: "Rolety",
     subtitle: "Screen, dzień noc i zaciemniające",
     price: "od 249 zł",
     image:
-      "https://images.unsplash.com/photo-1616594039964-96016a0f0f84?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1617098474202-0cdbfda8d3f5?auto=format&fit=crop&w=1600&q=80",
     href: "#konfigurator",
   },
   {
@@ -32,12 +78,12 @@ const categories: Tile[] = [
     href: "#konfigurator",
   },
   {
-    title: "Akcesoria",
-    subtitle: "Napędy, piloty, prowadnice",
-    price: "od 119 zł",
+    title: "Shuttersy",
+    subtitle: "Nowoczesne panele i osłony tarasu",
+    price: "od 1 190 zł",
     image:
-      "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1600&q=80",
-    href: "#produkty",
+      "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1600&q=80",
+    href: "#konfigurator",
   },
 ];
 
@@ -47,8 +93,8 @@ const products: Tile[] = [
     subtitle: "Najczęściej wybierana do sypialni",
     price: "539 zł",
     image:
-      "https://images.unsplash.com/photo-1617098474202-0cdbfda8d3f5?auto=format&fit=crop&w=1600&q=80",
-    href: "#",
+      "https://images.unsplash.com/photo-1616137466211-f939a420be84?auto=format&fit=crop&w=1600&q=80",
+    href: "#konfigurator",
   },
   {
     title: "Markiza LUX Shadow",
@@ -56,15 +102,15 @@ const products: Tile[] = [
     price: "4 290 zł",
     image:
       "https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=1600&q=80",
-    href: "#",
+    href: "#konfigurator",
   },
   {
-    title: "Moskitiera Slide",
-    subtitle: "Bezproblemowe przesuwanie",
-    price: "389 zł",
+    title: "Żaluzja Fasadowa AIR",
+    subtitle: "Mocna ochrona przed słońcem",
+    price: "1 890 zł",
     image:
-      "https://images.unsplash.com/photo-1616137466211-f939a420be84?auto=format&fit=crop&w=1600&q=80",
-    href: "#",
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1600&q=80",
+    href: "#konfigurator",
   },
 ];
 
@@ -78,15 +124,15 @@ const trustBadges = [
 const steps = [
   {
     title: "1. Konfigurujesz",
-    text: "Wybierasz wymiary, tkaninę i automatykę. Cena liczy się w czasie rzeczywistym.",
+    text: "Wybierasz typ osłony, wymiary i dodatki. Cena aktualizuje się od razu.",
   },
   {
     title: "2. Potwierdzasz",
-    text: "Podsumowanie z terminem, kosztem dostawy i dokładną specyfikacją techniczną.",
+    text: "Dostajesz pełną specyfikację i termin realizacji, bez ukrytych kosztów.",
   },
   {
     title: "3. Montujesz",
-    text: "Dostarczamy gotowy zestaw z instrukcją lub wysyłamy ekipę montażową.",
+    text: "Wysyłamy gotowy zestaw lub organizujemy montaż w Twoim regionie.",
   },
 ];
 
@@ -98,11 +144,28 @@ export default function Home() {
           KEIKA
         </a>
 
-        <nav className="main-nav" aria-label="Główna nawigacja">
-          <a href="#kategorie">Rolety</a>
-          <a href="#kategorie">Markizy</a>
-          <a href="#kategorie">Moskitiery</a>
-          <a href="#produkty">Bestsellery</a>
+        <nav className="mega-nav" aria-label="Główna nawigacja sklepu">
+          <ul className="menu-root">
+            {menuGroups.map((group) => (
+              <li key={group.id} className="menu-item">
+                <a className="menu-link" href={`#${group.id}`}>
+                  {group.title}
+                </a>
+                <div className="submenu" role="menu" aria-label={`${group.title} podmenu`}>
+                  {group.items.map((item) => (
+                    <a key={item.label} href={item.href} role="menuitem">
+                      {item.label}
+                    </a>
+                  ))}
+                </div>
+              </li>
+            ))}
+            <li className="menu-item menu-item-contact">
+              <a className="menu-link" href="#kontakt">
+                Kontakt
+              </a>
+            </li>
+          </ul>
         </nav>
 
         <div className="topbar-actions">
@@ -115,27 +178,50 @@ export default function Home() {
         </div>
       </header>
 
+      <div className="mobile-drawer-nav" aria-label="Mobilna nawigacja">
+        {menuGroups.map((group) => (
+          <details key={group.id}>
+            <summary>{group.title}</summary>
+            <div>
+              {group.items.map((item) => (
+                <a key={item.label} href={item.href}>
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          </details>
+        ))}
+        <a className="mobile-contact" href="#kontakt">
+          Kontakt
+        </a>
+      </div>
+
       <main>
-        <section className="hero">
-          <div
-            className="hero-bg"
-            aria-hidden="true"
-            style={{
-              backgroundImage:
-                "url(https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=2000&q=80)",
-            }}
-          />
+        <section className="hero" id="start">
+          <div className="hero-slides" aria-hidden="true">
+            {heroSlides.map((slide, index) => (
+              <div
+                key={slide}
+                className="hero-slide"
+                style={{
+                  backgroundImage: `url(${slide})`,
+                  animationDelay: `${index * 5}s`,
+                }}
+              />
+            ))}
+          </div>
           <div className="hero-noise" aria-hidden="true" />
 
           <div className="hero-inner reveal-up">
-            <p className="eyebrow">Sklep KEIKA 2.0</p>
+            <p className="eyebrow">KEIKA Premium Home</p>
             <h1>
-              Komfort, prywatność i design
-              <span> na wymiar Twojego domu</span>
+              Nowoczesne osłony okienne i tarasowe
+              <span> w klimacie premium</span>
             </h1>
             <p className="hero-copy">
-              Zamów rolety, markizy i moskitiery w kilka minut. Nowoczesny
-              konfigurator, szybka wycena i produkcja pod Twój projekt.
+              Tło pokazuje inspiracje z realnych realizacji: żaluzje, rolety i
+              markizy w nowoczesnych domach. Wybierz kategorię w menu i od razu
+              przejdź do konfiguracji.
             </p>
             <div className="hero-cta">
               <a className="btn btn-primary" href="#konfigurator">
@@ -175,11 +261,23 @@ export default function Home() {
               </label>
               <label>
                 Szerokość (cm)
-                <input type="number" name="width" min={40} max={500} placeholder="120" />
+                <input
+                  type="number"
+                  name="width"
+                  min={40}
+                  max={500}
+                  placeholder="120"
+                />
               </label>
               <label>
                 Wysokość (cm)
-                <input type="number" name="height" min={40} max={500} placeholder="140" />
+                <input
+                  type="number"
+                  name="height"
+                  min={40}
+                  max={500}
+                  placeholder="140"
+                />
               </label>
               <button type="submit">Pokaż przybliżoną cenę</button>
             </form>
@@ -219,6 +317,39 @@ export default function Home() {
               </article>
             ))}
           </div>
+        </section>
+
+        <section className="content-block" id="oslony-wewnetrzne">
+          <div className="section-head">
+            <h2>Osłony wewnętrzne</h2>
+            <a href="#konfigurator">Przejdź do konfiguratora</a>
+          </div>
+          <p className="section-description">
+            Rolety tradycyjne, dzień noc, plisy, żaluzje, rolety rzymskie i
+            systemy do okien dachowych.
+          </p>
+        </section>
+
+        <section className="content-block" id="oslony-zewnetrzne">
+          <div className="section-head">
+            <h2>Osłony zewnętrzne</h2>
+            <a href="#konfigurator">Przejdź do konfiguratora</a>
+          </div>
+          <p className="section-description">
+            Rolety zewnętrzne, żaluzje fasadowe i screeny zwiększające komfort
+            termiczny oraz prywatność.
+          </p>
+        </section>
+
+        <section className="content-block" id="taras">
+          <div className="section-head">
+            <h2>Taras</h2>
+            <a href="#konfigurator">Przejdź do konfiguratora</a>
+          </div>
+          <p className="section-description">
+            Markizy, zadaszenia i shuttersy tworzące strefę cienia i stylu przez
+            cały sezon.
+          </p>
         </section>
 
         <section className="content-block" id="produkty">
@@ -264,7 +395,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="final-cta">
+        <section className="final-cta" id="kontakt">
           <p>Gotowy, żeby odświeżyć swój dom?</p>
           <h2>Uruchom konfigurator i zamów bez czekania na telefon</h2>
           <a href="#konfigurator">Start konfiguracji</a>
