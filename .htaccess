@@ -1,0 +1,14 @@
+Options -MultiViews
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Zostaw prawdziwe pliki i katalogi (assets, favicon, itd.)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Wszystkie pozostałe ścieżki obsługuje front controller (PHP router).
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
