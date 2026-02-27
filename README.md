@@ -1,40 +1,36 @@
-# KEIKA Sklep (LH-only) - szkielet od podstaw
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Nowy sklep działa jako osobna aplikacja na subdomenie `sklep-keika.groovemedia.pl`, bez ruszania WordPressa na obecnym sklepie.
+## Getting Started
 
-## Założenie techniczne (aktualne)
-1. Hosting: obecny `LH` (bez dokupowania cloud/VPS).
-2. Runtime: `PHP 8.4` + `HTML/CSS/JS`.
-3. Routing: `.htaccess` + `index.php` (front controller).
-4. Efekt: odświeżenie na `/admin`, `/katalog`, `/konfigurator/...` nie zrzuca użytkownika na stronę główną.
+First, run the development server:
 
-## Struktura
-1. `.htaccess` - przepisywanie adresów do `index.php`
-2. `index.php` - start aplikacji
-3. `app/bootstrap.php` - routing + dane szkicu
-4. `views/` - layout i ekrany
-5. `assets/` - CSS/JS
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-## Dostępne ścieżki (szkielet)
-1. `/`
-2. `/katalog`
-3. `/produkt/roleta-dachowa-classic`
-4. `/konfigurator/roleta-dachowa-classic`
-5. `/koszyk`
-6. `/checkout`
-7. `/admin`
-8. `/admin/produkty`
-9. `/admin/konfigurator`
-10. `/admin/zamowienia`
-11. `/admin/ustawienia`
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Deploy na LH (ta wersja)
-1. Wgrywasz cały katalog tej aplikacji do subdomeny:
-   `public_html/sklep-keika.groovemedia.pl`
-2. Upewnij się, że `.htaccess` jest wgrany (bez niego refresh-safe routing nie zadziała).
-3. PHP 8.4 może zostać.
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## Następny krok (po szkielecie)
-1. Dodać API `shop/v1` po stronie CRM (PHP)
-2. Podpiąć panel sklepu i katalog do danych z CRM
-3. Zbudować pierwszy realny konfigurator rolety dachowej
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
