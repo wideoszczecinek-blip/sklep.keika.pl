@@ -512,6 +512,22 @@ export default function Home() {
     };
   }, [bootPhase, configReady, heroSlidesReady]);
 
+  useEffect(() => {
+    if (bootPhase !== "loading") return;
+    let revealTimer: number | null = null;
+    const hardTimeout = window.setTimeout(() => {
+      setBootPhase("reveal");
+      revealTimer = window.setTimeout(() => {
+        setBootPhase("ready");
+      }, 820);
+    }, 3400);
+
+    return () => {
+      window.clearTimeout(hardTimeout);
+      if (revealTimer !== null) window.clearTimeout(revealTimer);
+    };
+  }, [bootPhase]);
+
   const heroMenuGroups = useMemo(() => {
     if (!Array.isArray(config?.menu_groups) || config.menu_groups.length === 0) {
       return defaultHeroMenuGroups;
