@@ -18,6 +18,7 @@ type HomepageConfig = {
     contact_email?: string;
     logo_url?: string;
   };
+  hero_titles?: string[];
   hero_media?: HeroMedia[];
   menu_groups?: Array<{
     title?: string;
@@ -226,6 +227,7 @@ export default function Home() {
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [heroSlidesReady, setHeroSlidesReady] = useState(false);
   const [cartSummary, setCartSummary] = useState<CartSummary>({ items: 0, total: 0 });
+  const [activeHeadline, setActiveHeadline] = useState(0);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
@@ -309,14 +311,35 @@ export default function Home() {
 
   const siteTitle = branding.site_title || "KEIKA";
   const logoUrl = absolutizeUrl(branding.logo_url || "", endpointOrigin);
-  const homeTitle =
-    branding.home_title || "Strona główna z efektem premium i mocnym nastawieniem na konwersję";
+  const heroTitles = useMemo(() => {
+    const raw = Array.isArray(config?.hero_titles) ? config.hero_titles : [];
+    const cleaned = raw.map((entry) => String(entry || "").trim()).filter(Boolean);
+    if (cleaned.length) return cleaned;
+    const legacy = String(branding.home_title || "").trim();
+    if (legacy) return [legacy];
+    return ["Strona główna z efektem premium i mocnym nastawieniem na konwersję"];
+  }, [config?.hero_titles, branding.home_title]);
+
   const homeSubtitle =
     branding.home_subtitle ||
     "Pełna szerokość, dynamiczne tło i czytelna ścieżka decyzji. Najpierw wybierasz kierunek, potem przechodzisz do konfiguratora.";
   const contactPhone = branding.contact_phone || "+48 123 456 789";
   const hasCartItems = cartSummary.items > 0;
   const cartQtyLabel = cartSummary.items === 1 ? "1 produkt" : `${cartSummary.items} produktów`;
+
+  useEffect(() => {
+    if (activeHeadline >= heroTitles.length) {
+      setActiveHeadline(0);
+    }
+  }, [activeHeadline, heroTitles.length]);
+
+  useEffect(() => {
+    if (heroTitles.length <= 1) return;
+    const intervalId = window.setInterval(() => {
+      setActiveHeadline((prev) => (prev + 1) % heroTitles.length);
+    }, 4200);
+    return () => window.clearInterval(intervalId);
+  }, [heroTitles.length]);
 
   const heroMedia = useMemo(() => {
     if (Array.isArray(config?.hero_media) && config!.hero_media!.length > 0) {
@@ -510,9 +533,28 @@ export default function Home() {
           <div className="hero-inner">
             <div className="hero-copy">
               <p className="eyebrow">Nowoczesne osłony dla nowoczesnych domów</p>
-              <h1>
-                {homeTitle}
-              </h1>
+              <div className="hero-title-carousel" aria-live="polite">
+                {heroTitles.map((title, index) => (
+                  <h1
+                    key={`${title}-${index}`}
+                    className={`hero-title-slide ${index === activeHeadline ? "is-active" : ""}`}
+                  >
+                    {title}
+                  </h1>
+                ))}
+              </div>
+              <div className="hero-title-dots" aria-label="Paginacja tytułów">
+                {heroTitles.map((_, index) => (
+                  <button
+                    key={`headline-dot-${index}`}
+                    type="button"
+                    className={`hero-title-dot ${index === activeHeadline ? "is-active" : ""}`}
+                    aria-label={`Pokaż tytuł ${index + 1}`}
+                    aria-pressed={index === activeHeadline ? "true" : "false"}
+                    onClick={() => setActiveHeadline(index)}
+                  />
+                ))}
+              </div>
               <p>{homeSubtitle}</p>
             </div>
 

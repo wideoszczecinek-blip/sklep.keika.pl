@@ -104,10 +104,9 @@ a {
   min-width: 152px;
   text-decoration: none;
   border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(7, 14, 26, 0.48);
-  backdrop-filter: blur(10px);
-  color: #eef5ff;
+  border: 1px solid rgba(255, 206, 102, 0.72);
+  background: linear-gradient(145deg, #f0b652, #ffd98f);
+  color: #2a1900;
   padding: 0.52rem 0.78rem;
   display: grid;
   gap: 0.08rem;
@@ -120,7 +119,7 @@ a {
   font-size: 0.72rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(234, 243, 255, 0.86);
+  color: rgba(42, 25, 0, 0.84);
 }
 
 .header-cart strong {
@@ -130,13 +129,10 @@ a {
 
 .header-cart small {
   font-size: 0.74rem;
-  color: rgba(226, 238, 255, 0.86);
+  color: rgba(42, 25, 0, 0.78);
 }
 
 .header-cart.has-items {
-  text-decoration: none;
-  background: linear-gradient(145deg, var(--highlight), #f8ca77);
-  color: #2a1900;
   border-color: rgba(255, 206, 102, 0.95);
   box-shadow: 0 10px 22px rgba(243, 181, 70, 0.38);
 }
@@ -147,8 +143,8 @@ a {
 }
 
 .header-cart.is-empty {
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(7, 14, 26, 0.42);
+  border-color: rgba(255, 206, 102, 0.62);
+  background: linear-gradient(145deg, #d8a958, #f3cd8d);
 }
 
 .hero-full {
@@ -244,17 +240,52 @@ a {
   color: rgba(244, 248, 255, 0.82);
 }
 
-.hero-copy h1 {
+.hero-title-carousel {
+  position: relative;
   margin: 0.9rem 0 0;
+  min-height: clamp(9.2rem, 3.8rem + 12vw, 14.2rem);
+}
+
+.hero-title-slide {
+  position: absolute;
+  inset: 0;
+  margin: 0;
   font-family: var(--font-heading), sans-serif;
   font-size: clamp(2.2rem, 1.25rem + 3.4vw, 5rem);
   line-height: 0.98;
   letter-spacing: -0.02em;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.46s ease, transform 0.46s ease;
+  pointer-events: none;
 }
 
-.hero-copy h1 span {
-  display: block;
-  color: #9debe9;
+.hero-title-slide.is-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hero-title-dots {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  margin-bottom: 0.7rem;
+}
+
+.hero-title-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
+  background: rgba(235, 244, 255, 0.45);
+  cursor: pointer;
+  transition: transform 0.25s ease, background-color 0.25s ease;
+}
+
+.hero-title-dot.is-active {
+  background: #79e5e0;
+  transform: scale(1.2);
 }
 
 .hero-copy p {
@@ -698,7 +729,11 @@ a {
     height: 34px;
   }
 
-  .hero-copy h1 {
+  .hero-title-carousel {
+    min-height: clamp(7rem, 4.8rem + 13vw, 9.8rem);
+  }
+
+  .hero-title-slide {
     font-size: clamp(1.9rem, 1.25rem + 6vw, 2.9rem);
   }
 
