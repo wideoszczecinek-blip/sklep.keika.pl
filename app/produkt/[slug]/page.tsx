@@ -138,6 +138,11 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
               <h1>{foundProduct.name || "Produkt"}</h1>
               <h2>{foundProduct.price_from || "Cena po konfiguracji"}</h2>
               <p>{foundProduct.subtitle || "Nowoczesny produkt na wymiar. Dobierz parametry, tkaninę i opcje montażu."}</p>
+              <div className="product-anchor-nav">
+                <a href="#galeria">Galeria</a>
+                <a href="#opis">Opis</a>
+                <a href="#konfigurator">Konfigurator</a>
+              </div>
               <ul>
                 <li>Konfiguracja dokładnych wymiarów</li>
                 <li>Dobór systemu i sterowania</li>
@@ -148,10 +153,23 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                 <Link href={`/kategoria/${foundGroup.slug || ""}`}>Wróć do kategorii</Link>
               </div>
             </article>
+            <section className="product-content-panels">
+              <article id="galeria" className="catalog-card">
+                <h3>Galeria</h3>
+                <p>Tu podpinamy docelową galerię realizacji i zdjęcia detali produktu.</p>
+              </article>
+              <article id="opis" className="catalog-card">
+                <h3>Opis</h3>
+                <p>Tu podpinamy pełny opis techniczny, warianty i opcje dodatkowe produktu.</p>
+              </article>
+              <article id="konfigurator" className="catalog-card">
+                <h3>Konfigurator</h3>
+                <p>Tu podpinamy docelowy konfigurator wymiarów, tkanin i sterowania.</p>
+              </article>
+            </section>
           </section>
         )}
       </main>
     </div>
   );
 }
-

@@ -83,8 +83,19 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
   const contactPhone = branding.contact_phone || "+48 123 456 789";
   const groups = Array.isArray(config?.product_groups) ? config.product_groups : [];
   const group = groups.find((entry) => String(entry.slug || "").trim() === slug);
-  const bg = absolutizeUrl(group?.background_url || "", endpointOrigin);
-  const products = Array.isArray(group?.products) ? group.products : [];
+  const bgFallback = slug === "oslony-wewnetrzne"
+    ? "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80"
+    : "";
+  const bg = absolutizeUrl(group?.background_url || bgFallback, endpointOrigin);
+  const productsFallback = slug === "oslony-wewnetrzne"
+    ? [
+        { name: "Rolety MINI (wolnowiszące naokienne)", slug: "rolety-mini", subtitle: "Kompaktowy system montowany bezpośrednio na skrzydle okna.", price_from: "od 249 zł", image_url: "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80" },
+        { name: "Rolety STANDARD (wolnowiszące ściana/sufit)", slug: "rolety-standard", subtitle: "Klasyczne rolety wolnowiszące do montażu na ścianie lub suficie.", price_from: "od 289 zł", image_url: "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1400&q=80" },
+        { name: "Rolety BEST 1 (kaseta + prowadnice, przyszybowe)", slug: "rolety-best-1", subtitle: "Kaseta z prowadnicami przy szybie dla lepszego zaciemnienia.", price_from: "od 329 zł", image_url: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=80" },
+        { name: "Rolety BEST 2 (kaseta + prowadnice, przestrzenne)", slug: "rolety-best-2", subtitle: "System przestrzenny o podwyższonej estetyce i stabilności tkaniny.", price_from: "od 369 zł", image_url: "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80" },
+      ]
+    : [];
+  const products = Array.isArray(group?.products) && group.products.length ? group.products : productsFallback;
 
   return (
     <div className="catalog-root" style={{ backgroundImage: bg ? `linear-gradient(120deg, rgba(4,12,22,.88), rgba(7,16,30,.72)), url(${bg})` : undefined }}>
@@ -128,7 +139,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
             <section className="catalog-head">
               <p>Kategoria</p>
               <h1>{group.title || "Produkty"}</h1>
-              <p>{group.description || "Wybierz produkt i przejdź do szczegółów."}</p>
+              <p>{group.description || "Rolety tradycyjne i systemy naokienne. Wybierz produkt i przejdź do szczegółów."}</p>
             </section>
             <section className="catalog-grid">
               {products.map((product) => {
@@ -155,4 +166,3 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
     </div>
   );
 }
-
