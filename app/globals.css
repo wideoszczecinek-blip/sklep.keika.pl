@@ -41,7 +41,12 @@ a {
 }
 
 .home-root {
-  min-height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.home-root main {
+  height: 100%;
 }
 
 .hero-header {
@@ -107,7 +112,8 @@ a {
 
 .hero-full {
   position: relative;
-  min-height: 100svh;
+  height: 100%;
+  min-height: 0;
   width: 100%;
   overflow: hidden;
   isolation: isolate;
