@@ -435,6 +435,12 @@ export default function Home() {
     return fallbackHeroSlides.map((url) => ({ type: "image" as const, url, label: "" }));
   }, [config, endpointOrigin]);
 
+  const firstHeroImageUrl = useMemo(() => {
+    const firstImage = heroMedia.find((item) => item.type === "image" && item.url);
+    if (firstImage?.url) return firstImage.url;
+    return fallbackHeroSlides[0];
+  }, [heroMedia]);
+
   useEffect(() => {
     if (activeHeroSlide >= heroMedia.length) {
       setActiveHeroSlide(0);
@@ -643,7 +649,11 @@ export default function Home() {
 
       <main>
         <section className="hero-full" id="start">
-          <div className={`hero-slides ${heroSlidesReady ? "is-ready" : ""}`} aria-hidden="true">
+          <div
+            className={`hero-slides ${heroSlidesReady ? "is-ready" : ""}`}
+            aria-hidden="true"
+            style={{ backgroundImage: `url(${firstHeroImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
+          >
             {heroMedia.map((media, index) =>
               media.type === "video" ? (
                 <div
