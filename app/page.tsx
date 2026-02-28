@@ -57,6 +57,11 @@ type HeroMenuGroup = {
   items: HeroMenuItem[];
 };
 
+type CartSummary = {
+  items: number;
+  total: number;
+};
+
 const fallbackHeroSlides = [
   "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=2200&q=80",
   "https://images.unsplash.com/photo-1600210492493-0946911123ea?auto=format&fit=crop&w=2200&q=80",
@@ -164,11 +169,63 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   }
 }
 
+function readCartSummary(): CartSummary {
+  if (typeof window === "undefined") return { items: 0, total: 0 };
+
+  const keys = ["keika_cart", "shop_cart", "cart"];
+  let parsed: unknown = null;
+  for (const key of keys) {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      parsed = JSON.parse(raw);
+      break;
+    } catch {
+      // ignore invalid json
+    }
+  }
+
+  if (!parsed) return { items: 0, total: 0 };
+
+  const rows = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray((parsed as { items?: unknown }).items)
+      ? (parsed as { items: unknown[] }).items
+      : [];
+
+  let items = 0;
+  let total = 0;
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const item = row as Record<string, unknown>;
+    const qtyRaw = Number(item.qty ?? item.quantity ?? item.count ?? 1);
+    const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+
+    const explicitTotal = Number(item.total ?? item.line_total ?? item.price_total ?? NaN);
+    const unitPrice = Number(item.price ?? item.unit_price ?? item.unitPrice ?? 0);
+    const rowTotal = Number.isFinite(explicitTotal) ? explicitTotal : unitPrice * qty;
+
+    items += qty;
+    total += Number.isFinite(rowTotal) ? rowTotal : 0;
+  }
+
+  return { items: Math.max(0, Math.round(items)), total: Math.max(0, total) };
+}
+
+function formatPln(value: number): string {
+  return new Intl.NumberFormat("pl-PL", {
+    style: "currency",
+    currency: "PLN",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [heroSlidesReady, setHeroSlidesReady] = useState(false);
+  const [cartSummary, setCartSummary] = useState<CartSummary>({ items: 0, total: 0 });
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
@@ -252,14 +309,14 @@ export default function Home() {
 
   const siteTitle = branding.site_title || "KEIKA";
   const logoUrl = absolutizeUrl(branding.logo_url || "", endpointOrigin);
-  const headerCtaText = branding.header_cta_text || "Darmowa wycena";
   const homeTitle =
     branding.home_title || "Strona główna z efektem premium i mocnym nastawieniem na konwersję";
   const homeSubtitle =
     branding.home_subtitle ||
     "Pełna szerokość, dynamiczne tło i czytelna ścieżka decyzji. Najpierw wybierasz kierunek, potem przechodzisz do konfiguratora.";
   const contactPhone = branding.contact_phone || "+48 123 456 789";
-  const contactEmail = branding.contact_email || "kontakt@keika.pl";
+  const hasCartItems = cartSummary.items > 0;
+  const cartQtyLabel = cartSummary.items === 1 ? "1 produkt" : `${cartSummary.items} produktów`;
 
   const heroMedia = useMemo(() => {
     if (Array.isArray(config?.hero_media) && config!.hero_media!.length > 0) {
@@ -328,6 +385,17 @@ export default function Home() {
     return () => window.clearInterval(intervalId);
   }, [heroMedia.length]);
 
+  useEffect(() => {
+    const syncCart = () => setCartSummary(readCartSummary());
+    syncCart();
+    window.addEventListener("storage", syncCart);
+    window.addEventListener("focus", syncCart);
+    return () => {
+      window.removeEventListener("storage", syncCart);
+      window.removeEventListener("focus", syncCart);
+    };
+  }, []);
+
   const heroMenuGroups = useMemo(() => {
     if (!Array.isArray(config?.menu_groups) || config.menu_groups.length === 0) {
       return defaultHeroMenuGroups;
@@ -392,8 +460,16 @@ export default function Home() {
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
             {contactPhone}
           </a>
-          <a className="header-cta" href="#wycena">
-            {headerCtaText}
+          <a className={`header-cart ${hasCartItems ? "has-items" : "is-empty"}`} href="#koszyk">
+            <span className="header-cart-title">Koszyk</span>
+            {hasCartItems ? (
+              <>
+                <strong>{formatPln(cartSummary.total)}</strong>
+                <small>{cartQtyLabel}</small>
+              </>
+            ) : (
+              <small>Koszyk pusty</small>
+            )}
           </a>
         </div>
       </header>
@@ -438,14 +514,6 @@ export default function Home() {
                 {homeTitle}
               </h1>
               <p>{homeSubtitle}</p>
-              <div className="hero-buttons">
-                <a className="btn-primary" href="#wycena">
-                  Rozpocznij konfigurację
-                </a>
-                <a className="btn-secondary" href="#wycena">
-                  Zobacz kolekcje
-                </a>
-              </div>
             </div>
 
             <aside
