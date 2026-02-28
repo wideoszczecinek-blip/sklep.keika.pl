@@ -846,6 +846,11 @@ a {
 }
 
 @media (max-width: 760px) {
+  .home-root {
+    --mobile-offer-btn-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.9rem);
+    --mobile-offer-btn-height: 2.95rem;
+  }
+
   .hero-header {
     padding-top: 0.75rem;
   }
@@ -914,7 +919,7 @@ a {
     justify-content: center;
     position: fixed;
     right: 0.94rem;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.9rem);
+    bottom: var(--mobile-offer-btn-bottom);
     z-index: 74;
     isolation: isolate;
     overflow: hidden;
@@ -924,7 +929,8 @@ a {
     color: #e9f8ff;
     font-weight: 800;
     font-size: 0.92rem;
-    padding: 0.72rem 1rem;
+    min-height: var(--mobile-offer-btn-height);
+    padding: 0.6rem 1rem;
     backdrop-filter: blur(10px);
     box-shadow: 0 10px 24px rgba(4, 16, 30, 0.45);
     transition: transform 0.28s ease, box-shadow 0.28s ease, background 0.28s ease;
@@ -992,7 +998,7 @@ a {
     position: fixed;
     left: 0.94rem;
     right: 0.94rem;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 4.25rem);
+    bottom: calc(var(--mobile-offer-btn-bottom) + var(--mobile-offer-btn-height) + 0.62rem);
     z-index: 73;
     width: auto;
     max-height: 0;
@@ -1005,7 +1011,7 @@ a {
   }
 
   .home-root.mobile-menu-open .hero-menu-glass {
-    max-height: 62svh;
+    max-height: 64svh;
     padding-bottom: 0.48rem;
     opacity: 1;
     overflow-y: auto;
@@ -1050,21 +1056,39 @@ a {
   }
 
   .home-root.mobile-menu-open .hero-copy {
-    transform: translateY(-8px);
+    transform: translateY(-26px);
   }
 
   .home-root.mobile-menu-open .hero-title-carousel {
-    min-height: clamp(4rem, 3.2rem + 6.8vw, 6rem);
+    min-height: clamp(3rem, 2.8rem + 5.6vw, 4.6rem);
   }
 
   .home-root.mobile-menu-open .hero-title-slide {
-    font-size: clamp(1.32rem, 1.14rem + 3.2vw, 1.9rem);
+    font-size: clamp(1.08rem, 1rem + 2.6vw, 1.48rem);
     line-height: 1;
     transition: opacity 0.42s ease, transform 0.42s ease, font-size 0.4s ease;
   }
 
+  .home-root.mobile-menu-open .hero-eyebrow-carousel {
+    min-height: 1.25rem;
+  }
+
+  .home-root.mobile-menu-open .eyebrow-slide {
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+  }
+
   .hero-subtitle-carousel {
     min-height: 2.6rem;
+  }
+
+  .home-root.mobile-menu-open .hero-subtitle-carousel {
+    min-height: 1.72rem;
+  }
+
+  .home-root.mobile-menu-open .hero-subtitle-slide {
+    font-size: 0.88rem;
+    line-height: 1.35;
   }
 
   .metrics-strip {
