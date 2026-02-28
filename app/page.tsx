@@ -504,27 +504,27 @@ export default function Home() {
     if (bootPhase !== "loading") return;
     if (!configReady || !heroSlidesReady) return;
     setBootPhase("reveal");
-    const timerId = window.setTimeout(() => {
-      setBootPhase("ready");
-    }, 1280);
-    return () => {
-      window.clearTimeout(timerId);
-    };
   }, [bootPhase, configReady, heroSlidesReady]);
 
   useEffect(() => {
     if (bootPhase !== "loading") return;
-    let revealTimer: number | null = null;
     const hardTimeout = window.setTimeout(() => {
       setBootPhase("reveal");
-      revealTimer = window.setTimeout(() => {
-        setBootPhase("ready");
-      }, 820);
     }, 3400);
 
     return () => {
       window.clearTimeout(hardTimeout);
-      if (revealTimer !== null) window.clearTimeout(revealTimer);
+    };
+  }, [bootPhase]);
+
+  useEffect(() => {
+    if (bootPhase !== "reveal") return;
+    const readyTimer = window.setTimeout(() => {
+      setBootPhase("ready");
+    }, 820);
+
+    return () => {
+      window.clearTimeout(readyTimer);
     };
   }, [bootPhase]);
 
