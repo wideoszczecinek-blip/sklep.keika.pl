@@ -18,6 +18,11 @@ type HomepageConfig = {
     contact_email?: string;
     logo_url?: string;
   };
+  hero_carousel?: Array<{
+    eyebrow?: string;
+    title?: string;
+    subtitle?: string;
+  }>;
   hero_titles?: string[];
   hero_media?: HeroMedia[];
   menu_groups?: Array<{
@@ -61,6 +66,12 @@ type HeroMenuGroup = {
 type CartSummary = {
   items: number;
   total: number;
+};
+
+type HeroCarouselSlide = {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
 };
 
 const fallbackHeroSlides = [
@@ -312,35 +323,66 @@ export default function Home() {
 
   const siteTitle = branding.site_title || "KEIKA";
   const logoUrl = absolutizeUrl(branding.logo_url || "", endpointOrigin);
-  const heroTitles = useMemo(() => {
-    const raw = Array.isArray(config?.hero_titles) ? config.hero_titles : [];
-    const cleaned = raw.map((entry) => String(entry || "").trim()).filter(Boolean);
-    if (cleaned.length) return cleaned;
-    const legacy = String(branding.home_title || "").trim();
-    if (legacy) return [legacy];
-    return ["Strona główna z efektem premium i mocnym nastawieniem na konwersję"];
-  }, [config?.hero_titles, branding.home_title]);
+  const heroCarousel = useMemo<HeroCarouselSlide[]>(() => {
+    const rawSlides = Array.isArray(config?.hero_carousel) ? config.hero_carousel : [];
+    const parsedSlides = rawSlides
+      .map((slide) => ({
+        eyebrow: String(slide?.eyebrow || "").trim(),
+        title: String(slide?.title || "").trim(),
+        subtitle: String(slide?.subtitle || "").trim(),
+      }))
+      .filter((slide) => slide.eyebrow || slide.title || slide.subtitle);
 
+    if (parsedSlides.length) return parsedSlides;
+
+    const legacyTitles = Array.isArray(config?.hero_titles)
+      ? config.hero_titles.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [];
+    if (legacyTitles.length) {
+      return legacyTitles.map((title) => ({
+        eyebrow: "NOWOCZESNE OSŁONY DLA NOWOCZESNYCH DOMÓW",
+        title,
+        subtitle: String(branding.home_subtitle || "").trim(),
+      }));
+    }
+
+    const legacyTitle = String(branding.home_title || "").trim() || "Strona główna z efektem premium i mocnym nastawieniem na konwersję";
+    const legacySubtitle =
+      String(branding.home_subtitle || "").trim() ||
+      "Pełna szerokość, dynamiczne tło i czytelna ścieżka decyzji. Najpierw wybierasz kierunek, potem przechodzisz do konfiguratora.";
+
+    return [
+      {
+        eyebrow: "NOWOCZESNE OSŁONY DLA NOWOCZESNYCH DOMÓW",
+        title: legacyTitle,
+        subtitle: legacySubtitle,
+      },
+    ];
+  }, [config?.hero_carousel, config?.hero_titles, branding.home_title, branding.home_subtitle]);
+
+  const activeHeroContent = heroCarousel[activeHeadline] || heroCarousel[0];
+  const homeEyebrow = activeHeroContent?.eyebrow || "NOWOCZESNE OSŁONY DLA NOWOCZESNYCH DOMÓW";
+  const homeTitle = activeHeroContent?.title || "Strona główna z efektem premium i mocnym nastawieniem na konwersję";
   const homeSubtitle =
-    branding.home_subtitle ||
+    activeHeroContent?.subtitle ||
     "Pełna szerokość, dynamiczne tło i czytelna ścieżka decyzji. Najpierw wybierasz kierunek, potem przechodzisz do konfiguratora.";
   const contactPhone = branding.contact_phone || "+48 123 456 789";
   const hasCartItems = cartSummary.items > 0;
   const cartQtyLabel = cartSummary.items === 1 ? "1 produkt" : `${cartSummary.items} produktów`;
 
   useEffect(() => {
-    if (activeHeadline >= heroTitles.length) {
+    if (activeHeadline >= heroCarousel.length) {
       setActiveHeadline(0);
     }
-  }, [activeHeadline, heroTitles.length]);
+  }, [activeHeadline, heroCarousel.length]);
 
   useEffect(() => {
-    if (heroTitles.length <= 1) return;
+    if (heroCarousel.length <= 1) return;
     const intervalId = window.setInterval(() => {
-      setActiveHeadline((prev) => (prev + 1) % heroTitles.length);
+      setActiveHeadline((prev) => (prev + 1) % heroCarousel.length);
     }, 4200);
     return () => window.clearInterval(intervalId);
-  }, [heroTitles.length]);
+  }, [heroCarousel.length]);
 
   const heroMedia = useMemo(() => {
     if (Array.isArray(config?.hero_media) && config!.hero_media!.length > 0) {
@@ -533,19 +575,19 @@ export default function Home() {
 
           <div className="hero-inner">
             <div className="hero-copy">
-              <p className="eyebrow">Nowoczesne osłony dla nowoczesnych domów</p>
+              <p className="eyebrow">{homeEyebrow}</p>
               <div className="hero-title-carousel" aria-live="polite">
-                {heroTitles.map((title, index) => (
+                {heroCarousel.map((slide, index) => (
                   <h1
-                    key={`${title}-${index}`}
+                    key={`${slide.title}-${slide.eyebrow}-${index}`}
                     className={`hero-title-slide ${index === activeHeadline ? "is-active" : ""}`}
                   >
-                    {title}
+                    {slide.title}
                   </h1>
                 ))}
               </div>
               <div className="hero-title-dots" aria-label="Paginacja tytułów">
-                {heroTitles.map((_, index) => (
+                {heroCarousel.map((_, index) => (
                   <button
                     key={`headline-dot-${index}`}
                     type="button"
