@@ -239,6 +239,7 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
+  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
@@ -344,6 +345,20 @@ export default function Home() {
     return fallbackHeroSlides.map((url) => ({ type: "image" as const, url, label: "" }));
   }, [config, endpointOrigin]);
 
+  useEffect(() => {
+    if (activeHeroSlide >= heroMedia.length) {
+      setActiveHeroSlide(0);
+    }
+  }, [activeHeroSlide, heroMedia.length]);
+
+  useEffect(() => {
+    if (heroMedia.length <= 1) return;
+    const intervalId = window.setInterval(() => {
+      setActiveHeroSlide((prev) => (prev + 1) % heroMedia.length);
+    }, 5600);
+    return () => window.clearInterval(intervalId);
+  }, [heroMedia.length]);
+
   const dynamicCollections = useMemo(() => {
     if (!Array.isArray(config?.menu_groups) || config.menu_groups.length === 0) {
       return collections;
@@ -445,8 +460,7 @@ export default function Home() {
               media.type === "video" ? (
                 <div
                   key={`${media.url}-${index}`}
-                  className="hero-slide video-slide"
-                  style={{ animationDelay: `${index * 5}s` }}
+                  className={`hero-slide video-slide ${index === activeHeroSlide ? "is-active" : ""}`}
                 >
                   <video
                     src={media.url}
@@ -460,10 +474,9 @@ export default function Home() {
               ) : (
                 <div
                   key={`${media.url}-${index}`}
-                  className="hero-slide"
+                  className={`hero-slide ${index === activeHeroSlide ? "is-active" : ""}`}
                   style={{
                     backgroundImage: `url(${media.url})`,
-                    animationDelay: `${index * 5}s`,
                   }}
                 />
               ),
