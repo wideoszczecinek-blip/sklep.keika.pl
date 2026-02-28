@@ -744,12 +744,15 @@ a {
   }
 
   .hero-mobile-offer-btn {
-    margin-top: 0.85rem;
-    margin-left: auto;
+    margin-top: 0;
+    margin-left: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    position: fixed;
+    right: 0.94rem;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.9rem);
+    z-index: 72;
     isolation: isolate;
     overflow: hidden;
     border: 1px solid rgba(137, 237, 231, 0.72);
