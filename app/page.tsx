@@ -25,6 +25,10 @@ type HomepageConfig = {
   }>;
   hero_titles?: string[];
   hero_media?: HeroMedia[];
+  top_links?: Array<{
+    label?: string;
+    url?: string;
+  }>;
   menu_groups?: Array<{
     title?: string;
     slug?: string;
@@ -72,6 +76,11 @@ type HeroCarouselSlide = {
   eyebrow: string;
   title: string;
   subtitle: string;
+};
+
+type TopLink = {
+  label: string;
+  url: string;
 };
 
 const fallbackHeroSlides = [
@@ -240,10 +249,12 @@ export default function Home() {
   const [heroSlidesReady, setHeroSlidesReady] = useState(false);
   const [cartSummary, setCartSummary] = useState<CartSummary>({ items: 0, total: 0 });
   const [activeHeadline, setActiveHeadline] = useState(0);
+  const [topMenuOpen, setTopMenuOpen] = useState(false);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
   const heroMenuRef = useRef<HTMLElement | null>(null);
+  const topMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -296,11 +307,17 @@ export default function Home() {
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const root = heroMenuRef.current;
       const target = event.target as Node | null;
-      if (!root || !target) return;
-      if (!root.contains(target)) {
+      if (!target) return;
+
+      const heroRoot = heroMenuRef.current;
+      if (heroRoot && !heroRoot.contains(target)) {
         setOpenMenuIndex(null);
+      }
+
+      const topRoot = topMenuRef.current;
+      if (topRoot && !topRoot.contains(target)) {
+        setTopMenuOpen(false);
       }
     };
 
@@ -367,6 +384,22 @@ export default function Home() {
     activeHeroContent?.subtitle ||
     "Pełna szerokość, dynamiczne tło i czytelna ścieżka decyzji. Najpierw wybierasz kierunek, potem przechodzisz do konfiguratora.";
   const contactPhone = branding.contact_phone || "+48 123 456 789";
+  const topLinks = useMemo<TopLink[]>(() => {
+    const source = Array.isArray(config?.top_links) ? config.top_links : [];
+    const normalized = source
+      .map((entry) => ({
+        label: String(entry?.label || "").trim(),
+        url: String(entry?.url || "").trim() || "#",
+      }))
+      .filter((entry) => entry.label !== "");
+    if (normalized.length) return normalized;
+    return [
+      { label: "O nas", url: "/o-nas" },
+      { label: "Kontakt", url: "/kontakt" },
+      { label: "Bezpieczeństwo", url: "/bezpieczenstwo" },
+      { label: "Regulamin", url: "/regulamin" },
+    ];
+  }, [config?.top_links]);
   const hasCartItems = cartSummary.items > 0;
   const cartQtyLabel = cartSummary.items === 1 ? "1 produkt" : `${cartSummary.items} produktów`;
 
@@ -515,13 +548,42 @@ export default function Home() {
   return (
     <div className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""}`}>
       <header className="hero-header">
-        <a className="brand" href="/" aria-label="KEIKA strona główna">
-          {logoUrl ? (
-            <img src={logoUrl} alt={siteTitle} className="brand-logo" />
-          ) : (
-            siteTitle
-          )}
-        </a>
+        <div className="header-left">
+          <a className="brand" href="/" aria-label="KEIKA strona główna">
+            {logoUrl ? (
+              <img src={logoUrl} alt={siteTitle} className="brand-logo" />
+            ) : (
+              siteTitle
+            )}
+          </a>
+          <div className={`top-links-wrap ${topMenuOpen ? "is-open" : ""}`} ref={topMenuRef}>
+            <button
+              type="button"
+              className="top-links-toggle"
+              aria-expanded={topMenuOpen ? "true" : "false"}
+              aria-controls="top-links-dropdown"
+              onClick={() => setTopMenuOpen((prev) => !prev)}
+            >
+              <span className="top-links-toggle-label">Menu</span>
+              <span className="top-links-toggle-icon" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+            </button>
+            <nav id="top-links-dropdown" className="top-links-dropdown" aria-label="Menu dodatkowe">
+              {topLinks.map((entry) => (
+                <a
+                  key={`${entry.label}-${entry.url}`}
+                  href={entry.url}
+                  onClick={() => setTopMenuOpen(false)}
+                >
+                  {entry.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </div>
         <div className="header-actions">
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
             {contactPhone}
