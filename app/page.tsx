@@ -415,12 +415,18 @@ export default function Home() {
   }, [activeHeadline, heroCarousel.length]);
 
   useEffect(() => {
+    if (bootPhase !== "ready") return;
+    setActiveHeadline(0);
+  }, [bootPhase]);
+
+  useEffect(() => {
+    if (bootPhase !== "ready") return;
     if (heroCarousel.length <= 1) return;
     const intervalId = window.setInterval(() => {
       setActiveHeadline((prev) => (prev + 1) % heroCarousel.length);
-    }, 4200);
+    }, 8400);
     return () => window.clearInterval(intervalId);
-  }, [heroCarousel.length]);
+  }, [bootPhase, heroCarousel.length]);
 
   const heroMedia = useMemo(() => {
     if (Array.isArray(config?.hero_media) && config!.hero_media!.length > 0) {
