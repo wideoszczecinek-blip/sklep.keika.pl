@@ -745,9 +745,13 @@ a {
 
   .hero-mobile-offer-btn {
     margin-top: 0.85rem;
+    margin-left: auto;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
     border: 1px solid rgba(137, 237, 231, 0.72);
     border-radius: 999px;
     background: rgba(8, 22, 38, 0.66);
@@ -756,6 +760,66 @@ a {
     font-size: 0.92rem;
     padding: 0.72rem 1rem;
     backdrop-filter: blur(10px);
+    box-shadow: 0 10px 24px rgba(4, 16, 30, 0.45);
+    transition: transform 0.28s ease, box-shadow 0.28s ease, background 0.28s ease;
+  }
+
+  .hero-mobile-offer-btn:hover,
+  .hero-mobile-offer-btn:active {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(5, 23, 42, 0.55);
+  }
+
+  .hero-mobile-offer-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from 0deg,
+      rgba(0, 0, 0, 0),
+      rgba(0, 0, 0, 0),
+      rgba(118, 255, 246, 0.95),
+      rgba(247, 202, 118, 0.95),
+      rgba(0, 0, 0, 0),
+      rgba(0, 0, 0, 0)
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: mobileOfferBorderSweep 3s linear infinite;
+    pointer-events: none;
+  }
+
+  .hero-mobile-offer-btn::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border-radius: inherit;
+    background: linear-gradient(120deg, rgba(15, 36, 58, 0.86), rgba(10, 25, 42, 0.72));
+    z-index: -1;
+  }
+
+  .home-root.mobile-menu-open .hero-mobile-offer-btn {
+    background: rgba(10, 25, 42, 0.78);
+  }
+
+  @keyframes mobileOfferBorderSweep {
+    0% {
+      transform: rotate(0deg);
+      opacity: 1;
+    }
+    16% {
+      opacity: 1;
+    }
+    25% {
+      opacity: 0.22;
+    }
+    100% {
+      transform: rotate(360deg);
+      opacity: 0.22;
+    }
   }
 
   .hero-menu-glass {
@@ -764,8 +828,8 @@ a {
     opacity: 0;
     overflow: hidden;
     pointer-events: none;
-    transform: translateY(10px);
-    transition: max-height 0.36s ease, opacity 0.28s ease, transform 0.36s ease;
+    transform: translateY(20px);
+    transition: max-height 0.48s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.34s ease, transform 0.48s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
 
   .home-root.mobile-menu-open .hero-menu-glass {
@@ -776,13 +840,26 @@ a {
     transform: translateY(0);
   }
 
+  .hero-copy {
+    transition: transform 0.44s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .home-root.mobile-menu-open .hero-copy {
+    transform: translateY(-8px);
+  }
+
   .home-root.mobile-menu-open .hero-title-carousel {
-    min-height: clamp(4.4rem, 3.6rem + 7.5vw, 6.6rem);
+    min-height: clamp(4rem, 3.2rem + 6.8vw, 6rem);
   }
 
   .home-root.mobile-menu-open .hero-title-slide {
-    font-size: clamp(1.45rem, 1.2rem + 3.5vw, 2.05rem);
+    font-size: clamp(1.32rem, 1.14rem + 3.2vw, 1.9rem);
     line-height: 1;
+    transition: opacity 0.42s ease, transform 0.42s ease, font-size 0.4s ease;
+  }
+
+  .home-root.mobile-menu-open .hero-copy p {
+    margin-top: 0.72rem;
   }
 
   .metrics-strip {
