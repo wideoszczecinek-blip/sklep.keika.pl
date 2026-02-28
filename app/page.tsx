@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Collection = {
   title: string;
@@ -114,32 +114,58 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
 
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
+  const [activeStripIndex, setActiveStripIndex] = useState(0);
+  const [isInsideCardOpen, setIsInsideCardOpen] = useState(false);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
+  const configHashRef = useRef("");
 
   useEffect(() => {
     let mounted = true;
+    let intervalId: number | null = null;
     const fetchConfig = (endpoint: string) =>
       fetch(`${endpoint}?_ts=${Date.now()}`, { cache: "no-store" }).then((res) => res.json());
 
-    fetchConfig(configEndpoint)
-      .then((json) => {
-        if (!mounted || !json?.ok || typeof json.config !== "object") return;
-        setConfig(json.config as HomepageConfig);
-      })
-      .catch(() => {
-        if (configEndpoint === defaultConfigEndpoint) return;
-        fetchConfig(defaultConfigEndpoint)
-          .then((json) => {
-            if (!mounted || !json?.ok || typeof json.config !== "object") return;
-            setConfig(json.config as HomepageConfig);
-          })
-          .catch(() => {
-            // Fallback zostaje z kodu.
-          });
-      });
+    const applyConfig = (nextConfig: HomepageConfig) => {
+      const nextHash = JSON.stringify(nextConfig);
+      if (nextHash === configHashRef.current) return;
+      configHashRef.current = nextHash;
+      if (!mounted) return;
+      setConfig(nextConfig);
+    };
+
+    const pullConfig = () =>
+      fetchConfig(configEndpoint)
+        .then((json) => {
+          if (!json?.ok || typeof json.config !== "object") return;
+          applyConfig(json.config as HomepageConfig);
+        })
+        .catch(() => {
+          if (configEndpoint === defaultConfigEndpoint) return;
+          fetchConfig(defaultConfigEndpoint)
+            .then((json) => {
+              if (!json?.ok || typeof json.config !== "object") return;
+              applyConfig(json.config as HomepageConfig);
+            })
+            .catch(() => {
+              // Fallback zostaje z kodu.
+            });
+        });
+
+    void pullConfig();
+    intervalId = window.setInterval(() => {
+      void pullConfig();
+    }, 10000);
+
+    const handleFocus = () => {
+      void pullConfig();
+    };
+    window.addEventListener("focus", handleFocus);
+
     return () => {
       mounted = false;
+      if (intervalId !== null) window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [configEndpoint, defaultConfigEndpoint]);
 
@@ -193,6 +219,20 @@ export default function Home() {
       };
     });
   }, [config, endpointOrigin]);
+
+  const categoryStrips = useMemo(() => {
+    const source = dynamicCollections.length ? dynamicCollections : collections;
+    return source.slice(0, 3);
+  }, [dynamicCollections]);
+
+  const insideCollection = useMemo(() => {
+    const source = dynamicCollections.length ? dynamicCollections : collections;
+    const byName = source.find((item) => item.title.toLowerCase().includes("wewn"));
+    return byName || source[0] || collections[0];
+  }, [dynamicCollections]);
+
+  const selectedStripTitle = categoryStrips[activeStripIndex]?.title || insideCollection.title;
+  const selectedStripIsInside = activeStripIndex === 0;
 
   return (
     <div className="home-root">
@@ -266,35 +306,64 @@ export default function Home() {
               </div>
             </div>
 
-            <aside className="hero-panel" id="wycena">
-              <h2>Start w 30 sekund</h2>
-              <p>
-                Zostaw 3 informacje, a dostaniesz orientacyjną wycenę oraz
-                rekomendację najlepszej serii osłon.
-              </p>
-              <form className="quick-form">
-                <label>
-                  Typ projektu
-                  <select defaultValue="dom">
-                    <option value="dom">Dom / apartament</option>
-                    <option value="biuro">Biuro / lokal</option>
-                    <option value="taras">Taras / ogród zimowy</option>
-                  </select>
-                </label>
-                <label>
-                  Priorytet
-                  <select defaultValue="komfort">
-                    <option value="komfort">Komfort i prywatność</option>
-                    <option value="design">Design i estetyka</option>
-                    <option value="termika">Termika i oszczędność</option>
-                  </select>
-                </label>
-                <label>
-                  Telefon
-                  <input type="tel" placeholder="np. 500 600 700" />
-                </label>
-                <button type="submit">Odbierz wycenę</button>
-              </form>
+            <aside className="hero-category-selector" id="wycena">
+              <div className="category-strip-list" role="tablist" aria-label="Wybór kategorii">
+                {categoryStrips.map((item, index) => (
+                  <button
+                    key={`${item.title}-${index}`}
+                    type="button"
+                    className={`category-strip ${isInsideCardOpen && activeStripIndex === index ? "is-active" : ""}`}
+                    aria-expanded={isInsideCardOpen && activeStripIndex === index ? "true" : "false"}
+                    onClick={() => {
+                      setActiveStripIndex(index);
+                      setIsInsideCardOpen(true);
+                    }}
+                  >
+                    <span>{item.title}</span>
+                    <small>Kliknij, aby otworzyć</small>
+                  </button>
+                ))}
+              </div>
+
+              <article className={`inside-category-card ${isInsideCardOpen ? "is-open" : ""}`}>
+                <div
+                  className="inside-category-media"
+                  style={{
+                    backgroundImage: `linear-gradient(180deg, rgba(8, 14, 26, 0.05), rgba(8, 14, 26, 0.6)), url(${insideCollection.image})`,
+                  }}
+                />
+                <div className="inside-category-body">
+                  <p className="inside-category-kicker">Karta kategorii</p>
+                  <h2>{insideCollection.title}</h2>
+                  <p>{insideCollection.subtitle}</p>
+
+                  {!selectedStripIsInside ? (
+                    <p className="inside-category-note">
+                      Wybrano „{selectedStripTitle}”. Na tym etapie podpinamy kartę
+                      „Osłony wewnętrzne”. Kolejne karty dopniemy w następnym kroku.
+                    </p>
+                  ) : null}
+
+                  <ul>
+                    {insideCollection.bullets.map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+
+                  <div className="inside-category-actions">
+                    <a href="#kolekcje">Przejdź do sekcji ofertowej</a>
+                    <button type="button" onClick={() => setIsInsideCardOpen(false)}>
+                      Zwiń kartę
+                    </button>
+                  </div>
+                </div>
+              </article>
+
+              {!isInsideCardOpen ? (
+                <p className="category-open-hint">
+                  Kliknij w belkę kategorii, aby otworzyć kartę „Osłony wewnętrzne”.
+                </p>
+              ) : null}
             </aside>
           </div>
         </section>
