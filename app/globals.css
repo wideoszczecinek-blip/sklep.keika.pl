@@ -118,6 +118,12 @@ a {
   inset: 0;
   z-index: -5;
   background: #050b16;
+  opacity: 0;
+  transition: opacity 1.1s ease;
+}
+
+.hero-slides.is-ready {
+  opacity: 1;
 }
 
 .hero-slide {

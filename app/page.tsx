@@ -240,6 +240,7 @@ export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
+  const [heroSlidesReady, setHeroSlidesReady] = useState(false);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
@@ -352,6 +353,46 @@ export default function Home() {
   }, [activeHeroSlide, heroMedia.length]);
 
   useEffect(() => {
+    let cancelled = false;
+    setHeroSlidesReady(false);
+
+    const firstMedia = heroMedia[0];
+    if (!firstMedia) {
+      setHeroSlidesReady(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const reveal = () => {
+      if (cancelled) return;
+      window.requestAnimationFrame(() => {
+        if (!cancelled) setHeroSlidesReady(true);
+      });
+    };
+
+    if (firstMedia.type === "video") {
+      const fallbackTimer = window.setTimeout(reveal, 900);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(fallbackTimer);
+      };
+    }
+
+    const probe = new Image();
+    probe.decoding = "async";
+    probe.onload = reveal;
+    probe.onerror = reveal;
+    probe.src = firstMedia.url;
+
+    return () => {
+      cancelled = true;
+      probe.onload = null;
+      probe.onerror = null;
+    };
+  }, [heroMedia]);
+
+  useEffect(() => {
     if (heroMedia.length <= 1) return;
     const intervalId = window.setInterval(() => {
       setActiveHeroSlide((prev) => (prev + 1) % heroMedia.length);
@@ -455,7 +496,7 @@ export default function Home() {
 
       <main>
         <section className="hero-full" id="start">
-          <div className="hero-slides" aria-hidden="true">
+          <div className={`hero-slides ${heroSlidesReady ? "is-ready" : ""}`} aria-hidden="true">
             {heroMedia.map((media, index) =>
               media.type === "video" ? (
                 <div
