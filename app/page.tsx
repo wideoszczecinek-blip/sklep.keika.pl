@@ -559,10 +559,12 @@ export default function Home() {
               if (!entry || typeof entry !== "object") return null;
               const label = String(entry.label || entry.title || "").trim();
               if (!label) return null;
+              const rawLink = String(entry.link_url || entry.url || "").trim();
+              const categoryLink = `/kategoria/${String(group?.slug || fallback.slug || "").trim()}`;
               return {
                 label,
                 iconUrl: absolutizeUrl(String(entry.icon_url || entry.icon || "").trim(), endpointOrigin) || fallbackItem.iconUrl || iconUrl,
-                linkUrl: String(entry.link_url || entry.url || "#kolekcje").trim() || "#kolekcje",
+                linkUrl: rawLink && !rawLink.startsWith("#") ? rawLink : categoryLink,
               };
             })
             .filter((item): item is HeroMenuItem => Boolean(item))
