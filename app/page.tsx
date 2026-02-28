@@ -57,6 +57,7 @@ type HeroMenuItem = {
 };
 
 type HeroMenuGroup = {
+  slug: string;
   title: string;
   imageUrl: string;
   iconUrl: string;
@@ -100,6 +101,17 @@ const collections: Collection[] = [
     image:
       "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1600&q=80",
   },
+  {
+    title: "Moskitiery",
+    subtitle: "Skuteczna ochrona przed owadami, bez utraty światła",
+    bullets: [
+      "Moskitiery ramkowe",
+      "Do okien dachowych",
+      "Drzwiowe, przesuwne i plisowane",
+    ],
+    image:
+      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1600&q=80",
+  },
 ];
 
 function svgIconData(iconMarkup: string): string {
@@ -127,8 +139,15 @@ const iconTerrace = svgIconData(
     "<rect x='42' y='28' width='4' height='20' rx='2' fill='#9CDDF0'/>"
 );
 
+const iconMosquito = svgIconData(
+  "<rect x='8' y='8' width='48' height='48' rx='10' fill='#102236'/>" +
+    "<rect x='16' y='16' width='32' height='32' rx='7' fill='#D8F4FF'/>" +
+    "<path d='M22 24h20M22 32h20M22 40h20' stroke='#4E6D89' stroke-width='3' stroke-linecap='round'/>"
+);
+
 const defaultHeroMenuGroups: HeroMenuGroup[] = [
   {
+    slug: "oslony-wewnetrzne",
     title: "Osłony wewnętrzne",
     imageUrl:
       "https://images.unsplash.com/photo-1616628182509-6f11d7f2376d?auto=format&fit=crop&w=1600&q=80",
@@ -143,6 +162,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
     ],
   },
   {
+    slug: "oslony-zewnetrzne",
     title: "Osłony zewnętrzne",
     imageUrl:
       "https://images.unsplash.com/photo-1613545325278-f24b0cae1224?auto=format&fit=crop&w=1600&q=80",
@@ -154,6 +174,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
     ],
   },
   {
+    slug: "taras",
     title: "Tarasowe",
     imageUrl:
       "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1600&q=80",
@@ -162,6 +183,20 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
       { label: "Markizy", iconUrl: iconTerrace, linkUrl: "#kolekcje" },
       { label: "Zadaszenia", iconUrl: iconTerrace, linkUrl: "#kolekcje" },
       { label: "Shuttersy", iconUrl: iconTerrace, linkUrl: "#kolekcje" },
+    ],
+  },
+  {
+    slug: "moskitiery",
+    title: "Moskitiery",
+    imageUrl:
+      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1600&q=80",
+    iconUrl: iconMosquito,
+    items: [
+      { label: "Moskitiery ramkowe", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
+      { label: "Moskitiery do okien dachowych", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
+      { label: "Moskitiery drzwiowe", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
+      { label: "Przesuwne", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
+      { label: "Plisowane", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
     ],
   },
 ];
@@ -338,7 +373,7 @@ export default function Home() {
       return defaultHeroMenuGroups;
     }
 
-    return config.menu_groups.slice(0, 3).map((group, idx) => {
+    const parsedGroups = config.menu_groups.map((group, idx) => {
       const fallback = defaultHeroMenuGroups[idx] || defaultHeroMenuGroups[0];
       const iconUrl = absolutizeUrl(group?.icon_url || "", endpointOrigin) || fallback.iconUrl;
       const imageUrl = absolutizeUrl(group?.image_url || "", endpointOrigin) || fallback.imageUrl;
@@ -362,12 +397,25 @@ export default function Home() {
         : [];
 
       return {
+        slug: String(group?.slug || fallback.slug || `sekcja-${idx + 1}`),
         title: String(group?.title || fallback.title),
         imageUrl,
         iconUrl,
         items: items.length ? items : fallback.items,
       };
     });
+
+    const withRequiredSections = [...parsedGroups];
+    defaultHeroMenuGroups.forEach((required) => {
+      const exists = withRequiredSections.some((entry) => {
+        const slug = String(entry.slug || "").toLowerCase();
+        const title = String(entry.title || "").toLowerCase();
+        return slug === required.slug || title === required.title.toLowerCase();
+      });
+      if (!exists) withRequiredSections.push(required);
+    });
+
+    return withRequiredSections;
   }, [config, endpointOrigin]);
 
   return (
@@ -509,7 +557,7 @@ export default function Home() {
 
         <section className="collections" id="kolekcje">
           <div className="section-head">
-            <h2>Trzy główne strefy oferty</h2>
+            <h2>Główne strefy oferty</h2>
             <p>
               Bez rozpraszaczy. Jedna strona główna, jasny wybór i szybkie
               przejście do produktu.
