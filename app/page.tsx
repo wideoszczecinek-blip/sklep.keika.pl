@@ -377,11 +377,9 @@ export default function Home() {
     ];
   }, [config?.hero_carousel, config?.hero_titles, branding.home_title, branding.home_subtitle]);
 
-  const activeHeroContent = heroCarousel[activeHeadline] || heroCarousel[0];
-  const homeEyebrow = activeHeroContent?.eyebrow || "NOWOCZESNE OSŁONY DLA NOWOCZESNYCH DOMÓW";
-  const homeTitle = activeHeroContent?.title || "Strona główna z efektem premium i mocnym nastawieniem na konwersję";
-  const homeSubtitle =
-    activeHeroContent?.subtitle ||
+  const fallbackEyebrow = "NOWOCZESNE OSŁONY DLA NOWOCZESNYCH DOMÓW";
+  const fallbackTitle = "Strona główna z efektem premium i mocnym nastawieniem na konwersję";
+  const fallbackSubtitle =
     "Pełna szerokość, dynamiczne tło i czytelna ścieżka decyzji. Najpierw wybierasz kierunek, potem przechodzisz do konfiguratora.";
   const contactPhone = branding.contact_phone || "+48 123 456 789";
   const topLinks = useMemo<TopLink[]>(() => {
@@ -637,14 +635,23 @@ export default function Home() {
 
           <div className="hero-inner">
             <div className="hero-copy">
-              <p className="eyebrow">{homeEyebrow}</p>
+              <div className="hero-eyebrow-carousel" aria-live="polite">
+                {heroCarousel.map((slide, index) => (
+                  <p
+                    key={`${slide.eyebrow}-${index}`}
+                    className={`eyebrow eyebrow-slide ${index === activeHeadline ? "is-active" : ""}`}
+                  >
+                    {slide.eyebrow || fallbackEyebrow}
+                  </p>
+                ))}
+              </div>
               <div className="hero-title-carousel" aria-live="polite">
                 {heroCarousel.map((slide, index) => (
                   <h1
                     key={`${slide.title}-${slide.eyebrow}-${index}`}
                     className={`hero-title-slide ${index === activeHeadline ? "is-active" : ""}`}
                   >
-                    {slide.title}
+                    {slide.title || fallbackTitle}
                   </h1>
                 ))}
               </div>
@@ -660,7 +667,16 @@ export default function Home() {
                   />
                 ))}
               </div>
-              <p>{homeSubtitle}</p>
+              <div className="hero-subtitle-carousel" aria-live="polite">
+                {heroCarousel.map((slide, index) => (
+                  <p
+                    key={`${slide.subtitle}-${index}`}
+                    className={`hero-subtitle-slide ${index === activeHeadline ? "is-active" : ""}`}
+                  >
+                    {slide.subtitle || fallbackSubtitle}
+                  </p>
+                ))}
+              </div>
               <button
                 type="button"
                 className="hero-mobile-offer-btn"
