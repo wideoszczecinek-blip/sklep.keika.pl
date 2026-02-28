@@ -641,47 +641,49 @@ export default function Home() {
 
           <div className="hero-inner">
             <div className="hero-copy">
-              <div className="hero-eyebrow-carousel" aria-live="polite">
-                {heroCarousel.map((slide, index) => (
-                  <p
-                    key={`${slide.eyebrow}-${index}`}
-                    className={`eyebrow eyebrow-slide ${index === activeHeadline ? "is-active" : ""}`}
-                  >
-                    {slide.eyebrow || fallbackEyebrow}
-                  </p>
-                ))}
-              </div>
-              <div className="hero-title-carousel" aria-live="polite">
-                {heroCarousel.map((slide, index) => (
-                  <h1
-                    key={`${slide.title}-${slide.eyebrow}-${index}`}
-                    className={`hero-title-slide ${index === activeHeadline ? "is-active" : ""}`}
-                  >
-                    {slide.title || fallbackTitle}
-                  </h1>
-                ))}
-              </div>
-              <div className="hero-title-dots" aria-label="Paginacja tytułów">
-                {heroCarousel.map((_, index) => (
-                  <button
-                    key={`headline-dot-${index}`}
-                    type="button"
-                    className={`hero-title-dot ${index === activeHeadline ? "is-active" : ""}`}
-                    aria-label={`Pokaż tytuł ${index + 1}`}
-                    aria-pressed={index === activeHeadline ? "true" : "false"}
-                    onClick={() => setActiveHeadline(index)}
-                  />
-                ))}
-              </div>
-              <div className="hero-subtitle-carousel" aria-live="polite">
-                {heroCarousel.map((slide, index) => (
-                  <p
-                    key={`${slide.subtitle}-${index}`}
-                    className={`hero-subtitle-slide ${index === activeHeadline ? "is-active" : ""}`}
-                  >
-                    {slide.subtitle || fallbackSubtitle}
-                  </p>
-                ))}
+              <div className="hero-copy-content">
+                <div className="hero-eyebrow-carousel" aria-live="polite">
+                  {heroCarousel.map((slide, index) => (
+                    <p
+                      key={`${slide.eyebrow}-${index}`}
+                      className={`eyebrow eyebrow-slide ${index === activeHeadline ? "is-active" : ""}`}
+                    >
+                      {slide.eyebrow || fallbackEyebrow}
+                    </p>
+                  ))}
+                </div>
+                <div className="hero-title-carousel" aria-live="polite">
+                  {heroCarousel.map((slide, index) => (
+                    <h1
+                      key={`${slide.title}-${slide.eyebrow}-${index}`}
+                      className={`hero-title-slide ${index === activeHeadline ? "is-active" : ""}`}
+                    >
+                      {slide.title || fallbackTitle}
+                    </h1>
+                  ))}
+                </div>
+                <div className="hero-title-dots" aria-label="Paginacja tytułów">
+                  {heroCarousel.map((_, index) => (
+                    <button
+                      key={`headline-dot-${index}`}
+                      type="button"
+                      className={`hero-title-dot ${index === activeHeadline ? "is-active" : ""}`}
+                      aria-label={`Pokaż tytuł ${index + 1}`}
+                      aria-pressed={index === activeHeadline ? "true" : "false"}
+                      onClick={() => setActiveHeadline(index)}
+                    />
+                  ))}
+                </div>
+                <div className="hero-subtitle-carousel" aria-live="polite">
+                  {heroCarousel.map((slide, index) => (
+                    <p
+                      key={`${slide.subtitle}-${index}`}
+                      className={`hero-subtitle-slide ${index === activeHeadline ? "is-active" : ""}`}
+                    >
+                      {slide.subtitle || fallbackSubtitle}
+                    </p>
+                  ))}
+                </div>
               </div>
               <button
                 type="button"

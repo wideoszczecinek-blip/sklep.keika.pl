@@ -334,6 +334,10 @@ a {
   max-width: 780px;
 }
 
+.hero-copy-content {
+  display: block;
+}
+
 .eyebrow {
   margin: 0;
   text-transform: uppercase;
@@ -1051,11 +1055,11 @@ a {
     transition-delay: 0.22s;
   }
 
-  .hero-copy {
+  .hero-copy-content {
     transition: transform 0.44s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
 
-  .home-root.mobile-menu-open .hero-copy {
+  .home-root.mobile-menu-open .hero-copy-content {
     transform: translateY(-26px);
   }
 
