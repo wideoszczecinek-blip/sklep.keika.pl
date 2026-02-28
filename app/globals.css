@@ -45,6 +45,20 @@ a {
   overflow: hidden;
 }
 
+.home-root.config-loading .hero-copy,
+.home-root.config-loading .hero-menu-glass,
+.home-root.config-loading .header-left .top-links-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.home-root.config-ready .hero-copy,
+.home-root.config-ready .hero-menu-glass,
+.home-root.config-ready .header-left .top-links-wrap {
+  opacity: 1;
+  transition: opacity 0.32s ease;
+}
+
 .home-root main {
   height: 100%;
 }
@@ -901,7 +915,7 @@ a {
     position: fixed;
     right: 0.94rem;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 0.9rem);
-    z-index: 72;
+    z-index: 74;
     isolation: isolate;
     overflow: hidden;
     border: 1px solid rgba(137, 237, 231, 0.72);
@@ -978,8 +992,8 @@ a {
     position: fixed;
     left: 0.94rem;
     right: 0.94rem;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 4.9rem);
-    z-index: 71;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 4.25rem);
+    z-index: 73;
     width: auto;
     max-height: 0;
     opacity: 0;
@@ -987,11 +1001,12 @@ a {
     pointer-events: none;
     transform: translateY(26px) scale(0.985);
     filter: blur(5px);
-    transition: max-height 0.78s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.62s ease, transform 0.78s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s ease;
+    transition: max-height 0.86s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.62s ease, transform 0.86s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s ease;
   }
 
   .home-root.mobile-menu-open .hero-menu-glass {
-    max-height: 53svh;
+    max-height: 62svh;
+    padding-bottom: 0.48rem;
     opacity: 1;
     overflow-y: auto;
     pointer-events: auto;
@@ -1003,6 +1018,10 @@ a {
     opacity: 0;
     transform: translateY(14px);
     transition: opacity 0.44s ease, transform 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .hero-menu-glass .hero-menu-card:last-child {
+    margin-bottom: 0.28rem;
   }
 
   .home-root.mobile-menu-open .hero-menu-card {

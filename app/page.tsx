@@ -243,6 +243,7 @@ function formatPln(value: number): string {
 
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
+  const [configReady, setConfigReady] = useState(false);
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
@@ -259,6 +260,9 @@ export default function Home() {
   useEffect(() => {
     let mounted = true;
     let intervalId: number | null = null;
+    const readyFallbackTimer = window.setTimeout(() => {
+      if (mounted) setConfigReady(true);
+    }, 2200);
     const fetchConfig = (endpoint: string) =>
       fetch(`${endpoint}?_ts=${Date.now()}`, { cache: "no-store" }).then((res) => res.json());
 
@@ -268,6 +272,7 @@ export default function Home() {
       configHashRef.current = nextHash;
       if (!mounted) return;
       setConfig(nextConfig);
+      setConfigReady(true);
     };
 
     const pullConfig = () =>
@@ -284,7 +289,7 @@ export default function Home() {
               applyConfig(json.config as HomepageConfig);
             })
             .catch(() => {
-              // Fallback zostaje z kodu.
+              if (mounted) setConfigReady(true);
             });
         });
 
@@ -300,6 +305,7 @@ export default function Home() {
 
     return () => {
       mounted = false;
+      window.clearTimeout(readyFallbackTimer);
       if (intervalId !== null) window.clearInterval(intervalId);
       window.removeEventListener("focus", handleFocus);
     };
@@ -544,7 +550,7 @@ export default function Home() {
   }, [config, endpointOrigin]);
 
   return (
-    <div className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""}`}>
+    <div className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} ${configReady ? "config-ready" : "config-loading"}`}>
       <header className="hero-header">
         <div className="header-left">
           <a className="brand" href="/" aria-label="KEIKA strona główna">
