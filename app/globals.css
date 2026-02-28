@@ -296,6 +296,10 @@ a {
   color: rgba(236, 243, 255, 0.93);
 }
 
+.hero-mobile-offer-btn {
+  display: none;
+}
+
 .hero-menu-glass {
   justify-self: end;
   width: min(560px, 100%);
@@ -716,8 +720,10 @@ a {
 
   .hero-inner {
     padding-top: 5.3rem;
-    padding-bottom: 5.6rem;
+    padding-bottom: 2.2rem;
     width: min(1360px, 94vw);
+    align-content: start;
+    gap: 0.72rem;
   }
 
   .hero-menu-card {
@@ -735,6 +741,48 @@ a {
 
   .hero-title-slide {
     font-size: clamp(1.9rem, 1.25rem + 6vw, 2.9rem);
+  }
+
+  .hero-mobile-offer-btn {
+    margin-top: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(137, 237, 231, 0.72);
+    border-radius: 999px;
+    background: rgba(8, 22, 38, 0.66);
+    color: #e9f8ff;
+    font-weight: 800;
+    font-size: 0.92rem;
+    padding: 0.72rem 1rem;
+    backdrop-filter: blur(10px);
+  }
+
+  .hero-menu-glass {
+    width: 100%;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: max-height 0.36s ease, opacity 0.28s ease, transform 0.36s ease;
+  }
+
+  .home-root.mobile-menu-open .hero-menu-glass {
+    max-height: 46svh;
+    opacity: 1;
+    overflow-y: auto;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .home-root.mobile-menu-open .hero-title-carousel {
+    min-height: clamp(4.4rem, 3.6rem + 7.5vw, 6.6rem);
+  }
+
+  .home-root.mobile-menu-open .hero-title-slide {
+    font-size: clamp(1.45rem, 1.2rem + 3.5vw, 2.05rem);
+    line-height: 1;
   }
 
   .metrics-strip {

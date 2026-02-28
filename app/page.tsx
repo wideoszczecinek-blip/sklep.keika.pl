@@ -224,6 +224,7 @@ function formatPln(value: number): string {
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [heroSlidesReady, setHeroSlidesReady] = useState(false);
   const [cartSummary, setCartSummary] = useState<CartSummary>({ items: 0, total: 0 });
@@ -470,7 +471,7 @@ export default function Home() {
   }, [config, endpointOrigin]);
 
   return (
-    <div className="home-root">
+    <div className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""}`}>
       <header className="hero-header">
         <a className="brand" href="/" aria-label="KEIKA strona główna">
           {logoUrl ? (
@@ -556,6 +557,20 @@ export default function Home() {
                 ))}
               </div>
               <p>{homeSubtitle}</p>
+              <button
+                type="button"
+                className="hero-mobile-offer-btn"
+                aria-expanded={mobileMenuOpen ? "true" : "false"}
+                onClick={() => {
+                  setMobileMenuOpen((prev) => {
+                    const next = !prev;
+                    if (!next) setOpenMenuIndex(null);
+                    return next;
+                  });
+                }}
+              >
+                {mobileMenuOpen ? "Ukryj ofertę" : "Zobacz ofertę"}
+              </button>
             </div>
 
             <aside
@@ -596,7 +611,15 @@ export default function Home() {
                   <ul className={`hero-menu-card-list ${openMenuIndex === index ? "is-open" : ""}`}>
                     {item.items.map((subItem) => (
                       <li key={`${item.title}-${subItem.label}`}>
-                        <a href={subItem.linkUrl}>
+                        <a
+                          href={subItem.linkUrl}
+                          onClick={() => {
+                            if (window.matchMedia("(max-width: 760px)").matches) {
+                              setMobileMenuOpen(false);
+                              setOpenMenuIndex(null);
+                            }
+                          }}
+                        >
                           <img
                             src={subItem.iconUrl}
                             alt=""
