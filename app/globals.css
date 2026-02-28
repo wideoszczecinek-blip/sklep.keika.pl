@@ -295,12 +295,12 @@ a {
 }
 
 .hero-menu-card.is-open .hero-menu-card-bg {
-  filter: brightness(0.62);
+  filter: brightness(0.44);
   transform: scale(1.02);
 }
 
 .hero-menu-card.is-open .hero-menu-card-bg::after {
-  background: linear-gradient(180deg, rgba(4, 10, 20, 0.4), rgba(4, 10, 20, 0.74));
+  background: linear-gradient(180deg, rgba(3, 8, 18, 0.62), rgba(3, 8, 18, 0.86));
 }
 
 .hero-menu-card-head {
