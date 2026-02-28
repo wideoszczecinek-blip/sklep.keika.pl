@@ -276,6 +276,25 @@ a {
   background-size: cover;
   background-position: center;
   transform: scale(1.04);
+  filter: brightness(0.84);
+  transition: filter 0.42s ease, transform 0.42s ease;
+}
+
+.hero-menu-card-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(6, 13, 24, 0.18), rgba(6, 13, 24, 0.56));
+  transition: background 0.42s ease;
+}
+
+.hero-menu-card.is-open .hero-menu-card-bg {
+  filter: brightness(0.62);
+  transform: scale(1.02);
+}
+
+.hero-menu-card.is-open .hero-menu-card-bg::after {
+  background: linear-gradient(180deg, rgba(4, 10, 20, 0.4), rgba(4, 10, 20, 0.74));
 }
 
 .hero-menu-card-head {
