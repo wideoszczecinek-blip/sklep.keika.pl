@@ -662,6 +662,16 @@ export default function Home() {
                     </h1>
                   ))}
                 </div>
+                <div className="hero-subtitle-carousel" aria-live="polite">
+                  {heroCarousel.map((slide, index) => (
+                    <p
+                      key={`${slide.subtitle}-${index}`}
+                      className={`hero-subtitle-slide ${index === activeHeadline ? "is-active" : ""}`}
+                    >
+                      {slide.subtitle || fallbackSubtitle}
+                    </p>
+                  ))}
+                </div>
                 <div className="hero-title-dots" aria-label="Paginacja tytułów">
                   {heroCarousel.map((_, index) => (
                     <button
@@ -672,16 +682,6 @@ export default function Home() {
                       aria-pressed={index === activeHeadline ? "true" : "false"}
                       onClick={() => setActiveHeadline(index)}
                     />
-                  ))}
-                </div>
-                <div className="hero-subtitle-carousel" aria-live="polite">
-                  {heroCarousel.map((slide, index) => (
-                    <p
-                      key={`${slide.subtitle}-${index}`}
-                      className={`hero-subtitle-slide ${index === activeHeadline ? "is-active" : ""}`}
-                    >
-                      {slide.subtitle || fallbackSubtitle}
-                    </p>
                   ))}
                 </div>
               </div>
