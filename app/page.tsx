@@ -521,7 +521,7 @@ export default function Home() {
     if (bootPhase !== "reveal") return;
     const readyTimer = window.setTimeout(() => {
       setBootPhase("ready");
-    }, 820);
+    }, 2100);
 
     return () => {
       window.clearTimeout(readyTimer);
