@@ -28,14 +28,39 @@ type HomepageConfig = {
   hero_media?: HeroMedia[];
   menu_groups?: Array<{
     title?: string;
+    slug?: string;
     image_url?: string;
-    items?: string[];
+    icon_url?: string;
+    items?: Array<
+      | string
+      | {
+          label?: string;
+          title?: string;
+          icon_url?: string;
+          icon?: string;
+          link_url?: string;
+          url?: string;
+        }
+    >;
   }>;
   price_cards?: Array<{
     title?: string;
     price_from?: string;
     note?: string;
   }>;
+};
+
+type HeroMenuItem = {
+  label: string;
+  iconUrl: string;
+  linkUrl: string;
+};
+
+type HeroMenuGroup = {
+  title: string;
+  imageUrl: string;
+  iconUrl: string;
+  items: HeroMenuItem[];
 };
 
 const fallbackHeroSlides = [
@@ -77,6 +102,70 @@ const collections: Collection[] = [
   },
 ];
 
+function svgIconData(iconMarkup: string): string {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>${iconMarkup}</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+const iconInside = svgIconData(
+  "<rect x='8' y='10' width='48' height='44' rx='10' fill='#102336'/>" +
+    "<rect x='16' y='18' width='32' height='4' rx='2' fill='#7CECE7'/>" +
+    "<rect x='16' y='28' width='32' height='4' rx='2' fill='#A7E7FF'/>" +
+    "<rect x='16' y='38' width='32' height='4' rx='2' fill='#D5F3FF'/>"
+);
+
+const iconOutside = svgIconData(
+  "<rect x='8' y='8' width='48' height='48' rx='10' fill='#0D2238'/>" +
+    "<rect x='16' y='16' width='32' height='28' rx='4' fill='#88DFF0'/>" +
+    "<rect x='16' y='46' width='32' height='6' rx='3' fill='#355C7A'/>"
+);
+
+const iconTerrace = svgIconData(
+  "<rect x='8' y='8' width='48' height='48' rx='10' fill='#102439'/>" +
+    "<path d='M14 28h36l-6-12H20z' fill='#FFD18A'/>" +
+    "<rect x='18' y='28' width='4' height='20' rx='2' fill='#9CDDF0'/>" +
+    "<rect x='42' y='28' width='4' height='20' rx='2' fill='#9CDDF0'/>"
+);
+
+const defaultHeroMenuGroups: HeroMenuGroup[] = [
+  {
+    title: "Osłony wewnętrzne",
+    imageUrl:
+      "https://images.unsplash.com/photo-1616628182509-6f11d7f2376d?auto=format&fit=crop&w=1600&q=80",
+    iconUrl: iconInside,
+    items: [
+      { label: "Rolety tradycyjne", iconUrl: iconInside, linkUrl: "#kolekcje" },
+      { label: "Rolety dzień - noc", iconUrl: iconInside, linkUrl: "#kolekcje" },
+      { label: "Plisy", iconUrl: iconInside, linkUrl: "#kolekcje" },
+      { label: "Żaluzje", iconUrl: iconInside, linkUrl: "#kolekcje" },
+      { label: "Rolety rzymskie", iconUrl: iconInside, linkUrl: "#kolekcje" },
+      { label: "Verticale", iconUrl: iconInside, linkUrl: "#kolekcje" },
+    ],
+  },
+  {
+    title: "Osłony zewnętrzne",
+    imageUrl:
+      "https://images.unsplash.com/photo-1613545325278-f24b0cae1224?auto=format&fit=crop&w=1600&q=80",
+    iconUrl: iconOutside,
+    items: [
+      { label: "Rolety zewnętrzne", iconUrl: iconOutside, linkUrl: "#kolekcje" },
+      { label: "Żaluzje fasadowe", iconUrl: iconOutside, linkUrl: "#kolekcje" },
+      { label: "Screen System", iconUrl: iconOutside, linkUrl: "#kolekcje" },
+    ],
+  },
+  {
+    title: "Tarasowe",
+    imageUrl:
+      "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1600&q=80",
+    iconUrl: iconTerrace,
+    items: [
+      { label: "Markizy", iconUrl: iconTerrace, linkUrl: "#kolekcje" },
+      { label: "Zadaszenia", iconUrl: iconTerrace, linkUrl: "#kolekcje" },
+      { label: "Shuttersy", iconUrl: iconTerrace, linkUrl: "#kolekcje" },
+    ],
+  },
+];
+
 const processSteps = [
   {
     title: "1. Wybór stylu",
@@ -114,9 +203,11 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
 
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
+  const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
+  const heroMenuRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -167,6 +258,24 @@ export default function Home() {
     };
   }, [configEndpoint, defaultConfigEndpoint]);
 
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const root = heroMenuRef.current;
+      const target = event.target as Node | null;
+      if (!root || !target) return;
+      if (!root.contains(target)) {
+        setOpenMenuIndex(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, []);
+
   const branding = config?.branding || {};
   const endpointOrigin = useMemo(() => {
     try {
@@ -206,14 +315,57 @@ export default function Home() {
     }
     return config.menu_groups.map((group, idx) => {
       const fallback = collections[idx % collections.length];
+      const parsedItems = Array.isArray(group?.items)
+        ? group.items
+            .map((entry) => {
+              if (typeof entry === "string") return entry.trim();
+              if (!entry || typeof entry !== "object") return "";
+              return String(entry.label || entry.title || "").trim();
+            })
+            .filter(Boolean)
+        : [];
       return {
         title: group?.title || fallback.title,
         subtitle: fallback.subtitle,
-        bullets:
-          Array.isArray(group?.items) && group!.items!.length
-            ? group!.items!.slice(0, 6)
-            : fallback.bullets,
+        bullets: parsedItems.length ? parsedItems.slice(0, 6) : fallback.bullets,
         image: absolutizeUrl(group?.image_url || "", endpointOrigin) || fallback.image,
+      };
+    });
+  }, [config, endpointOrigin]);
+
+  const heroMenuGroups = useMemo(() => {
+    if (!Array.isArray(config?.menu_groups) || config.menu_groups.length === 0) {
+      return defaultHeroMenuGroups;
+    }
+
+    return config.menu_groups.slice(0, 3).map((group, idx) => {
+      const fallback = defaultHeroMenuGroups[idx] || defaultHeroMenuGroups[0];
+      const iconUrl = absolutizeUrl(group?.icon_url || "", endpointOrigin) || fallback.iconUrl;
+      const imageUrl = absolutizeUrl(group?.image_url || "", endpointOrigin) || fallback.imageUrl;
+      const rawItems = Array.isArray(group?.items) ? group.items : [];
+      const hasObjectItems = rawItems.some((entry) => entry && typeof entry === "object");
+
+      const items: HeroMenuItem[] = hasObjectItems
+        ? rawItems
+            .map((entry, itemIdx) => {
+              const fallbackItem = fallback.items[itemIdx] || fallback.items[0];
+              if (!entry || typeof entry !== "object") return null;
+              const label = String(entry.label || entry.title || "").trim();
+              if (!label) return null;
+              return {
+                label,
+                iconUrl: absolutizeUrl(String(entry.icon_url || entry.icon || "").trim(), endpointOrigin) || fallbackItem.iconUrl || iconUrl,
+                linkUrl: String(entry.link_url || entry.url || "#kolekcje").trim() || "#kolekcje",
+              };
+            })
+            .filter((item): item is HeroMenuItem => Boolean(item))
+        : [];
+
+      return {
+        title: String(group?.title || fallback.title),
+        imageUrl,
+        iconUrl,
+        items: items.length ? items : fallback.items,
       };
     });
   }, [config, endpointOrigin]);
@@ -290,24 +442,53 @@ export default function Home() {
               </div>
             </div>
 
-            <aside className="hero-menu-glass" id="wycena" aria-label="Główne kategorie produktów">
-              {dynamicCollections.slice(0, 3).map((item) => (
-                <article key={item.title} className="hero-menu-card">
+            <aside
+              className="hero-menu-glass"
+              id="wycena"
+              aria-label="Główne kategorie produktów"
+              ref={heroMenuRef}
+            >
+              {heroMenuGroups.map((item, index) => (
+                <article
+                  key={item.title}
+                  className={`hero-menu-card ${openMenuIndex === index ? "is-open" : ""}`}
+                >
                   <div
                     className="hero-menu-card-bg"
                     style={{
-                      backgroundImage: `linear-gradient(180deg, rgba(7, 14, 26, 0.15), rgba(7, 14, 26, 0.65)), url(${item.image})`,
+                      backgroundImage: `linear-gradient(180deg, rgba(7, 14, 26, 0.16), rgba(7, 14, 26, 0.68)), url(${item.imageUrl})`,
                     }}
                     aria-hidden="true"
                   />
-                  <div className="hero-menu-card-head">
-                    <h3>{item.title}</h3>
-                    <span>Najedź, aby rozwinąć</span>
-                  </div>
-                  <ul className="hero-menu-card-list">
-                    {item.bullets.map((bullet) => (
-                      <li key={bullet}>
-                        <a href="#kolekcje">{bullet}</a>
+                  <button
+                    type="button"
+                    className="hero-menu-card-head"
+                    aria-expanded={openMenuIndex === index ? "true" : "false"}
+                    onClick={() => setOpenMenuIndex((prev) => (prev === index ? null : index))}
+                  >
+                    <span className="hero-menu-card-head-main">
+                      <img
+                        src={item.iconUrl}
+                        alt=""
+                        className="hero-menu-category-icon"
+                        loading="lazy"
+                      />
+                      <h3>{item.title}</h3>
+                    </span>
+                    <span className="hero-menu-chevron" aria-hidden="true">▾</span>
+                  </button>
+                  <ul className={`hero-menu-card-list ${openMenuIndex === index ? "is-open" : ""}`}>
+                    {item.items.map((subItem) => (
+                      <li key={`${item.title}-${subItem.label}`}>
+                        <a href={subItem.linkUrl}>
+                          <img
+                            src={subItem.iconUrl}
+                            alt=""
+                            className="hero-menu-subitem-icon"
+                            loading="lazy"
+                          />
+                          <span>{subItem.label}</span>
+                        </a>
                       </li>
                     ))}
                   </ul>
