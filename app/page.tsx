@@ -244,6 +244,7 @@ function formatPln(value: number): string {
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
   const [configReady, setConfigReady] = useState(false);
+  const [bootPhase, setBootPhase] = useState<"loading" | "reveal" | "ready">("loading");
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
@@ -499,6 +500,18 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    if (bootPhase !== "loading") return;
+    if (!configReady || !heroSlidesReady) return;
+    setBootPhase("reveal");
+    const timerId = window.setTimeout(() => {
+      setBootPhase("ready");
+    }, 1280);
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [bootPhase, configReady, heroSlidesReady]);
+
   const heroMenuGroups = useMemo(() => {
     if (!Array.isArray(config?.menu_groups) || config.menu_groups.length === 0) {
       return defaultHeroMenuGroups;
@@ -550,7 +563,13 @@ export default function Home() {
   }, [config, endpointOrigin]);
 
   return (
-    <div className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} ${configReady ? "config-ready" : "config-loading"}`}>
+    <div className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase}`}>
+      <div className={`boot-overlay ${bootPhase === "ready" ? "is-hidden" : ""}`} aria-hidden={bootPhase === "ready" ? "true" : "false"}>
+        <div className="boot-overlay-core">
+          <span className="boot-spinner" aria-hidden="true" />
+          <p>Wczytujemy najlepsze rozwiązania</p>
+        </div>
+      </div>
       <header className="hero-header">
         <div className="header-left">
           <a className="brand" href="/" aria-label="KEIKA strona główna">
