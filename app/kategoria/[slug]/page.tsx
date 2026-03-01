@@ -26,6 +26,12 @@ type PublicConfig = {
     logo_url?: string;
   };
   top_links?: Array<{ label?: string; url?: string }>;
+  menu_groups?: Array<{
+    title?: string;
+    slug?: string;
+    image_url?: string;
+    items?: Array<string | { label?: string; title?: string; link_url?: string; url?: string }>;
+  }>;
   product_groups?: ProductGroup[];
 };
 
@@ -46,8 +52,27 @@ function formatPrice(value: string): string {
   return clean || "Cena po konfiguracji";
 }
 
+function normalizeCategorySlug(raw: string): string {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return "";
+
+  if (/^oslony-wewn.*trzne$/.test(value)) return "oslony-wewnetrzne";
+  if (/^oslony-zewn.*trzne$/.test(value)) return "oslony-zewnetrzne";
+  return value;
+}
+
+function slugifyLabel(raw: string): string {
+  return String(raw || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export default function CategoryPage({ params }: { params: { slug: string } }) {
-  const slug = String(params.slug || "").trim();
+  const slugRaw = String(params.slug || "").trim();
+  const slug = normalizeCategorySlug(slugRaw);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
@@ -82,11 +107,47 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
   const topLinks = Array.isArray(config?.top_links) ? config.top_links : [];
   const contactPhone = branding.contact_phone || "+48 123 456 789";
   const groups = Array.isArray(config?.product_groups) ? config.product_groups : [];
-  const group = groups.find((entry) => String(entry.slug || "").trim() === slug);
+  const menuGroups = Array.isArray(config?.menu_groups) ? config.menu_groups : [];
+  const group = groups.find((entry) => normalizeCategorySlug(String(entry.slug || "")) === slug);
+  const menuGroupMatch = menuGroups.find((entry) => normalizeCategorySlug(String(entry.slug || "")) === slug);
+  const menuDerivedProducts: ProductItem[] = Array.isArray(menuGroupMatch?.items)
+    ? menuGroupMatch.items
+        .map((item) => {
+          const label = typeof item === "string"
+            ? item
+            : String(item?.label || item?.title || "").trim();
+          if (!label) return null;
+
+          const linkedSlugRaw = typeof item === "string"
+            ? ""
+            : String(item?.link_url || item?.url || "").trim();
+          const linkedSlug = linkedSlugRaw.startsWith("/produkt/")
+            ? linkedSlugRaw.replace(/^\/produkt\//, "").split("?")[0].split("#")[0]
+            : "";
+
+          return {
+            name: label,
+            slug: linkedSlug || slugifyLabel(label),
+            subtitle: "",
+            price_from: "",
+            image_url: "",
+          };
+        })
+        .filter(Boolean) as ProductItem[]
+    : [];
+  const effectiveGroup: ProductGroup | null = group || (menuGroupMatch
+    ? {
+        title: menuGroupMatch.title || "Produkty",
+        slug: menuGroupMatch.slug || slugRaw,
+        background_url: menuGroupMatch.image_url || "",
+        description: "",
+        products: menuDerivedProducts,
+      }
+    : null);
   const bgFallback = slug === "oslony-wewnetrzne"
     ? "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80"
     : "";
-  const bg = absolutizeUrl(group?.background_url || bgFallback, endpointOrigin);
+  const bg = absolutizeUrl(effectiveGroup?.background_url || bgFallback, endpointOrigin);
   const productsFallback = slug === "oslony-wewnetrzne"
     ? [
         { name: "Rolety MINI (wolnowiszące naokienne)", slug: "rolety-mini", subtitle: "Kompaktowy system montowany bezpośrednio na skrzydle okna.", price_from: "od 249 zł", image_url: "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80" },
@@ -95,7 +156,9 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
         { name: "Rolety BEST 2 (kaseta + prowadnice, przestrzenne)", slug: "rolety-best-2", subtitle: "System przestrzenny o podwyższonej estetyce i stabilności tkaniny.", price_from: "od 369 zł", image_url: "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80" },
       ]
     : [];
-  const products = Array.isArray(group?.products) && group.products.length ? group.products : productsFallback;
+  const products = Array.isArray(effectiveGroup?.products) && effectiveGroup.products.length
+    ? effectiveGroup.products
+    : productsFallback;
 
   return (
     <div className="catalog-root" style={{ backgroundImage: bg ? `linear-gradient(120deg, rgba(4,12,22,.88), rgba(7,16,30,.72)), url(${bg})` : undefined }}>
@@ -128,7 +191,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
       <main className="catalog-main">
         {loading ? (
           <section className="catalog-card">Wczytywanie kategorii…</section>
-        ) : !group ? (
+        ) : !effectiveGroup ? (
           <section className="catalog-card">
             <h1>Nie znaleziono kategorii</h1>
             <p>Ta kategoria nie jest jeszcze skonfigurowana w panelu administracyjnym.</p>
@@ -138,15 +201,15 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
           <>
             <section className="catalog-head">
               <p>Kategoria</p>
-              <h1>{group.title || "Produkty"}</h1>
-              <p>{group.description || "Rolety tradycyjne i systemy naokienne. Wybierz produkt i przejdź do szczegółów."}</p>
+              <h1>{effectiveGroup.title || "Produkty"}</h1>
+              <p>{effectiveGroup.description || "Rolety tradycyjne i systemy naokienne. Wybierz produkt i przejdź do szczegółów."}</p>
             </section>
             <section className="catalog-grid">
               {products.map((product) => {
                 const productSlug = String(product.slug || "").trim();
                 const image = absolutizeUrl(product.image_url || "", endpointOrigin);
                 return (
-                  <article key={`${group.slug}-${productSlug || product.name}`} className="catalog-product-card">
+                  <article key={`${effectiveGroup.slug}-${productSlug || product.name}`} className="catalog-product-card">
                     <div className="catalog-product-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
                     <div className="catalog-product-body">
                       <h2>{product.name || "Produkt"}</h2>
