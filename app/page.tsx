@@ -116,6 +116,10 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
     return "/produkt/rolety-rzymskie";
   }
 
+  if (groupSlug === "oslony-wewnetrzne" && /^rolety do okien dachowych$/.test(label)) {
+    return "/kategoria/rolety-do-okien-dachowych";
+  }
+
   return `/kategoria/${groupSlug}`;
 }
 
@@ -170,6 +174,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
       { label: "Plisy", iconUrl: iconInside, linkUrl: "/kategoria/plisy" },
       { label: "Żaluzje", iconUrl: iconInside, linkUrl: "/kategoria/zaluzje" },
       { label: "Rolety rzymskie", iconUrl: iconInside, linkUrl: "/produkt/rolety-rzymskie" },
+      { label: "Rolety do okien dachowych", iconUrl: iconInside, linkUrl: "/kategoria/rolety-do-okien-dachowych" },
       { label: "Verticale", iconUrl: iconInside, linkUrl: "#kolekcje" },
     ],
   },

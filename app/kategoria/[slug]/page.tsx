@@ -208,6 +208,44 @@ const fixedPlisyCategory: ProductGroup = {
   ],
 };
 
+const fixedRoofCategory: ProductGroup = {
+  title: "Rolety do okien dachowych",
+  slug: "rolety-do-okien-dachowych",
+  description: "Produkty dedykowane oknom dachowym z precyzyjnym prowadzeniem.",
+  background_url:
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2400&q=80",
+  products: [
+    {
+      name: "Rolety dachowe Dekolux",
+      slug: "rolety-dachowe-dekolux",
+      subtitle: "Rolety z prowadnicami i mechanizmem sprężynowym.",
+      price_from: "od 389 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600607687644-c7f34b5f3ef7?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Plisy dachowe",
+      slug: "plisy-dachowe",
+      subtitle: "Plisa z prowadnicami umożliwiająca zakrycie dowolnej powierzchni okna.",
+      price_from: "od 429 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600210492493-0946911123ea?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+  ],
+};
+
 const fixedZaluzjeCategory: ProductGroup = {
   title: "Żaluzje",
   slug: "zaluzje",
@@ -401,6 +439,8 @@ function normalizeCategorySlug(raw: string): string {
   if (/^rolety-dzien-?noc$/.test(value)) return "rolety-dzien-noc";
   if (/^plisy$/.test(value)) return "plisy";
   if (/^zaluzje$/.test(value)) return "zaluzje";
+  if (/^rolety do okien dachowych$/.test(value.replace(/-/g, " "))) return "rolety-do-okien-dachowych";
+  if (/^rolety-dachowe$/.test(value)) return "rolety-do-okien-dachowych";
   return value;
 }
 
@@ -496,6 +536,7 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
   if (slug === "oslony-wewnetrzne") hardcodedGroup = fixedInteriorCategory;
   if (slug === "rolety-dzien-noc") hardcodedGroup = fixedDayNightCategory;
   if (slug === "plisy") hardcodedGroup = fixedPlisyCategory;
+  if (slug === "rolety-do-okien-dachowych") hardcodedGroup = fixedRoofCategory;
   if (slug === "zaluzje") hardcodedGroup = fixedZaluzjeCategory;
   const resolvedGroup: ProductGroup | null = hardcodedGroup || effectiveGroup;
   const bgFallback = slug === "oslony-wewnetrzne"

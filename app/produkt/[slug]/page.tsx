@@ -229,6 +229,25 @@ const fixedRomanProducts: ProductItem[] = [
   },
 ];
 
+const fixedRoofProducts: ProductItem[] = [
+  {
+    name: "Rolety dachowe Dekolux",
+    slug: "rolety-dachowe-dekolux",
+    subtitle: "Rolety z prowadnicami i mechanizmem sprężynowym.",
+    price_from: "od 389 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    name: "Plisy dachowe",
+    slug: "plisy-dachowe",
+    subtitle: "Plisa z prowadnicami umożliwiająca zakrycie dowolnej powierzchni okna.",
+    price_from: "od 429 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=1400&q=80",
+  },
+];
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -301,12 +320,14 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
     const fixedPlisyProduct = fixedPlisyProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
     const fixedZaluzjeProduct = fixedZaluzjeProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
     const fixedRomanProduct = fixedRomanProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
-    const fixedProduct = fixedInteriorProduct || fixedDayNightProduct || fixedPlisyProduct || fixedZaluzjeProduct || fixedRomanProduct;
+    const fixedRoofProduct = fixedRoofProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
+    const fixedProduct = fixedInteriorProduct || fixedDayNightProduct || fixedPlisyProduct || fixedZaluzjeProduct || fixedRomanProduct || fixedRoofProduct;
     if (fixedProduct) {
       const isDayNight = Boolean(fixedDayNightProduct);
       const isPlisy = Boolean(fixedPlisyProduct);
       const isZaluzje = Boolean(fixedZaluzjeProduct);
       const isRoman = Boolean(fixedRomanProduct);
+      const isRoof = Boolean(fixedRoofProduct);
       foundGroup = {
         title: isDayNight
           ? "Rolety dzień noc"
@@ -316,6 +337,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               ? "Żaluzje"
               : isRoman
                 ? "Rolety rzymskie"
+                : isRoof
+                  ? "Rolety do okien dachowych"
                 : "Osłony wewnętrzne",
         slug: isDayNight
           ? "rolety-dzien-noc"
@@ -325,6 +348,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               ? "zaluzje"
               : isRoman
                 ? "oslony-wewnetrzne"
+                : isRoof
+                  ? "rolety-do-okien-dachowych"
                 : "oslony-wewnetrzne",
         description: isDayNight
           ? "Systemy dzień-noc do precyzyjnej regulacji światła i prywatności."
@@ -334,6 +359,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               ? "Żaluzje aluminiowe, drewniane, bambusowe oraz serie specjalne."
               : isRoman
                 ? "Rolety rzymskie szyte na wymiar, łączące funkcję dekoracyjną i osłonową."
+                : isRoof
+                  ? "Rolety i plisy dedykowane oknom dachowym."
               : "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
         background_url:
           isDayNight
@@ -344,6 +371,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                 ? "https://images.unsplash.com/photo-1616627561943-55d9e9f4f4c5?auto=format&fit=crop&w=2200&q=80"
                 : isRoman
                   ? "https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=2200&q=80"
+                  : isRoof
+                    ? "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2200&q=80"
                 : "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
         products: isDayNight
           ? fixedDayNightProducts
@@ -353,6 +382,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               ? fixedZaluzjeProducts
               : isRoman
                 ? fixedRomanProducts
+                : isRoof
+                  ? fixedRoofProducts
                 : fixedInteriorProducts,
       };
       foundProduct = fixedProduct;
