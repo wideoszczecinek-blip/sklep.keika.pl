@@ -104,6 +104,72 @@ const fixedInteriorCategory: ProductGroup = {
   ],
 };
 
+const fixedDayNightCategory: ProductGroup = {
+  title: "Rolety dzień noc",
+  slug: "rolety-dzien-noc",
+  description: "Systemy dzień-noc do precyzyjnej regulacji światła i prywatności.",
+  background_url:
+    "https://images.unsplash.com/photo-1616627562072-5f8f66ef10cf?auto=format&fit=crop&w=2400&q=80",
+  products: [
+    {
+      name: "Rolety wolnowiszące mini Dzień-Noc",
+      slug: "rolety-mini-dzien-noc",
+      subtitle: "Rolety naokienne z prowadzeniem żyłkowym.",
+      price_from: "od 269 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600210491892-03d54c0aaf87?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Rolety wolnowiszące standard Dzień - Noc",
+      slug: "rolety-standard-dzien-noc",
+      subtitle: "Rolety wolnowiszące montowane na ścianie lub do sufitu. Przeznaczone do większych gabarytów.",
+      price_from: "od 299 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1617104551722-3b2d5136648f?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1617806118233-18e1de247200?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1615874959474-d609969a20ed?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Rolety w kasecie Best 1 Dzień-Noc",
+      slug: "rolety-best-1-dzien-noc",
+      subtitle: "Rolety w aluminiowej kasecie, z prowadnicami przyszybowymi.",
+      price_from: "od 349 zł",
+      badge: "Najlepszy wybór",
+      image_url:
+        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600607687644-c7f34b5f3ef7?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047508788-786f6b65df7f?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Rolety w kasecie przestrzennej Best 2 Dzień - Noc",
+      slug: "rolety-best-2-dzien-noc",
+      subtitle: "Rolety w aluminiowej kasecie z prowadnicami przestrzennymi.",
+      price_from: "od 389 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600047509425-3854b8d7ad85?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566753151-384129cf4e3e?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+  ],
+};
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -127,6 +193,8 @@ function normalizeCategorySlug(raw: string): string {
 
   if (/^oslony-wewn.*trzne$/.test(value)) return "oslony-wewnetrzne";
   if (/^oslony-zewn.*trzne$/.test(value)) return "oslony-zewnetrzne";
+  if (/^rolety dzien ?-? noc$/.test(value.replace(/-/g, " "))) return "rolety-dzien-noc";
+  if (/^rolety-dzien-?noc$/.test(value)) return "rolety-dzien-noc";
   return value;
 }
 
@@ -218,8 +286,9 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
         products: menuDerivedProducts,
       }
     : null);
-  const hardcodedGroup: ProductGroup | null =
-    slug === "oslony-wewnetrzne" ? fixedInteriorCategory : null;
+  let hardcodedGroup: ProductGroup | null = null;
+  if (slug === "oslony-wewnetrzne") hardcodedGroup = fixedInteriorCategory;
+  if (slug === "rolety-dzien-noc") hardcodedGroup = fixedDayNightCategory;
   const resolvedGroup: ProductGroup | null = hardcodedGroup || effectiveGroup;
   const bgFallback = slug === "oslony-wewnetrzne"
     ? "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80"

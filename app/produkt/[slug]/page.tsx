@@ -65,6 +65,41 @@ const fixedInteriorProducts: ProductItem[] = [
   },
 ];
 
+const fixedDayNightProducts: ProductItem[] = [
+  {
+    name: "Rolety wolnowiszące mini Dzień-Noc",
+    slug: "rolety-mini-dzien-noc",
+    subtitle: "Rolety naokienne z prowadzeniem żyłkowym.",
+    price_from: "od 269 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    name: "Rolety wolnowiszące standard Dzień - Noc",
+    slug: "rolety-standard-dzien-noc",
+    subtitle: "Rolety wolnowiszące montowane na ścianie lub do sufitu. Przeznaczone do większych gabarytów.",
+    price_from: "od 299 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    name: "Rolety w kasecie Best 1 Dzień-Noc",
+    slug: "rolety-best-1-dzien-noc",
+    subtitle: "Rolety w aluminiowej kasecie, z prowadnicami przyszybowymi.",
+    price_from: "od 349 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    name: "Rolety w kasecie przestrzennej Best 2 Dzień - Noc",
+    slug: "rolety-best-2-dzien-noc",
+    subtitle: "Rolety w aluminiowej kasecie z prowadnicami przestrzennymi.",
+    price_from: "od 389 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80",
+  },
+];
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -132,15 +167,22 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
   }
 
   if (!foundGroup || !foundProduct) {
-    const fixedProduct = fixedInteriorProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
+    const fixedInteriorProduct = fixedInteriorProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
+    const fixedDayNightProduct = fixedDayNightProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
+    const fixedProduct = fixedInteriorProduct || fixedDayNightProduct;
     if (fixedProduct) {
+      const isDayNight = Boolean(fixedDayNightProduct);
       foundGroup = {
-        title: "Osłony wewnętrzne",
-        slug: "oslony-wewnetrzne",
-        description: "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
+        title: isDayNight ? "Rolety dzień noc" : "Osłony wewnętrzne",
+        slug: isDayNight ? "rolety-dzien-noc" : "oslony-wewnetrzne",
+        description: isDayNight
+          ? "Systemy dzień-noc do precyzyjnej regulacji światła i prywatności."
+          : "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
         background_url:
-          "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
-        products: fixedInteriorProducts,
+          isDayNight
+            ? "https://images.unsplash.com/photo-1616627562072-5f8f66ef10cf?auto=format&fit=crop&w=2200&q=80"
+            : "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
+        products: isDayNight ? fixedDayNightProducts : fixedInteriorProducts,
       };
       foundProduct = fixedProduct;
     }

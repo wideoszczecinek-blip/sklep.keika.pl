@@ -83,6 +83,30 @@ type TopLink = {
   url: string;
 };
 
+function normalizeMenuLabel(raw: string): string {
+  return String(raw || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string {
+  const groupSlug = String(groupSlugRaw || "").trim().toLowerCase();
+  const label = normalizeMenuLabel(labelRaw);
+
+  if (groupSlug === "oslony-wewnetrzne" && /^rolety dzien ?-? noc$/.test(label)) {
+    return "/kategoria/rolety-dzien-noc";
+  }
+
+  if (groupSlug === "oslony-wewnetrzne" && /^rolety tradycyjne$/.test(label)) {
+    return "/kategoria/oslony-wewnetrzne";
+  }
+
+  return `/kategoria/${groupSlug}`;
+}
+
 const fallbackHeroSlides = [
   "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=2200&q=80",
   "https://images.unsplash.com/photo-1600210492493-0946911123ea?auto=format&fit=crop&w=2200&q=80",
@@ -129,8 +153,8 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
       "https://images.unsplash.com/photo-1616628182509-6f11d7f2376d?auto=format&fit=crop&w=1600&q=80",
     iconUrl: iconInside,
     items: [
-      { label: "Rolety tradycyjne", iconUrl: iconInside, linkUrl: "#kolekcje" },
-      { label: "Rolety dzień - noc", iconUrl: iconInside, linkUrl: "#kolekcje" },
+      { label: "Rolety tradycyjne", iconUrl: iconInside, linkUrl: "/kategoria/oslony-wewnetrzne" },
+      { label: "Rolety dzień - noc", iconUrl: iconInside, linkUrl: "/kategoria/rolety-dzien-noc" },
       { label: "Plisy", iconUrl: iconInside, linkUrl: "#kolekcje" },
       { label: "Żaluzje", iconUrl: iconInside, linkUrl: "#kolekcje" },
       { label: "Rolety rzymskie", iconUrl: iconInside, linkUrl: "#kolekcje" },
@@ -560,7 +584,10 @@ export default function Home() {
               const label = String(entry.label || entry.title || "").trim();
               if (!label) return null;
               const rawLink = String(entry.link_url || entry.url || "").trim();
-              const categoryLink = `/kategoria/${String(group?.slug || fallback.slug || "").trim()}`;
+              const categoryLink = resolveMenuFallbackLink(
+                String(group?.slug || fallback.slug || "").trim(),
+                label
+              );
               return {
                 label,
                 iconUrl: absolutizeUrl(String(entry.icon_url || entry.icon || "").trim(), endpointOrigin) || fallbackItem.iconUrl || iconUrl,
