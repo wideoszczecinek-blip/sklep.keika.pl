@@ -29,6 +29,41 @@ type PublicConfig = {
   product_groups?: ProductGroup[];
 };
 
+const fixedInteriorProducts: ProductItem[] = [
+  {
+    name: "Rolety wolnowiszące mini",
+    slug: "rolety-wolnowiszace-mini",
+    subtitle: "Rolety naokienne z prowadzeniem żyłkowym.",
+    price_from: "od 249 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    name: "Rolety wolnowiszące standard",
+    slug: "rolety-wolnowiszace-standard",
+    subtitle: "Rolety montowane na ścianie lub do sufitu. Przeznaczone do większych gabarytów.",
+    price_from: "od 289 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    name: "Rolety w kasecie Best 1",
+    slug: "rolety-best-1",
+    subtitle: "Rolety w aluminiowej kasecie, z prowadnicami przyszybowymi.",
+    price_from: "od 329 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    name: "Rolety w kasecie przestrzennej Best 2",
+    slug: "rolety-best-2",
+    subtitle: "Rolety w aluminiowej kasecie z prowadnicami przestrzennymi.",
+    price_from: "od 369 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80",
+  },
+];
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -87,6 +122,21 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
       foundGroup = group;
       foundProduct = match;
       break;
+    }
+  }
+
+  if (!foundGroup || !foundProduct) {
+    const fixedProduct = fixedInteriorProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
+    if (fixedProduct) {
+      foundGroup = {
+        title: "Osłony wewnętrzne",
+        slug: "oslony-wewnetrzne",
+        description: "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
+        background_url:
+          "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
+        products: fixedInteriorProducts,
+      };
+      foundProduct = fixedProduct;
     }
   }
 
