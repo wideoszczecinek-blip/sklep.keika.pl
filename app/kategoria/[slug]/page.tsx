@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type ProductItem = {
@@ -138,8 +139,13 @@ function slugifyLabel(raw: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export default function CategoryPage({ params }: { params: { slug: string } }) {
-  const slugRaw = String(params.slug || "").trim();
+export default function CategoryPage({ params }: { params?: { slug?: string } }) {
+  const routerParams = useParams<{ slug?: string | string[] }>();
+  const routerSlug = Array.isArray(routerParams?.slug)
+    ? routerParams.slug[0]
+    : routerParams?.slug;
+  const propSlug = Array.isArray(params?.slug) ? params?.slug?.[0] : params?.slug;
+  const slugRaw = String(routerSlug || propSlug || "").trim();
   const slug = normalizeCategorySlug(slugRaw);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [loading, setLoading] = useState(true);

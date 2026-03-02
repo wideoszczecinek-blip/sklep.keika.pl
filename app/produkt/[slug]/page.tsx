@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type ProductItem = {
@@ -76,8 +77,13 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   }
 }
 
-export default function ProductPage({ params }: { params: { slug: string } }) {
-  const slug = String(params.slug || "").trim();
+export default function ProductPage({ params }: { params?: { slug?: string } }) {
+  const routerParams = useParams<{ slug?: string | string[] }>();
+  const routerSlug = Array.isArray(routerParams?.slug)
+    ? routerParams.slug[0]
+    : routerParams?.slug;
+  const propSlug = Array.isArray(params?.slug) ? params?.slug?.[0] : params?.slug;
+  const slug = String(routerSlug || propSlug || "").trim();
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
