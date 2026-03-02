@@ -100,6 +100,25 @@ const fixedDayNightProducts: ProductItem[] = [
   },
 ];
 
+const fixedPlisyProducts: ProductItem[] = [
+  {
+    name: "Plisy do okien pionowych",
+    slug: "plisy-do-okien-pionowych",
+    subtitle: "Uniwersalne plisy do standardowych okien pionowych.",
+    price_from: "od 299 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    name: "Plisy SLIM do okien typu HS, HST",
+    slug: "plisy-slim-hs-hst",
+    subtitle: "Dedykowany profil 16 mm do dużych przeszkleń przesuwnych.",
+    price_from: "od 369 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1400&q=80",
+  },
+];
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -169,20 +188,38 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
   if (!foundGroup || !foundProduct) {
     const fixedInteriorProduct = fixedInteriorProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
     const fixedDayNightProduct = fixedDayNightProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
-    const fixedProduct = fixedInteriorProduct || fixedDayNightProduct;
+    const fixedPlisyProduct = fixedPlisyProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
+    const fixedProduct = fixedInteriorProduct || fixedDayNightProduct || fixedPlisyProduct;
     if (fixedProduct) {
       const isDayNight = Boolean(fixedDayNightProduct);
+      const isPlisy = Boolean(fixedPlisyProduct);
       foundGroup = {
-        title: isDayNight ? "Rolety dzień noc" : "Osłony wewnętrzne",
-        slug: isDayNight ? "rolety-dzien-noc" : "oslony-wewnetrzne",
+        title: isDayNight
+          ? "Rolety dzień noc"
+          : isPlisy
+            ? "Plisy"
+            : "Osłony wewnętrzne",
+        slug: isDayNight
+          ? "rolety-dzien-noc"
+          : isPlisy
+            ? "plisy"
+            : "oslony-wewnetrzne",
         description: isDayNight
           ? "Systemy dzień-noc do precyzyjnej regulacji światła i prywatności."
-          : "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
+          : isPlisy
+            ? "Plisy do okien pionowych i systemy SLIM do HS/HST."
+            : "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
         background_url:
           isDayNight
             ? "https://images.unsplash.com/photo-1616627562072-5f8f66ef10cf?auto=format&fit=crop&w=2200&q=80"
-            : "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
-        products: isDayNight ? fixedDayNightProducts : fixedInteriorProducts,
+            : isPlisy
+              ? "https://images.unsplash.com/photo-1611048268330-53de574cae3b?auto=format&fit=crop&w=2200&q=80"
+              : "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
+        products: isDayNight
+          ? fixedDayNightProducts
+          : isPlisy
+            ? fixedPlisyProducts
+            : fixedInteriorProducts,
       };
       foundProduct = fixedProduct;
     }

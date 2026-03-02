@@ -170,6 +170,44 @@ const fixedDayNightCategory: ProductGroup = {
   ],
 };
 
+const fixedPlisyCategory: ProductGroup = {
+  title: "Plisy",
+  slug: "plisy",
+  description: "Wybierz typ plisy i przejdź do karty produktu.",
+  background_url:
+    "https://images.unsplash.com/photo-1611048268330-53de574cae3b?auto=format&fit=crop&w=2400&q=80",
+  products: [
+    {
+      name: "Plisy do okien pionowych",
+      slug: "plisy-do-okien-pionowych",
+      subtitle: "Uniwersalne plisy do standardowych okien pionowych.",
+      price_from: "od 299 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1617104551722-3b2d5136648f?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Plisy SLIM do okien typu HS, HST",
+      slug: "plisy-slim-hs-hst",
+      subtitle: "Dedykowany profil 16 mm do dużych przeszkleń przesuwnych.",
+      price_from: "od 369 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047508788-786f6b65df7f?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+  ],
+};
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -195,6 +233,7 @@ function normalizeCategorySlug(raw: string): string {
   if (/^oslony-zewn.*trzne$/.test(value)) return "oslony-zewnetrzne";
   if (/^rolety dzien ?-? noc$/.test(value.replace(/-/g, " "))) return "rolety-dzien-noc";
   if (/^rolety-dzien-?noc$/.test(value)) return "rolety-dzien-noc";
+  if (/^plisy$/.test(value)) return "plisy";
   return value;
 }
 
@@ -289,6 +328,7 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
   let hardcodedGroup: ProductGroup | null = null;
   if (slug === "oslony-wewnetrzne") hardcodedGroup = fixedInteriorCategory;
   if (slug === "rolety-dzien-noc") hardcodedGroup = fixedDayNightCategory;
+  if (slug === "plisy") hardcodedGroup = fixedPlisyCategory;
   const resolvedGroup: ProductGroup | null = hardcodedGroup || effectiveGroup;
   const bgFallback = slug === "oslony-wewnetrzne"
     ? "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80"
