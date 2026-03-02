@@ -108,6 +108,10 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
     return "/kategoria/plisy";
   }
 
+  if (groupSlug === "oslony-wewnetrzne" && /^zaluzje$/.test(label)) {
+    return "/kategoria/zaluzje";
+  }
+
   return `/kategoria/${groupSlug}`;
 }
 
@@ -160,7 +164,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
       { label: "Rolety tradycyjne", iconUrl: iconInside, linkUrl: "/kategoria/oslony-wewnetrzne" },
       { label: "Rolety dzień - noc", iconUrl: iconInside, linkUrl: "/kategoria/rolety-dzien-noc" },
       { label: "Plisy", iconUrl: iconInside, linkUrl: "/kategoria/plisy" },
-      { label: "Żaluzje", iconUrl: iconInside, linkUrl: "#kolekcje" },
+      { label: "Żaluzje", iconUrl: iconInside, linkUrl: "/kategoria/zaluzje" },
       { label: "Rolety rzymskie", iconUrl: iconInside, linkUrl: "#kolekcje" },
       { label: "Verticale", iconUrl: iconInside, linkUrl: "#kolekcje" },
     ],

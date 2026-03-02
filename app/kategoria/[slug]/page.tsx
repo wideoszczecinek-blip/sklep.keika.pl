@@ -208,6 +208,172 @@ const fixedPlisyCategory: ProductGroup = {
   ],
 };
 
+const fixedZaluzjeCategory: ProductGroup = {
+  title: "Żaluzje",
+  slug: "zaluzje",
+  description: "Wybierz wariant żaluzji i przejdź do karty produktu.",
+  background_url:
+    "https://images.unsplash.com/photo-1616627561943-55d9e9f4f4c5?auto=format&fit=crop&w=2400&q=80",
+  products: [
+    {
+      name: "Żaluzje Aluminiowe 25mm",
+      slug: "zaluzje-aluminiowe-25mm",
+      subtitle: "Precyzyjna regulacja światła, lekka forma i nowoczesny wygląd.",
+      price_from: "od 229 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600210491892-03d54c0aaf87?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje Aluminiowe 50mm",
+      slug: "zaluzje-aluminiowe-50mm",
+      subtitle: "Szersza lamela i mocniejszy akcent we wnętrzu.",
+      price_from: "od 269 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047508788-786f6b65df7f?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje drewniane 25mm",
+      slug: "zaluzje-drewniane-25mm",
+      subtitle: "Naturalne drewno w smukłej lameli 25 mm.",
+      price_from: "od 349 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1617104551722-3b2d5136648f?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1615874959474-d609969a20ed?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje drewniane 35mm",
+      slug: "zaluzje-drewniane-35mm",
+      subtitle: "Uniwersalna szerokość lameli do nowoczesnych wnętrz.",
+      price_from: "od 379 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1611048268330-53de574cae3b?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje drewniane 50mm",
+      slug: "zaluzje-drewniane-50mm",
+      subtitle: "Wyrazisty rytm lameli i mocny efekt premium.",
+      price_from: "od 429 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047509425-3854b8d7ad85?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje drewniane 65mm",
+      slug: "zaluzje-drewniane-65mm",
+      subtitle: "Szeroka lamela do dużych przeszkleń i tarasowych okien.",
+      price_from: "od 479 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1600047508788-786f6b65df7f?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600047508788-786f6b65df7f?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047509425-3854b8d7ad85?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje bambusowe 25mm",
+      slug: "zaluzje-bambusowe-25mm",
+      subtitle: "Lekki materiał bambusowy i delikatna lamela.",
+      price_from: "od 369 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1616627562072-5f8f66ef10cf?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1616627562072-5f8f66ef10cf?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1616627561943-55d9e9f4f4c5?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje bambusowe 35mm",
+      slug: "zaluzje-bambusowe-35mm",
+      subtitle: "Bambusowa lamela o uniwersalnej szerokości 35 mm.",
+      price_from: "od 399 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1616627561943-55d9e9f4f4c5?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1616627561943-55d9e9f4f4c5?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1616627562072-5f8f66ef10cf?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1617104551722-3b2d5136648f?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje bambusowe 50mm",
+      slug: "zaluzje-bambusowe-50mm",
+      subtitle: "Szersza lamela bambusowa i mocny, naturalny charakter.",
+      price_from: "od 449 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1611048268330-53de574cae3b?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1611048268330-53de574cae3b?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje bambusowe 65mm",
+      slug: "zaluzje-bambusowe-65mm",
+      subtitle: "Bambus 65 mm do dużych i reprezentacyjnych przeszkleń.",
+      price_from: "od 499 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1615874959474-d609969a20ed?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1615874959474-d609969a20ed?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Żaluzje RETRO 50mm",
+      slug: "zaluzje-retro-50mm",
+      subtitle: "Styl retro i ciepła kolorystyka drewna.",
+      price_from: "od 469 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566753151-384129cf4e3e?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047508788-786f6b65df7f?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Plisożaluzja aluminiowa 25mm",
+      slug: "plisozaluzja-aluminiowa-25mm",
+      subtitle: "Połączenie zaluzji i plis w kompaktowym systemie 25 mm.",
+      price_from: "od 329 zł",
+      image_url:
+        "https://images.unsplash.com/photo-1600047509425-3854b8d7ad85?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600047509425-3854b8d7ad85?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600607687644-c7f34b5f3ef7?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+  ],
+};
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -234,6 +400,7 @@ function normalizeCategorySlug(raw: string): string {
   if (/^rolety dzien ?-? noc$/.test(value.replace(/-/g, " "))) return "rolety-dzien-noc";
   if (/^rolety-dzien-?noc$/.test(value)) return "rolety-dzien-noc";
   if (/^plisy$/.test(value)) return "plisy";
+  if (/^zaluzje$/.test(value)) return "zaluzje";
   return value;
 }
 
@@ -329,6 +496,7 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
   if (slug === "oslony-wewnetrzne") hardcodedGroup = fixedInteriorCategory;
   if (slug === "rolety-dzien-noc") hardcodedGroup = fixedDayNightCategory;
   if (slug === "plisy") hardcodedGroup = fixedPlisyCategory;
+  if (slug === "zaluzje") hardcodedGroup = fixedZaluzjeCategory;
   const resolvedGroup: ProductGroup | null = hardcodedGroup || effectiveGroup;
   const bgFallback = slug === "oslony-wewnetrzne"
     ? "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80"
