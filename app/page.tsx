@@ -112,6 +112,10 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
     return "/kategoria/zaluzje";
   }
 
+  if (groupSlug === "oslony-wewnetrzne" && /^rolety rzymskie$/.test(label)) {
+    return "/produkt/rolety-rzymskie";
+  }
+
   return `/kategoria/${groupSlug}`;
 }
 
@@ -165,7 +169,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
       { label: "Rolety dzień - noc", iconUrl: iconInside, linkUrl: "/kategoria/rolety-dzien-noc" },
       { label: "Plisy", iconUrl: iconInside, linkUrl: "/kategoria/plisy" },
       { label: "Żaluzje", iconUrl: iconInside, linkUrl: "/kategoria/zaluzje" },
-      { label: "Rolety rzymskie", iconUrl: iconInside, linkUrl: "#kolekcje" },
+      { label: "Rolety rzymskie", iconUrl: iconInside, linkUrl: "/produkt/rolety-rzymskie" },
       { label: "Verticale", iconUrl: iconInside, linkUrl: "#kolekcje" },
     ],
   },

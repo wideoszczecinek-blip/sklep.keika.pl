@@ -218,6 +218,17 @@ const fixedZaluzjeProducts: ProductItem[] = [
   },
 ];
 
+const fixedRomanProducts: ProductItem[] = [
+  {
+    name: "Rolety rzymskie",
+    slug: "rolety-rzymskie",
+    subtitle: "Dekoracyjne rolety tekstylne szyte na wymiar, z systemem zwijania kaskadowego.",
+    price_from: "od 399 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=1400&q=80",
+  },
+];
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -289,11 +300,13 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
     const fixedDayNightProduct = fixedDayNightProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
     const fixedPlisyProduct = fixedPlisyProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
     const fixedZaluzjeProduct = fixedZaluzjeProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
-    const fixedProduct = fixedInteriorProduct || fixedDayNightProduct || fixedPlisyProduct || fixedZaluzjeProduct;
+    const fixedRomanProduct = fixedRomanProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
+    const fixedProduct = fixedInteriorProduct || fixedDayNightProduct || fixedPlisyProduct || fixedZaluzjeProduct || fixedRomanProduct;
     if (fixedProduct) {
       const isDayNight = Boolean(fixedDayNightProduct);
       const isPlisy = Boolean(fixedPlisyProduct);
       const isZaluzje = Boolean(fixedZaluzjeProduct);
+      const isRoman = Boolean(fixedRomanProduct);
       foundGroup = {
         title: isDayNight
           ? "Rolety dzień noc"
@@ -301,21 +314,27 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
             ? "Plisy"
             : isZaluzje
               ? "Żaluzje"
-              : "Osłony wewnętrzne",
+              : isRoman
+                ? "Rolety rzymskie"
+                : "Osłony wewnętrzne",
         slug: isDayNight
           ? "rolety-dzien-noc"
           : isPlisy
             ? "plisy"
             : isZaluzje
               ? "zaluzje"
-              : "oslony-wewnetrzne",
+              : isRoman
+                ? "oslony-wewnetrzne"
+                : "oslony-wewnetrzne",
         description: isDayNight
           ? "Systemy dzień-noc do precyzyjnej regulacji światła i prywatności."
           : isPlisy
             ? "Plisy do okien pionowych i systemy SLIM do HS/HST."
             : isZaluzje
               ? "Żaluzje aluminiowe, drewniane, bambusowe oraz serie specjalne."
-            : "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
+              : isRoman
+                ? "Rolety rzymskie szyte na wymiar, łączące funkcję dekoracyjną i osłonową."
+              : "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
         background_url:
           isDayNight
             ? "https://images.unsplash.com/photo-1616627562072-5f8f66ef10cf?auto=format&fit=crop&w=2200&q=80"
@@ -323,14 +342,18 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               ? "https://images.unsplash.com/photo-1611048268330-53de574cae3b?auto=format&fit=crop&w=2200&q=80"
               : isZaluzje
                 ? "https://images.unsplash.com/photo-1616627561943-55d9e9f4f4c5?auto=format&fit=crop&w=2200&q=80"
-              : "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
+                : isRoman
+                  ? "https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=2200&q=80"
+                : "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
         products: isDayNight
           ? fixedDayNightProducts
           : isPlisy
             ? fixedPlisyProducts
             : isZaluzje
               ? fixedZaluzjeProducts
-            : fixedInteriorProducts,
+              : isRoman
+                ? fixedRomanProducts
+                : fixedInteriorProducts,
       };
       foundProduct = fixedProduct;
     }
