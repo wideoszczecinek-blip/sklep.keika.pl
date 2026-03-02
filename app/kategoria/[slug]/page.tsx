@@ -35,6 +35,50 @@ type PublicConfig = {
   product_groups?: ProductGroup[];
 };
 
+const fallbackCategoryGroups: ProductGroup[] = [
+  {
+    title: "Osłony wewnętrzne",
+    slug: "oslony-wewnetrzne",
+    description: "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
+    background_url:
+      "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
+    products: [
+      {
+        name: "Rolety tradycyjne",
+        slug: "rolety-tradycyjne",
+        subtitle: "Klasyczne prowadzenie i szeroka paleta tkanin.",
+        price_from: "od 249 zł",
+        image_url:
+          "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80",
+      },
+      {
+        name: "Rolety dzień - noc",
+        slug: "rolety-dzien-noc",
+        subtitle: "Precyzyjna kontrola światła przez pasy transparentne.",
+        price_from: "od 279 zł",
+        image_url:
+          "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=80",
+      },
+      {
+        name: "Plisy",
+        slug: "plisy",
+        subtitle: "Nowoczesny system składania z górnym i dolnym prowadzeniem.",
+        price_from: "od 289 zł",
+        image_url:
+          "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1400&q=80",
+      },
+      {
+        name: "Żaluzje",
+        slug: "zaluzje",
+        subtitle: "Aluminium, drewno i bambus w precyzyjnych systemach.",
+        price_from: "od 319 zł",
+        image_url:
+          "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80",
+      },
+    ],
+  },
+];
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -144,10 +188,14 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
         products: menuDerivedProducts,
       }
     : null);
+  const hardFallbackGroup = fallbackCategoryGroups.find(
+    (entry) => normalizeCategorySlug(String(entry.slug || "")) === slug
+  ) || null;
+  const resolvedGroup: ProductGroup | null = effectiveGroup || hardFallbackGroup;
   const bgFallback = slug === "oslony-wewnetrzne"
     ? "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80"
     : "";
-  const bg = absolutizeUrl(effectiveGroup?.background_url || bgFallback, endpointOrigin);
+  const bg = absolutizeUrl(resolvedGroup?.background_url || bgFallback, endpointOrigin);
   const productsFallback = slug === "oslony-wewnetrzne"
     ? [
         { name: "Rolety MINI (wolnowiszące naokienne)", slug: "rolety-mini", subtitle: "Kompaktowy system montowany bezpośrednio na skrzydle okna.", price_from: "od 249 zł", image_url: "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80" },
@@ -156,8 +204,8 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
         { name: "Rolety BEST 2 (kaseta + prowadnice, przestrzenne)", slug: "rolety-best-2", subtitle: "System przestrzenny o podwyższonej estetyce i stabilności tkaniny.", price_from: "od 369 zł", image_url: "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80" },
       ]
     : [];
-  const products = Array.isArray(effectiveGroup?.products) && effectiveGroup.products.length
-    ? effectiveGroup.products
+  const products = Array.isArray(resolvedGroup?.products) && resolvedGroup.products.length
+    ? resolvedGroup.products
     : productsFallback;
 
   return (
@@ -191,7 +239,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
       <main className="catalog-main">
         {loading ? (
           <section className="catalog-card">Wczytywanie kategorii…</section>
-        ) : !effectiveGroup ? (
+        ) : !resolvedGroup ? (
           <section className="catalog-card">
             <h1>Nie znaleziono kategorii</h1>
             <p>Ta kategoria nie jest jeszcze skonfigurowana w panelu administracyjnym.</p>
@@ -201,15 +249,15 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
           <>
             <section className="catalog-head">
               <p>Kategoria</p>
-              <h1>{effectiveGroup.title || "Produkty"}</h1>
-              <p>{effectiveGroup.description || "Rolety tradycyjne i systemy naokienne. Wybierz produkt i przejdź do szczegółów."}</p>
+              <h1>{resolvedGroup.title || "Produkty"}</h1>
+              <p>{resolvedGroup.description || "Rolety tradycyjne i systemy naokienne. Wybierz produkt i przejdź do szczegółów."}</p>
             </section>
             <section className="catalog-grid">
               {products.map((product) => {
                 const productSlug = String(product.slug || "").trim();
                 const image = absolutizeUrl(product.image_url || "", endpointOrigin);
                 return (
-                  <article key={`${effectiveGroup.slug}-${productSlug || product.name}`} className="catalog-product-card">
+                  <article key={`${resolvedGroup.slug}-${productSlug || product.name}`} className="catalog-product-card">
                     <div className="catalog-product-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
                     <div className="catalog-product-body">
                       <h2>{product.name || "Produkt"}</h2>
