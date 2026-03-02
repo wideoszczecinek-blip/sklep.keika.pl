@@ -9,6 +9,8 @@ type ProductItem = {
   subtitle?: string;
   price_from?: string;
   image_url?: string;
+  gallery_urls?: string[];
+  badge?: string;
 };
 
 type ProductGroup = {
@@ -35,49 +37,71 @@ type PublicConfig = {
   product_groups?: ProductGroup[];
 };
 
-const fallbackCategoryGroups: ProductGroup[] = [
-  {
-    title: "Osłony wewnętrzne",
-    slug: "oslony-wewnetrzne",
-    description: "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
-    background_url:
-      "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
-    products: [
-      {
-        name: "Rolety tradycyjne",
-        slug: "rolety-tradycyjne",
-        subtitle: "Klasyczne prowadzenie i szeroka paleta tkanin.",
-        price_from: "od 249 zł",
-        image_url:
-          "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80",
-      },
-      {
-        name: "Rolety dzień - noc",
-        slug: "rolety-dzien-noc",
-        subtitle: "Precyzyjna kontrola światła przez pasy transparentne.",
-        price_from: "od 279 zł",
-        image_url:
-          "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=80",
-      },
-      {
-        name: "Plisy",
-        slug: "plisy",
-        subtitle: "Nowoczesny system składania z górnym i dolnym prowadzeniem.",
-        price_from: "od 289 zł",
-        image_url:
-          "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1400&q=80",
-      },
-      {
-        name: "Żaluzje",
-        slug: "zaluzje",
-        subtitle: "Aluminium, drewno i bambus w precyzyjnych systemach.",
-        price_from: "od 319 zł",
-        image_url:
-          "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80",
-      },
-    ],
-  },
-];
+const fixedInteriorCategory: ProductGroup = {
+  title: "Osłony wewnętrzne",
+  slug: "oslony-wewnetrzne",
+  description: "Wybierz typ rolety i przejdź do karty produktu.",
+  background_url:
+    "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2400&q=80",
+  products: [
+    {
+      name: "Rolety wolnowiszące mini",
+      slug: "rolety-wolnowiszace-mini",
+      subtitle: "Rolety naokienne z prowadzeniem żyłkowym.",
+      price_from: "od 249 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600210491892-03d54c0aaf87?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Rolety wolnowiszące standard",
+      slug: "rolety-wolnowiszace-standard",
+      subtitle: "Rolety montowane na ścianie lub do sufitu. Przeznaczone do większych gabarytów.",
+      price_from: "od 289 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1617104551722-3b2d5136648f?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1617806118233-18e1de247200?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1615874959474-d609969a20ed?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Rolety w kasecie Best 1",
+      slug: "rolety-best-1",
+      subtitle: "Rolety w aluminiowej kasecie, z prowadnicami przyszybowymi.",
+      price_from: "od 329 zł",
+      badge: "Najlepszy wybór",
+      image_url:
+        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600607687644-c7f34b5f3ef7?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047508788-786f6b65df7f?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Rolety w kasecie przestrzennej Best 2",
+      slug: "rolety-best-2",
+      subtitle: "Rolety w aluminiowej kasecie z prowadnicami przestrzennymi.",
+      price_from: "od 369 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600047509425-3854b8d7ad85?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600566753151-384129cf4e3e?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+  ],
+};
 
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
@@ -188,25 +212,14 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
         products: menuDerivedProducts,
       }
     : null);
-  const hardFallbackGroup = fallbackCategoryGroups.find(
-    (entry) => normalizeCategorySlug(String(entry.slug || "")) === slug
-  ) || null;
-  const resolvedGroup: ProductGroup | null = effectiveGroup || hardFallbackGroup;
+  const hardcodedGroup: ProductGroup | null =
+    slug === "oslony-wewnetrzne" ? fixedInteriorCategory : null;
+  const resolvedGroup: ProductGroup | null = hardcodedGroup || effectiveGroup;
   const bgFallback = slug === "oslony-wewnetrzne"
     ? "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80"
     : "";
   const bg = absolutizeUrl(resolvedGroup?.background_url || bgFallback, endpointOrigin);
-  const productsFallback = slug === "oslony-wewnetrzne"
-    ? [
-        { name: "Rolety MINI (wolnowiszące naokienne)", slug: "rolety-mini", subtitle: "Kompaktowy system montowany bezpośrednio na skrzydle okna.", price_from: "od 249 zł", image_url: "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1400&q=80" },
-        { name: "Rolety STANDARD (wolnowiszące ściana/sufit)", slug: "rolety-standard", subtitle: "Klasyczne rolety wolnowiszące do montażu na ścianie lub suficie.", price_from: "od 289 zł", image_url: "https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=1400&q=80" },
-        { name: "Rolety BEST 1 (kaseta + prowadnice, przyszybowe)", slug: "rolety-best-1", subtitle: "Kaseta z prowadnicami przy szybie dla lepszego zaciemnienia.", price_from: "od 329 zł", image_url: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1400&q=80" },
-        { name: "Rolety BEST 2 (kaseta + prowadnice, przestrzenne)", slug: "rolety-best-2", subtitle: "System przestrzenny o podwyższonej estetyce i stabilności tkaniny.", price_from: "od 369 zł", image_url: "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=1400&q=80" },
-      ]
-    : [];
-  const products = Array.isArray(resolvedGroup?.products) && resolvedGroup.products.length
-    ? resolvedGroup.products
-    : productsFallback;
+  const products = Array.isArray(resolvedGroup?.products) ? resolvedGroup.products : [];
 
   return (
     <div className="catalog-root" style={{ backgroundImage: bg ? `linear-gradient(120deg, rgba(4,12,22,.88), rgba(7,16,30,.72)), url(${bg})` : undefined }}>
@@ -256,9 +269,32 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
               {products.map((product) => {
                 const productSlug = String(product.slug || "").trim();
                 const image = absolutizeUrl(product.image_url || "", endpointOrigin);
+                const galleryBase = Array.isArray(product.gallery_urls) ? product.gallery_urls : [];
+                const gallerySource = galleryBase.length
+                  ? galleryBase
+                  : (image ? [image] : []);
+                const galleryTiles = gallerySource
+                  .slice(0, 3)
+                  .map((entry) => absolutizeUrl(String(entry || ""), endpointOrigin))
+                  .filter(Boolean);
                 return (
                   <article key={`${resolvedGroup.slug}-${productSlug || product.name}`} className="catalog-product-card">
-                    <div className="catalog-product-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
+                    <div className="catalog-product-image catalog-product-image--gallery">
+                      <div className="catalog-product-gallery-grid">
+                        {galleryTiles.map((tileUrl, idx) => (
+                          <span
+                            key={`${productSlug || product.name}-gallery-${idx}`}
+                            className="catalog-product-gallery-tile"
+                            style={{ backgroundImage: `url(${tileUrl})` }}
+                          />
+                        ))}
+                        {!galleryTiles.length ? (
+                          <span className="catalog-product-gallery-tile catalog-product-gallery-tile--empty" />
+                        ) : null}
+                      </div>
+                      <div className="catalog-product-image-overlay" />
+                      {product.badge ? <span className="catalog-product-badge">{product.badge}</span> : null}
+                    </div>
                     <div className="catalog-product-body">
                       <h2>{product.name || "Produkt"}</h2>
                       <p>{product.subtitle || "Konfiguracja i szybka wycena."}</p>
