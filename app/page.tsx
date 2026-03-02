@@ -120,6 +120,10 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
     return "/kategoria/rolety-do-okien-dachowych";
   }
 
+  if (groupSlug === "oslony-zewnetrzne" && /^rolety zewnetrzne$/.test(label)) {
+    return "/kategoria/rolety-zewnetrzne";
+  }
+
   return `/kategoria/${groupSlug}`;
 }
 
@@ -185,7 +189,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
       "https://images.unsplash.com/photo-1613545325278-f24b0cae1224?auto=format&fit=crop&w=1600&q=80",
     iconUrl: iconOutside,
     items: [
-      { label: "Rolety zewnętrzne", iconUrl: iconOutside, linkUrl: "#kolekcje" },
+      { label: "Rolety zewnętrzne", iconUrl: iconOutside, linkUrl: "/kategoria/rolety-zewnetrzne" },
       { label: "Żaluzje fasadowe", iconUrl: iconOutside, linkUrl: "#kolekcje" },
       { label: "Screen System", iconUrl: iconOutside, linkUrl: "#kolekcje" },
     ],

@@ -246,6 +246,44 @@ const fixedRoofCategory: ProductGroup = {
   ],
 };
 
+const fixedExternalRollerCategory: ProductGroup = {
+  title: "Rolety zewnętrzne",
+  slug: "rolety-zewnetrzne",
+  description: "Wybierz typ rolety zewnętrznej i przejdź do karty produktu.",
+  background_url:
+    "https://images.unsplash.com/photo-1613977257592-487ecd136cc3?auto=format&fit=crop&w=2400&q=80",
+  products: [
+    {
+      name: "Rolety adaptacyjne",
+      slug: "rolety-adaptacyjne",
+      subtitle: "Klasyczne rolety zewnętrzne montowane na elewacji lub we wnęce okiennej.",
+      price_from: "od 899 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1600566752547-08f6a2e99cf7?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600566752547-08f6a2e99cf7?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+    {
+      name: "Rolety pod zabudowę",
+      slug: "rolety-pod-zabudowe",
+      subtitle: "Rolety do zabudowy warstwą elewacji.",
+      price_from: "od 1049 zł",
+      badge: "",
+      image_url:
+        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80",
+      gallery_urls: [
+        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1613545325278-f24b0cae1224?auto=format&fit=crop&w=1000&q=80",
+        "https://images.unsplash.com/photo-1600047508788-786f6b65df7f?auto=format&fit=crop&w=1000&q=80",
+      ],
+    },
+  ],
+};
+
 const fixedZaluzjeCategory: ProductGroup = {
   title: "Żaluzje",
   slug: "zaluzje",
@@ -441,6 +479,8 @@ function normalizeCategorySlug(raw: string): string {
   if (/^zaluzje$/.test(value)) return "zaluzje";
   if (/^rolety do okien dachowych$/.test(value.replace(/-/g, " "))) return "rolety-do-okien-dachowych";
   if (/^rolety-dachowe$/.test(value)) return "rolety-do-okien-dachowych";
+  if (/^rolety zewnetrzne$/.test(value.replace(/-/g, " "))) return "rolety-zewnetrzne";
+  if (/^rolety-zewnetrzne$/.test(value)) return "rolety-zewnetrzne";
   return value;
 }
 
@@ -537,6 +577,7 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
   if (slug === "rolety-dzien-noc") hardcodedGroup = fixedDayNightCategory;
   if (slug === "plisy") hardcodedGroup = fixedPlisyCategory;
   if (slug === "rolety-do-okien-dachowych") hardcodedGroup = fixedRoofCategory;
+  if (slug === "rolety-zewnetrzne") hardcodedGroup = fixedExternalRollerCategory;
   if (slug === "zaluzje") hardcodedGroup = fixedZaluzjeCategory;
   const resolvedGroup: ProductGroup | null = hardcodedGroup || effectiveGroup;
   const bgFallback = slug === "oslony-wewnetrzne"

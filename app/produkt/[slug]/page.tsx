@@ -248,6 +248,25 @@ const fixedRoofProducts: ProductItem[] = [
   },
 ];
 
+const fixedExternalRollerProducts: ProductItem[] = [
+  {
+    name: "Rolety adaptacyjne",
+    slug: "rolety-adaptacyjne",
+    subtitle: "Klasyczne rolety zewnętrzne montowane na elewacji lub we wnęce okiennej.",
+    price_from: "od 899 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1600566752547-08f6a2e99cf7?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    name: "Rolety pod zabudowę",
+    slug: "rolety-pod-zabudowe",
+    subtitle: "Rolety do zabudowy warstwą elewacji.",
+    price_from: "od 1049 zł",
+    image_url:
+      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80",
+  },
+];
+
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -321,13 +340,15 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
     const fixedZaluzjeProduct = fixedZaluzjeProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
     const fixedRomanProduct = fixedRomanProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
     const fixedRoofProduct = fixedRoofProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
-    const fixedProduct = fixedInteriorProduct || fixedDayNightProduct || fixedPlisyProduct || fixedZaluzjeProduct || fixedRomanProduct || fixedRoofProduct;
+    const fixedExternalRollerProduct = fixedExternalRollerProducts.find((entry) => String(entry.slug || "").trim() === slug) || null;
+    const fixedProduct = fixedInteriorProduct || fixedDayNightProduct || fixedPlisyProduct || fixedZaluzjeProduct || fixedRomanProduct || fixedRoofProduct || fixedExternalRollerProduct;
     if (fixedProduct) {
       const isDayNight = Boolean(fixedDayNightProduct);
       const isPlisy = Boolean(fixedPlisyProduct);
       const isZaluzje = Boolean(fixedZaluzjeProduct);
       const isRoman = Boolean(fixedRomanProduct);
       const isRoof = Boolean(fixedRoofProduct);
+      const isExternalRoller = Boolean(fixedExternalRollerProduct);
       foundGroup = {
         title: isDayNight
           ? "Rolety dzień noc"
@@ -339,6 +360,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                 ? "Rolety rzymskie"
                 : isRoof
                   ? "Rolety do okien dachowych"
+                  : isExternalRoller
+                    ? "Rolety zewnętrzne"
                 : "Osłony wewnętrzne",
         slug: isDayNight
           ? "rolety-dzien-noc"
@@ -350,6 +373,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                 ? "oslony-wewnetrzne"
                 : isRoof
                   ? "rolety-do-okien-dachowych"
+                  : isExternalRoller
+                    ? "rolety-zewnetrzne"
                 : "oslony-wewnetrzne",
         description: isDayNight
           ? "Systemy dzień-noc do precyzyjnej regulacji światła i prywatności."
@@ -361,6 +386,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                 ? "Rolety rzymskie szyte na wymiar, łączące funkcję dekoracyjną i osłonową."
                 : isRoof
                   ? "Rolety i plisy dedykowane oknom dachowym."
+                  : isExternalRoller
+                    ? "Rolety zewnętrzne do montażu elewacyjnego oraz pod zabudowę."
               : "Rolety i żaluzje do wnętrz mieszkalnych i biurowych.",
         background_url:
           isDayNight
@@ -373,6 +400,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                   ? "https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=2200&q=80"
                   : isRoof
                     ? "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2200&q=80"
+                    : isExternalRoller
+                      ? "https://images.unsplash.com/photo-1613977257592-487ecd136cc3?auto=format&fit=crop&w=2200&q=80"
                 : "https://images.unsplash.com/photo-1616486701797-0f33f61038c8?auto=format&fit=crop&w=2200&q=80",
         products: isDayNight
           ? fixedDayNightProducts
@@ -384,6 +413,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                 ? fixedRomanProducts
                 : isRoof
                   ? fixedRoofProducts
+                  : isExternalRoller
+                    ? fixedExternalRollerProducts
                 : fixedInteriorProducts,
       };
       foundProduct = fixedProduct;
