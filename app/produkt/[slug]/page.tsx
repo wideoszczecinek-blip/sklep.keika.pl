@@ -8,8 +8,11 @@ type ProductItem = {
   name?: string;
   slug?: string;
   subtitle?: string;
+  description?: string;
   price_from?: string;
   image_url?: string;
+  gallery_urls?: string[];
+  title?: string;
 };
 
 type ProductGroup = {
@@ -423,6 +426,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
 
   const bg = absolutizeUrl((foundGroup?.background_url || foundProduct?.image_url || ""), endpointOrigin);
   const productImage = absolutizeUrl(foundProduct?.image_url || "", endpointOrigin);
+  const hasDedicatedConfigurator = slug === "rolety-best-1";
+  const configuratorHref = hasDedicatedConfigurator ? `/konfigurator/${slug}` : "#konfigurator";
 
   return (
     <div className="catalog-root" style={{ backgroundImage: bg ? `linear-gradient(120deg, rgba(4,12,22,.9), rgba(7,16,30,.74)), url(${bg})` : undefined }}>
@@ -472,7 +477,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               <div className="product-anchor-nav">
                 <a href="#galeria">Galeria</a>
                 <a href="#opis">Opis</a>
-                <a href="#konfigurator">Konfigurator</a>
+                <a href={configuratorHref}>Konfigurator</a>
               </div>
               <ul>
                 <li>Konfiguracja dokładnych wymiarów</li>
@@ -480,7 +485,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                 <li>Wycena online i realizacja od producenta</li>
               </ul>
               <div className="product-info-actions">
-                <a href="#konfigurator">Skonfiguruj produkt</a>
+                <a href={configuratorHref}>Skonfiguruj produkt</a>
                 <Link href={`/kategoria/${foundGroup.slug || ""}`}>Wróć do kategorii</Link>
               </div>
             </article>
@@ -495,7 +500,14 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               </article>
               <article id="konfigurator" className="catalog-card">
                 <h3>Konfigurator</h3>
-                <p>Tu podpinamy docelowy konfigurator wymiarów, tkanin i sterowania.</p>
+                {hasDedicatedConfigurator ? (
+                  <>
+                    <p>Skonfiguruj roletę krok po kroku: kolor osprzętu, tkanina i pozycje wymiarowe.</p>
+                    <p><Link href={configuratorHref}>Przejdź do konfiguratora Best 1</Link></p>
+                  </>
+                ) : (
+                  <p>Konfigurator dla tego produktu będzie uruchamiany w kolejnym etapie.</p>
+                )}
               </article>
             </section>
           </section>
