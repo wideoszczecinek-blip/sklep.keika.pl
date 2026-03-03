@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import ThemeToggle from "@/app/components/theme-toggle";
 
 type ProductItem = {
   name?: string;
@@ -434,6 +435,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
           </div>
         </div>
         <div className="header-actions">
+          <ThemeToggle />
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
             {contactPhone}
           </a>

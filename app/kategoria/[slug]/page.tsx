@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import ThemeToggle from "@/app/components/theme-toggle";
 
 type ProductItem = {
   name?: string;
@@ -606,6 +607,7 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
           </div>
         </div>
         <div className="header-actions">
+          <ThemeToggle />
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>{contactPhone}</a>
           <a className="header-cart has-items" href="#koszyk">
             <span className="header-cart-title">Koszyk</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import ThemeToggle from "@/app/components/theme-toggle";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -686,6 +687,7 @@ export default function Home() {
           </div>
         </div>
         <div className="header-actions">
+          <ThemeToggle />
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
             {contactPhone}
           </a>
