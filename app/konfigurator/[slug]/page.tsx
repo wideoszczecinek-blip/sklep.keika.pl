@@ -967,7 +967,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
       className="catalog-root configurator-root"
       style={{
         backgroundImage: productImage
-          ? `linear-gradient(120deg, rgba(4,12,22,.9), rgba(7,16,30,.8)), url(${productImage})`
+          ? `url(${productImage})`
           : undefined,
       }}
     >

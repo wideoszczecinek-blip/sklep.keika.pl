@@ -818,7 +818,7 @@ export default function Home() {
                   <div
                     className="hero-menu-card-bg"
                     style={{
-                      backgroundImage: `linear-gradient(180deg, rgba(7, 14, 26, 0.16), rgba(7, 14, 26, 0.68)), url(${item.imageUrl})`,
+                      backgroundImage: `url(${item.imageUrl})`,
                     }}
                     aria-hidden="true"
                   />

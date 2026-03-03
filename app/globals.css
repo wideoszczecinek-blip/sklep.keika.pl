@@ -20,6 +20,8 @@
   --theme-glass-border: rgba(190, 222, 255, 0.32);
   --theme-glass-text: #eaf6ff;
   --theme-glass-shadow: 0 18px 34px rgba(3, 14, 29, 0.42);
+  --catalog-bg-color: #07101d;
+  --catalog-overlay: linear-gradient(120deg, rgba(4, 12, 22, 0.9), rgba(7, 16, 30, 0.76));
 }
 
 html[data-theme="light"] {
@@ -35,6 +37,10 @@ html[data-theme="light"] {
   --theme-glass-border: rgba(26, 52, 84, 0.2);
   --theme-glass-text: #162c45;
   --theme-glass-shadow: 0 14px 32px rgba(33, 56, 84, 0.14);
+  --catalog-bg-color: #f3f7fc;
+  --catalog-overlay:
+    radial-gradient(circle at 12% 20%, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.16) 48%),
+    linear-gradient(120deg, rgba(243, 248, 255, 0.84), rgba(236, 245, 255, 0.62));
 }
 
 @theme inline {
@@ -1030,9 +1036,25 @@ a {
 
 .catalog-root {
   min-height: 100svh;
+  position: relative;
+  isolation: isolate;
   background-size: cover;
   background-position: center;
-  background-color: #07101d;
+  background-color: var(--catalog-bg-color);
+}
+
+.catalog-root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--catalog-overlay);
+}
+
+.catalog-root > * {
+  position: relative;
+  z-index: 1;
 }
 
 .catalog-main {
@@ -2621,24 +2643,24 @@ html[data-theme="light"] .hero-menu-subitem-icon {
 
 html[data-theme="light"] .hero-menu-chevron,
 html[data-theme="light"] .hero-menu-card-head h3 {
-  color: #f4f9ff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.26);
+  color: #163959;
+  text-shadow: none;
 }
 
 html[data-theme="light"] .hero-menu-card-list a {
-  color: #f4f9ff;
-  border-color: rgba(225, 241, 255, 0.52);
-  background: rgba(29, 57, 86, 0.48);
+  color: #173858;
+  border-color: rgba(46, 85, 124, 0.26);
+  background: rgba(247, 252, 255, 0.94);
 }
 
 html[data-theme="light"] .hero-menu-card-list a:hover,
 html[data-theme="light"] .hero-menu-card-list a:focus-visible {
-  border-color: rgba(127, 209, 255, 0.95);
-  background: rgba(24, 50, 76, 0.68);
+  border-color: rgba(88, 153, 214, 0.62);
+  background: rgba(233, 244, 255, 0.96);
 }
 
 html[data-theme="light"] .catalog-root {
-  background-color: #e9f0f8;
+  background-color: #f3f7fc;
 }
 
 html[data-theme="light"] .catalog-card,

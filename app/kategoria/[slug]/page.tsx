@@ -588,7 +588,7 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
   const products = Array.isArray(resolvedGroup?.products) ? resolvedGroup.products : [];
 
   return (
-    <div className="catalog-root" style={{ backgroundImage: bg ? `linear-gradient(120deg, rgba(4,12,22,.88), rgba(7,16,30,.72)), url(${bg})` : undefined }}>
+    <div className="catalog-root" style={{ backgroundImage: bg ? `url(${bg})` : undefined }}>
       <header className="hero-header">
         <div className="header-left">
           <Link className="brand" href="/" aria-label="KEIKA strona główna">
