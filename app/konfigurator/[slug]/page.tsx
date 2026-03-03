@@ -24,6 +24,85 @@ type ProductGroup = {
   products?: ProductItem[];
 };
 
+type ConfigStepId = "hardware" | "fabric" | "dimensions";
+type ConfigFieldRole = "width" | "height" | "quantity" | "none";
+
+type ConfigDimensionField = {
+  key: string;
+  label: string;
+  role: ConfigFieldRole;
+  default?: number;
+  min?: number;
+  max?: number;
+  step?: number;
+};
+
+type ConfigControlSideOption = {
+  id: string;
+  label: string;
+};
+
+type ConfigGlazingOption = {
+  id: string;
+  label: string;
+  note?: string;
+  image_url?: string;
+};
+
+type ConfigHardwareSwatch = {
+  id: string;
+  label: string;
+  color?: string;
+  image_url?: string;
+  price_delta?: number;
+};
+
+type ConfigFabricSwatch = {
+  id: string;
+  code?: string;
+  label?: string;
+  color?: string;
+  image_url?: string;
+  price_delta?: number;
+};
+
+type ConfigFabricGroup = {
+  id: string;
+  label: string;
+  note?: string;
+  swatches: ConfigFabricSwatch[];
+};
+
+type ConfigPricingTable = {
+  id: string;
+  name: string;
+  hardware_ids: string[];
+  fabric_group_ids: string[];
+  width_breakpoints: number[];
+  height_breakpoints: number[];
+  prices: number[][];
+};
+
+type ConfigPricingRules = {
+  width_field_key?: string;
+  height_field_key?: string;
+  quantity_field_key?: string;
+  tables: ConfigPricingTable[];
+};
+
+type ProductConfiguratorProfile = {
+  product_slug: string;
+  product_name?: string;
+  enabled?: boolean;
+  step_order: ConfigStepId[];
+  dimension_fields: ConfigDimensionField[];
+  control_side_options: ConfigControlSideOption[];
+  glazing_bead_options: ConfigGlazingOption[];
+  hardware_swatches: ConfigHardwareSwatch[];
+  fabric_groups: ConfigFabricGroup[];
+  pricing_rules: ConfigPricingRules;
+};
+
 type PublicConfig = {
   branding?: {
     site_title?: string;
@@ -32,38 +111,28 @@ type PublicConfig = {
   };
   top_links?: Array<{ label?: string; url?: string }>;
   product_groups?: ProductGroup[];
-};
-
-type HardwareOption = {
-  id: string;
-  label: string;
-  color: string;
-  accent: string;
-  image: string;
-  note: string;
-};
-
-type FabricSwatch = {
-  id: string;
-  code: string;
-  name: string;
-  color: string;
-};
-
-type FabricGroup = {
-  id: string;
-  label: string;
-  note: string;
-  swatches: FabricSwatch[];
+  product_configurators?: ProductConfiguratorProfile[];
 };
 
 type MeasurementPosition = {
   id: number;
+  values: Record<string, number>;
+  controlSideId: string;
+  glazingBeadId: string;
+};
+
+type ProductContext = {
+  group: ProductGroup | null;
+  product: ProductItem;
+};
+
+type PriceRowEstimate = {
+  id: number;
   width: number;
   height: number;
   quantity: number;
-  controlSide: "left" | "right";
-  glazingBead: "flat" | "round" | "angled";
+  unitPrice: number;
+  rowTotal: number;
 };
 
 const DEFAULT_PRODUCT: ProductItem = {
@@ -81,63 +150,6 @@ const DEFAULT_PRODUCT: ProductItem = {
     "https://images.unsplash.com/photo-1600047508788-786f6b65df7f?auto=format&fit=crop&w=1400&q=80",
   ],
 };
-
-const HARDWARE_OPTIONS: HardwareOption[] = [
-  {
-    id: "anthracite",
-    label: "Antracyt mat",
-    color: "#3e434b",
-    accent: "#9ca6b7",
-    image:
-      "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=900&q=80",
-    note: "Nowoczesny, kontrastowy wygląd do ciemnych profili.",
-  },
-  {
-    id: "white",
-    label: "Biały satyna",
-    color: "#f3f5f7",
-    accent: "#d2d9e2",
-    image:
-      "https://images.unsplash.com/photo-1617104551722-3b2d5136648f?auto=format&fit=crop&w=900&q=80",
-    note: "Najczęściej wybierany do klasycznej stolarki PVC.",
-  },
-  {
-    id: "black",
-    label: "Czarny soft",
-    color: "#1d2128",
-    accent: "#798296",
-    image:
-      "https://images.unsplash.com/photo-1600047509425-3854b8d7ad85?auto=format&fit=crop&w=900&q=80",
-    note: "Wyrazisty efekt premium do nowoczesnych wnętrz.",
-  },
-  {
-    id: "golden-oak",
-    label: "Złoty dąb",
-    color: "#a77543",
-    accent: "#d8b587",
-    image:
-      "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=900&q=80",
-    note: "Ciepły, drewnopodobny odcień do klasycznych aranżacji.",
-  },
-  {
-    id: "walnut",
-    label: "Orzech",
-    color: "#6c4630",
-    accent: "#bf9a7d",
-    image:
-      "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=900&q=80",
-    note: "Głębszy, naturalny odcień drewna.",
-  },
-  {
-    id: "silver",
-    label: "Srebrny szczotkowany",
-    color: "#aeb6c2",
-    accent: "#e5ebf3",
-    image:
-      "https://images.unsplash.com/photo-1617098474202-0d0d7f60d4f0?auto=format&fit=crop&w=900&q=80",
-    note: "Techniczny wygląd do nowoczesnej stolarki aluminiowej.",
-  },
-];
 
 const EDEN_BASE_COLORS = [
   "#f2efe9",
@@ -163,70 +175,125 @@ const MADAGASKAR_BASE_COLORS = [
   "#2f3540",
 ];
 
-const EDEN_SWATCHES: FabricSwatch[] = Array.from({ length: 50 }, (_, idx) => {
-  const no = idx + 1;
-  return {
-    id: `eden-${no}`,
-    code: `ED-${String(no).padStart(2, "0")}`,
-    name: `EDEN ${String(no).padStart(2, "0")}`,
-    color: EDEN_BASE_COLORS[idx % EDEN_BASE_COLORS.length],
-  };
-});
+function generateDefaultSwatches(prefix: string, labelPrefix: string, count: number, palette: string[]): ConfigFabricSwatch[] {
+  const colorPool = palette.length ? palette : ["#9eb4ca"];
+  return Array.from({ length: count }, (_, idx) => {
+    const no = idx + 1;
+    const code = `${prefix}-${String(no).padStart(2, "0")}`;
+    return {
+      id: `${prefix.toLowerCase()}-${no}`,
+      code,
+      label: `${labelPrefix} ${String(no).padStart(2, "0")}`,
+      color: colorPool[idx % colorPool.length],
+      image_url: "",
+      price_delta: 0,
+    };
+  });
+}
 
-const MADAGASKAR_SWATCHES: FabricSwatch[] = Array.from({ length: 20 }, (_, idx) => {
-  const no = idx + 1;
-  return {
-    id: `mad-${no}`,
-    code: `MS-${String(no).padStart(2, "0")}`,
-    name: `Madagaskar Silver ${String(no).padStart(2, "0")}`,
-    color: MADAGASKAR_BASE_COLORS[idx % MADAGASKAR_BASE_COLORS.length],
-  };
-});
+const DEFAULT_CONFIGURATOR_PROFILE: ProductConfiguratorProfile = {
+  product_slug: "rolety-best-1",
+  product_name: "Rolety BEST 1",
+  enabled: true,
+  step_order: ["hardware", "fabric", "dimensions"],
+  dimension_fields: [
+    { key: "width_mm", label: "Szerokość (mm)", role: "width", default: 820, min: 100, max: 4000, step: 1 },
+    { key: "height_mm", label: "Wysokość (mm)", role: "height", default: 1220, min: 100, max: 4000, step: 1 },
+    { key: "quantity", label: "Ilość", role: "quantity", default: 1, min: 1, max: 100, step: 1 },
+  ],
+  control_side_options: [
+    { id: "right", label: "Prawa" },
+    { id: "left", label: "Lewa" },
+  ],
+  glazing_bead_options: [
+    {
+      id: "flat",
+      label: "Listwa płaska",
+      note: "Do prostych listew przyszybowych z płaskim profilem.",
+      image_url:
+        "https://images.unsplash.com/photo-1616627561943-55d9e9f4f4c5?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      id: "round",
+      label: "Listwa zaokrąglona",
+      note: "Do listew z łukiem/zaokrągleniem przy szybie.",
+      image_url:
+        "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      id: "angled",
+      label: "Listwa skośna",
+      note: "Do listew o wyraźnym skosie i głębszym osadzeniu szyby.",
+      image_url:
+        "https://images.unsplash.com/photo-1600210492493-0946911123ea?auto=format&fit=crop&w=900&q=80",
+    },
+  ],
+  hardware_swatches: [
+    { id: "anthracite", label: "Antracyt mat", color: "#3e434b", image_url: "", price_delta: 0 },
+    { id: "white", label: "Biały satyna", color: "#f3f5f7", image_url: "", price_delta: 0 },
+    { id: "black", label: "Czarny soft", color: "#1d2128", image_url: "", price_delta: 0 },
+    { id: "golden-oak", label: "Złoty dąb", color: "#a77543", image_url: "", price_delta: 0 },
+    { id: "walnut", label: "Orzech", color: "#6c4630", image_url: "", price_delta: 0 },
+    { id: "silver", label: "Srebrny szczotkowany", color: "#aeb6c2", image_url: "", price_delta: 0 },
+  ],
+  fabric_groups: [
+    {
+      id: "eden",
+      label: "EDEN",
+      note: "Kolekcja ok. 50 kolorów.",
+      swatches: generateDefaultSwatches("ED", "EDEN", 50, EDEN_BASE_COLORS),
+    },
+    {
+      id: "madagaskar-silver",
+      label: "Madagaskar Silver",
+      note: "Kolekcja ok. 20 kolorów.",
+      swatches: generateDefaultSwatches("MS", "Madagaskar Silver", 20, MADAGASKAR_BASE_COLORS),
+    },
+  ],
+  pricing_rules: {
+    width_field_key: "width_mm",
+    height_field_key: "height_mm",
+    quantity_field_key: "quantity",
+    tables: [
+      {
+        id: "best1-default",
+        name: "Tabela bazowa",
+        hardware_ids: [],
+        fabric_group_ids: [],
+        width_breakpoints: [600, 800, 1000, 1200, 1400],
+        height_breakpoints: [1000, 1200, 1400, 1600, 1800],
+        prices: [
+          [249, 269, 289, 309, 329],
+          [269, 289, 309, 329, 349],
+          [289, 309, 329, 349, 369],
+          [309, 329, 349, 369, 389],
+          [329, 349, 369, 389, 409],
+        ],
+      },
+      {
+        id: "best1-eden-anthracite",
+        name: "EDEN + antracyt",
+        hardware_ids: ["anthracite"],
+        fabric_group_ids: ["eden"],
+        width_breakpoints: [600, 800, 1000, 1200, 1400],
+        height_breakpoints: [1000, 1200, 1400, 1600, 1800],
+        prices: [
+          [269, 289, 309, 329, 349],
+          [289, 309, 329, 349, 369],
+          [309, 329, 349, 369, 389],
+          [329, 349, 369, 389, 409],
+          [349, 369, 389, 409, 429],
+        ],
+      },
+    ],
+  },
+};
 
-const FABRIC_GROUPS: FabricGroup[] = [
-  {
-    id: "eden",
-    label: "EDEN",
-    note: "Kolekcja ok. 50 kolorów - uniwersalne odcienie dzienne i zaciemniające.",
-    swatches: EDEN_SWATCHES,
-  },
-  {
-    id: "madagaskar-silver",
-    label: "Madagaskar Silver",
-    note: "Kolekcja ok. 20 kolorów - bardziej techniczne i nowoczesne tonacje.",
-    swatches: MADAGASKAR_SWATCHES,
-  },
-];
-
-const GLAZING_BEAD_OPTIONS = [
-  {
-    id: "flat",
-    label: "Listwa płaska",
-    image:
-      "https://images.unsplash.com/photo-1616627561943-55d9e9f4f4c5?auto=format&fit=crop&w=900&q=80",
-    note: "Do prostych listew przyszybowych z płaskim profilem.",
-  },
-  {
-    id: "round",
-    label: "Listwa zaokrąglona",
-    image:
-      "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=900&q=80",
-    note: "Do listew z łukiem/zaokrągleniem przy szybie.",
-  },
-  {
-    id: "angled",
-    label: "Listwa skośna",
-    image:
-      "https://images.unsplash.com/photo-1600210492493-0946911123ea?auto=format&fit=crop&w=900&q=80",
-    note: "Do listew o wyraźnym skosie i głębszym osadzeniu szyby.",
-  },
-] as const;
-
-const STEPS = [
-  { id: "hardware", label: "1. Kolor osprzętu" },
-  { id: "fabric", label: "2. Tkanina" },
-  { id: "dimensions", label: "3. Wymiary i sterowanie" },
-] as const;
+function toNumber(value: unknown, fallback = 0): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return numeric;
+}
 
 function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   const value = String(rawUrl || "").trim();
@@ -241,21 +308,175 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
 }
 
 function parseNumericInput(value: string): number {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return 0;
-  return Math.max(0, Math.round(numeric));
+  const normalized = String(value || "").replace(",", ".");
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, parsed);
 }
 
-function ensureProduct(config: PublicConfig | null, slug: string): ProductItem {
+function parseBasePrice(rawPrice: string | undefined): number {
+  const source = String(rawPrice || "");
+  const match = source.match(/\d+[\d\s,.]*/);
+  if (!match) return 0;
+  const numeric = Number(match[0].replace(/\s+/g, "").replace(",", "."));
+  return Number.isFinite(numeric) ? Math.max(0, numeric) : 0;
+}
+
+function findProductContext(config: PublicConfig | null, slug: string): ProductContext {
+  const targetSlug = String(slug || "").trim();
   const groups = Array.isArray(config?.product_groups) ? config.product_groups : [];
+
   for (const group of groups) {
     const products = Array.isArray(group.products) ? group.products : [];
-    const match = products.find((entry) => String(entry.slug || "").trim() === slug);
+    const match = products.find((entry) => String(entry.slug || "").trim() === targetSlug);
     if (match) {
-      return match;
+      return { group, product: match };
     }
   }
-  return DEFAULT_PRODUCT;
+
+  const fallbackGroup = groups[0] || null;
+  return {
+    group: fallbackGroup,
+    product: DEFAULT_PRODUCT,
+  };
+}
+
+function ensureConfiguratorProfile(config: PublicConfig | null, slug: string): ProductConfiguratorProfile | null {
+  const targetSlug = String(slug || "").trim();
+  const profiles = Array.isArray(config?.product_configurators) ? config.product_configurators : [];
+
+  const configured = profiles.find(
+    (entry) =>
+      entry &&
+      entry.enabled !== false &&
+      String(entry.product_slug || "").trim() === targetSlug,
+  );
+  if (configured) {
+    return configured;
+  }
+
+  if (targetSlug === DEFAULT_CONFIGURATOR_PROFILE.product_slug) {
+    return DEFAULT_CONFIGURATOR_PROFILE;
+  }
+
+  return null;
+}
+
+function sanitizeStepOrder(stepOrder: ConfigStepId[] | undefined): ConfigStepId[] {
+  const allowed: ConfigStepId[] = ["hardware", "fabric", "dimensions"];
+  const result = (Array.isArray(stepOrder) ? stepOrder : []).filter((entry) => allowed.includes(entry));
+  return result.length ? result : [...allowed];
+}
+
+function getStepTitle(stepId: ConfigStepId): string {
+  if (stepId === "hardware") return "Kolor osprzętu";
+  if (stepId === "fabric") return "Tkanina";
+  return "Wymiary i sterowanie";
+}
+
+function getFieldByRole(fields: ConfigDimensionField[], role: "width" | "height" | "quantity"): ConfigDimensionField | null {
+  return fields.find((entry) => entry.role === role) || null;
+}
+
+function normalizeFieldValue(field: ConfigDimensionField | null, rawValue: number): number {
+  let nextValue = Number.isFinite(rawValue) ? rawValue : 0;
+  const min = field ? toNumber(field.min, 0) : 0;
+  const max = field ? toNumber(field.max, 0) : 0;
+  const step = field ? Math.max(0.0001, toNumber(field.step, 1)) : 1;
+
+  if (nextValue < min) nextValue = min;
+  if (max > 0 && nextValue > max) nextValue = max;
+
+  if (step >= 1) {
+    nextValue = Math.round(nextValue);
+  } else {
+    const precision = step >= 0.1 ? 1 : step >= 0.01 ? 2 : 3;
+    nextValue = Number(nextValue.toFixed(precision));
+  }
+
+  return Math.max(0, nextValue);
+}
+
+function createPosition(profile: ProductConfiguratorProfile, id: number, source?: MeasurementPosition): MeasurementPosition {
+  const fields = Array.isArray(profile.dimension_fields) ? profile.dimension_fields : [];
+  const values: Record<string, number> = {};
+  for (const field of fields) {
+    const sourceValue = source?.values?.[field.key];
+    const fallbackValue = toNumber(field.default, toNumber(field.min, 0));
+    values[field.key] = normalizeFieldValue(field, toNumber(sourceValue, fallbackValue));
+  }
+
+  const controlFallback = profile.control_side_options?.[0]?.id || "";
+  const glazingFallback = profile.glazing_bead_options?.[0]?.id || "";
+
+  return {
+    id,
+    values,
+    controlSideId: source?.controlSideId || controlFallback,
+    glazingBeadId: source?.glazingBeadId || glazingFallback,
+  };
+}
+
+function getBreakpointIndex(breakpoints: number[], value: number): number {
+  const points = breakpoints.filter((point) => Number.isFinite(point) && point > 0);
+  if (!points.length) return -1;
+  for (let idx = 0; idx < points.length; idx += 1) {
+    if (value <= points[idx]) return idx;
+  }
+  return points.length - 1;
+}
+
+function getGridPrice(table: ConfigPricingTable, width: number, height: number): number {
+  const colIndex = getBreakpointIndex(table.width_breakpoints || [], width);
+  const rowIndex = getBreakpointIndex(table.height_breakpoints || [], height);
+  if (colIndex < 0 || rowIndex < 0) return 0;
+
+  const row = Array.isArray(table.prices?.[rowIndex])
+    ? table.prices[rowIndex]
+    : Array.isArray(table.prices?.[table.prices.length - 1])
+      ? table.prices[table.prices.length - 1]
+      : [];
+
+  const directValue = row[colIndex];
+  if (Number.isFinite(directValue)) return toNumber(directValue, 0);
+
+  const fallbackValue = row[row.length - 1];
+  if (Number.isFinite(fallbackValue)) return toNumber(fallbackValue, 0);
+
+  return 0;
+}
+
+function scorePricingTable(table: ConfigPricingTable): number {
+  const hardwareScore = Array.isArray(table.hardware_ids) && table.hardware_ids.length > 0 ? 2 : 0;
+  const fabricScore = Array.isArray(table.fabric_group_ids) && table.fabric_group_ids.length > 0 ? 1 : 0;
+  return hardwareScore + fabricScore;
+}
+
+function pickPricingTable(
+  tables: ConfigPricingTable[],
+  selectedHardwareId: string,
+  selectedFabricGroupId: string,
+): ConfigPricingTable | null {
+  if (!Array.isArray(tables) || tables.length === 0) return null;
+
+  const exactMatches = tables.filter((table) => {
+    const hardwareFilter = Array.isArray(table.hardware_ids) ? table.hardware_ids.filter(Boolean) : [];
+    const fabricFilter = Array.isArray(table.fabric_group_ids) ? table.fabric_group_ids.filter(Boolean) : [];
+
+    if (hardwareFilter.length > 0 && !hardwareFilter.includes(selectedHardwareId)) return false;
+    if (fabricFilter.length > 0 && !fabricFilter.includes(selectedFabricGroupId)) return false;
+    return true;
+  });
+
+  const candidates = exactMatches.length > 0 ? exactMatches : tables;
+  return [...candidates].sort((a, b) => scorePricingTable(b) - scorePricingTable(a))[0] || null;
+}
+
+function resolveDimensionKey(profile: ProductConfiguratorProfile, explicit: string | undefined, role: "width" | "height" | "quantity"): string {
+  const direct = String(explicit || "").trim();
+  if (direct) return direct;
+  const byRole = getFieldByRole(profile.dimension_fields || [], role);
+  return byRole?.key || "";
 }
 
 export default function ConfiguratorPage({ params }: { params?: { slug?: string } }) {
@@ -266,6 +487,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
 
   const configEndpoint =
     process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
+
   const endpointOrigin = useMemo(() => {
     try {
       return new URL(configEndpoint).origin;
@@ -276,23 +498,16 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
 
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [loading, setLoading] = useState(true);
+
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedHardware, setSelectedHardware] = useState(HARDWARE_OPTIONS[0].id);
-  const [selectedFabricGroup, setSelectedFabricGroup] = useState(FABRIC_GROUPS[0].id);
-  const [selectedFabricCode, setSelectedFabricCode] = useState(FABRIC_GROUPS[0].swatches[0].code);
-  const [positions, setPositions] = useState<MeasurementPosition[]>([
-    {
-      id: 1,
-      width: 820,
-      height: 1220,
-      quantity: 1,
-      controlSide: "right",
-      glazingBead: "flat",
-    },
-  ]);
+  const [selectedHardwareId, setSelectedHardwareId] = useState("");
+  const [selectedFabricGroupId, setSelectedFabricGroupId] = useState("");
+  const [selectedFabricCode, setSelectedFabricCode] = useState("");
+  const [positions, setPositions] = useState<MeasurementPosition[]>([]);
 
   useEffect(() => {
     let mounted = true;
+
     fetch(`${configEndpoint}?_ts=${Date.now()}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((json) => {
@@ -304,6 +519,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
       .finally(() => {
         if (mounted) setLoading(false);
       });
+
     return () => {
       mounted = false;
     };
@@ -314,71 +530,284 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   const logoUrl = absolutizeUrl(branding.logo_url || "", endpointOrigin);
   const contactPhone = branding.contact_phone || "+48 123 456 789";
 
-  const supportedProductSlug = "rolety-best-1";
-  const isSupported = slug === supportedProductSlug;
+  const productContext = useMemo(() => findProductContext(config, slug), [config, slug]);
+  const foundGroup = productContext.group;
+  const product = productContext.product;
 
-  const product = ensureProduct(config, supportedProductSlug);
-  const productName = product.name || product.title || "Rolety w kasecie Best 1";
-  const productSubtitle = product.subtitle || "Rolety w aluminiowej kasecie z prowadnicami przyszybowymi.";
+  const profile = useMemo(() => ensureConfiguratorProfile(config, slug), [config, slug]);
+
+  const stepOrder = useMemo(() => sanitizeStepOrder(profile?.step_order), [profile?.step_order]);
+  const steps = useMemo(
+    () =>
+      stepOrder.map((id, idx) => ({
+        id,
+        label: `${idx + 1}. ${getStepTitle(id)}`,
+      })),
+    [stepOrder],
+  );
+
+  useEffect(() => {
+    if (!profile) {
+      setCurrentStep(0);
+      setPositions([]);
+      setSelectedHardwareId("");
+      setSelectedFabricGroupId("");
+      setSelectedFabricCode("");
+      return;
+    }
+
+    const firstHardware = profile.hardware_swatches?.[0]?.id || "";
+    const firstGroup = profile.fabric_groups?.[0] || null;
+    const firstSwatchCode = firstGroup?.swatches?.[0]?.code || firstGroup?.swatches?.[0]?.id || "";
+
+    setCurrentStep(0);
+    setSelectedHardwareId(firstHardware);
+    setSelectedFabricGroupId(firstGroup?.id || "");
+    setSelectedFabricCode(firstSwatchCode);
+    setPositions([createPosition(profile, 1)]);
+  }, [profile]);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    const hasHardware = profile.hardware_swatches.some((entry) => entry.id === selectedHardwareId);
+    if (!hasHardware) {
+      setSelectedHardwareId(profile.hardware_swatches?.[0]?.id || "");
+    }
+
+    const activeGroup = profile.fabric_groups.find((entry) => entry.id === selectedFabricGroupId) || profile.fabric_groups[0];
+    if (activeGroup && activeGroup.id !== selectedFabricGroupId) {
+      setSelectedFabricGroupId(activeGroup.id);
+    }
+
+    const swatches = Array.isArray(activeGroup?.swatches) ? activeGroup.swatches : [];
+    const hasSwatch = swatches.some((entry) => (entry.code || entry.id) === selectedFabricCode);
+    if (!hasSwatch) {
+      const fallbackCode = swatches[0]?.code || swatches[0]?.id || "";
+      setSelectedFabricCode(fallbackCode);
+    }
+  }, [profile, selectedHardwareId, selectedFabricGroupId, selectedFabricCode]);
+
+  useEffect(() => {
+    if (currentStep >= steps.length && steps.length > 0) {
+      setCurrentStep(steps.length - 1);
+    }
+  }, [currentStep, steps.length]);
+
+  const productSlug = String(product.slug || slug || DEFAULT_PRODUCT.slug || "rolety-best-1").trim();
+  const productName = product.name || product.title || profile?.product_name || DEFAULT_PRODUCT.name || "Produkt";
+  const productSubtitle =
+    product.subtitle ||
+    "Skonfiguruj produkt krok po kroku: wybierz wariant, tkaninę i podaj dokładne wymiary.";
   const productDescription =
     product.description ||
-    "Wybierz kolor osprzętu i tkaninę, a następnie dodaj jedną lub wiele pozycji wymiarowych.";
+    "Wyliczenie ceny bazuje na tabelach siatkowych skonfigurowanych w panelu administracyjnym.";
+
   const productImage = absolutizeUrl(
     product.image_url || product.gallery_urls?.[0] || DEFAULT_PRODUCT.image_url || "",
     endpointOrigin,
   );
 
-  const hardwareOption = HARDWARE_OPTIONS.find((entry) => entry.id === selectedHardware) || HARDWARE_OPTIONS[0];
-  const fabricGroup = FABRIC_GROUPS.find((entry) => entry.id === selectedFabricGroup) || FABRIC_GROUPS[0];
-  const fabric =
-    fabricGroup.swatches.find((entry) => entry.code === selectedFabricCode) || fabricGroup.swatches[0];
+  const activeStepId = (steps[currentStep]?.id || "hardware") as ConfigStepId;
 
-  const currentStepId = STEPS[currentStep]?.id || "hardware";
-
-  const areDimensionsValid = positions.every(
-    (entry) => entry.width > 0 && entry.height > 0 && entry.quantity > 0,
+  const hardwareSwatches = useMemo(
+    () => (Array.isArray(profile?.hardware_swatches) ? profile!.hardware_swatches : []),
+    [profile],
   );
+  const fabricGroups = useMemo(
+    () => (Array.isArray(profile?.fabric_groups) ? profile!.fabric_groups : []),
+    [profile],
+  );
+  const glazingOptions = useMemo(
+    () => (Array.isArray(profile?.glazing_bead_options) ? profile!.glazing_bead_options : []),
+    [profile],
+  );
+  const controlSideOptions = useMemo(
+    () => (Array.isArray(profile?.control_side_options) ? profile!.control_side_options : []),
+    [profile],
+  );
+  const dimensionFields = useMemo(
+    () => (Array.isArray(profile?.dimension_fields) && profile!.dimension_fields.length ? profile!.dimension_fields : DEFAULT_CONFIGURATOR_PROFILE.dimension_fields),
+    [profile],
+  );
+
+  const selectedHardware = useMemo(
+    () => hardwareSwatches.find((entry) => entry.id === selectedHardwareId) || hardwareSwatches[0] || null,
+    [hardwareSwatches, selectedHardwareId],
+  );
+
+  const activeFabricGroup = useMemo(
+    () => fabricGroups.find((entry) => entry.id === selectedFabricGroupId) || fabricGroups[0] || null,
+    [fabricGroups, selectedFabricGroupId],
+  );
+
+  const activeFabric = useMemo(() => {
+    if (!activeFabricGroup) return null;
+    return (
+      activeFabricGroup.swatches.find((entry) => (entry.code || entry.id) === selectedFabricCode) ||
+      activeFabricGroup.swatches[0] ||
+      null
+    );
+  }, [activeFabricGroup, selectedFabricCode]);
+
+  const widthFieldKey = profile
+    ? resolveDimensionKey(profile, profile.pricing_rules?.width_field_key, "width")
+    : "";
+  const heightFieldKey = profile
+    ? resolveDimensionKey(profile, profile.pricing_rules?.height_field_key, "height")
+    : "";
+  const quantityFieldKey = profile
+    ? resolveDimensionKey(profile, profile.pricing_rules?.quantity_field_key, "quantity")
+    : "";
+
+  const activePricingTable = useMemo(() => {
+    if (!profile) return null;
+    const tables = Array.isArray(profile.pricing_rules?.tables) ? profile.pricing_rules.tables : [];
+    return pickPricingTable(tables, selectedHardware?.id || "", activeFabricGroup?.id || "");
+  }, [profile, selectedHardware?.id, activeFabricGroup?.id]);
+
+  const fallbackBasePrice = useMemo(() => {
+    const parsed = parseBasePrice(product.price_from);
+    return parsed > 0 ? parsed : 329;
+  }, [product.price_from]);
+
+  const rowEstimates = useMemo<PriceRowEstimate[]>(() => {
+    const hardwareDelta = toNumber(selectedHardware?.price_delta, 0);
+    const fabricDelta = toNumber(activeFabric?.price_delta, 0);
+
+    return positions.map((position) => {
+      const width = Math.max(0, toNumber(position.values[widthFieldKey], 0));
+      const height = Math.max(0, toNumber(position.values[heightFieldKey], 0));
+      const quantity = Math.max(1, Math.round(toNumber(position.values[quantityFieldKey], 1)));
+
+      let unitBase = 0;
+      if (activePricingTable) {
+        unitBase = getGridPrice(activePricingTable, width, height);
+      }
+
+      if (unitBase <= 0) {
+        const squareMeters = (Math.max(1, width) / 1000) * (Math.max(1, height) / 1000);
+        unitBase = fallbackBasePrice + squareMeters * 138;
+      }
+
+      const unitPrice = Math.max(0, unitBase + hardwareDelta + fabricDelta);
+      const rowTotal = unitPrice * quantity;
+
+      return {
+        id: position.id,
+        width,
+        height,
+        quantity,
+        unitPrice,
+        rowTotal,
+      };
+    });
+  }, [
+    positions,
+    widthFieldKey,
+    heightFieldKey,
+    quantityFieldKey,
+    selectedHardware?.price_delta,
+    activeFabric?.price_delta,
+    activePricingTable,
+    fallbackBasePrice,
+  ]);
+
+  const totalItems = rowEstimates.reduce((sum, row) => sum + row.quantity, 0);
+  const estimatedPrice = rowEstimates.reduce((sum, row) => sum + row.rowTotal, 0);
+
+  const requiredDimensionKeys = useMemo(
+    () => new Set([widthFieldKey, heightFieldKey, quantityFieldKey].filter(Boolean)),
+    [widthFieldKey, heightFieldKey, quantityFieldKey],
+  );
+
+  const areDimensionsValid = useMemo(() => {
+    if (!positions.length) return false;
+
+    return positions.every((position) => {
+      for (const field of dimensionFields) {
+        const value = toNumber(position.values[field.key], 0);
+
+        if (requiredDimensionKeys.has(field.key) && value <= 0) {
+          return false;
+        }
+
+        const min = toNumber(field.min, 0);
+        const max = toNumber(field.max, 0);
+        if (value < min) return false;
+        if (max > 0 && value > max) return false;
+      }
+      return true;
+    });
+  }, [positions, dimensionFields, requiredDimensionKeys]);
+
   const canProceed =
-    currentStepId === "hardware"
-      ? Boolean(selectedHardware)
-      : currentStepId === "fabric"
-        ? Boolean(selectedFabricCode)
+    activeStepId === "hardware"
+      ? hardwareSwatches.length === 0 || Boolean(selectedHardware)
+      : activeStepId === "fabric"
+        ? fabricGroups.length === 0 || Boolean(activeFabric)
         : areDimensionsValid;
 
-  const totalItems = positions.reduce((sum, entry) => sum + entry.quantity, 0);
-  const estimatedPrice = positions.reduce((sum, entry) => {
-    const squareMeters = (entry.width / 1000) * (entry.height / 1000);
-    const rowBase = 329 + squareMeters * 138;
-    return sum + rowBase * entry.quantity;
-  }, 0);
+  function updatePositionValue(positionId: number, fieldKey: string, inputValue: string) {
+    const field = dimensionFields.find((entry) => entry.key === fieldKey) || null;
+    const parsed = parseNumericInput(inputValue);
+    const nextValue = normalizeFieldValue(field, parsed);
 
-  function updatePosition(id: number, patch: Partial<MeasurementPosition>) {
-    setPositions((prev) => prev.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)));
+    setPositions((prev) =>
+      prev.map((entry) => {
+        if (entry.id !== positionId) return entry;
+        return {
+          ...entry,
+          values: {
+            ...entry.values,
+            [fieldKey]: nextValue,
+          },
+        };
+      }),
+    );
+  }
+
+  function updatePositionControlSide(positionId: number, nextControlSideId: string) {
+    setPositions((prev) =>
+      prev.map((entry) =>
+        entry.id === positionId
+          ? {
+              ...entry,
+              controlSideId: nextControlSideId,
+            }
+          : entry,
+      ),
+    );
+  }
+
+  function updatePositionGlazing(positionId: number, nextGlazingId: string) {
+    setPositions((prev) =>
+      prev.map((entry) =>
+        entry.id === positionId
+          ? {
+              ...entry,
+              glazingBeadId: nextGlazingId,
+            }
+          : entry,
+      ),
+    );
   }
 
   function addSimilarPosition(id: number) {
+    if (!profile) return;
     setPositions((prev) => {
       const source = prev.find((entry) => entry.id === id);
       if (!source) return prev;
       const nextId = Math.max(...prev.map((entry) => entry.id), 0) + 1;
-      return [...prev, { ...source, id: nextId }];
+      return [...prev, createPosition(profile, nextId, source)];
     });
   }
 
   function addEmptyPosition() {
+    if (!profile) return;
     setPositions((prev) => {
       const nextId = Math.max(...prev.map((entry) => entry.id), 0) + 1;
-      return [
-        ...prev,
-        {
-          id: nextId,
-          width: 800,
-          height: 1200,
-          quantity: 1,
-          controlSide: "right",
-          glazingBead: "flat",
-        },
-      ];
+      return [...prev, createPosition(profile, nextId)];
     });
   }
 
@@ -391,12 +820,14 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
 
   function goNextStep() {
     if (!canProceed) return;
-    setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
   }
 
   function goPrevStep() {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   }
+
+  const categoryHref = foundGroup?.slug ? `/kategoria/${foundGroup.slug}` : "/";
 
   return (
     <div
@@ -449,12 +880,12 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
       <main className="catalog-main">
         {loading ? (
           <section className="catalog-card">Wczytywanie konfiguratora…</section>
-        ) : !isSupported ? (
+        ) : !profile ? (
           <section className="catalog-card">
             <h1>Konfigurator jeszcze niedostępny</h1>
-            <p>Na ten moment aktywny jest konfigurator dla produktu: Rolety w kasecie Best 1.</p>
+            <p>Ten produkt nie ma jeszcze aktywnego profilu konfiguratora w panelu administracyjnym.</p>
             <p>
-              <Link href={`/produkt/${supportedProductSlug}`}>Przejdź do produktu Best 1</Link>
+              <Link href={`/produkt/${productSlug}`}>Wróć do karty produktu</Link>
             </p>
           </section>
         ) : (
@@ -466,7 +897,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                 <p className="configurator-lead">{productSubtitle}</p>
                 <p className="configurator-note">{productDescription}</p>
                 <div className="configurator-steps">
-                  {STEPS.map((step, idx) => (
+                  {steps.map((step, idx) => (
                     <button
                       key={step.id}
                       type="button"
@@ -479,81 +910,103 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                 </div>
               </article>
 
-              {currentStepId === "hardware" ? (
+              {activeStepId === "hardware" ? (
                 <article className="catalog-card">
-                  <h2>Krok 1: Wybierz kolor osprzętu</h2>
+                  <h2>{steps[currentStep]?.label}: wybierz kolor osprzętu</h2>
                   <p className="configurator-field-note">
-                    Wybrany kolor od razu aktualizuje mockup produktu po prawej stronie.
+                    Kolor osprzętu może przełączać tabelę cenową, jeśli w panelu ustawisz warunki dla cennika.
                   </p>
                   <div className="hardware-grid">
-                    {HARDWARE_OPTIONS.map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={`hardware-card ${option.id === selectedHardware ? "is-active" : ""}`}
-                        onClick={() => setSelectedHardware(option.id)}
-                      >
-                        <span className="hardware-card-image" style={{ backgroundImage: `url(${option.image})` }} />
-                        <span className="hardware-card-footer">
-                          <span className="hardware-dot" style={{ background: option.color }} />
-                          <strong>{option.label}</strong>
-                        </span>
-                        <small>{option.note}</small>
-                      </button>
-                    ))}
+                    {hardwareSwatches.map((option) => {
+                      const imageUrl = absolutizeUrl(option.image_url || "", endpointOrigin);
+                      const tileStyle = imageUrl
+                        ? { backgroundImage: `url(${imageUrl})` }
+                        : {
+                            background: `linear-gradient(145deg, ${option.color || "#1e314b"}, rgba(10, 21, 36, 0.9))`,
+                          };
+
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={`hardware-card ${option.id === selectedHardware?.id ? "is-active" : ""}`}
+                          onClick={() => setSelectedHardwareId(option.id)}
+                        >
+                          <span className="hardware-card-image" style={tileStyle} />
+                          <span className="hardware-card-footer">
+                            <span className="hardware-dot" style={{ background: option.color || "#8ea0b7" }} />
+                            <strong>{option.label || option.id}</strong>
+                          </span>
+                          <small>Dopłata: {toNumber(option.price_delta, 0).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} zł</small>
+                        </button>
+                      );
+                    })}
                   </div>
                 </article>
               ) : null}
 
-              {currentStepId === "fabric" ? (
+              {activeStepId === "fabric" ? (
                 <article className="catalog-card">
-                  <h2>Krok 2: Wybierz tkaninę</h2>
+                  <h2>{steps[currentStep]?.label}: wybierz tkaninę</h2>
                   <p className="configurator-field-note">
-                    Najpierw wybór estetyki (tkanina), potem precyzyjne wymiary - to zwykle daje lepszą konwersję.
+                    Grupa tkanin i kolor mogą wskazywać inną tabelę cenową oraz mieć własną dopłatę/rabat.
                   </p>
                   <div className="fabric-groups">
-                    {FABRIC_GROUPS.map((group) => (
+                    {fabricGroups.map((group) => (
                       <button
                         key={group.id}
                         type="button"
-                        className={`fabric-group-tab ${group.id === selectedFabricGroup ? "is-active" : ""}`}
+                        className={`fabric-group-tab ${group.id === activeFabricGroup?.id ? "is-active" : ""}`}
                         onClick={() => {
-                          setSelectedFabricGroup(group.id);
-                          setSelectedFabricCode(group.swatches[0].code);
+                          const firstCode = group.swatches?.[0]?.code || group.swatches?.[0]?.id || "";
+                          setSelectedFabricGroupId(group.id);
+                          setSelectedFabricCode(firstCode);
                         }}
                       >
                         {group.label}
                       </button>
                     ))}
                   </div>
-                  <p className="configurator-field-note">{fabricGroup.note}</p>
+                  <p className="configurator-field-note">{activeFabricGroup?.note || "Wybierz grupę i kolor tkaniny."}</p>
                   <div className="fabric-grid">
-                    {fabricGroup.swatches.map((swatch) => (
-                      <button
-                        key={swatch.id}
-                        type="button"
-                        className={`fabric-swatch ${swatch.code === selectedFabricCode ? "is-active" : ""}`}
-                        onClick={() => setSelectedFabricCode(swatch.code)}
-                      >
-                        <span className="fabric-swatch-color" style={{ background: swatch.color }} />
-                        <span className="fabric-swatch-code">{swatch.code}</span>
-                      </button>
-                    ))}
+                    {(activeFabricGroup?.swatches || []).map((swatch) => {
+                      const swatchCode = swatch.code || swatch.id;
+                      const swatchImage = absolutizeUrl(swatch.image_url || "", endpointOrigin);
+                      return (
+                        <button
+                          key={swatch.id || swatchCode}
+                          type="button"
+                          className={`fabric-swatch ${swatchCode === (activeFabric?.code || activeFabric?.id) ? "is-active" : ""}`}
+                          onClick={() => setSelectedFabricCode(swatchCode)}
+                        >
+                          <span
+                            className="fabric-swatch-color"
+                            style={
+                              swatchImage
+                                ? { backgroundImage: `url(${swatchImage})`, backgroundSize: "cover", backgroundPosition: "center" }
+                                : { background: swatch.color || "#8ea0b7" }
+                            }
+                          />
+                          <span className="fabric-swatch-code">{swatchCode}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </article>
               ) : null}
 
-              {currentStepId === "dimensions" ? (
+              {activeStepId === "dimensions" ? (
                 <article className="catalog-card">
-                  <h2>Krok 3: Wymiary i sterowanie</h2>
+                  <h2>{steps[currentStep]?.label}</h2>
                   <p className="configurator-field-note">
-                    Dodaj wiele pozycji dla tego samego koloru. Każdą pozycję możesz szybko zduplikować.
+                    Możesz dodać wiele pozycji. Cennik czyta pola wskazane w panelu jako szerokość i wysokość do wyceny.
                   </p>
+
                   <div className="measurements-list">
                     {positions.map((position, idx) => {
                       const selectedBead =
-                        GLAZING_BEAD_OPTIONS.find((entry) => entry.id === position.glazingBead) ||
-                        GLAZING_BEAD_OPTIONS[0];
+                        glazingOptions.find((entry) => entry.id === position.glazingBeadId) || glazingOptions[0] || null;
+
                       return (
                         <article key={position.id} className="measurement-card">
                           <header>
@@ -569,92 +1022,76 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                           </header>
 
                           <div className="measurement-grid">
-                            <label>
-                              Szerokość (mm)
-                              <input
-                                type="number"
-                                min={100}
-                                step={1}
-                                value={position.width}
-                                onChange={(event) =>
-                                  updatePosition(position.id, { width: parseNumericInput(event.target.value) })
-                                }
-                              />
-                            </label>
-                            <label>
-                              Wysokość (mm)
-                              <input
-                                type="number"
-                                min={100}
-                                step={1}
-                                value={position.height}
-                                onChange={(event) =>
-                                  updatePosition(position.id, { height: parseNumericInput(event.target.value) })
-                                }
-                              />
-                            </label>
-                            <label>
-                              Ilość
-                              <input
-                                type="number"
-                                min={1}
-                                step={1}
-                                value={position.quantity}
-                                onChange={(event) =>
-                                  updatePosition(position.id, {
-                                    quantity: Math.max(1, parseNumericInput(event.target.value)),
-                                  })
-                                }
-                              />
-                            </label>
-                            <label>
-                              Strona sterowania
-                              <select
-                                value={position.controlSide}
-                                onChange={(event) =>
-                                  updatePosition(position.id, {
-                                    controlSide: event.target.value === "left" ? "left" : "right",
-                                  })
-                                }
-                              >
-                                <option value="right">Prawa</option>
-                                <option value="left">Lewa</option>
-                              </select>
-                            </label>
-                            <label>
-                              Listwa przyszybowa
-                              <select
-                                value={position.glazingBead}
-                                onChange={(event) =>
-                                  updatePosition(position.id, {
-                                    glazingBead:
-                                      event.target.value === "round"
-                                        ? "round"
-                                        : event.target.value === "angled"
-                                          ? "angled"
-                                          : "flat",
-                                  })
-                                }
-                              >
-                                {GLAZING_BEAD_OPTIONS.map((option) => (
-                                  <option key={option.id} value={option.id}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <div className="measurement-tooltip">
-                              <img src={selectedBead.image} alt={selectedBead.label} />
-                              <div>
-                                <strong>{selectedBead.label}</strong>
-                                <p>{selectedBead.note}</p>
+                            {dimensionFields.map((field) => {
+                              const value = toNumber(position.values[field.key], toNumber(field.default, 0));
+                              const step = toNumber(field.step, 1);
+                              const min = toNumber(field.min, 0);
+                              const max = toNumber(field.max, 0);
+                              return (
+                                <label key={`${position.id}-${field.key}`}>
+                                  {field.label}
+                                  <input
+                                    type="number"
+                                    min={min > 0 ? min : undefined}
+                                    max={max > 0 ? max : undefined}
+                                    step={step > 0 ? step : 1}
+                                    value={value}
+                                    onChange={(event) => updatePositionValue(position.id, field.key, event.target.value)}
+                                  />
+                                </label>
+                              );
+                            })}
+
+                            {controlSideOptions.length > 0 ? (
+                              <label>
+                                Strona sterowania
+                                <select
+                                  value={position.controlSideId}
+                                  onChange={(event) => updatePositionControlSide(position.id, event.target.value)}
+                                >
+                                  {controlSideOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            ) : null}
+
+                            {glazingOptions.length > 0 ? (
+                              <label>
+                                Rodzaj listwy przyszybowej
+                                <select
+                                  value={position.glazingBeadId}
+                                  onChange={(event) => updatePositionGlazing(position.id, event.target.value)}
+                                >
+                                  {glazingOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            ) : null}
+
+                            {selectedBead ? (
+                              <div className="measurement-tooltip">
+                                <img
+                                  src={absolutizeUrl(selectedBead.image_url || "", endpointOrigin)}
+                                  alt={selectedBead.label}
+                                />
+                                <div>
+                                  <strong>{selectedBead.label}</strong>
+                                  <p>{selectedBead.note || "Informacja o typie listwy przyszybowej."}</p>
+                                </div>
                               </div>
-                            </div>
+                            ) : null}
                           </div>
                         </article>
                       );
                     })}
                   </div>
+
                   <div className="measurement-footer">
                     <button type="button" onClick={addEmptyPosition}>
                       Dodaj nową pozycję
@@ -668,7 +1105,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                   <button type="button" onClick={goPrevStep} disabled={currentStep === 0}>
                     Wstecz
                   </button>
-                  {currentStep < STEPS.length - 1 ? (
+                  {currentStep < steps.length - 1 ? (
                     <button type="button" onClick={goNextStep} disabled={!canProceed}>
                       Dalej
                     </button>
@@ -685,29 +1122,41 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
               <article className="catalog-card">
                 <h3>Podgląd na żywo</h3>
                 <p>
-                  Kolor osprzętu i tkaniny nanoszony jest na mockup. Docelowo podmienimy tu finalne warstwy PNG/SVG.
+                  Cena liczona jest z tabeli: <strong>{activePricingTable?.name || "fallback"}</strong>.
                 </p>
 
                 <div className="config-preview-mockup" style={{ backgroundImage: `url(${productImage})` }}>
                   <div className="config-preview-window">
                     <span
                       className="config-preview-cassette"
-                      style={{ background: `linear-gradient(180deg, ${hardwareOption.accent}, ${hardwareOption.color})` }}
+                      style={{
+                        background: `linear-gradient(180deg, ${selectedHardware?.color || "#9ca6b7"}, ${selectedHardware?.color || "#3e434b"})`,
+                      }}
                     />
-                    <span className="config-preview-guide is-left" style={{ background: hardwareOption.color }} />
-                    <span className="config-preview-guide is-right" style={{ background: hardwareOption.color }} />
-                    <span className="config-preview-fabric" style={{ background: fabric.color }} />
+                    <span className="config-preview-guide is-left" style={{ background: selectedHardware?.color || "#3e434b" }} />
+                    <span className="config-preview-guide is-right" style={{ background: selectedHardware?.color || "#3e434b" }} />
+                    <span
+                      className="config-preview-fabric"
+                      style={{
+                        background: activeFabric?.color || "#9cadc2",
+                        backgroundImage: activeFabric?.image_url
+                          ? `url(${absolutizeUrl(activeFabric.image_url, endpointOrigin)})`
+                          : undefined,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }}
+                    />
                   </div>
                 </div>
 
                 <div className="config-summary-grid">
                   <div>
                     <span>Osprzęt</span>
-                    <strong>{hardwareOption.label}</strong>
+                    <strong>{selectedHardware?.label || "-"}</strong>
                   </div>
                   <div>
                     <span>Tkanina</span>
-                    <strong>{fabric.code}</strong>
+                    <strong>{activeFabric?.code || activeFabric?.id || "-"}</strong>
                   </div>
                   <div>
                     <span>Ilość pozycji</span>
@@ -717,15 +1166,35 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                     <span>Sztuk łącznie</span>
                     <strong>{totalItems}</strong>
                   </div>
+                  <div>
+                    <span>Wybrany cennik</span>
+                    <strong>{activePricingTable?.id || "fallback"}</strong>
+                  </div>
+                  <div>
+                    <span>Cena 1. pozycji</span>
+                    <strong>
+                      {(rowEstimates[0]?.unitPrice || 0).toLocaleString("pl-PL", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      zł
+                    </strong>
+                  </div>
                   <div className="config-summary-total">
                     <span>Szacunkowo od</span>
-                    <strong>{estimatedPrice.toLocaleString("pl-PL")} zł</strong>
+                    <strong>
+                      {estimatedPrice.toLocaleString("pl-PL", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      zł
+                    </strong>
                   </div>
                 </div>
 
                 <div className="configurator-links">
-                  <Link href={`/produkt/${supportedProductSlug}`}>Wróć do karty produktu</Link>
-                  <Link href="/kategoria/oslony-wewnetrzne">Wróć do kategorii</Link>
+                  <Link href={`/produkt/${productSlug}`}>Wróć do karty produktu</Link>
+                  <Link href={categoryHref}>Wróć do kategorii</Link>
                 </div>
               </article>
             </aside>
