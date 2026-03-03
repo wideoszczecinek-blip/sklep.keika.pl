@@ -1722,6 +1722,82 @@ a {
   font-weight: 700;
 }
 
+.config-mobile-summary {
+  display: none;
+}
+
+.config-mobile-summary-preview {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.config-preview-mockup--mini {
+  margin-top: 0;
+  min-height: 74px;
+  width: 98px;
+  border-radius: 0.64rem;
+}
+
+.config-preview-mockup--mini .config-preview-window {
+  inset: 10% 14%;
+  border-radius: 0.48rem;
+}
+
+.config-preview-mockup--mini .config-preview-cassette {
+  height: 12%;
+}
+
+.config-preview-mockup--mini .config-preview-guide {
+  top: 12%;
+  width: 7%;
+}
+
+.config-preview-mockup--mini .config-preview-fabric {
+  left: 7%;
+  right: 7%;
+  top: 12%;
+}
+
+.config-preview-mockup--modal {
+  margin-top: 0;
+  min-height: min(74vh, 520px);
+}
+
+.config-mobile-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: rgba(4, 10, 18, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  backdrop-filter: blur(12px);
+}
+
+.config-mobile-preview-shell {
+  position: relative;
+  width: min(94vw, 520px);
+}
+
+.config-mobile-preview-close {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(209, 235, 255, 0.54);
+  border-radius: 999px;
+  background: rgba(8, 24, 38, 0.82);
+  color: #ecf6ff;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 @media (max-width: 1100px) {
   .hero-inner {
     grid-template-columns: 1fr;
@@ -2065,12 +2141,113 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .configurator-root .catalog-main {
+    padding-top: 5.9rem;
+    padding-bottom: 0.55rem;
+    min-height: 100svh;
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    gap: 0.52rem;
+    overflow: hidden;
+  }
+
+  .config-mobile-summary {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.52rem;
+    border: 1px solid rgba(190, 224, 255, 0.36);
+    border-radius: 0.86rem;
+    background: rgba(9, 22, 39, 0.82);
+    backdrop-filter: blur(11px);
+    padding: 0.42rem;
+    position: sticky;
+    top: 0;
+    z-index: 24;
+  }
+
+  .config-mobile-summary-price {
+    min-width: 0;
+    display: grid;
+    gap: 0.05rem;
+  }
+
+  .config-mobile-summary-price span {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(233, 246, 255, 0.72);
+  }
+
+  .config-mobile-summary-price strong {
+    font-size: 0.96rem;
+    color: #f3f9ff;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .config-mobile-summary-price small {
+    font-size: 0.7rem;
+    color: rgba(233, 246, 255, 0.8);
+    white-space: nowrap;
+  }
+
+  .config-mobile-summary-toggle {
+    border: 1px solid rgba(184, 222, 255, 0.36);
+    border-radius: 999px;
+    background: rgba(14, 32, 51, 0.7);
+    color: #ebf7ff;
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 0.38rem 0.58rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.24rem;
+    cursor: pointer;
+  }
+
+  .config-mobile-summary-chevron {
+    display: inline-block;
+    transition: transform 0.24s ease;
+    line-height: 1;
+  }
+
+  .config-mobile-summary-chevron.is-open {
+    transform: rotate(180deg);
+  }
+
+  .configurator-layout {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .configurator-main-panel {
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 0.06rem;
+    padding-bottom: 0.22rem;
+  }
+
+  .configurator-layout.is-mobile-closed .configurator-main-panel {
+    display: none;
+  }
+
+  .configurator-layout.is-mobile-closed {
+    min-height: 0;
+  }
+
   .configurator-nav {
     flex-direction: column;
   }
 
   .configurator-nav button {
     width: 100%;
+  }
+
+  .configurator-preview-panel {
+    display: none;
   }
 
   .measurement-tooltip {
@@ -2373,6 +2550,37 @@ html[data-theme="light"] .fabric-group-tab.is-active {
 html[data-theme="light"] .config-preview-window {
   border-color: rgba(255, 255, 255, 0.76);
   background: rgba(235, 243, 252, 0.42);
+}
+
+html[data-theme="light"] .config-mobile-summary {
+  border-color: rgba(28, 59, 93, 0.24);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 24px rgba(35, 60, 86, 0.14);
+}
+
+html[data-theme="light"] .config-mobile-summary-price span,
+html[data-theme="light"] .config-mobile-summary-price small {
+  color: rgba(24, 53, 84, 0.74);
+}
+
+html[data-theme="light"] .config-mobile-summary-price strong {
+  color: #123452;
+}
+
+html[data-theme="light"] .config-mobile-summary-toggle {
+  border-color: rgba(35, 66, 100, 0.34);
+  background: rgba(245, 250, 255, 0.95);
+  color: #173655;
+}
+
+html[data-theme="light"] .config-mobile-preview-modal {
+  background: rgba(238, 246, 255, 0.74);
+}
+
+html[data-theme="light"] .config-mobile-preview-close {
+  border-color: rgba(35, 66, 100, 0.4);
+  background: rgba(252, 255, 255, 0.92);
+  color: #123453;
 }
 
 html[data-theme="light"] .mobile-fixed-cta {

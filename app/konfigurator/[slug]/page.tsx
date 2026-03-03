@@ -504,6 +504,8 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   const [selectedFabricGroupId, setSelectedFabricGroupId] = useState("");
   const [selectedFabricCode, setSelectedFabricCode] = useState("");
   const [positions, setPositions] = useState<MeasurementPosition[]>([]);
+  const [mobileAccordionOpen, setMobileAccordionOpen] = useState(true);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -827,7 +829,40 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   }
 
+  const estimatedPriceLabel = estimatedPrice.toLocaleString("pl-PL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
   const categoryHref = foundGroup?.slug ? `/kategoria/${foundGroup.slug}` : "/";
+
+  function renderPreviewWindow() {
+    const fabricImage = activeFabric?.image_url
+      ? absolutizeUrl(activeFabric.image_url, endpointOrigin)
+      : "";
+
+    return (
+      <div className="config-preview-window">
+        <span
+          className="config-preview-cassette"
+          style={{
+            background: `linear-gradient(180deg, ${selectedHardware?.color || "#9ca6b7"}, ${selectedHardware?.color || "#3e434b"})`,
+          }}
+        />
+        <span className="config-preview-guide is-left" style={{ background: selectedHardware?.color || "#3e434b" }} />
+        <span className="config-preview-guide is-right" style={{ background: selectedHardware?.color || "#3e434b" }} />
+        <span
+          className="config-preview-fabric"
+          style={{
+            background: activeFabric?.color || "#9cadc2",
+            backgroundImage: fabricImage ? `url(${fabricImage})` : undefined,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -889,7 +924,38 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
             </p>
           </section>
         ) : (
-          <section className="configurator-layout">
+          <>
+            <div className={`config-mobile-summary ${mobileAccordionOpen ? "is-open" : "is-collapsed"}`}>
+              <button
+                type="button"
+                className="config-mobile-summary-preview"
+                onClick={() => setMobilePreviewOpen(true)}
+                aria-label="Powiększ podgląd produktu"
+              >
+                <div className="config-preview-mockup config-preview-mockup--mini" style={{ backgroundImage: `url(${productImage})` }}>
+                  {renderPreviewWindow()}
+                </div>
+              </button>
+
+              <div className="config-mobile-summary-price">
+                <span>Podsumowanie</span>
+                <strong>{estimatedPriceLabel} zł</strong>
+                <small>{positions.length} poz. • {totalItems} szt.</small>
+              </div>
+
+              <button
+                type="button"
+                className="config-mobile-summary-toggle"
+                onClick={() => setMobileAccordionOpen((prev) => !prev)}
+                aria-expanded={mobileAccordionOpen}
+                aria-label={mobileAccordionOpen ? "Ukryj kroki konfiguracji" : "Pokaż kroki konfiguracji"}
+              >
+                <span>{mobileAccordionOpen ? "Ukryj" : "Kroki"}</span>
+                <span className={`config-mobile-summary-chevron ${mobileAccordionOpen ? "is-open" : ""}`} aria-hidden="true">▾</span>
+              </button>
+            </div>
+
+            <section className={`configurator-layout ${mobileAccordionOpen ? "is-mobile-open" : "is-mobile-closed"}`}>
             <div className="configurator-main-panel">
               <article className="catalog-card">
                 <p className="configurator-eyebrow">Konfigurator krokowy</p>
@@ -1126,27 +1192,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                 </p>
 
                 <div className="config-preview-mockup" style={{ backgroundImage: `url(${productImage})` }}>
-                  <div className="config-preview-window">
-                    <span
-                      className="config-preview-cassette"
-                      style={{
-                        background: `linear-gradient(180deg, ${selectedHardware?.color || "#9ca6b7"}, ${selectedHardware?.color || "#3e434b"})`,
-                      }}
-                    />
-                    <span className="config-preview-guide is-left" style={{ background: selectedHardware?.color || "#3e434b" }} />
-                    <span className="config-preview-guide is-right" style={{ background: selectedHardware?.color || "#3e434b" }} />
-                    <span
-                      className="config-preview-fabric"
-                      style={{
-                        background: activeFabric?.color || "#9cadc2",
-                        backgroundImage: activeFabric?.image_url
-                          ? `url(${absolutizeUrl(activeFabric.image_url, endpointOrigin)})`
-                          : undefined,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                      }}
-                    />
-                  </div>
+                  {renderPreviewWindow()}
                 </div>
 
                 <div className="config-summary-grid">
@@ -1183,10 +1229,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                   <div className="config-summary-total">
                     <span>Szacunkowo od</span>
                     <strong>
-                      {estimatedPrice.toLocaleString("pl-PL", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}{" "}
+                      {estimatedPriceLabel}{" "}
                       zł
                     </strong>
                   </div>
@@ -1199,6 +1242,25 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
               </article>
             </aside>
           </section>
+
+          {mobilePreviewOpen ? (
+            <div className="config-mobile-preview-modal" role="dialog" aria-modal="true" aria-label="Powiększony podgląd" onClick={() => setMobilePreviewOpen(false)}>
+              <div className="config-mobile-preview-shell" onClick={(event) => event.stopPropagation()}>
+                <button
+                  type="button"
+                  className="config-mobile-preview-close"
+                  onClick={() => setMobilePreviewOpen(false)}
+                  aria-label="Zamknij podgląd"
+                >
+                  ×
+                </button>
+                <div className="config-preview-mockup config-preview-mockup--modal" style={{ backgroundImage: `url(${productImage})` }}>
+                  {renderPreviewWindow()}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          </>
         )}
       </main>
     </div>
