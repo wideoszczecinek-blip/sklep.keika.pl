@@ -506,6 +506,9 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   const [positions, setPositions] = useState<MeasurementPosition[]>([]);
   const [mobileAccordionOpen, setMobileAccordionOpen] = useState(true);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [selectionToast, setSelectionToast] = useState("");
+  const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
+  const [openFieldHelp, setOpenFieldHelp] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -596,6 +599,16 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
     }
   }, [currentStep, steps.length]);
 
+  useEffect(() => {
+    setOpenFieldHelp(null);
+  }, [currentStep]);
+
+  useEffect(() => {
+    if (!selectionToast) return;
+    const timer = window.setTimeout(() => setSelectionToast(""), 2200);
+    return () => window.clearTimeout(timer);
+  }, [selectionToast]);
+
   const productSlug = String(product.slug || slug || DEFAULT_PRODUCT.slug || "rolety-best-1").trim();
   const productName = product.name || product.title || profile?.product_name || DEFAULT_PRODUCT.name || "Produkt";
   const productSubtitle =
@@ -628,9 +641,53 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
     () => (Array.isArray(profile?.control_side_options) ? profile!.control_side_options : []),
     [profile],
   );
-  const dimensionFields = useMemo(
+
+  const baseDimensionFields = useMemo(
     () => (Array.isArray(profile?.dimension_fields) && profile!.dimension_fields.length ? profile!.dimension_fields : DEFAULT_CONFIGURATOR_PROFILE.dimension_fields),
     [profile],
+  );
+
+  const isBest1Configurator = productSlug === "rolety-best-1";
+
+  const dimensionFields = useMemo(() => {
+    if (!isBest1Configurator) return baseDimensionFields;
+
+    const widthField = getFieldByRole(baseDimensionFields, "width") || baseDimensionFields[0] || { key: "width_mm", label: "Szerokość", role: "width" as const, default: 900, min: 100, max: 4000, step: 1 };
+    const heightField = getFieldByRole(baseDimensionFields, "height") || baseDimensionFields[1] || { key: "height_mm", label: "Wysokość", role: "height" as const, default: 1200, min: 100, max: 4000, step: 1 };
+
+    const glassField =
+      baseDimensionFields.find((entry) => {
+        const key = String(entry.key || "").toLowerCase();
+        const label = String(entry.label || "").toLowerCase();
+        return key.includes("glass") || key.includes("szyb") || label.includes("szyb");
+      }) ||
+      {
+        key: "glass_width_mm",
+        label: "Szerokość szyby (mm)",
+        role: "none" as const,
+        default: 700,
+        min: 80,
+        max: 3900,
+        step: 1,
+      };
+
+    return [
+      { ...widthField, label: "Szerokość całkowita (mm)", role: "width" as const },
+      { ...glassField, label: "Szerokość szyby (mm)", role: "none" as const },
+      { ...heightField, label: "Wysokość całkowita (mm)", role: "height" as const },
+      ...baseDimensionFields.filter((entry) =>
+        entry.key !== widthField.key &&
+        entry.key !== heightField.key &&
+        entry.key !== glassField.key &&
+        entry.role !== "quantity",
+      ),
+      ...baseDimensionFields.filter((entry) => entry.role === "quantity"),
+    ];
+  }, [baseDimensionFields, isBest1Configurator]);
+
+  const visibleDimensionFields = useMemo(
+    () => dimensionFields.filter((entry) => entry.role !== "quantity"),
+    [dimensionFields],
   );
 
   const selectedHardware = useMemo(
@@ -864,8 +921,49 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
     );
   }
 
-  return (
-    <div
+  function openImageZoom(url: string, title: string) {
+    const cleanUrl = String(url || "").trim();
+    if (!cleanUrl) return;
+    setZoomImage({ url: cleanUrl, title });
+  }
+
+  function selectFabricSwatch(swatchCode: string, label: string) {
+    setSelectedFabricCode(swatchCode);
+    setSelectionToast("Wybrano kolor " + (label || swatchCode));
+  }
+
+  function getMeasurementGuide(field: ConfigDimensionField) {
+    const key = String(field.key || "").toLowerCase();
+    const label = String(field.label || "").toLowerCase();
+
+    if (key.includes("glass") || key.includes("szyb") || label.includes("szyb")) {
+      return {
+        title: "Szerokość szyby",
+        text: "Mierz samą szybę od uszczelki do uszczelki, bez listew przyszybowych.",
+        image: "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=900&q=80",
+      };
+    }
+
+    if (key.includes("height") || key.includes("wysok") || label.includes("wysok")) {
+      return {
+        title: "Wysokość całkowita",
+        text: "Mierz całe skrzydło okienne od górnej do dolnej krawędzi.",
+        image: "https://images.unsplash.com/photo-1600607687644-aac4c3eac7f4?auto=format&fit=crop&w=900&q=80",
+      };
+    }
+
+    if (key.includes("width") || key.includes("szer") || label.includes("szer")) {
+      return {
+        title: "Szerokość całkowita",
+        text: "Mierz całe skrzydło okienne od lewej do prawej krawędzi.",
+        image: "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=900&q=80",
+      };
+    }
+
+    return null;
+  }
+
+  return (    <div
       className="catalog-root configurator-root"
       style={{
         backgroundImage: productImage
@@ -956,234 +1054,274 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
             </div>
 
             <section className={`configurator-layout ${mobileAccordionOpen ? "is-mobile-open" : "is-mobile-closed"}`}>
-            <div className="configurator-main-panel">
-              <article className="catalog-card">
-                <p className="configurator-eyebrow">Konfigurator krokowy</p>
-                <h1>{productName}</h1>
-                <p className="configurator-lead">{productSubtitle}</p>
-                <p className="configurator-note">{productDescription}</p>
-                <div className="configurator-steps">
-                  {steps.map((step, idx) => (
-                    <button
-                      key={step.id}
-                      type="button"
-                      className={`configurator-step-chip ${idx === currentStep ? "is-active" : ""} ${idx < currentStep ? "is-done" : ""}`}
-                      onClick={() => setCurrentStep(idx)}
-                    >
-                      {step.label}
-                    </button>
-                  ))}
-                </div>
-              </article>
+              <div className="configurator-main-panel">
+                {activeStepId === "hardware" ? (
+                  <article className="catalog-card">
+                    <h2>Krok {currentStep + 1} z {steps.length}: Kolor kasety i prowadnic</h2>
+                    <div className="hardware-grid hardware-grid--visual">
+                      {hardwareSwatches.map((option) => {
+                        const imageUrl = absolutizeUrl(option.image_url || "", endpointOrigin);
+                        const previewImage = imageUrl || productImage;
+                        const tileStyle = imageUrl
+                          ? { backgroundImage: `url(${imageUrl})` }
+                          : {
+                              background: `linear-gradient(145deg, ${option.color || "#1e314b"}, rgba(10, 21, 36, 0.9))`,
+                            };
 
-              {activeStepId === "hardware" ? (
-                <article className="catalog-card">
-                  <h2>{steps[currentStep]?.label}: wybierz kolor osprzętu</h2>
-                  <p className="configurator-field-note">
-                    Kolor osprzętu może przełączać tabelę cenową, jeśli w panelu ustawisz warunki dla cennika.
-                  </p>
-                  <div className="hardware-grid">
-                    {hardwareSwatches.map((option) => {
-                      const imageUrl = absolutizeUrl(option.image_url || "", endpointOrigin);
-                      const tileStyle = imageUrl
-                        ? { backgroundImage: `url(${imageUrl})` }
-                        : {
-                            background: `linear-gradient(145deg, ${option.color || "#1e314b"}, rgba(10, 21, 36, 0.9))`,
-                          };
+                        return (
+                          <div key={option.id} className={`hardware-card ${option.id === selectedHardware?.id ? "is-active" : ""}`}>
+                            <button
+                              type="button"
+                              className="hardware-card-main"
+                              onClick={() => setSelectedHardwareId(option.id)}
+                            >
+                              <span className="hardware-card-image" style={tileStyle} />
+                              <span className="hardware-card-footer">
+                                <span className="hardware-dot" style={{ background: option.color || "#8ea0b7" }} />
+                                <strong>{option.label || option.id}</strong>
+                              </span>
+                              <small>Dopłata: {toNumber(option.price_delta, 0).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} zł</small>
+                            </button>
+                            <button
+                              type="button"
+                              className="config-option-zoom"
+                              aria-label={`Powiększ: ${option.label || option.id}`}
+                              onClick={() => openImageZoom(previewImage, option.label || option.id)}
+                            >
+                              🔍
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="configurator-field-note">Kaseta i prowadnice to najbardziej widoczny element rolety, więc wybierz kolor dopasowany do ramy okna.</p>
+                    <p className="configurator-field-note">Wybrany wariant może automatycznie przełączyć cennik, jeśli taki warunek ustawisz w panelu admina.</p>
+                  </article>
+                ) : null}
 
-                      return (
+                {activeStepId === "fabric" ? (
+                  <article className="catalog-card">
+                    <h2>Krok {currentStep + 1} z {steps.length}: Rodzaj i kolor materiału</h2>
+                    <div className="fabric-groups">
+                      {fabricGroups.map((group) => (
                         <button
-                          key={option.id}
+                          key={group.id}
                           type="button"
-                          className={`hardware-card ${option.id === selectedHardware?.id ? "is-active" : ""}`}
-                          onClick={() => setSelectedHardwareId(option.id)}
+                          className={`fabric-group-tab ${group.id === activeFabricGroup?.id ? "is-active" : ""}`}
+                          onClick={() => {
+                            const firstCode = group.swatches?.[0]?.code || group.swatches?.[0]?.id || "";
+                            setSelectedFabricGroupId(group.id);
+                            setSelectedFabricCode(firstCode);
+                          }}
                         >
-                          <span className="hardware-card-image" style={tileStyle} />
-                          <span className="hardware-card-footer">
-                            <span className="hardware-dot" style={{ background: option.color || "#8ea0b7" }} />
-                            <strong>{option.label || option.id}</strong>
-                          </span>
-                          <small>Dopłata: {toNumber(option.price_delta, 0).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} zł</small>
+                          {group.label}
                         </button>
-                      );
-                    })}
-                  </div>
-                </article>
-              ) : null}
+                      ))}
+                    </div>
+                    <div className="fabric-grid fabric-grid--visual">
+                      {(activeFabricGroup?.swatches || []).map((swatch) => {
+                        const swatchCode = swatch.code || swatch.id;
+                        const swatchLabel = swatch.label || swatchCode;
+                        const swatchImage = absolutizeUrl(swatch.image_url || "", endpointOrigin);
+                        const isChecked = swatchCode === (activeFabric?.code || activeFabric?.id);
+                        const zoomPreview = swatchImage || productImage;
 
-              {activeStepId === "fabric" ? (
-                <article className="catalog-card">
-                  <h2>{steps[currentStep]?.label}: wybierz tkaninę</h2>
-                  <p className="configurator-field-note">
-                    Grupa tkanin i kolor mogą wskazywać inną tabelę cenową oraz mieć własną dopłatę/rabat.
-                  </p>
-                  <div className="fabric-groups">
-                    {fabricGroups.map((group) => (
-                      <button
-                        key={group.id}
-                        type="button"
-                        className={`fabric-group-tab ${group.id === activeFabricGroup?.id ? "is-active" : ""}`}
-                        onClick={() => {
-                          const firstCode = group.swatches?.[0]?.code || group.swatches?.[0]?.id || "";
-                          setSelectedFabricGroupId(group.id);
-                          setSelectedFabricCode(firstCode);
-                        }}
-                      >
-                        {group.label}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="configurator-field-note">{activeFabricGroup?.note || "Wybierz grupę i kolor tkaniny."}</p>
-                  <div className="fabric-grid">
-                    {(activeFabricGroup?.swatches || []).map((swatch) => {
-                      const swatchCode = swatch.code || swatch.id;
-                      const swatchImage = absolutizeUrl(swatch.image_url || "", endpointOrigin);
-                      return (
-                        <button
-                          key={swatch.id || swatchCode}
-                          type="button"
-                          className={`fabric-swatch ${swatchCode === (activeFabric?.code || activeFabric?.id) ? "is-active" : ""}`}
-                          onClick={() => setSelectedFabricCode(swatchCode)}
-                        >
-                          <span
-                            className="fabric-swatch-color"
-                            style={
-                              swatchImage
-                                ? { backgroundImage: `url(${swatchImage})`, backgroundSize: "cover", backgroundPosition: "center" }
-                                : { background: swatch.color || "#8ea0b7" }
-                            }
-                          />
-                          <span className="fabric-swatch-code">{swatchCode}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </article>
-              ) : null}
-
-              {activeStepId === "dimensions" ? (
-                <article className="catalog-card">
-                  <h2>{steps[currentStep]?.label}</h2>
-                  <p className="configurator-field-note">
-                    Możesz dodać wiele pozycji. Cennik czyta pola wskazane w panelu jako szerokość i wysokość do wyceny.
-                  </p>
-
-                  <div className="measurements-list">
-                    {positions.map((position, idx) => {
-                      const selectedBead =
-                        glazingOptions.find((entry) => entry.id === position.glazingBeadId) || glazingOptions[0] || null;
-
-                      return (
-                        <article key={position.id} className="measurement-card">
-                          <header>
-                            <strong>Pozycja {idx + 1}</strong>
-                            <div className="measurement-actions">
-                              <button type="button" onClick={() => addSimilarPosition(position.id)}>
-                                Dodaj podobną
-                              </button>
-                              <button type="button" onClick={() => removePosition(position.id)}>
-                                Usuń
+                        return (
+                          <div key={swatch.id || swatchCode} className={`fabric-swatch fabric-swatch--visual ${isChecked ? "is-active" : ""}`}>
+                            <button
+                              type="button"
+                              className="fabric-swatch-main"
+                              onClick={() => selectFabricSwatch(swatchCode, swatchLabel)}
+                            >
+                              <span
+                                className="fabric-swatch-color"
+                                style={
+                                  swatchImage
+                                    ? { backgroundImage: `url(${swatchImage})`, backgroundSize: "cover", backgroundPosition: "center" }
+                                    : { background: swatch.color || "#8ea0b7" }
+                                }
+                              />
+                            </button>
+                            <div className="fabric-swatch-actions">
+                              <label className="fabric-swatch-checkbox">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(event) => {
+                                    if (event.target.checked) selectFabricSwatch(swatchCode, swatchLabel);
+                                  }}
+                                />
+                                <span>Zaznacz</span>
+                              </label>
+                              <button
+                                type="button"
+                                className="config-option-zoom"
+                                aria-label={`Powiększ: ${swatchLabel}`}
+                                onClick={() => openImageZoom(zoomPreview, swatchLabel)}
+                              >
+                                🔍
                               </button>
                             </div>
-                          </header>
-
-                          <div className="measurement-grid">
-                            {dimensionFields.map((field) => {
-                              const value = toNumber(position.values[field.key], toNumber(field.default, 0));
-                              const step = toNumber(field.step, 1);
-                              const min = toNumber(field.min, 0);
-                              const max = toNumber(field.max, 0);
-                              return (
-                                <label key={`${position.id}-${field.key}`}>
-                                  {field.label}
-                                  <input
-                                    type="number"
-                                    min={min > 0 ? min : undefined}
-                                    max={max > 0 ? max : undefined}
-                                    step={step > 0 ? step : 1}
-                                    value={value}
-                                    onChange={(event) => updatePositionValue(position.id, field.key, event.target.value)}
-                                  />
-                                </label>
-                              );
-                            })}
-
-                            {controlSideOptions.length > 0 ? (
-                              <label>
-                                Strona sterowania
-                                <select
-                                  value={position.controlSideId}
-                                  onChange={(event) => updatePositionControlSide(position.id, event.target.value)}
-                                >
-                                  {controlSideOptions.map((option) => (
-                                    <option key={option.id} value={option.id}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                            ) : null}
-
-                            {glazingOptions.length > 0 ? (
-                              <label>
-                                Rodzaj listwy przyszybowej
-                                <select
-                                  value={position.glazingBeadId}
-                                  onChange={(event) => updatePositionGlazing(position.id, event.target.value)}
-                                >
-                                  {glazingOptions.map((option) => (
-                                    <option key={option.id} value={option.id}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                            ) : null}
-
-                            {selectedBead ? (
-                              <div className="measurement-tooltip">
-                                <img
-                                  src={absolutizeUrl(selectedBead.image_url || "", endpointOrigin)}
-                                  alt={selectedBead.label}
-                                />
-                                <div>
-                                  <strong>{selectedBead.label}</strong>
-                                  <p>{selectedBead.note || "Informacja o typie listwy przyszybowej."}</p>
-                                </div>
-                              </div>
-                            ) : null}
+                            <span className="fabric-swatch-code">{swatchCode}</span>
                           </div>
-                        </article>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                    <p className="configurator-field-note">Najpierw wybierz grupę materiału, potem konkretny kolor i zaznacz go checkboxem na zdjęciu.</p>
+                    <p className="configurator-field-note">Po zaznaczeniu podgląd aktualizuje się od razu, a na dole pojawia się potwierdzenie wyboru.</p>
+                  </article>
+                ) : null}
 
-                  <div className="measurement-footer">
-                    <button type="button" onClick={addEmptyPosition}>
-                      Dodaj nową pozycję
-                    </button>
+                {activeStepId === "dimensions" ? (
+                  <article className="catalog-card">
+                    <h2>Krok {currentStep + 1} z {steps.length}: Wymiary</h2>
+                    <p className="configurator-field-note">Dla systemu Best 1 podaj szerokość całkowitą, szerokość szyby i wysokość całkowitą.</p>
+
+                    <div className="measurements-list">
+                      {positions.map((position, idx) => {
+                        const selectedBead =
+                          glazingOptions.find((entry) => entry.id === position.glazingBeadId) || glazingOptions[0] || null;
+
+                        return (
+                          <article key={position.id} className="measurement-card">
+                            <header>
+                              <strong>Pozycja {idx + 1}</strong>
+                              <div className="measurement-actions">
+                                <button type="button" onClick={() => addSimilarPosition(position.id)}>
+                                  Dodaj podobną
+                                </button>
+                                <button type="button" onClick={() => removePosition(position.id)}>
+                                  Usuń
+                                </button>
+                              </div>
+                            </header>
+
+                            <div className="measurement-grid">
+                              {visibleDimensionFields.map((field) => {
+                                const value = toNumber(position.values[field.key], toNumber(field.default, 0));
+                                const step = toNumber(field.step, 1);
+                                const min = toNumber(field.min, 0);
+                                const max = toNumber(field.max, 0);
+                                const guide = getMeasurementGuide(field);
+                                const helpKey = `${position.id}-${field.key}`;
+                                const helpOpen = openFieldHelp === helpKey;
+
+                                return (
+                                  <label key={`${position.id}-${field.key}`} className="measurement-field">
+                                    <span className="measurement-label-row">
+                                      <span>{field.label}</span>
+                                      {guide ? (
+                                        <button
+                                          type="button"
+                                          className="measurement-help-btn"
+                                          aria-label={`Pokaż pomoc: ${field.label}`}
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            setOpenFieldHelp((prev) => (prev === helpKey ? null : helpKey));
+                                          }}
+                                        >
+                                          ?
+                                        </button>
+                                      ) : null}
+                                    </span>
+                                    <input
+                                      type="number"
+                                      min={min > 0 ? min : undefined}
+                                      max={max > 0 ? max : undefined}
+                                      step={step > 0 ? step : 1}
+                                      value={value}
+                                      onChange={(event) => updatePositionValue(position.id, field.key, event.target.value)}
+                                    />
+                                    {guide && helpOpen ? (
+                                      <div className="measurement-help-popover">
+                                        <img src={guide.image} alt={guide.title} />
+                                        <div>
+                                          <strong>{guide.title}</strong>
+                                          <p>{guide.text}</p>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </label>
+                                );
+                              })}
+
+                              {controlSideOptions.length > 0 ? (
+                                <label>
+                                  Strona sterowania
+                                  <select
+                                    value={position.controlSideId}
+                                    onChange={(event) => updatePositionControlSide(position.id, event.target.value)}
+                                  >
+                                    {controlSideOptions.map((option) => (
+                                      <option key={option.id} value={option.id}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ) : null}
+
+                              {glazingOptions.length > 0 ? (
+                                <label>
+                                  Rodzaj listwy przyszybowej
+                                  <select
+                                    value={position.glazingBeadId}
+                                    onChange={(event) => updatePositionGlazing(position.id, event.target.value)}
+                                  >
+                                    {glazingOptions.map((option) => (
+                                      <option key={option.id} value={option.id}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ) : null}
+
+                              {selectedBead ? (
+                                <div className="measurement-tooltip">
+                                  <img
+                                    src={absolutizeUrl(selectedBead.image_url || "", endpointOrigin)}
+                                    alt={selectedBead.label}
+                                  />
+                                  <div>
+                                    <strong>{selectedBead.label}</strong>
+                                    <p>{selectedBead.note || "Informacja o typie listwy przyszybowej."}</p>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+
+                    <div className="measurement-footer">
+                      <button type="button" onClick={addEmptyPosition}>
+                        Dodaj nową pozycję
+                      </button>
+                    </div>
+                  </article>
+                ) : null}
+
+                <article className="catalog-card">
+                  <div className="configurator-nav">
+                    {currentStep > 0 ? (
+                      <button type="button" className="config-nav-prev" onClick={goPrevStep}>
+                        Wstecz
+                      </button>
+                    ) : <span className="config-nav-spacer" />} 
+                    {currentStep < steps.length - 1 ? (
+                      <button type="button" className="config-nav-next" onClick={goNextStep} disabled={!canProceed}>
+                        Dalej
+                      </button>
+                    ) : (
+                      <button type="button" className="config-nav-next" disabled={!areDimensionsValid}>
+                        Dodaj do koszyka (demo)
+                      </button>
+                    )}
                   </div>
                 </article>
-              ) : null}
-
-              <article className="catalog-card">
-                <div className="configurator-nav">
-                  <button type="button" onClick={goPrevStep} disabled={currentStep === 0}>
-                    Wstecz
-                  </button>
-                  {currentStep < steps.length - 1 ? (
-                    <button type="button" onClick={goNextStep} disabled={!canProceed}>
-                      Dalej
-                    </button>
-                  ) : (
-                    <button type="button" disabled={!areDimensionsValid}>
-                      Dodaj do koszyka (demo)
-                    </button>
-                  )}
-                </div>
-              </article>
-            </div>
-
+              </div>
             <aside className="configurator-preview-panel">
               <article className="catalog-card">
                 <h3>Podgląd na żywo</h3>
@@ -1258,6 +1396,29 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                   {renderPreviewWindow()}
                 </div>
               </div>
+            </div>
+          ) : null}
+
+          {zoomImage ? (
+            <div className="config-option-preview-modal" role="dialog" aria-modal="true" aria-label={zoomImage.title} onClick={() => setZoomImage(null)}>
+              <div className="config-option-preview-shell" onClick={(event) => event.stopPropagation()}>
+                <button
+                  type="button"
+                  className="config-option-preview-close"
+                  onClick={() => setZoomImage(null)}
+                  aria-label="Zamknij podgląd opcji"
+                >
+                  ×
+                </button>
+                <img src={zoomImage.url} alt={zoomImage.title} className="config-option-preview-image" />
+                <p>{zoomImage.title}</p>
+              </div>
+            </div>
+          ) : null}
+
+          {selectionToast ? (
+            <div className="config-selection-toast" role="status" aria-live="polite">
+              {selectionToast}
             </div>
           ) : null}
           </>

@@ -1388,6 +1388,7 @@ a {
 }
 
 .hardware-card {
+  position: relative;
   border: 1px solid rgba(197, 231, 255, 0.28);
   border-radius: 0.92rem;
   background: rgba(12, 26, 44, 0.58);
@@ -1396,7 +1397,15 @@ a {
   display: grid;
   gap: 0.46rem;
   text-align: left;
+  overflow: hidden;
+}
+
+.hardware-card-main {
+  all: unset;
+  display: grid;
+  gap: 0.46rem;
   cursor: pointer;
+  width: 100%;
 }
 
 .hardware-card.is-active {
@@ -1427,6 +1436,30 @@ a {
 
 .hardware-card small {
   color: rgba(233, 246, 255, 0.75);
+}
+
+.config-option-zoom {
+  position: absolute;
+  right: 0.44rem;
+  top: 0.44rem;
+  width: 1.72rem;
+  height: 1.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(191, 228, 255, 0.42);
+  background: rgba(8, 20, 34, 0.74);
+  color: #eff8ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.86rem;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.config-option-zoom:hover,
+.config-option-zoom:focus-visible {
+  border-color: rgba(130, 235, 227, 0.88);
+  box-shadow: 0 6px 16px rgba(5, 18, 32, 0.4);
 }
 
 .fabric-groups {
@@ -1487,6 +1520,43 @@ a {
   letter-spacing: 0.03em;
 }
 
+.fabric-swatch-main {
+  all: unset;
+  cursor: pointer;
+}
+
+.fabric-swatch--visual {
+  position: relative;
+  padding-top: 0.45rem;
+}
+
+.fabric-swatch-actions {
+  margin-top: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.fabric-swatch-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.7rem;
+  color: rgba(233, 246, 255, 0.86);
+}
+
+.fabric-swatch-checkbox input {
+  accent-color: #6de9e3;
+}
+
+.fabric-swatch-actions .config-option-zoom {
+  position: static;
+  width: 1.6rem;
+  height: 1.6rem;
+  font-size: 0.78rem;
+}
+
 .measurements-list {
   margin-top: 0.8rem;
   display: grid;
@@ -1539,6 +1609,56 @@ a {
   font-size: 0.8rem;
 }
 
+.measurement-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.measurement-help-btn {
+  width: 1.32rem;
+  height: 1.32rem;
+  border-radius: 999px;
+  border: 1px solid rgba(189, 225, 255, 0.4);
+  background: rgba(12, 31, 50, 0.64);
+  color: #edf7ff;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.measurement-help-popover {
+  margin-top: 0.28rem;
+  border: 1px solid rgba(193, 228, 255, 0.3);
+  border-radius: 0.66rem;
+  background: rgba(8, 20, 34, 0.78);
+  padding: 0.36rem;
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.measurement-help-popover img {
+  width: 100%;
+  height: 66px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
+.measurement-help-popover strong {
+  display: block;
+  font-size: 0.78rem;
+}
+
+.measurement-help-popover p {
+  margin: 0.18rem 0 0;
+  font-size: 0.74rem;
+  color: rgba(233, 246, 255, 0.82);
+}
+
 .measurement-grid input,
 .measurement-grid select {
   border: 1px solid rgba(196, 230, 255, 0.28);
@@ -1585,7 +1705,8 @@ a {
 
 .configurator-nav {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.6rem;
 }
 
@@ -1609,6 +1730,15 @@ a {
 .configurator-nav button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.config-nav-prev,
+.config-nav-spacer {
+  margin-right: auto;
+}
+
+.config-nav-next {
+  margin-left: auto;
 }
 
 .config-preview-mockup {
@@ -1796,6 +1926,74 @@ a {
   font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
+}
+
+
+.config-option-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 96;
+  background: rgba(4, 10, 18, 0.76);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.config-option-preview-shell {
+  position: relative;
+  width: min(94vw, 760px);
+  border-radius: 1rem;
+  border: 1px solid rgba(194, 228, 255, 0.42);
+  background: rgba(9, 22, 38, 0.92);
+  padding: 0.75rem;
+}
+
+.config-option-preview-close {
+  position: absolute;
+  right: 0.56rem;
+  top: 0.56rem;
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(194, 228, 255, 0.46);
+  background: rgba(8, 20, 34, 0.8);
+  color: #eef8ff;
+  font-size: 1.18rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.config-option-preview-image {
+  width: 100%;
+  max-height: min(72vh, 620px);
+  object-fit: contain;
+  border-radius: 0.72rem;
+  display: block;
+}
+
+.config-option-preview-shell p {
+  margin: 0.5rem 0 0;
+  color: #edf7ff;
+  font-weight: 700;
+}
+
+.config-selection-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.86rem);
+  transform: translateX(-50%);
+  z-index: 97;
+  border: 1px solid rgba(129, 235, 227, 0.78);
+  border-radius: 999px;
+  background: rgba(8, 29, 38, 0.92);
+  color: #e9f9f7;
+  font-weight: 800;
+  font-size: 0.82rem;
+  padding: 0.58rem 0.92rem;
+  box-shadow: 0 12px 28px rgba(5, 18, 30, 0.48);
 }
 
 @media (max-width: 1100px) {
@@ -2581,6 +2779,51 @@ html[data-theme="light"] .config-mobile-preview-close {
   border-color: rgba(35, 66, 100, 0.4);
   background: rgba(252, 255, 255, 0.92);
   color: #123453;
+}
+
+
+html[data-theme="light"] .config-option-preview-modal {
+  background: rgba(238, 246, 255, 0.74);
+}
+
+html[data-theme="light"] .config-option-preview-shell {
+  border-color: rgba(29, 59, 92, 0.24);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+html[data-theme="light"] .config-option-preview-close {
+  border-color: rgba(35, 66, 99, 0.38);
+  background: rgba(249, 253, 255, 0.95);
+  color: #163553;
+}
+
+html[data-theme="light"] .config-option-preview-shell p {
+  color: #173453;
+}
+
+html[data-theme="light"] .config-selection-toast {
+  border-color: rgba(78, 167, 160, 0.62);
+  background: rgba(248, 255, 254, 0.95);
+  color: #15404a;
+}
+
+html[data-theme="light"] .fabric-swatch-checkbox {
+  color: rgba(24, 53, 84, 0.86);
+}
+
+html[data-theme="light"] .measurement-help-btn {
+  border-color: rgba(35, 68, 102, 0.34);
+  background: rgba(246, 251, 255, 0.9);
+  color: #143450;
+}
+
+html[data-theme="light"] .measurement-help-popover {
+  border-color: rgba(35, 68, 102, 0.24);
+  background: rgba(247, 252, 255, 0.92);
+}
+
+html[data-theme="light"] .measurement-help-popover p {
+  color: rgba(24, 53, 84, 0.82);
 }
 
 html[data-theme="light"] .mobile-fixed-cta {
