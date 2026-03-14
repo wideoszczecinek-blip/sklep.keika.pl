@@ -1213,14 +1213,41 @@ a {
   gap: 1rem;
 }
 
-.product-hero-image {
+.product-preview-card {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.product-preview-card .config-preview-mockup {
   min-height: 520px;
-  border-radius: 1.2rem;
-  border: 1px solid rgba(200, 227, 255, 0.28);
-  background: linear-gradient(145deg, #10253d, #1a3555);
   background-size: cover;
   background-position: center;
-  box-shadow: 0 22px 42px rgba(4, 12, 24, 0.35);
+}
+
+.product-preview-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.product-preview-meta > div {
+  border-radius: 0.95rem;
+  border: 1px solid rgba(191, 225, 255, 0.2);
+  background: rgba(15, 30, 49, 0.44);
+  padding: 0.75rem 0.85rem;
+}
+
+.product-preview-meta strong,
+.product-option-block > strong {
+  display: block;
+  font-size: 0.86rem;
+  color: #f2f7ff;
+}
+
+.product-preview-meta small {
+  display: block;
+  margin-top: 0.28rem;
+  color: rgba(232, 244, 255, 0.76);
 }
 
 .product-info-card {
@@ -1324,6 +1351,89 @@ a {
 .product-content-panels p {
   margin: 0.52rem 0 0;
   color: rgba(234, 246, 255, 0.88);
+}
+
+.product-options-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.product-option-block {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.product-chip-list,
+.product-swatch-list {
+  display: grid;
+  gap: 0.68rem;
+}
+
+.product-chip-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.product-swatch-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.product-chip-card,
+.product-swatch-card,
+.product-chip {
+  border: 1px solid rgba(190, 222, 255, 0.22);
+  background: rgba(12, 27, 44, 0.55);
+  color: #eef7ff;
+  border-radius: 1rem;
+  cursor: pointer;
+}
+
+.product-chip-card,
+.product-swatch-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 0.78rem;
+  align-items: stretch;
+  padding: 0.55rem;
+  text-align: left;
+}
+
+.product-chip-card.is-active,
+.product-swatch-card.is-active,
+.product-chip.is-active {
+  border-color: rgba(128, 235, 230, 0.88);
+  box-shadow: 0 0 0 1px rgba(128, 235, 230, 0.18), 0 16px 30px rgba(7, 18, 31, 0.25);
+}
+
+.product-chip-card-image,
+.product-swatch-card-image {
+  min-height: 78px;
+  border-radius: 0.85rem;
+  background: linear-gradient(145deg, #16283f, #1d3757);
+  background-size: cover;
+  background-position: center;
+}
+
+.product-chip-card span:last-child,
+.product-swatch-card span:last-child {
+  display: grid;
+  align-content: center;
+  gap: 0.28rem;
+}
+
+.product-chip-card small,
+.product-swatch-card small {
+  color: rgba(230, 242, 255, 0.72);
+}
+
+.product-fabric-groups {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.product-chip {
+  padding: 0.48rem 0.82rem;
+  font-weight: 800;
 }
 
 .mobile-fixed-cta {
@@ -2218,6 +2328,12 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .product-preview-meta,
+  .product-chip-list,
+  .product-swatch-list {
+    grid-template-columns: 1fr;
+  }
+
   .configurator-layout {
     grid-template-columns: 1fr;
   }
@@ -2887,6 +3003,21 @@ html[data-theme="light"] .product-info-card h2 {
   color: #a76800 !important;
 }
 
+html[data-theme="light"] .product-preview-meta > div,
+html[data-theme="light"] .product-chip-card,
+html[data-theme="light"] .product-swatch-card,
+html[data-theme="light"] .product-chip {
+  border-color: rgba(35, 69, 103, 0.24) !important;
+  background: rgba(247, 251, 255, 0.92) !important;
+  color: #173654 !important;
+}
+
+html[data-theme="light"] .product-preview-meta small,
+html[data-theme="light"] .product-chip-card small,
+html[data-theme="light"] .product-swatch-card small {
+  color: rgba(24, 56, 88, 0.74) !important;
+}
+
 html[data-theme="light"] .catalog-product-row a,
 html[data-theme="light"] .product-anchor-nav a,
 html[data-theme="light"] .product-info-actions a:last-child,
@@ -2905,7 +3036,7 @@ html[data-theme="light"] .configurator-nav button:last-child {
   border-color: rgba(100, 201, 196, 0.76) !important;
 }
 
-html[data-theme="light"] .product-hero-image {
+html[data-theme="light"] .product-preview-card .config-preview-mockup {
   border-color: rgba(27, 55, 88, 0.24);
   box-shadow: 0 20px 36px rgba(27, 48, 73, 0.17);
 }
