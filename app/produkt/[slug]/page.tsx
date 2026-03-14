@@ -11,9 +11,14 @@ type ProductItem = {
   subtitle?: string;
   description?: string;
   price_from?: string;
+  badge?: string;
   image_url?: string;
   gallery_urls?: string[];
   title?: string;
+  mockup_template_id?: string;
+  fabric_library_ids?: string[];
+  default_scene_id?: string;
+  default_mount_variant_id?: string;
 };
 
 type ProductGroup = {
@@ -427,6 +432,15 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
 
   const bg = absolutizeUrl((foundGroup?.background_url || foundProduct?.image_url || ""), endpointOrigin);
   const productImage = absolutizeUrl(foundProduct?.image_url || "", endpointOrigin);
+  const galleryImages = (Array.isArray(foundProduct?.gallery_urls) ? foundProduct.gallery_urls : [])
+    .map((entry) => absolutizeUrl(entry || "", endpointOrigin))
+    .filter(Boolean);
+  const galleryTiles = galleryImages.length > 0 ? galleryImages : (productImage ? [productImage] : []);
+  const productBadge = String(foundProduct?.badge || "").trim();
+  const productLead =
+    foundProduct?.description ||
+    foundProduct?.subtitle ||
+    "Nowoczesny produkt na wymiar. Dobierz parametry, tkaninę i opcje montażu.";
   const hasDedicatedConfigurator = slug === "rolety-best-1";
   const configuratorHref = hasDedicatedConfigurator ? `/konfigurator/${slug}` : "#konfigurator";
 
@@ -473,9 +487,10 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
             <div className="product-hero-image" style={productImage ? { backgroundImage: `url(${productImage})` } : undefined} />
             <article className="product-info-card">
               <p>{foundGroup.title || "Kategoria"}</p>
+              {productBadge ? <span className="catalog-product-badge">{productBadge}</span> : null}
               <h1>{foundProduct.name || "Produkt"}</h1>
               <h2>{foundProduct.price_from || "Cena po konfiguracji"}</h2>
-              <p>{foundProduct.subtitle || "Nowoczesny produkt na wymiar. Dobierz parametry, tkaninę i opcje montażu."}</p>
+              <p>{productLead}</p>
               <div className="product-anchor-nav">
                 <a href="#galeria">Galeria</a>
                 <a href="#opis">Opis</a>
@@ -494,11 +509,24 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
             <section className="product-content-panels">
               <article id="galeria" className="catalog-card">
                 <h3>Galeria</h3>
-                <p>Tu podpinamy docelową galerię realizacji i zdjęcia detali produktu.</p>
+                <div className="catalog-product-gallery-grid">
+                  {galleryTiles.map((image, index) => (
+                    <div
+                      key={`${image}-${index}`}
+                      className="catalog-product-gallery-tile"
+                      style={{ backgroundImage: `url(${image})` }}
+                    />
+                  ))}
+                  {galleryTiles.length === 0 ? (
+                    <div className="catalog-product-gallery-tile catalog-product-gallery-tile--empty">
+                      Dodaj zdjęcia w panelu CRM, aby zbudować galerię produktu.
+                    </div>
+                  ) : null}
+                </div>
               </article>
               <article id="opis" className="catalog-card">
                 <h3>Opis</h3>
-                <p>Tu podpinamy pełny opis techniczny, warianty i opcje dodatkowe produktu.</p>
+                <p>{foundProduct.description || foundProduct.subtitle || "Opis produktu uzupełnisz w panelu CRM."}</p>
               </article>
               <article id="konfigurator" className="catalog-card">
                 <h3>Konfigurator</h3>

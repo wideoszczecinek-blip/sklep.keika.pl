@@ -12,8 +12,13 @@ type ProductItem = {
   subtitle?: string;
   description?: string;
   price_from?: string;
+  badge?: string;
   image_url?: string;
   gallery_urls?: string[];
+  mockup_template_id?: string;
+  fabric_library_ids?: string[];
+  default_scene_id?: string;
+  default_mount_variant_id?: string;
 };
 
 type ProductGroup = {
@@ -63,6 +68,11 @@ type ConfigFabricSwatch = {
   label?: string;
   color?: string;
   image_url?: string;
+  source_image_url?: string;
+  preview_image_url?: string;
+  texture_image_url?: string;
+  ai_status?: string;
+  ai_note?: string;
   price_delta?: number;
 };
 
@@ -71,6 +81,76 @@ type ConfigFabricGroup = {
   label: string;
   note?: string;
   swatches: ConfigFabricSwatch[];
+};
+
+type FabricLibrarySwatch = {
+  id: string;
+  code?: string;
+  label?: string;
+  color?: string;
+  price_delta?: number;
+  source_image_url?: string;
+  preview_image_url?: string;
+  texture_image_url?: string;
+  ai_status?: string;
+  ai_note?: string;
+};
+
+type FabricLibraryGroup = {
+  id: string;
+  label: string;
+  note?: string;
+  swatches: FabricLibrarySwatch[];
+};
+
+type FabricLibrary = {
+  id: string;
+  label: string;
+  note?: string;
+  product_slugs?: string[];
+  groups: FabricLibraryGroup[];
+};
+
+type MockupMountVariant = {
+  id: string;
+  label: string;
+  note?: string;
+  preview_url?: string;
+  base_image_url?: string;
+  fabric_mask_url?: string;
+  hardware_mask_url?: string;
+  overlay_image_url?: string;
+  displacement_map_url?: string;
+};
+
+type MockupScene = {
+  id: string;
+  label: string;
+  note?: string;
+  background_url?: string;
+  preview_url?: string;
+};
+
+type MockupHardwareFinish = {
+  id: string;
+  label: string;
+  type?: string;
+  color?: string;
+  image_url?: string;
+  texture_url?: string;
+  note?: string;
+};
+
+type MockupTemplate = {
+  id: string;
+  label: string;
+  note?: string;
+  product_slugs?: string[];
+  default_scene_id?: string;
+  default_mount_variant_id?: string;
+  mount_variants?: MockupMountVariant[];
+  scenes?: MockupScene[];
+  hardware_finishes?: MockupHardwareFinish[];
 };
 
 type ConfigPricingTable = {
@@ -112,6 +192,8 @@ type PublicConfig = {
   top_links?: Array<{ label?: string; url?: string }>;
   product_groups?: ProductGroup[];
   product_configurators?: ProductConfiguratorProfile[];
+  fabric_libraries?: FabricLibrary[];
+  mockup_templates?: MockupTemplate[];
 };
 
 type MeasurementPosition = {
@@ -362,6 +444,109 @@ function ensureConfiguratorProfile(config: PublicConfig | null, slug: string): P
   return null;
 }
 
+function resolveProductFabricLibraries(config: PublicConfig | null, product: ProductItem): FabricLibrary[] {
+  const libraries = Array.isArray(config?.fabric_libraries) ? config.fabric_libraries : [];
+  const explicitIds = Array.isArray(product.fabric_library_ids) ? product.fabric_library_ids.map((entry) => String(entry || "").trim()).filter(Boolean) : [];
+  const productSlug = String(product.slug || "").trim();
+
+  if (explicitIds.length > 0) {
+    const explicitLibraries = libraries.filter((entry) => explicitIds.includes(String(entry.id || "").trim()));
+    if (explicitLibraries.length > 0) return explicitLibraries;
+  }
+
+  return libraries.filter((entry) => {
+    const productSlugs = Array.isArray(entry.product_slugs) ? entry.product_slugs : [];
+    return productSlugs.includes(productSlug);
+  });
+}
+
+function mergeFabricGroups(profileGroups: ConfigFabricGroup[], libraries: FabricLibrary[]): ConfigFabricGroup[] {
+  const result = new Map<string, ConfigFabricGroup>();
+  const profileGroupMap = new Map((Array.isArray(profileGroups) ? profileGroups : []).map((group) => [group.id, group]));
+
+  for (const library of libraries) {
+    const groups = Array.isArray(library.groups) ? library.groups : [];
+    for (const group of groups) {
+      const profileGroup = profileGroupMap.get(group.id);
+      const profileSwatches = Array.isArray(profileGroup?.swatches) ? profileGroup.swatches : [];
+      const profileSwatchMap = new Map(
+        profileSwatches.map((swatch) => [String(swatch.id || swatch.code || "").trim(), swatch]),
+      );
+
+      const mergedSwatches: ConfigFabricSwatch[] = (Array.isArray(group.swatches) ? group.swatches : []).map((swatch) => {
+        const key = String(swatch.id || swatch.code || "").trim();
+        const profileSwatch =
+          profileSwatchMap.get(key) ||
+          profileSwatches.find((entry) => String(entry.code || "").trim() === String(swatch.code || "").trim()) ||
+          null;
+
+        return {
+          id: String(swatch.id || profileSwatch?.id || "").trim(),
+          code: String(swatch.code || profileSwatch?.code || "").trim(),
+          label: String(swatch.label || profileSwatch?.label || swatch.code || swatch.id || "").trim(),
+          color: String(swatch.color || profileSwatch?.color || "").trim(),
+          image_url: String(swatch.preview_image_url || swatch.texture_image_url || profileSwatch?.preview_image_url || profileSwatch?.texture_image_url || profileSwatch?.image_url || "").trim(),
+          source_image_url: String(swatch.source_image_url || profileSwatch?.source_image_url || "").trim(),
+          preview_image_url: String(swatch.preview_image_url || profileSwatch?.preview_image_url || profileSwatch?.image_url || "").trim(),
+          texture_image_url: String(swatch.texture_image_url || profileSwatch?.texture_image_url || profileSwatch?.image_url || "").trim(),
+          ai_status: String(swatch.ai_status || profileSwatch?.ai_status || "").trim(),
+          ai_note: String(swatch.ai_note || profileSwatch?.ai_note || "").trim(),
+          price_delta: Number.isFinite(Number(profileSwatch?.price_delta))
+            ? Number(profileSwatch?.price_delta)
+            : Number.isFinite(Number(swatch.price_delta))
+              ? Number(swatch.price_delta)
+              : 0,
+        };
+      });
+
+      result.set(group.id, {
+        id: group.id,
+        label: group.label || profileGroup?.label || group.id,
+        note: group.note || profileGroup?.note || "",
+        swatches: mergedSwatches,
+      });
+    }
+  }
+
+  for (const group of Array.isArray(profileGroups) ? profileGroups : []) {
+    if (!result.has(group.id)) {
+      result.set(group.id, group);
+    }
+  }
+
+  return [...result.values()];
+}
+
+function resolveMockupTemplate(config: PublicConfig | null, product: ProductItem): MockupTemplate | null {
+  const templates = Array.isArray(config?.mockup_templates) ? config.mockup_templates : [];
+  const explicitId = String(product.mockup_template_id || "").trim();
+  const productSlug = String(product.slug || "").trim();
+
+  if (explicitId) {
+    const direct = templates.find((entry) => String(entry.id || "").trim() === explicitId);
+    if (direct) return direct;
+  }
+
+  return templates.find((entry) => {
+    const productSlugs = Array.isArray(entry.product_slugs) ? entry.product_slugs : [];
+    return productSlugs.includes(productSlug);
+  }) || null;
+}
+
+function resolveHardwareFinish(template: MockupTemplate | null, hardware: ConfigHardwareSwatch | null): MockupHardwareFinish | null {
+  if (!template || !hardware) return null;
+  const finishes = Array.isArray(template.hardware_finishes) ? template.hardware_finishes : [];
+  const hardwareId = String(hardware.id || "").trim().toLowerCase();
+  const hardwareLabel = String(hardware.label || "").trim().toLowerCase();
+
+  return (
+    finishes.find((entry) => String(entry.id || "").trim().toLowerCase() === hardwareId) ||
+    finishes.find((entry) => String(entry.label || "").trim().toLowerCase() === hardwareLabel) ||
+    finishes.find((entry) => String(entry.id || "").trim().toLowerCase().includes(hardwareId)) ||
+    null
+  );
+}
+
 function sanitizeStepOrder(stepOrder: ConfigStepId[] | undefined): ConfigStepId[] {
   const allowed: ConfigStepId[] = ["hardware", "fabric", "dimensions"];
   const result = (Array.isArray(stepOrder) ? stepOrder : []).filter((entry) => allowed.includes(entry));
@@ -503,6 +688,8 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   const [selectedHardwareId, setSelectedHardwareId] = useState("");
   const [selectedFabricGroupId, setSelectedFabricGroupId] = useState("");
   const [selectedFabricCode, setSelectedFabricCode] = useState("");
+  const [selectedSceneId, setSelectedSceneId] = useState("");
+  const [selectedMountVariantId, setSelectedMountVariantId] = useState("");
   const [positions, setPositions] = useState<MeasurementPosition[]>([]);
   const [mobileAccordionOpen, setMobileAccordionOpen] = useState(true);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
@@ -540,6 +727,8 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   const product = productContext.product;
 
   const profile = useMemo(() => ensureConfiguratorProfile(config, slug), [config, slug]);
+  const linkedFabricLibraries = useMemo(() => resolveProductFabricLibraries(config, product), [config, product]);
+  const linkedMockupTemplate = useMemo(() => resolveMockupTemplate(config, product), [config, product]);
 
   const stepOrder = useMemo(() => sanitizeStepOrder(profile?.step_order), [profile?.step_order]);
   const steps = useMemo(
@@ -562,15 +751,22 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
     }
 
     const firstHardware = profile.hardware_swatches?.[0]?.id || "";
-    const firstGroup = profile.fabric_groups?.[0] || null;
+    const mergedGroups = mergeFabricGroups(profile.fabric_groups || [], linkedFabricLibraries);
+    const firstGroup = mergedGroups?.[0] || null;
     const firstSwatchCode = firstGroup?.swatches?.[0]?.code || firstGroup?.swatches?.[0]?.id || "";
+    const firstSceneId =
+      String(product.default_scene_id || linkedMockupTemplate?.default_scene_id || linkedMockupTemplate?.scenes?.[0]?.id || "").trim();
+    const firstMountVariantId =
+      String(product.default_mount_variant_id || linkedMockupTemplate?.default_mount_variant_id || linkedMockupTemplate?.mount_variants?.[0]?.id || "").trim();
 
     setCurrentStep(0);
     setSelectedHardwareId(firstHardware);
     setSelectedFabricGroupId(firstGroup?.id || "");
     setSelectedFabricCode(firstSwatchCode);
+    setSelectedSceneId(firstSceneId);
+    setSelectedMountVariantId(firstMountVariantId);
     setPositions([createPosition(profile, 1)]);
-  }, [profile]);
+  }, [profile, linkedFabricLibraries, linkedMockupTemplate, product.default_scene_id, product.default_mount_variant_id]);
 
   useEffect(() => {
     if (!profile) return;
@@ -580,7 +776,8 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
       setSelectedHardwareId(profile.hardware_swatches?.[0]?.id || "");
     }
 
-    const activeGroup = profile.fabric_groups.find((entry) => entry.id === selectedFabricGroupId) || profile.fabric_groups[0];
+    const mergedGroups = mergeFabricGroups(profile.fabric_groups || [], linkedFabricLibraries);
+    const activeGroup = mergedGroups.find((entry) => entry.id === selectedFabricGroupId) || mergedGroups[0];
     if (activeGroup && activeGroup.id !== selectedFabricGroupId) {
       setSelectedFabricGroupId(activeGroup.id);
     }
@@ -591,7 +788,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
       const fallbackCode = swatches[0]?.code || swatches[0]?.id || "";
       setSelectedFabricCode(fallbackCode);
     }
-  }, [profile, selectedHardwareId, selectedFabricGroupId, selectedFabricCode]);
+  }, [profile, linkedFabricLibraries, selectedHardwareId, selectedFabricGroupId, selectedFabricCode]);
 
   useEffect(() => {
     if (currentStep >= steps.length && steps.length > 0) {
@@ -630,8 +827,8 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
     [profile],
   );
   const fabricGroups = useMemo(
-    () => (Array.isArray(profile?.fabric_groups) ? profile!.fabric_groups : []),
-    [profile],
+    () => mergeFabricGroups(Array.isArray(profile?.fabric_groups) ? profile!.fabric_groups : [], linkedFabricLibraries),
+    [profile, linkedFabricLibraries],
   );
   const glazingOptions = useMemo(
     () => (Array.isArray(profile?.glazing_bead_options) ? profile!.glazing_bead_options : []),
@@ -708,6 +905,45 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
       null
     );
   }, [activeFabricGroup, selectedFabricCode]);
+
+  const availableScenes = useMemo(
+    () => (Array.isArray(linkedMockupTemplate?.scenes) ? linkedMockupTemplate.scenes : []),
+    [linkedMockupTemplate],
+  );
+
+  const availableMountVariants = useMemo(
+    () => (Array.isArray(linkedMockupTemplate?.mount_variants) ? linkedMockupTemplate.mount_variants : []),
+    [linkedMockupTemplate],
+  );
+
+  const activeScene = useMemo(
+    () => availableScenes.find((entry) => entry.id === selectedSceneId) || availableScenes[0] || null,
+    [availableScenes, selectedSceneId],
+  );
+
+  const activeMountVariant = useMemo(
+    () => availableMountVariants.find((entry) => entry.id === selectedMountVariantId) || availableMountVariants[0] || null,
+    [availableMountVariants, selectedMountVariantId],
+  );
+
+  const activeHardwareFinish = useMemo(
+    () => resolveHardwareFinish(linkedMockupTemplate, selectedHardware),
+    [linkedMockupTemplate, selectedHardware],
+  );
+
+  useEffect(() => {
+    const firstScene = availableScenes[0]?.id || "";
+    if (availableScenes.length > 0 && !availableScenes.some((entry) => entry.id === selectedSceneId)) {
+      setSelectedSceneId(firstScene);
+    }
+  }, [availableScenes, selectedSceneId]);
+
+  useEffect(() => {
+    const firstMountVariant = availableMountVariants[0]?.id || "";
+    if (availableMountVariants.length > 0 && !availableMountVariants.some((entry) => entry.id === selectedMountVariantId)) {
+      setSelectedMountVariantId(firstMountVariant);
+    }
+  }, [availableMountVariants, selectedMountVariantId]);
 
   const widthFieldKey = profile
     ? resolveDimensionKey(profile, profile.pricing_rules?.width_field_key, "width")
@@ -894,29 +1130,93 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   const categoryHref = foundGroup?.slug ? `/kategoria/${foundGroup.slug}` : "/";
 
   function renderPreviewWindow() {
-    const fabricImage = activeFabric?.image_url
-      ? absolutizeUrl(activeFabric.image_url, endpointOrigin)
-      : "";
+    const sceneImage = absolutizeUrl(activeScene?.background_url || productImage, endpointOrigin);
+    const baseImage = absolutizeUrl(activeMountVariant?.base_image_url || productImage, endpointOrigin);
+    const fabricMask = absolutizeUrl(activeMountVariant?.fabric_mask_url || "", endpointOrigin);
+    const hardwareMask = absolutizeUrl(activeMountVariant?.hardware_mask_url || "", endpointOrigin);
+    const overlayImage = absolutizeUrl(activeMountVariant?.overlay_image_url || "", endpointOrigin);
+    const fabricTexture = activeFabric?.texture_image_url
+      ? absolutizeUrl(activeFabric.texture_image_url, endpointOrigin)
+      : activeFabric?.image_url
+        ? absolutizeUrl(activeFabric.image_url, endpointOrigin)
+        : "";
+    const hardwareTexture = absolutizeUrl(activeHardwareFinish?.texture_url || activeHardwareFinish?.image_url || "", endpointOrigin);
+    const hardwareColor = activeHardwareFinish?.color || selectedHardware?.color || "#3e434b";
+
+    const fabricStyle =
+      fabricMask
+        ? {
+            backgroundColor: activeFabric?.color || "#9cadc2",
+            backgroundImage: fabricTexture ? `url(${fabricTexture})` : undefined,
+            backgroundSize: fabricTexture ? "cover" : undefined,
+            backgroundPosition: "center",
+            WebkitMaskImage: `url(${fabricMask})`,
+            maskImage: `url(${fabricMask})`,
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+          }
+        : undefined;
+
+    const hardwareStyle =
+      hardwareMask
+        ? {
+            background: hardwareTexture
+              ? undefined
+              : `linear-gradient(180deg, ${hardwareColor}, rgba(18, 28, 43, 0.92))`,
+            backgroundColor: hardwareTexture ? hardwareColor : undefined,
+            backgroundImage: hardwareTexture ? `url(${hardwareTexture})` : undefined,
+            backgroundSize: hardwareTexture ? "cover" : undefined,
+            backgroundPosition: "center",
+            WebkitMaskImage: `url(${hardwareMask})`,
+            maskImage: `url(${hardwareMask})`,
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+          }
+        : undefined;
 
     return (
       <div className="config-preview-window">
-        <span
-          className="config-preview-cassette"
-          style={{
-            background: `linear-gradient(180deg, ${selectedHardware?.color || "#9ca6b7"}, ${selectedHardware?.color || "#3e434b"})`,
-          }}
-        />
-        <span className="config-preview-guide is-left" style={{ background: selectedHardware?.color || "#3e434b" }} />
-        <span className="config-preview-guide is-right" style={{ background: selectedHardware?.color || "#3e434b" }} />
-        <span
-          className="config-preview-fabric"
-          style={{
-            background: activeFabric?.color || "#9cadc2",
-            backgroundImage: fabricImage ? `url(${fabricImage})` : undefined,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+        <span className="config-preview-scene" style={sceneImage ? { backgroundImage: `url(${sceneImage})` } : undefined} />
+        <span className="config-preview-base" style={baseImage ? { backgroundImage: `url(${baseImage})` } : undefined} />
+
+        {hardwareMask ? (
+          <span className="config-preview-hardware-mask" style={hardwareStyle} />
+        ) : (
+          <>
+            <span
+              className="config-preview-cassette"
+              style={{
+                background: `linear-gradient(180deg, ${hardwareColor}, rgba(18, 28, 43, 0.92))`,
+              }}
+            />
+            <span className="config-preview-guide is-left" style={{ background: hardwareColor }} />
+            <span className="config-preview-guide is-right" style={{ background: hardwareColor }} />
+          </>
+        )}
+
+        {fabricMask ? (
+          <span className="config-preview-fabric-mask" style={fabricStyle} />
+        ) : (
+          <span
+            className="config-preview-fabric"
+            style={{
+              background: activeFabric?.color || "#9cadc2",
+              backgroundImage: fabricTexture ? `url(${fabricTexture})` : undefined,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+        )}
+
+        {overlayImage ? <span className="config-preview-overlay-image" style={{ backgroundImage: `url(${overlayImage})` }} /> : null}
       </div>
     );
   }
@@ -930,6 +1230,114 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   function selectFabricSwatch(swatchCode: string, label: string) {
     setSelectedFabricCode(swatchCode);
     setSelectionToast("Wybrano kolor " + (label || swatchCode));
+  }
+
+  function selectScene(sceneId: string, label: string) {
+    setSelectedSceneId(sceneId);
+    setSelectionToast("Wybrano scenerię " + (label || sceneId));
+  }
+
+  function selectMountVariant(mountVariantId: string, label: string) {
+    setSelectedMountVariantId(mountVariantId);
+    setSelectionToast("Wybrano montaż " + (label || mountVariantId));
+  }
+
+  function renderPreviewControls(mode: "panel" | "modal" = "panel") {
+    const hasSceneChoices = availableScenes.length > 1;
+    const hasMountChoices = availableMountVariants.length > 1;
+    const hasTemplateMeta = Boolean(linkedMockupTemplate?.label || linkedMockupTemplate?.id);
+    const hasLibraryMeta = linkedFabricLibraries.length > 0;
+
+    if (!hasSceneChoices && !hasMountChoices && !hasTemplateMeta && !hasLibraryMeta) {
+      return null;
+    }
+
+    return (
+      <div className={`config-preview-controls ${mode === "modal" ? "is-modal" : ""}`}>
+        {hasSceneChoices ? (
+          <div className="config-preview-control-block">
+            <div className="config-preview-control-heading">
+              <span>Sceneria</span>
+              <small>Wariant podglądu dla klienta</small>
+            </div>
+            <div className="config-preview-choice-grid">
+              {availableScenes.map((scene) => {
+                const previewUrl = absolutizeUrl(scene.preview_url || scene.background_url || "", endpointOrigin);
+                const isActive = scene.id === activeScene?.id;
+
+                return (
+                  <button
+                    key={scene.id}
+                    type="button"
+                    className={`config-preview-choice ${isActive ? "is-active" : ""}`}
+                    onClick={() => selectScene(scene.id, scene.label || scene.id)}
+                    aria-pressed={isActive}
+                  >
+                    <span
+                      className="config-preview-choice-thumb"
+                      style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+                    />
+                    <span className="config-preview-choice-copy">
+                      <strong>{scene.label || scene.id}</strong>
+                      <small>{scene.note || "Wybierz tło podglądu."}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {hasMountChoices ? (
+          <div className="config-preview-control-block">
+            <div className="config-preview-control-heading">
+              <span>Wariant montażu</span>
+              <small>Przełącz widok produktu</small>
+            </div>
+            <div className="config-preview-choice-grid">
+              {availableMountVariants.map((variant) => {
+                const previewUrl = absolutizeUrl(variant.preview_url || variant.base_image_url || "", endpointOrigin);
+                const isActive = variant.id === activeMountVariant?.id;
+
+                return (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    className={`config-preview-choice ${isActive ? "is-active" : ""}`}
+                    onClick={() => selectMountVariant(variant.id, variant.label || variant.id)}
+                    aria-pressed={isActive}
+                  >
+                    <span
+                      className="config-preview-choice-thumb"
+                      style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+                    />
+                    <span className="config-preview-choice-copy">
+                      <strong>{variant.label || variant.id}</strong>
+                      <small>{variant.note || "Wybierz sposób montażu."}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {(hasTemplateMeta || hasLibraryMeta) ? (
+          <div className="config-preview-meta">
+            {hasTemplateMeta ? (
+              <span>
+                <strong>Mockup:</strong> {linkedMockupTemplate?.label || linkedMockupTemplate?.id}
+              </span>
+            ) : null}
+            {hasLibraryMeta ? (
+              <span>
+                <strong>Biblioteki tkanin:</strong> {linkedFabricLibraries.map((library) => library.label || library.id).join(", ")}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   function getMeasurementGuide(field: ConfigDimensionField) {
@@ -1102,6 +1510,11 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                 {activeStepId === "fabric" ? (
                   <article className="catalog-card">
                     <h2>Krok {currentStep + 1} z {steps.length}: Rodzaj i kolor materiału</h2>
+                    {linkedFabricLibraries.length > 0 ? (
+                      <p className="configurator-assets-note">
+                        Aktywne kolekcje: <strong>{linkedFabricLibraries.map((library) => library.label || library.id).join(", ")}</strong>
+                      </p>
+                    ) : null}
                     <div className="fabric-groups">
                       {fabricGroups.map((group) => (
                         <button
@@ -1122,9 +1535,10 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                       {(activeFabricGroup?.swatches || []).map((swatch) => {
                         const swatchCode = swatch.code || swatch.id;
                         const swatchLabel = swatch.label || swatchCode;
-                        const swatchImage = absolutizeUrl(swatch.image_url || "", endpointOrigin);
+                        const swatchPreview = absolutizeUrl(swatch.preview_image_url || swatch.image_url || "", endpointOrigin);
+                        const swatchSource = absolutizeUrl(swatch.source_image_url || "", endpointOrigin);
                         const isChecked = swatchCode === (activeFabric?.code || activeFabric?.id);
-                        const zoomPreview = swatchImage || productImage;
+                        const zoomPreview = swatchPreview || swatchSource || productImage;
 
                         return (
                           <div key={swatch.id || swatchCode} className={`fabric-swatch fabric-swatch--visual ${isChecked ? "is-active" : ""}`}>
@@ -1136,8 +1550,8 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                               <span
                                 className="fabric-swatch-color"
                                 style={
-                                  swatchImage
-                                    ? { backgroundImage: `url(${swatchImage})`, backgroundSize: "cover", backgroundPosition: "center" }
+                                  swatchPreview
+                                    ? { backgroundImage: `url(${swatchPreview})`, backgroundSize: "cover", backgroundPosition: "center" }
                                     : { background: swatch.color || "#8ea0b7" }
                                 }
                               />
@@ -1333,6 +1747,8 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                   {renderPreviewWindow()}
                 </div>
 
+                {renderPreviewControls()}
+
                 <div className="config-summary-grid">
                   <div>
                     <span>Osprzęt</span>
@@ -1395,6 +1811,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                 <div className="config-preview-mockup config-preview-mockup--modal" style={{ backgroundImage: `url(${productImage})` }}>
                   {renderPreviewWindow()}
                 </div>
+                {renderPreviewControls("modal")}
               </div>
             </div>
           ) : null}
