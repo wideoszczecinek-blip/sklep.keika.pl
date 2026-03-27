@@ -1269,7 +1269,7 @@ export default function MoskitieryFlow({
     return (
       <div className={styles.pageShell}>
         <section className={styles.loadingCard}>
-          Ładuję konfigurator…
+          Ładuję konfigurator sklepu WWW…
         </section>
       </div>
     );
@@ -1297,10 +1297,10 @@ export default function MoskitieryFlow({
       >
         <div className={styles.heroCopy}>
           <span className={styles.heroEyebrow}>sklep.keika.pl/moskitiery</span>
-          <h1>Konfigurator moskitier</h1>
+          <h1>Sklepowy konfigurator moskitier</h1>
           <p>
-            To jest kopia obecnego flow konfiguratora. Wyceny, odwiedziny i
-            statystyki zapisują się osobno w module Sklep WWW.
+            Układ kroków zostaje taki sam, ale konfiguracja, wyceny, odwiedziny i
+            sterowanie cenami działają już w osobnej warstwie sklepu WWW.
           </p>
           {activeSlide ? (
             <div className={styles.heroSlide}>
@@ -1897,7 +1897,7 @@ export default function MoskitieryFlow({
               </div>
               <div className={styles.marketMeta}>
                 <span>Docelowa akcja</span>
-                <strong>przejście do checkoutu sklepu z kodem wyceny</strong>
+                <strong>przejście do linku zakupowego z kodem wyceny</strong>
               </div>
             </section>
           ) : null}
