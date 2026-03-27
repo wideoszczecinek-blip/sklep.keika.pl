@@ -247,11 +247,15 @@
     header.dataset.shopCopyHeader = "true";
     header.innerHTML = `
       <div class="shop-copy-header__inner">
-        <button type="button" class="shop-copy-menu-button" aria-expanded="false" aria-controls="shop-copy-menu">
-          <span class="shop-copy-menu-button__icon"><span></span></span>
-          <span>Menu</span>
-        </button>
-        <a class="shop-copy-config-link" href="#shop-copy-configurator">Przejdź do konfiguratora</a>
+        <div class="shop-copy-nav-bar">
+          <button type="button" class="shop-copy-menu-button" aria-expanded="false" aria-controls="shop-copy-menu">
+            <span class="shop-copy-menu-button__icon"><span></span></span>
+            <span>Menu</span>
+          </button>
+          <nav class="shop-copy-desktop-nav" aria-label="Główne menu sklepu">
+            ${MENU_ITEMS.map((item) => `<a href="${item.href}">${item.label}</a>`).join("")}
+          </nav>
+        </div>
       </div>
     `;
 
@@ -274,18 +278,18 @@
 
     function closeMenu() {
       document.body.dataset.shopMenuOpen = "false";
-      const button = header.querySelector("button");
+      const button = header.querySelector(".shop-copy-menu-button");
       if (button) button.setAttribute("aria-expanded", "false");
     }
 
     function toggleMenu() {
       const open = document.body.dataset.shopMenuOpen === "true";
       document.body.dataset.shopMenuOpen = open ? "false" : "true";
-      const button = header.querySelector("button");
+      const button = header.querySelector(".shop-copy-menu-button");
       if (button) button.setAttribute("aria-expanded", open ? "false" : "true");
     }
 
-    header.querySelector("button")?.addEventListener("click", toggleMenu);
+    header.querySelector(".shop-copy-menu-button")?.addEventListener("click", toggleMenu);
     backdrop.addEventListener("click", closeMenu);
     drawer.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeMenu));
 
