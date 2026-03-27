@@ -27,12 +27,208 @@
     /aukcji allegro/i,
   ];
 
+  const SHOP_CONFIG_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public.php";
+  const SHOP_GROUP_SLUG = "moskitiery";
+  const SHOP_PRODUCT_SLUG = "moskitiery-ramkowe";
+  const FALLBACK_GALLERY = [
+    "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000328_79e6551b_Bialy_2.jpg",
+    "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000347_2dc2ceab_Bialy_1.jpg",
+    "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000401_566be7d6_Bialy_3.jpg",
+  ];
+  const FALLBACK_SECTIONS = [
+    {
+      title: "Najważniejsze cechy",
+      body: "Lekka aluminiowa rama, estetyczne wykończenie i wzmocniona siatka zapewniają skuteczną ochronę przed owadami bez zasłaniania światła.",
+    },
+    {
+      title: "Jak wygląda zamówienie",
+      body: "Najpierw oglądasz zdjęcia produktu, potem wybierasz kolor profilu i siatki, wpisujesz wymiary i zapisujesz gotową konfigurację z wyliczoną ceną.",
+    },
+    {
+      title: "Dopasowanie i montaż",
+      body: "Moskitierę zamawiasz na wymiar. Przed finalizacją sprawdź dokładny pomiar szerokości i wysokości, aby gotowy model pasował do Twojego okna bez przeróbek.",
+    },
+  ];
+
+  let introDataPromise = null;
+
   function setMeta() {
     document.title = "KEIKA | Moskitiery na wymiar";
     const description = document.querySelector('meta[name="description"]');
     if (description) {
       description.setAttribute("content", "Moskitiera na wymiar z konfiguracją online, opisem produktu i zakupem bezpośrednio w sklepie KEIKA.");
     }
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function formatMultilineText(value) {
+    return escapeHtml(value).replace(/\n/g, "<br>");
+  }
+
+  function fallbackIntroData() {
+    return {
+      name: "Moskitiery ramkowe",
+      price_from: "od 149 zł",
+      gallery_urls: FALLBACK_GALLERY.slice(),
+      landing_sections: FALLBACK_SECTIONS.slice(),
+    };
+  }
+
+  function normalizeGalleryUrls(product) {
+    const rawGallery = Array.isArray(product?.gallery_urls)
+      ? product.gallery_urls
+      : Array.isArray(product?.gallery)
+        ? product.gallery
+        : [];
+    const unique = [];
+    const seen = new Set();
+
+    rawGallery
+      .concat(product?.image_url ? [product.image_url] : [])
+      .forEach((entry) => {
+        const url = String(entry || "").trim();
+        if (!url || seen.has(url)) return;
+        seen.add(url);
+        unique.push(url);
+      });
+
+    return unique.length ? unique : FALLBACK_GALLERY.slice();
+  }
+
+  function normalizeLandingSections(sections) {
+    const normalized = (Array.isArray(sections) ? sections : [])
+      .map((entry, index) => ({
+        title: String(entry?.title || entry?.label || `Sekcja ${index + 1}`).trim(),
+        body: String(entry?.body || entry?.content || entry?.description || "").trim(),
+      }))
+      .filter((entry) => entry.title || entry.body)
+      .slice(0, 8);
+
+    return normalized.length ? normalized : FALLBACK_SECTIONS.slice();
+  }
+
+  function extractIntroData(config) {
+    const groups = Array.isArray(config?.product_groups) ? config.product_groups : [];
+    const moskitieryGroup = groups.find((group) => String(group?.slug || "").trim() === SHOP_GROUP_SLUG);
+    const products = Array.isArray(moskitieryGroup?.products) ? moskitieryGroup.products : [];
+    const product = products.find((entry) => String(entry?.slug || "").trim() === SHOP_PRODUCT_SLUG) || {};
+
+    return {
+      name: String(product?.name || product?.title || "Moskitiery ramkowe").trim() || "Moskitiery ramkowe",
+      price_from: String(product?.price_from || "od 149 zł").trim(),
+      gallery_urls: normalizeGalleryUrls(product),
+      landing_sections: normalizeLandingSections(product?.landing_sections || product?.accordion_sections),
+    };
+  }
+
+  function fetchIntroData() {
+    if (introDataPromise) {
+      return introDataPromise;
+    }
+
+    introDataPromise = fetch(`${SHOP_CONFIG_URL}?_ts=${Date.now()}`, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Config request failed: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => extractIntroData(payload?.config || {}))
+      .catch(() => fallbackIntroData());
+
+    return introDataPromise;
+  }
+
+  function buildIntroMarkup(data) {
+    const gallery = Array.isArray(data?.gallery_urls) && data.gallery_urls.length
+      ? data.gallery_urls
+      : FALLBACK_GALLERY;
+    const sections = normalizeLandingSections(data?.landing_sections);
+    const activeImage = gallery[0] || "";
+    const activeAlt = data?.name || "Moskitiery ramkowe";
+
+    return `
+      <div class="shop-copy-intro__card">
+        <div class="shop-copy-intro__grid">
+          <div class="shop-copy-hero-gallery">
+            <div class="shop-copy-hero-gallery__stage">
+              ${activeImage
+                ? `<img class="shop-copy-hero-gallery__image" data-shop-copy-main-image src="${escapeHtml(activeImage)}" alt="${escapeHtml(activeAlt)}">`
+                : `<div class="shop-copy-hero-gallery__placeholder">Dodaj zdjęcia produktu w CRM</div>`}
+              <div class="shop-copy-hero-gallery__overlay">
+                <span class="shop-copy-intro__eyebrow">Moskitiery</span>
+                <strong>${escapeHtml(data?.name || "Moskitiery ramkowe")}</strong>
+                ${data?.price_from ? `<span class="shop-copy-hero-gallery__price">${escapeHtml(data.price_from)}</span>` : ""}
+              </div>
+            </div>
+            <div class="shop-copy-hero-gallery__thumbs">
+              ${gallery.map((imageUrl, index) => `
+                <button
+                  type="button"
+                  class="shop-copy-hero-gallery__thumb${index === 0 ? " is-active" : ""}"
+                  data-shop-copy-thumb
+                  data-image="${escapeHtml(imageUrl)}"
+                  data-alt="${escapeHtml(`${data?.name || "Moskitiery"} ${index + 1}`)}"
+                  aria-label="Pokaż zdjęcie ${index + 1}"
+                >
+                  <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy">
+                </button>
+              `).join("")}
+            </div>
+          </div>
+          <div class="shop-copy-hero-details">
+            <div class="shop-copy-hero-details__header">
+              <span class="shop-copy-hero-details__label">Opis produktu</span>
+              <a class="shop-copy-config-link shop-copy-config-link--inline" href="#shop-copy-configurator">Przejdź do konfiguratora</a>
+            </div>
+            <div class="shop-copy-accordion-list">
+              ${sections.map((section, index) => `
+                <details class="shop-copy-accordion" ${index === 0 ? "open" : ""}>
+                  <summary>${escapeHtml(section.title || `Sekcja ${index + 1}`)}</summary>
+                  <div class="shop-copy-accordion__body">${formatMultilineText(section.body || "")}</div>
+                </details>
+              `).join("")}
+            </div>
+            <div class="shop-copy-intro__cta-row">
+              <a class="shop-copy-intro__primary" href="#shop-copy-configurator">Zacznij konfigurację</a>
+              <a class="shop-copy-intro__secondary" href="/kontakt">Zapytaj o montaż</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindIntroInteractions(section) {
+    if (section.dataset.shopCopyBound === "true") return;
+
+    section.addEventListener("click", (event) => {
+      const thumb = event.target instanceof Element ? event.target.closest("[data-shop-copy-thumb]") : null;
+      if (!(thumb instanceof HTMLElement)) return;
+
+      const imageUrl = String(thumb.getAttribute("data-image") || "").trim();
+      const altText = String(thumb.getAttribute("data-alt") || "").trim();
+      const mainImage = section.querySelector("[data-shop-copy-main-image]");
+
+      if (mainImage instanceof HTMLImageElement && imageUrl) {
+        mainImage.src = imageUrl;
+        mainImage.alt = altText || mainImage.alt;
+      }
+
+      section.querySelectorAll("[data-shop-copy-thumb]").forEach((node) => {
+        node.classList.toggle("is-active", node === thumb);
+      });
+    });
+
+    section.dataset.shopCopyBound = "true";
   }
 
   function ensureHeader() {
@@ -91,52 +287,44 @@
   }
 
   function ensureIntro() {
-    if (document.querySelector("[data-shop-copy-intro]")) return;
-
     const main = document.querySelector("main");
     if (!main || !main.parentNode) return;
 
     main.classList.add("shop-copy-main-target");
     main.id = "shop-copy-configurator";
 
-    const section = document.createElement("section");
-    section.className = "shop-copy-intro";
-    section.dataset.shopCopyIntro = "true";
-    section.innerHTML = `
-      <div class="shop-copy-intro__card">
-        <span class="shop-copy-intro__eyebrow">Moskitiera na wymiar</span>
-        <div class="shop-copy-intro__grid">
-          <div>
-            <h1 class="shop-copy-intro__title">Świeże powietrze bez komarów i bez kompromisów.</h1>
-            <p class="shop-copy-intro__lead">
-              Zamawiasz moskitierę dopasowaną do konkretnego okna, z podglądem koloru profilu, siatki i dokładnym wyliczeniem ceny.
-              Najpierw pokazujemy produkt i jego zalety, a dopiero potem przechodzisz do konfiguracji.
-            </p>
-            <ul class="shop-copy-intro__points">
-              <li>Wzmocniona siatka i estetyczny profil dopasowany do stolarki.</li>
-              <li>Dokładne wymiary w milimetrach, dzięki czemu zamawiasz wariant na swoje okno.</li>
-              <li>Konfigurator prowadzi krok po kroku i od razu pokazuje, jak będzie wyglądał wybrany zestaw.</li>
-            </ul>
-            <div class="shop-copy-intro__cta-row">
-              <a class="shop-copy-intro__primary" href="#shop-copy-configurator">Zacznij konfigurację</a>
-              <a class="shop-copy-intro__secondary" href="/kontakt">Zapytaj o montaż</a>
-            </div>
-          </div>
-          <div class="shop-copy-intro__side">
-            <div class="shop-copy-intro__fact">
-              <strong>Dla kogo</strong>
-              <span>Dla osób, które chcą kupić moskitierę online, ale najpierw chcą zrozumieć produkt i zobaczyć efekt przed zamówieniem.</span>
-            </div>
-            <div class="shop-copy-intro__fact">
-              <strong>Co dostajesz</strong>
-              <span>Wycena, podgląd wariantu i prostą ścieżkę do złożenia zamówienia bez wychodzenia do zewnętrznych marketplace’ów.</span>
-            </div>
-          </div>
+    let section = document.querySelector("[data-shop-copy-intro]");
+    if (!(section instanceof HTMLElement)) {
+      section = document.createElement("section");
+      section.className = "shop-copy-intro";
+      section.dataset.shopCopyIntro = "true";
+      section.innerHTML = `
+        <div class="shop-copy-intro__card">
+          <div class="shop-copy-intro__loading">Ładowanie galerii produktu…</div>
         </div>
-      </div>
-    `;
+      `;
+      main.parentNode.insertBefore(section, main);
+    }
 
-    main.parentNode.insertBefore(section, main);
+    if (section.dataset.shopCopyReady === "true" || section.dataset.shopCopyLoading === "true") {
+      return;
+    }
+
+    section.dataset.shopCopyLoading = "true";
+    fetchIntroData()
+      .then((data) => {
+        section.innerHTML = buildIntroMarkup(data);
+        bindIntroInteractions(section);
+        section.dataset.shopCopyReady = "true";
+      })
+      .catch(() => {
+        section.innerHTML = buildIntroMarkup(fallbackIntroData());
+        bindIntroInteractions(section);
+        section.dataset.shopCopyReady = "true";
+      })
+      .finally(() => {
+        section.dataset.shopCopyLoading = "false";
+      });
   }
 
   function replaceTextNodes(root) {
