@@ -625,6 +625,7 @@ export default function MoskitieryFlow({
   const currentUnitPrice = selectedProduct
     ? parseMoney(selectedProduct.display_price_amount)
     : 0;
+  const hasOfferBinding = safeText(selectedProduct?.offer_id) !== "";
 
   const areChoiceStepsComplete = choiceSteps.every(
     (step) => safeText(selectedAnswers[step.key]) !== "",
@@ -1295,12 +1296,11 @@ export default function MoskitieryFlow({
         }
       >
         <div className={styles.heroCopy}>
-          <span className={styles.heroEyebrow}>Konfigurator moskitier KEIKA</span>
-          <h1>Kopia flow konfiguratora Allegro</h1>
+          <span className={styles.heroEyebrow}>sklep.keika.pl/moskitiery</span>
+          <h1>Konfigurator moskitier</h1>
           <p>
-            Ten wariant działa teraz w tym samym układzie kroków co konfigurator
-            Allegro, ale zapisuje wyceny osobno i nie prowadzi jeszcze do zakupu
-            online.
+            To jest kopia obecnego flow konfiguratora. Wyceny, odwiedziny i
+            statystyki zapisują się osobno w module Sklep WWW.
           </p>
           {activeSlide ? (
             <div className={styles.heroSlide}>
@@ -1311,11 +1311,11 @@ export default function MoskitieryFlow({
           <div className={styles.heroMeta}>
             <span>{products.length} warianty moskitier</span>
             <span>{onlineCount} użytkowników online</span>
-            <span>kod wyceny i wznowienie konfiguracji</span>
+            <span>osobne statystyki i wyceny sklepu</span>
           </div>
         </div>
         <div className={styles.heroPanel}>
-          <div className={styles.heroPanelLabel}>Aktywny wariant</div>
+          <div className={styles.heroPanelLabel}>Aktywny produkt</div>
           <div className={styles.heroPanelTitle}>
             {selectedProduct?.label ?? "Wybierz produkt"}
           </div>
@@ -1328,9 +1328,18 @@ export default function MoskitieryFlow({
             {selectedProduct?.configurator.intro ??
               "Wybierz produkt, aby rozpocząć konfigurację."}
           </p>
-          <span className={styles.heroPanelNote}>
-            Zakup online podepniemy w kolejnym kroku.
-          </span>
+          {hasOfferBinding ? (
+            <span
+              className={`${styles.heroPanelAction} ${styles.actionDisabled}`}
+              aria-disabled="true"
+            >
+              Zobacz powiązaną ofertę
+            </span>
+          ) : (
+            <span className={styles.heroPanelNote}>
+              Ten wariant nie ma jeszcze przypiętego linku zakupowego.
+            </span>
+          )}
         </div>
       </section>
 
@@ -1417,7 +1426,7 @@ export default function MoskitieryFlow({
           <section className={styles.measurementsCard}>
             <div className={styles.sectionHeading}>
               <span>Instrukcja pomiaru</span>
-              <h2>Prowadzenie użytkownika w konfiguratorze</h2>
+              <h2>Prowadzenie użytkownika w sklepowym flow</h2>
             </div>
             {selectedProduct?.configurator.measurement_guide_video_url ? (
               <video
@@ -1590,7 +1599,7 @@ export default function MoskitieryFlow({
           <section className={styles.positionsSection}>
             <div className={styles.sectionHeading}>
               <span>Pozycje wyceny</span>
-              <h2>Zbuduj listę pozycji w jednej wycenie</h2>
+              <h2>Zbuduj listę pozycji w jednej wycenie sklepu</h2>
             </div>
 
             <div className={styles.positionComposer}>
@@ -1783,9 +1792,18 @@ export default function MoskitieryFlow({
                   >
                     {sharePanelOpen ? "Ukryj zapis / udostępnianie" : "Zapisz / udostępnij"}
                   </button>
-                  <span className={styles.infoNote}>
-                    Zamówienie online podepniemy w kolejnym kroku.
-                  </span>
+                  {hasOfferBinding ? (
+                    <span
+                      className={`${styles.primaryButton} ${styles.actionDisabled}`}
+                      aria-disabled="true"
+                    >
+                      Przejdź do zakupu online
+                    </span>
+                  ) : (
+                    <span className={styles.infoNote}>
+                      Dla tego wariantu nie ma jeszcze przypiętego linku zakupowego.
+                    </span>
+                  )}
                 </div>
 
                 {sharePanelOpen ? (
@@ -1860,6 +1878,29 @@ export default function MoskitieryFlow({
               </div>
             )}
           </section>
+
+          {hasOfferBinding ? (
+            <section className={styles.marketCard}>
+              <div className={styles.sectionHeading}>
+                <span>Sprzedaż</span>
+                <h2>Powiązana oferta</h2>
+              </div>
+              <div className={styles.marketMeta}>
+                <span>ID oferty</span>
+                <strong>{selectedProduct?.offer_id}</strong>
+              </div>
+              <div className={styles.marketMeta}>
+                <span>Cena jednostkowa</span>
+                <strong>
+                  {formatMoney(currentUnitPrice, selectedProduct?.display_price_currency ?? "PLN")}
+                </strong>
+              </div>
+              <div className={styles.marketMeta}>
+                <span>Docelowa akcja</span>
+                <strong>przejście do checkoutu sklepu z kodem wyceny</strong>
+              </div>
+            </section>
+          ) : null}
         </aside>
       </section>
     </div>

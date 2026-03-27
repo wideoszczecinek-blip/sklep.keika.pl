@@ -183,6 +183,13 @@
   cursor: pointer;
 }
 
+.actionDisabled {
+  pointer-events: none;
+  cursor: default;
+  opacity: 0.82;
+  box-shadow: none;
+}
+
 .heroPanelAction,
 .primaryButton {
   border: 0;
