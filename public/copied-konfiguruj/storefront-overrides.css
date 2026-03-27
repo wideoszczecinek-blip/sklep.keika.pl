@@ -1,23 +1,46 @@
 html {
   scroll-behavior: smooth;
+  background: #edf3fa;
 }
 
 body.shop-copy-enhanced {
-  --shop-copy-page-photo: url("https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=2200&q=80");
-  background:
-    radial-gradient(circle at top left, rgba(24, 119, 242, 0.14), transparent 28%),
-    linear-gradient(180deg, rgba(238, 245, 255, 0.84) 0%, rgba(247, 251, 255, 0.72) 30%, rgba(248, 250, 252, 0.88) 100%),
-    var(--shop-copy-page-photo);
-  background-position: top left, center top, center center;
-  background-repeat: no-repeat, no-repeat, no-repeat;
-  background-size: auto, auto, cover;
-  background-attachment: scroll, scroll, fixed;
+  --shop-copy-page-photo: url("/copied-konfiguruj/background-zaluzje.jpg");
+  position: relative;
+  min-height: 100vh;
+  background: transparent;
   color: #112033;
+  isolation: isolate;
+}
+
+body.shop-copy-enhanced::before,
+body.shop-copy-enhanced::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+body.shop-copy-enhanced::before {
+  position: fixed;
+  z-index: -2;
+  background: center center / cover no-repeat var(--shop-copy-page-photo);
+  opacity: 0.17;
+  filter: saturate(0.78) contrast(0.92) brightness(0.92);
+}
+
+body.shop-copy-enhanced::after {
+  z-index: -1;
+  background:
+    radial-gradient(circle at top left, rgba(98, 164, 255, 0.28), transparent 24%),
+    radial-gradient(circle at 88% 18%, rgba(245, 173, 108, 0.18), transparent 22%),
+    linear-gradient(180deg, rgba(228, 240, 255, 0.86) 0%, rgba(238, 246, 255, 0.74) 20%, rgba(245, 249, 253, 0.66) 44%, rgba(255, 246, 236, 0.62) 72%, rgba(255, 232, 216, 0.82) 100%);
 }
 
 body.shop-copy-enhanced .app-shell {
   width: min(80vw, 1760px);
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 body.shop-copy-enhanced .viewport-card {
@@ -26,8 +49,10 @@ body.shop-copy-enhanced .viewport-card {
   min-height: auto !important;
   height: auto !important;
   overflow: visible !important;
-  background: rgba(255, 255, 255, 0.58) !important;
-  backdrop-filter: blur(18px) saturate(1.15);
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 body.shop-copy-enhanced .viewport-card > div[aria-hidden="true"],
