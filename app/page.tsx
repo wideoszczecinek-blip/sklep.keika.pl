@@ -125,6 +125,26 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
     return "/kategoria/rolety-zewnetrzne";
   }
 
+  if (groupSlug === "moskitiery" && /^moskitiery ramkowe$/.test(label)) {
+    return "/produkt/moskitiery-ramkowe";
+  }
+
+  if (groupSlug === "moskitiery" && /^moskitiery do okien dachowych$/.test(label)) {
+    return "/produkt/moskitiery-do-okien-dachowych";
+  }
+
+  if (groupSlug === "moskitiery" && /^moskitiery drzwiowe$/.test(label)) {
+    return "/produkt/moskitiery-drzwiowe";
+  }
+
+  if (groupSlug === "moskitiery" && /^przesuwne$/.test(label)) {
+    return "/produkt/moskitiery-przesuwne";
+  }
+
+  if (groupSlug === "moskitiery" && /^plisowane$/.test(label)) {
+    return "/produkt/moskitiery-plisowane";
+  }
+
   return `/kategoria/${groupSlug}`;
 }
 
@@ -214,11 +234,11 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
       "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1600&q=80",
     iconUrl: iconMosquito,
     items: [
-      { label: "Moskitiery ramkowe", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
-      { label: "Moskitiery do okien dachowych", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
-      { label: "Moskitiery drzwiowe", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
-      { label: "Przesuwne", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
-      { label: "Plisowane", iconUrl: iconMosquito, linkUrl: "#kolekcje" },
+      { label: "Moskitiery ramkowe", iconUrl: iconMosquito, linkUrl: "/produkt/moskitiery-ramkowe" },
+      { label: "Moskitiery do okien dachowych", iconUrl: iconMosquito, linkUrl: "/produkt/moskitiery-do-okien-dachowych" },
+      { label: "Moskitiery drzwiowe", iconUrl: iconMosquito, linkUrl: "/produkt/moskitiery-drzwiowe" },
+      { label: "Przesuwne", iconUrl: iconMosquito, linkUrl: "/produkt/moskitiery-przesuwne" },
+      { label: "Plisowane", iconUrl: iconMosquito, linkUrl: "/produkt/moskitiery-plisowane" },
     ],
   },
 ];

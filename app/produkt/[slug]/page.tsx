@@ -977,8 +977,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                 <h3>Konfigurator</h3>
                 {hasDedicatedConfigurator ? (
                   <>
-                    <p>Skonfiguruj roletę krok po kroku: kolor osprzętu, tkanina i pozycje wymiarowe.</p>
-                    <p><Link href={configuratorHref}>Przejdź do konfiguratora Best 1</Link></p>
+                    <p>Skonfiguruj produkt krok po kroku: wybierz wariant, parametry i pozycje wymiarowe.</p>
+                    <p><Link href={configuratorHref}>Przejdź do konfiguratora {foundProduct.name || "produktu"}</Link></p>
                   </>
                 ) : (
                   <p>Konfigurator dla tego produktu będzie uruchamiany w kolejnym etapie.</p>
