@@ -76,10 +76,33 @@
   function fallbackIntroData() {
     return {
       name: "Moskitiery ramkowe",
+      title: "Moskitiery ramkowe",
+      subtitle_lines: ["Skonfiguruj moskitierę na wymiar i zobacz produkt jeszcze przed wejściem do konfiguratora."],
       price_from: "od 149 zł",
       gallery_urls: FALLBACK_GALLERY.slice(),
       landing_sections: FALLBACK_SECTIONS.slice(),
     };
+  }
+
+  function normalizeSubtitleLines(product) {
+    const candidates = [
+      String(product?.subtitle || "").trim(),
+      String(product?.description || "").trim(),
+    ];
+    const unique = [];
+    const seen = new Set();
+
+    candidates.forEach((entry) => {
+      if (!entry) return;
+      const key = entry.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      unique.push(entry);
+    });
+
+    return unique.length
+      ? unique.slice(0, 2)
+      : ["Skonfiguruj moskitierę na wymiar i zobacz produkt jeszcze przed wejściem do konfiguratora."];
   }
 
   function normalizeGalleryUrls(product) {
@@ -123,6 +146,8 @@
 
     return {
       name: String(product?.name || product?.title || "Moskitiery ramkowe").trim() || "Moskitiery ramkowe",
+      title: String(product?.title || product?.name || "Moskitiery ramkowe").trim() || "Moskitiery ramkowe",
+      subtitle_lines: normalizeSubtitleLines(product),
       price_from: String(product?.price_from || "od 149 zł").trim(),
       gallery_urls: normalizeGalleryUrls(product),
       landing_sections: normalizeLandingSections(product?.landing_sections || product?.accordion_sections),
@@ -154,9 +179,20 @@
     const sections = normalizeLandingSections(data?.landing_sections);
     const activeImage = gallery[0] || "";
     const activeAlt = data?.name || "Moskitiery ramkowe";
+    const title = String(data?.title || data?.name || "Moskitiery ramkowe").trim() || "Moskitiery ramkowe";
+    const subtitleLines = Array.isArray(data?.subtitle_lines) && data.subtitle_lines.length
+      ? data.subtitle_lines
+      : fallbackIntroData().subtitle_lines;
 
     return `
       <div class="shop-copy-intro__card">
+        <div class="shop-copy-intro__heading">
+          <span class="shop-copy-intro__eyebrow">Moskitiery</span>
+          <h2 class="shop-copy-intro__title">${escapeHtml(title)}</h2>
+          <div class="shop-copy-intro__subtitle">
+            ${subtitleLines.map((line) => `<p>${formatMultilineText(line)}</p>`).join("")}
+          </div>
+        </div>
         <div class="shop-copy-intro__grid">
           <div class="shop-copy-hero-gallery">
             <div class="shop-copy-hero-gallery__stage">
