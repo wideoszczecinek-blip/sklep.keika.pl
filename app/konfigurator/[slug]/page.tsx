@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/app/components/theme-toggle";
+import MoskitieryFlowEntry from "@/features/moskitiery/MoskitieryFlowEntry";
 
 type ProductItem = {
   name?: string;
@@ -669,6 +670,10 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   const routerSlug = Array.isArray(routerParams?.slug) ? routerParams.slug[0] : routerParams?.slug;
   const propSlug = Array.isArray(params?.slug) ? params?.slug[0] : params?.slug;
   const slug = String(routerSlug || propSlug || "").trim();
+
+  if (slug.startsWith("moskitiery")) {
+    return <MoskitieryFlowEntry initialProductSlug={slug} />;
+  }
 
   const configEndpoint =
     process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";

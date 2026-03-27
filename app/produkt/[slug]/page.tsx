@@ -588,7 +588,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
     foundProduct?.description ||
     foundProduct?.subtitle ||
     "Nowoczesny produkt na wymiar. Dobierz parametry, tkaninę i opcje montażu.";
-  const hasDedicatedConfigurator = slug === "rolety-best-1";
+  const hasDedicatedConfigurator =
+    slug === "rolety-best-1" || slug.startsWith("moskitiery");
   const configuratorHref = hasDedicatedConfigurator ? `/konfigurator/${slug}` : "#konfigurator";
   const linkedFabricLibraries = useMemo(() => resolveProductFabricLibraries(config, foundProduct), [config, foundProduct]);
   const linkedMockupTemplate = useMemo(() => resolveMockupTemplate(config, foundProduct), [config, foundProduct]);
