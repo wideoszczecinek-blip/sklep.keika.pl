@@ -20,6 +20,7 @@
     ["tej samej aukcji", "tego samego wariantu"],
     ["w wiadomości po zakupie", "po zapisaniu wyceny"],
     ["W uwagach do zakupu albo w wiadomości po zakupie podaj nam ten kod, żebyśmy od razu połączyli Twoją wycenę z zamówieniem.", "Po zapisaniu wyceny zachowaj ten kod. Dzięki niemu szybciej odnajdziemy Twoją konfigurację podczas finalizacji zamówienia."],
+    ["Wybierz wariant, aby zacząć konfigurację.", "Skonfiguruj pierwszą moskitierę."],
   ];
 
   const HIDE_PATTERNS = [
