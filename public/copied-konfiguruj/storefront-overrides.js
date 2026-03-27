@@ -196,15 +196,36 @@
         </div>
         <div class="shop-copy-intro__body">
           <div class="shop-copy-hero-gallery">
+            <div class="shop-copy-hero-gallery__meta">
+              <div>
+                <h3 class="shop-copy-hero-gallery__name">${escapeHtml(data?.name || "Moskitiery ramkowe")}</h3>
+                <p class="shop-copy-hero-gallery__meta-line">Galeria produktu <span aria-hidden="true">•</span> <span data-shop-copy-gallery-count>1 / ${gallery.length}</span></p>
+              </div>
+            </div>
             <div class="shop-copy-hero-gallery__stage">
+              <div class="shop-copy-hero-gallery__stage-top">
+                <span class="shop-copy-hero-gallery__hint">Kliknij lub przesuń</span>
+                <span class="shop-copy-hero-gallery__counter" data-shop-copy-gallery-count-badge>1 / ${gallery.length}</span>
+              </div>
+              <button
+                type="button"
+                class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--prev"
+                data-shop-copy-gallery-step="-1"
+                aria-label="Poprzednie zdjęcie"
+              >
+                <span aria-hidden="true">‹</span>
+              </button>
               ${activeImage
                 ? `<img class="shop-copy-hero-gallery__image" data-shop-copy-main-image src="${escapeHtml(activeImage)}" alt="${escapeHtml(activeAlt)}">`
                 : `<div class="shop-copy-hero-gallery__placeholder">Dodaj zdjęcia produktu w CRM</div>`}
-              <div class="shop-copy-hero-gallery__overlay">
-                <span class="shop-copy-intro__eyebrow">Moskitiery</span>
-                <strong>${escapeHtml(data?.name || "Moskitiery ramkowe")}</strong>
-                ${data?.price_from ? `<span class="shop-copy-hero-gallery__price">${escapeHtml(data.price_from)}</span>` : ""}
-              </div>
+              <button
+                type="button"
+                class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--next"
+                data-shop-copy-gallery-step="1"
+                aria-label="Następne zdjęcie"
+              >
+                <span aria-hidden="true">›</span>
+              </button>
             </div>
             <div class="shop-copy-hero-gallery__thumbs">
               ${gallery.map((imageUrl, index) => `
@@ -212,18 +233,18 @@
                   type="button"
                   class="shop-copy-hero-gallery__thumb${index === 0 ? " is-active" : ""}"
                   data-shop-copy-thumb
+                  data-gallery-index="${index}"
                   data-image="${escapeHtml(imageUrl)}"
                   data-alt="${escapeHtml(`${data?.name || "Moskitiery"} ${index + 1}`)}"
                   aria-label="Pokaż zdjęcie ${index + 1}"
+                  aria-pressed="${index === 0 ? "true" : "false"}"
                 >
-                  <span
-                    class="shop-copy-hero-gallery__thumb-image"
-                    style="background-image:url('${escapeHtml(imageUrl)}')"
-                    aria-hidden="true"
-                  ></span>
-                  <span class="shop-copy-hero-gallery__thumb-copy">
-                    <strong>Zdjęcie ${index + 1}</strong>
-                    <small>${index === 0 ? "Widok główny produktu" : "Kliknij, aby zobaczyć to ujęcie"}</small>
+                  <span class="shop-copy-hero-gallery__thumb-image-wrap">
+                    <span
+                      class="shop-copy-hero-gallery__thumb-image"
+                      style="background-image:url('${escapeHtml(imageUrl)}')"
+                      aria-hidden="true"
+                    ></span>
                   </span>
                 </button>
               `).join("")}
@@ -245,24 +266,92 @@
     `;
   }
 
+  function setActiveGalleryIndex(section, index) {
+    const thumbs = Array.from(section.querySelectorAll("[data-shop-copy-thumb]")).filter((node) => node instanceof HTMLElement);
+    if (!thumbs.length) return;
+
+    const nextIndex = ((index % thumbs.length) + thumbs.length) % thumbs.length;
+    const thumb = thumbs[nextIndex];
+    const imageUrl = String(thumb.getAttribute("data-image") || "").trim();
+    const altText = String(thumb.getAttribute("data-alt") || "").trim();
+    const mainImage = section.querySelector("[data-shop-copy-main-image]");
+
+    if (mainImage instanceof HTMLImageElement && imageUrl) {
+      mainImage.src = imageUrl;
+      mainImage.alt = altText || mainImage.alt;
+    }
+
+    thumbs.forEach((node, thumbIndex) => {
+      node.classList.toggle("is-active", thumbIndex === nextIndex);
+      node.setAttribute("aria-pressed", thumbIndex === nextIndex ? "true" : "false");
+    });
+
+    if (thumb instanceof HTMLElement) {
+      thumb.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }
+
+    section.dataset.shopCopyGalleryIndex = String(nextIndex);
+    section.querySelectorAll("[data-shop-copy-gallery-count], [data-shop-copy-gallery-count-badge]").forEach((node) => {
+      node.textContent = `${nextIndex + 1} / ${thumbs.length}`;
+    });
+  }
+
   function bindIntroInteractions(section) {
     if (section.dataset.shopCopyBound === "true") return;
 
+    const stage = section.querySelector(".shop-copy-hero-gallery__stage");
+    let touchStartX = 0;
+
     section.addEventListener("click", (event) => {
       const thumb = event.target instanceof Element ? event.target.closest("[data-shop-copy-thumb]") : null;
-      if (!(thumb instanceof HTMLElement)) return;
-
-      const imageUrl = String(thumb.getAttribute("data-image") || "").trim();
-      const altText = String(thumb.getAttribute("data-alt") || "").trim();
-      const mainImage = section.querySelector("[data-shop-copy-main-image]");
-
-      if (mainImage instanceof HTMLImageElement && imageUrl) {
-        mainImage.src = imageUrl;
-        mainImage.alt = altText || mainImage.alt;
+      if (thumb instanceof HTMLElement) {
+        const index = Number.parseInt(thumb.getAttribute("data-gallery-index") || "0", 10);
+        setActiveGalleryIndex(section, Number.isFinite(index) ? index : 0);
+        return;
       }
 
+      const stepButton = event.target instanceof Element ? event.target.closest("[data-shop-copy-gallery-step]") : null;
+      if (!(stepButton instanceof HTMLElement)) return;
+
+      const currentIndex = Number.parseInt(section.dataset.shopCopyGalleryIndex || "0", 10);
+      const step = Number.parseInt(stepButton.getAttribute("data-shop-copy-gallery-step") || "0", 10);
+      setActiveGalleryIndex(section, (Number.isFinite(currentIndex) ? currentIndex : 0) + (Number.isFinite(step) ? step : 0));
+    });
+
+    stage?.addEventListener("touchstart", (event) => {
+      touchStartX = event.touches[0]?.clientX || 0;
+    }, { passive: true });
+
+    stage?.addEventListener("touchend", (event) => {
+      const endX = event.changedTouches[0]?.clientX || 0;
+      const deltaX = endX - touchStartX;
+      if (Math.abs(deltaX) < 48) return;
+
+      const currentIndex = Number.parseInt(section.dataset.shopCopyGalleryIndex || "0", 10);
+      setActiveGalleryIndex(section, (Number.isFinite(currentIndex) ? currentIndex : 0) + (deltaX < 0 ? 1 : -1));
+    }, { passive: true });
+
+    stage?.addEventListener("wheel", (event) => {
+      if (Math.abs(event.deltaX) < 24 && Math.abs(event.deltaY) < 24) return;
+      if (Math.abs(event.deltaX) < Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      const currentIndex = Number.parseInt(section.dataset.shopCopyGalleryIndex || "0", 10);
+      setActiveGalleryIndex(section, (Number.isFinite(currentIndex) ? currentIndex : 0) + (event.deltaX > 0 ? 1 : -1));
+    }, { passive: false });
+
+    window.requestAnimationFrame(() => {
+      setActiveGalleryIndex(section, Number.parseInt(section.dataset.shopCopyGalleryIndex || "0", 10) || 0);
       section.querySelectorAll("[data-shop-copy-thumb]").forEach((node) => {
-        node.classList.toggle("is-active", node === thumb);
+        if (!(node instanceof HTMLElement) || !node.classList.contains("is-active")) return;
+        node.scrollIntoView({
+          behavior: "auto",
+          block: "nearest",
+          inline: "nearest",
+        });
       });
     });
 
