@@ -228,22 +228,16 @@
               `).join("")}
             </div>
           </div>
-          <div class="shop-copy-hero-details">
-            <div class="shop-copy-hero-details__header">
-              <span class="shop-copy-hero-details__label">Opis produktu</span>
-            </div>
-            <div class="shop-copy-accordion-list">
-              ${sections.map((section, index) => `
-                <details class="shop-copy-accordion" ${index === 0 ? "open" : ""}>
-                  <summary>${escapeHtml(section.title || `Sekcja ${index + 1}`)}</summary>
-                  <div class="shop-copy-accordion__body">${formatMultilineText(section.body || "")}</div>
-                </details>
-              `).join("")}
-            </div>
-            <div class="shop-copy-intro__cta-row">
-              <a class="shop-copy-intro__primary" href="#shop-copy-configurator">Zacznij konfigurację</a>
-              <a class="shop-copy-intro__secondary" href="/kontakt">Zapytaj o montaż</a>
-            </div>
+          <div class="shop-copy-story-list">
+            ${sections.map((section, index) => `
+              <article class="shop-copy-story-block">
+                <span class="shop-copy-story-block__index">${String(index + 1).padStart(2, "0")}</span>
+                <div class="shop-copy-story-block__content">
+                  <h3>${escapeHtml(section.title || `Sekcja ${index + 1}`)}</h3>
+                  <p>${formatMultilineText(section.body || "")}</p>
+                </div>
+              </article>
+            `).join("")}
           </div>
         </div>
       </div>
@@ -280,11 +274,17 @@
     const contentColumn = grid
       ? Array.from(grid.children).find((node) => node !== summaryPanel && node.classList.contains("showcase-scroll"))
       : null;
+    const contentInner = contentColumn?.firstElementChild instanceof HTMLElement ? contentColumn.firstElementChild : null;
+    const legacyHeader = contentInner?.firstElementChild instanceof HTMLElement ? contentInner.firstElementChild : null;
+    const legacySteps = contentInner?.children?.[1] instanceof HTMLElement ? contentInner.children[1] : null;
 
     return {
       grid: grid instanceof HTMLElement ? grid : null,
       contentColumn: contentColumn instanceof HTMLElement ? contentColumn : null,
       summaryPanel: summaryPanel instanceof HTMLElement ? summaryPanel : null,
+      contentInner: contentInner instanceof HTMLElement ? contentInner : null,
+      legacyHeader: legacyHeader instanceof HTMLElement ? legacyHeader : null,
+      legacySteps: legacySteps instanceof HTMLElement ? legacySteps : null,
     };
   }
 
@@ -353,7 +353,7 @@
 
     main.classList.add("shop-copy-main-target");
 
-    const { contentColumn, summaryPanel } = getConfiguratorLayout(main);
+    const { grid, contentColumn, summaryPanel, contentInner, legacyHeader, legacySteps } = getConfiguratorLayout(main);
 
     let section = document.querySelector("[data-shop-copy-intro]");
     if (!(section instanceof HTMLElement)) {
@@ -370,6 +370,18 @@
     if (contentColumn instanceof HTMLElement) {
       section.classList.add("shop-copy-intro--embedded");
       contentColumn.classList.add("shop-copy-config-column");
+      if (grid instanceof HTMLElement) {
+        grid.classList.add("shop-copy-layout-grid");
+      }
+      if (contentInner instanceof HTMLElement) {
+        contentInner.classList.add("shop-copy-config-inner");
+      }
+      if (legacyHeader instanceof HTMLElement) {
+        legacyHeader.classList.add("shop-copy-legacy-header");
+      }
+      if (legacySteps instanceof HTMLElement) {
+        legacySteps.classList.add("shop-copy-legacy-steps");
+      }
       if (summaryPanel instanceof HTMLElement) {
         summaryPanel.classList.add("shop-copy-summary-panel");
       }
