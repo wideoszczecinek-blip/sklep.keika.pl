@@ -193,7 +193,7 @@
             ${subtitleLines.map((line) => `<p>${formatMultilineText(line)}</p>`).join("")}
           </div>
         </div>
-        <div class="shop-copy-intro__grid">
+        <div class="shop-copy-intro__body">
           <div class="shop-copy-hero-gallery">
             <div class="shop-copy-hero-gallery__stage">
               ${activeImage
@@ -231,7 +231,6 @@
           <div class="shop-copy-hero-details">
             <div class="shop-copy-hero-details__header">
               <span class="shop-copy-hero-details__label">Opis produktu</span>
-              <a class="shop-copy-config-link shop-copy-config-link--inline" href="#shop-copy-configurator">Przejdź do konfiguratora</a>
             </div>
             <div class="shop-copy-accordion-list">
               ${sections.map((section, index) => `
@@ -273,6 +272,20 @@
     });
 
     section.dataset.shopCopyBound = "true";
+  }
+
+  function getConfiguratorLayout(main) {
+    const summaryPanel = main.querySelector("aside.showcase-panel");
+    const grid = summaryPanel?.parentElement instanceof HTMLElement ? summaryPanel.parentElement : null;
+    const contentColumn = grid
+      ? Array.from(grid.children).find((node) => node !== summaryPanel && node.classList.contains("showcase-scroll"))
+      : null;
+
+    return {
+      grid: grid instanceof HTMLElement ? grid : null,
+      contentColumn: contentColumn instanceof HTMLElement ? contentColumn : null,
+      summaryPanel: summaryPanel instanceof HTMLElement ? summaryPanel : null,
+    };
   }
 
   function ensureHeader() {
@@ -336,10 +349,11 @@
 
   function ensureIntro() {
     const main = document.querySelector("main");
-    if (!main || !main.parentNode) return;
+    if (!(main instanceof HTMLElement) || !main.parentNode) return;
 
     main.classList.add("shop-copy-main-target");
-    main.id = "shop-copy-configurator";
+
+    const { contentColumn, summaryPanel } = getConfiguratorLayout(main);
 
     let section = document.querySelector("[data-shop-copy-intro]");
     if (!(section instanceof HTMLElement)) {
@@ -351,7 +365,33 @@
           <div class="shop-copy-intro__loading">Ładowanie galerii produktu…</div>
         </div>
       `;
-      main.parentNode.insertBefore(section, main);
+    }
+
+    if (contentColumn instanceof HTMLElement) {
+      section.classList.add("shop-copy-intro--embedded");
+      contentColumn.classList.add("shop-copy-config-column");
+      if (summaryPanel instanceof HTMLElement) {
+        summaryPanel.classList.add("shop-copy-summary-panel");
+      }
+
+      const configuratorStart = Array.from(contentColumn.children).find((node) => node !== section);
+      if (section.parentNode !== contentColumn) {
+        contentColumn.insertBefore(section, configuratorStart instanceof Node ? configuratorStart : null);
+      }
+
+      if (main.id === "shop-copy-configurator") {
+        main.removeAttribute("id");
+      }
+
+      if (configuratorStart instanceof HTMLElement) {
+        configuratorStart.id = "shop-copy-configurator";
+        configuratorStart.classList.add("shop-copy-configurator-start");
+      }
+    } else {
+      main.id = "shop-copy-configurator";
+      if (section.parentNode !== main.parentNode) {
+        main.parentNode.insertBefore(section, main);
+      }
     }
 
     if (section.dataset.shopCopyReady === "true" || section.dataset.shopCopyLoading === "true") {

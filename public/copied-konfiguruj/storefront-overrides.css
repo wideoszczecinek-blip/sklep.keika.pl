@@ -150,9 +150,9 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
 .shop-copy-intro {
   position: relative;
   z-index: 2;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 84px 16px 18px;
+  max-width: 780px;
+  margin: 0;
+  padding: 0 0 22px;
 }
 
 .shop-copy-intro__card {
@@ -192,9 +192,9 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   text-transform: uppercase;
 }
 
-.shop-copy-intro__grid {
+.shop-copy-intro__body {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   margin-top: 12px;
 }
 
@@ -421,11 +421,6 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   color: #1f5fbf;
 }
 
-.shop-copy-config-link--inline {
-  min-height: 44px;
-  padding: 0 16px;
-}
-
 .shop-copy-accordion-list {
   display: grid;
   gap: 10px;
@@ -563,6 +558,10 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   scroll-margin-top: 92px;
 }
 
+.shop-copy-configurator-start {
+  scroll-margin-top: 96px;
+}
+
 .shop-copy-hidden {
   display: none !important;
 }
@@ -591,14 +590,15 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
     display: none;
   }
 
-  .shop-copy-intro {
-    padding-left: 28px;
-    padding-right: 28px;
+  .shop-copy-summary-panel {
+    position: sticky;
+    top: 102px;
+    align-self: start;
+    max-height: calc(100dvh - 118px);
   }
 
-  .shop-copy-intro__grid {
-    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.7fr);
-    align-items: start;
+  .shop-copy-summary-panel .showcase-scroll {
+    max-height: calc(100dvh - 170px);
   }
 
   .shop-copy-hero-gallery__stage {
@@ -626,10 +626,6 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
 
   .shop-copy-menu-button {
     display: inline-flex;
-  }
-
-  .shop-copy-intro {
-    padding-top: 78px;
   }
 
   .shop-copy-intro__card {
