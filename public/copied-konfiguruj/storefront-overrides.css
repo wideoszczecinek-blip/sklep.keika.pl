@@ -3,9 +3,15 @@ html {
 }
 
 body.shop-copy-enhanced {
+  --shop-copy-page-photo: url("https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=2200&q=80");
   background:
-    radial-gradient(circle at top left, rgba(24, 119, 242, 0.1), transparent 28%),
-    linear-gradient(180deg, #eef5ff 0%, #f7fbff 30%, #f8fafc 100%);
+    radial-gradient(circle at top left, rgba(24, 119, 242, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(238, 245, 255, 0.84) 0%, rgba(247, 251, 255, 0.72) 30%, rgba(248, 250, 252, 0.88) 100%),
+    var(--shop-copy-page-photo);
+  background-position: top left, center top, center center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-size: auto, auto, cover;
+  background-attachment: scroll, scroll, fixed;
   color: #112033;
 }
 
@@ -20,6 +26,13 @@ body.shop-copy-enhanced .viewport-card {
   min-height: auto !important;
   height: auto !important;
   overflow: visible !important;
+  background: rgba(255, 255, 255, 0.58) !important;
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+body.shop-copy-enhanced .viewport-card > div[aria-hidden="true"],
+body.shop-copy-enhanced .viewport-card > div.absolute.inset-0 {
+  display: none !important;
 }
 
 body.shop-copy-enhanced[data-shop-menu-open="true"] {
