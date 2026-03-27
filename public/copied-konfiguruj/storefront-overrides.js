@@ -276,8 +276,11 @@
       ? Array.from(grid.children).find((node) => node !== summaryPanel && node.classList.contains("showcase-scroll"))
       : null;
     const contentInner = contentColumn?.firstElementChild instanceof HTMLElement ? contentColumn.firstElementChild : null;
-    const legacyHeader = contentInner?.firstElementChild instanceof HTMLElement ? contentInner.firstElementChild : null;
-    const legacySteps = contentInner?.children?.[1] instanceof HTMLElement ? contentInner.children[1] : null;
+    const contentInnerChildren = contentInner
+      ? Array.from(contentInner.children).filter((node) => node instanceof HTMLElement)
+      : [];
+    const legacyHeader = contentInnerChildren[0] instanceof HTMLElement ? contentInnerChildren[0] : null;
+    const legacySteps = contentInnerChildren[1] instanceof HTMLElement ? contentInnerChildren[1] : null;
 
     return {
       grid: grid instanceof HTMLElement ? grid : null,
@@ -287,6 +290,27 @@
       legacyHeader: legacyHeader instanceof HTMLElement ? legacyHeader : null,
       legacySteps: legacySteps instanceof HTMLElement ? legacySteps : null,
     };
+  }
+
+  function lockIntroAtTop(contentColumn) {
+    if (!(contentColumn instanceof HTMLElement)) return;
+
+    const reset = () => {
+      contentColumn.style.height = "auto";
+      contentColumn.style.maxHeight = "none";
+      contentColumn.style.overflow = "visible";
+      contentColumn.style.overflowY = "visible";
+      contentColumn.style.scrollBehavior = "auto";
+      contentColumn.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.scrollTo(0, 0);
+    };
+
+    reset();
+    [80, 220, 500, 900, 1500].forEach((delay) => {
+      window.setTimeout(reset, delay);
+    });
   }
 
   function ensureHeader() {
@@ -371,9 +395,6 @@
     if (contentColumn instanceof HTMLElement) {
       section.classList.add("shop-copy-intro--embedded");
       contentColumn.classList.add("shop-copy-config-column");
-      contentColumn.style.maxHeight = "none";
-      contentColumn.style.overflowY = "visible";
-      contentColumn.scrollTop = 0;
       if (grid instanceof HTMLElement) {
         grid.classList.add("shop-copy-layout-grid");
         grid.style.overflow = "visible";
@@ -392,8 +413,15 @@
         summaryPanel.classList.add("shop-copy-summary-panel");
       }
 
-      const configuratorStart = Array.from(contentColumn.children).find((node) => node !== section);
-      if (section.parentNode !== contentColumn) {
+      const configuratorStart = legacySteps instanceof HTMLElement
+        ? legacySteps
+        : Array.from(contentInner?.children || []).find((node) => node !== section);
+
+      if (contentInner instanceof HTMLElement) {
+        if (section.parentNode !== contentInner) {
+          contentInner.insertBefore(section, configuratorStart instanceof Node ? configuratorStart : null);
+        }
+      } else if (section.parentNode !== contentColumn) {
         contentColumn.insertBefore(section, configuratorStart instanceof Node ? configuratorStart : null);
       }
 
@@ -409,9 +437,10 @@
       if (section.dataset.shopCopyInitialScroll !== "done") {
         section.dataset.shopCopyInitialScroll = "done";
         window.requestAnimationFrame(() => {
-          contentColumn.scrollTop = 0;
-          window.scrollTo(0, 0);
+          lockIntroAtTop(contentColumn);
         });
+      } else {
+        lockIntroAtTop(contentColumn);
       }
     } else {
       main.id = "shop-copy-configurator";
