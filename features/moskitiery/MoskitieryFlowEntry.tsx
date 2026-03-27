@@ -6,18 +6,22 @@ import MoskitieryFlow from "./MoskitieryFlow";
 
 type MoskitieryFlowEntryProps = {
   initialProductSlug?: string;
+  entryPath?: string;
 };
 
 export default function MoskitieryFlowEntry({
   initialProductSlug = "",
+  entryPath = "",
 }: MoskitieryFlowEntryProps) {
   const searchParams = useSearchParams();
+  const productFromQuery = searchParams.get("product") ?? "";
 
   return (
     <MoskitieryFlow
       initialQuoteCode={searchParams.get("quote_code") ?? ""}
       initialResumeToken={searchParams.get("resume_token") ?? ""}
-      initialProductSlug={initialProductSlug}
+      initialProductSlug={productFromQuery || initialProductSlug}
+      entryPath={entryPath}
     />
   );
 }

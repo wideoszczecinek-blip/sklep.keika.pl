@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  buildMarketplaceOfferUrl,
   fetchShopConfiguratorConfig,
   pingShopPresence,
   resumeShopQuote,
@@ -38,6 +37,7 @@ type MoskitieryFlowProps = {
   initialQuoteCode?: string;
   initialResumeToken?: string;
   initialProductSlug?: string;
+  entryPath?: string;
 };
 
 function safeText(value: unknown) {
@@ -460,16 +460,30 @@ function getQuoteLink(
   quote: SavedQuote | null,
   resumeToken: string,
   fallbackProductSlug = "",
+  entryPath = "",
 ) {
   if (typeof window === "undefined" || !quote) {
     return "";
   }
 
   const productSlug = safeText(quote.product_slug) || safeText(fallbackProductSlug);
-  const url = new URL(
-    `/konfigurator/${encodeURIComponent(productSlug || "moskitiery-ramkowe")}`,
-    window.location.origin,
-  );
+  const normalizedEntryPath = safeText(entryPath);
+  const url = normalizedEntryPath
+    ? new URL(
+        normalizedEntryPath.startsWith("/")
+          ? normalizedEntryPath
+          : `/${normalizedEntryPath}`,
+        window.location.origin,
+      )
+    : new URL(
+        `/konfigurator/${encodeURIComponent(productSlug || "moskitiery-ramkowe")}`,
+        window.location.origin,
+      );
+
+  if (normalizedEntryPath && productSlug) {
+    url.searchParams.set("product", productSlug);
+  }
+
   const token = safeText(quote.resume_token ?? resumeToken);
   if (token) {
     url.searchParams.set("resume_token", token);
@@ -528,6 +542,7 @@ export default function MoskitieryFlow({
   initialQuoteCode = "",
   initialResumeToken = "",
   initialProductSlug = "",
+  entryPath = "",
 }: MoskitieryFlowProps) {
   const [config, setConfig] = useState<AllegroConfiguratorConfig | null>(null);
   const [selectedProductSlug, setSelectedProductSlug] = useState("");
@@ -606,10 +621,6 @@ export default function MoskitieryFlow({
       ) ?? null,
     [selectedProduct],
   );
-
-  const currentOfferUrl = selectedProduct
-    ? buildMarketplaceOfferUrl(selectedProduct.offer_id)
-    : "";
 
   const currentUnitPrice = selectedProduct
     ? parseMoney(selectedProduct.display_price_amount)
@@ -899,7 +910,7 @@ export default function MoskitieryFlow({
         product_slug: selectedProduct.slug,
         product_label: selectedProduct.label,
         offer_id: selectedProduct.offer_id,
-        offer_url: currentOfferUrl,
+        offer_url: "",
         currency: selectedProduct.display_price_currency || "PLN",
         total_amount: totalAmount > 0 ? totalAmount.toFixed(2) : null,
         items_count: positions.reduce((sum, position) => sum + position.quantity, 0),
@@ -940,6 +951,7 @@ export default function MoskitieryFlow({
       quote,
       resumeToken,
       selectedProduct?.slug ?? initialProductSlug,
+      entryPath,
     );
     if (!quoteLink) {
       return;
@@ -966,6 +978,7 @@ export default function MoskitieryFlow({
       quote,
       resumeToken,
       selectedProduct?.slug ?? initialProductSlug,
+      entryPath,
     );
     if (!quoteLink || typeof navigator.share !== "function") {
       return;
@@ -1255,7 +1268,7 @@ export default function MoskitieryFlow({
     return (
       <div className={styles.pageShell}>
         <section className={styles.loadingCard}>
-          Ładuję konfigurator sklepu WWW…
+          Ładuję konfigurator…
         </section>
       </div>
     );
@@ -1282,11 +1295,12 @@ export default function MoskitieryFlow({
         }
       >
         <div className={styles.heroCopy}>
-          <span className={styles.heroEyebrow}>sklep.keika.pl/moskitiery</span>
-          <h1>Sklepowy konfigurator moskitier</h1>
+          <span className={styles.heroEyebrow}>Konfigurator moskitier KEIKA</span>
+          <h1>Kopia flow konfiguratora Allegro</h1>
           <p>
-            Układ kroków zostaje taki sam, ale konfiguracja, wyceny, odwiedziny i
-            sterowanie cenami działają już w osobnej warstwie sklepu WWW.
+            Ten wariant działa teraz w tym samym układzie kroków co konfigurator
+            Allegro, ale zapisuje wyceny osobno i nie prowadzi jeszcze do zakupu
+            online.
           </p>
           {activeSlide ? (
             <div className={styles.heroSlide}>
@@ -1297,11 +1311,11 @@ export default function MoskitieryFlow({
           <div className={styles.heroMeta}>
             <span>{products.length} warianty moskitier</span>
             <span>{onlineCount} użytkowników online</span>
-            <span>osobne statystyki i wyceny sklepu</span>
+            <span>kod wyceny i wznowienie konfiguracji</span>
           </div>
         </div>
         <div className={styles.heroPanel}>
-          <div className={styles.heroPanelLabel}>Aktywny produkt</div>
+          <div className={styles.heroPanelLabel}>Aktywny wariant</div>
           <div className={styles.heroPanelTitle}>
             {selectedProduct?.label ?? "Wybierz produkt"}
           </div>
@@ -1314,20 +1328,9 @@ export default function MoskitieryFlow({
             {selectedProduct?.configurator.intro ??
               "Wybierz produkt, aby rozpocząć konfigurację."}
           </p>
-          {currentOfferUrl ? (
-            <a
-              className={styles.heroPanelAction}
-              href={currentOfferUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Zobacz powiązaną ofertę
-            </a>
-          ) : (
-            <span className={styles.heroPanelNote}>
-              Ten wariant nie ma jeszcze przypiętego linku zakupowego.
-            </span>
-          )}
+          <span className={styles.heroPanelNote}>
+            Zakup online podepniemy w kolejnym kroku.
+          </span>
         </div>
       </section>
 
@@ -1414,7 +1417,7 @@ export default function MoskitieryFlow({
           <section className={styles.measurementsCard}>
             <div className={styles.sectionHeading}>
               <span>Instrukcja pomiaru</span>
-              <h2>Prowadzenie użytkownika w sklepowym flow</h2>
+              <h2>Prowadzenie użytkownika w konfiguratorze</h2>
             </div>
             {selectedProduct?.configurator.measurement_guide_video_url ? (
               <video
@@ -1587,7 +1590,7 @@ export default function MoskitieryFlow({
           <section className={styles.positionsSection}>
             <div className={styles.sectionHeading}>
               <span>Pozycje wyceny</span>
-              <h2>Zbuduj listę pozycji w jednej wycenie sklepu</h2>
+              <h2>Zbuduj listę pozycji w jednej wycenie</h2>
             </div>
 
             <div className={styles.positionComposer}>
@@ -1780,20 +1783,9 @@ export default function MoskitieryFlow({
                   >
                     {sharePanelOpen ? "Ukryj zapis / udostępnianie" : "Zapisz / udostępnij"}
                   </button>
-                  {currentOfferUrl ? (
-                    <a
-                      className={styles.primaryButton}
-                      href={currentOfferUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Przejdź do zakupu online
-                    </a>
-                  ) : (
-                    <span className={styles.infoNote}>
-                      Dla tego wariantu nie ma jeszcze przypiętego linku zakupowego.
-                    </span>
-                  )}
+                  <span className={styles.infoNote}>
+                    Zamówienie online podepniemy w kolejnym kroku.
+                  </span>
                 </div>
 
                 {sharePanelOpen ? (
@@ -1805,6 +1797,7 @@ export default function MoskitieryFlow({
                           quote,
                           resumeToken,
                           selectedProduct?.slug ?? initialProductSlug,
+                          entryPath,
                         ) || "Brak linku"}
                       </code>
                     </div>
@@ -1851,6 +1844,7 @@ export default function MoskitieryFlow({
                               quote,
                               resumeToken,
                               selectedProduct?.slug ?? initialProductSlug,
+                              entryPath,
                             ),
                           )}`}
                           alt={`QR dla wyceny ${quote.quote_code}`}
@@ -1866,29 +1860,6 @@ export default function MoskitieryFlow({
               </div>
             )}
           </section>
-
-          {selectedProduct?.offer_id ? (
-            <section className={styles.marketCard}>
-              <div className={styles.sectionHeading}>
-                <span>Sprzedaż</span>
-                <h2>Powiązana oferta</h2>
-              </div>
-              <div className={styles.marketMeta}>
-                <span>ID oferty</span>
-                <strong>{selectedProduct.offer_id}</strong>
-              </div>
-              <div className={styles.marketMeta}>
-                <span>Cena jednostkowa</span>
-                <strong>
-                  {formatMoney(currentUnitPrice, selectedProduct.display_price_currency)}
-                </strong>
-              </div>
-              <div className={styles.marketMeta}>
-                <span>Docelowa akcja</span>
-                <strong>przejście do linku zakupowego z kodem wyceny</strong>
-              </div>
-            </section>
-          ) : null}
         </aside>
       </section>
     </div>
