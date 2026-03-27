@@ -10,10 +10,15 @@ const crmBase =
 const apiUrl = (path: string) => `${crmBase}${path}`;
 
 async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
+  const method = String(init?.method || "GET").toUpperCase();
+  const hasBody = init?.body !== undefined && init?.body !== null;
+
   const response = await fetch(input, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(hasBody || (method !== "GET" && method !== "HEAD")
+        ? { "Content-Type": "application/json" }
+        : {}),
       ...(init?.headers ?? {}),
     },
     cache: "no-store",
