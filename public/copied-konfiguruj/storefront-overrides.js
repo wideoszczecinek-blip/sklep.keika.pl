@@ -179,7 +179,15 @@
                   data-alt="${escapeHtml(`${data?.name || "Moskitiery"} ${index + 1}`)}"
                   aria-label="Pokaż zdjęcie ${index + 1}"
                 >
-                  <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy">
+                  <span
+                    class="shop-copy-hero-gallery__thumb-image"
+                    style="background-image:url('${escapeHtml(imageUrl)}')"
+                    aria-hidden="true"
+                  ></span>
+                  <span class="shop-copy-hero-gallery__thumb-copy">
+                    <strong>Zdjęcie ${index + 1}</strong>
+                    <small>${index === 0 ? "Widok główny produktu" : "Kliknij, aby zobaczyć to ujęcie"}</small>
+                  </span>
                 </button>
               `).join("")}
             </div>
