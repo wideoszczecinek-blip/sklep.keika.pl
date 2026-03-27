@@ -371,8 +371,13 @@
     if (contentColumn instanceof HTMLElement) {
       section.classList.add("shop-copy-intro--embedded");
       contentColumn.classList.add("shop-copy-config-column");
+      contentColumn.style.maxHeight = "none";
+      contentColumn.style.overflowY = "visible";
+      contentColumn.scrollTop = 0;
       if (grid instanceof HTMLElement) {
         grid.classList.add("shop-copy-layout-grid");
+        grid.style.overflow = "visible";
+        grid.style.height = "auto";
       }
       if (contentInner instanceof HTMLElement) {
         contentInner.classList.add("shop-copy-config-inner");
@@ -399,6 +404,14 @@
       if (configuratorStart instanceof HTMLElement) {
         configuratorStart.id = "shop-copy-configurator";
         configuratorStart.classList.add("shop-copy-configurator-start");
+      }
+
+      if (section.dataset.shopCopyInitialScroll !== "done") {
+        section.dataset.shopCopyInitialScroll = "done";
+        window.requestAnimationFrame(() => {
+          contentColumn.scrollTop = 0;
+          window.scrollTo(0, 0);
+        });
       }
     } else {
       main.id = "shop-copy-configurator";
