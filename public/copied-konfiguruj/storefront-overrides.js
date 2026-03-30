@@ -218,6 +218,7 @@
     const snapLabels = [
       "Moskitiery",
       ...sections.map((section, index) => String(section.title || `Sekcja ${index + 1}`).trim()),
+      "Konfigurator",
     ];
     const galleryItems = gallery.map((imageUrl, index) => ({
       previewSrc: toAssetUrl(imageUrl, 960, 52),
@@ -339,13 +340,18 @@
                 </section>
               `).join("")}
 
-              <section class="shop-copy-snap-panel shop-copy-snap-panel--cta" data-shop-copy-snap-panel>
-                <div class="shop-copy-snap-panel__inner shop-copy-snap-cta">
-                  <span class="shop-copy-intro__eyebrow">Dalej konfigurator</span>
-                  <h3>Masz już produkt, zdjęcia i najważniejsze informacje. Teraz przejdź niżej i skonfiguruj pierwszą moskitierę.</h3>
-                  <p>Landing działa jak pełnoekranowy one-page view, a sama konfiguracja zaczyna się dopiero po tej części sprzedażowej.</p>
-                  <div class="shop-copy-snap-hero__actions">
-                    <button type="button" class="shop-copy-snap-button shop-copy-snap-button--primary" data-shop-copy-go-configurator>Zacznij konfigurację</button>
+              <section class="shop-copy-snap-panel shop-copy-snap-panel--configurator" data-shop-copy-snap-panel>
+                <div class="shop-copy-snap-panel__inner shop-copy-configurator-panel">
+                  <div class="shop-copy-configurator-panel__copy">
+                    <span class="shop-copy-intro__eyebrow">Konfigurator</span>
+                    <h3>Skonfiguruj pierwszą moskitierę bez wychodzenia z landing page.</h3>
+                  </div>
+                  <div class="shop-copy-configurator-panel__frame" data-shop-copy-configurator-frame>
+                    <div class="shop-copy-configurator-panel__viewport" data-shop-copy-configurator-viewport>
+                      <div class="shop-copy-configurator-panel__mount" data-shop-copy-configurator-mount>
+                        <div class="shop-copy-configurator-panel__loading">Ładowanie konfiguratora…</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -464,6 +470,52 @@
     document.body.dataset.shopCopyModalOpen = "false";
   }
 
+  function updateConfiguratorPanelScale(section) {
+    const frame = section.querySelector("[data-shop-copy-configurator-frame]");
+    const viewport = section.querySelector("[data-shop-copy-configurator-viewport]");
+    const mount = section.querySelector("[data-shop-copy-configurator-mount]");
+    const grid = mount?.querySelector(".shop-copy-layout-grid");
+    if (!(frame instanceof HTMLElement) || !(viewport instanceof HTMLElement) || !(mount instanceof HTMLElement) || !(grid instanceof HTMLElement)) {
+      return;
+    }
+
+    const naturalWidth = Math.max(grid.scrollWidth, grid.offsetWidth, 1);
+    const naturalHeight = Math.max(grid.scrollHeight, grid.offsetHeight, 1);
+    const availableWidth = Math.max(frame.clientWidth - 8, 320);
+    const availableHeight = Math.max(frame.clientHeight - 8, 320);
+    const scale = Math.min(availableWidth / naturalWidth, availableHeight / naturalHeight, 1);
+    const scaledWidth = Math.max(320, Math.floor(naturalWidth * scale));
+    const scaledHeight = Math.max(280, Math.floor(naturalHeight * scale));
+
+    viewport.style.width = `${scaledWidth}px`;
+    viewport.style.height = `${scaledHeight}px`;
+    mount.style.width = `${naturalWidth}px`;
+    mount.style.height = `${naturalHeight}px`;
+    mount.style.transform = `scale(${scale})`;
+    mount.dataset.shopCopyScale = String(scale);
+  }
+
+  function mountConfiguratorIntoIntro(section, grid) {
+    const mount = section.querySelector("[data-shop-copy-configurator-mount]");
+    if (!(mount instanceof HTMLElement) || !(grid instanceof HTMLElement)) return;
+
+    if (grid.parentNode !== mount) {
+      mount.innerHTML = "";
+      mount.appendChild(grid);
+    }
+
+    grid.classList.add("shop-copy-layout-grid--embedded");
+
+    const refreshScale = () => updateConfiguratorPanelScale(section);
+    window.requestAnimationFrame(refreshScale);
+    [120, 320, 900].forEach((delay) => window.setTimeout(refreshScale, delay));
+
+    if (section.dataset.shopCopyConfigResizeBound !== "true") {
+      section.dataset.shopCopyConfigResizeBound = "true";
+      window.addEventListener("resize", refreshScale);
+    }
+  }
+
   function setActiveSnapPanel(section, index) {
     const landing = section.querySelector("[data-shop-copy-snap-landing]");
     const track = section.querySelector("[data-shop-copy-snap-track]");
@@ -575,10 +627,10 @@
       }
 
       const goConfigurator = event.target instanceof Element ? event.target.closest("[data-shop-copy-go-configurator]") : null;
-      if (!(goConfigurator instanceof HTMLElement)) return;
-
-      const configuratorStart = document.getElementById("shop-copy-configurator");
-      configuratorStart?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (goConfigurator instanceof HTMLElement) {
+        const panels = Array.from(section.querySelectorAll("[data-shop-copy-snap-panel]")).filter((node) => node instanceof HTMLElement);
+        setActiveSnapPanel(section, Math.max(0, panels.length - 1));
+      }
     });
 
     stage?.addEventListener("touchstart", (event) => {
@@ -628,10 +680,7 @@
       const currentIndex = Number.parseInt(snapLanding.getAttribute("data-shop-copy-snap-index") || section.dataset.shopCopySnapIndex || "0", 10) || 0;
       const nextIndex = Math.max(0, Math.min(currentIndex + (event.deltaY > 0 ? 1 : -1), panels.length - 1));
 
-      if (nextIndex === currentIndex && event.deltaY > 0) {
-        const configuratorStart = document.getElementById("shop-copy-configurator");
-        configuratorStart?.scrollIntoView({ behavior: "smooth", block: "start" });
-        snapCooldownUntil = performance.now() + 900;
+      if (nextIndex === currentIndex) {
         return;
       }
 
@@ -804,9 +853,12 @@
         ? legacySteps
         : Array.from(contentInner?.children || []).find((node) => node !== section);
 
-      if (viewportContent instanceof HTMLElement && grid instanceof HTMLElement) {
-        if (section.parentNode !== viewportContent || section.nextSibling !== grid) {
-          viewportContent.insertBefore(section, grid);
+      if (viewportContent instanceof HTMLElement) {
+        const firstChild = viewportContent.firstElementChild;
+        if (section.parentNode !== viewportContent) {
+          viewportContent.insertBefore(section, firstChild || null);
+        } else if (firstChild !== section) {
+          viewportContent.insertBefore(section, firstChild || null);
         }
       } else if (section.parentNode !== main.parentNode) {
         main.parentNode.insertBefore(section, main);
@@ -843,11 +895,17 @@
       .then((data) => {
         section.innerHTML = buildIntroMarkup(data);
         bindIntroInteractions(section);
+        if (grid instanceof HTMLElement) {
+          mountConfiguratorIntoIntro(section, grid);
+        }
         section.dataset.shopCopyReady = "true";
       })
       .catch(() => {
         section.innerHTML = buildIntroMarkup(fallbackIntroData());
         bindIntroInteractions(section);
+        if (grid instanceof HTMLElement) {
+          mountConfiguratorIntoIntro(section, grid);
+        }
         section.dataset.shopCopyReady = "true";
       })
       .finally(() => {
