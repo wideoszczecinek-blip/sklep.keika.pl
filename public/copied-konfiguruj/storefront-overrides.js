@@ -52,6 +52,7 @@
   ];
 
   let introDataPromise = null;
+  let galleryModalState = null;
 
   function setMeta() {
     document.title = "KEIKA | Moskitiery na wymiar";
@@ -72,6 +73,27 @@
 
   function formatMultilineText(value) {
     return escapeHtml(value).replace(/\n/g, "<br>");
+  }
+
+  function toAssetUrl(url, width, quality) {
+    const source = String(url || "").trim();
+    if (!source) return "";
+    if (source.startsWith("data:") || source.startsWith("blob:") || source.startsWith("/api/asset-proxy")) {
+      return source;
+    }
+    if (!/^https?:\/\//i.test(source)) {
+      return source;
+    }
+
+    const params = new URLSearchParams({ url: source });
+    if (Number.isFinite(width) && width > 0) {
+      params.set("w", String(Math.round(width)));
+    }
+    if (Number.isFinite(quality) && quality > 0) {
+      params.set("q", String(Math.round(quality)));
+    }
+
+    return `/api/asset-proxy?${params.toString()}`;
   }
 
   function fallbackIntroData() {
@@ -197,6 +219,13 @@
       "Moskitiery",
       ...sections.map((section, index) => String(section.title || `Sekcja ${index + 1}`).trim()),
     ];
+    const galleryItems = gallery.map((imageUrl, index) => ({
+      previewSrc: toAssetUrl(imageUrl, 1200, 66),
+      modalSrc: toAssetUrl(imageUrl, 1800, 82),
+      alt: `${data?.name || "Moskitiery"} ${index + 1}`,
+      loading: index === 0 ? "eager" : "lazy",
+      fetchPriority: index === 0 ? "high" : "auto",
+    }));
 
     return `
       <div class="shop-copy-intro__card shop-copy-snap-landing" data-shop-copy-snap-landing>
@@ -227,6 +256,74 @@
                       </article>
                     `).join("")}
                   </div>
+
+                  <aside class="shop-copy-hero-gallery" aria-label="Galeria produktu">
+                    <div class="shop-copy-hero-gallery__stage">
+                      <button
+                        type="button"
+                        class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--prev"
+                        data-shop-copy-gallery-step="-1"
+                        aria-label="Poprzednie zdjęcie"
+                      >
+                        <span aria-hidden="true">‹</span>
+                      </button>
+                      <div class="shop-copy-hero-gallery__carousel">
+                        ${galleryItems.length
+                          ? galleryItems.map((item, index) => `
+                            <figure
+                              class="shop-copy-hero-gallery__card${index === 0 ? " is-active" : index === 1 ? " is-next" : index === galleryItems.length - 1 ? " is-prev" : " is-hidden"}"
+                              data-shop-copy-gallery-card
+                              data-gallery-index="${index}"
+                              aria-hidden="${index === 0 ? "false" : "true"}"
+                            >
+                              <div class="shop-copy-hero-gallery__card-frame">
+                                <img
+                                  class="shop-copy-hero-gallery__image"
+                                  src="${escapeHtml(item.previewSrc)}"
+                                  alt="${escapeHtml(item.alt)}"
+                                  loading="${item.loading}"
+                                  fetchpriority="${item.fetchPriority}"
+                                  decoding="async"
+                                >
+                                <button
+                                  type="button"
+                                  class="shop-copy-hero-gallery__zoom"
+                                  data-shop-copy-open-modal
+                                  data-gallery-index="${index}"
+                                  aria-label="Powiększ zdjęcie"
+                                >
+                                  <span aria-hidden="true">⌕</span>
+                                </button>
+                              </div>
+                            </figure>
+                          `).join("")
+                          : `<div class="shop-copy-hero-gallery__placeholder">Dodaj zdjęcia produktu w CRM</div>`}
+                      </div>
+                      <button
+                        type="button"
+                        class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--next"
+                        data-shop-copy-gallery-step="1"
+                        aria-label="Następne zdjęcie"
+                      >
+                        <span aria-hidden="true">›</span>
+                      </button>
+                    </div>
+                    <div class="shop-copy-hero-gallery__pagination" aria-label="Paginacja galerii">
+                      ${galleryItems.map((item, index) => `
+                        <button
+                          type="button"
+                          class="shop-copy-hero-gallery__dot${index === 0 ? " is-active" : ""}"
+                          data-shop-copy-thumb
+                          data-gallery-index="${index}"
+                          data-image="${escapeHtml(item.previewSrc)}"
+                          data-modal-image="${escapeHtml(item.modalSrc)}"
+                          data-alt="${escapeHtml(item.alt)}"
+                          aria-label="Pokaż zdjęcie ${index + 1}"
+                          aria-pressed="${index === 0 ? "true" : "false"}"
+                        ></button>
+                      `).join("")}
+                    </div>
+                  </aside>
                 </div>
               </section>
 
@@ -253,63 +350,105 @@
                 </div>
               </section>
             </div>
-
-            <aside class="shop-copy-hero-gallery" aria-label="Galeria produktu">
-              <div class="shop-copy-hero-gallery__stage">
-                <button
-                  type="button"
-                  class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--prev"
-                  data-shop-copy-gallery-step="-1"
-                  aria-label="Poprzednie zdjęcie"
-                >
-                  <span aria-hidden="true">‹</span>
-                </button>
-                <div class="shop-copy-hero-gallery__carousel">
-                  ${gallery.length
-                    ? gallery.map((imageUrl, index) => `
-                      <figure
-                        class="shop-copy-hero-gallery__card${index === 0 ? " is-active" : index === 1 ? " is-next" : index === gallery.length - 1 ? " is-prev" : " is-hidden"}"
-                        data-shop-copy-gallery-card
-                        data-gallery-index="${index}"
-                        aria-hidden="${index === 0 ? "false" : "true"}"
-                      >
-                        <img
-                          class="shop-copy-hero-gallery__image"
-                          src="${escapeHtml(imageUrl)}"
-                          alt="${escapeHtml(`${data?.name || "Moskitiery"} ${index + 1}`)}"
-                        >
-                      </figure>
-                    `).join("")
-                    : `<div class="shop-copy-hero-gallery__placeholder">Dodaj zdjęcia produktu w CRM</div>`}
-                </div>
-                <button
-                  type="button"
-                  class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--next"
-                  data-shop-copy-gallery-step="1"
-                  aria-label="Następne zdjęcie"
-                >
-                  <span aria-hidden="true">›</span>
-                </button>
-              </div>
-              <div class="shop-copy-hero-gallery__pagination" aria-label="Paginacja galerii">
-                ${gallery.map((imageUrl, index) => `
-                  <button
-                    type="button"
-                    class="shop-copy-hero-gallery__dot${index === 0 ? " is-active" : ""}"
-                    data-shop-copy-thumb
-                    data-gallery-index="${index}"
-                    data-image="${escapeHtml(imageUrl)}"
-                    data-alt="${escapeHtml(`${data?.name || "Moskitiery"} ${index + 1}`)}"
-                    aria-label="Pokaż zdjęcie ${index + 1}"
-                    aria-pressed="${index === 0 ? "true" : "false"}"
-                  ></button>
-                `).join("")}
-              </div>
-            </aside>
           </div>
         </div>
       </div>
     `;
+  }
+
+  function ensureGalleryModal() {
+    let modal = document.querySelector("[data-shop-copy-gallery-modal]");
+    if (modal instanceof HTMLElement) return modal;
+
+    modal = document.createElement("div");
+    modal.className = "shop-copy-gallery-modal";
+    modal.dataset.shopCopyGalleryModal = "true";
+    modal.innerHTML = `
+      <button type="button" class="shop-copy-gallery-modal__backdrop" data-shop-copy-close-modal aria-label="Zamknij podgląd"></button>
+      <div class="shop-copy-gallery-modal__dialog" role="dialog" aria-modal="true" aria-label="Podgląd zdjęcia">
+        <button type="button" class="shop-copy-gallery-modal__close" data-shop-copy-close-modal aria-label="Zamknij podgląd">×</button>
+        <button type="button" class="shop-copy-gallery-modal__nav shop-copy-gallery-modal__nav--prev" data-shop-copy-modal-step="-1" aria-label="Poprzednie zdjęcie"><span aria-hidden="true">‹</span></button>
+        <div class="shop-copy-gallery-modal__frame">
+          <img class="shop-copy-gallery-modal__image" alt="">
+        </div>
+        <button type="button" class="shop-copy-gallery-modal__nav shop-copy-gallery-modal__nav--next" data-shop-copy-modal-step="1" aria-label="Następne zdjęcie"><span aria-hidden="true">›</span></button>
+      </div>
+    `;
+
+    modal.addEventListener("click", (event) => {
+      const closeTrigger = event.target instanceof Element ? event.target.closest("[data-shop-copy-close-modal]") : null;
+      if (closeTrigger) {
+        closeGalleryModal();
+        return;
+      }
+
+      const stepTrigger = event.target instanceof Element ? event.target.closest("[data-shop-copy-modal-step]") : null;
+      if (!(stepTrigger instanceof HTMLElement) || !galleryModalState?.items?.length) return;
+
+      const step = Number.parseInt(stepTrigger.getAttribute("data-shop-copy-modal-step") || "0", 10);
+      setGalleryModalIndex((galleryModalState.index || 0) + (Number.isFinite(step) ? step : 0));
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (document.body.dataset.shopCopyModalOpen !== "true") return;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeGalleryModal();
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        setGalleryModalIndex((galleryModalState?.index || 0) - 1);
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        setGalleryModalIndex((galleryModalState?.index || 0) + 1);
+      }
+    });
+
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function setGalleryModalIndex(index) {
+    if (!galleryModalState?.items?.length) return;
+
+    const modal = ensureGalleryModal();
+    const image = modal.querySelector(".shop-copy-gallery-modal__image");
+    if (!(image instanceof HTMLImageElement)) return;
+
+    const nextIndex = ((index % galleryModalState.items.length) + galleryModalState.items.length) % galleryModalState.items.length;
+    const item = galleryModalState.items[nextIndex];
+
+    image.src = item.modalSrc || item.previewSrc || "";
+    image.alt = item.alt || "";
+    galleryModalState.index = nextIndex;
+  }
+
+  function openGalleryModal(section, index) {
+    const dots = Array.from(section.querySelectorAll("[data-shop-copy-thumb]")).filter((node) => node instanceof HTMLElement);
+    if (!dots.length) return;
+
+    galleryModalState = {
+      items: dots.map((node) => ({
+        previewSrc: String(node.getAttribute("data-image") || "").trim(),
+        modalSrc: String(node.getAttribute("data-modal-image") || "").trim(),
+        alt: String(node.getAttribute("data-alt") || "").trim(),
+      })),
+      index: 0,
+    };
+
+    ensureGalleryModal();
+    document.body.dataset.shopCopyModalOpen = "true";
+    setGalleryModalIndex(index);
+  }
+
+  function closeGalleryModal() {
+    document.body.dataset.shopCopyModalOpen = "false";
   }
 
   function setActiveSnapPanel(section, index) {
@@ -389,6 +528,13 @@
     let touchStartX = 0;
 
     section.addEventListener("click", (event) => {
+      const zoomButton = event.target instanceof Element ? event.target.closest("[data-shop-copy-open-modal]") : null;
+      if (zoomButton instanceof HTMLElement) {
+        const index = Number.parseInt(zoomButton.getAttribute("data-gallery-index") || "0", 10);
+        openGalleryModal(section, Number.isFinite(index) ? index : 0);
+        return;
+      }
+
       const thumb = event.target instanceof Element ? event.target.closest("[data-shop-copy-thumb]") : null;
       if (thumb instanceof HTMLElement) {
         const index = Number.parseInt(thumb.getAttribute("data-gallery-index") || "0", 10);
@@ -445,14 +591,6 @@
       setActiveSnapPanel(section, Number.parseInt(section.dataset.shopCopySnapIndex || "0", 10) || 0);
       setActiveCarouselSlide(section, Number.parseInt(section.dataset.shopCopyCarouselIndex || "0", 10) || 0);
       setActiveGalleryIndex(section, Number.parseInt(section.dataset.shopCopyGalleryIndex || "0", 10) || 0);
-      section.querySelectorAll("[data-shop-copy-thumb]").forEach((node) => {
-        if (!(node instanceof HTMLElement) || !node.classList.contains("is-active")) return;
-        node.scrollIntoView({
-          behavior: "auto",
-          block: "nearest",
-          inline: "nearest",
-        });
-      });
     });
 
     if (section.querySelectorAll("[data-shop-copy-carousel-slide]").length > 1) {
