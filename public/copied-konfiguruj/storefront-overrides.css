@@ -37,15 +37,26 @@ body.shop-copy-enhanced::after {
 }
 
 body.shop-copy-enhanced .app-shell {
-  width: min(80vw, 1760px);
-  margin: 0 auto;
+  width: 100vw;
+  max-width: none;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
   position: relative;
   z-index: 1;
 }
 
+body.shop-copy-enhanced .shop-copy-main-target {
+  width: 100vw;
+  max-width: none !important;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
 body.shop-copy-enhanced .viewport-card {
-  padding-left: clamp(14px, 1.8vw, 34px) !important;
-  padding-right: clamp(14px, 1.8vw, 34px) !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
   min-height: auto !important;
   height: auto !important;
   overflow: visible !important;
@@ -58,6 +69,13 @@ body.shop-copy-enhanced .viewport-card {
 body.shop-copy-enhanced .viewport-card > div[aria-hidden="true"],
 body.shop-copy-enhanced .viewport-card > div.absolute.inset-0 {
   display: none !important;
+}
+
+body.shop-copy-enhanced .viewport-card > .relative.flex {
+  width: 100% !important;
+  max-width: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 body.shop-copy-enhanced[data-shop-menu-open="true"] {
@@ -203,6 +221,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   z-index: 2;
   max-width: none;
   margin: 0;
+  width: 100%;
   padding: 0 0 56px;
   min-height: 100svh;
 }
@@ -251,6 +270,8 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   display: grid;
   gap: 28px;
   position: relative;
+  width: 100%;
+  padding-inline: 0;
 }
 
 .shop-copy-snap-viewport {
@@ -272,8 +293,8 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
 
 .shop-copy-snap-panel__inner {
   width: 100%;
-  max-width: 1120px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 .shop-copy-snap-hero {
@@ -463,10 +484,13 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   gap: 18px;
   align-content: center;
   width: 100%;
+  justify-self: end;
+  justify-items: end;
 }
 
 .shop-copy-hero-gallery__stage {
   position: relative;
+  width: min(100%, clamp(380px, 42vw, 760px));
   min-height: 320px;
   overflow: visible;
   background: transparent;
@@ -588,6 +612,8 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   display: block;
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
   object-position: center;
 }
@@ -892,7 +918,11 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
 
 @media (min-width: 900px) {
   body.shop-copy-enhanced .app-shell {
-    width: min(80vw, 1920px);
+    width: 100vw;
+  }
+
+  body.shop-copy-enhanced .shop-copy-main-target {
+    width: 100vw;
   }
 
   .shop-copy-layout-grid {
@@ -960,25 +990,31 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   }
 
   .shop-copy-snap-shell {
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: clamp(170px, 14vw, 220px) minmax(0, 1fr);
     gap: clamp(22px, 3vw, 42px);
     align-items: start;
     min-height: 100svh;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .shop-copy-snap-side-nav {
     position: sticky;
     top: clamp(26px, 7vh, 72px);
+    left: 0;
+    justify-self: start;
     display: grid;
     gap: 10px;
     align-content: start;
-    padding-top: clamp(14px, 4vh, 34px);
+    padding-top: clamp(8px, 3vh, 24px);
+    padding-left: clamp(6px, 0.8vw, 12px);
+    z-index: 4;
   }
 
   .shop-copy-snap-side-nav__item {
     display: inline-flex;
     align-items: center;
-    width: 220px;
+    width: min(220px, calc(100% - 8px));
     min-height: 56px;
     padding: 0 18px;
     border: 1px solid rgba(19, 24, 34, 0.06);
@@ -1045,7 +1081,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   }
 
   .shop-copy-snap-hero {
-    grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+    grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
     min-height: calc(100svh - 76px);
   }
 
@@ -1067,6 +1103,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   }
 
   .shop-copy-hero-gallery__stage {
+    justify-self: end;
     min-height: clamp(420px, 52vw, 680px);
   }
 
@@ -1075,7 +1112,6 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
     margin: 0;
   }
 
-  .shop-copy-hero-gallery__image,
   .shop-copy-hero-gallery__placeholder {
     min-height: clamp(420px, 52vw, 680px);
   }
@@ -1089,7 +1125,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   }
 
   .shop-copy-hero-gallery__card-frame {
-    width: clamp(320px, 30vw, 560px);
+    width: clamp(320px, 29vw, 560px);
   }
 
   .shop-copy-story-list {
@@ -1104,18 +1140,26 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
 
 @media (max-width: 1280px) {
   body.shop-copy-enhanced .app-shell {
-    width: calc(100vw - 28px);
+    width: 100vw;
+  }
+
+  body.shop-copy-enhanced .shop-copy-main-target {
+    width: 100vw;
   }
 }
 
 @media (max-width: 760px) {
   body.shop-copy-enhanced .app-shell {
-    width: calc(100vw - 14px);
+    width: 100vw;
+  }
+
+  body.shop-copy-enhanced .shop-copy-main-target {
+    width: 100vw;
   }
 
   body.shop-copy-enhanced .viewport-card {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   .shop-copy-config-link {
@@ -1132,6 +1176,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
 
   .shop-copy-snap-shell {
     gap: 22px;
+    padding-inline: 0;
   }
 
   .shop-copy-menu-button {
@@ -1194,7 +1239,6 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
     overflow: hidden;
   }
 
-  .shop-copy-hero-gallery__image,
   .shop-copy-hero-gallery__placeholder {
     min-height: 280px;
   }
