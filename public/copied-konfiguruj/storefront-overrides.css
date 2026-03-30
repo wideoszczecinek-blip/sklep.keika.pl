@@ -1081,7 +1081,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   }
 
   .shop-copy-snap-hero {
-    grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+    grid-template-columns: minmax(0, 40fr) minmax(0, 60fr);
     min-height: calc(100svh - 76px);
   }
 
@@ -1104,6 +1104,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
 
   .shop-copy-hero-gallery__stage {
     justify-self: end;
+    width: min(100%, clamp(304px, 34vw, 608px));
     min-height: clamp(420px, 52vw, 680px);
   }
 
@@ -1125,7 +1126,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   }
 
   .shop-copy-hero-gallery__card-frame {
-    width: clamp(320px, 29vw, 560px);
+    width: clamp(256px, 23vw, 448px);
   }
 
   .shop-copy-story-list {
