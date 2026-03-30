@@ -1,6 +1,13 @@
 html {
   scroll-behavior: smooth;
   background: #edf3fa;
+  scrollbar-width: none;
+  overflow-x: hidden;
+}
+
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 body.shop-copy-enhanced {
@@ -10,6 +17,13 @@ body.shop-copy-enhanced {
   background: transparent;
   color: #112033;
   isolation: isolate;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+body.shop-copy-enhanced::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 body.shop-copy-enhanced::before,
@@ -484,8 +498,8 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   gap: 18px;
   align-content: center;
   width: 100%;
-  justify-self: end;
-  justify-items: end;
+  justify-self: stretch;
+  justify-items: center;
 }
 
 .shop-copy-hero-gallery__stage {
@@ -1104,10 +1118,9 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   }
 
   .shop-copy-hero-gallery__stage {
-    justify-self: end;
+    justify-self: center;
     width: min(100%, clamp(304px, 34vw, 608px));
     min-height: clamp(420px, 52vw, 680px);
-    transform: translateX(clamp(-42px, -3vw, -14px));
   }
 
   .shop-copy-snap-panel--hero .shop-copy-snap-panel__inner {
