@@ -265,6 +265,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   display: grid;
   gap: 32px;
   align-items: center;
+  justify-items: start;
 }
 
 .shop-copy-snap-hero__actions {
@@ -360,6 +361,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   position: relative;
   min-width: 0;
   min-height: clamp(280px, 36vw, 520px);
+  width: min(100%, 860px);
 }
 
 .shop-copy-text-carousel__slide {
@@ -855,9 +857,13 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   }
 
   .shop-copy-snap-hero {
-    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
-    gap: clamp(32px, 4vw, 74px);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
     min-height: calc(100svh - 76px);
+  }
+
+  .shop-copy-text-carousel {
+    min-height: clamp(320px, 42vw, 620px);
   }
 
   .shop-copy-snap-panel--story .shop-copy-snap-panel__inner,

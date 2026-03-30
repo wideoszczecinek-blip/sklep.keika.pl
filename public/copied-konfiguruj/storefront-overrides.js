@@ -178,8 +178,6 @@
       ? data.gallery_urls
       : FALLBACK_GALLERY;
     const sections = normalizeLandingSections(data?.landing_sections);
-    const activeImage = gallery[0] || "";
-    const activeAlt = data?.name || "Moskitiery ramkowe";
     const title = String(data?.title || data?.name || "Moskitiery ramkowe").trim() || "Moskitiery ramkowe";
     const subtitleLines = Array.isArray(data?.subtitle_lines) && data.subtitle_lines.length
       ? data.subtitle_lines
@@ -209,61 +207,6 @@
                       <p class="shop-copy-text-carousel__body">${formatMultilineText(slide.body || "")}</p>
                     </article>
                   `).join("")}
-                </div>
-                <div class="shop-copy-hero-gallery">
-                  <div class="shop-copy-hero-gallery__meta">
-                    <div>
-                      <h3 class="shop-copy-hero-gallery__name">${escapeHtml(data?.name || "Moskitiery ramkowe")}</h3>
-                      <p class="shop-copy-hero-gallery__meta-line">Galeria produktu <span aria-hidden="true">•</span> <span data-shop-copy-gallery-count>1 / ${gallery.length}</span></p>
-                    </div>
-                  </div>
-                  <div class="shop-copy-hero-gallery__stage">
-                    <div class="shop-copy-hero-gallery__stage-top">
-                      <span class="shop-copy-hero-gallery__hint">Kliknij lub przesuń</span>
-                      <span class="shop-copy-hero-gallery__counter" data-shop-copy-gallery-count-badge>1 / ${gallery.length}</span>
-                    </div>
-                    <button
-                      type="button"
-                      class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--prev"
-                      data-shop-copy-gallery-step="-1"
-                      aria-label="Poprzednie zdjęcie"
-                    >
-                      <span aria-hidden="true">‹</span>
-                    </button>
-                    ${activeImage
-                      ? `<img class="shop-copy-hero-gallery__image" data-shop-copy-main-image src="${escapeHtml(activeImage)}" alt="${escapeHtml(activeAlt)}">`
-                      : `<div class="shop-copy-hero-gallery__placeholder">Dodaj zdjęcia produktu w CRM</div>`}
-                    <button
-                      type="button"
-                      class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--next"
-                      data-shop-copy-gallery-step="1"
-                      aria-label="Następne zdjęcie"
-                    >
-                      <span aria-hidden="true">›</span>
-                    </button>
-                  </div>
-                  <div class="shop-copy-hero-gallery__thumbs">
-                    ${gallery.map((imageUrl, index) => `
-                      <button
-                        type="button"
-                        class="shop-copy-hero-gallery__thumb${index === 0 ? " is-active" : ""}"
-                        data-shop-copy-thumb
-                        data-gallery-index="${index}"
-                        data-image="${escapeHtml(imageUrl)}"
-                        data-alt="${escapeHtml(`${data?.name || "Moskitiery"} ${index + 1}`)}"
-                        aria-label="Pokaż zdjęcie ${index + 1}"
-                        aria-pressed="${index === 0 ? "true" : "false"}"
-                      >
-                        <span class="shop-copy-hero-gallery__thumb-image-wrap">
-                          <span
-                            class="shop-copy-hero-gallery__thumb-image"
-                            style="background-image:url('${escapeHtml(imageUrl)}')"
-                            aria-hidden="true"
-                          ></span>
-                        </span>
-                      </button>
-                    `).join("")}
-                  </div>
                 </div>
               </div>
             </section>
