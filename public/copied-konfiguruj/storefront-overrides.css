@@ -1088,7 +1088,6 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
 
   .shop-copy-text-carousel {
     min-height: clamp(360px, 44vw, 660px);
-    margin-left: clamp(-28px, -2vw, -10px);
   }
 
   .shop-copy-snap-panel--story .shop-copy-snap-panel__inner,
@@ -1108,6 +1107,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
     justify-self: end;
     width: min(100%, clamp(304px, 34vw, 608px));
     min-height: clamp(420px, 52vw, 680px);
+    transform: translateX(clamp(-42px, -3vw, -14px));
   }
 
   .shop-copy-snap-panel--hero .shop-copy-snap-panel__inner {
