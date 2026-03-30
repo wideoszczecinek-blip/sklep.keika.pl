@@ -991,7 +991,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
 
   .shop-copy-snap-shell {
     grid-template-columns: clamp(170px, 14vw, 220px) minmax(0, 1fr);
-    gap: clamp(22px, 3vw, 42px);
+    gap: clamp(10px, 1.4vw, 22px);
     align-items: start;
     min-height: 100svh;
     padding-left: 0;
@@ -1082,11 +1082,13 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
 
   .shop-copy-snap-hero {
     grid-template-columns: minmax(0, 40fr) minmax(0, 60fr);
+    gap: clamp(8px, 1.2vw, 18px);
     min-height: calc(100svh - 76px);
   }
 
   .shop-copy-text-carousel {
     min-height: clamp(360px, 44vw, 660px);
+    margin-left: clamp(-28px, -2vw, -10px);
   }
 
   .shop-copy-snap-panel--story .shop-copy-snap-panel__inner,
