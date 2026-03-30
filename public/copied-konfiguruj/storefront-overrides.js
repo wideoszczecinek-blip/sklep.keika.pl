@@ -220,8 +220,8 @@
       ...sections.map((section, index) => String(section.title || `Sekcja ${index + 1}`).trim()),
     ];
     const galleryItems = gallery.map((imageUrl, index) => ({
-      previewSrc: toAssetUrl(imageUrl, 1200, 66),
-      modalSrc: toAssetUrl(imageUrl, 1800, 82),
+      previewSrc: toAssetUrl(imageUrl, 960, 52),
+      modalSrc: toAssetUrl(imageUrl, 1440, 62),
       alt: `${data?.name || "Moskitiery"} ${index + 1}`,
       loading: index === 0 ? "eager" : "lazy",
       fetchPriority: index === 0 ? "high" : "auto",
@@ -389,6 +389,19 @@
       setGalleryModalIndex((galleryModalState.index || 0) + (Number.isFinite(step) ? step : 0));
     });
 
+    const prevButton = modal.querySelector('[data-shop-copy-modal-step="-1"]');
+    const nextButton = modal.querySelector('[data-shop-copy-modal-step="1"]');
+    prevButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setGalleryModalIndex((galleryModalState?.index || 0) - 1);
+    });
+    nextButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setGalleryModalIndex((galleryModalState?.index || 0) + 1);
+    });
+
     document.addEventListener("keydown", (event) => {
       if (document.body.dataset.shopCopyModalOpen !== "true") return;
 
@@ -545,6 +558,8 @@
       const stepButton = event.target instanceof Element ? event.target.closest("[data-shop-copy-gallery-step]") : null;
       if (!(stepButton instanceof HTMLElement)) return;
 
+      event.preventDefault();
+      event.stopPropagation();
       const currentIndex = Number.parseInt(section.dataset.shopCopyGalleryIndex || "0", 10);
       const step = Number.parseInt(stepButton.getAttribute("data-shop-copy-gallery-step") || "0", 10);
       setActiveGalleryIndex(section, (Number.isFinite(currentIndex) ? currentIndex : 0) + (Number.isFinite(step) ? step : 0));

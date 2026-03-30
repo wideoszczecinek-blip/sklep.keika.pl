@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   const contentLength = upstream.headers.get("content-length");
   const optimizeImage = Boolean(contentType && contentType.startsWith("image/"));
   const width = Number.isFinite(widthParam) && widthParam > 0 ? Math.min(widthParam, 2400) : null;
-  const quality = Number.isFinite(qualityParam) && qualityParam > 0 ? Math.min(Math.max(qualityParam, 30), 90) : 72;
+  const quality = Number.isFinite(qualityParam) && qualityParam > 0 ? Math.min(Math.max(qualityParam, 24), 82) : 58;
 
   if (optimizeImage) {
     try {
@@ -62,7 +62,8 @@ export async function GET(request: NextRequest) {
 
       const output = await pipeline.webp({
         quality,
-        effort: 4,
+        effort: 6,
+        smartSubsample: true,
       }).toBuffer();
 
       headers.set("Content-Type", "image/webp");
