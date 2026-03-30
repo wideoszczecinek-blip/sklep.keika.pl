@@ -193,10 +193,29 @@
         body: String(section.body || "").trim(),
       })),
     );
+    const snapLabels = [
+      "Moskitiery",
+      ...sections.map((section, index) => String(section.title || `Sekcja ${index + 1}`).trim()),
+      "Konfigurator",
+    ];
 
     return `
       <div class="shop-copy-intro__card shop-copy-snap-landing" data-shop-copy-snap-landing>
         <div class="shop-copy-snap-viewport">
+          <nav class="shop-copy-snap-side-nav" aria-label="Sekcje landing">
+            ${snapLabels.map((label, index) => `
+              <button
+                type="button"
+                class="shop-copy-snap-side-nav__item${index === 0 ? " is-active" : ""}"
+                data-shop-copy-snap-target="${index}"
+                aria-label="${escapeHtml(label)}"
+                aria-current="${index === 0 ? "true" : "false"}"
+              >
+                <span class="shop-copy-snap-side-nav__dot" aria-hidden="true"></span>
+                <span class="shop-copy-snap-side-nav__label">${escapeHtml(label)}</span>
+              </button>
+            `).join("")}
+          </nav>
           <div class="shop-copy-snap-track" data-shop-copy-snap-track>
             <section class="shop-copy-snap-panel shop-copy-snap-panel--hero" data-shop-copy-snap-panel>
               <div class="shop-copy-snap-panel__inner shop-copy-snap-hero">
@@ -214,7 +233,6 @@
             ${sections.map((section, index) => `
               <section class="shop-copy-snap-panel shop-copy-snap-panel--story" data-shop-copy-snap-panel>
                 <div class="shop-copy-snap-panel__inner shop-copy-story-panel">
-                  <span class="shop-copy-story-panel__index">${String(index + 1).padStart(2, "0")}</span>
                   <div class="shop-copy-story-panel__copy">
                     <span class="shop-copy-intro__eyebrow">Moskitiery na wymiar</span>
                     <h3>${escapeHtml(section.title || `Sekcja ${index + 1}`)}</h3>
@@ -252,7 +270,9 @@
 
     section.querySelectorAll("[data-shop-copy-snap-target]").forEach((node) => {
       if (!(node instanceof HTMLElement)) return;
-      node.classList.toggle("is-active", Number.parseInt(node.getAttribute("data-shop-copy-snap-target") || "0", 10) === nextIndex);
+      const isActive = Number.parseInt(node.getAttribute("data-shop-copy-snap-target") || "0", 10) === nextIndex;
+      node.classList.toggle("is-active", isActive);
+      node.setAttribute("aria-current", isActive ? "true" : "false");
     });
   }
 
@@ -433,6 +453,17 @@
     };
   }
 
+  function hideLegacyTopBar(main) {
+    const viewportContent = main.querySelector(".viewport-card > .relative.flex");
+    if (!(viewportContent instanceof HTMLElement)) return;
+
+    Array.from(viewportContent.children).forEach((child) => {
+      if (!(child instanceof HTMLElement)) return;
+      if (child.classList.contains("grid") && child.classList.contains("flex-1")) return;
+      child.classList.add("shop-copy-legacy-topbar");
+    });
+  }
+
   function lockIntroAtTop(contentColumn) {
     if (!(contentColumn instanceof HTMLElement)) return;
 
@@ -518,6 +549,7 @@
     if (!(main instanceof HTMLElement) || !main.parentNode) return;
 
     main.classList.add("shop-copy-main-target");
+    hideLegacyTopBar(main);
 
     const { grid, contentColumn, summaryPanel, contentInner, legacyHeader, legacySteps } = getConfiguratorLayout(main);
 
