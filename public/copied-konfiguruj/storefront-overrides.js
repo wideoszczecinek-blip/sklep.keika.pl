@@ -177,6 +177,8 @@
     const gallery = Array.isArray(data?.gallery_urls) && data.gallery_urls.length
       ? data.gallery_urls
       : FALLBACK_GALLERY;
+    const activeImage = gallery[0] || "";
+    const activeAlt = data?.name || "Moskitiery ramkowe";
     const sections = normalizeLandingSections(data?.landing_sections);
     const title = String(data?.title || data?.name || "Moskitiery ramkowe").trim() || "Moskitiery ramkowe";
     const subtitleLines = Array.isArray(data?.subtitle_lines) && data.subtitle_lines.length
@@ -196,12 +198,11 @@
     const snapLabels = [
       "Moskitiery",
       ...sections.map((section, index) => String(section.title || `Sekcja ${index + 1}`).trim()),
-      "Konfigurator",
     ];
 
     return `
       <div class="shop-copy-intro__card shop-copy-snap-landing" data-shop-copy-snap-landing>
-        <div class="shop-copy-snap-viewport">
+        <div class="shop-copy-snap-shell">
           <nav class="shop-copy-snap-side-nav" aria-label="Sekcje landing">
             ${snapLabels.map((label, index) => `
               <button
@@ -216,42 +217,100 @@
               </button>
             `).join("")}
           </nav>
-          <div class="shop-copy-snap-track" data-shop-copy-snap-track>
-            <section class="shop-copy-snap-panel shop-copy-snap-panel--hero" data-shop-copy-snap-panel>
-              <div class="shop-copy-snap-panel__inner shop-copy-snap-hero">
-                <div class="shop-copy-text-carousel" aria-live="polite">
-                  ${carouselSlides.map((slide, index) => `
-                    <article class="shop-copy-text-carousel__slide${index === 0 ? " is-active" : ""}" data-shop-copy-carousel-slide>
-                      <h2 class="shop-copy-text-carousel__title">${escapeHtml(slide.title || title)}</h2>
-                      <p class="shop-copy-text-carousel__body">${formatMultilineText(slide.body || "")}</p>
-                    </article>
-                  `).join("")}
-                </div>
-              </div>
-            </section>
-
-            ${sections.map((section, index) => `
-              <section class="shop-copy-snap-panel shop-copy-snap-panel--story" data-shop-copy-snap-panel>
-                <div class="shop-copy-snap-panel__inner shop-copy-story-panel">
-                  <div class="shop-copy-story-panel__copy">
-                    <span class="shop-copy-intro__eyebrow">Moskitiery na wymiar</span>
-                    <h3>${escapeHtml(section.title || `Sekcja ${index + 1}`)}</h3>
-                    <p>${formatMultilineText(section.body || "")}</p>
+          <div class="shop-copy-snap-viewport">
+            <div class="shop-copy-snap-track" data-shop-copy-snap-track>
+              <section class="shop-copy-snap-panel shop-copy-snap-panel--hero" data-shop-copy-snap-panel>
+                <div class="shop-copy-snap-panel__inner shop-copy-snap-hero">
+                  <div class="shop-copy-text-carousel" aria-live="polite">
+                    ${carouselSlides.map((slide, index) => `
+                      <article class="shop-copy-text-carousel__slide${index === 0 ? " is-active" : ""}" data-shop-copy-carousel-slide>
+                        <h2 class="shop-copy-text-carousel__title">${escapeHtml(slide.title || title)}</h2>
+                        <p class="shop-copy-text-carousel__body">${formatMultilineText(slide.body || "")}</p>
+                      </article>
+                    `).join("")}
                   </div>
                 </div>
               </section>
-            `).join("")}
 
-            <section class="shop-copy-snap-panel shop-copy-snap-panel--cta" data-shop-copy-snap-panel>
-              <div class="shop-copy-snap-panel__inner shop-copy-snap-cta">
-                <span class="shop-copy-intro__eyebrow">Dalej konfigurator</span>
-                <h3>Masz już produkt, zdjęcia i najważniejsze informacje. Teraz przejdź niżej i skonfiguruj pierwszą moskitierę.</h3>
-                <p>Landing działa jak pełnoekranowy one-page view, a sama konfiguracja zaczyna się dopiero po tej części sprzedażowej.</p>
-                <div class="shop-copy-snap-hero__actions">
-                  <button type="button" class="shop-copy-snap-button shop-copy-snap-button--primary" data-shop-copy-go-configurator>Zacznij konfigurację</button>
+              ${sections.map((section, index) => `
+                <section class="shop-copy-snap-panel shop-copy-snap-panel--story" data-shop-copy-snap-panel>
+                  <div class="shop-copy-snap-panel__inner shop-copy-story-panel">
+                    <div class="shop-copy-story-panel__copy">
+                      <span class="shop-copy-intro__eyebrow">Moskitiery na wymiar</span>
+                      <h3>${escapeHtml(section.title || `Sekcja ${index + 1}`)}</h3>
+                      <p>${formatMultilineText(section.body || "")}</p>
+                    </div>
+                  </div>
+                </section>
+              `).join("")}
+
+              <section class="shop-copy-snap-panel shop-copy-snap-panel--cta" data-shop-copy-snap-panel>
+                <div class="shop-copy-snap-panel__inner shop-copy-snap-cta">
+                  <span class="shop-copy-intro__eyebrow">Dalej konfigurator</span>
+                  <h3>Masz już produkt, zdjęcia i najważniejsze informacje. Teraz przejdź niżej i skonfiguruj pierwszą moskitierę.</h3>
+                  <p>Landing działa jak pełnoekranowy one-page view, a sama konfiguracja zaczyna się dopiero po tej części sprzedażowej.</p>
+                  <div class="shop-copy-snap-hero__actions">
+                    <button type="button" class="shop-copy-snap-button shop-copy-snap-button--primary" data-shop-copy-go-configurator>Zacznij konfigurację</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <aside class="shop-copy-hero-gallery">
+              <div class="shop-copy-hero-gallery__meta">
+                <div>
+                  <h3 class="shop-copy-hero-gallery__name">${escapeHtml(data?.name || "Moskitiery ramkowe")}</h3>
+                  <p class="shop-copy-hero-gallery__meta-line">Galeria produktu <span aria-hidden="true">•</span> <span data-shop-copy-gallery-count>1 / ${gallery.length}</span></p>
                 </div>
               </div>
-            </section>
+              <div class="shop-copy-hero-gallery__stage">
+                <div class="shop-copy-hero-gallery__stage-top">
+                  <span class="shop-copy-hero-gallery__hint">Kliknij lub przesuń</span>
+                  <span class="shop-copy-hero-gallery__counter" data-shop-copy-gallery-count-badge>1 / ${gallery.length}</span>
+                </div>
+                <button
+                  type="button"
+                  class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--prev"
+                  data-shop-copy-gallery-step="-1"
+                  aria-label="Poprzednie zdjęcie"
+                >
+                  <span aria-hidden="true">‹</span>
+                </button>
+                ${activeImage
+                  ? `<img class="shop-copy-hero-gallery__image" data-shop-copy-main-image src="${escapeHtml(activeImage)}" alt="${escapeHtml(activeAlt)}">`
+                  : `<div class="shop-copy-hero-gallery__placeholder">Dodaj zdjęcia produktu w CRM</div>`}
+                <button
+                  type="button"
+                  class="shop-copy-hero-gallery__nav shop-copy-hero-gallery__nav--next"
+                  data-shop-copy-gallery-step="1"
+                  aria-label="Następne zdjęcie"
+                >
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
+              <div class="shop-copy-hero-gallery__thumbs">
+                ${gallery.map((imageUrl, index) => `
+                  <button
+                    type="button"
+                    class="shop-copy-hero-gallery__thumb${index === 0 ? " is-active" : ""}"
+                    data-shop-copy-thumb
+                    data-gallery-index="${index}"
+                    data-image="${escapeHtml(imageUrl)}"
+                    data-alt="${escapeHtml(`${data?.name || "Moskitiery"} ${index + 1}`)}"
+                    aria-label="Pokaż zdjęcie ${index + 1}"
+                    aria-pressed="${index === 0 ? "true" : "false"}"
+                  >
+                    <span class="shop-copy-hero-gallery__thumb-image-wrap">
+                      <span
+                        class="shop-copy-hero-gallery__thumb-image"
+                        style="background-image:url('${escapeHtml(imageUrl)}')"
+                        aria-hidden="true"
+                      ></span>
+                    </span>
+                  </button>
+                `).join("")}
+              </div>
+            </aside>
           </div>
         </div>
       </div>
@@ -268,9 +327,11 @@
     landing.dataset.shopCopySnapIndex = String(nextIndex);
     track.style.transform = `translate3d(0, calc(-${nextIndex} * var(--shop-copy-snap-panel-height, 0px)), 0)`;
 
-    section.querySelectorAll("[data-shop-copy-snap-target]").forEach((node) => {
+    const targetButtons = Array.from(section.querySelectorAll("[data-shop-copy-snap-target]")).filter((node) => node instanceof HTMLElement);
+    const activeTargetIndex = targetButtons.length ? Math.min(nextIndex, targetButtons.length - 1) : nextIndex;
+    targetButtons.forEach((node) => {
       if (!(node instanceof HTMLElement)) return;
-      const isActive = Number.parseInt(node.getAttribute("data-shop-copy-snap-target") || "0", 10) === nextIndex;
+      const isActive = Number.parseInt(node.getAttribute("data-shop-copy-snap-target") || "0", 10) === activeTargetIndex;
       node.classList.toggle("is-active", isActive);
       node.setAttribute("aria-current", isActive ? "true" : "false");
     });
@@ -459,6 +520,7 @@
 
     Array.from(viewportContent.children).forEach((child) => {
       if (!(child instanceof HTMLElement)) return;
+      if (child.hasAttribute("data-shop-copy-intro")) return;
       if (child.classList.contains("grid") && child.classList.contains("flex-1")) return;
       child.classList.add("shop-copy-legacy-topbar");
     });
@@ -552,6 +614,7 @@
     hideLegacyTopBar(main);
 
     const { grid, contentColumn, summaryPanel, contentInner, legacyHeader, legacySteps } = getConfiguratorLayout(main);
+    const viewportContent = main.querySelector(".viewport-card > .relative.flex");
 
     let section = document.querySelector("[data-shop-copy-intro]");
     if (!(section instanceof HTMLElement)) {
@@ -566,7 +629,7 @@
     }
 
     if (contentColumn instanceof HTMLElement) {
-      section.classList.add("shop-copy-intro--embedded");
+      section.classList.remove("shop-copy-intro--embedded");
       contentColumn.classList.add("shop-copy-config-column");
       if (grid instanceof HTMLElement) {
         grid.classList.add("shop-copy-layout-grid");
@@ -590,12 +653,12 @@
         ? legacySteps
         : Array.from(contentInner?.children || []).find((node) => node !== section);
 
-      if (contentInner instanceof HTMLElement) {
-        if (section.parentNode !== contentInner) {
-          contentInner.insertBefore(section, configuratorStart instanceof Node ? configuratorStart : null);
+      if (viewportContent instanceof HTMLElement && grid instanceof HTMLElement) {
+        if (section.parentNode !== viewportContent || section.nextSibling !== grid) {
+          viewportContent.insertBefore(section, grid);
         }
-      } else if (section.parentNode !== contentColumn) {
-        contentColumn.insertBefore(section, configuratorStart instanceof Node ? configuratorStart : null);
+      } else if (section.parentNode !== main.parentNode) {
+        main.parentNode.insertBefore(section, main);
       }
 
       if (main.id === "shop-copy-configurator") {
@@ -612,8 +675,6 @@
         window.requestAnimationFrame(() => {
           lockIntroAtTop(contentColumn);
         });
-      } else {
-        lockIntroAtTop(contentColumn);
       }
     } else {
       main.id = "shop-copy-configurator";
