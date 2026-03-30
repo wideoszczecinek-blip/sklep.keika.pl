@@ -184,60 +184,32 @@
     const subtitleLines = Array.isArray(data?.subtitle_lines) && data.subtitle_lines.length
       ? data.subtitle_lines
       : fallbackIntroData().subtitle_lines;
-    const snapLabels = ["Start", "Galeria"]
-      .concat(sections.map((section, index) => section.title || `Sekcja ${index + 1}`))
-      .concat(["Konfigurator"]);
+    const carouselSlides = [
+      {
+        title,
+        body: subtitleLines.join("\n\n"),
+      },
+    ].concat(
+      sections.map((section, index) => ({
+        title: String(section.title || `Sekcja ${index + 1}`).trim(),
+        body: String(section.body || "").trim(),
+      })),
+    );
 
     return `
       <div class="shop-copy-intro__card shop-copy-snap-landing" data-shop-copy-snap-landing>
-        <aside class="shop-copy-snap-rail" aria-label="Sekcje landingu moskitier">
-          <div class="shop-copy-snap-rail__list">
-            ${snapLabels.map((label, index) => `
-              <button
-                type="button"
-                class="shop-copy-snap-rail__item${index === 0 ? " is-active" : ""}"
-                data-shop-copy-snap-target="${index}"
-              >
-                <span>${String(index + 1).padStart(2, "0")}</span>
-                <strong>${escapeHtml(label)}</strong>
-              </button>
-            `).join("")}
-          </div>
-        </aside>
         <div class="shop-copy-snap-viewport">
           <div class="shop-copy-snap-track" data-shop-copy-snap-track>
             <section class="shop-copy-snap-panel shop-copy-snap-panel--hero" data-shop-copy-snap-panel>
               <div class="shop-copy-snap-panel__inner shop-copy-snap-hero">
-                <div class="shop-copy-snap-hero__copy">
-                  <span class="shop-copy-intro__eyebrow">Moskitiery</span>
-                  <h2 class="shop-copy-intro__title">${escapeHtml(title)}</h2>
-                  <div class="shop-copy-intro__subtitle">
-                    ${subtitleLines.map((line) => `<p>${formatMultilineText(line)}</p>`).join("")}
-                  </div>
-                  <div class="shop-copy-snap-hero__actions">
-                    <button type="button" class="shop-copy-snap-button shop-copy-snap-button--primary" data-shop-copy-snap-target="1">Zobacz produkt</button>
-                    <button type="button" class="shop-copy-snap-button" data-shop-copy-go-configurator>Przejdź do konfiguratora</button>
-                  </div>
+                <div class="shop-copy-text-carousel" aria-live="polite">
+                  ${carouselSlides.map((slide, index) => `
+                    <article class="shop-copy-text-carousel__slide${index === 0 ? " is-active" : ""}" data-shop-copy-carousel-slide>
+                      <h2 class="shop-copy-text-carousel__title">${escapeHtml(slide.title || title)}</h2>
+                      <p class="shop-copy-text-carousel__body">${formatMultilineText(slide.body || "")}</p>
+                    </article>
+                  `).join("")}
                 </div>
-                <div class="shop-copy-snap-hero__aside">
-                  <div class="shop-copy-snap-stat">
-                    <span>Warianty</span>
-                    <strong>${gallery.length} ujęć produktu</strong>
-                  </div>
-                  <div class="shop-copy-snap-stat">
-                    <span>Start wyceny</span>
-                    <strong>${escapeHtml(data?.price_from || "od 149 zł")}</strong>
-                  </div>
-                  <div class="shop-copy-snap-stat">
-                    <span>Proces</span>
-                    <strong>Landing, opis i konfiguracja w jednym flow</strong>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section class="shop-copy-snap-panel shop-copy-snap-panel--gallery" data-shop-copy-snap-panel>
-              <div class="shop-copy-snap-panel__inner">
                 <div class="shop-copy-hero-gallery">
                   <div class="shop-copy-hero-gallery__meta">
                     <div>
@@ -341,6 +313,17 @@
     });
   }
 
+  function setActiveCarouselSlide(section, index) {
+    const slides = Array.from(section.querySelectorAll("[data-shop-copy-carousel-slide]")).filter((node) => node instanceof HTMLElement);
+    if (!slides.length) return;
+
+    const nextIndex = ((index % slides.length) + slides.length) % slides.length;
+    slides.forEach((slide, slideIndex) => {
+      slide.classList.toggle("is-active", slideIndex === nextIndex);
+    });
+    section.dataset.shopCopyCarouselIndex = String(nextIndex);
+  }
+
   function setActiveGalleryIndex(section, index) {
     const thumbs = Array.from(section.querySelectorAll("[data-shop-copy-thumb]")).filter((node) => node instanceof HTMLElement);
     if (!thumbs.length) return;
@@ -438,6 +421,7 @@
 
     window.requestAnimationFrame(() => {
       setActiveSnapPanel(section, Number.parseInt(section.dataset.shopCopySnapIndex || "0", 10) || 0);
+      setActiveCarouselSlide(section, Number.parseInt(section.dataset.shopCopyCarouselIndex || "0", 10) || 0);
       setActiveGalleryIndex(section, Number.parseInt(section.dataset.shopCopyGalleryIndex || "0", 10) || 0);
       section.querySelectorAll("[data-shop-copy-thumb]").forEach((node) => {
         if (!(node instanceof HTMLElement) || !node.classList.contains("is-active")) return;
@@ -448,6 +432,15 @@
         });
       });
     });
+
+    if (section.querySelectorAll("[data-shop-copy-carousel-slide]").length > 1) {
+      const timer = window.setInterval(() => {
+        const currentIndex = Number.parseInt(section.dataset.shopCopyCarouselIndex || "0", 10);
+        setActiveCarouselSlide(section, (Number.isFinite(currentIndex) ? currentIndex : 0) + 1);
+      }, 7600);
+
+      window.addEventListener("pagehide", () => window.clearInterval(timer), { once: true });
+    }
 
     snapLanding?.addEventListener("wheel", (event) => {
       if (window.innerWidth < 981) return;
@@ -727,7 +720,7 @@
       document.body.dataset.shopMenuOpen = "false";
     }
     setMeta();
-    ensureHeader();
+    document.querySelectorAll("[data-shop-copy-header], .shop-copy-menu-backdrop, .shop-copy-menu-drawer").forEach((node) => node.remove());
     ensureIntro();
     replaceTextNodes(document.body);
     hideAllegroElements(document.body);
