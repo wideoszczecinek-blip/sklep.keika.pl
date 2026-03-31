@@ -411,6 +411,7 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
   min-width: 0;
   min-height: clamp(280px, 36vw, 520px);
   width: 100%;
+  overflow: visible;
 }
 
 .shop-copy-text-carousel__slide {
@@ -449,10 +450,13 @@ body[data-shop-menu-open="true"] .shop-copy-menu-button__icon::after {
 }
 
 .shop-copy-snap-hero-controls {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 4;
   display: inline-flex;
   align-items: center;
   gap: 14px;
-  margin-top: 20px;
   width: fit-content;
   max-width: 100%;
   padding: 10px 14px;
@@ -1272,10 +1276,6 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
     min-height: clamp(360px, 44vw, 660px);
   }
 
-  .shop-copy-snap-hero-controls {
-    margin-top: 24px;
-  }
-
   .shop-copy-snap-panel--story .shop-copy-snap-panel__inner,
   .shop-copy-snap-panel--cta .shop-copy-snap-panel__inner,
   .shop-copy-snap-panel--configurator .shop-copy-snap-panel__inner {
@@ -1444,8 +1444,9 @@ body[data-shop-menu-open="true"] .shop-copy-menu-backdrop {
   }
 
   .shop-copy-snap-hero-controls {
+    left: 0;
+    bottom: 4px;
     gap: 10px;
-    margin-top: 18px;
     padding: 9px 12px;
   }
 

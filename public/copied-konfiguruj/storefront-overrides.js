@@ -256,42 +256,42 @@
                         <p class="shop-copy-text-carousel__body">${formatMultilineText(slide.body || "")}</p>
                       </article>
                     `).join("")}
-                  </div>
-                  <div class="shop-copy-snap-hero-controls" aria-label="Nawigacja slajdów hero">
-                    <button
-                      type="button"
-                      class="shop-copy-snap-hero-controls__arrow"
-                      data-shop-copy-carousel-step="-1"
-                      aria-label="Poprzedni slajd"
-                    >
-                      <span aria-hidden="true">‹</span>
-                    </button>
-                    <div class="shop-copy-snap-hero-controls__pagination">
-                      <div class="shop-copy-snap-hero-controls__count">
-                        <span data-shop-copy-carousel-current>01</span>
-                        <span>/</span>
-                        <span data-shop-copy-carousel-total>${String(carouselSlides.length).padStart(2, "0")}</span>
+                    <div class="shop-copy-snap-hero-controls" aria-label="Nawigacja slajdów hero">
+                      <button
+                        type="button"
+                        class="shop-copy-snap-hero-controls__arrow"
+                        data-shop-copy-carousel-step="-1"
+                        aria-label="Poprzedni slajd"
+                      >
+                        <span aria-hidden="true">‹</span>
+                      </button>
+                      <div class="shop-copy-snap-hero-controls__pagination">
+                        <div class="shop-copy-snap-hero-controls__count">
+                          <span data-shop-copy-carousel-current>01</span>
+                          <span>/</span>
+                          <span data-shop-copy-carousel-total>${String(carouselSlides.length).padStart(2, "0")}</span>
+                        </div>
+                        <div class="shop-copy-snap-hero-controls__dots" aria-label="Paginacja slajdów">
+                          ${carouselSlides.map((slide, index) => `
+                            <button
+                              type="button"
+                              class="shop-copy-snap-hero-controls__dot${index === 0 ? " is-active" : ""}"
+                              data-shop-copy-carousel-target="${index}"
+                              aria-label="Przejdź do slajdu ${index + 1}: ${escapeHtml(slide.title || title)}"
+                              aria-pressed="${index === 0 ? "true" : "false"}"
+                            ></button>
+                          `).join("")}
+                        </div>
                       </div>
-                      <div class="shop-copy-snap-hero-controls__dots" aria-label="Paginacja slajdów">
-                        ${carouselSlides.map((slide, index) => `
-                          <button
-                            type="button"
-                            class="shop-copy-snap-hero-controls__dot${index === 0 ? " is-active" : ""}"
-                            data-shop-copy-carousel-target="${index}"
-                            aria-label="Przejdź do slajdu ${index + 1}: ${escapeHtml(slide.title || title)}"
-                            aria-pressed="${index === 0 ? "true" : "false"}"
-                          ></button>
-                        `).join("")}
-                      </div>
+                      <button
+                        type="button"
+                        class="shop-copy-snap-hero-controls__arrow"
+                        data-shop-copy-carousel-step="1"
+                        aria-label="Następny slajd"
+                      >
+                        <span aria-hidden="true">›</span>
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      class="shop-copy-snap-hero-controls__arrow"
-                      data-shop-copy-carousel-step="1"
-                      aria-label="Następny slajd"
-                    >
-                      <span aria-hidden="true">›</span>
-                    </button>
                   </div>
 
                   <aside class="shop-copy-hero-gallery" aria-label="Galeria produktu">
