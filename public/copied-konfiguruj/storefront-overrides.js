@@ -257,6 +257,42 @@
                       </article>
                     `).join("")}
                   </div>
+                  <div class="shop-copy-snap-hero-controls" aria-label="Nawigacja sekcji landing">
+                    <button
+                      type="button"
+                      class="shop-copy-snap-hero-controls__arrow"
+                      data-shop-copy-snap-step="-1"
+                      aria-label="Poprzednia sekcja"
+                    >
+                      <span aria-hidden="true">‹</span>
+                    </button>
+                    <div class="shop-copy-snap-hero-controls__pagination">
+                      <div class="shop-copy-snap-hero-controls__count">
+                        <span data-shop-copy-snap-current>01</span>
+                        <span>/</span>
+                        <span data-shop-copy-snap-total>${String(snapLabels.length).padStart(2, "0")}</span>
+                      </div>
+                      <div class="shop-copy-snap-hero-controls__dots" aria-label="Paginacja sekcji">
+                        ${snapLabels.map((label, index) => `
+                          <button
+                            type="button"
+                            class="shop-copy-snap-hero-controls__dot${index === 0 ? " is-active" : ""}"
+                            data-shop-copy-snap-target="${index}"
+                            aria-label="Przejdź do sekcji ${escapeHtml(label)}"
+                            aria-pressed="${index === 0 ? "true" : "false"}"
+                          ></button>
+                        `).join("")}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      class="shop-copy-snap-hero-controls__arrow"
+                      data-shop-copy-snap-step="1"
+                      aria-label="Następna sekcja"
+                    >
+                      <span aria-hidden="true">›</span>
+                    </button>
+                  </div>
 
                   <aside class="shop-copy-hero-gallery" aria-label="Galeria produktu">
                     <div class="shop-copy-hero-gallery__stage">
@@ -534,6 +570,18 @@
       node.classList.toggle("is-active", isActive);
       node.setAttribute("aria-current", isActive ? "true" : "false");
     });
+
+    const heroDots = Array.from(section.querySelectorAll(".shop-copy-snap-hero-controls__dot")).filter((node) => node instanceof HTMLElement);
+    heroDots.forEach((node, dotIndex) => {
+      const isActive = dotIndex === nextIndex;
+      node.classList.toggle("is-active", isActive);
+      node.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+
+    const currentLabel = section.querySelector("[data-shop-copy-snap-current]");
+    if (currentLabel instanceof HTMLElement) {
+      currentLabel.textContent = String(nextIndex + 1).padStart(2, "0");
+    }
   }
 
   function setActiveCarouselSlide(section, index) {
@@ -623,6 +671,17 @@
       if (snapButton instanceof HTMLElement) {
         const nextIndex = Number.parseInt(snapButton.getAttribute("data-shop-copy-snap-target") || "0", 10);
         setActiveSnapPanel(section, Number.isFinite(nextIndex) ? nextIndex : 0);
+        return;
+      }
+
+      const snapStep = event.target instanceof Element ? event.target.closest("[data-shop-copy-snap-step]") : null;
+      if (snapStep instanceof HTMLElement) {
+        const panels = Array.from(section.querySelectorAll("[data-shop-copy-snap-panel]")).filter((node) => node instanceof HTMLElement);
+        const total = panels.length || 1;
+        const currentIndex = Number.parseInt(section.dataset.shopCopySnapIndex || "0", 10) || 0;
+        const step = Number.parseInt(snapStep.getAttribute("data-shop-copy-snap-step") || "0", 10);
+        const nextIndex = ((currentIndex + (Number.isFinite(step) ? step : 0)) % total + total) % total;
+        setActiveSnapPanel(section, nextIndex);
         return;
       }
 
