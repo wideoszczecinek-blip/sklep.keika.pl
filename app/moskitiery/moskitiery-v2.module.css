@@ -384,6 +384,16 @@
   text-transform: uppercase;
 }
 
+.heroHint .copyHtml,
+.heroHint .copyHtml p {
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
 .heroTitle {
   margin: 0;
   font-size: clamp(2.7rem, 6vw, 5.4rem);
@@ -480,10 +490,39 @@
   letter-spacing: -0.04em;
 }
 
+.metricLabel :is(h1, h2, h3, h4, p, div, span),
+.metricValue :is(h1, h2, h3, h4, p, div, span),
+.floatingLabel :is(h1, h2, h3, h4, p, div, span),
+.proofValue :is(h1, h2, h3, h4, p, div, span) {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
 .metricNote {
   color: rgba(225, 236, 247, 0.72);
   font-size: 0.88rem;
   line-height: 1.55;
+}
+
+.metricNote .copyHtml,
+.metricNote .copyHtml p,
+.floatingCard .copyHtml,
+.floatingCard .copyHtml p,
+.spotlightAccentCard .copyHtml,
+.spotlightAccentCard .copyHtml p,
+.trustCard .copyHtml,
+.featureCard .copyHtml,
+.processCard .copyHtml,
+.proofCard .copyHtml,
+.noticeBox .copyHtml,
+.noticeBox .copyHtml p {
+  margin: 0;
+  color: inherit;
+  line-height: inherit;
 }
 
 .heroMedia {
@@ -841,6 +880,11 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.sectionHeader > .copyHtml,
+.sectionHeader > .copyHtml p {
+  margin: 0;
 }
 
 .processStack {

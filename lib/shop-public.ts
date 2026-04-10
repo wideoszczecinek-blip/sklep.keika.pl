@@ -30,6 +30,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
 
 export type SitePayload = {
   site_title: string;
+  site_tagline: string;
   primary_domain: string;
   company_name: string;
   company_legal_name: string;
@@ -92,6 +93,28 @@ export type LandingHeroSlide = {
   media_alt: string;
 };
 
+export type LandingMetric = {
+  label_html: string;
+  value_html: string;
+  note_html: string;
+};
+
+export type LandingRichCard = {
+  title_html: string;
+  body_html: string;
+};
+
+export type LandingProofCard = {
+  value_html: string;
+  body_html: string;
+};
+
+export type LandingMeasurementStep = {
+  step: string;
+  title_html: string;
+  body_html: string;
+};
+
 export type LandingPayload = {
   slug: string;
   product_slug: string;
@@ -105,6 +128,27 @@ export type LandingPayload = {
     media_kind: "image" | "video";
     media_url: string;
     slides?: LandingHeroSlide[];
+  };
+  presentation?: {
+    hero_hint_html?: string;
+    hero_help_cta_label?: string;
+    floating_badge_html?: string;
+    floating_body_html?: string;
+    spotlight_note_html?: string;
+    story_primary_cta_label?: string;
+    story_secondary_link_label?: string;
+    measurement_primary_cta_label?: string;
+    measurement_secondary_cta_label?: string;
+    faq_title_html?: string;
+    faq_intro_html?: string;
+    config_notice_primary_html?: string;
+    config_notice_secondary_html?: string;
+    sticky_price_fallback_html?: string;
+    metrics?: LandingMetric[];
+    reassurance_cards?: LandingRichCard[];
+    product_features?: LandingRichCard[];
+    proof_cards?: LandingProofCard[];
+    measurement_steps?: LandingMeasurementStep[];
   };
   trust_badges: string[];
   sections: LandingSection[];

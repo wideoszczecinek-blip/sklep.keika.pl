@@ -40,21 +40,24 @@ async function trackStorefrontEvent(payload: {
   });
 }
 
-const measurementSteps = [
+const DEFAULT_MEASUREMENT_STEPS = [
   {
     step: "01",
-    title: "Sprawdzasz produkt",
-    text: "Najpierw pokazujemy prawdziwe zdjęcia i detale, żeby klient dokładnie wiedział, co kupuje.",
+    title_html: "Sprawdzasz produkt",
+    body_html:
+      "<p>Najpierw pokazujemy prawdziwe zdjęcia i detale, żeby klient dokładnie wiedział, co kupuje.</p>",
   },
   {
     step: "02",
-    title: "Mierzysz tylko to, co potrzebne",
-    text: "Pomiar jest opisany prostym językiem i ograniczony do danych potrzebnych do wykonania moskitiery.",
+    title_html: "Mierzysz tylko to, co potrzebne",
+    body_html:
+      "<p>Pomiar jest opisany prostym językiem i ograniczony do danych potrzebnych do wykonania moskitiery.</p>",
   },
   {
     step: "03",
-    title: "Konfigurujesz i zapisujesz wycenę",
-    text: "Na końcu klient widzi cenę, zapisuje własny kod wyceny i może płynnie przejść do zamówienia.",
+    title_html: "Konfigurujesz i zapisujesz wycenę",
+    body_html:
+      "<p>Na końcu klient widzi cenę, zapisuje własny kod wyceny i może płynnie przejść do zamówienia.</p>",
   },
 ];
 
@@ -79,6 +82,8 @@ export default function MoskitieryLandingClient({
     }
     return media;
   }, [landing.hero.media_url, product.gallery_urls, product.image_url]);
+
+  const presentation = landing.presentation || {};
 
   const productStorySection =
     landing.sections.find((section) => section.id === "product_story") || null;
@@ -169,60 +174,75 @@ export default function MoskitieryLandingClient({
   ]);
 
   const heroMetrics = useMemo(
-    () => [
-      {
-        label: "Cena startowa",
-        value: product.price_from || "wycena online",
-        note: "cena końcowa zależy od wymiaru i wybranych opcji",
-      },
-      {
-        label: "Wsparcie",
-        value: site.contact_phone || "pomoc na żywo",
-        note: site.contact_hours || "pomożemy przed pomiarem",
-      },
-      {
-        label: "Proces",
-        value: "3 proste kroki",
-        note: "produkt, pomiar, konfiguracja",
-      },
-    ],
-    [product.price_from, site.contact_hours, site.contact_phone],
+    () =>
+      presentation.metrics?.length
+        ? presentation.metrics
+        : [
+            {
+              label_html: "Cena startowa",
+              value_html: product.price_from || "wycena online",
+              note_html: "<p>Cena końcowa zależy od wymiaru i wybranych opcji.</p>",
+            },
+            {
+              label_html: "Wsparcie",
+              value_html: site.contact_phone || "pomoc na żywo",
+              note_html: `<p>${site.contact_hours || "Pomożemy przed pomiarem."}</p>`,
+            },
+            {
+              label_html: "Proces",
+              value_html: "3 proste kroki",
+              note_html: "<p>Produkt, pomiar, konfiguracja.</p>",
+            },
+          ],
+    [presentation.metrics, product.price_from, site.contact_hours, site.contact_phone],
   );
 
   const reassuranceCards = useMemo(
-    () => [
-      {
-        title: "Realny produkt",
-        text: "Pokazujemy prawdziwe zdjęcia i detale, zanim klient przejdzie do konfiguracji.",
-      },
-      {
-        title: "Cena przed zakupem",
-        text: "W konfiguratorze od razu widać wycenę. Bez czekania na kontakt i bez zgadywania kosztu.",
-      },
-      {
-        title: "Powrót do wyceny",
-        text: "Konfigurację można zapisać i wrócić do niej później po własnym kodzie.",
-      },
-    ],
-    [],
+    () =>
+      presentation.reassurance_cards?.length
+        ? presentation.reassurance_cards
+        : [
+            {
+              title_html: "Realny produkt",
+              body_html:
+                "<p>Pokazujemy prawdziwe zdjęcia i detale, zanim klient przejdzie do konfiguracji.</p>",
+            },
+            {
+              title_html: "Cena przed zakupem",
+              body_html:
+                "<p>W konfiguratorze od razu widać wycenę. Bez czekania na kontakt i bez zgadywania kosztu.</p>",
+            },
+            {
+              title_html: "Powrót do wyceny",
+              body_html:
+                "<p>Konfigurację można zapisać i wrócić do niej później po własnym kodzie.</p>",
+            },
+          ],
+    [presentation.reassurance_cards],
   );
 
   const productFeatures = useMemo(
-    () => [
-      {
-        title: "Aluminiowa, estetyczna rama",
-        text: "Sztywna konstrukcja wygląda jak część okna, a nie przypadkowy dodatek na sezon.",
-      },
-      {
-        title: "Bezpieczny proces dla klienta z reklamy",
-        text: "Najpierw klient rozumie produkt i pomiar, a dopiero potem wchodzi w konfigurator.",
-      },
-      {
-        title: "Zakup prosty jak na marketplace",
-        text: "Zostawiamy łatwość procesu, ale bez ograniczeń treściowych i wizerunkowych portalu.",
-      },
-    ],
-    [],
+    () =>
+      presentation.product_features?.length
+        ? presentation.product_features
+        : [
+            {
+              title_html: "Aluminiowa, estetyczna rama",
+              body_html:
+                "<p>Sztywna konstrukcja wygląda jak część okna, a nie przypadkowy dodatek na sezon.</p>",
+            },
+            {
+              title_html: "Bezpieczny proces dla klienta z reklamy",
+              body_html:
+                "<p>Najpierw klient rozumie produkt i pomiar, a dopiero potem wchodzi w konfigurator.</p>",
+            },
+            {
+              title_html: "Zakup prosty jak na marketplace",
+              body_html:
+                "<p>Zostawiamy łatwość procesu, ale bez ograniczeń treściowych i wizerunkowych portalu.</p>",
+            },
+          ],
+    [presentation.product_features],
   );
 
   const journeyHighlights = useMemo(
@@ -232,6 +252,27 @@ export default function MoskitieryLandingClient({
       landing.trust_badges[2] || "Szybka wycena online",
     ],
     [landing.trust_badges],
+  );
+
+  const proofCards = useMemo(
+    () =>
+      presentation.proof_cards?.length
+        ? presentation.proof_cards
+        : journeyHighlights.map((item, index) => ({
+            value_html: item,
+            body_html:
+              index === 0
+                ? "<p>Treść, zdjęcia i konfigurator są poukładane tak, żeby klient wiedział, co robić dalej bez zbędnego chaosu.</p>"
+                : index === 1
+                  ? "<p>Klient od razu widzi prawdziwy wygląd profili, siatki i sposobu montażu.</p>"
+                  : "<p>Najpierw rozumiesz produkt, potem wpisujesz wymiary i od razu widzisz cenę.</p>",
+          })),
+    [journeyHighlights, presentation.proof_cards],
+  );
+
+  const measurementSteps = useMemo(
+    () => (presentation.measurement_steps?.length ? presentation.measurement_steps : DEFAULT_MEASUREMENT_STEPS),
+    [presentation.measurement_steps],
   );
 
   const [activeSlide, setActiveSlide] = useState(0);
@@ -316,19 +357,19 @@ export default function MoskitieryLandingClient({
             ) : null}
             <div className={styles.brandCopy}>
               <span className={styles.brandName}>{site.site_title}</span>
-              <span className={styles.brandTag}>moskitiery na wymiar</span>
+              <span className={styles.brandTag}>{site.site_tagline || "moskitiery na wymiar"}</span>
             </div>
           </div>
 
           <nav className={styles.topActions} aria-label="Informacje">
             <button type="button" className={styles.topButton} onClick={() => openInfoModal("o-nas")}>
-              O nas
+              {site.about_title || "O nas"}
             </button>
             <button type="button" className={styles.topButton} onClick={() => openInfoModal("kontakt")}>
-              Kontakt
+              {site.contact_title || "Kontakt"}
             </button>
             <button type="button" className={styles.topButton} onClick={() => openInfoModal("regulamin")}>
-              Regulamin
+              {legalPages.regulamin?.title || "Regulamin"}
             </button>
             <Link
               href="#konfigurator"
@@ -345,7 +386,9 @@ export default function MoskitieryLandingClient({
             <div className={styles.heroEyebrowRow}>
               <span className={styles.eyebrow}>{landing.hero.eyebrow}</span>
               <span className={styles.signalDot} />
-              <span className={styles.heroHint}>landing nastawiony na decyzję zakupową</span>
+              <div className={styles.heroHint}>
+                <HtmlBlock html={presentation.hero_hint_html || "<p>Landing nastawiony na decyzję zakupową.</p>"} />
+              </div>
             </div>
 
             <div className={styles.heroAccordion}>
@@ -413,16 +456,18 @@ export default function MoskitieryLandingClient({
                 {landing.hero.cta_label || "Przejdź do konfiguratora"}
               </Link>
               <button type="button" className={styles.ghostButton} onClick={() => openInfoModal("kontakt")}>
-                Pomoc przed pomiarem
+                {presentation.hero_help_cta_label || "Pomoc przed pomiarem"}
               </button>
             </div>
 
             <div className={styles.heroMetrics}>
-              {heroMetrics.map((item) => (
-                <article key={item.label} className={styles.metricCard}>
-                  <span className={styles.metricLabel}>{item.label}</span>
-                  <strong className={styles.metricValue}>{item.value}</strong>
-                  <span className={styles.metricNote}>{item.note}</span>
+              {heroMetrics.map((item, index) => (
+                <article key={`metric-${index}`} className={styles.metricCard}>
+                  <div className={styles.metricLabel} dangerouslySetInnerHTML={{ __html: item.label_html }} />
+                  <div className={styles.metricValue} dangerouslySetInnerHTML={{ __html: item.value_html }} />
+                  <div className={styles.metricNote}>
+                    <HtmlBlock html={item.note_html} />
+                  </div>
                 </article>
               ))}
             </div>
@@ -464,9 +509,14 @@ export default function MoskitieryLandingClient({
               </button>
 
               <div className={styles.floatingCard}>
-                <span className={styles.floatingLabel}>Prawdziwy produkt</span>
+                <div className={styles.floatingLabel} dangerouslySetInnerHTML={{ __html: presentation.floating_badge_html || "Prawdziwy produkt" }} />
                 <strong>{product.name}</strong>
-                <p>{product.subtitle || "Na wymiar, z czytelnym procesem pomiaru i szybką wyceną online."}</p>
+                <HtmlBlock
+                  html={
+                    presentation.floating_body_html ||
+                    `<p>${product.subtitle || "Na wymiar, z czytelnym procesem pomiaru i szybką wyceną online."}</p>`
+                  }
+                />
               </div>
             </div>
 
@@ -491,11 +541,11 @@ export default function MoskitieryLandingClient({
 
         <section className={styles.trustStrip}>
           {reassuranceCards.map((card, index) => (
-            <article key={card.title} className={styles.trustCard}>
+            <article key={`reassurance-${index}`} className={styles.trustCard}>
               <span className={styles.trustIndex}>{String(index + 1).padStart(2, "0")}</span>
               <div>
-                <h2>{card.title}</h2>
-                <p>{card.text}</p>
+                <h2 dangerouslySetInnerHTML={{ __html: card.title_html }} />
+                <HtmlBlock html={card.body_html} />
               </div>
             </article>
           ))}
@@ -517,7 +567,12 @@ export default function MoskitieryLandingClient({
             <div className={styles.spotlightAccentCard}>
               <span>{journeyHighlights[0]}</span>
               <strong>{product.price_from || "Wycena online"}</strong>
-              <p>zobacz produkt, zmierz w kilku krokach i zapisz własną konfigurację</p>
+              <HtmlBlock
+                html={
+                  presentation.spotlight_note_html ||
+                  "<p>Zobacz produkt, zmierz w kilku krokach i zapisz własną konfigurację.</p>"
+                }
+              />
             </div>
           </div>
 
@@ -537,11 +592,11 @@ export default function MoskitieryLandingClient({
 
             <div className={styles.featureList}>
               {productFeatures.map((feature, index) => (
-                <article key={feature.title} className={styles.featureCard}>
+                <article key={`feature-${index}`} className={styles.featureCard}>
                   <span className={styles.featureIndex}>{String(index + 1).padStart(2, "0")}</span>
                   <div>
-                    <h3>{feature.title}</h3>
-                    <p>{feature.text}</p>
+                    <h3 dangerouslySetInnerHTML={{ __html: feature.title_html }} />
+                    <HtmlBlock html={feature.body_html} />
                   </div>
                 </article>
               ))}
@@ -568,22 +623,20 @@ export default function MoskitieryLandingClient({
 
             <div className={styles.storyActions}>
               <button type="button" className={styles.ghostButton} onClick={() => openInfoModal("kontakt")}>
-                Zapytaj o dopasowanie
+                {presentation.story_primary_cta_label || "Zapytaj o dopasowanie"}
               </button>
               <Link href="/legal/dostawa-i-platnosc" className={styles.lookupLink}>
-                Dostawa i płatność
+                {presentation.story_secondary_link_label || legalPages["dostawa-i-platnosc"]?.title || "Dostawa i płatność"}
               </Link>
             </div>
           </div>
 
           <div className={styles.storyMedia}>
             <div className={styles.proofGrid}>
-              {journeyHighlights.map((item) => (
-                <article key={item} className={styles.proofCard}>
-                  <span className={styles.proofValue}>{item}</span>
-                  <p>
-                    Treść, zdjęcia i konfigurator są poukładane tak, żeby klient wiedział, co robić dalej bez zbędnego chaosu.
-                  </p>
+              {proofCards.map((card, index) => (
+                <article key={`proof-${index}`} className={styles.proofCard}>
+                  <div className={styles.proofValue} dangerouslySetInnerHTML={{ __html: card.value_html }} />
+                  <HtmlBlock html={card.body_html} />
                 </article>
               ))}
             </div>
@@ -613,10 +666,10 @@ export default function MoskitieryLandingClient({
                 className={styles.ctaButton}
                 onClick={() => handleConfiguratorClick("measurement")}
               >
-                Zacznij konfigurację
+                {presentation.measurement_primary_cta_label || "Zacznij konfigurację"}
               </Link>
               <button type="button" className={styles.ghostButton} onClick={() => openInfoModal("kontakt")}>
-                Chcę pomocy z pomiarem
+                {presentation.measurement_secondary_cta_label || "Chcę pomocy z pomiarem"}
               </button>
             </div>
           </div>
@@ -627,8 +680,8 @@ export default function MoskitieryLandingClient({
                 <article key={step.step} className={styles.processCard}>
                   <span className={styles.processStep}>{step.step}</span>
                   <div>
-                    <h3>{step.title}</h3>
-                    <p>{step.text}</p>
+                    <h3 dangerouslySetInnerHTML={{ __html: step.title_html }} />
+                    <HtmlBlock html={step.body_html} />
                   </div>
                 </article>
               ))}
@@ -673,10 +726,16 @@ export default function MoskitieryLandingClient({
         <section className={`${styles.section} ${styles.faqSection}`}>
           <div className={styles.sectionHeader}>
             <span className={styles.sectionLabel}>FAQ</span>
-            <h2 className={styles.sectionTitle}>Najczęstsze pytania przed zamówieniem</h2>
-            <p className={styles.sectionIntro}>
-              To miejsce ma redukować ostatnie obiekcje i zostawiać klienta już tylko z decyzją o wejściu do konfiguratora.
-            </p>
+            <div
+              className={styles.sectionTitle}
+              dangerouslySetInnerHTML={{ __html: presentation.faq_title_html || "Najczęstsze pytania przed zamówieniem" }}
+            />
+            <HtmlBlock
+              html={
+                presentation.faq_intro_html ||
+                "<p>To miejsce ma redukować ostatnie obiekcje i zostawiać klienta już tylko z decyzją o wejściu do konfiguratora.</p>"
+              }
+            />
           </div>
 
           <div className={styles.faqList}>
@@ -714,19 +773,28 @@ export default function MoskitieryLandingClient({
 
               <div className={styles.configPoints}>
                 <div className={styles.noticeBox}>
-                  Wycena zapisuje się do CRM i możesz wrócić do niej później po własnym kodzie.
+                  <HtmlBlock
+                    html={
+                      presentation.config_notice_primary_html ||
+                      "<p>Wycena zapisuje się do CRM i możesz wrócić do niej później po własnym kodzie.</p>"
+                    }
+                  />
                 </div>
                 <div className={styles.noticeBox}>
                   {site.contact_phone || site.contact_email ? (
                     <>
-                      Pomoc przed pomiarem:
-                      {" "}
+                      <HtmlBlock html={presentation.config_notice_secondary_html || "<p>Pomoc przed pomiarem:</p>"} />
                       {site.contact_phone ? <strong>{site.contact_phone}</strong> : null}
                       {site.contact_phone && site.contact_email ? " / " : null}
                       {site.contact_email ? <strong>{site.contact_email}</strong> : null}
                     </>
                   ) : (
-                    <>Jeśli nie jesteś pewny pomiaru, zapisz wycenę i wróć do niej później.</>
+                    <HtmlBlock
+                      html={
+                        presentation.config_notice_secondary_html ||
+                        "<p>Jeśli nie jesteś pewny pomiaru, zapisz wycenę i wróć do niej później.</p>"
+                      }
+                    />
                   )}
                 </div>
               </div>
@@ -740,19 +808,19 @@ export default function MoskitieryLandingClient({
 
         <footer className={styles.footer}>
           <button type="button" className={styles.footerLink} onClick={() => openInfoModal("o-nas")}>
-            O nas
+            {site.about_title || "O nas"}
           </button>
           <button type="button" className={styles.footerLink} onClick={() => openInfoModal("kontakt")}>
-            Kontakt
+            {site.contact_title || "Kontakt"}
           </button>
           <button type="button" className={styles.footerLink} onClick={() => openInfoModal("regulamin")}>
-            Regulamin
+            {legalPages.regulamin?.title || "Regulamin"}
           </button>
           <Link href="/legal/prywatnosc" className={styles.footerLink}>
-            Prywatność
+            {legalPages.prywatnosc?.title || "Prywatność"}
           </Link>
           <Link href="/legal/cookies" className={styles.footerLink}>
-            Cookies
+            {legalPages.cookies?.title || "Cookies"}
           </Link>
         </footer>
       </div>
@@ -760,7 +828,7 @@ export default function MoskitieryLandingClient({
       <div className={styles.stickyBar}>
         <div>
           <strong>{product.name}</strong>
-          <span>{product.price_from || "Skonfiguruj i sprawdź cenę"}</span>
+          <span>{product.price_from || presentation.sticky_price_fallback_html || "Skonfiguruj i sprawdź cenę"}</span>
         </div>
         <Link
           href="#konfigurator"
