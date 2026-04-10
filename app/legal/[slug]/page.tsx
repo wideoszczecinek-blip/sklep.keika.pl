@@ -3,30 +3,36 @@ import { notFound } from "next/navigation";
 import { fetchLegalPage, fetchSiteContent } from "@/lib/shop-public";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
 
-export async function generateMetadata(): Promise<Metadata> {
+type LegalPageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function generateMetadata({ params }: LegalPageProps): Promise<Metadata> {
+  const { slug } = await params;
   try {
     const [{ site }, { page }] = await Promise.all([
       fetchSiteContent(),
-      fetchLegalPage("regulamin"),
+      fetchLegalPage(slug),
     ]);
     return {
       title: `${page.title} | ${site.site_title}`,
       alternates: {
-        canonical: `${site.primary_domain || "https://sklep.keika.pl"}/regulamin`,
+        canonical: `${site.primary_domain || "https://sklep.keika.pl"}/legal/${slug}`,
       },
     };
   } catch {
     return {
-      title: "Regulamin | KEIKA",
+      title: "Informacje | KEIKA",
     };
   }
 }
 
-export default async function TermsShortcutPage() {
+export default async function LegalPage({ params }: LegalPageProps) {
+  const { slug } = await params;
   try {
     const [{ site }, { page }] = await Promise.all([
       fetchSiteContent(),
-      fetchLegalPage("regulamin"),
+      fetchLegalPage(slug),
     ]);
 
     return (
@@ -47,3 +53,4 @@ export default async function TermsShortcutPage() {
     notFound();
   }
 }
+

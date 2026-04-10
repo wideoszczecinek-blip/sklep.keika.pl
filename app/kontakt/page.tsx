@@ -1,20 +1,29 @@
-import InfoPageShell from "@/app/components/info-page-shell";
+import { fetchLegalPage, fetchSiteContent } from "@/lib/shop-public";
+import styles from "@/app/moskitiery/moskitiery-v2.module.css";
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const [{ site }, { page }] = await Promise.all([
+    fetchSiteContent(),
+    fetchLegalPage("kontakt"),
+  ]);
+
   return (
-    <InfoPageShell
-      eyebrow="Kontakt"
-      title="Potrzebujesz pomocy przed zamówieniem?"
-      lead="Jeśli chcesz potwierdzić pomiar, wariant profilu albo termin realizacji, napisz lub zadzwoń do nas przed złożeniem zamówienia."
-    >
-      <p>
-        Najszybciej pomożemy wtedy, gdy od razu podasz typ produktu, kolor profilu, kolor siatki i przybliżone wymiary okna. Dzięki temu
-        od razu przejdziemy do konkretów.
-      </p>
-      <p>
-        W kolejnej iteracji sklepu dodamy tutaj pełny formularz kontaktowy oraz prosty status zamówienia. Na teraz ta sekcja jest gotowa
-        jako punkt kontaktowy i wejście do dalszej obsługi klienta.
-      </p>
-    </InfoPageShell>
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <article className={styles.legalCard}>
+          <h1>{page.title}</h1>
+          <div className={styles.orderMeta}>
+            {site.contact_phone ? <div>Telefon: <strong>{site.contact_phone}</strong></div> : null}
+            {site.contact_email ? <div>E-mail: <strong>{site.contact_email}</strong></div> : null}
+            {site.contact_hours ? <div>Godziny kontaktu: <strong>{site.contact_hours}</strong></div> : null}
+          </div>
+          <div
+            className={styles.legalHtml}
+            dangerouslySetInnerHTML={{ __html: page.body_html || "<p>Treść zostanie uzupełniona w CRM.</p>" }}
+          />
+        </article>
+      </div>
+    </main>
   );
 }
+
