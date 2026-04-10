@@ -69,12 +69,27 @@ export type LandingSection = {
   id: string;
   label: string;
   title: string;
+  title_html?: string;
   body_html: string;
+  media_url?: string;
+  media_alt?: string;
 };
 
 export type LandingFaq = {
   question: string;
   answer: string;
+  question_html?: string;
+  answer_html?: string;
+};
+
+export type LandingHeroSlide = {
+  id: string;
+  label: string;
+  title_html: string;
+  body_html: string;
+  media_kind: "image" | "video";
+  media_url: string;
+  media_alt: string;
 };
 
 export type LandingPayload = {
@@ -89,6 +104,7 @@ export type LandingPayload = {
     cta_label: string;
     media_kind: "image" | "video";
     media_url: string;
+    slides?: LandingHeroSlide[];
   };
   trust_badges: string[];
   sections: LandingSection[];
@@ -232,4 +248,3 @@ export async function trackStorefrontEvent(payload: {
     },
   );
 }
-

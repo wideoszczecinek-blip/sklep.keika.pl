@@ -93,6 +93,81 @@ export default function MoskitieryLandingClient({
       !["product_story", "social_proof", "measurement", "configurator"].includes(section.id),
   );
 
+  const heroSlides = useMemo(() => {
+    const configured = Array.isArray(landing.hero.slides)
+      ? landing.hero.slides.filter(
+          (slide) => slide && (slide.title_html || slide.body_html || slide.media_url),
+        )
+      : [];
+
+    if (configured.length) {
+      return configured.map((slide, index) => ({
+        ...slide,
+        id: slide.id || `hero-slide-${index + 1}`,
+        label: slide.label || `Slajd ${index + 1}`,
+      }));
+    }
+
+    const fallbackSlides = [
+      {
+        id: "hero-slide-1",
+        label: "Produkt",
+        title_html: landing.hero.title || product.name,
+        body_html:
+          landing.hero.subtitle ||
+          product.subtitle ||
+          "Pokazujemy realny produkt i prosty proces zamówienia, zanim klient wejdzie do konfiguratora.",
+        media_kind: landing.hero.media_kind || "image",
+        media_url: landing.hero.media_url || gallery[0] || product.image_url || "",
+        media_alt: product.name,
+      },
+      {
+        id: "hero-slide-2",
+        label: socialProofSection?.label || "Zaufanie",
+        title_html:
+          socialProofSection?.title_html || socialProofSection?.title || "Najpierw pewność, potem wycena",
+        body_html:
+          socialProofSection?.body_html ||
+          "<p>Klient potrzebuje szybkiego poczucia bezpieczeństwa, jasnej ceny i prostego przejścia do zakupu.</p>",
+        media_kind: "image" as const,
+        media_url: gallery[1] || gallery[0] || product.image_url || "",
+        media_alt: product.name,
+      },
+      {
+        id: "hero-slide-3",
+        label: measurementSection?.label || "Pomiar",
+        title_html:
+          measurementSection?.title_html || measurementSection?.title || "Pomiar bez technicznego chaosu",
+        body_html:
+          measurementSection?.body_html ||
+          "<p>W kilku krokach pokazujemy, jakie wymiary są potrzebne i dopiero potem przechodzimy do konfiguratora.</p>",
+        media_kind: "image" as const,
+        media_url: gallery[2] || gallery[0] || product.image_url || "",
+        media_alt: product.name,
+      },
+    ];
+
+    return fallbackSlides.filter((slide) => slide.title_html || slide.body_html || slide.media_url);
+  }, [
+    gallery,
+    landing.hero.media_kind,
+    landing.hero.media_url,
+    landing.hero.slides,
+    landing.hero.subtitle,
+    landing.hero.title,
+    measurementSection?.body_html,
+    measurementSection?.label,
+    measurementSection?.title,
+    measurementSection?.title_html,
+    product.image_url,
+    product.name,
+    product.subtitle,
+    socialProofSection?.body_html,
+    socialProofSection?.label,
+    socialProofSection?.title,
+    socialProofSection?.title_html,
+  ]);
+
   const heroMetrics = useMemo(
     () => [
       {
@@ -175,6 +250,18 @@ export default function MoskitieryLandingClient({
     }).catch(() => null);
   }, [landing.product_slug, landing.slug]);
 
+  useEffect(() => {
+    if (heroSlides.length <= 1) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % heroSlides.length);
+    }, 5600);
+
+    return () => window.clearInterval(timer);
+  }, [heroSlides.length]);
+
   function openInfoModal(key: string) {
     setOpenModal(key);
     void trackStorefrontEvent({
@@ -196,14 +283,15 @@ export default function MoskitieryLandingClient({
   }
 
   function changeSlide(step: number) {
-    if (!gallery.length) {
+    if (!heroSlides.length) {
       return;
     }
-    setActiveSlide((current) => (current + step + gallery.length) % gallery.length);
+    setActiveSlide((current) => (current + step + heroSlides.length) % heroSlides.length);
   }
 
-  const safeIndex = gallery.length ? activeSlide % gallery.length : 0;
-  const currentImage = gallery[safeIndex] || product.image_url || "";
+  const safeIndex = heroSlides.length ? activeSlide % heroSlides.length : 0;
+  const currentHeroSlide = heroSlides[safeIndex] || null;
+  const currentImage = currentHeroSlide?.media_url || landing.hero.media_url || gallery[0] || product.image_url || "";
 
   const modalContent =
     openModal === "o-nas"
@@ -260,8 +348,53 @@ export default function MoskitieryLandingClient({
               <span className={styles.heroHint}>landing nastawiony na decyzję zakupową</span>
             </div>
 
-            <h1 className={styles.heroTitle}>{landing.hero.title}</h1>
-            <p className={styles.heroSubtitle}>{landing.hero.subtitle}</p>
+            <div className={styles.heroAccordion}>
+              {heroSlides.map((slide, index) => {
+                const isActive = index === safeIndex;
+                return (
+                  <article
+                    key={slide.id || `${slide.label}-${index}`}
+                    className={`${styles.heroAccordionItem} ${isActive ? styles.heroAccordionItemActive : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className={styles.heroAccordionTrigger}
+                      onClick={() => setActiveSlide(index)}
+                      aria-expanded={isActive}
+                    >
+                      <span className={styles.heroAccordionIndex}>
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className={styles.heroAccordionLabel}>{slide.label || `Slajd ${index + 1}`}</span>
+                    </button>
+
+                    <div className={styles.heroAccordionPanel}>
+                      <div className={styles.heroAccordionPanelInner}>
+                        <div
+                          className={styles.heroTitle}
+                          dangerouslySetInnerHTML={{ __html: slide.title_html }}
+                        />
+                        <div className={styles.heroSubtitle}>
+                          <HtmlBlock html={slide.body_html} />
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className={styles.heroDots}>
+              {heroSlides.map((slide, index) => (
+                <button
+                  key={`${slide.id || slide.label}-${index}`}
+                  type="button"
+                  className={`${styles.heroDot} ${index === safeIndex ? styles.heroDotActive : ""}`}
+                  onClick={() => setActiveSlide(index)}
+                  aria-label={`Przejdź do slajdu ${index + 1}`}
+                />
+              ))}
+            </div>
 
             <div className={styles.badgeRow}>
               {landing.trust_badges.map((badge) => (
@@ -296,7 +429,7 @@ export default function MoskitieryLandingClient({
           </div>
 
           <div className={styles.heroMedia}>
-            <div className={styles.mainFrame}>
+              <div className={styles.mainFrame}>
               <button
                 type="button"
                 className={`${styles.galleryNav} ${styles.galleryNavLeft}`}
@@ -306,17 +439,17 @@ export default function MoskitieryLandingClient({
                 ‹
               </button>
 
-              <div className={styles.mainFrameInner}>
-                {landing.hero.media_kind === "video" && currentImage.endsWith(".mp4") ? (
-                  <video src={currentImage} autoPlay muted loop playsInline className={styles.mainMedia} />
-                ) : currentImage ? (
-                  <Image
-                    src={currentImage}
-                    alt={product.name}
-                    fill
-                    priority
-                    sizes="(max-width: 1024px) 100vw, 40vw"
-                    className={styles.mainMedia}
+                <div className={styles.mainFrameInner}>
+                  {currentHeroSlide?.media_kind === "video" && currentImage.endsWith(".mp4") ? (
+                    <video src={currentImage} autoPlay muted loop playsInline className={styles.mainMedia} />
+                  ) : currentImage ? (
+                    <Image
+                      src={currentImage}
+                      alt={currentHeroSlide?.media_alt || product.name}
+                      fill
+                      priority
+                      sizes="(max-width: 1024px) 100vw, 40vw"
+                      className={styles.mainMedia}
                   />
                 ) : null}
               </div>
@@ -339,12 +472,12 @@ export default function MoskitieryLandingClient({
 
             <div className={styles.galleryRail}>
               <div className={styles.galleryCounter}>
-                {String(safeIndex + 1).padStart(2, "0")} / {String(Math.max(gallery.length, 1)).padStart(2, "0")}
+                {String(safeIndex + 1).padStart(2, "0")} / {String(Math.max(heroSlides.length, 1)).padStart(2, "0")}
               </div>
               <div className={styles.galleryDots}>
-                {gallery.map((image, index) => (
+                {heroSlides.map((slide, index) => (
                   <button
-                    key={`${image}-${index}`}
+                    key={`${slide.id || slide.label}-${index}`}
                     type="button"
                     className={`${styles.galleryDot} ${index === safeIndex ? styles.galleryDotActive : ""}`}
                     onClick={() => setActiveSlide(index)}
@@ -392,9 +525,10 @@ export default function MoskitieryLandingClient({
             <span className={styles.sectionLabel}>
               {productStorySection?.label || "Produkt"}
             </span>
-            <h2 className={styles.sectionTitle}>
-              {productStorySection?.title || product.name}
-            </h2>
+            <div
+              className={styles.sectionTitle}
+              dangerouslySetInnerHTML={{ __html: productStorySection?.title_html || productStorySection?.title || product.name }}
+            />
             {productStorySection?.body_html ? (
               <HtmlBlock html={productStorySection.body_html} />
             ) : (
@@ -420,9 +554,10 @@ export default function MoskitieryLandingClient({
             <span className={styles.sectionLabel}>
               {socialProofSection?.label || "Zaufanie"}
             </span>
-            <h2 className={styles.sectionTitle}>
-              {socialProofSection?.title || "Co uspokaja klienta przed zakupem"}
-            </h2>
+            <div
+              className={styles.sectionTitle}
+              dangerouslySetInnerHTML={{ __html: socialProofSection?.title_html || socialProofSection?.title || "Co uspokaja klienta przed zakupem" }}
+            />
             {socialProofSection?.body_html ? (
               <HtmlBlock html={socialProofSection.body_html} />
             ) : (
@@ -460,9 +595,10 @@ export default function MoskitieryLandingClient({
             <span className={styles.sectionLabel}>
               {measurementSection?.label || "Pomiar"}
             </span>
-            <h2 className={styles.sectionTitle}>
-              {measurementSection?.title || "Pomiar w kilku prostych krokach"}
-            </h2>
+            <div
+              className={styles.sectionTitle}
+              dangerouslySetInnerHTML={{ __html: measurementSection?.title_html || measurementSection?.title || "Pomiar w kilku prostych krokach" }}
+            />
             {measurementSection?.body_html ? (
               <HtmlBlock html={measurementSection.body_html} />
             ) : (
@@ -501,7 +637,7 @@ export default function MoskitieryLandingClient({
         </section>
 
         {extraSections.map((section, index) => {
-          const sectionImage = gallery[(index + 1) % Math.max(gallery.length, 1)] || product.image_url;
+          const sectionImage = section.media_url || gallery[(index + 1) % Math.max(gallery.length, 1)] || product.image_url;
 
           return (
             <section
@@ -510,7 +646,10 @@ export default function MoskitieryLandingClient({
             >
               <div className={styles.storyCopy}>
                 <span className={styles.sectionLabel}>{section.label}</span>
-                <h2 className={styles.sectionTitle}>{section.title}</h2>
+                <div
+                  className={styles.sectionTitle}
+                  dangerouslySetInnerHTML={{ __html: section.title_html || section.title }}
+                />
                 <HtmlBlock html={section.body_html} />
               </div>
 
@@ -519,7 +658,7 @@ export default function MoskitieryLandingClient({
                   {sectionImage ? (
                     <Image
                       src={sectionImage}
-                      alt={`${product.name} ${section.title}`}
+                      alt={section.media_alt || `${product.name} ${section.title}`}
                       fill
                       sizes="(max-width: 1024px) 100vw, 40vw"
                       className={styles.storyImage}
@@ -543,9 +682,12 @@ export default function MoskitieryLandingClient({
           <div className={styles.faqList}>
             {landing.faq.map((entry, index) => (
               <details key={entry.question} className={styles.faqItem} open={index === 0}>
-                <summary className={styles.faqQuestion}>{entry.question}</summary>
+                <summary
+                  className={styles.faqQuestion}
+                  dangerouslySetInnerHTML={{ __html: entry.question_html || entry.question }}
+                />
                 <div className={styles.faqAnswer}>
-                  <p>{entry.answer}</p>
+                  <HtmlBlock html={entry.answer_html || `<p>${entry.answer}</p>`} />
                 </div>
               </details>
             ))}
@@ -558,9 +700,10 @@ export default function MoskitieryLandingClient({
               <span className={styles.sectionLabel}>
                 {configuratorSection?.label || "Konfigurator"}
               </span>
-              <h2 className={styles.sectionTitle}>
-                {configuratorSection?.title || "Skonfiguruj własną moskitierę i zapisz wycenę"}
-              </h2>
+              <div
+                className={styles.sectionTitle}
+                dangerouslySetInnerHTML={{ __html: configuratorSection?.title_html || configuratorSection?.title || "Skonfiguruj własną moskitierę i zapisz wycenę" }}
+              />
               {configuratorSection?.body_html ? (
                 <HtmlBlock html={configuratorSection.body_html} />
               ) : (
