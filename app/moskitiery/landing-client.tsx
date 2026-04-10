@@ -43,18 +43,18 @@ async function trackStorefrontEvent(payload: {
 const measurementSteps = [
   {
     step: "01",
-    title: "Zobacz realny produkt",
-    text: "Najpierw pokazujemy prawdziwe zdjęcia i warianty, żeby klient wiedział dokładnie, co zamawia.",
+    title: "Sprawdzasz produkt",
+    text: "Najpierw pokazujemy prawdziwe zdjęcia i detale, żeby klient dokładnie wiedział, co kupuje.",
   },
   {
     step: "02",
-    title: "Zmierzyć tylko to, co potrzebne",
-    text: "Pomiar jest opisany prostym językiem. Bez technicznego chaosu i bez niepotrzebnych decyzji.",
+    title: "Mierzysz tylko to, co potrzebne",
+    text: "Pomiar jest opisany prostym językiem i ograniczony do danych potrzebnych do wykonania moskitiery.",
   },
   {
     step: "03",
-    title: "Skonfigurować i zapisać wycenę",
-    text: "Dopiero na końcu pojawia się konfigurator, który prowadzi do wyceny i zamówienia.",
+    title: "Konfigurujesz i zapisujesz wycenę",
+    text: "Na końcu klient widzi cenę, zapisuje własny kod wyceny i może płynnie przejść do zamówienia.",
   },
 ];
 
@@ -80,48 +80,83 @@ export default function MoskitieryLandingClient({
     return media;
   }, [landing.hero.media_url, product.gallery_urls, product.image_url]);
 
-  const contentSections = useMemo(
-    () => landing.sections.filter((section) => section.id !== "configurator"),
-    [landing.sections],
+  const productStorySection =
+    landing.sections.find((section) => section.id === "product_story") || null;
+  const socialProofSection =
+    landing.sections.find((section) => section.id === "social_proof") || null;
+  const measurementSection =
+    landing.sections.find((section) => section.id === "measurement") || null;
+  const configuratorSection =
+    landing.sections.find((section) => section.id === "configurator") || null;
+  const extraSections = landing.sections.filter(
+    (section) =>
+      !["product_story", "social_proof", "measurement", "configurator"].includes(section.id),
   );
 
   const heroMetrics = useMemo(
     () => [
       {
-        label: "Start od",
+        label: "Cena startowa",
         value: product.price_from || "wycena online",
-        note: "finalna cena zależy od wymiaru i wariantu",
+        note: "cena końcowa zależy od wymiaru i wybranych opcji",
       },
       {
         label: "Wsparcie",
-        value: site.contact_phone || "kontakt na żywo",
+        value: site.contact_phone || "pomoc na żywo",
         note: site.contact_hours || "pomożemy przed pomiarem",
       },
       {
         label: "Proces",
-        value: "3 kroki",
+        value: "3 proste kroki",
         note: "produkt, pomiar, konfiguracja",
       },
     ],
     [product.price_from, site.contact_hours, site.contact_phone],
   );
 
-  const productFeatures = useMemo(
+  const reassuranceCards = useMemo(
     () => [
       {
-        title: "Rama, która wygląda dobrze także po sezonie",
-        text: "Sztywna, aluminiowa konstrukcja i estetyczne wykończenie sprawiają, że moskitiera nie wygląda jak tymczasowy dodatek.",
+        title: "Realny produkt",
+        text: "Pokazujemy prawdziwe zdjęcia i detale, zanim klient przejdzie do konfiguracji.",
       },
       {
-        title: "Proces przygotowany pod klienta z reklamy",
-        text: "Najpierw budujemy zaufanie do produktu, a dopiero potem prosimy o pomiar i przechodzimy do wyceny.",
+        title: "Cena przed zakupem",
+        text: "W konfiguratorze od razu widać wycenę. Bez czekania na kontakt i bez zgadywania kosztu.",
       },
       {
-        title: "Zakup prosty jak w marketplace, ale bez jego ograniczeń",
-        text: "Możemy pokazać więcej detalu, więcej zdjęć, lepszy proces pomiaru i znacznie lepsze uspokojenie obiekcji klienta.",
+        title: "Powrót do wyceny",
+        text: "Konfigurację można zapisać i wrócić do niej później po własnym kodzie.",
       },
     ],
     [],
+  );
+
+  const productFeatures = useMemo(
+    () => [
+      {
+        title: "Aluminiowa, estetyczna rama",
+        text: "Sztywna konstrukcja wygląda jak część okna, a nie przypadkowy dodatek na sezon.",
+      },
+      {
+        title: "Bezpieczny proces dla klienta z reklamy",
+        text: "Najpierw klient rozumie produkt i pomiar, a dopiero potem wchodzi w konfigurator.",
+      },
+      {
+        title: "Zakup prosty jak na marketplace",
+        text: "Zostawiamy łatwość procesu, ale bez ograniczeń treściowych i wizerunkowych portalu.",
+      },
+    ],
+    [],
+  );
+
+  const journeyHighlights = useMemo(
+    () => [
+      landing.trust_badges[0] || "Na wymiar",
+      landing.trust_badges[1] || "Realne zdjęcia produktu",
+      landing.trust_badges[2] || "Szybka wycena online",
+    ],
+    [landing.trust_badges],
   );
 
   const [activeSlide, setActiveSlide] = useState(0);
@@ -140,24 +175,23 @@ export default function MoskitieryLandingClient({
     }).catch(() => null);
   }, [landing.product_slug, landing.slug]);
 
-  useEffect(() => {
-    if (gallery.length <= 1) {
-      return undefined;
-    }
-
-    const timer = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % gallery.length);
-    }, 5200);
-
-    return () => window.clearInterval(timer);
-  }, [gallery.length]);
-
   function openInfoModal(key: string) {
     setOpenModal(key);
     void trackStorefrontEvent({
       event_name: "open_modal",
       event_label: key,
       page_slug: landing.slug,
+    }).catch(() => null);
+  }
+
+  function handleConfiguratorClick(source: string) {
+    void trackStorefrontEvent({
+      event_name: "start_configurator",
+      event_label: source,
+      page_slug: landing.slug,
+      meta: {
+        product_slug: landing.product_slug,
+      },
     }).catch(() => null);
   }
 
@@ -169,11 +203,7 @@ export default function MoskitieryLandingClient({
   }
 
   const safeIndex = gallery.length ? activeSlide % gallery.length : 0;
-  const previousIndex = gallery.length ? (safeIndex - 1 + gallery.length) % gallery.length : 0;
-  const nextIndex = gallery.length ? (safeIndex + 1) % gallery.length : 0;
   const currentImage = gallery[safeIndex] || product.image_url || "";
-  const previousImage = gallery[previousIndex] || currentImage;
-  const nextImage = gallery[nextIndex] || currentImage;
 
   const modalContent =
     openModal === "o-nas"
@@ -187,7 +217,6 @@ export default function MoskitieryLandingClient({
   return (
     <div className={styles.page}>
       <div className={styles.pageNoise} aria-hidden="true" />
-      <div className={styles.pageGrid} aria-hidden="true" />
       <div className={styles.pageGlowA} aria-hidden="true" />
       <div className={styles.pageGlowB} aria-hidden="true" />
 
@@ -195,7 +224,7 @@ export default function MoskitieryLandingClient({
         <header className={styles.topbar}>
           <div className={styles.brand}>
             {site.logo_url ? (
-              <Image src={site.logo_url} alt={site.site_title} width={38} height={38} />
+              <Image src={site.logo_url} alt={site.site_title} width={42} height={42} />
             ) : null}
             <div className={styles.brandCopy}>
               <span className={styles.brandName}>{site.site_title}</span>
@@ -213,7 +242,11 @@ export default function MoskitieryLandingClient({
             <button type="button" className={styles.topButton} onClick={() => openInfoModal("regulamin")}>
               Regulamin
             </button>
-            <Link href="#konfigurator" className={styles.ctaButton}>
+            <Link
+              href="#konfigurator"
+              className={styles.ctaButton}
+              onClick={() => handleConfiguratorClick("topbar")}
+            >
               {landing.hero.cta_label || "Przejdź do konfiguratora"}
             </Link>
           </nav>
@@ -224,21 +257,11 @@ export default function MoskitieryLandingClient({
             <div className={styles.heroEyebrowRow}>
               <span className={styles.eyebrow}>{landing.hero.eyebrow}</span>
               <span className={styles.signalDot} />
-              <span className={styles.heroHint}>projekt sprzedażowy premium</span>
+              <span className={styles.heroHint}>landing nastawiony na decyzję zakupową</span>
             </div>
 
             <h1 className={styles.heroTitle}>{landing.hero.title}</h1>
             <p className={styles.heroSubtitle}>{landing.hero.subtitle}</p>
-
-            <div className={styles.heroMetrics}>
-              {heroMetrics.map((item) => (
-                <article key={item.label} className={styles.metricCard}>
-                  <span className={styles.metricLabel}>{item.label}</span>
-                  <strong className={styles.metricValue}>{item.value}</strong>
-                  <span className={styles.metricNote}>{item.note}</span>
-                </article>
-              ))}
-            </div>
 
             <div className={styles.badgeRow}>
               {landing.trust_badges.map((badge) => (
@@ -249,87 +272,68 @@ export default function MoskitieryLandingClient({
             </div>
 
             <div className={styles.heroActions}>
-              <Link href="#konfigurator" className={styles.ctaButton}>
+              <Link
+                href="#konfigurator"
+                className={styles.ctaButton}
+                onClick={() => handleConfiguratorClick("hero")}
+              >
                 {landing.hero.cta_label || "Przejdź do konfiguratora"}
               </Link>
               <button type="button" className={styles.ghostButton} onClick={() => openInfoModal("kontakt")}>
-                Poproś o pomoc przed pomiarem
+                Pomoc przed pomiarem
               </button>
             </div>
 
-            <div className={styles.heroNarrative}>
-              <span className={styles.heroNarrativeLabel}>Dlaczego ten landing ma sprzedawać lepiej</span>
-              <p>
-                Zamiast od razu wrzucać klienta do technicznego formularza, pokazujemy produkt w bardziej premium kontekście,
-                redukujemy ryzyko i dopiero wtedy prowadzimy do konfiguracji.
-              </p>
+            <div className={styles.heroMetrics}>
+              {heroMetrics.map((item) => (
+                <article key={item.label} className={styles.metricCard}>
+                  <span className={styles.metricLabel}>{item.label}</span>
+                  <strong className={styles.metricValue}>{item.value}</strong>
+                  <span className={styles.metricNote}>{item.note}</span>
+                </article>
+              ))}
             </div>
           </div>
 
           <div className={styles.heroMedia}>
-            <div className={styles.visualHalo} aria-hidden="true" />
-            <div className={styles.visualShell}>
-              <div className={styles.sideFrame} aria-hidden="true">
-                {previousImage ? (
+            <div className={styles.mainFrame}>
+              <button
+                type="button"
+                className={`${styles.galleryNav} ${styles.galleryNavLeft}`}
+                aria-label="Poprzednie zdjęcie"
+                onClick={() => changeSlide(-1)}
+              >
+                ‹
+              </button>
+
+              <div className={styles.mainFrameInner}>
+                {landing.hero.media_kind === "video" && currentImage.endsWith(".mp4") ? (
+                  <video src={currentImage} autoPlay muted loop playsInline className={styles.mainMedia} />
+                ) : currentImage ? (
                   <Image
-                    src={previousImage}
-                    alt=""
+                    src={currentImage}
+                    alt={product.name}
                     fill
-                    sizes="20vw"
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 40vw"
+                    className={styles.mainMedia}
                   />
                 ) : null}
               </div>
 
-              <div className={styles.mainFrame}>
-                <button
-                  type="button"
-                  className={`${styles.galleryNav} ${styles.galleryNavLeft}`}
-                  aria-label="Poprzednie zdjęcie"
-                  onClick={() => changeSlide(-1)}
-                >
-                  ‹
-                </button>
+              <button
+                type="button"
+                className={`${styles.galleryNav} ${styles.galleryNavRight}`}
+                aria-label="Następne zdjęcie"
+                onClick={() => changeSlide(1)}
+              >
+                ›
+              </button>
 
-                <div className={styles.mainFrameInner}>
-                  {landing.hero.media_kind === "video" && currentImage.endsWith(".mp4") ? (
-                    <video src={currentImage} autoPlay muted loop playsInline className={styles.mainMedia} />
-                  ) : currentImage ? (
-                    <Image
-                      src={currentImage}
-                      alt={product.name}
-                      fill
-                      priority
-                      sizes="(max-width: 1024px) 100vw, 42vw"
-                      className={styles.mainMedia}
-                    />
-                  ) : null}
-                </div>
-
-                <button
-                  type="button"
-                  className={`${styles.galleryNav} ${styles.galleryNavRight}`}
-                  aria-label="Następne zdjęcie"
-                  onClick={() => changeSlide(1)}
-                >
-                  ›
-                </button>
-
-                <div className={styles.floatingCard}>
-                  <span className={styles.floatingLabel}>KEIKA selection</span>
-                  <strong>{product.name}</strong>
-                  <p>{product.subtitle || "Na wymiar, z prostą wyceną i czytelnym procesem zakupu."}</p>
-                </div>
-              </div>
-
-              <div className={`${styles.sideFrame} ${styles.sideFrameRight}`} aria-hidden="true">
-                {nextImage ? (
-                  <Image
-                    src={nextImage}
-                    alt=""
-                    fill
-                    sizes="20vw"
-                  />
-                ) : null}
+              <div className={styles.floatingCard}>
+                <span className={styles.floatingLabel}>Prawdziwy produkt</span>
+                <strong>{product.name}</strong>
+                <p>{product.subtitle || "Na wymiar, z czytelnym procesem pomiaru i szybką wyceną online."}</p>
               </div>
             </div>
 
@@ -352,31 +356,50 @@ export default function MoskitieryLandingClient({
           </div>
         </section>
 
+        <section className={styles.trustStrip}>
+          {reassuranceCards.map((card, index) => (
+            <article key={card.title} className={styles.trustCard}>
+              <span className={styles.trustIndex}>{String(index + 1).padStart(2, "0")}</span>
+              <div>
+                <h2>{card.title}</h2>
+                <p>{card.text}</p>
+              </div>
+            </article>
+          ))}
+        </section>
+
         <section id="produkt" className={`${styles.section} ${styles.spotlightSection}`}>
           <div className={styles.spotlightVisual}>
-            <div className={styles.spotlightBackdrop} aria-hidden="true" />
             <div className={styles.spotlightMainCard}>
               {product.image_url ? (
                 <Image
                   src={product.image_url}
                   alt={product.name}
                   fill
-                  sizes="(max-width: 1024px) 100vw, 46vw"
+                  sizes="(max-width: 1024px) 100vw, 48vw"
                   className={styles.spotlightImage}
                 />
               ) : null}
             </div>
             <div className={styles.spotlightAccentCard}>
-              <span>Na wymiar</span>
+              <span>{journeyHighlights[0]}</span>
               <strong>{product.price_from || "Wycena online"}</strong>
-              <p>czytelny proces, realny produkt i łatwy powrót do zapisanej wyceny</p>
+              <p>zobacz produkt, zmierz w kilku krokach i zapisz własną konfigurację</p>
             </div>
           </div>
 
           <div className={styles.spotlightCopy}>
-            <span className={styles.sectionLabel}>Realny produkt</span>
-            <h2 className={styles.sectionTitle}>{product.name}</h2>
-            <p className={styles.sectionIntro}>{product.subtitle || product.description}</p>
+            <span className={styles.sectionLabel}>
+              {productStorySection?.label || "Produkt"}
+            </span>
+            <h2 className={styles.sectionTitle}>
+              {productStorySection?.title || product.name}
+            </h2>
+            {productStorySection?.body_html ? (
+              <HtmlBlock html={productStorySection.body_html} />
+            ) : (
+              <p className={styles.sectionIntro}>{product.subtitle || product.description}</p>
+            )}
 
             <div className={styles.featureList}>
               {productFeatures.map((feature, index) => (
@@ -392,9 +415,93 @@ export default function MoskitieryLandingClient({
           </div>
         </section>
 
-        {contentSections.map((section, index) => {
+        <section className={`${styles.section} ${styles.storySection}`}>
+          <div className={styles.storyCopy}>
+            <span className={styles.sectionLabel}>
+              {socialProofSection?.label || "Zaufanie"}
+            </span>
+            <h2 className={styles.sectionTitle}>
+              {socialProofSection?.title || "Co uspokaja klienta przed zakupem"}
+            </h2>
+            {socialProofSection?.body_html ? (
+              <HtmlBlock html={socialProofSection.body_html} />
+            ) : (
+              <p className={styles.sectionIntro}>
+                Klient z reklamy potrzebuje mniej obietnic, a więcej poczucia, że proces jest prosty, konkretny i bezpieczny.
+              </p>
+            )}
+
+            <div className={styles.storyActions}>
+              <button type="button" className={styles.ghostButton} onClick={() => openInfoModal("kontakt")}>
+                Zapytaj o dopasowanie
+              </button>
+              <Link href="/legal/dostawa-i-platnosc" className={styles.lookupLink}>
+                Dostawa i płatność
+              </Link>
+            </div>
+          </div>
+
+          <div className={styles.storyMedia}>
+            <div className={styles.proofGrid}>
+              {journeyHighlights.map((item) => (
+                <article key={item} className={styles.proofCard}>
+                  <span className={styles.proofValue}>{item}</span>
+                  <p>
+                    Treść, zdjęcia i konfigurator są poukładane tak, żeby klient wiedział, co robić dalej bez zbędnego chaosu.
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className={`${styles.section} ${styles.storySection}`}>
+          <div className={styles.storyCopy}>
+            <span className={styles.sectionLabel}>
+              {measurementSection?.label || "Pomiar"}
+            </span>
+            <h2 className={styles.sectionTitle}>
+              {measurementSection?.title || "Pomiar w kilku prostych krokach"}
+            </h2>
+            {measurementSection?.body_html ? (
+              <HtmlBlock html={measurementSection.body_html} />
+            ) : (
+              <p className={styles.sectionIntro}>
+                Zanim klient przejdzie do konfiguratora, dostaje prostą instrukcję i jasny sygnał, jakie dane będą potrzebne.
+              </p>
+            )}
+
+            <div className={styles.storyActions}>
+              <Link
+                href="#konfigurator"
+                className={styles.ctaButton}
+                onClick={() => handleConfiguratorClick("measurement")}
+              >
+                Zacznij konfigurację
+              </Link>
+              <button type="button" className={styles.ghostButton} onClick={() => openInfoModal("kontakt")}>
+                Chcę pomocy z pomiarem
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.storyMedia}>
+            <div className={styles.processStack}>
+              {measurementSteps.map((step) => (
+                <article key={step.step} className={styles.processCard}>
+                  <span className={styles.processStep}>{step.step}</span>
+                  <div>
+                    <h3>{step.title}</h3>
+                    <p>{step.text}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {extraSections.map((section, index) => {
           const sectionImage = gallery[(index + 1) % Math.max(gallery.length, 1)] || product.image_url;
-          const isMeasurement = section.id === "measurement";
 
           return (
             <section
@@ -405,53 +512,20 @@ export default function MoskitieryLandingClient({
                 <span className={styles.sectionLabel}>{section.label}</span>
                 <h2 className={styles.sectionTitle}>{section.title}</h2>
                 <HtmlBlock html={section.body_html} />
-
-                <div className={styles.storyActions}>
-                  {isMeasurement ? (
-                    <Link href="#konfigurator" className={styles.ctaButton}>
-                      Zacznij konfigurację
-                    </Link>
-                  ) : (
-                    <button type="button" className={styles.ghostButton} onClick={() => openInfoModal("kontakt")}>
-                      Zapytaj o dopasowanie
-                    </button>
-                  )}
-
-                  <Link href="/legal/dostawa-i-platnosc" className={styles.lookupLink}>
-                    Dostawa i płatność
-                  </Link>
-                </div>
               </div>
 
               <div className={styles.storyMedia}>
-                {isMeasurement ? (
-                  <div className={styles.processStack}>
-                    {measurementSteps.map((step) => (
-                      <article key={step.step} className={styles.processCard}>
-                        <span className={styles.processStep}>{step.step}</span>
-                        <div>
-                          <h3>{step.title}</h3>
-                          <p>{step.text}</p>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={styles.storyImageStage}>
-                    {sectionImage ? (
-                      <Image
-                        src={sectionImage}
-                        alt={`${product.name} ${section.title}`}
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 40vw"
-                        className={styles.storyImage}
-                      />
-                    ) : null}
-                    <div className={styles.storyImageBadge}>
-                      <span>{landing.trust_badges[index % Math.max(landing.trust_badges.length, 1)] || "KEIKA"}</span>
-                    </div>
-                  </div>
-                )}
+                <div className={styles.storyImageStage}>
+                  {sectionImage ? (
+                    <Image
+                      src={sectionImage}
+                      alt={`${product.name} ${section.title}`}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 40vw"
+                      className={styles.storyImage}
+                    />
+                  ) : null}
+                </div>
               </div>
             </section>
           );
@@ -462,7 +536,7 @@ export default function MoskitieryLandingClient({
             <span className={styles.sectionLabel}>FAQ</span>
             <h2 className={styles.sectionTitle}>Najczęstsze pytania przed zamówieniem</h2>
             <p className={styles.sectionIntro}>
-              Klient z reklamy musi szybko poczuć, że proces jest prosty, bezpieczny i prowadzony krok po kroku.
+              To miejsce ma redukować ostatnie obiekcje i zostawiać klienta już tylko z decyzją o wejściu do konfiguratora.
             </p>
           </div>
 
@@ -481,11 +555,19 @@ export default function MoskitieryLandingClient({
         <section id="konfigurator" className={`${styles.section} ${styles.configSection}`}>
           <div className={styles.configWrap}>
             <div className={styles.configLead}>
-              <span className={styles.sectionLabel}>Konfigurator</span>
-              <h2 className={styles.sectionTitle}>Teraz przejdź do pomiaru i zapisz własną wycenę</h2>
-              <p className={styles.sectionIntro}>
-                Dopiero tutaj klient dostaje narzędzie konfiguracji. Wcześniej miał czas zrozumieć produkt, zobaczyć detale i oswoić sam proces zamówienia.
-              </p>
+              <span className={styles.sectionLabel}>
+                {configuratorSection?.label || "Konfigurator"}
+              </span>
+              <h2 className={styles.sectionTitle}>
+                {configuratorSection?.title || "Skonfiguruj własną moskitierę i zapisz wycenę"}
+              </h2>
+              {configuratorSection?.body_html ? (
+                <HtmlBlock html={configuratorSection.body_html} />
+              ) : (
+                <p className={styles.sectionIntro}>
+                  Tutaj klient przechodzi do konkretnych wymiarów i opcji, już po zobaczeniu produktu i zrozumieniu procesu.
+                </p>
+              )}
 
               <div className={styles.configPoints}>
                 <div className={styles.noticeBox}>
@@ -537,7 +619,11 @@ export default function MoskitieryLandingClient({
           <strong>{product.name}</strong>
           <span>{product.price_from || "Skonfiguruj i sprawdź cenę"}</span>
         </div>
-        <Link href="#konfigurator" className={styles.ctaButton}>
+        <Link
+          href="#konfigurator"
+          className={styles.ctaButton}
+          onClick={() => handleConfiguratorClick("sticky_bar")}
+        >
           Konfigurator
         </Link>
       </div>
