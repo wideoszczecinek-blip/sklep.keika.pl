@@ -1587,7 +1587,7 @@
   }
 
   .heroTitle {
-    font-size: clamp(2.5rem, 14vw, 4.4rem);
+    font-size: clamp(1.75rem, 8.8vw, 2.55rem);
   }
 
   .heroCopy {
