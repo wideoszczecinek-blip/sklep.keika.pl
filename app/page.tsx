@@ -157,6 +157,58 @@ const DEFAULT_HARDWARE_COLORS: Array<{ id: string; label: string; color: string 
   { id: "mahon", label: "Mahoń", color: "#6A2F27" },
 ];
 
+const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
+  {
+    id: "bialy",
+    label: "Biały",
+    color: "#f0f1f3",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000328_79e6551b_Bialy_2.jpg",
+    priceDelta: 0,
+  },
+  {
+    id: "antracyt",
+    label: "Antracyt",
+    color: "#4a4f58",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000546_c5c56ae1_Antracyt_2.jpg",
+    priceDelta: 0,
+  },
+  {
+    id: "braz",
+    label: "Brąz",
+    color: "#6f4b38",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000647_361e63b8_Braz_2.jpg",
+    priceDelta: 0,
+  },
+  {
+    id: "zloty-dab",
+    label: "Złoty dąb",
+    color: "#b77b3e",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000722_a4143e5c_ZlotyDab_2.jpg",
+    priceDelta: 0,
+  },
+  {
+    id: "orzech",
+    label: "Orzech",
+    color: "#7a4f34",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000800_202d5380_Orzech_2.jpg",
+    priceDelta: 0,
+  },
+  {
+    id: "winchester",
+    label: "Winchester",
+    color: "#b16d3d",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000848_017894bf_Winchester_2.jpg",
+    priceDelta: 0,
+  },
+  {
+    id: "mahon",
+    label: "Mahoń",
+    color: "#6a2f27",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000912_440c4496_Mahon_2.jpg",
+    priceDelta: 0,
+  },
+];
+
 function productSlugFromSelected(product: SelectedProductView | null): string {
   if (!product) return "";
   const raw = String(product.linkUrl || "").trim();
@@ -173,6 +225,10 @@ function hardwareOptionsForProduct(
   endpointOrigin: string,
 ): HardwareOption[] {
   if (!product) return [];
+  const normalizedSlug = normalizeMenuLabel(productSlugFromSelected(product));
+  if (normalizedSlug === "moskitiery-ramkowe") {
+    return ALLEGRO_MOSKITIERY_HARDWARE;
+  }
   const productSlug = productSlugFromSelected(product);
   const configurators = Array.isArray(config?.product_configurators) ? config.product_configurators : [];
   const profile = configurators.find((entry) => {
@@ -894,6 +950,10 @@ export default function Home() {
     () => hardwareOptionsForProduct(displayedProduct, config, endpointOrigin),
     [config, displayedProduct, endpointOrigin],
   );
+  const selectedHardwareOption = useMemo(
+    () => hardwareOptions.find((option) => option.id === selectedHardwareId) || hardwareOptions[0] || null,
+    [hardwareOptions, selectedHardwareId],
+  );
 
   useEffect(() => {
     if (!hardwareOptions.length) {
@@ -1204,10 +1264,14 @@ export default function Home() {
                 aria-label="Konfigurator produktu"
               >
                 <header>
-                  <p>Konfigurator</p>
-                  <strong>Stwórz swoją moskitierę</strong>
+                  <p>Konfigurator produktu</p>
+                  <strong>Moskitiery</strong>
+                  <span className="hero-product-config-subtitle">okienne lakierowane</span>
                 </header>
-                <p className="hero-product-config-step-title">1. Wybierz kolor osprzętu</p>
+                <p className="hero-product-config-step-title">
+                  <span className="hero-product-step-check" aria-hidden="true">✓</span>
+                  Wybierz kolor profili
+                </p>
                 <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid">
                   {hardwareOptions.map((option) => {
                     const isActive = option.id === selectedHardwareId;
@@ -1219,6 +1283,7 @@ export default function Home() {
                           onClick={() => setSelectedHardwareId(option.id)}
                         >
                           <span className="hardware-card-image" style={{ backgroundImage: `url(${option.imageUrl})` }} />
+                          {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
                           <span className="hardware-card-footer">
                             <span className="hardware-dot" style={{ background: option.color }} />
                             <strong>{option.label}</strong>
@@ -1243,6 +1308,38 @@ export default function Home() {
                       </div>
                     );
                   })}
+                </div>
+                <p className="hero-product-config-step-title hero-product-config-step-title--muted">
+                  <span className="hero-product-step-check is-muted" aria-hidden="true">•</span>
+                  Dobierz kolor siatki
+                </p>
+                <div className="hero-product-mini-summary">
+                  <h3>Moskitiera okienna</h3>
+                  <div className="hero-product-mini-summary-preview">
+                    <img
+                      src={selectedHardwareOption?.imageUrl || displayedProduct.imageUrl}
+                      alt={selectedHardwareOption?.label || displayedProduct.label}
+                      loading="lazy"
+                    />
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>Kolor profilu</dt>
+                      <dd>{selectedHardwareOption?.label || "--"}</dd>
+                    </div>
+                    <div>
+                      <dt>Kolor siatki</dt>
+                      <dd>--</dd>
+                    </div>
+                    <div>
+                      <dt>Rozmiar</dt>
+                      <dd>--</dd>
+                    </div>
+                  </dl>
+                  <div className="hero-product-mini-summary-price">
+                    <p>Kalkulacja ceny</p>
+                    <strong>17,90 zł</strong>
+                  </div>
                 </div>
                 <a href={displayedProduct.linkUrl}>Przejdź do konfiguratora</a>
               </aside>
