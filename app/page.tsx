@@ -162,49 +162,49 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     id: "bialy",
     label: "Biały",
     color: "#f0f1f3",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000328_79e6551b_Bialy_2.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000347_2dc2ceab_Bialy_1.jpg",
     priceDelta: 0,
   },
   {
     id: "antracyt",
     label: "Antracyt",
     color: "#4a4f58",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000546_c5c56ae1_Antracyt_2.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000554_035f1db1_Antracyt_1.jpg",
     priceDelta: 0,
   },
   {
     id: "braz",
     label: "Brąz",
     color: "#6f4b38",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000647_361e63b8_Braz_2.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000635_9726bee7_Braz_1.jpg",
     priceDelta: 0,
   },
   {
     id: "zloty-dab",
     label: "Złoty dąb",
     color: "#b77b3e",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000722_a4143e5c_ZlotyDab_2.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000729_eeabf87c_ZlotyDab_1.jpg",
     priceDelta: 0,
   },
   {
     id: "orzech",
     label: "Orzech",
     color: "#7a4f34",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000800_202d5380_Orzech_2.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000812_2fb228c4_Orzech_1.jpg",
     priceDelta: 0,
   },
   {
     id: "winchester",
     label: "Winchester",
     color: "#b16d3d",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000848_017894bf_Winchester_2.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000852_41d51076_Winchester_1.jpg",
     priceDelta: 0,
   },
   {
     id: "mahon",
     label: "Mahoń",
     color: "#6a2f27",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000912_440c4496_Mahon_2.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000920_fe216be2_Mahon_1.jpg",
     priceDelta: 0,
   },
 ];
@@ -512,7 +512,9 @@ export default function Home() {
   const [activeProductTab, setActiveProductTab] = useState<ProductTabKey>("opis");
   const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
   const [selectedHardwareId, setSelectedHardwareId] = useState("");
+  const [stepOneChosen, setStepOneChosen] = useState(false);
   const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
+  const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
@@ -958,10 +960,12 @@ export default function Home() {
   useEffect(() => {
     if (!hardwareOptions.length) {
       setSelectedHardwareId("");
+      setStepOneChosen(false);
       return;
     }
-    if (!hardwareOptions.some((option) => option.id === selectedHardwareId)) {
-      setSelectedHardwareId(hardwareOptions[0].id);
+    if (selectedHardwareId && !hardwareOptions.some((option) => option.id === selectedHardwareId)) {
+      setSelectedHardwareId("");
+      setStepOneChosen(false);
     }
   }, [hardwareOptions, selectedHardwareId]);
 
@@ -1264,9 +1268,7 @@ export default function Home() {
                 aria-label="Konfigurator produktu"
               >
                 <header>
-                  <p>Konfigurator produktu</p>
-                  <strong>Moskitiery</strong>
-                  <span className="hero-product-config-subtitle">okienne lakierowane</span>
+                  <strong>Stwórz swoją moskitierę</strong>
                 </header>
                 <p className="hero-product-config-step-title">
                   <span className="hero-product-step-check" aria-hidden="true">✓</span>
@@ -1280,7 +1282,15 @@ export default function Home() {
                         <button
                           type="button"
                           className="hardware-card-main"
-                          onClick={() => setSelectedHardwareId(option.id)}
+                          onClick={() => {
+                            setSelectedHardwareId(option.id);
+                            if (!stepOneChosen) {
+                              setStepOneChosen(true);
+                              window.setTimeout(() => {
+                                stepTwoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                              }, 120);
+                            }
+                          }}
                         >
                           <span className="hardware-card-image" style={{ backgroundImage: `url(${option.imageUrl})` }} />
                           {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
@@ -1288,14 +1298,6 @@ export default function Home() {
                             <span className="hardware-dot" style={{ background: option.color }} />
                             <strong>{option.label}</strong>
                           </span>
-                          <small>
-                            Dopłata:{" "}
-                            {option.priceDelta.toLocaleString("pl-PL", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}{" "}
-                            zł
-                          </small>
                         </button>
                         <button
                           type="button"
@@ -1309,39 +1311,47 @@ export default function Home() {
                     );
                   })}
                 </div>
-                <p className="hero-product-config-step-title hero-product-config-step-title--muted">
-                  <span className="hero-product-step-check is-muted" aria-hidden="true">•</span>
-                  Dobierz kolor siatki
-                </p>
-                <div className="hero-product-mini-summary">
-                  <h3>Moskitiera okienna</h3>
-                  <div className="hero-product-mini-summary-preview">
-                    <img
-                      src={selectedHardwareOption?.imageUrl || displayedProduct.imageUrl}
-                      alt={selectedHardwareOption?.label || displayedProduct.label}
-                      loading="lazy"
-                    />
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Kolor profilu</dt>
-                      <dd>{selectedHardwareOption?.label || "--"}</dd>
+                {stepOneChosen ? (
+                  <>
+                    <p ref={stepTwoRef} className="hero-product-config-step-title hero-product-config-step-title--muted">
+                      <span className="hero-product-step-check is-muted" aria-hidden="true">2</span>
+                      Dobierz kolor siatki
+                    </p>
+                    <div className="hero-product-mini-summary">
+                      <h3>Moskitiera okienna</h3>
+                      <div className="hero-product-mini-summary-preview">
+                        <img
+                          src={selectedHardwareOption?.imageUrl || displayedProduct.imageUrl}
+                          alt={selectedHardwareOption?.label || displayedProduct.label}
+                          loading="lazy"
+                        />
+                      </div>
+                      <dl>
+                        <div>
+                          <dt>Kolor profilu</dt>
+                          <dd>{selectedHardwareOption?.label || "--"}</dd>
+                        </div>
+                        <div>
+                          <dt>Kolor siatki</dt>
+                          <dd>--</dd>
+                        </div>
+                        <div>
+                          <dt>Rozmiar</dt>
+                          <dd>--</dd>
+                        </div>
+                      </dl>
+                      <div className="hero-product-mini-summary-price">
+                        <p>Kalkulacja ceny</p>
+                        <strong>17,90 zł</strong>
+                      </div>
                     </div>
-                    <div>
-                      <dt>Kolor siatki</dt>
-                      <dd>--</dd>
-                    </div>
-                    <div>
-                      <dt>Rozmiar</dt>
-                      <dd>--</dd>
-                    </div>
-                  </dl>
-                  <div className="hero-product-mini-summary-price">
-                    <p>Kalkulacja ceny</p>
-                    <strong>17,90 zł</strong>
-                  </div>
-                </div>
-                <a href={displayedProduct.linkUrl}>Przejdź do konfiguratora</a>
+                  </>
+                ) : (
+                  <p className="hero-product-config-hint">Wybierz kolor profilu, aby przejść do kolejnego kroku.</p>
+                )}
+                {stepOneChosen ? (
+                  <a href={displayedProduct.linkUrl}>Przejdź do konfiguratora</a>
+                ) : null}
               </aside>
             ) : null}
             {displayedProduct ? (
