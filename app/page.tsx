@@ -52,6 +52,17 @@ type HomepageConfig = {
     price_from?: string;
     note?: string;
   }>;
+  product_configurators?: Array<{
+    product_slug?: string;
+    enabled?: boolean;
+    hardware_swatches?: Array<{
+      id?: string;
+      label?: string;
+      color?: string;
+      image_url?: string;
+      price_delta?: number;
+    }>;
+  }>;
 };
 
 type HeroMenuItem = {
@@ -146,8 +157,54 @@ const DEFAULT_HARDWARE_COLORS: Array<{ id: string; label: string; color: string 
   { id: "mahon", label: "Mahoń", color: "#6A2F27" },
 ];
 
-function hardwareOptionsForProduct(product: SelectedProductView | null): HardwareOption[] {
+function productSlugFromSelected(product: SelectedProductView | null): string {
+  if (!product) return "";
+  const raw = String(product.linkUrl || "").trim();
+  if (!raw) return String(product.shareSlug || "").trim();
+  if (raw.startsWith("/produkt/")) {
+    return raw.replace(/^\/produkt\//, "").split(/[?#]/)[0] || String(product.shareSlug || "").trim();
+  }
+  return String(product.shareSlug || "").trim();
+}
+
+function hardwareOptionsForProduct(
+  product: SelectedProductView | null,
+  config: HomepageConfig | null,
+  endpointOrigin: string,
+): HardwareOption[] {
   if (!product) return [];
+  const productSlug = productSlugFromSelected(product);
+  const configurators = Array.isArray(config?.product_configurators) ? config.product_configurators : [];
+  const profile = configurators.find((entry) => {
+    if (!entry || entry.enabled === false) return false;
+    return String(entry.product_slug || "").trim() === productSlug;
+  });
+  const swatches = Array.isArray(profile?.hardware_swatches) ? profile!.hardware_swatches! : [];
+  const fromProfile = swatches
+    .map((entry) => {
+      const id = String(entry.id || "").trim();
+      if (!id) return null;
+      return {
+        id,
+        label: String(entry.label || id).trim(),
+        color: String(entry.color || "#8ea0b7").trim() || "#8ea0b7",
+        imageUrl: absolutizeUrl(String(entry.image_url || "").trim(), endpointOrigin),
+        priceDelta: Number.isFinite(Number(entry.price_delta)) ? Number(entry.price_delta) : 0,
+      } satisfies HardwareOption;
+    })
+    .filter((entry): entry is HardwareOption => Boolean(entry));
+
+  if (fromProfile.length > 0) {
+    const fallbackImage = product.imageUrl || fallbackHeroSlides[0];
+    return fromProfile.map((entry, index) => ({
+      ...entry,
+      imageUrl:
+        entry.imageUrl ||
+        product.gallery[index % Math.max(1, product.gallery.length)] ||
+        fallbackImage,
+    }));
+  }
+
   const fallbackImage = product.imageUrl || fallbackHeroSlides[0];
   const images = product.gallery.length ? product.gallery : [fallbackImage];
   return DEFAULT_HARDWARE_COLORS.map((entry, index) => ({
@@ -834,8 +891,8 @@ export default function Home() {
   }, [heroMenuGroups]);
 
   const hardwareOptions = useMemo(
-    () => hardwareOptionsForProduct(displayedProduct),
-    [displayedProduct],
+    () => hardwareOptionsForProduct(displayedProduct, config, endpointOrigin),
+    [config, displayedProduct, endpointOrigin],
   );
 
   useEffect(() => {
