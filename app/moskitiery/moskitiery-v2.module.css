@@ -8,7 +8,7 @@
   --text-soft: #7c8da3;
   --accent: #ff7a1a;
   --accent-soft: rgba(255, 122, 26, 0.12);
-  --accent-blue: #3b82f6;
+  --accent-blue: #ff5a00;
   --hero-bg:
     radial-gradient(circle at top left, rgba(82, 162, 255, 0.16), transparent 42%),
     radial-gradient(circle at top right, rgba(255, 147, 82, 0.14), transparent 38%),
@@ -267,7 +267,7 @@
   height: 34px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(255, 90, 0, 0.14);
   color: var(--accent-blue);
   font-size: 0.8rem;
   font-weight: 800;
@@ -409,7 +409,7 @@
   height: 10px;
   border-radius: 999px;
   background: var(--accent-blue);
-  box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.14);
+  box-shadow: 0 0 0 8px rgba(255, 90, 0, 0.14);
 }
 
 .heroHint {
@@ -563,7 +563,7 @@
 
 .heroMedia {
   position: relative;
-  min-height: clamp(420px, 72vh, 760px);
+  min-height: clamp(380px, 64vh, 680px);
   display: flex;
   align-items: center;
 }
@@ -576,14 +576,14 @@
   align-items: center;
   justify-content: center;
   isolation: isolate;
-  padding: 0 clamp(40px, 6vw, 82px) 76px;
+  padding: 0 clamp(32px, 5vw, 68px) 68px;
 }
 
 .heroGhostSlide {
   pointer-events: none;
   position: absolute;
   top: 50%;
-  width: min(24vw, 320px);
+  width: min(22vw, 280px);
   aspect-ratio: 0.78;
   opacity: 0.62;
   transform: translateY(-50%) scale(0.84);
@@ -630,7 +630,7 @@
 
 .mainFrame {
   z-index: 2;
-  width: min(100%, 720px);
+  width: min(100%, 640px);
   min-height: 0;
   aspect-ratio: 0.98;
   padding: 0;
@@ -1437,16 +1437,16 @@
   }
 
   .heroMedia {
-    min-height: 420px;
+    min-height: 390px;
   }
 
   .heroCarouselShell {
-    min-height: 420px;
-    padding: 0 32px 72px;
+    min-height: 390px;
+    padding: 0 24px 64px;
   }
 
   .mainFrame {
-    width: min(100%, 620px);
+    width: min(100%, 560px);
   }
 
   .mainFrameInner {
@@ -1454,7 +1454,7 @@
   }
 
   .heroGhostSlide {
-    width: min(25vw, 240px);
+    width: min(22vw, 210px);
   }
 
   .heroCopy {
@@ -1503,16 +1503,16 @@
   }
 
   .heroMedia {
-    min-height: 360px;
+    min-height: 330px;
   }
 
   .heroCarouselShell {
-    min-height: 360px;
-    padding: 0 14px 64px;
+    min-height: 330px;
+    padding: 0 10px 56px;
   }
 
   .heroGhostSlide {
-    width: 26vw;
+    width: 22vw;
     border-radius: 24px;
   }
 
