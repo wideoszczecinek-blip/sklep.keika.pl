@@ -1101,6 +1101,51 @@ a {
   gap: 0.5rem;
 }
 
+.hero-product-step-accordion {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.hero-product-step-head {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+
+.hero-product-step-head-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+  color: rgba(235, 245, 255, 0.86);
+}
+
+.hero-product-step-head-meta strong {
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.hero-product-step-head-chevron {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.hero-product-step-body {
+  max-height: 560px;
+  overflow: hidden;
+  transition: max-height 0.34s ease, opacity 0.28s ease, transform 0.3s ease;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hero-product-step-accordion.is-collapsed .hero-product-step-body {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
 .hero-product-config-step-title--muted {
   color: rgba(228, 238, 251, 0.92);
   margin-top: 0.2rem;
@@ -1202,6 +1247,30 @@ a {
   margin: 0;
   color: rgba(223, 236, 250, 0.84);
   font-size: 0.9rem;
+}
+
+.hero-product-mesh-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.52rem;
+}
+
+.hero-product-mesh-option {
+  border: 1px solid rgba(197, 222, 247, 0.36);
+  border-radius: 0.8rem;
+  background: rgba(11, 24, 40, 0.5);
+  color: #edf6ff;
+  padding: 0.6rem 0.68rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hero-product-mesh-option.is-active {
+  border-color: rgba(140, 239, 232, 0.88);
+  box-shadow: 0 10px 20px rgba(6, 18, 33, 0.28);
 }
 
 .hero-product-mini-summary {

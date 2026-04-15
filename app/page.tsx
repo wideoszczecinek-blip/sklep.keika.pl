@@ -147,6 +147,12 @@ type HardwareOption = {
   priceDelta: number;
 };
 
+type MeshOption = {
+  id: string;
+  label: string;
+  color: string;
+};
+
 const DEFAULT_HARDWARE_COLORS: Array<{ id: string; label: string; color: string }> = [
   { id: "bialy", label: "Biały", color: "#EAECEF" },
   { id: "antracyt", label: "Antracyt", color: "#4A4F58" },
@@ -207,6 +213,11 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000920_fe216be2_Mahon_1.jpg",
     priceDelta: 0,
   },
+];
+
+const MESH_OPTIONS: MeshOption[] = [
+  { id: "grey", label: "Szara (wzmocniona)", color: "#8b9099" },
+  { id: "black", label: "Czarna (wzmocniona)", color: "#2f343d" },
 ];
 
 function productSlugFromSelected(product: SelectedProductView | null): string {
@@ -513,6 +524,8 @@ export default function Home() {
   const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
   const [selectedHardwareId, setSelectedHardwareId] = useState("");
   const [stepOneChosen, setStepOneChosen] = useState(false);
+  const [stepOneCollapsed, setStepOneCollapsed] = useState(false);
+  const [selectedMeshId, setSelectedMeshId] = useState("");
   const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
   const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
@@ -961,13 +974,21 @@ export default function Home() {
     if (!hardwareOptions.length) {
       setSelectedHardwareId("");
       setStepOneChosen(false);
+      setStepOneCollapsed(false);
+      setSelectedMeshId("");
       return;
     }
     if (selectedHardwareId && !hardwareOptions.some((option) => option.id === selectedHardwareId)) {
       setSelectedHardwareId("");
       setStepOneChosen(false);
+      setStepOneCollapsed(false);
+      setSelectedMeshId("");
     }
   }, [hardwareOptions, selectedHardwareId]);
+  const selectedMesh = useMemo(
+    () => MESH_OPTIONS.find((option) => option.id === selectedMeshId) || null,
+    [selectedMeshId],
+  );
 
   return (
     <div
@@ -1270,53 +1291,87 @@ export default function Home() {
                 <header>
                   <strong>Stwórz swoją moskitierę</strong>
                 </header>
-                <p className="hero-product-config-step-title">
-                  <span className="hero-product-step-check" aria-hidden="true">✓</span>
-                  Wybierz kolor profili
-                </p>
-                <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid">
-                  {hardwareOptions.map((option) => {
-                    const isActive = option.id === selectedHardwareId;
-                    return (
-                      <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""}`}>
-                        <button
-                          type="button"
-                          className="hardware-card-main"
-                          onClick={() => {
-                            setSelectedHardwareId(option.id);
-                            if (!stepOneChosen) {
-                              setStepOneChosen(true);
-                              window.setTimeout(() => {
-                                stepTwoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                              }, 120);
-                            }
-                          }}
-                        >
-                          <span className="hardware-card-image" style={{ backgroundImage: `url(${option.imageUrl})` }} />
-                          {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                          <span className="hardware-card-footer">
-                            <span className="hardware-dot" style={{ background: option.color }} />
-                            <strong>{option.label}</strong>
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          className="config-option-zoom"
-                          aria-label={`Powiększ: ${option.label}`}
-                          onClick={() => setZoomImage({ url: option.imageUrl, title: option.label })}
-                        >
-                          🔍
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                <section className={`hero-product-step-accordion ${stepOneCollapsed ? "is-collapsed" : ""}`}>
+                  <button
+                    type="button"
+                    className="hero-product-step-head"
+                    onClick={() => setStepOneCollapsed((prev) => !prev)}
+                    aria-expanded={stepOneCollapsed ? "false" : "true"}
+                  >
+                    <span className="hero-product-config-step-title">
+                      <span className="hero-product-step-check" aria-hidden="true">✓</span>
+                      Wybierz kolor profili
+                    </span>
+                    <span className="hero-product-step-head-meta">
+                      {selectedHardwareOption ? <strong>{selectedHardwareOption.label}</strong> : null}
+                      <span className="hero-product-step-head-chevron" aria-hidden="true">
+                        {stepOneCollapsed ? "▾" : "▴"}
+                      </span>
+                    </span>
+                  </button>
+                  <div className="hero-product-step-body">
+                    <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid">
+                      {hardwareOptions.map((option) => {
+                        const isActive = option.id === selectedHardwareId;
+                        return (
+                          <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""}`}>
+                            <button
+                              type="button"
+                              className="hardware-card-main"
+                              onClick={() => {
+                                setSelectedHardwareId(option.id);
+                                setStepOneCollapsed(true);
+                                if (!stepOneChosen) {
+                                  setStepOneChosen(true);
+                                  window.setTimeout(() => {
+                                    stepTwoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                  }, 120);
+                                }
+                              }}
+                            >
+                              <span className="hardware-card-image" style={{ backgroundImage: `url(${option.imageUrl})` }} />
+                              {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                              <span className="hardware-card-footer">
+                                <span className="hardware-dot" style={{ background: option.color }} />
+                                <strong>{option.label}</strong>
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              className="config-option-zoom"
+                              aria-label={`Powiększ: ${option.label}`}
+                              onClick={() => setZoomImage({ url: option.imageUrl, title: option.label })}
+                            >
+                              🔍
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
                 {stepOneChosen ? (
                   <>
                     <p ref={stepTwoRef} className="hero-product-config-step-title hero-product-config-step-title--muted">
                       <span className="hero-product-step-check is-muted" aria-hidden="true">2</span>
                       Dobierz kolor siatki
                     </p>
+                    <div className="hero-product-mesh-grid">
+                      {MESH_OPTIONS.map((option) => {
+                        const isActive = option.id === selectedMeshId;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            className={`hero-product-mesh-option ${isActive ? "is-active" : ""}`}
+                            onClick={() => setSelectedMeshId(option.id)}
+                          >
+                            <span className="hardware-dot" style={{ background: option.color }} />
+                            <strong>{option.label}</strong>
+                          </button>
+                        );
+                      })}
+                    </div>
                     <div className="hero-product-mini-summary">
                       <h3>Moskitiera okienna</h3>
                       <div className="hero-product-mini-summary-preview">
@@ -1333,7 +1388,7 @@ export default function Home() {
                         </div>
                         <div>
                           <dt>Kolor siatki</dt>
-                          <dd>--</dd>
+                          <dd>{selectedMesh?.label || "--"}</dd>
                         </div>
                         <div>
                           <dt>Rozmiar</dt>
