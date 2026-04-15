@@ -98,6 +98,7 @@ type SelectedProductView = {
   reviews: string[];
   gallery: string[];
   shareSlug: string;
+  configSteps: string[];
 };
 
 function productDescription(label: string): string {
@@ -128,11 +129,23 @@ function slugFromLink(linkUrl: string, label: string): string {
   return normalizeMenuLabel(label).replace(/\s+/g, "-");
 }
 
-function configuratorPathForProduct(product: SelectedProductView | null): string {
-  if (!product) return "";
-  const baseSlug = String(product.shareSlug || "").trim();
-  if (!baseSlug) return "";
-  return `/konfigurator/${encodeURIComponent(baseSlug)}`;
+function configStepsForProduct(label: string): string[] {
+  const normalized = normalizeMenuLabel(label);
+  if (normalized.includes("moskitier")) {
+    return [
+      "Wybierz typ i kolor profilu.",
+      "Wpisz dokładne wymiary z instrukcji pomiaru.",
+      "Dobierz siatkę i dodatki montażowe.",
+      "Sprawdź wycenę i zapisz konfigurację.",
+      "Przejdź do zamówienia i płatności.",
+    ];
+  }
+  return [
+    "Wybierz wariant produktu.",
+    "Uzupełnij parametry i wymiary.",
+    "Sprawdź podsumowanie konfiguracji.",
+    "Zapisz wycenę i przejdź do zamówienia.",
+  ];
 }
 
 function normalizeMenuLabel(raw: string): string {
@@ -745,6 +758,7 @@ export default function Home() {
       ],
       gallery: gallery.length ? gallery : fallbackHeroSlides.slice(0, 4),
       shareSlug,
+      configSteps: configStepsForProduct(subItem.label),
     };
     setSelectedProduct(nextProduct);
     setDisplayedProduct(nextProduct);
@@ -805,11 +819,6 @@ export default function Home() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, [heroMenuGroups]);
-
-  const configuratorPath = useMemo(
-    () => configuratorPathForProduct(displayedProduct),
-    [displayedProduct],
-  );
 
   return (
     <div
@@ -1113,25 +1122,12 @@ export default function Home() {
                   <p>Konfigurator</p>
                   <strong>{displayedProduct.label}</strong>
                 </header>
-                <div className="hero-product-config-frame-wrap">
-                  {configuratorPath ? (
-                    <iframe
-                      title={`Konfigurator: ${displayedProduct.label}`}
-                      src={configuratorPath}
-                      className="hero-product-config-frame"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="hero-product-config-fallback">
-                      <p>Konfigurator niedostępny dla tego produktu.</p>
-                    </div>
-                  )}
-                </div>
-                {configuratorPath ? (
-                  <a href={configuratorPath} target="_blank" rel="noreferrer">
-                    Otwórz konfigurator w nowej karcie
-                  </a>
-                ) : null}
+                <ol className="hero-product-config-steps">
+                  {displayedProduct.configSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+                <a href={displayedProduct.linkUrl}>Przejdź do konfiguratora</a>
               </aside>
             ) : null}
             {displayedProduct ? (
