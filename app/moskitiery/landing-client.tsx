@@ -22,31 +22,6 @@ function plainText(html: string) {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function isBusinessDay(date: Date) {
-  const day = date.getDay();
-  return day !== 0 && day !== 6;
-}
-
-function addBusinessDays(baseDate: Date, businessDaysToAdd: number) {
-  const result = new Date(baseDate);
-  let remaining = businessDaysToAdd;
-  while (remaining > 0) {
-    result.setDate(result.getDate() + 1);
-    if (isBusinessDay(result)) {
-      remaining -= 1;
-    }
-  }
-  return result;
-}
-
-function isSameCalendarDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
 const CRM_BASE =
   process.env.NEXT_PUBLIC_CRM_API_BASE_URL?.replace(/\/+$/, "") ||
   "https://crm-keika.groovemedia.pl";
@@ -87,6 +62,32 @@ const DEFAULT_MEASUREMENT_STEPS = [
     title_html: "Konfigurujesz i zapisujesz wycenę",
     body_html:
       "<p>Na końcu klient widzi cenę, zapisuje własny kod wyceny i może płynnie przejść do zamówienia.</p>",
+  },
+];
+
+const HERO_VALUE_PROPS = [
+  {
+    title: "Innowacyjna rama aluminiowa o wysokiej sztywności",
+    subtitle: "Sztywny aluminiowy profil - odporny na warunki atmosferyczne.",
+  },
+  {
+    title: "Wzmocniona siatka z włókna szklanego w powłoce PCV",
+    subtitle:
+      "Oczka 1,2x1,2 mm blokują drogę wszelkim owadom i zapewniają dobrą cyrkulację powietrza.",
+  },
+  {
+    title: "Nowe zaczepy sprężynowe",
+    subtitle:
+      "Nie wymagają mierzenia grubości ramy okna - dopasowują się do wszelkich typów okien.",
+  },
+  {
+    title: "7 kolorów w jednej cenie",
+    subtitle:
+      "Biel, brąz, antracyt oraz drewnopodobne: złoty dąb, orzech, winchester i mahoń.",
+  },
+  {
+    title: "Prosty pomiar i intuicyjny konfigurator",
+    subtitle: "Stworzysz zamówienie w kilka minut.",
   },
 ];
 
@@ -355,31 +356,6 @@ export default function MoskitieryLandingClient({
       : "";
   const nextImage =
     heroGallery.length > 1 ? heroGallery[(safeIndex + 1) % heroGallery.length]?.url || "" : "";
-  const heroHeadlineHtml = landing.hero.title || heroSlides[0]?.title_html || product.name;
-  const heroBodyHtml =
-    landing.hero.subtitle
-      ? `<p>${landing.hero.subtitle}</p>`
-      : heroSlides[0]?.body_html || `<p>${product.subtitle || product.description}</p>`;
-  const deliveryPromiseLabel = useMemo(() => {
-    const now = new Date();
-    const shippingDate = addBusinessDays(now, 1);
-    const deliveryDate = addBusinessDays(shippingDate, 1);
-    const dayAfterTomorrow = new Date(now);
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-
-    const dateLabel = new Intl.DateTimeFormat("pl-PL", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(deliveryDate);
-
-    if (isSameCalendarDay(deliveryDate, dayAfterTomorrow)) {
-      return `pojutrze (${dateLabel})`;
-    }
-
-    const weekday = new Intl.DateTimeFormat("pl-PL", { weekday: "long" }).format(deliveryDate);
-    return `${weekday} (${dateLabel})`;
-  }, []);
 
   const modalContent =
     openModal === "o-nas"
@@ -521,21 +497,19 @@ export default function MoskitieryLandingClient({
             </div>
 
             <div className={styles.heroLead}>
-              <div className={styles.heroActivePill}>
-                <span className={styles.heroActiveIndex}>
-                  {String(safeIndex + 1).padStart(2, "0")}
-                </span>
-                <span>{currentGalleryItem?.label || "Galeria produktu"}</span>
-              </div>
-              <div className={styles.heroTitle} dangerouslySetInnerHTML={{ __html: heroHeadlineHtml }} />
-              <div className={styles.heroDelivery}>
-                <span className={styles.deliveryPulse}>DARMOWA DOSTAWA</span>
-                <p>
-                  Zamów do 15:00, a Twoje zamówienie będzie u Ciebie <strong>{deliveryPromiseLabel}</strong>.
-                </p>
-              </div>
-              <div className={styles.heroSubtitle}>
-                <HtmlBlock html={heroBodyHtml} />
+              <h1 className={styles.heroTitle}>Moskitiery okienne na wymiar</h1>
+              <p className={styles.heroShippingLead}>Wysyłka w 48 godzin</p>
+              <div className={styles.heroSellingList}>
+                {HERO_VALUE_PROPS.map((item, index) => (
+                  <article
+                    key={`hero-value-${index}`}
+                    className={styles.heroSellingItem}
+                    style={{ animationDelay: `${1 + index * 0.4}s` }}
+                  >
+                    <h2>{item.title}</h2>
+                    <p>{item.subtitle}</p>
+                  </article>
+                ))}
               </div>
             </div>
 
