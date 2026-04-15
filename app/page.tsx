@@ -96,6 +96,7 @@ type SelectedProductView = {
   description: string;
   reviews: string[];
   gallery: string[];
+  shareSlug: string;
 };
 
 function productDescription(label: string): string {
@@ -113,6 +114,17 @@ function productDescription(label: string): string {
     return "Rolety wykonywane na wymiar z czytelnym procesem zamówienia: wybór wariantu, pomiar i szybka wycena.";
   }
   return "Produkt konfigurowany pod wymiar z prostym procesem zamówienia i wsparciem na etapie pomiaru.";
+}
+
+function slugFromLink(linkUrl: string, label: string): string {
+  const raw = String(linkUrl || "").trim();
+  if (raw.startsWith("/produkt/")) {
+    return raw.replace(/^\/produkt\//, "").split(/[?#]/)[0] || normalizeMenuLabel(label).replace(/\s+/g, "-");
+  }
+  if (raw.startsWith("/kategoria/")) {
+    return raw.replace(/^\/kategoria\//, "").split(/[?#]/)[0] || normalizeMenuLabel(label).replace(/\s+/g, "-");
+  }
+  return normalizeMenuLabel(label).replace(/\s+/g, "-");
 }
 
 function normalizeMenuLabel(raw: string): string {
@@ -698,11 +710,17 @@ export default function Home() {
     return withRequiredSections;
   }, [config, endpointOrigin]);
 
-  function activateProductView(group: HeroMenuGroup, groupIndex: number, subItem: HeroMenuItem) {
+  function activateProductView(
+    group: HeroMenuGroup,
+    groupIndex: number,
+    subItem: HeroMenuItem,
+    options?: { updateUrl?: boolean },
+  ) {
     const heroImages = heroMedia
       .filter((entry) => entry.type === "image" && entry.url)
       .map((entry) => entry.url);
     const gallery = [group.imageUrl, ...heroImages].filter((url, index, array) => url && array.indexOf(url) === index).slice(0, 8);
+    const shareSlug = slugFromLink(subItem.linkUrl, subItem.label);
     const nextProduct: SelectedProductView = {
       groupIndex,
       groupTitle: group.title,
@@ -717,6 +735,7 @@ export default function Home() {
         "Największy plus: szybka wycena i czytelne kroki konfiguracji.",
       ],
       gallery: gallery.length ? gallery : fallbackHeroSlides.slice(0, 4),
+      shareSlug,
     };
     setSelectedProduct(nextProduct);
     setDisplayedProduct(nextProduct);
@@ -727,6 +746,11 @@ export default function Home() {
     setActiveProductGallerySlide(0);
     setOpenMenuIndex(null);
     setMobileMenuOpen(false);
+    if (options?.updateUrl !== false && typeof window !== "undefined") {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("produkt", shareSlug);
+      window.history.pushState({ product: shareSlug }, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    }
   }
 
   useEffect(() => {
@@ -743,6 +767,35 @@ export default function Home() {
     }, 340);
     return () => window.clearTimeout(timer);
   }, [displayedProduct, selectedProduct]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const activateFromUrl = () => {
+      const current = new URL(window.location.href);
+      const slug = (current.searchParams.get("produkt") || "").trim().toLowerCase();
+      if (!slug) {
+        setIsProductView(false);
+        setSelectedProduct(null);
+        return;
+      }
+      for (let groupIndex = 0; groupIndex < heroMenuGroups.length; groupIndex += 1) {
+        const group = heroMenuGroups[groupIndex];
+        for (const subItem of group.items) {
+          const candidate = slugFromLink(subItem.linkUrl, subItem.label).toLowerCase();
+          if (candidate === slug) {
+            activateProductView(group, groupIndex, subItem, { updateUrl: false });
+            return;
+          }
+        }
+      }
+    };
+
+    activateFromUrl();
+    const onPopState = () => activateFromUrl();
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [heroMenuGroups]);
 
   return (
     <div
@@ -1045,6 +1098,11 @@ export default function Home() {
                   setIsProductView(false);
                   setSelectedProduct(null);
                   setOpenMenuIndex(displayedProduct.groupIndex);
+                  if (typeof window !== "undefined") {
+                    const nextUrl = new URL(window.location.href);
+                    nextUrl.searchParams.delete("produkt");
+                    window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+                  }
                 }}
                 aria-label={`Pokaż listę produktów, obecnie: ${displayedProduct.label}`}
               >
