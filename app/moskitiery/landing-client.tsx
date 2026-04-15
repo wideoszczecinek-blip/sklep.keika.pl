@@ -22,6 +22,31 @@ function plainText(html: string) {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function isBusinessDay(date: Date) {
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+}
+
+function addBusinessDays(baseDate: Date, businessDaysToAdd: number) {
+  const result = new Date(baseDate);
+  let remaining = businessDaysToAdd;
+  while (remaining > 0) {
+    result.setDate(result.getDate() + 1);
+    if (isBusinessDay(result)) {
+      remaining -= 1;
+    }
+  }
+  return result;
+}
+
+function isSameCalendarDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 const CRM_BASE =
   process.env.NEXT_PUBLIC_CRM_API_BASE_URL?.replace(/\/+$/, "") ||
   "https://crm-keika.groovemedia.pl";
@@ -335,6 +360,26 @@ export default function MoskitieryLandingClient({
     landing.hero.subtitle
       ? `<p>${landing.hero.subtitle}</p>`
       : heroSlides[0]?.body_html || `<p>${product.subtitle || product.description}</p>`;
+  const deliveryPromiseLabel = useMemo(() => {
+    const now = new Date();
+    const shippingDate = addBusinessDays(now, 1);
+    const deliveryDate = addBusinessDays(shippingDate, 1);
+    const dayAfterTomorrow = new Date(now);
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+
+    const dateLabel = new Intl.DateTimeFormat("pl-PL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(deliveryDate);
+
+    if (isSameCalendarDay(deliveryDate, dayAfterTomorrow)) {
+      return `pojutrze (${dateLabel})`;
+    }
+
+    const weekday = new Intl.DateTimeFormat("pl-PL", { weekday: "long" }).format(deliveryDate);
+    return `${weekday} (${dateLabel})`;
+  }, []);
 
   const modalContent =
     openModal === "o-nas"
@@ -483,6 +528,12 @@ export default function MoskitieryLandingClient({
                 <span>{currentGalleryItem?.label || "Galeria produktu"}</span>
               </div>
               <div className={styles.heroTitle} dangerouslySetInnerHTML={{ __html: heroHeadlineHtml }} />
+              <div className={styles.heroDelivery}>
+                <span className={styles.deliveryPulse}>DARMOWA DOSTAWA</span>
+                <p>
+                  Zamów do 15:00, a Twoje zamówienie będzie u Ciebie <strong>{deliveryPromiseLabel}</strong>.
+                </p>
+              </div>
               <div className={styles.heroSubtitle}>
                 <HtmlBlock html={heroBodyHtml} />
               </div>
