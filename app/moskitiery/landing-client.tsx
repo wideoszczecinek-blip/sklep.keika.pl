@@ -22,6 +22,31 @@ function plainText(html: string) {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function isBusinessDay(date: Date) {
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+}
+
+function addBusinessDays(baseDate: Date, businessDaysToAdd: number) {
+  const result = new Date(baseDate);
+  let remaining = businessDaysToAdd;
+  while (remaining > 0) {
+    result.setDate(result.getDate() + 1);
+    if (isBusinessDay(result)) {
+      remaining -= 1;
+    }
+  }
+  return result;
+}
+
+function isSameCalendarDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 const CRM_BASE =
   process.env.NEXT_PUBLIC_CRM_API_BASE_URL?.replace(/\/+$/, "") ||
   "https://crm-keika.groovemedia.pl";
@@ -356,6 +381,30 @@ export default function MoskitieryLandingClient({
       : "";
   const nextImage =
     heroGallery.length > 1 ? heroGallery[(safeIndex + 1) % heroGallery.length]?.url || "" : "";
+  const deliveryInfo = useMemo(() => {
+    const now = new Date();
+    const shippingDate = addBusinessDays(now, 1);
+    const deliveryDate = addBusinessDays(shippingDate, 1);
+    const dayAfterTomorrow = new Date(now);
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+
+    const weekdayFormatter = new Intl.DateTimeFormat("pl-PL", { weekday: "long" });
+    const dateFormatter = new Intl.DateTimeFormat("pl-PL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const shippingLabel = `${weekdayFormatter.format(shippingDate)} (${dateFormatter.format(shippingDate)})`;
+    const deliveryLabel = isSameCalendarDay(deliveryDate, dayAfterTomorrow)
+      ? `pojutrze (${dateFormatter.format(deliveryDate)})`
+      : `${weekdayFormatter.format(deliveryDate)} (${dateFormatter.format(deliveryDate)})`;
+
+    return {
+      shippingLabel,
+      deliveryLabel,
+    };
+  }, []);
 
   const modalContent =
     openModal === "o-nas"
@@ -489,16 +538,17 @@ export default function MoskitieryLandingClient({
 
           <div className={styles.heroCopy}>
             <div className={styles.heroEyebrowRow}>
-              <span className={styles.eyebrow}>{landing.hero.eyebrow}</span>
-              <span className={styles.signalDot} />
+              <span className={styles.deliveryPulse}>Darmowa dostawa</span>
               <div className={styles.heroHint}>
-                <HtmlBlock html={presentation.hero_hint_html || "<p>Nowoczesny widok produktu na pierwszym ekranie.</p>"} />
+                <p>
+                  Zamów do 15:00. Wysyłka <strong>{deliveryInfo.shippingLabel}</strong>, dostawa{" "}
+                  <strong>{deliveryInfo.deliveryLabel}</strong>.
+                </p>
               </div>
             </div>
 
             <div className={styles.heroLead}>
               <h1 className={styles.heroTitle}>Moskitiery okienne na wymiar</h1>
-              <p className={styles.heroShippingLead}>Wysyłka w 48 godzin</p>
               <div className={styles.heroSellingList}>
                 {HERO_VALUE_PROPS.map((item, index) => (
                   <article
