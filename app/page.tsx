@@ -98,7 +98,6 @@ type SelectedProductView = {
   reviews: string[];
   gallery: string[];
   shareSlug: string;
-  configSteps: string[];
 };
 
 function productDescription(label: string): string {
@@ -129,23 +128,35 @@ function slugFromLink(linkUrl: string, label: string): string {
   return normalizeMenuLabel(label).replace(/\s+/g, "-");
 }
 
-function configStepsForProduct(label: string): string[] {
-  const normalized = normalizeMenuLabel(label);
-  if (normalized.includes("moskitier")) {
-    return [
-      "Wybierz typ i kolor profilu.",
-      "Wpisz dokładne wymiary z instrukcji pomiaru.",
-      "Dobierz siatkę i dodatki montażowe.",
-      "Sprawdź wycenę i zapisz konfigurację.",
-      "Przejdź do zamówienia i płatności.",
-    ];
-  }
-  return [
-    "Wybierz wariant produktu.",
-    "Uzupełnij parametry i wymiary.",
-    "Sprawdź podsumowanie konfiguracji.",
-    "Zapisz wycenę i przejdź do zamówienia.",
-  ];
+type HardwareOption = {
+  id: string;
+  label: string;
+  color: string;
+  imageUrl: string;
+  priceDelta: number;
+};
+
+const DEFAULT_HARDWARE_COLORS: Array<{ id: string; label: string; color: string }> = [
+  { id: "bialy", label: "Biały", color: "#EAECEF" },
+  { id: "antracyt", label: "Antracyt", color: "#4A4F58" },
+  { id: "braz", label: "Brąz", color: "#6F4B38" },
+  { id: "zloty-dab", label: "Złoty dąb", color: "#B77B3E" },
+  { id: "orzech", label: "Orzech", color: "#7A4F34" },
+  { id: "winchester", label: "Winchester", color: "#B16D3D" },
+  { id: "mahon", label: "Mahoń", color: "#6A2F27" },
+];
+
+function hardwareOptionsForProduct(product: SelectedProductView | null): HardwareOption[] {
+  if (!product) return [];
+  const fallbackImage = product.imageUrl || fallbackHeroSlides[0];
+  const images = product.gallery.length ? product.gallery : [fallbackImage];
+  return DEFAULT_HARDWARE_COLORS.map((entry, index) => ({
+    id: entry.id,
+    label: entry.label,
+    color: entry.color,
+    imageUrl: images[index % images.length] || fallbackImage,
+    priceDelta: 0,
+  }));
 }
 
 function normalizeMenuLabel(raw: string): string {
@@ -387,6 +398,8 @@ export default function Home() {
   const [isProductView, setIsProductView] = useState(false);
   const [activeProductTab, setActiveProductTab] = useState<ProductTabKey>("opis");
   const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
+  const [selectedHardwareId, setSelectedHardwareId] = useState("");
+  const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
@@ -758,7 +771,6 @@ export default function Home() {
       ],
       gallery: gallery.length ? gallery : fallbackHeroSlides.slice(0, 4),
       shareSlug,
-      configSteps: configStepsForProduct(subItem.label),
     };
     setSelectedProduct(nextProduct);
     setDisplayedProduct(nextProduct);
@@ -787,6 +799,7 @@ export default function Home() {
       setDisplayedProduct(null);
       setActiveProductTab("opis");
       setActiveProductGallerySlide(0);
+      setSelectedHardwareId("");
     }, 340);
     return () => window.clearTimeout(timer);
   }, [displayedProduct, selectedProduct]);
@@ -819,6 +832,21 @@ export default function Home() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, [heroMenuGroups]);
+
+  const hardwareOptions = useMemo(
+    () => hardwareOptionsForProduct(displayedProduct),
+    [displayedProduct],
+  );
+
+  useEffect(() => {
+    if (!hardwareOptions.length) {
+      setSelectedHardwareId("");
+      return;
+    }
+    if (!hardwareOptions.some((option) => option.id === selectedHardwareId)) {
+      setSelectedHardwareId(hardwareOptions[0].id);
+    }
+  }, [hardwareOptions, selectedHardwareId]);
 
   return (
     <div
@@ -1120,13 +1148,45 @@ export default function Home() {
               >
                 <header>
                   <p>Konfigurator</p>
-                  <strong>{displayedProduct.label}</strong>
+                  <strong>Stwórz swoją moskitierę</strong>
                 </header>
-                <ol className="hero-product-config-steps">
-                  {displayedProduct.configSteps.map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
+                <p className="hero-product-config-step-title">1. Wybierz kolor osprzętu</p>
+                <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid">
+                  {hardwareOptions.map((option) => {
+                    const isActive = option.id === selectedHardwareId;
+                    return (
+                      <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""}`}>
+                        <button
+                          type="button"
+                          className="hardware-card-main"
+                          onClick={() => setSelectedHardwareId(option.id)}
+                        >
+                          <span className="hardware-card-image" style={{ backgroundImage: `url(${option.imageUrl})` }} />
+                          <span className="hardware-card-footer">
+                            <span className="hardware-dot" style={{ background: option.color }} />
+                            <strong>{option.label}</strong>
+                          </span>
+                          <small>
+                            Dopłata:{" "}
+                            {option.priceDelta.toLocaleString("pl-PL", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}{" "}
+                            zł
+                          </small>
+                        </button>
+                        <button
+                          type="button"
+                          className="config-option-zoom"
+                          aria-label={`Powiększ: ${option.label}`}
+                          onClick={() => setZoomImage({ url: option.imageUrl, title: option.label })}
+                        >
+                          🔍
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
                 <a href={displayedProduct.linkUrl}>Przejdź do konfiguratora</a>
               </aside>
             ) : null}
@@ -1192,6 +1252,28 @@ export default function Home() {
           ) : null}
         </section>
       </main>
+      {zoomImage ? (
+        <div
+          className="config-option-preview-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={zoomImage.title}
+          onClick={() => setZoomImage(null)}
+        >
+          <div className="config-option-preview-shell" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="config-option-preview-close"
+              onClick={() => setZoomImage(null)}
+              aria-label="Zamknij podgląd"
+            >
+              ×
+            </button>
+            <img src={zoomImage.url} alt={zoomImage.title} className="config-option-preview-image" />
+            <p>{zoomImage.title}</p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

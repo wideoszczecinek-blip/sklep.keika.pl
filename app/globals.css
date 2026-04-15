@@ -1085,6 +1085,43 @@ a {
   line-height: 1.16;
 }
 
+.hero-product-config-step-title {
+  margin: 0;
+  color: rgba(236, 246, 255, 0.9);
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.hero-product-hardware-grid {
+  margin-top: 0.15rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.72rem;
+}
+
+.hero-product-hardware-grid .hardware-card {
+  background: rgba(10, 23, 38, 0.66);
+}
+
+.hero-product-hardware-grid .hardware-card-main {
+  transition: transform 0.24s ease;
+}
+
+.hero-product-hardware-grid .hardware-card:hover .hardware-card-main,
+.hero-product-hardware-grid .hardware-card:focus-within .hardware-card-main {
+  transform: translateY(-1px);
+}
+
+.hero-product-hardware-grid .hardware-card-image {
+  min-height: 110px;
+  transition: transform 0.3s ease;
+}
+
+.hero-product-hardware-grid .hardware-card:hover .hardware-card-image,
+.hero-product-hardware-grid .hardware-card:focus-within .hardware-card-image {
+  transform: scale(1.04);
+}
+
 .hero-product-config-panel > a {
   width: fit-content;
   text-decoration: none;
@@ -3202,6 +3239,10 @@ a {
     top: auto;
     min-height: 280px;
     max-height: none;
+  }
+
+  .hero-product-hardware-grid {
+    grid-template-columns: 1fr;
   }
 }
 
