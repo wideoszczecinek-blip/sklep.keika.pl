@@ -18,6 +18,10 @@ function HtmlBlock({ html }: { html: string }) {
   return <div className={styles.copyHtml} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
+function plainText(html: string) {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 const CRM_BASE =
   process.env.NEXT_PUBLIC_CRM_API_BASE_URL?.replace(/\/+$/, "") ||
   "https://crm-keika.groovemedia.pl";
@@ -197,6 +201,29 @@ export default function MoskitieryLandingClient({
     [presentation.metrics, product.price_from, site.contact_hours, site.contact_phone],
   );
 
+  const heroGallery = useMemo(() => {
+    if (gallery.length) {
+      return gallery.map((url, index) => {
+        const relatedSlide = heroSlides[index] || heroSlides[0];
+        return {
+          id: `hero-gallery-${index + 1}`,
+          url,
+          alt: relatedSlide?.media_alt || relatedSlide?.label || product.name,
+          label: relatedSlide?.label || `Widok ${index + 1}`,
+        };
+      });
+    }
+
+    return heroSlides
+      .filter((slide) => slide.media_url)
+      .map((slide, index) => ({
+        id: slide.id || `hero-gallery-${index + 1}`,
+        url: slide.media_url,
+        alt: slide.media_alt || slide.label || product.name,
+        label: slide.label || `Widok ${index + 1}`,
+      }));
+  }, [gallery, heroSlides, product.name]);
+
   const reassuranceCards = useMemo(
     () =>
       presentation.reassurance_cards?.length
@@ -291,18 +318,6 @@ export default function MoskitieryLandingClient({
     }).catch(() => null);
   }, [landing.product_slug, landing.slug]);
 
-  useEffect(() => {
-    if (heroSlides.length <= 1) {
-      return undefined;
-    }
-
-    const timer = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % heroSlides.length);
-    }, 5600);
-
-    return () => window.clearInterval(timer);
-  }, [heroSlides.length]);
-
   function openInfoModal(key: string) {
     setOpenModal(key);
     void trackStorefrontEvent({
@@ -324,15 +339,26 @@ export default function MoskitieryLandingClient({
   }
 
   function changeSlide(step: number) {
-    if (!heroSlides.length) {
+    if (!heroGallery.length) {
       return;
     }
-    setActiveSlide((current) => (current + step + heroSlides.length) % heroSlides.length);
+    setActiveSlide((current) => (current + step + heroGallery.length) % heroGallery.length);
   }
 
-  const safeIndex = heroSlides.length ? activeSlide % heroSlides.length : 0;
-  const currentHeroSlide = heroSlides[safeIndex] || null;
-  const currentImage = currentHeroSlide?.media_url || landing.hero.media_url || gallery[0] || product.image_url || "";
+  const safeIndex = heroGallery.length ? activeSlide % heroGallery.length : 0;
+  const currentGalleryItem = heroGallery[safeIndex] || null;
+  const currentImage = currentGalleryItem?.url || landing.hero.media_url || gallery[0] || product.image_url || "";
+  const previousImage =
+    heroGallery.length > 1
+      ? heroGallery[(safeIndex - 1 + heroGallery.length) % heroGallery.length]?.url || ""
+      : "";
+  const nextImage =
+    heroGallery.length > 1 ? heroGallery[(safeIndex + 1) % heroGallery.length]?.url || "" : "";
+  const heroHeadlineHtml = landing.hero.title || heroSlides[0]?.title_html || product.name;
+  const heroBodyHtml =
+    landing.hero.subtitle
+      ? `<p>${landing.hero.subtitle}</p>`
+      : heroSlides[0]?.body_html || `<p>${product.subtitle || product.description}</p>`;
 
   const modalContent =
     openModal === "o-nas"
@@ -382,60 +408,119 @@ export default function MoskitieryLandingClient({
         </header>
 
         <section className={styles.hero}>
+          <div className={styles.heroMedia}>
+            <div className={styles.heroCarouselShell}>
+              {previousImage ? (
+                <div className={`${styles.heroGhostSlide} ${styles.heroGhostPrev}`} aria-hidden="true">
+                  <div className={styles.heroGhostInner}>
+                    <Image
+                      src={previousImage}
+                      alt=""
+                      fill
+                      sizes="20vw"
+                      className={styles.heroGhostImage}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              <div className={styles.mainFrame}>
+                <div className={styles.mainFrameInner}>
+                  {currentImage ? (
+                    <Image
+                      src={currentImage}
+                      alt={currentGalleryItem?.alt || product.name}
+                      fill
+                      priority
+                      sizes="(max-width: 1024px) 100vw, 42vw"
+                      className={styles.mainMedia}
+                    />
+                  ) : null}
+                </div>
+
+                <div className={styles.galleryRail}>
+                  <div className={styles.galleryCounter}>
+                    {String(safeIndex + 1).padStart(2, "0")} /{" "}
+                    {String(Math.max(heroGallery.length, 1)).padStart(2, "0")}
+                  </div>
+                  <div className={styles.galleryDots}>
+                    {heroGallery.map((item, index) => (
+                      <button
+                        key={`${item.id}-${index}`}
+                        type="button"
+                        className={`${styles.galleryDot} ${index === safeIndex ? styles.galleryDotActive : ""}`}
+                        onClick={() => setActiveSlide(index)}
+                        aria-label={`Pokaż zdjęcie ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {nextImage ? (
+                <div className={`${styles.heroGhostSlide} ${styles.heroGhostNext}`} aria-hidden="true">
+                  <div className={styles.heroGhostInner}>
+                    <Image
+                      src={nextImage}
+                      alt=""
+                      fill
+                      sizes="20vw"
+                      className={styles.heroGhostImage}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                className={`${styles.galleryNav} ${styles.galleryNavLeft}`}
+                aria-label="Poprzednie zdjęcie"
+                onClick={() => changeSlide(-1)}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className={`${styles.galleryNav} ${styles.galleryNavRight}`}
+                aria-label="Następne zdjęcie"
+                onClick={() => changeSlide(1)}
+              >
+                ›
+              </button>
+            </div>
+          </div>
+
           <div className={styles.heroCopy}>
             <div className={styles.heroEyebrowRow}>
               <span className={styles.eyebrow}>{landing.hero.eyebrow}</span>
               <span className={styles.signalDot} />
               <div className={styles.heroHint}>
-                <HtmlBlock html={presentation.hero_hint_html || "<p>Landing nastawiony na decyzję zakupową.</p>"} />
+                <HtmlBlock html={presentation.hero_hint_html || "<p>Nowoczesny widok produktu na pierwszym ekranie.</p>"} />
               </div>
             </div>
 
-            <div className={styles.heroAccordion}>
-              {heroSlides.map((slide, index) => {
-                const isActive = index === safeIndex;
-                return (
-                  <article
-                    key={slide.id || `${slide.label}-${index}`}
-                    className={`${styles.heroAccordionItem} ${isActive ? styles.heroAccordionItemActive : ""}`}
-                  >
-                    <button
-                      type="button"
-                      className={styles.heroAccordionTrigger}
-                      onClick={() => setActiveSlide(index)}
-                      aria-expanded={isActive}
-                    >
-                      <span className={styles.heroAccordionIndex}>
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className={styles.heroAccordionLabel}>{slide.label || `Slajd ${index + 1}`}</span>
-                    </button>
-
-                    <div className={styles.heroAccordionPanel}>
-                      <div className={styles.heroAccordionPanelInner}>
-                        <div
-                          className={styles.heroTitle}
-                          dangerouslySetInnerHTML={{ __html: slide.title_html }}
-                        />
-                        <div className={styles.heroSubtitle}>
-                          <HtmlBlock html={slide.body_html} />
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+            <div className={styles.heroLead}>
+              <div className={styles.heroActivePill}>
+                <span className={styles.heroActiveIndex}>
+                  {String(safeIndex + 1).padStart(2, "0")}
+                </span>
+                <span>{currentGalleryItem?.label || "Galeria produktu"}</span>
+              </div>
+              <div className={styles.heroTitle} dangerouslySetInnerHTML={{ __html: heroHeadlineHtml }} />
+              <div className={styles.heroSubtitle}>
+                <HtmlBlock html={heroBodyHtml} />
+              </div>
             </div>
 
-            <div className={styles.heroDots}>
-              {heroSlides.map((slide, index) => (
-                <button
-                  key={`${slide.id || slide.label}-${index}`}
-                  type="button"
-                  className={`${styles.heroDot} ${index === safeIndex ? styles.heroDotActive : ""}`}
-                  onClick={() => setActiveSlide(index)}
-                  aria-label={`Przejdź do slajdu ${index + 1}`}
-                />
+            <div className={styles.heroBenefitsGrid}>
+              {reassuranceCards.slice(0, 3).map((card, index) => (
+                <article key={`hero-benefit-${index}`} className={styles.heroBenefitCard}>
+                  <span className={styles.heroBenefitIndex}>{String(index + 1).padStart(2, "0")}</span>
+                  <div className={styles.heroBenefitBody}>
+                    <h2 dangerouslySetInnerHTML={{ __html: card.title_html }} />
+                    <p>{plainText(card.body_html)}</p>
+                  </div>
+                </article>
               ))}
             </div>
 
@@ -470,71 +555,6 @@ export default function MoskitieryLandingClient({
                   </div>
                 </article>
               ))}
-            </div>
-          </div>
-
-          <div className={styles.heroMedia}>
-              <div className={styles.mainFrame}>
-              <button
-                type="button"
-                className={`${styles.galleryNav} ${styles.galleryNavLeft}`}
-                aria-label="Poprzednie zdjęcie"
-                onClick={() => changeSlide(-1)}
-              >
-                ‹
-              </button>
-
-                <div className={styles.mainFrameInner}>
-                  {currentHeroSlide?.media_kind === "video" && currentImage.endsWith(".mp4") ? (
-                    <video src={currentImage} autoPlay muted loop playsInline className={styles.mainMedia} />
-                  ) : currentImage ? (
-                    <Image
-                      src={currentImage}
-                      alt={currentHeroSlide?.media_alt || product.name}
-                      fill
-                      priority
-                      sizes="(max-width: 1024px) 100vw, 40vw"
-                      className={styles.mainMedia}
-                  />
-                ) : null}
-              </div>
-
-              <button
-                type="button"
-                className={`${styles.galleryNav} ${styles.galleryNavRight}`}
-                aria-label="Następne zdjęcie"
-                onClick={() => changeSlide(1)}
-              >
-                ›
-              </button>
-
-              <div className={styles.floatingCard}>
-                <div className={styles.floatingLabel} dangerouslySetInnerHTML={{ __html: presentation.floating_badge_html || "Prawdziwy produkt" }} />
-                <strong>{product.name}</strong>
-                <HtmlBlock
-                  html={
-                    presentation.floating_body_html ||
-                    `<p>${product.subtitle || "Na wymiar, z czytelnym procesem pomiaru i szybką wyceną online."}</p>`
-                  }
-                />
-              </div>
-            </div>
-
-            <div className={styles.galleryRail}>
-              <div className={styles.galleryCounter}>
-                {String(safeIndex + 1).padStart(2, "0")} / {String(Math.max(heroSlides.length, 1)).padStart(2, "0")}
-              </div>
-              <div className={styles.galleryDots}>
-                {heroSlides.map((slide, index) => (
-                  <button
-                    key={`${slide.id || slide.label}-${index}`}
-                    type="button"
-                    className={`${styles.galleryDot} ${index === safeIndex ? styles.galleryDotActive : ""}`}
-                    onClick={() => setActiveSlide(index)}
-                    aria-label={`Pokaż zdjęcie ${index + 1}`}
-                  />
-                ))}
-              </div>
             </div>
           </div>
         </section>
