@@ -88,6 +88,7 @@ type ProductTabKey = "opis" | "galeria" | "opinie" | "wycena";
 
 type SelectedProductView = {
   groupIndex: number;
+  groupSlug: string;
   groupTitle: string;
   label: string;
   linkUrl: string;
@@ -125,6 +126,13 @@ function slugFromLink(linkUrl: string, label: string): string {
     return raw.replace(/^\/kategoria\//, "").split(/[?#]/)[0] || normalizeMenuLabel(label).replace(/\s+/g, "-");
   }
   return normalizeMenuLabel(label).replace(/\s+/g, "-");
+}
+
+function configuratorPathForProduct(product: SelectedProductView | null): string {
+  if (!product) return "";
+  const baseSlug = String(product.shareSlug || "").trim();
+  if (!baseSlug) return "";
+  return `/konfigurator/${encodeURIComponent(baseSlug)}`;
 }
 
 function normalizeMenuLabel(raw: string): string {
@@ -723,6 +731,7 @@ export default function Home() {
     const shareSlug = slugFromLink(subItem.linkUrl, subItem.label);
     const nextProduct: SelectedProductView = {
       groupIndex,
+      groupSlug: group.slug,
       groupTitle: group.title,
       label: subItem.label,
       linkUrl: subItem.linkUrl,
@@ -796,6 +805,11 @@ export default function Home() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, [heroMenuGroups]);
+
+  const configuratorPath = useMemo(
+    () => configuratorPathForProduct(displayedProduct),
+    [displayedProduct],
+  );
 
   return (
     <div
@@ -1090,6 +1104,36 @@ export default function Home() {
                 </article>
               ))}
             </aside>
+            {displayedProduct ? (
+              <aside
+                className={`hero-product-config-panel ${isProductView ? "is-visible" : ""}`}
+                aria-label="Konfigurator produktu"
+              >
+                <header>
+                  <p>Konfigurator</p>
+                  <strong>{displayedProduct.label}</strong>
+                </header>
+                <div className="hero-product-config-frame-wrap">
+                  {configuratorPath ? (
+                    <iframe
+                      title={`Konfigurator: ${displayedProduct.label}`}
+                      src={configuratorPath}
+                      className="hero-product-config-frame"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="hero-product-config-fallback">
+                      <p>Konfigurator niedostępny dla tego produktu.</p>
+                    </div>
+                  )}
+                </div>
+                {configuratorPath ? (
+                  <a href={configuratorPath} target="_blank" rel="noreferrer">
+                    Otwórz konfigurator w nowej karcie
+                  </a>
+                ) : null}
+              </aside>
+            ) : null}
             {displayedProduct ? (
               <button
                 type="button"
