@@ -350,6 +350,8 @@ export default function Home() {
   const [activeHeadline, setActiveHeadline] = useState(0);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SelectedProductView | null>(null);
+  const [displayedProduct, setDisplayedProduct] = useState<SelectedProductView | null>(null);
+  const [isProductView, setIsProductView] = useState(false);
   const [activeProductTab, setActiveProductTab] = useState<ProductTabKey>("opis");
   const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
@@ -521,13 +523,13 @@ export default function Home() {
 
   useEffect(() => {
     if (bootPhase !== "ready") return;
-    if (selectedProduct) return;
+    if (displayedProduct) return;
     if (heroCarousel.length <= 1) return;
     const intervalId = window.setInterval(() => {
       setActiveHeadline((prev) => (prev + 1) % heroCarousel.length);
     }, 8400);
     return () => window.clearInterval(intervalId);
-  }, [bootPhase, heroCarousel.length, selectedProduct]);
+  }, [bootPhase, displayedProduct, heroCarousel.length]);
 
   const heroMedia = useMemo(() => {
     if (Array.isArray(config?.hero_media) && config!.hero_media!.length > 0) {
@@ -701,7 +703,7 @@ export default function Home() {
       .filter((entry) => entry.type === "image" && entry.url)
       .map((entry) => entry.url);
     const gallery = [group.imageUrl, ...heroImages].filter((url, index, array) => url && array.indexOf(url) === index).slice(0, 8);
-    setSelectedProduct({
+    const nextProduct: SelectedProductView = {
       groupIndex,
       groupTitle: group.title,
       label: subItem.label,
@@ -715,6 +717,11 @@ export default function Home() {
         "Największy plus: szybka wycena i czytelne kroki konfiguracji.",
       ],
       gallery: gallery.length ? gallery : fallbackHeroSlides.slice(0, 4),
+    };
+    setSelectedProduct(nextProduct);
+    setDisplayedProduct(nextProduct);
+    window.requestAnimationFrame(() => {
+      setIsProductView(true);
     });
     setActiveProductTab("opis");
     setActiveProductGallerySlide(0);
@@ -724,11 +731,22 @@ export default function Home() {
 
   useEffect(() => {
     setActiveProductGallerySlide(0);
-  }, [selectedProduct?.label]);
+  }, [displayedProduct?.label]);
+
+  useEffect(() => {
+    if (selectedProduct) return;
+    if (!displayedProduct) return;
+    const timer = window.setTimeout(() => {
+      setDisplayedProduct(null);
+      setActiveProductTab("opis");
+      setActiveProductGallerySlide(0);
+    }, 340);
+    return () => window.clearTimeout(timer);
+  }, [displayedProduct, selectedProduct]);
 
   return (
     <div
-      className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${selectedProduct ? "product-focus-active" : ""}`}
+      className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${displayedProduct ? "product-focus-active" : ""}`}
     >
       <div className={`boot-overlay ${bootPhase === "ready" ? "is-hidden" : ""}`} aria-hidden={bootPhase === "ready" ? "true" : "false"}>
         <div className="boot-overlay-core">
@@ -829,11 +847,10 @@ export default function Home() {
           <div className="hero-dim" aria-hidden="true" />
           <div className="hero-grain" aria-hidden="true" />
 
-          <div className={`hero-inner ${selectedProduct ? "product-mode" : ""}`}>
+          <div className={`hero-inner ${displayedProduct ? "product-mode" : ""}`}>
             <div className="hero-copy">
               <div className="hero-copy-content">
-                {!selectedProduct ? (
-                  <>
+                <section className={`hero-home-content ${isProductView ? "is-hidden" : ""}`} aria-hidden={isProductView ? "true" : "false"}>
                     <div className="hero-eyebrow-carousel" aria-live="polite">
                       {heroCarousel.map((slide, index) => (
                         <p
@@ -876,31 +893,34 @@ export default function Home() {
                         />
                       ))}
                     </div>
-                  </>
-                ) : (
-                  <section className="hero-product-panel" aria-live="polite">
-                    <p className="hero-product-group">{selectedProduct.groupTitle}</p>
-                    <h1>{selectedProduct.label}</h1>
+                </section>
+                <section
+                  className={`hero-product-panel ${isProductView ? "is-visible" : ""}`}
+                  aria-live="polite"
+                  aria-hidden={!displayedProduct || !isProductView ? "true" : "false"}
+                >
+                  <p className="hero-product-group">{displayedProduct?.groupTitle || ""}</p>
+                  <h1>{displayedProduct?.label || ""}</h1>
                     <div className="hero-product-content">
-                      {activeProductTab === "opis" ? (
-                        <p>{selectedProduct.description}</p>
+                      {activeProductTab === "opis" && displayedProduct ? (
+                        <p>{displayedProduct.description}</p>
                       ) : null}
-                      {activeProductTab === "galeria" ? (
+                      {activeProductTab === "galeria" && displayedProduct ? (
                         <div className="hero-product-gallery">
                           <div className="hero-product-gallery-main">
                             <img
                               src={
-                                selectedProduct.gallery[
-                                  ((activeProductGallerySlide % selectedProduct.gallery.length) + selectedProduct.gallery.length) %
-                                    selectedProduct.gallery.length
+                                displayedProduct.gallery[
+                                  ((activeProductGallerySlide % displayedProduct.gallery.length) + displayedProduct.gallery.length) %
+                                    displayedProduct.gallery.length
                                 ]
                               }
-                              alt={selectedProduct.label}
+                              alt={displayedProduct.label}
                               loading="eager"
                             />
                           </div>
                           <div className="hero-product-gallery-thumbs">
-                            {selectedProduct.gallery.map((url, index) => (
+                            {displayedProduct.gallery.map((url, index) => (
                               <button
                                 key={`${url}-${index}`}
                                 type="button"
@@ -914,22 +934,21 @@ export default function Home() {
                           </div>
                         </div>
                       ) : null}
-                      {activeProductTab === "opinie" ? (
+                      {activeProductTab === "opinie" && displayedProduct ? (
                         <ul className="hero-product-reviews">
-                          {selectedProduct.reviews.map((review) => (
+                          {displayedProduct.reviews.map((review) => (
                             <li key={review}>{review}</li>
                           ))}
                         </ul>
                       ) : null}
-                      {activeProductTab === "wycena" ? (
+                      {activeProductTab === "wycena" && displayedProduct ? (
                         <div className="hero-product-estimate">
                           <p>Przejdź do szybkiej wyceny i zamów online bez przeładowania procesu.</p>
-                          <a href={selectedProduct.linkUrl}>Przejdź do wyceny</a>
+                          <a href={displayedProduct.linkUrl}>Przejdź do wyceny</a>
                         </div>
                       ) : null}
                     </div>
                   </section>
-                )}
               </div>
               <button
                 type="button"
@@ -948,7 +967,7 @@ export default function Home() {
             </div>
 
             <aside
-              className={`hero-menu-glass ${selectedProduct ? "is-hidden" : ""}`}
+              className={`hero-menu-glass ${isProductView ? "is-hidden" : ""}`}
               id="wycena"
               aria-label="Główne kategorie produktów"
               ref={heroMenuRef}
@@ -1018,15 +1037,16 @@ export default function Home() {
                 </article>
               ))}
             </aside>
-            {selectedProduct ? (
+            {displayedProduct ? (
               <button
                 type="button"
-                className="hero-product-menu-toggle"
+                className={`hero-product-menu-toggle ${isProductView ? "is-visible" : ""}`}
                 onClick={() => {
+                  setIsProductView(false);
                   setSelectedProduct(null);
-                  setOpenMenuIndex(selectedProduct.groupIndex);
+                  setOpenMenuIndex(displayedProduct.groupIndex);
                 }}
-                aria-label={`Pokaż listę produktów, obecnie: ${selectedProduct.label}`}
+                aria-label={`Pokaż listę produktów, obecnie: ${displayedProduct.label}`}
               >
                 <span className="hero-product-menu-toggle-icon" aria-hidden="true">
                   <span />
@@ -1035,13 +1055,13 @@ export default function Home() {
                 </span>
                 <span className="hero-product-menu-toggle-text">
                   <small>Produkty</small>
-                  <strong>{selectedProduct.label}</strong>
+                  <strong>{displayedProduct.label}</strong>
                 </span>
               </button>
             ) : null}
           </div>
-          {selectedProduct ? (
-            <nav className="hero-product-bottom-tabs" aria-label="Sekcje produktu">
+          {displayedProduct ? (
+            <nav className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""}`} aria-label="Sekcje produktu">
               <button
                 type="button"
                 className={activeProductTab === "opis" ? "is-active" : ""}

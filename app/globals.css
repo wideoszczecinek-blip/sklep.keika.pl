@@ -550,8 +550,27 @@ a {
 }
 
 .hero-copy-content {
-  display: block;
+  display: grid;
+  align-items: start;
+  min-height: clamp(350px, 56vh, 640px);
   transform: translateY(0);
+}
+
+.hero-home-content,
+.hero-product-panel {
+  grid-area: 1 / 1;
+}
+
+.hero-home-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.34s ease;
+}
+
+.hero-home-content.is-hidden {
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
 }
 
 .eyebrow {
@@ -661,13 +680,13 @@ a {
   width: min(560px, 100%);
   display: grid;
   gap: 0.85rem;
+  transition: opacity 0.36s ease, transform 0.42s ease;
 }
 
 .hero-menu-glass.is-hidden {
   opacity: 0;
   pointer-events: none;
-  transform: translateX(42px);
-  transition: opacity 0.36s ease, transform 0.42s ease;
+  transform: translate3d(44px, -82px, 0) scale(0.78);
 }
 
 .hero-menu-card {
@@ -831,6 +850,16 @@ a {
   backdrop-filter: blur(12px);
   box-shadow: 0 14px 30px rgba(4, 12, 24, 0.34);
   cursor: pointer;
+  opacity: 0;
+  transform: translate3d(18px, -16px, 0) scale(0.92);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hero-product-menu-toggle.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  pointer-events: auto;
 }
 
 .hero-product-menu-toggle-icon {
@@ -873,6 +902,16 @@ a {
   display: grid;
   gap: 0.72rem;
   max-width: 62ch;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.36s ease;
+}
+
+.hero-product-panel.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .hero-product-group {
@@ -999,6 +1038,16 @@ a {
   backdrop-filter: blur(14px);
   padding: 0.36rem;
   z-index: 64;
+  opacity: 0;
+  transform: translate(-50%, 130%);
+  pointer-events: none;
+  transition: opacity 0.28s ease, transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.hero-product-bottom-tabs.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
 }
 
 .hero-product-bottom-tabs button {
@@ -3011,11 +3060,15 @@ a {
   .hero-product-bottom-tabs {
     left: 0.8rem;
     right: 0.8rem;
-    transform: none;
+    transform: translateY(130%);
     bottom: calc(env(safe-area-inset-bottom, 0px) + 0.8rem);
     display: flex;
     overflow-x: auto;
     justify-content: flex-start;
+  }
+
+  .hero-product-bottom-tabs.is-visible {
+    transform: translateY(0);
   }
 
   .hero-product-bottom-tabs button {
