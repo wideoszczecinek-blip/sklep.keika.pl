@@ -84,6 +84,37 @@ type TopLink = {
   url: string;
 };
 
+type ProductTabKey = "opis" | "galeria" | "opinie" | "wycena";
+
+type SelectedProductView = {
+  groupIndex: number;
+  groupTitle: string;
+  label: string;
+  linkUrl: string;
+  iconUrl: string;
+  imageUrl: string;
+  description: string;
+  reviews: string[];
+  gallery: string[];
+};
+
+function productDescription(label: string): string {
+  const normalized = normalizeMenuLabel(label);
+  if (normalized.includes("moskitier")) {
+    return "Moskitiery na wymiar z naciskiem na prosty pomiar, szybką realizację i estetyczny montaż bez zbędnych komplikacji.";
+  }
+  if (normalized.includes("zaluzj")) {
+    return "Nowoczesne żaluzje dopasowane do wnętrza, z naciskiem na precyzję wykonania i wygodną codzienną regulację światła.";
+  }
+  if (normalized.includes("plis")) {
+    return "Plisy szyte pod Twoje okno, z płynnym sterowaniem i bardzo elastycznym dopasowaniem do różnych typów okien.";
+  }
+  if (normalized.includes("rolet")) {
+    return "Rolety wykonywane na wymiar z czytelnym procesem zamówienia: wybór wariantu, pomiar i szybka wycena.";
+  }
+  return "Produkt konfigurowany pod wymiar z prostym procesem zamówienia i wsparciem na etapie pomiaru.";
+}
+
 function normalizeMenuLabel(raw: string): string {
   return String(raw || "")
     .toLowerCase()
@@ -318,6 +349,9 @@ export default function Home() {
   const [cartSummary, setCartSummary] = useState<CartSummary>({ items: 0, total: 0 });
   const [activeHeadline, setActiveHeadline] = useState(0);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProductView | null>(null);
+  const [activeProductTab, setActiveProductTab] = useState<ProductTabKey>("opis");
+  const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
@@ -487,12 +521,13 @@ export default function Home() {
 
   useEffect(() => {
     if (bootPhase !== "ready") return;
+    if (selectedProduct) return;
     if (heroCarousel.length <= 1) return;
     const intervalId = window.setInterval(() => {
       setActiveHeadline((prev) => (prev + 1) % heroCarousel.length);
     }, 8400);
     return () => window.clearInterval(intervalId);
-  }, [bootPhase, heroCarousel.length]);
+  }, [bootPhase, heroCarousel.length, selectedProduct]);
 
   const heroMedia = useMemo(() => {
     if (Array.isArray(config?.hero_media) && config!.hero_media!.length > 0) {
@@ -661,8 +696,40 @@ export default function Home() {
     return withRequiredSections;
   }, [config, endpointOrigin]);
 
+  function activateProductView(group: HeroMenuGroup, groupIndex: number, subItem: HeroMenuItem) {
+    const heroImages = heroMedia
+      .filter((entry) => entry.type === "image" && entry.url)
+      .map((entry) => entry.url);
+    const gallery = [group.imageUrl, ...heroImages].filter((url, index, array) => url && array.indexOf(url) === index).slice(0, 8);
+    setSelectedProduct({
+      groupIndex,
+      groupTitle: group.title,
+      label: subItem.label,
+      linkUrl: subItem.linkUrl,
+      iconUrl: subItem.iconUrl || group.iconUrl,
+      imageUrl: group.imageUrl,
+      description: productDescription(subItem.label),
+      reviews: [
+        "Bardzo prosty proces zamówienia i świetne dopasowanie do okna.",
+        "Na żywo wygląda dokładnie tak, jak na zdjęciach. Montaż bez problemu.",
+        "Największy plus: szybka wycena i czytelne kroki konfiguracji.",
+      ],
+      gallery: gallery.length ? gallery : fallbackHeroSlides.slice(0, 4),
+    });
+    setActiveProductTab("opis");
+    setActiveProductGallerySlide(0);
+    setOpenMenuIndex(null);
+    setMobileMenuOpen(false);
+  }
+
+  useEffect(() => {
+    setActiveProductGallerySlide(0);
+  }, [selectedProduct?.label]);
+
   return (
-    <div className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase}`}>
+    <div
+      className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${selectedProduct ? "product-focus-active" : ""}`}
+    >
       <div className={`boot-overlay ${bootPhase === "ready" ? "is-hidden" : ""}`} aria-hidden={bootPhase === "ready" ? "true" : "false"}>
         <div className="boot-overlay-core">
           <span className="boot-spinner" aria-hidden="true" />
@@ -762,51 +829,107 @@ export default function Home() {
           <div className="hero-dim" aria-hidden="true" />
           <div className="hero-grain" aria-hidden="true" />
 
-          <div className="hero-inner">
+          <div className={`hero-inner ${selectedProduct ? "product-mode" : ""}`}>
             <div className="hero-copy">
               <div className="hero-copy-content">
-                <div className="hero-eyebrow-carousel" aria-live="polite">
-                  {heroCarousel.map((slide, index) => (
-                    <p
-                      key={`${slide.eyebrow}-${index}`}
-                      className={`eyebrow eyebrow-slide ${index === activeHeadline ? "is-active" : ""}`}
-                    >
-                      {slide.eyebrow || fallbackEyebrow}
-                    </p>
-                  ))}
-                </div>
-                <div className="hero-title-carousel" aria-live="polite">
-                  {heroCarousel.map((slide, index) => (
-                    <h1
-                      key={`${slide.title}-${slide.eyebrow}-${index}`}
-                      className={`hero-title-slide ${index === activeHeadline ? "is-active" : ""}`}
-                    >
-                      {slide.title || fallbackTitle}
-                    </h1>
-                  ))}
-                </div>
-                <div className="hero-subtitle-carousel" aria-live="polite">
-                  {heroCarousel.map((slide, index) => (
-                    <p
-                      key={`${slide.subtitle}-${index}`}
-                      className={`hero-subtitle-slide ${index === activeHeadline ? "is-active" : ""}`}
-                    >
-                      {slide.subtitle || fallbackSubtitle}
-                    </p>
-                  ))}
-                </div>
-                <div className="hero-title-dots" aria-label="Paginacja tytułów">
-                  {heroCarousel.map((_, index) => (
-                    <button
-                      key={`headline-dot-${index}`}
-                      type="button"
-                      className={`hero-title-dot ${index === activeHeadline ? "is-active" : ""}`}
-                      aria-label={`Pokaż tytuł ${index + 1}`}
-                      aria-pressed={index === activeHeadline ? "true" : "false"}
-                      onClick={() => setActiveHeadline(index)}
-                    />
-                  ))}
-                </div>
+                {!selectedProduct ? (
+                  <>
+                    <div className="hero-eyebrow-carousel" aria-live="polite">
+                      {heroCarousel.map((slide, index) => (
+                        <p
+                          key={`${slide.eyebrow}-${index}`}
+                          className={`eyebrow eyebrow-slide ${index === activeHeadline ? "is-active" : ""}`}
+                        >
+                          {slide.eyebrow || fallbackEyebrow}
+                        </p>
+                      ))}
+                    </div>
+                    <div className="hero-title-carousel" aria-live="polite">
+                      {heroCarousel.map((slide, index) => (
+                        <h1
+                          key={`${slide.title}-${slide.eyebrow}-${index}`}
+                          className={`hero-title-slide ${index === activeHeadline ? "is-active" : ""}`}
+                        >
+                          {slide.title || fallbackTitle}
+                        </h1>
+                      ))}
+                    </div>
+                    <div className="hero-subtitle-carousel" aria-live="polite">
+                      {heroCarousel.map((slide, index) => (
+                        <p
+                          key={`${slide.subtitle}-${index}`}
+                          className={`hero-subtitle-slide ${index === activeHeadline ? "is-active" : ""}`}
+                        >
+                          {slide.subtitle || fallbackSubtitle}
+                        </p>
+                      ))}
+                    </div>
+                    <div className="hero-title-dots" aria-label="Paginacja tytułów">
+                      {heroCarousel.map((_, index) => (
+                        <button
+                          key={`headline-dot-${index}`}
+                          type="button"
+                          className={`hero-title-dot ${index === activeHeadline ? "is-active" : ""}`}
+                          aria-label={`Pokaż tytuł ${index + 1}`}
+                          aria-pressed={index === activeHeadline ? "true" : "false"}
+                          onClick={() => setActiveHeadline(index)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <section className="hero-product-panel" aria-live="polite">
+                    <p className="hero-product-group">{selectedProduct.groupTitle}</p>
+                    <h1>{selectedProduct.label}</h1>
+                    <div className="hero-product-content">
+                      {activeProductTab === "opis" ? (
+                        <p>{selectedProduct.description}</p>
+                      ) : null}
+                      {activeProductTab === "galeria" ? (
+                        <div className="hero-product-gallery">
+                          <div className="hero-product-gallery-main">
+                            <img
+                              src={
+                                selectedProduct.gallery[
+                                  ((activeProductGallerySlide % selectedProduct.gallery.length) + selectedProduct.gallery.length) %
+                                    selectedProduct.gallery.length
+                                ]
+                              }
+                              alt={selectedProduct.label}
+                              loading="eager"
+                            />
+                          </div>
+                          <div className="hero-product-gallery-thumbs">
+                            {selectedProduct.gallery.map((url, index) => (
+                              <button
+                                key={`${url}-${index}`}
+                                type="button"
+                                className={index === activeProductGallerySlide ? "is-active" : ""}
+                                onClick={() => setActiveProductGallerySlide(index)}
+                                aria-label={`Pokaż zdjęcie ${index + 1}`}
+                              >
+                                <img src={url} alt="" loading="lazy" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {activeProductTab === "opinie" ? (
+                        <ul className="hero-product-reviews">
+                          {selectedProduct.reviews.map((review) => (
+                            <li key={review}>{review}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {activeProductTab === "wycena" ? (
+                        <div className="hero-product-estimate">
+                          <p>Przejdź do szybkiej wyceny i zamów online bez przeładowania procesu.</p>
+                          <a href={selectedProduct.linkUrl}>Przejdź do wyceny</a>
+                        </div>
+                      ) : null}
+                    </div>
+                  </section>
+                )}
               </div>
               <button
                 type="button"
@@ -825,7 +948,7 @@ export default function Home() {
             </div>
 
             <aside
-              className="hero-menu-glass"
+              className={`hero-menu-glass ${selectedProduct ? "is-hidden" : ""}`}
               id="wycena"
               aria-label="Główne kategorie produktów"
               ref={heroMenuRef}
@@ -864,7 +987,17 @@ export default function Home() {
                       <li key={`${item.title}-${subItem.label}`}>
                         <a
                           href={subItem.linkUrl}
-                          onClick={() => {
+                          onClick={(event) => {
+                            if (
+                              event.metaKey ||
+                              event.ctrlKey ||
+                              event.shiftKey ||
+                              event.altKey
+                            ) {
+                              return;
+                            }
+                            event.preventDefault();
+                            activateProductView(item, index, subItem);
                             if (window.matchMedia("(max-width: 760px)").matches) {
                               setMobileMenuOpen(false);
                               setOpenMenuIndex(null);
@@ -885,7 +1018,60 @@ export default function Home() {
                 </article>
               ))}
             </aside>
+            {selectedProduct ? (
+              <button
+                type="button"
+                className="hero-product-menu-toggle"
+                onClick={() => {
+                  setSelectedProduct(null);
+                  setOpenMenuIndex(selectedProduct.groupIndex);
+                }}
+                aria-label={`Pokaż listę produktów, obecnie: ${selectedProduct.label}`}
+              >
+                <span className="hero-product-menu-toggle-icon" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                <span className="hero-product-menu-toggle-text">
+                  <small>Produkty</small>
+                  <strong>{selectedProduct.label}</strong>
+                </span>
+              </button>
+            ) : null}
           </div>
+          {selectedProduct ? (
+            <nav className="hero-product-bottom-tabs" aria-label="Sekcje produktu">
+              <button
+                type="button"
+                className={activeProductTab === "opis" ? "is-active" : ""}
+                onClick={() => setActiveProductTab("opis")}
+              >
+                Opis produktu
+              </button>
+              <button
+                type="button"
+                className={activeProductTab === "galeria" ? "is-active" : ""}
+                onClick={() => setActiveProductTab("galeria")}
+              >
+                Galeria zdjęć
+              </button>
+              <button
+                type="button"
+                className={activeProductTab === "opinie" ? "is-active" : ""}
+                onClick={() => setActiveProductTab("opinie")}
+              >
+                Opinie
+              </button>
+              <button
+                type="button"
+                className={activeProductTab === "wycena" ? "is-active" : ""}
+                onClick={() => setActiveProductTab("wycena")}
+              >
+                Wycena
+              </button>
+            </nav>
+          ) : null}
         </section>
       </main>
     </div>
