@@ -177,30 +177,6 @@ export default function MoskitieryLandingClient({
     socialProofSection?.title_html,
   ]);
 
-  const heroMetrics = useMemo(
-    () =>
-      presentation.metrics?.length
-        ? presentation.metrics
-        : [
-            {
-              label_html: "Cena startowa",
-              value_html: product.price_from || "wycena online",
-              note_html: "<p>Cena końcowa zależy od wymiaru i wybranych opcji.</p>",
-            },
-            {
-              label_html: "Wsparcie",
-              value_html: site.contact_phone || "pomoc na żywo",
-              note_html: `<p>${site.contact_hours || "Pomożemy przed pomiarem."}</p>`,
-            },
-            {
-              label_html: "Proces",
-              value_html: "3 proste kroki",
-              note_html: "<p>Produkt, pomiar, konfiguracja.</p>",
-            },
-          ],
-    [presentation.metrics, product.price_from, site.contact_hours, site.contact_phone],
-  );
-
   const heroGallery = useMemo(() => {
     if (gallery.length) {
       return gallery.map((url, index) => {
@@ -524,14 +500,6 @@ export default function MoskitieryLandingClient({
               ))}
             </div>
 
-            <div className={styles.badgeRow}>
-              {landing.trust_badges.map((badge) => (
-                <span key={badge} className={styles.badge}>
-                  {badge}
-                </span>
-              ))}
-            </div>
-
             <div className={styles.heroActions}>
               <Link
                 href="#konfigurator"
@@ -543,18 +511,6 @@ export default function MoskitieryLandingClient({
               <button type="button" className={styles.ghostButton} onClick={() => openInfoModal("kontakt")}>
                 {presentation.hero_help_cta_label || "Pomoc przed pomiarem"}
               </button>
-            </div>
-
-            <div className={styles.heroMetrics}>
-              {heroMetrics.map((item, index) => (
-                <article key={`metric-${index}`} className={styles.metricCard}>
-                  <div className={styles.metricLabel} dangerouslySetInnerHTML={{ __html: item.label_html }} />
-                  <div className={styles.metricValue} dangerouslySetInnerHTML={{ __html: item.value_html }} />
-                  <div className={styles.metricNote}>
-                    <HtmlBlock html={item.note_html} />
-                  </div>
-                </article>
-              ))}
             </div>
           </div>
         </section>
