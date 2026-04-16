@@ -144,6 +144,7 @@ type HardwareOption = {
   label: string;
   color: string;
   imageUrl: string;
+  galleryUrls: string[];
   priceDelta: number;
 };
 
@@ -169,6 +170,11 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     label: "Biały",
     color: "#f0f1f3",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000347_2dc2ceab_Bialy_1.jpg",
+    galleryUrls: [
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000347_2dc2ceab_Bialy_1.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000328_79e6551b_Bialy_2.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000401_566be7d6_Bialy_3.jpg",
+    ],
     priceDelta: 0,
   },
   {
@@ -176,6 +182,11 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     label: "Antracyt",
     color: "#4a4f58",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000554_035f1db1_Antracyt_1.jpg",
+    galleryUrls: [
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000554_035f1db1_Antracyt_1.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000546_c5c56ae1_Antracyt_2.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000601_9e1a8ebf_Antracyt_3.jpg",
+    ],
     priceDelta: 0,
   },
   {
@@ -183,6 +194,10 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     label: "Brąz",
     color: "#6f4b38",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000635_9726bee7_Braz_1.jpg",
+    galleryUrls: [
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000635_9726bee7_Braz_1.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000647_361e63b8_Braz_2.jpg",
+    ],
     priceDelta: 0,
   },
   {
@@ -190,6 +205,11 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     label: "Złoty dąb",
     color: "#b77b3e",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000729_eeabf87c_ZlotyDab_1.jpg",
+    galleryUrls: [
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000729_eeabf87c_ZlotyDab_1.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000722_a4143e5c_ZlotyDab_2.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000736_f064cbb0_ZlotyDab_3.jpg",
+    ],
     priceDelta: 0,
   },
   {
@@ -197,6 +217,11 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     label: "Orzech",
     color: "#7a4f34",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000812_2fb228c4_Orzech_1.jpg",
+    galleryUrls: [
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000812_2fb228c4_Orzech_1.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000800_202d5380_Orzech_2.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000822_c2fadbc5_Orzech_3.jpg",
+    ],
     priceDelta: 0,
   },
   {
@@ -204,6 +229,11 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     label: "Winchester",
     color: "#b16d3d",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000852_41d51076_Winchester_1.jpg",
+    galleryUrls: [
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000852_41d51076_Winchester_1.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000848_017894bf_Winchester_2.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000859_51c6c15c_Winchester_3.jpg",
+    ],
     priceDelta: 0,
   },
   {
@@ -211,6 +241,11 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     label: "Mahoń",
     color: "#6a2f27",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000920_fe216be2_Mahon_1.jpg",
+    galleryUrls: [
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000920_fe216be2_Mahon_1.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000912_440c4496_Mahon_2.jpg",
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000925_ac038d5b_Mahon_3.jpg",
+    ],
     priceDelta: 0,
   },
 ];
@@ -256,6 +291,7 @@ function hardwareOptionsForProduct(
         label: String(entry.label || id).trim(),
         color: String(entry.color || "#8ea0b7").trim() || "#8ea0b7",
         imageUrl: absolutizeUrl(String(entry.image_url || "").trim(), endpointOrigin),
+        galleryUrls: [] as string[],
         priceDelta: Number.isFinite(Number(entry.price_delta)) ? Number(entry.price_delta) : 0,
       } satisfies HardwareOption;
     })
@@ -269,6 +305,11 @@ function hardwareOptionsForProduct(
         entry.imageUrl ||
         product.gallery[index % Math.max(1, product.gallery.length)] ||
         fallbackImage,
+      galleryUrls: [
+        entry.imageUrl ||
+          product.gallery[index % Math.max(1, product.gallery.length)] ||
+          fallbackImage,
+      ].filter(Boolean),
     }));
   }
 
@@ -279,6 +320,7 @@ function hardwareOptionsForProduct(
     label: entry.label,
     color: entry.color,
     imageUrl: images[index % images.length] || fallbackImage,
+    galleryUrls: [images[index % images.length] || fallbackImage].filter(Boolean),
     priceDelta: 0,
   }));
 }
@@ -526,7 +568,7 @@ export default function Home() {
   const [stepOneChosen, setStepOneChosen] = useState(false);
   const [stepOneCollapsed, setStepOneCollapsed] = useState(false);
   const [selectedMeshId, setSelectedMeshId] = useState("");
-  const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
+  const [zoomPreview, setZoomPreview] = useState<{ title: string; urls: string[]; index: number } | null>(null);
   const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
@@ -1311,10 +1353,14 @@ export default function Home() {
                   </button>
                   <div className="hero-product-step-body">
                     <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid">
-                      {hardwareOptions.map((option) => {
+                      {hardwareOptions.map((option, index) => {
                         const isActive = option.id === selectedHardwareId;
+                        const isLastSolo = hardwareOptions.length % 3 === 1 && index === hardwareOptions.length - 1;
                         return (
-                          <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""}`}>
+                          <div
+                            key={option.id}
+                            className={`hardware-card ${isActive ? "is-active" : ""} ${isLastSolo ? "is-last-solo" : ""}`}
+                          >
                             <button
                               type="button"
                               className="hardware-card-main"
@@ -1340,7 +1386,13 @@ export default function Home() {
                               type="button"
                               className="config-option-zoom"
                               aria-label={`Powiększ: ${option.label}`}
-                              onClick={() => setZoomImage({ url: option.imageUrl, title: option.label })}
+                              onClick={() =>
+                                setZoomPreview({
+                                  title: option.label,
+                                  urls: option.galleryUrls?.length ? option.galleryUrls : [option.imageUrl],
+                                  index: 0,
+                                })
+                              }
                             >
                               🔍
                             </button>
@@ -1471,25 +1523,64 @@ export default function Home() {
           ) : null}
         </section>
       </main>
-      {zoomImage ? (
+      {zoomPreview ? (
         <div
           className="config-option-preview-modal"
           role="dialog"
           aria-modal="true"
-          aria-label={zoomImage.title}
-          onClick={() => setZoomImage(null)}
+          aria-label={zoomPreview.title}
+          onClick={() => setZoomPreview(null)}
         >
           <div className="config-option-preview-shell" onClick={(event) => event.stopPropagation()}>
             <button
               type="button"
               className="config-option-preview-close"
-              onClick={() => setZoomImage(null)}
+              onClick={() => setZoomPreview(null)}
               aria-label="Zamknij podgląd"
             >
               ×
             </button>
-            <img src={zoomImage.url} alt={zoomImage.title} className="config-option-preview-image" />
-            <p>{zoomImage.title}</p>
+            {zoomPreview.urls.length > 1 ? (
+              <button
+                type="button"
+                className="config-option-preview-nav is-prev"
+                aria-label="Poprzednie zdjęcie"
+                onClick={() =>
+                  setZoomPreview((prev) => {
+                    if (!prev) return prev;
+                    const nextIndex = (prev.index - 1 + prev.urls.length) % prev.urls.length;
+                    return { ...prev, index: nextIndex };
+                  })
+                }
+              >
+                ‹
+              </button>
+            ) : null}
+            {zoomPreview.urls.length > 1 ? (
+              <button
+                type="button"
+                className="config-option-preview-nav is-next"
+                aria-label="Następne zdjęcie"
+                onClick={() =>
+                  setZoomPreview((prev) => {
+                    if (!prev) return prev;
+                    const nextIndex = (prev.index + 1) % prev.urls.length;
+                    return { ...prev, index: nextIndex };
+                  })
+                }
+              >
+                ›
+              </button>
+            ) : null}
+            <img
+              src={zoomPreview.urls[zoomPreview.index]}
+              alt={zoomPreview.title}
+              className="config-option-preview-image"
+            />
+            <p>
+              {zoomPreview.title}
+              {zoomPreview.urls.length > 1 ? ` • ${zoomPreview.index + 1}/${zoomPreview.urls.length}` : ""}
+            </p>
           </div>
         </div>
       ) : null}
