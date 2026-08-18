@@ -679,9 +679,6 @@ export default function MoskitieryFlow({
     return savedPositionsAmount + parseMoney(draftPosition?.total_amount ?? "0");
   }, [draftPosition, positions]);
 
-  const activeSlide =
-    config?.homepage.carousel[activeSlideIndex % (config?.homepage.carousel.length || 1)] ??
-    null;
   const activeBackground =
     config?.homepage.backgrounds[
       activeSlideIndex % (config?.homepage.backgrounds.length || 1)
@@ -1298,22 +1295,15 @@ export default function MoskitieryFlow({
         }
       >
         <div className={styles.heroCopy}>
-          <span className={styles.heroEyebrow}>sklep.keika.pl/moskitiery</span>
-          <h1>Sklepowy konfigurator moskitier</h1>
+          <span className={styles.heroEyebrow}>Konfigurator moskitier</span>
+          <h1>Stwórz swoją moskitierę</h1>
           <p>
-            Układ kroków zostaje taki sam, ale konfiguracja, wyceny, odwiedziny i
-            sterowanie cenami działają już w osobnej warstwie sklepu WWW.
+            Wybierz wariant, kolor profilu i siatki, podaj wymiary — cenę wyliczymy
+            automatycznie, a gotową konfigurację zapiszemy do wyceny.
           </p>
-          {activeSlide ? (
-            <div className={styles.heroSlide}>
-              <strong>{activeSlide.title}</strong>
-              <span>{activeSlide.body}</span>
-            </div>
-          ) : null}
           <div className={styles.heroMeta}>
             <span>{products.length} warianty moskitier</span>
             <span>{onlineCount} użytkowników online</span>
-            <span>osobne statystyki i wyceny sklepu</span>
           </div>
         </div>
         <div className={styles.heroPanel}>
@@ -1345,20 +1335,14 @@ export default function MoskitieryFlow({
         </div>
       </section>
 
-      <section className={styles.statusStrip}>
-        <div className={styles.statusItem}>
-          <span>Status</span>
-          <strong>{statusMessage || "Gotowe do konfiguracji."}</strong>
-        </div>
-        <div className={styles.statusItem}>
-          <span>Zmiany</span>
-          <strong>{isDirty ? "Masz niezapisane zmiany" : "Wszystko zapisane"}</strong>
-        </div>
-        <div className={styles.statusItem}>
-          <span>Błąd</span>
-          <strong>{errorMessage || "Brak"}</strong>
-        </div>
-      </section>
+      {errorMessage || statusMessage ? (
+        <section
+          className={`${styles.statusBanner} ${errorMessage ? styles.statusBannerError : ""}`}
+          role={errorMessage ? "alert" : "status"}
+        >
+          <p>{errorMessage || statusMessage}</p>
+        </section>
+      ) : null}
 
       {storedQuoteLink && !quote ? (
         <section className={styles.restoreBanner}>

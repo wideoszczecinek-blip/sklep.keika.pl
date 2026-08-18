@@ -223,6 +223,25 @@
   padding: 18px 20px;
 }
 
+.statusBanner {
+  padding: 14px 20px;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 18px;
+  background: rgba(15, 118, 110, 0.08);
+  color: #0f172a;
+}
+
+.statusBanner p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.statusBannerError {
+  border-color: rgba(185, 28, 28, 0.28);
+  background: rgba(185, 28, 28, 0.08);
+  color: #b91c1c;
+}
+
 .statusItem {
   display: flex;
   flex-direction: column;
