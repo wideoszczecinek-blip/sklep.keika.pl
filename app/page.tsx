@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import ThemeToggle from "@/app/components/theme-toggle";
+// Light/dark toggle disabled for now (only one product live) - bring back
+// once the whole shop is ready, see header-actions below.
+// import ThemeToggle from "@/app/components/theme-toggle";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 
@@ -832,6 +834,7 @@ export default function Home() {
   const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
   const galleryRowRef = useRef<HTMLDivElement | null>(null);
+  const galleryThumbsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const slug = productSlugFromSelected(displayedProduct);
@@ -1488,19 +1491,67 @@ export default function Home() {
           </div>
         </div>
         <div className="header-actions">
-          <ThemeToggle />
+          {displayedProduct ? (
+            <button
+              type="button"
+              className={`hero-product-menu-toggle ${isProductView ? "is-visible" : ""}`}
+              onClick={() => {
+                setIsProductView(false);
+                setSelectedProduct(null);
+                setOpenMenuIndex(displayedProduct.groupIndex);
+                if (typeof window !== "undefined") {
+                  const nextUrl = new URL(window.location.href);
+                  nextUrl.searchParams.delete("produkt");
+                  window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+                }
+              }}
+              aria-label={`Pokaż listę produktów, obecnie: ${displayedProduct.label}`}
+            >
+              <span className="hero-product-menu-toggle-icon" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+              <span className="hero-product-menu-toggle-text">
+                <small>Produkty</small>
+                <strong>{displayedProduct.label}</strong>
+              </span>
+            </button>
+          ) : null}
+          {/* Light/dark toggle disabled for now (only one product live) -
+              bring back once the whole shop is ready. */}
+          {/* <ThemeToggle /> */}
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
             {contactPhone}
           </a>
-          <a className={`header-cart ${hasCartItems ? "has-items" : "is-empty"}`} href="#koszyk">
-            <span className="header-cart-title">Koszyk</span>
+          <a
+            className={`header-cart ${hasCartItems ? "has-items" : "is-empty"}`}
+            href="#koszyk"
+            aria-label={hasCartItems ? `Koszyk: ${cartQtyLabel}, ${formatPln(cartSummary.total)}` : "Koszyk jest pusty"}
+          >
+            <span className="header-cart-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M3 4h2l1.6 9.6a2 2 0 0 0 2 1.65h8.2a2 2 0 0 0 1.96-1.6L20 8H6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx="9" cy="19.5" r="1.4" fill="currentColor" />
+                <circle cx="17" cy="19.5" r="1.4" fill="currentColor" />
+              </svg>
+              {hasCartItems ? <span className="header-cart-badge">{cartSummary.items}</span> : null}
+            </span>
             {hasCartItems ? (
-              <>
+              <span className="header-cart-copy">
                 <strong>{formatPln(cartSummary.total)}</strong>
                 <small>{cartQtyLabel}</small>
-              </>
+              </span>
             ) : (
-              <small>Koszyk pusty</small>
+              <span className="header-cart-copy">
+                <small>Koszyk</small>
+              </span>
             )}
           </a>
         </div>
@@ -1700,6 +1751,9 @@ export default function Home() {
                             const row = galleryRowRef.current;
                             const item = row?.children[wrapped] as HTMLElement | undefined;
                             item?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                            const thumbs = galleryThumbsRef.current;
+                            const thumb = thumbs?.children[wrapped] as HTMLElement | undefined;
+                            thumb?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
                           });
                         };
                         const openZoom = (index: number) => {
@@ -1745,18 +1799,36 @@ export default function Home() {
                                 ›
                               </button>
                             </div>
-                            <div className="hero-product-gallery-thumbs">
-                              {galleryPhotos.map((url, index) => (
-                                <button
-                                  key={`thumb-${url}-${index}`}
-                                  type="button"
-                                  className={index === activeProductGallerySlide ? "is-active" : ""}
-                                  onClick={() => goToSlide(index)}
-                                  aria-label={`Pokaż zdjęcie ${index + 1} z ${galleryPhotos.length}`}
-                                >
-                                  <img src={optimizeImageUrl(url, 160)} alt="" loading="lazy" />
-                                </button>
-                              ))}
+                            <div className="hero-product-gallery-thumbs-wrap">
+                              <button
+                                type="button"
+                                className="hero-product-gallery-nav hero-product-gallery-nav--small is-prev"
+                                onClick={() => goToSlide(activeProductGallerySlide - 1)}
+                                aria-label="Poprzednia miniatura"
+                              >
+                                ‹
+                              </button>
+                              <div className="hero-product-gallery-thumbs" ref={galleryThumbsRef}>
+                                {galleryPhotos.map((url, index) => (
+                                  <button
+                                    key={`thumb-${url}-${index}`}
+                                    type="button"
+                                    className={index === activeProductGallerySlide ? "is-active" : ""}
+                                    onClick={() => goToSlide(index)}
+                                    aria-label={`Pokaż zdjęcie ${index + 1} z ${galleryPhotos.length}`}
+                                  >
+                                    <img src={optimizeImageUrl(url, 160)} alt="" loading="lazy" />
+                                  </button>
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                className="hero-product-gallery-nav hero-product-gallery-nav--small is-next"
+                                onClick={() => goToSlide(activeProductGallerySlide + 1)}
+                                aria-label="Następna miniatura"
+                              >
+                                ›
+                              </button>
                             </div>
                           </div>
                         );
@@ -2253,33 +2325,6 @@ export default function Home() {
                   <p className="hero-product-config-hint">Wybierz kolor profilu, aby przejść do kolejnego kroku.</p>
                 )}
               </aside>
-            ) : null}
-            {displayedProduct ? (
-              <button
-                type="button"
-                className={`hero-product-menu-toggle ${isProductView ? "is-visible" : ""}`}
-                onClick={() => {
-                  setIsProductView(false);
-                  setSelectedProduct(null);
-                  setOpenMenuIndex(displayedProduct.groupIndex);
-                  if (typeof window !== "undefined") {
-                    const nextUrl = new URL(window.location.href);
-                    nextUrl.searchParams.delete("produkt");
-                    window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
-                  }
-                }}
-                aria-label={`Pokaż listę produktów, obecnie: ${displayedProduct.label}`}
-              >
-                <span className="hero-product-menu-toggle-icon" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-                <span className="hero-product-menu-toggle-text">
-                  <small>Produkty</small>
-                  <strong>{displayedProduct.label}</strong>
-                </span>
-              </button>
             ) : null}
           </div>
           {displayedProduct ? (
