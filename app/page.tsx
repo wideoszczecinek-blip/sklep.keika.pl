@@ -115,6 +115,59 @@ type ProductLandingSection = {
   body: string;
 };
 
+type ProductFeatureBullet = {
+  lead: string;
+  detail?: string;
+};
+
+type ProductSpecItem = {
+  label: string;
+  value: string;
+};
+
+// Curated, non-redundant sales copy for moskitiery-ramkowe, written from the
+// real Allegro listing content (profile material, mesh, mounting, color
+// options) rather than the CRM's generic landing_sections, which repeated
+// the same 2-3 facts across their 5 entries. Keep this grounded in real
+// product facts only — do not add claims that aren't true for this product.
+const MOSKITIERY_RAMKOWE_FEATURE_BULLETS: ProductFeatureBullet[] = [
+  {
+    lead: "Sztywny profil aluminiowy",
+    detail: "nie odkształca się i utrzymuje równy naciąg siatki przez wiele sezonów",
+  },
+  {
+    lead: "Docięte na wymiar",
+    detail: "profile, siatka i uszczelka są przygotowane i opisane, gotowe do złożenia",
+  },
+  {
+    lead: "Otwory pod zaczepy nawiercone wcześniej",
+    detail: "właściwa średnica i rozstaw — nic nie trzeba dodatkowo mierzyć",
+  },
+  {
+    lead: "Wzmocniona siatka z powlekanego włókna szklanego",
+    detail: "skutecznie blokuje owady, nie ogranicza przy tym cyrkulacji powietrza",
+  },
+  {
+    lead: "7 kolorów profilu w tej samej cenie",
+    detail: "biały, antracyt, brąz, złoty dąb, orzech, winchester, mahoń",
+  },
+  {
+    lead: "Siatka w kolorze szarym lub czarnym",
+    detail: "do wyboru niezależnie od koloru profilu",
+  },
+  {
+    lead: "Bezinwazyjne zaczepy sprężynowe",
+    detail: "montaż bez wiercenia, bez ostrych krawędzi i bez mierzenia grubości ramy",
+  },
+];
+
+const MOSKITIERY_RAMKOWE_SPEC_ITEMS: ProductSpecItem[] = [
+  { label: "Rama", value: "Aluminium, 7 kolorów" },
+  { label: "Siatka", value: "Wzmocniona, 2 kolory" },
+  { label: "Montaż", value: "Bez wiercenia, zaczepy sprężynowe" },
+  { label: "Złożenie", value: "Samodzielne, kilka–kilkanaście minut" },
+];
+
 type ProductLandingContent = {
   subtitle: string;
   description: string;
@@ -226,6 +279,7 @@ type MeshOption = {
   id: string;
   label: string;
   color: string;
+  imageUrl?: string;
 };
 
 const DEFAULT_HARDWARE_COLORS: Array<{ id: string; label: string; color: string }> = [
@@ -325,9 +379,43 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
 ];
 
 const MESH_OPTIONS: MeshOption[] = [
-  { id: "grey", label: "Szara (wzmocniona)", color: "#8b9099" },
-  { id: "black", label: "Czarna (wzmocniona)", color: "#2f343d" },
+  {
+    id: "grey",
+    label: "Szara (wzmocniona)",
+    color: "#8b9099",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_191851_27ecdb81_ChatGPT-Image-17-mar-2026-19_17_40.png",
+  },
+  {
+    id: "black",
+    label: "Czarna (wzmocniona)",
+    color: "#2f343d",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_191900_b13b6cfe_ChatGPT-Image-17-mar-2026-19_17_43.png",
+  },
 ];
+
+type PricingTable = {
+  widthBreakpoints: number[];
+  heightBreakpoints: number[];
+  prices: number[][];
+};
+
+// Mirrors findPriceBreakpointIndex/resolveDimensionMatrixUnitPrice in
+// features/moskitiery/MoskitieryFlow.tsx exactly, so the homepage teaser's
+// price preview matches the real configurator's math instead of guessing.
+function findPriceBreakpointIndex(breakpoints: number[], value: number): number {
+  if (!breakpoints.length) return 0;
+  const index = breakpoints.findIndex((entry) => value <= entry);
+  return index === -1 ? Math.max(0, breakpoints.length - 1) : index;
+}
+
+function lookupMatrixUnitPrice(table: PricingTable | null, width: number, height: number): number | null {
+  if (!table || !table.prices.length) return null;
+  const rowIndex = findPriceBreakpointIndex(table.heightBreakpoints, height);
+  const colIndex = findPriceBreakpointIndex(table.widthBreakpoints, width);
+  const row = table.prices[rowIndex] ?? table.prices[table.prices.length - 1] ?? [];
+  const raw = row[colIndex] ?? row[row.length - 1];
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
 
 function productSlugFromSelected(product: SelectedProductView | null): string {
   if (!product) return "";
@@ -647,7 +735,51 @@ export default function Home() {
   const [allegroRatingLoading, setAllegroRatingLoading] = useState(false);
   const [reviewsExpanded, setReviewsExpanded] = useState(false);
   const [productLanding, setProductLanding] = useState<ProductLandingContent | null>(null);
+  const [pricingTable, setPricingTable] = useState<PricingTable | null>(null);
+  const [dimensionWidth, setDimensionWidth] = useState("");
+  const [dimensionHeight, setDimensionHeight] = useState("");
+  const [dimensionQuantity, setDimensionQuantity] = useState("1");
   const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
+  const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
+
+  useEffect(() => {
+    const slug = productSlugFromSelected(displayedProduct);
+    setDimensionWidth("");
+    setDimensionHeight("");
+    setDimensionQuantity("1");
+    if (slug !== "moskitiery-ramkowe") {
+      setPricingTable(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("https://crm-keika.groovemedia.pl/views/biuro/api/shop/configurator_public.php", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const categories = Array.isArray(data?.config?.catalog?.categories) ? data.config.catalog.categories : [];
+        for (const category of categories) {
+          const products = Array.isArray(category?.products) ? category.products : [];
+          const product = products.find((entry: { id?: string }) => entry?.id === slug);
+          const pricing = product?.pricing_calculation;
+          if (pricing?.mode === "dimension_price_matrix" && Array.isArray(pricing.tables) && pricing.tables[0]) {
+            const table = pricing.tables[0];
+            setPricingTable({
+              widthBreakpoints: Array.isArray(table.width_breakpoints) ? table.width_breakpoints : [],
+              heightBreakpoints: Array.isArray(table.height_breakpoints) ? table.height_breakpoints : [],
+              prices: Array.isArray(table.prices) ? table.prices : [],
+            });
+            return;
+          }
+        }
+        setPricingTable(null);
+      })
+      .catch(() => {
+        if (!cancelled) setPricingTable(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayedProduct]);
 
   useEffect(() => {
     const slug = productSlugFromSelected(displayedProduct);
@@ -1197,6 +1329,13 @@ export default function Home() {
     () => MESH_OPTIONS.find((option) => option.id === selectedMeshId) || null,
     [selectedMeshId],
   );
+  const meshChosen = Boolean(selectedMeshId);
+  const widthNum = Number(dimensionWidth) || 0;
+  const heightNum = Number(dimensionHeight) || 0;
+  const quantityNum = Math.max(1, Number(dimensionQuantity) || 1);
+  const hasValidDimensions = widthNum > 0 && heightNum > 0;
+  const dimensionUnitPrice = hasValidDimensions ? lookupMatrixUnitPrice(pricingTable, widthNum, heightNum) : null;
+  const dimensionTotalPrice = dimensionUnitPrice !== null ? dimensionUnitPrice * quantityNum : null;
 
   return (
     <div
@@ -1357,10 +1496,10 @@ export default function Home() {
                   <h1>{displayedProduct?.label || ""}</h1>
                     <div className="hero-product-content">
                       {activeProductTab === "opis" && displayedProduct ? (
-                        productLanding && productLanding.sections.length > 0 ? (
+                        productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                           <div className="pl-landing">
                             <div className="pl-trust-row">
-                              {productLanding.priceFrom ? <span className="pl-price">{productLanding.priceFrom}</span> : null}
+                              {productLanding?.priceFrom ? <span className="pl-price">{productLanding.priceFrom}</span> : null}
                               {allegroRating ? (
                                 <span className="pl-chip pl-chip-rating">
                                   ★ {allegroRating.averageScore.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1371,33 +1510,41 @@ export default function Home() {
                               <span className="pl-chip">Darmowa dostawa</span>
                             </div>
 
-                            {productLanding.subtitle ? <p className="pl-subtitle">{productLanding.subtitle}</p> : null}
+                            <p className="pl-subtitle">
+                              {productLanding?.subtitle || "Na wymiar, bez wiercenia, mocna rama aluminiowa i wzmocniona siatka."}
+                            </p>
 
-                            <ul className="pl-quick-facts">
-                              {productLanding.sections.map((section) => (
-                                <li key={`fact-${section.title}`}>{section.title}</li>
+                            {productLanding?.gallery?.[0] ? (
+                              <div
+                                className="pl-hero-photo"
+                                style={{ backgroundImage: `url(${optimizeImageUrl(productLanding.gallery[0], 700)})` }}
+                              />
+                            ) : null}
+
+                            <div className="pl-spec-grid">
+                              {MOSKITIERY_RAMKOWE_SPEC_ITEMS.map((item) => (
+                                <div className="pl-spec-item" key={item.label}>
+                                  <span className="pl-spec-label">{item.label}</span>
+                                  <span className="pl-spec-value">{item.value}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <ul className="pl-feature-list">
+                              {MOSKITIERY_RAMKOWE_FEATURE_BULLETS.map((bullet) => (
+                                <li key={bullet.lead}>
+                                  <strong>{bullet.lead}</strong>
+                                  {bullet.detail ? <span> — {bullet.detail}</span> : null}
+                                </li>
                               ))}
                             </ul>
 
-                            <div className="pl-benefits">
-                              {productLanding.sections.map((section, index) => {
-                                const photo = productLanding.gallery[(index + 1) % Math.max(1, productLanding.gallery.length)];
-                                return (
-                                  <div className="pl-benefit" key={`${section.title}-${index}`}>
-                                    {photo ? (
-                                      <div
-                                        className="pl-benefit-media"
-                                        style={{ backgroundImage: `url(${optimizeImageUrl(photo, 360)})` }}
-                                      />
-                                    ) : null}
-                                    <div className="pl-benefit-copy">
-                                      <span className="pl-benefit-index">{String(index + 1).padStart(2, "0")}</span>
-                                      <h3>{section.title}</h3>
-                                      <p>{section.body}</p>
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                            <div className="pl-callout">
+                              <strong>Produkt do samodzielnego złożenia</strong>
+                              <p>
+                                Składasz ramkę, naciągasz siatkę i przykręcasz zaczepy — wszystko masz w komplecie,
+                                razem z instrukcją. Zwykle zajmuje to kilka–kilkanaście minut.
+                              </p>
                             </div>
 
                             <div className="pl-cta-row">
@@ -1407,6 +1554,31 @@ export default function Home() {
                               <span className="pl-cta-note">
                                 Cena wyliczana automatycznie po wybraniu wariantu i wymiarów.
                               </span>
+                            </div>
+                          </div>
+                        ) : productLanding && productLanding.sections.length > 0 ? (
+                          <div className="pl-landing">
+                            <div className="pl-trust-row">
+                              {productLanding.priceFrom ? <span className="pl-price">{productLanding.priceFrom}</span> : null}
+                              <span className="pl-chip">5 lat gwarancji</span>
+                              <span className="pl-chip">Darmowa dostawa</span>
+                            </div>
+                            {productLanding.subtitle ? <p className="pl-subtitle">{productLanding.subtitle}</p> : null}
+                            <div className="pl-benefits">
+                              {productLanding.sections.map((section, index) => (
+                                <div className="pl-benefit" key={`${section.title}-${index}`}>
+                                  <div className="pl-benefit-copy">
+                                    <span className="pl-benefit-index">{String(index + 1).padStart(2, "0")}</span>
+                                    <h3>{section.title}</h3>
+                                    <p>{section.body}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="pl-cta-row">
+                              <a href={displayedProduct.linkUrl} className="pl-cta-button">
+                                Skonfiguruj i zobacz cenę
+                              </a>
                             </div>
                           </div>
                         ) : (
@@ -1719,22 +1891,79 @@ export default function Home() {
                       <span className="hero-product-step-check is-muted" aria-hidden="true">2</span>
                       Dobierz kolor siatki
                     </p>
-                    <div className="hero-product-mesh-grid">
+                    <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
                       {MESH_OPTIONS.map((option) => {
                         const isActive = option.id === selectedMeshId;
                         return (
                           <button
                             key={option.id}
                             type="button"
-                            className={`hero-product-mesh-option ${isActive ? "is-active" : ""}`}
-                            onClick={() => setSelectedMeshId(option.id)}
+                            className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
+                            onClick={() => {
+                              setSelectedMeshId(option.id);
+                              window.setTimeout(() => {
+                                stepThreeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                              }, 120);
+                            }}
                           >
-                            <span className="hardware-dot" style={{ background: option.color }} />
+                            {option.imageUrl ? (
+                              <span
+                                className="hero-product-mesh-option-image"
+                                style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 160)})` }}
+                              />
+                            ) : (
+                              <span className="hardware-dot" style={{ background: option.color }} />
+                            )}
                             <strong>{option.label}</strong>
                           </button>
                         );
                       })}
                     </div>
+                    {meshChosen ? (
+                      <>
+                        <p ref={stepThreeRef} className="hero-product-config-step-title hero-product-config-step-title--muted">
+                          <span className="hero-product-step-check is-muted" aria-hidden="true">3</span>
+                          Podaj wymiary
+                        </p>
+                        <div className="hero-product-dimensions-grid">
+                          <label>
+                            Szerokość (mm)
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={300}
+                              max={2000}
+                              placeholder="np. 1000"
+                              value={dimensionWidth}
+                              onChange={(event) => setDimensionWidth(event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            Wysokość (mm)
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={300}
+                              max={2200}
+                              placeholder="np. 1200"
+                              value={dimensionHeight}
+                              onChange={(event) => setDimensionHeight(event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            Ilość
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={20}
+                              value={dimensionQuantity}
+                              onChange={(event) => setDimensionQuantity(event.target.value)}
+                            />
+                          </label>
+                        </div>
+                      </>
+                    ) : null}
                     <div className="hero-product-mini-summary">
                       <h3>Moskitiera okienna</h3>
                       <div className="hero-product-mini-summary-preview">
@@ -1755,12 +1984,20 @@ export default function Home() {
                         </div>
                         <div>
                           <dt>Rozmiar</dt>
-                          <dd>--</dd>
+                          <dd>{hasValidDimensions ? `${widthNum} × ${heightNum} mm` : "--"}</dd>
+                        </div>
+                        <div>
+                          <dt>Ilość</dt>
+                          <dd>{quantityNum} szt.</dd>
                         </div>
                       </dl>
                       <div className="hero-product-mini-summary-price">
                         <p>Kalkulacja ceny</p>
-                        <strong>17,90 zł</strong>
+                        <strong>
+                          {dimensionTotalPrice !== null
+                            ? `${dimensionTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
+                            : "Podaj wymiary"}
+                        </strong>
                       </div>
                     </div>
                   </>
