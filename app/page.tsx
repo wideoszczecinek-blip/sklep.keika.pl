@@ -273,6 +273,7 @@ type HardwareOption = {
   imageUrl: string;
   galleryUrls: string[];
   priceDelta: number;
+  previewLayerUrl?: string;
 };
 
 type MeshOption = {
@@ -280,7 +281,20 @@ type MeshOption = {
   label: string;
   color: string;
   imageUrl?: string;
+  previewLayerUrl?: string;
 };
+
+// Real per-color mask/layer images + accent colors, pulled from the actual
+// live Allegro-linked configurator (configurator_public?slug=moskitiera on
+// the CRM, rendered at konfiguruj.com.pl/moskitiera) rather than invented -
+// see [[shop-moskitiery-ramkowe-fixes]] memory for how these were found.
+// Options without their own layer fall back to the step-level default,
+// tinted with that option's own accent color, exactly like the real
+// configurator's buildMaskedPreviewStyle/previewLayers mechanism.
+const MOSKITIERY_PROFILE_DEFAULT_LAYER_URL =
+  "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_193725_fd0fe393_Projekt-bez-nazwy-4.png";
+const MOSKITIERY_MESH_LAYER_URL =
+  "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_194854_c7f2cfce_Projekt-bez-nazwy-6.png";
 
 const DEFAULT_HARDWARE_COLORS: Array<{ id: string; label: string; color: string }> = [
   { id: "bialy", label: "Biały", color: "#EAECEF" },
@@ -296,7 +310,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
   {
     id: "bialy",
     label: "Biały",
-    color: "#f0f1f3",
+    color: "#F7F7F7",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000347_2dc2ceab_Bialy_1.jpg",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000347_2dc2ceab_Bialy_1.jpg",
@@ -304,11 +318,12 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000401_566be7d6_Bialy_3.jpg",
     ],
     priceDelta: 0,
+    previewLayerUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_174505_0c88bf64_ChatGPT-Image-17-mar-2026-17_43_49.png",
   },
   {
     id: "antracyt",
     label: "Antracyt",
-    color: "#4a4f58",
+    color: "#4B5563",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000554_035f1db1_Antracyt_1.jpg",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000554_035f1db1_Antracyt_1.jpg",
@@ -316,22 +331,24 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000601_9e1a8ebf_Antracyt_3.jpg",
     ],
     priceDelta: 0,
+    previewLayerUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_174523_76d983ad_Projekt-bez-nazwy-4.png",
   },
   {
     id: "braz",
     label: "Brąz",
-    color: "#6f4b38",
+    color: "#442C17",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000635_9726bee7_Braz_1.jpg",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000635_9726bee7_Braz_1.jpg",
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000647_361e63b8_Braz_2.jpg",
     ],
     priceDelta: 0,
+    previewLayerUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_174629_7019c27f_ChatGPT-Image-17-mar-2026-17_45_59.png",
   },
   {
     id: "zloty-dab",
     label: "Złoty dąb",
-    color: "#b77b3e",
+    color: "#CD823D",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000729_eeabf87c_ZlotyDab_1.jpg",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000729_eeabf87c_ZlotyDab_1.jpg",
@@ -343,7 +360,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
   {
     id: "orzech",
     label: "Orzech",
-    color: "#7a4f34",
+    color: "#926449",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000812_2fb228c4_Orzech_1.jpg",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000812_2fb228c4_Orzech_1.jpg",
@@ -355,7 +372,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
   {
     id: "winchester",
     label: "Winchester",
-    color: "#b16d3d",
+    color: "#EC985F",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000852_41d51076_Winchester_1.jpg",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000852_41d51076_Winchester_1.jpg",
@@ -367,7 +384,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
   {
     id: "mahon",
     label: "Mahoń",
-    color: "#6a2f27",
+    color: "#934B3E",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000920_fe216be2_Mahon_1.jpg",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000920_fe216be2_Mahon_1.jpg",
@@ -382,13 +399,13 @@ const MESH_OPTIONS: MeshOption[] = [
   {
     id: "grey",
     label: "Szara (wzmocniona)",
-    color: "#8b9099",
+    color: "#B0B0B0",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_191851_27ecdb81_ChatGPT-Image-17-mar-2026-19_17_40.png",
   },
   {
     id: "black",
     label: "Czarna (wzmocniona)",
-    color: "#2f343d",
+    color: "#454545",
     imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_191900_b13b6cfe_ChatGPT-Image-17-mar-2026-19_17_43.png",
   },
 ];
@@ -402,6 +419,51 @@ type PricingTable = {
 // Mirrors findPriceBreakpointIndex/resolveDimensionMatrixUnitPrice in
 // features/moskitiery/MoskitieryFlow.tsx exactly, so the homepage teaser's
 // price preview matches the real configurator's math instead of guessing.
+// Mirrors normalizeHexColor/hexToRgb/rgba/buildMaskedPreviewStyle in
+// features/moskitiery/MoskitieryFlow.tsx exactly, so the homepage teaser's
+// preview uses the same real masked-layer mechanism as the actual
+// Allegro-linked configurator (konfiguruj.com.pl/moskitiera) instead of an
+// invented composite.
+function moskNormalizeHexColor(value: string, fallback = "#1F2937"): string {
+  const normalized = String(value || "").trim().toUpperCase();
+  return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : fallback;
+}
+
+function moskHexToRgb(hex: string) {
+  const normalized = moskNormalizeHexColor(hex);
+  return {
+    r: Number.parseInt(normalized.slice(1, 3), 16),
+    g: Number.parseInt(normalized.slice(3, 5), 16),
+    b: Number.parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function moskRgba(hex: string, alpha: number): string {
+  const rgb = moskHexToRgb(hex);
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
+function buildMoskMaskedLayerStyle(imageUrl: string, accentColor: string, mode: "solid" | "mesh") {
+  const normalizedColor = moskNormalizeHexColor(accentColor, "#CBD5E1");
+  const gradient =
+    mode === "mesh"
+      ? `linear-gradient(145deg, ${moskRgba(normalizedColor, 0.16)} 0%, ${moskRgba(normalizedColor, 0.9)} 55%, ${moskRgba(normalizedColor, 0.34)} 100%)`
+      : `linear-gradient(145deg, ${moskRgba(normalizedColor, 0.95)} 0%, ${moskRgba(normalizedColor, 0.72)} 100%)`;
+
+  const optimizedUrl = optimizeImageUrl(imageUrl, 500);
+  return {
+    backgroundImage: gradient,
+    maskImage: `url(${optimizedUrl})`,
+    maskRepeat: "no-repeat",
+    maskPosition: "center",
+    maskSize: "contain",
+    WebkitMaskImage: `url(${optimizedUrl})`,
+    WebkitMaskRepeat: "no-repeat",
+    WebkitMaskPosition: "center",
+    WebkitMaskSize: "contain",
+  } as const;
+}
+
 function findPriceBreakpointIndex(breakpoints: number[], value: number): number {
   if (!breakpoints.length) return 0;
   const index = breakpoints.findIndex((entry) => value <= entry);
@@ -1980,22 +2042,37 @@ export default function Home() {
                     {hasValidDimensions ? (
                     <div className="hero-product-mini-summary is-revealed">
                       <h3>Moskitiera okienna</h3>
-                      <div className="hero-product-mini-summary-preview">
+                      <div
+                        className="mosk-preview-stage"
+                        role="img"
+                        aria-label={`Podgląd: profil ${selectedHardwareOption?.label || "--"}, siatka ${selectedMesh?.label || "--"}`}
+                      >
                         <div
-                          className="mosk-preview"
-                          style={{ borderColor: selectedHardwareOption?.color || "#8ea0b7" }}
-                          role="img"
-                          aria-label={`Podgląd: profil ${selectedHardwareOption?.label || "--"}, siatka ${selectedMesh?.label || "--"}`}
-                        >
+                          className="mosk-preview-base"
+                          style={{
+                            backgroundImage: `url(${optimizeImageUrl(selectedHardwareOption?.imageUrl || displayedProduct.imageUrl, 500)})`,
+                          }}
+                        />
+                        {selectedHardwareOption ? (
                           <div
-                            className="mosk-preview-mesh"
-                            style={
-                              selectedMesh?.imageUrl
-                                ? { backgroundImage: `url(${optimizeImageUrl(selectedMesh.imageUrl, 360)})` }
-                                : { background: selectedMesh?.color || "rgba(240, 248, 255, 0.12)" }
-                            }
+                            className="mosk-preview-layer"
+                            style={buildMoskMaskedLayerStyle(
+                              selectedHardwareOption.previewLayerUrl || MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
+                              selectedHardwareOption.color,
+                              "solid",
+                            )}
                           />
-                        </div>
+                        ) : null}
+                        {selectedMesh ? (
+                          <div
+                            className="mosk-preview-layer mosk-preview-layer-mesh"
+                            style={buildMoskMaskedLayerStyle(
+                              selectedMesh.previewLayerUrl || MOSKITIERY_MESH_LAYER_URL,
+                              selectedMesh.color,
+                              "mesh",
+                            )}
+                          />
+                        ) : null}
                       </div>
                       <dl>
                         <div>
