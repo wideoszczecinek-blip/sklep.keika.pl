@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/app/components/theme-toggle";
+import { optimizeImageUrl } from "@/lib/image-optim";
 
 type ProductItem = {
   name?: string;
@@ -668,11 +669,11 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
       fabricMask
         ? {
             backgroundColor: activeFabric?.color || "#9cadc2",
-            backgroundImage: fabricTexture ? `url(${fabricTexture})` : undefined,
+            backgroundImage: fabricTexture ? `url(${optimizeImageUrl(fabricTexture, 700)})` : undefined,
             backgroundSize: fabricTexture ? "cover" : undefined,
             backgroundPosition: "center",
-            WebkitMaskImage: `url(${fabricMask})`,
-            maskImage: `url(${fabricMask})`,
+            WebkitMaskImage: `url(${optimizeImageUrl(fabricMask, 700)})`,
+            maskImage: `url(${optimizeImageUrl(fabricMask, 700)})`,
             WebkitMaskRepeat: "no-repeat",
             maskRepeat: "no-repeat",
             WebkitMaskSize: "contain",
@@ -687,11 +688,11 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
         ? {
             background: hardwareTexture ? undefined : `linear-gradient(180deg, ${hardwareColor}, rgba(18, 28, 43, 0.92))`,
             backgroundColor: hardwareTexture ? hardwareColor : undefined,
-            backgroundImage: hardwareTexture ? `url(${hardwareTexture})` : undefined,
+            backgroundImage: hardwareTexture ? `url(${optimizeImageUrl(hardwareTexture, 500)})` : undefined,
             backgroundSize: hardwareTexture ? "cover" : undefined,
             backgroundPosition: "center",
-            WebkitMaskImage: `url(${hardwareMask})`,
-            maskImage: `url(${hardwareMask})`,
+            WebkitMaskImage: `url(${optimizeImageUrl(hardwareMask, 500)})`,
+            maskImage: `url(${optimizeImageUrl(hardwareMask, 500)})`,
             WebkitMaskRepeat: "no-repeat",
             maskRepeat: "no-repeat",
             WebkitMaskSize: "contain",
@@ -703,8 +704,8 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
 
     return (
       <div className="config-preview-window">
-        <span className="config-preview-scene" style={sceneImage ? { backgroundImage: `url(${sceneImage})` } : undefined} />
-        <span className="config-preview-base" style={baseImage ? { backgroundImage: `url(${baseImage})` } : undefined} />
+        <span className="config-preview-scene" style={sceneImage ? { backgroundImage: `url(${optimizeImageUrl(sceneImage, 900)})` } : undefined} />
+        <span className="config-preview-base" style={baseImage ? { backgroundImage: `url(${optimizeImageUrl(baseImage, 900)})` } : undefined} />
 
         {hardwareMask ? (
           <span className="config-preview-hardware-mask" style={hardwareStyle} />
@@ -723,24 +724,24 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
             className="config-preview-fabric"
             style={{
               background: activeFabric?.color || "#9cadc2",
-              backgroundImage: fabricTexture ? `url(${fabricTexture})` : undefined,
+              backgroundImage: fabricTexture ? `url(${optimizeImageUrl(fabricTexture, 700)})` : undefined,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}
           />
         )}
 
-        {overlayImage ? <span className="config-preview-overlay-image" style={{ backgroundImage: `url(${overlayImage})` }} /> : null}
+        {overlayImage ? <span className="config-preview-overlay-image" style={{ backgroundImage: `url(${optimizeImageUrl(overlayImage, 900)})` }} /> : null}
       </div>
     );
   }
 
   return (
-    <div className="catalog-root" style={{ backgroundImage: bg ? `url(${bg})` : undefined }}>
+    <div className="catalog-root" style={{ backgroundImage: bg ? `url(${optimizeImageUrl(bg, 1800, 70)})` : undefined }}>
       <header className="hero-header">
         <div className="header-left">
           <Link className="brand" href="/" aria-label="KEIKA strona główna">
-            {logoUrl ? <img src={logoUrl} alt={branding.site_title || "KEIKA"} className="brand-logo" /> : (branding.site_title || "KEIKA")}
+            {logoUrl ? <img src={optimizeImageUrl(logoUrl, 240)} alt={branding.site_title || "KEIKA"} className="brand-logo" /> : (branding.site_title || "KEIKA")}
           </Link>
           <div className="top-links-wrap">
             <button type="button" className="top-links-toggle" aria-expanded="false">
@@ -778,7 +779,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
             <div className="product-preview-card catalog-card">
               <div
                 className={`config-preview-mockup product-preview-mockup ${hasInteractiveMockup ? "is-dynamic" : ""}`}
-                style={!hasInteractiveMockup && productImage ? { backgroundImage: `url(${productImage})` } : undefined}
+                style={!hasInteractiveMockup && productImage ? { backgroundImage: `url(${optimizeImageUrl(productImage, 900)})` } : undefined}
               >
                 {hasInteractiveMockup ? renderPreviewWindow() : null}
               </div>
@@ -836,7 +837,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                               className={`product-chip-card ${isActive ? "is-active" : ""}`}
                               onClick={() => setSelectedSceneId(String(scene.id || "").trim())}
                             >
-                              <span className="product-chip-card-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
+                              <span className="product-chip-card-image" style={image ? { backgroundImage: `url(${optimizeImageUrl(image, 200)})` } : undefined} />
                               <span>
                                 <strong>{scene.label || scene.id}</strong>
                                 <small>{scene.note || "Podgląd wnętrza"}</small>
@@ -862,7 +863,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                               className={`product-chip-card ${isActive ? "is-active" : ""}`}
                               onClick={() => setSelectedMountVariantId(String(variant.id || "").trim())}
                             >
-                              <span className="product-chip-card-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
+                              <span className="product-chip-card-image" style={image ? { backgroundImage: `url(${optimizeImageUrl(image, 200)})` } : undefined} />
                               <span>
                                 <strong>{variant.label || variant.id}</strong>
                                 <small>{variant.note || "Wariant montażu"}</small>
@@ -890,7 +891,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                             >
                               <span
                                 className="product-swatch-card-image"
-                                style={image ? { backgroundImage: `url(${image})` } : { backgroundColor: finish.color || "#7d8794" }}
+                                style={image ? { backgroundImage: `url(${optimizeImageUrl(image, 160)})` } : { backgroundColor: finish.color || "#7d8794" }}
                               />
                               <span>
                                 <strong>{finish.label || finish.id}</strong>
@@ -936,7 +937,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                             >
                               <span
                                 className="product-swatch-card-image"
-                                style={image ? { backgroundImage: `url(${image})` } : { backgroundColor: swatch.color || "#c5ceda" }}
+                                style={image ? { backgroundImage: `url(${optimizeImageUrl(image, 160)})` } : { backgroundColor: swatch.color || "#c5ceda" }}
                               />
                               <span>
                                 <strong>{swatch.label || swatch.code || swatch.id}</strong>
@@ -957,7 +958,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                     <div
                       key={`${image}-${index}`}
                       className="catalog-product-gallery-tile"
-                      style={{ backgroundImage: `url(${image})` }}
+                      style={{ backgroundImage: `url(${optimizeImageUrl(image, 500)})` }}
                     />
                   ))}
                   {galleryTiles.length === 0 ? (

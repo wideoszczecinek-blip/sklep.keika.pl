@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import ThemeToggle from "@/app/components/theme-toggle";
+import { optimizeImageUrl } from "@/lib/image-optim";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -1046,7 +1047,7 @@ export default function Home() {
         <div className="header-left">
           <a className="brand" href="/" aria-label="KEIKA strona główna">
             {logoUrl ? (
-              <img src={logoUrl} alt={siteTitle} className="brand-logo" />
+              <img src={optimizeImageUrl(logoUrl, 240)} alt={siteTitle} className="brand-logo" />
             ) : (
               siteTitle
             )}
@@ -1103,7 +1104,7 @@ export default function Home() {
           <div
             className={`hero-slides ${heroSlidesReady ? "is-ready" : ""}`}
             aria-hidden="true"
-            style={{ backgroundImage: `url(${firstHeroImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
+            style={{ backgroundImage: `url(${optimizeImageUrl(firstHeroImageUrl, 2000, 70)})`, backgroundSize: "cover", backgroundPosition: "center" }}
           >
             {heroMedia.map((media, index) =>
               media.type === "video" ? (
@@ -1125,7 +1126,7 @@ export default function Home() {
                   key={`${media.url}-${index}`}
                   className={`hero-slide ${index === activeHeroSlide ? "is-active" : ""}`}
                   style={{
-                    backgroundImage: `url(${media.url})`,
+                    backgroundImage: `url(${optimizeImageUrl(media.url, 2000, 70)})`,
                   }}
                 />
               ),
@@ -1197,12 +1198,13 @@ export default function Home() {
                         <div className="hero-product-gallery">
                           <div className="hero-product-gallery-main">
                             <img
-                              src={
+                              src={optimizeImageUrl(
                                 displayedProduct.gallery[
                                   ((activeProductGallerySlide % displayedProduct.gallery.length) + displayedProduct.gallery.length) %
                                     displayedProduct.gallery.length
-                                ]
-                              }
+                                ],
+                                900,
+                              )}
                               alt={displayedProduct.label}
                               loading="eager"
                             />
@@ -1216,7 +1218,7 @@ export default function Home() {
                                 onClick={() => setActiveProductGallerySlide(index)}
                                 aria-label={`Pokaż zdjęcie ${index + 1}`}
                               >
-                                <img src={url} alt="" loading="lazy" />
+                                <img src={optimizeImageUrl(url, 160)} alt="" loading="lazy" />
                               </button>
                             ))}
                           </div>
@@ -1268,7 +1270,7 @@ export default function Home() {
                   <div
                     className="hero-menu-card-bg"
                     style={{
-                      backgroundImage: `url(${item.imageUrl})`,
+                      backgroundImage: `url(${optimizeImageUrl(item.imageUrl, 700)})`,
                     }}
                     aria-hidden="true"
                   />
@@ -1280,7 +1282,7 @@ export default function Home() {
                   >
                     <span className="hero-menu-card-head-main">
                       <img
-                        src={item.iconUrl}
+                        src={optimizeImageUrl(item.iconUrl, 80)}
                         alt=""
                         className="hero-menu-category-icon"
                         loading="lazy"
@@ -1312,7 +1314,7 @@ export default function Home() {
                           }}
                         >
                           <img
-                            src={subItem.iconUrl}
+                            src={optimizeImageUrl(subItem.iconUrl, 64)}
                             alt=""
                             className="hero-menu-subitem-icon"
                             loading="lazy"
@@ -1375,7 +1377,7 @@ export default function Home() {
                                 }
                               }}
                             >
-                              <span className="hardware-card-image" style={{ backgroundImage: `url(${option.imageUrl})` }} />
+                              <span className="hardware-card-image" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 220)})` }} />
                               {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
                               <span className="hardware-card-footer">
                                 <span className="hardware-dot" style={{ background: option.color }} />
@@ -1428,7 +1430,7 @@ export default function Home() {
                       <h3>Moskitiera okienna</h3>
                       <div className="hero-product-mini-summary-preview">
                         <img
-                          src={selectedHardwareOption?.imageUrl || displayedProduct.imageUrl}
+                          src={optimizeImageUrl(selectedHardwareOption?.imageUrl || displayedProduct.imageUrl, 360)}
                           alt={selectedHardwareOption?.label || displayedProduct.label}
                           loading="lazy"
                         />
@@ -1573,9 +1575,10 @@ export default function Home() {
               </button>
             ) : null}
             <img
-              src={zoomPreview.urls[zoomPreview.index]}
+              src={optimizeImageUrl(zoomPreview.urls[zoomPreview.index], 1200, 80)}
               alt={zoomPreview.title}
               className="config-option-preview-image"
+              loading="eager"
             />
             <p>
               {zoomPreview.title}

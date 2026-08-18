@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/app/components/theme-toggle";
 import MoskitieryFlowEntry from "@/features/moskitiery/MoskitieryFlowEntry";
+import { optimizeImageUrl } from "@/lib/image-optim";
 
 type ProductItem = {
   name?: string;
@@ -1152,11 +1153,11 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
       fabricMask
         ? {
             backgroundColor: activeFabric?.color || "#9cadc2",
-            backgroundImage: fabricTexture ? `url(${fabricTexture})` : undefined,
+            backgroundImage: fabricTexture ? `url(${optimizeImageUrl(fabricTexture, 700)})` : undefined,
             backgroundSize: fabricTexture ? "cover" : undefined,
             backgroundPosition: "center",
-            WebkitMaskImage: `url(${fabricMask})`,
-            maskImage: `url(${fabricMask})`,
+            WebkitMaskImage: `url(${optimizeImageUrl(fabricMask, 700)})`,
+            maskImage: `url(${optimizeImageUrl(fabricMask, 700)})`,
             WebkitMaskRepeat: "no-repeat",
             maskRepeat: "no-repeat",
             WebkitMaskSize: "contain",
@@ -1173,11 +1174,11 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
               ? undefined
               : `linear-gradient(180deg, ${hardwareColor}, rgba(18, 28, 43, 0.92))`,
             backgroundColor: hardwareTexture ? hardwareColor : undefined,
-            backgroundImage: hardwareTexture ? `url(${hardwareTexture})` : undefined,
+            backgroundImage: hardwareTexture ? `url(${optimizeImageUrl(hardwareTexture, 500)})` : undefined,
             backgroundSize: hardwareTexture ? "cover" : undefined,
             backgroundPosition: "center",
-            WebkitMaskImage: `url(${hardwareMask})`,
-            maskImage: `url(${hardwareMask})`,
+            WebkitMaskImage: `url(${optimizeImageUrl(hardwareMask, 500)})`,
+            maskImage: `url(${optimizeImageUrl(hardwareMask, 500)})`,
             WebkitMaskRepeat: "no-repeat",
             maskRepeat: "no-repeat",
             WebkitMaskSize: "contain",
@@ -1189,8 +1190,8 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
 
     return (
       <div className="config-preview-window">
-        <span className="config-preview-scene" style={sceneImage ? { backgroundImage: `url(${sceneImage})` } : undefined} />
-        <span className="config-preview-base" style={baseImage ? { backgroundImage: `url(${baseImage})` } : undefined} />
+        <span className="config-preview-scene" style={sceneImage ? { backgroundImage: `url(${optimizeImageUrl(sceneImage, 900)})` } : undefined} />
+        <span className="config-preview-base" style={baseImage ? { backgroundImage: `url(${optimizeImageUrl(baseImage, 900)})` } : undefined} />
 
         {hardwareMask ? (
           <span className="config-preview-hardware-mask" style={hardwareStyle} />
@@ -1214,14 +1215,14 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
             className="config-preview-fabric"
             style={{
               background: activeFabric?.color || "#9cadc2",
-              backgroundImage: fabricTexture ? `url(${fabricTexture})` : undefined,
+              backgroundImage: fabricTexture ? `url(${optimizeImageUrl(fabricTexture, 700)})` : undefined,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}
           />
         )}
 
-        {overlayImage ? <span className="config-preview-overlay-image" style={{ backgroundImage: `url(${overlayImage})` }} /> : null}
+        {overlayImage ? <span className="config-preview-overlay-image" style={{ backgroundImage: `url(${optimizeImageUrl(overlayImage, 900)})` }} /> : null}
       </div>
     );
   }
@@ -1280,7 +1281,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                   >
                     <span
                       className="config-preview-choice-thumb"
-                      style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+                      style={previewUrl ? { backgroundImage: `url(${optimizeImageUrl(previewUrl, 200)})` } : undefined}
                     />
                     <span className="config-preview-choice-copy">
                       <strong>{scene.label || scene.id}</strong>
@@ -1314,7 +1315,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                   >
                     <span
                       className="config-preview-choice-thumb"
-                      style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+                      style={previewUrl ? { backgroundImage: `url(${optimizeImageUrl(previewUrl, 200)})` } : undefined}
                     />
                     <span className="config-preview-choice-copy">
                       <strong>{variant.label || variant.id}</strong>
@@ -1380,7 +1381,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
       className="catalog-root configurator-root"
       style={{
         backgroundImage: productImage
-          ? `url(${productImage})`
+          ? `url(${optimizeImageUrl(productImage, 1800, 70)})`
           : undefined,
       }}
     >
@@ -1388,7 +1389,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
         <div className="header-left">
           <Link className="brand" href="/" aria-label="KEIKA strona główna">
             {logoUrl ? (
-              <img src={logoUrl} alt={branding.site_title || "KEIKA"} className="brand-logo" />
+              <img src={optimizeImageUrl(logoUrl, 240)} alt={branding.site_title || "KEIKA"} className="brand-logo" />
             ) : (
               branding.site_title || "KEIKA"
             )}
@@ -1443,7 +1444,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                 onClick={() => setMobilePreviewOpen(true)}
                 aria-label="Powiększ podgląd produktu"
               >
-                <div className="config-preview-mockup config-preview-mockup--mini" style={{ backgroundImage: `url(${productImage})` }}>
+                <div className="config-preview-mockup config-preview-mockup--mini" style={{ backgroundImage: `url(${optimizeImageUrl(productImage, 500)})` }}>
                   {renderPreviewWindow()}
                 </div>
               </button>
@@ -1476,7 +1477,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                         const imageUrl = absolutizeUrl(option.image_url || "", endpointOrigin);
                         const previewImage = imageUrl || productImage;
                         const tileStyle = imageUrl
-                          ? { backgroundImage: `url(${imageUrl})` }
+                          ? { backgroundImage: `url(${optimizeImageUrl(imageUrl, 220)})` }
                           : {
                               background: `linear-gradient(145deg, ${option.color || "#1e314b"}, rgba(10, 21, 36, 0.9))`,
                             };
@@ -1556,7 +1557,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                                 className="fabric-swatch-color"
                                 style={
                                   swatchPreview
-                                    ? { backgroundImage: `url(${swatchPreview})`, backgroundSize: "cover", backgroundPosition: "center" }
+                                    ? { backgroundImage: `url(${optimizeImageUrl(swatchPreview, 220)})`, backgroundSize: "cover", backgroundPosition: "center" }
                                     : { background: swatch.color || "#8ea0b7" }
                                 }
                               />
@@ -1699,8 +1700,9 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                               {selectedBead ? (
                                 <div className="measurement-tooltip">
                                   <img
-                                    src={absolutizeUrl(selectedBead.image_url || "", endpointOrigin)}
+                                    src={optimizeImageUrl(absolutizeUrl(selectedBead.image_url || "", endpointOrigin), 160)}
                                     alt={selectedBead.label}
+                                    loading="lazy"
                                   />
                                   <div>
                                     <strong>{selectedBead.label}</strong>
@@ -1748,7 +1750,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                   Cena liczona jest z tabeli: <strong>{activePricingTable?.name || "fallback"}</strong>.
                 </p>
 
-                <div className="config-preview-mockup" style={{ backgroundImage: `url(${productImage})` }}>
+                <div className="config-preview-mockup" style={{ backgroundImage: `url(${optimizeImageUrl(productImage, 900)})` }}>
                   {renderPreviewWindow()}
                 </div>
 
@@ -1813,7 +1815,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                 >
                   ×
                 </button>
-                <div className="config-preview-mockup config-preview-mockup--modal" style={{ backgroundImage: `url(${productImage})` }}>
+                <div className="config-preview-mockup config-preview-mockup--modal" style={{ backgroundImage: `url(${optimizeImageUrl(productImage, 900)})` }}>
                   {renderPreviewWindow()}
                 </div>
                 {renderPreviewControls("modal")}
@@ -1832,7 +1834,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
                 >
                   ×
                 </button>
-                <img src={zoomImage.url} alt={zoomImage.title} className="config-option-preview-image" />
+                <img src={optimizeImageUrl(zoomImage.url, 1200, 80)} alt={zoomImage.title} className="config-option-preview-image" />
                 <p>{zoomImage.title}</p>
               </div>
             </div>

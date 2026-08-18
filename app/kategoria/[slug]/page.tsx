@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/app/components/theme-toggle";
+import { optimizeImageUrl } from "@/lib/image-optim";
 
 type ProductItem = {
   name?: string;
@@ -588,11 +589,11 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
   const products = Array.isArray(resolvedGroup?.products) ? resolvedGroup.products : [];
 
   return (
-    <div className="catalog-root" style={{ backgroundImage: bg ? `url(${bg})` : undefined }}>
+    <div className="catalog-root" style={{ backgroundImage: bg ? `url(${optimizeImageUrl(bg, 1800, 70)})` : undefined }}>
       <header className="hero-header">
         <div className="header-left">
           <Link className="brand" href="/" aria-label="KEIKA strona główna">
-            {logoUrl ? <img src={logoUrl} alt={branding.site_title || "KEIKA"} className="brand-logo" /> : (branding.site_title || "KEIKA")}
+            {logoUrl ? <img src={optimizeImageUrl(logoUrl, 240)} alt={branding.site_title || "KEIKA"} className="brand-logo" /> : (branding.site_title || "KEIKA")}
           </Link>
           <div className="top-links-wrap">
             <button type="button" className="top-links-toggle" aria-expanded="false">
@@ -652,7 +653,7 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
                           <span
                             key={`${productSlug || product.name}-gallery-${idx}`}
                             className="catalog-product-gallery-tile"
-                            style={{ backgroundImage: `url(${tileUrl})` }}
+                            style={{ backgroundImage: `url(${optimizeImageUrl(tileUrl, 500)})` }}
                           />
                         ))}
                         {!galleryTiles.length ? (

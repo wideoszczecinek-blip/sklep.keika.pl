@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { optimizeImageUrl } from "@/lib/image-optim";
 import {
   fetchShopConfiguratorConfig,
   pingShopPresence,
@@ -129,13 +130,14 @@ function buildMaskedPreviewStyle(
           0.72,
         )} 100%)`;
 
+  const optimizedUrl = optimizeImageUrl(imageUrl, 900);
   return {
     backgroundImage: gradient,
-    maskImage: `url(${imageUrl})`,
+    maskImage: `url(${optimizedUrl})`,
     maskRepeat: "no-repeat",
     maskPosition: "center",
     maskSize: "contain",
-    WebkitMaskImage: `url(${imageUrl})`,
+    WebkitMaskImage: `url(${optimizedUrl})`,
     WebkitMaskRepeat: "no-repeat",
     WebkitMaskPosition: "center",
     WebkitMaskSize: "contain",
@@ -1290,7 +1292,7 @@ export default function MoskitieryFlow({
         style={
           activeBackground?.image_url
             ? {
-                backgroundImage: `linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(15, 118, 110, 0.62)), url(${activeBackground.image_url})`,
+                backgroundImage: `linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(15, 118, 110, 0.62)), url(${optimizeImageUrl(activeBackground.image_url, 1800, 70)})`,
               }
             : undefined
         }
@@ -1406,7 +1408,7 @@ export default function MoskitieryFlow({
                   className={styles.productImage}
                   style={
                     product.image_url
-                      ? { backgroundImage: `url(${product.image_url})` }
+                      ? { backgroundImage: `url(${optimizeImageUrl(product.image_url, 240)})` }
                       : undefined
                   }
                 />
@@ -1496,7 +1498,7 @@ export default function MoskitieryFlow({
                             className={styles.optionSwatch}
                             style={
                               option.image_url
-                                ? { backgroundImage: `url(${option.image_url})` }
+                                ? { backgroundImage: `url(${optimizeImageUrl(option.image_url, 220)})` }
                                 : {
                                     background:
                                       `linear-gradient(145deg, ${option.accent_color || "#CBD5E1"} 0%, rgba(255,255,255,0.95) 100%)`,
@@ -1683,7 +1685,7 @@ export default function MoskitieryFlow({
               {selectedProduct?.image_url ? (
                 <div
                   className={styles.previewBaseImage}
-                  style={{ backgroundImage: `url(${selectedProduct.image_url})` }}
+                  style={{ backgroundImage: `url(${optimizeImageUrl(selectedProduct.image_url, 900)})` }}
                 />
               ) : (
                 <div className={styles.previewPlaceholder}>
