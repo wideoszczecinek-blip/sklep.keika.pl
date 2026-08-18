@@ -1834,37 +1834,30 @@ a {
   object-fit: contain;
 }
 
+/* Mirrors .alcfg-layer-preview / -surface / -overlay in
+   assets/css/biuro/allegro_configurator.css exactly. */
 .mosk-preview-stage {
   position: relative;
-  width: 100%;
-  height: 148px;
+  width: min(100%, 220px);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
   border-radius: 0.72rem;
   border: 1px solid rgba(229, 241, 255, 0.16);
   overflow: hidden;
   background: rgba(6, 16, 28, 0.6);
 }
 
-.mosk-preview-base,
-.mosk-preview-layer {
+.mosk-preview-surface,
+.mosk-preview-overlay {
   position: absolute;
   inset: 0;
-}
-
-.mosk-preview-base {
-  background-size: cover;
-  background-position: center;
-  filter: saturate(1.02);
-}
-
-.mosk-preview-layer {
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
-  mix-blend-mode: multiply;
 }
 
-.mosk-preview-layer-mesh {
-  opacity: 0.88;
+.mosk-preview-overlay {
+  mix-blend-mode: multiply;
 }
 
 .hero-product-mini-summary dl {

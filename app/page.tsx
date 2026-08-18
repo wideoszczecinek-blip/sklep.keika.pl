@@ -417,13 +417,13 @@ type PricingTable = {
 };
 
 // Mirrors findPriceBreakpointIndex/resolveDimensionMatrixUnitPrice in
-// features/moskitiery/MoskitieryFlow.tsx exactly, so the homepage teaser's
-// price preview matches the real configurator's math instead of guessing.
-// Mirrors normalizeHexColor/hexToRgb/rgba/buildMaskedPreviewStyle in
-// features/moskitiery/MoskitieryFlow.tsx exactly, so the homepage teaser's
-// preview uses the same real masked-layer mechanism as the actual
-// Allegro-linked configurator (konfiguruj.com.pl/moskitiera) instead of an
-// invented composite.
+// Ported byte-for-byte from the CRM admin panel's own live swatch preview
+// (assets/js/biuro/allegro_configurator.js: normalizeHexColor/hexToRgb/rgba/
+// shiftHex/buildLayerPreviewStyle/renderStepOptionColorPreview, CSS in
+// assets/css/biuro/allegro_configurator.css .alcfg-layer-preview*) - per the
+// user, this exact two-layer technique (masked gradient "surface" + a
+// second unmasked, low-opacity, multiply-blended "overlay" of the same PNG)
+// is THE only accepted way to render a color on a layer. No base photo.
 function moskNormalizeHexColor(value: string, fallback = "#1F2937"): string {
   const normalized = String(value || "").trim().toUpperCase();
   return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : fallback;
@@ -443,12 +443,21 @@ function moskRgba(hex: string, alpha: number): string {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
-function buildMoskMaskedLayerStyle(imageUrl: string, accentColor: string, mode: "solid" | "mesh") {
-  const normalizedColor = moskNormalizeHexColor(accentColor, "#CBD5E1");
+function moskShiftHex(hex: string, amount: number): string {
+  const rgb = moskHexToRgb(hex);
+  const clamp = (value: number) => Math.max(0, Math.min(255, Math.round(value + amount)));
+  return `#${[clamp(rgb.r), clamp(rgb.g), clamp(rgb.b)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase()}`;
+}
+
+function buildMoskLayerSurfaceStyle(imageUrl: string, accentColor: string, mode: "solid" | "mesh") {
+  const normalizedColor = moskNormalizeHexColor(accentColor, "#D8DEE3");
   const gradient =
     mode === "mesh"
-      ? `linear-gradient(145deg, ${moskRgba(normalizedColor, 0.16)} 0%, ${moskRgba(normalizedColor, 0.9)} 55%, ${moskRgba(normalizedColor, 0.34)} 100%)`
-      : `linear-gradient(145deg, ${moskRgba(normalizedColor, 0.95)} 0%, ${moskRgba(normalizedColor, 0.72)} 100%)`;
+      ? `linear-gradient(135deg, ${moskRgba(moskShiftHex(normalizedColor, 18), 0.92)} 0%, ${moskRgba(normalizedColor, 0.78)} 58%, ${moskRgba(moskShiftHex(normalizedColor, -16), 0.86)} 100%)`
+      : `linear-gradient(135deg, ${normalizedColor} 0%, ${moskShiftHex(normalizedColor, -22)} 100%)`;
 
   const optimizedUrl = optimizeImageUrl(imageUrl, 500);
   return {
@@ -2047,36 +2056,50 @@ export default function Home() {
                         role="img"
                         aria-label={`Podgląd: profil ${selectedHardwareOption?.label || "--"}, siatka ${selectedMesh?.label || "--"}`}
                       >
-                        <div
-                          className="mosk-preview-base"
-                          style={{
-                            backgroundImage: `url(${optimizeImageUrl(displayedProduct.imageUrl, 500)})`,
-                          }}
-                        />
+                        {/* Per the CRM admin panel (allegro_configurator.js /
+                            .alcfg-layer-preview*): every step has ONE shared PNG
+                            layer, tinted per-option by accent_color, rendered as
+                            a masked gradient "surface" plus a second, unmasked,
+                            low-opacity, multiply-blended "overlay" pass of the
+                            same PNG for texture. No base photo - these two
+                            layers per option are the entire preview. */}
                         {selectedHardwareOption ? (
-                          <div
-                            className="mosk-preview-layer"
-                            style={buildMoskMaskedLayerStyle(
-                              // Per the CRM admin panel (allegro_configurator.js): a step
-                              // has ONE shared PNG layer, tinted per-option by accent_color.
-                              // A legacy per-option layer override exists only as a fallback
-                              // for other product lines (dachowe) - moskitiery always uses
-                              // the shared step-level layer.
-                              MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
-                              selectedHardwareOption.color,
-                              "solid",
-                            )}
-                          />
+                          <>
+                            <div
+                              className="mosk-preview-surface"
+                              style={buildMoskLayerSurfaceStyle(
+                                MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
+                                selectedHardwareOption.color,
+                                "solid",
+                              )}
+                            />
+                            <div
+                              className="mosk-preview-overlay"
+                              style={{
+                                backgroundImage: `url(${optimizeImageUrl(MOSKITIERY_PROFILE_DEFAULT_LAYER_URL, 500)})`,
+                                opacity: 0.42,
+                              }}
+                            />
+                          </>
                         ) : null}
                         {selectedMesh ? (
-                          <div
-                            className="mosk-preview-layer mosk-preview-layer-mesh"
-                            style={buildMoskMaskedLayerStyle(
-                              selectedMesh.previewLayerUrl || MOSKITIERY_MESH_LAYER_URL,
-                              selectedMesh.color,
-                              "mesh",
-                            )}
-                          />
+                          <>
+                            <div
+                              className="mosk-preview-surface"
+                              style={buildMoskLayerSurfaceStyle(
+                                MOSKITIERY_MESH_LAYER_URL,
+                                selectedMesh.color,
+                                "mesh",
+                              )}
+                            />
+                            <div
+                              className="mosk-preview-overlay"
+                              style={{
+                                backgroundImage: `url(${optimizeImageUrl(MOSKITIERY_MESH_LAYER_URL, 500)})`,
+                                opacity: 0.46,
+                              }}
+                            />
+                          </>
                         ) : null}
                       </div>
                       <dl>
