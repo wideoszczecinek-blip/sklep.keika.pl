@@ -1074,6 +1074,166 @@ a {
   line-height: 1.6;
 }
 
+.pl-landing {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.pl-trust-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pl-price {
+  font-size: 1.32rem;
+  font-weight: 800;
+  color: #f3b546;
+  margin-right: 0.2rem;
+}
+
+.pl-chip {
+  border-radius: 999px;
+  padding: 0.32rem 0.72rem;
+  font-size: 0.8rem;
+  border: 1px solid rgba(229, 241, 255, 0.24);
+  background: rgba(8, 20, 35, 0.5);
+  color: rgba(240, 248, 255, 0.86);
+}
+
+.pl-chip-rating {
+  color: #f3b546;
+  font-weight: 700;
+}
+
+.pl-chip-muted {
+  color: rgba(240, 248, 255, 0.68);
+  font-weight: 400;
+}
+
+.pl-subtitle {
+  margin: 0;
+  font-size: 1.05rem !important;
+  line-height: 1.6;
+  color: rgba(240, 248, 255, 0.88);
+  font-weight: 600;
+}
+
+.pl-quick-facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.8rem;
+}
+
+.pl-quick-facts li {
+  position: relative;
+  padding-left: 1.3rem;
+  font-size: 0.86rem;
+  color: rgba(240, 248, 255, 0.86);
+  line-height: 1.4;
+}
+
+.pl-quick-facts li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #58cba3;
+  font-weight: 800;
+}
+
+.pl-benefits {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.pl-benefit {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 0.8rem;
+  align-items: start;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(229, 241, 255, 0.16);
+  background: rgba(8, 20, 35, 0.36);
+  padding: 0.7rem;
+}
+
+.pl-benefit-media {
+  width: 88px;
+  height: 88px;
+  border-radius: 0.65rem;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(240, 248, 255, 0.06);
+}
+
+.pl-benefit-copy {
+  display: grid;
+  gap: 0.18rem;
+  align-content: start;
+}
+
+.pl-benefit-index {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #f3b546;
+}
+
+.pl-benefit-copy h3 {
+  margin: 0;
+  font-size: 0.98rem;
+  color: #f2f7ff;
+  font-family: var(--font-heading), sans-serif;
+}
+
+.pl-benefit-copy p {
+  margin: 0;
+  font-size: 0.86rem !important;
+  line-height: 1.5;
+  color: rgba(240, 248, 255, 0.8);
+}
+
+.pl-cta-row {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: start;
+  margin-top: 0.2rem;
+}
+
+.pl-cta-button {
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 0.74rem 1.3rem;
+  font-weight: 800;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
+  color: #1a2231;
+  box-shadow: 0 12px 26px rgba(255, 125, 19, 0.32);
+}
+
+.pl-cta-note {
+  font-size: 0.8rem;
+  color: rgba(240, 248, 255, 0.6);
+}
+
+@media (max-width: 760px) {
+  .pl-quick-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .pl-benefit {
+    grid-template-columns: 72px 1fr;
+  }
+
+  .pl-benefit-media {
+    width: 72px;
+    height: 72px;
+  }
+}
+
 .hero-product-allegro-reviews {
   display: grid;
   gap: 1rem;

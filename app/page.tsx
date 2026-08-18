@@ -110,6 +110,20 @@ type AllegroOfferRating = {
   scoreDistribution: Array<{ stars: number; count: number }>;
 };
 
+type ProductLandingSection = {
+  title: string;
+  body: string;
+};
+
+type ProductLandingContent = {
+  subtitle: string;
+  description: string;
+  priceFrom: string;
+  badge: string;
+  gallery: string[];
+  sections: ProductLandingSection[];
+};
+
 // Product slugs that have a real, live Allegro rating wired up (see
 // allegro_offer_rating_public.php in the CRM). Everything else falls back to
 // the generic placeholder review list further down.
@@ -632,7 +646,54 @@ export default function Home() {
   const [allegroRating, setAllegroRating] = useState<AllegroOfferRating | null>(null);
   const [allegroRatingLoading, setAllegroRatingLoading] = useState(false);
   const [reviewsExpanded, setReviewsExpanded] = useState(false);
+  const [productLanding, setProductLanding] = useState<ProductLandingContent | null>(null);
   const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
+
+  useEffect(() => {
+    const slug = productSlugFromSelected(displayedProduct);
+    if (!slug) {
+      setProductLanding(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(
+      `https://crm-keika.groovemedia.pl/biuro/api/shop-public/product?slug=${encodeURIComponent(slug)}`,
+      { cache: "no-store" },
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const product = data?.ok ? data.product : null;
+        if (!product) {
+          setProductLanding(null);
+          return;
+        }
+        const sections = Array.isArray(product.landing_sections)
+          ? product.landing_sections
+              .map((entry: { title?: string; body?: string }) => ({
+                title: String(entry?.title || "").trim(),
+                body: String(entry?.body || "").trim(),
+              }))
+              .filter((entry: ProductLandingSection) => entry.title || entry.body)
+          : [];
+        setProductLanding({
+          subtitle: String(product.subtitle || "").trim(),
+          description: String(product.description || "").trim(),
+          priceFrom: String(product.price_from || "").trim(),
+          badge: String(product.badge || "").trim(),
+          gallery: Array.isArray(product.gallery_urls)
+            ? product.gallery_urls.filter((url: unknown): url is string => typeof url === "string" && url.trim() !== "")
+            : [],
+          sections,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setProductLanding(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayedProduct]);
 
   useEffect(() => {
     const slug = productSlugFromSelected(displayedProduct);
@@ -1296,7 +1357,61 @@ export default function Home() {
                   <h1>{displayedProduct?.label || ""}</h1>
                     <div className="hero-product-content">
                       {activeProductTab === "opis" && displayedProduct ? (
-                        <p>{displayedProduct.description}</p>
+                        productLanding && productLanding.sections.length > 0 ? (
+                          <div className="pl-landing">
+                            <div className="pl-trust-row">
+                              {productLanding.priceFrom ? <span className="pl-price">{productLanding.priceFrom}</span> : null}
+                              {allegroRating ? (
+                                <span className="pl-chip pl-chip-rating">
+                                  ★ {allegroRating.averageScore.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  <span className="pl-chip-muted"> · {allegroRating.totalResponses} opinii</span>
+                                </span>
+                              ) : null}
+                              <span className="pl-chip">5 lat gwarancji</span>
+                              <span className="pl-chip">Darmowa dostawa</span>
+                            </div>
+
+                            {productLanding.subtitle ? <p className="pl-subtitle">{productLanding.subtitle}</p> : null}
+
+                            <ul className="pl-quick-facts">
+                              {productLanding.sections.map((section) => (
+                                <li key={`fact-${section.title}`}>{section.title}</li>
+                              ))}
+                            </ul>
+
+                            <div className="pl-benefits">
+                              {productLanding.sections.map((section, index) => {
+                                const photo = productLanding.gallery[(index + 1) % Math.max(1, productLanding.gallery.length)];
+                                return (
+                                  <div className="pl-benefit" key={`${section.title}-${index}`}>
+                                    {photo ? (
+                                      <div
+                                        className="pl-benefit-media"
+                                        style={{ backgroundImage: `url(${optimizeImageUrl(photo, 360)})` }}
+                                      />
+                                    ) : null}
+                                    <div className="pl-benefit-copy">
+                                      <span className="pl-benefit-index">{String(index + 1).padStart(2, "0")}</span>
+                                      <h3>{section.title}</h3>
+                                      <p>{section.body}</p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <div className="pl-cta-row">
+                              <a href={displayedProduct.linkUrl} className="pl-cta-button">
+                                Skonfiguruj i zobacz cenę
+                              </a>
+                              <span className="pl-cta-note">
+                                Cena wyliczana automatycznie po wybraniu wariantu i wymiarów.
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p>{displayedProduct.description}</p>
+                        )
                       ) : null}
                       {activeProductTab === "galeria" && displayedProduct ? (
                         <div className="hero-product-gallery">
