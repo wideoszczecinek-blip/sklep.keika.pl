@@ -1787,24 +1787,40 @@ a {
 
 .hero-product-mini-summary {
   border-radius: 1rem;
-  border: 1px solid #dfe7f0;
-  background: #ffffff;
+  border: 1px solid rgba(229, 241, 255, 0.2);
+  background: rgba(8, 20, 35, 0.5);
   padding: 0.82rem;
   display: grid;
   gap: 0.55rem;
 }
 
+.hero-product-mini-summary.is-revealed {
+  animation: moskSummaryReveal 0.3s ease;
+}
+
+@keyframes moskSummaryReveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .hero-product-mini-summary h3 {
   margin: 0;
-  color: #22354d;
-  font-size: 1.22rem;
+  color: #f2f7ff;
+  font-size: 1.1rem;
+  font-family: var(--font-heading), sans-serif;
 }
 
 .hero-product-mini-summary-preview {
   width: 100%;
   border-radius: 0.72rem;
-  border: 1px solid #e2eaf2;
-  background: #f8fbfe;
+  border: 1px solid rgba(229, 241, 255, 0.16);
+  background: rgba(240, 248, 255, 0.04);
   min-height: 132px;
   display: flex;
   align-items: center;
@@ -1818,6 +1834,26 @@ a {
   object-fit: contain;
 }
 
+.mosk-preview {
+  width: 100%;
+  height: 132px;
+  border-radius: 0.6rem;
+  padding: 0.55rem;
+  box-sizing: border-box;
+  border: 10px solid #8ea0b7;
+  background: rgba(6, 16, 28, 0.6);
+  transition: border-color 0.25s ease;
+}
+
+.mosk-preview-mesh {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.2rem;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(240, 248, 255, 0.1);
+}
+
 .hero-product-mini-summary dl {
   margin: 0;
   display: grid;
@@ -1828,9 +1864,9 @@ a {
   display: flex;
   justify-content: space-between;
   gap: 0.66rem;
-  color: #3e5269;
-  font-size: 0.86rem;
-  border-bottom: 1px solid #edf2f7;
+  color: rgba(240, 248, 255, 0.72);
+  font-size: 0.84rem;
+  border-bottom: 1px solid rgba(229, 241, 255, 0.14);
   padding-bottom: 0.22rem;
 }
 
@@ -1846,13 +1882,13 @@ a {
 
 .hero-product-mini-summary dd {
   font-weight: 700;
-  color: #22354d;
+  color: #f2f7ff;
 }
 
 .hero-product-mini-summary-price {
   border-radius: 0.8rem;
-  border: 1px solid #cbe8dd;
-  background: linear-gradient(180deg, #effaf5, #eaf7f2);
+  border: 1px solid rgba(88, 203, 163, 0.32);
+  background: rgba(44, 157, 130, 0.14);
   padding: 0.54rem 0.7rem;
 }
 
@@ -1861,14 +1897,25 @@ a {
   text-transform: uppercase;
   letter-spacing: 0.11em;
   font-size: 0.66rem;
-  color: #2c8f70;
+  color: #6fe3bf;
   font-weight: 800;
 }
 
 .hero-product-mini-summary-price strong {
-  color: #1e2f45;
+  color: #f2f7ff;
   font-size: 1.62rem;
   line-height: 1.1;
+}
+
+.hero-product-mini-summary-price strong.is-calculating {
+  font-size: 1.02rem;
+  color: rgba(240, 248, 255, 0.7);
+  animation: moskCalculatingPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes moskCalculatingPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 .hero-product-config-steps {

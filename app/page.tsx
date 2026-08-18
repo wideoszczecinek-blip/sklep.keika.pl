@@ -739,6 +739,7 @@ export default function Home() {
   const [dimensionWidth, setDimensionWidth] = useState("");
   const [dimensionHeight, setDimensionHeight] = useState("");
   const [dimensionQuantity, setDimensionQuantity] = useState("1");
+  const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
   const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
 
@@ -1336,6 +1337,18 @@ export default function Home() {
   const hasValidDimensions = widthNum > 0 && heightNum > 0;
   const dimensionUnitPrice = hasValidDimensions ? lookupMatrixUnitPrice(pricingTable, widthNum, heightNum) : null;
   const dimensionTotalPrice = dimensionUnitPrice !== null ? dimensionUnitPrice * quantityNum : null;
+
+  useEffect(() => {
+    if (!hasValidDimensions) {
+      setIsCalculatingPrice(false);
+      return;
+    }
+    setIsCalculatingPrice(true);
+    const timer = window.setTimeout(() => setIsCalculatingPrice(false), 700);
+    return () => window.clearTimeout(timer);
+    // Re-runs (and re-shows "Obliczam...") whenever the actual inputs to the
+    // calculation change, not on every render.
+  }, [hasValidDimensions, widthNum, heightNum, quantityNum]);
 
   return (
     <div
@@ -1964,14 +1977,25 @@ export default function Home() {
                         </div>
                       </>
                     ) : null}
-                    <div className="hero-product-mini-summary">
+                    {hasValidDimensions ? (
+                    <div className="hero-product-mini-summary is-revealed">
                       <h3>Moskitiera okienna</h3>
                       <div className="hero-product-mini-summary-preview">
-                        <img
-                          src={optimizeImageUrl(selectedHardwareOption?.imageUrl || displayedProduct.imageUrl, 360)}
-                          alt={selectedHardwareOption?.label || displayedProduct.label}
-                          loading="lazy"
-                        />
+                        <div
+                          className="mosk-preview"
+                          style={{ borderColor: selectedHardwareOption?.color || "#8ea0b7" }}
+                          role="img"
+                          aria-label={`Podgląd: profil ${selectedHardwareOption?.label || "--"}, siatka ${selectedMesh?.label || "--"}`}
+                        >
+                          <div
+                            className="mosk-preview-mesh"
+                            style={
+                              selectedMesh?.imageUrl
+                                ? { backgroundImage: `url(${optimizeImageUrl(selectedMesh.imageUrl, 360)})` }
+                                : { background: selectedMesh?.color || "rgba(240, 248, 255, 0.12)" }
+                            }
+                          />
+                        </div>
                       </div>
                       <dl>
                         <div>
@@ -1993,13 +2017,16 @@ export default function Home() {
                       </dl>
                       <div className="hero-product-mini-summary-price">
                         <p>Kalkulacja ceny</p>
-                        <strong>
-                          {dimensionTotalPrice !== null
-                            ? `${dimensionTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
-                            : "Podaj wymiary"}
+                        <strong className={isCalculatingPrice ? "is-calculating" : ""}>
+                          {isCalculatingPrice
+                            ? "Obliczam…"
+                            : dimensionTotalPrice !== null
+                              ? `${dimensionTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
+                              : "Podaj wymiary"}
                         </strong>
                       </div>
                     </div>
+                    ) : null}
                   </>
                 ) : (
                   <p className="hero-product-config-hint">Wybierz kolor profilu, aby przejść do kolejnego kroku.</p>
