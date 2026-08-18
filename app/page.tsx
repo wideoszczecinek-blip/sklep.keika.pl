@@ -96,7 +96,12 @@ type TopLink = {
   url: string;
 };
 
-type ProductTabKey = "opis" | "galeria" | "opinie" | "wycena";
+type ProductTabKey = "opis" | "galeria" | "opinie" | "instrukcje";
+
+type ProductInstructionStep = {
+  title: string;
+  body: string;
+};
 
 type SelectedProductView = {
   groupIndex: number;
@@ -127,6 +132,48 @@ function productDescription(label: string): string {
     return "Rolety wykonywane na wymiar z czytelnym procesem zamówienia: wybór wariantu, pomiar i szybka wycena.";
   }
   return "Produkt konfigurowany pod wymiar z prostym procesem zamówienia i wsparciem na etapie pomiaru.";
+}
+
+const GENERIC_INSTRUCTION_STEPS: ProductInstructionStep[] = [
+  {
+    title: "Pomiar",
+    body: "Zmierz dokładnie wymiary otworu montażowego. Wpisz je w konfiguratorze — resztę wyliczymy automatycznie.",
+  },
+  {
+    title: "Montaż",
+    body: "Wszystkie potrzebne elementy montażowe dostajesz w komplecie, wraz z instrukcją krok po kroku.",
+  },
+  {
+    title: "Wsparcie",
+    body: "Masz pytania podczas montażu? Napisz lub zadzwoń — pomożemy dobrać właściwy wariant i podpowiemy jak zamontować produkt.",
+  },
+];
+
+const MOSKITIERY_RAMKOWE_INSTRUCTION_STEPS: ProductInstructionStep[] = [
+  {
+    title: "1. Sprężynowe zaczepy bez wiercenia",
+    body: "Montaż odbywa się bezinwazyjnie, na zaczepach sprężynowych — bez wiercenia i bez uszkadzania ramy okna. Zaczepy mocujesz w kilku punktach na obwodzie ramy.",
+  },
+  {
+    title: "2. Szybkie złożenie w domu",
+    body: "Moskitierę otrzymujesz przygotowaną do samodzielnego złożenia. Wystarczy kilka-kilkanaście minut, śrubokręt krzyżakowy i nożyk do odcięcia zapasu siatki.",
+  },
+  {
+    title: "3. Osadzenie w oknie",
+    body: "Złożoną ramkę wystarczy wsunąć w zaczepy sprężynowe i docisnąć na całym obwodzie — moskitiera stabilnie trzyma naciąg siatki przez wiele sezonów.",
+  },
+  {
+    title: "4. Sezonowy demontaż",
+    body: "Na zimę moskitierę można łatwo zdemontować (odciskając zaczepy) i schować, a wiosną zamontować z powrotem w tych samych punktach.",
+  },
+];
+
+function productInstructionSteps(label: string): ProductInstructionStep[] {
+  const normalized = normalizeMenuLabel(label);
+  if (normalized.includes("moskitier")) {
+    return MOSKITIERY_RAMKOWE_INSTRUCTION_STEPS;
+  }
+  return GENERIC_INSTRUCTION_STEPS;
 }
 
 function slugFromLink(linkUrl: string, label: string): string {
@@ -1231,11 +1278,15 @@ export default function Home() {
                           ))}
                         </ul>
                       ) : null}
-                      {activeProductTab === "wycena" && displayedProduct ? (
-                        <div className="hero-product-estimate">
-                          <p>Przejdź do szybkiej wyceny i zamów online bez przeładowania procesu.</p>
-                          <a href={displayedProduct.linkUrl}>Przejdź do wyceny</a>
-                        </div>
+                      {activeProductTab === "instrukcje" && displayedProduct ? (
+                        <ul className="hero-product-instructions">
+                          {productInstructionSteps(displayedProduct.label).map((step) => (
+                            <li key={step.title}>
+                              <strong>{step.title}</strong>
+                              <p>{step.body}</p>
+                            </li>
+                          ))}
+                        </ul>
                       ) : null}
                     </div>
                   </section>
@@ -1516,10 +1567,10 @@ export default function Home() {
               </button>
               <button
                 type="button"
-                className={activeProductTab === "wycena" ? "is-active" : ""}
-                onClick={() => setActiveProductTab("wycena")}
+                className={activeProductTab === "instrukcje" ? "is-active" : ""}
+                onClick={() => setActiveProductTab("instrukcje")}
               >
-                Wycena
+                Instrukcje
               </button>
             </nav>
           ) : null}

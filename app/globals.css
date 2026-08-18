@@ -1029,6 +1029,35 @@ a {
   font-size: 1.03rem;
 }
 
+.hero-product-instructions {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.hero-product-instructions li {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(229, 241, 255, 0.22);
+  background: rgba(8, 20, 35, 0.5);
+  padding: 0.9rem 1rem;
+}
+
+.hero-product-instructions strong {
+  display: block;
+  color: #f2f7ff;
+  font-size: 1rem;
+  margin-bottom: 0.28rem;
+}
+
+.hero-product-instructions p {
+  margin: 0;
+  color: rgba(240, 248, 255, 0.88);
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
 .hero-product-estimate {
   display: grid;
   gap: 0.84rem;
