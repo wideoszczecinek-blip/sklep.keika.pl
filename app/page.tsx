@@ -2108,9 +2108,6 @@ export default function Home() {
                 ) : (
                   <p className="hero-product-config-hint">Wybierz kolor profilu, aby przejść do kolejnego kroku.</p>
                 )}
-                {stepOneChosen ? (
-                  <a href={displayedProduct.linkUrl}>Przejdź do konfiguratora</a>
-                ) : null}
               </aside>
             ) : null}
             {displayedProduct ? (
