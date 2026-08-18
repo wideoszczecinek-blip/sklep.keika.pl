@@ -1383,10 +1383,19 @@ export default function Home() {
                                     {review.hasPhotos ? <span className="allegro-review-photo-tag">📷 zdjęcia klienta</span> : null}
                                   </div>
                                   <p>{review.body}</p>
-                                  {review.pros ? (
-                                    <p className="allegro-review-pros">
-                                      <strong>Zalety:</strong> {review.pros}
-                                    </p>
+                                  {review.pros || review.cons ? (
+                                    <div className="allegro-review-tags">
+                                      {review.pros ? (
+                                        <p className="allegro-review-tag allegro-review-tag-pros">
+                                          <strong>Zalety:</strong> {review.pros}
+                                        </p>
+                                      ) : null}
+                                      {review.cons ? (
+                                        <p className="allegro-review-tag allegro-review-tag-cons">
+                                          <strong>Wady:</strong> {review.cons}
+                                        </p>
+                                      ) : null}
+                                    </div>
                                   ) : null}
                                 </li>
                               ))}

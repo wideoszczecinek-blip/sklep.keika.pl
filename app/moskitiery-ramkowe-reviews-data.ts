@@ -20,6 +20,7 @@ export type AllegroReviewEntry = {
   storeAccount: string;
   body: string;
   pros?: string;
+  cons?: string;
   hasPhotos?: boolean;
 };
 
@@ -30,6 +31,7 @@ export const MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS: AllegroReviewEntry[] = [
     storeAccount: "keika_pl",
     body: "Wspaniały, rewelacyjny produkt pod każdym względem, już nie obawiamy się o owady a szczególnie te najgroźniejsze - szerszenie, solidne mocowania, po montażu bardzo dobrze dopasowana do okna, na zewnątrz świetnie wkomponowana w okno. Rewelacyjny stosunek cena-jakość. Zdecydowanie POLECAM!!!",
     pros: "Solidna konstrukcja, bardzo łatwy montaż",
+    cons: "Brak",
   },
   {
     date: "8 kwietnia 2026",
@@ -37,6 +39,7 @@ export const MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS: AllegroReviewEntry[] = [
     storeAccount: "keikarolety",
     body: "Moskitiera spełnia moje oczekiwania, profile są dobrej jakości, siatka również jest dobrej jakości. Czas pokaże ile wytrzyma na oknie. Montaż jest banalnie prosty. System mocowania moskitiery w oknie za pomocą sprężynek jest o 100% lepszy od blaszek.",
     pros: "Jakość materiałów, system mocowania",
+    cons: "Brak",
   },
   {
     date: "2 lipca 2026",
@@ -69,6 +72,7 @@ export const MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS: AllegroReviewEntry[] = [
     storeAccount: "keikarolety",
     body: "Montaż bardzo łatwy, pomogły wcześniej nawiercone otworki za co bardzo dziękuję! Montaż był na drewniane okno, gdzie nie ma ram z uszczelkami a listewki zewnętrzne - mimo to Państwo znaleźli idealne rozwiązanie dla mnie! Bardzo polecam i wrócę po kilka moskitier na inne okna!",
     pros: "Szybki i łatwy montaż, duża pomoc sprzedającego",
+    cons: "Brak",
   },
   {
     date: "28 czerwca 2026",
@@ -76,12 +80,15 @@ export const MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS: AllegroReviewEntry[] = [
     storeAccount: "keikarolety",
     body: "Coś czego szukałem od dawna, prosty montaż, mega jakość i pasuje do rolet zewnętrznych! Na pewno będę zamawiał na resztę okien.",
     pros: "Prosty montaż, wysoka jakość produktów, szybkość realizacji zamówienia",
+    cons: "Brak",
   },
   {
     date: "8 maja 2026",
     maskedLogin: "j...t",
     storeAccount: "keikarolety",
     body: "Idealne, siatka mocna, mam już jedną przetestowaną 2 lata. Dalej nic się z nią nie dzieje. Teraz zakupiłam kolejne. Bardzo łatwy montaż.",
+    pros: "Same",
+    cons: "Brak",
   },
   {
     date: "25 kwietnia 2026",
@@ -90,6 +97,7 @@ export const MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS: AllegroReviewEntry[] = [
     hasPhotos: true,
     body: "Super rozwiązanie. Sprężynki pozwalają na dociągnięcie tam, gdzie okno jest nierówne. Montaż bardzo łatwy. Szary kolor gubi się i siatkę tylko nieznacznie widać. Polecam dla niezdecydowanych.",
     pros: "Łatwo ściągać i zakładać, siatka jest stabilna",
+    cons: "Brak",
   },
   {
     date: "13 kwietnia 2026",
@@ -105,6 +113,7 @@ export const MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS: AllegroReviewEntry[] = [
     hasPhotos: true,
     body: "Moskitiera super, montaż prosty, bo firma elegancko podocinała i oznaczyła poszczególne elementy do każdego okna.",
     pros: "Dobrze chroni przed owadami i wygląda elegancko",
+    cons: "Brak",
   },
   {
     date: "11 sierpnia 2026",
