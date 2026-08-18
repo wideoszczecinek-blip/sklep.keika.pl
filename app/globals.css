@@ -986,6 +986,8 @@ a {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .hero-product-gallery-row {
