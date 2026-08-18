@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ThemeToggle from "@/app/components/theme-toggle";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -102,6 +103,17 @@ type ProductInstructionStep = {
   title: string;
   body: string;
 };
+
+type AllegroOfferRating = {
+  averageScore: number;
+  totalResponses: number;
+  scoreDistribution: Array<{ stars: number; count: number }>;
+};
+
+// Product slugs that have a real, live Allegro rating wired up (see
+// allegro_offer_rating_public.php in the CRM). Everything else falls back to
+// the generic placeholder review list further down.
+const PRODUCT_SLUGS_WITH_ALLEGRO_RATING = new Set(["moskitiery-ramkowe"]);
 
 type SelectedProductView = {
   groupIndex: number;
@@ -617,7 +629,52 @@ export default function Home() {
   const [stepOneCollapsed, setStepOneCollapsed] = useState(false);
   const [selectedMeshId, setSelectedMeshId] = useState("");
   const [zoomPreview, setZoomPreview] = useState<{ title: string; urls: string[]; index: number } | null>(null);
+  const [allegroRating, setAllegroRating] = useState<AllegroOfferRating | null>(null);
+  const [allegroRatingLoading, setAllegroRatingLoading] = useState(false);
+  const [reviewsExpanded, setReviewsExpanded] = useState(false);
   const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
+
+  useEffect(() => {
+    const slug = productSlugFromSelected(displayedProduct);
+    setReviewsExpanded(false);
+    if (!slug || !PRODUCT_SLUGS_WITH_ALLEGRO_RATING.has(slug)) {
+      setAllegroRating(null);
+      return;
+    }
+    let cancelled = false;
+    setAllegroRatingLoading(true);
+    fetch(
+      `https://crm-keika.groovemedia.pl/biuro/api/shop/allegro_offer_rating_public.php?slug=${encodeURIComponent(slug)}`,
+      { cache: "no-store" },
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.ok && data.rating) {
+          setAllegroRating({
+            averageScore: Number(data.rating.average_score) || 0,
+            totalResponses: Number(data.rating.total_responses) || 0,
+            scoreDistribution: Array.isArray(data.rating.score_distribution)
+              ? data.rating.score_distribution.map((entry: { stars: number; count: number }) => ({
+                  stars: Number(entry.stars) || 0,
+                  count: Number(entry.count) || 0,
+                }))
+              : [],
+          });
+        } else {
+          setAllegroRating(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAllegroRating(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAllegroRatingLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayedProduct]);
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
@@ -1272,11 +1329,88 @@ export default function Home() {
                         </div>
                       ) : null}
                       {activeProductTab === "opinie" && displayedProduct ? (
-                        <ul className="hero-product-reviews">
-                          {displayedProduct.reviews.map((review) => (
-                            <li key={review}>{review}</li>
-                          ))}
-                        </ul>
+                        productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
+                          <div className="hero-product-allegro-reviews">
+                            {allegroRating ? (
+                              <div className="allegro-rating-summary">
+                                <div className="allegro-rating-score">
+                                  <strong>{allegroRating.averageScore.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                  <span className="allegro-rating-stars" aria-hidden="true">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <span
+                                        key={star}
+                                        className={`allegro-star ${star <= Math.round(allegroRating.averageScore) ? "is-filled" : ""}`}
+                                      >
+                                        ★
+                                      </span>
+                                    ))}
+                                  </span>
+                                  <span className="allegro-rating-count">
+                                    {allegroRating.totalResponses.toLocaleString("pl-PL")} ocen na Allegro
+                                  </span>
+                                </div>
+                                <div className="allegro-rating-distribution">
+                                  {allegroRating.scoreDistribution.map((entry) => {
+                                    const pct = allegroRating.totalResponses > 0
+                                      ? Math.round((entry.count / allegroRating.totalResponses) * 100)
+                                      : 0;
+                                    return (
+                                      <div key={entry.stars} className="allegro-rating-bar-row">
+                                        <span>{entry.stars}★</span>
+                                        <span className="allegro-rating-bar-track">
+                                          <span className="allegro-rating-bar-fill" style={{ width: `${pct}%` }} />
+                                        </span>
+                                        <span className="allegro-rating-bar-count">{entry.count}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : allegroRatingLoading ? (
+                              <p className="allegro-rating-loading">Wczytujemy ocenę z Allegro…</p>
+                            ) : null}
+
+                            <ul className="hero-product-reviews">
+                              {(reviewsExpanded
+                                ? MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS
+                                : MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.slice(0, 6)
+                              ).map((review, index) => (
+                                <li key={`${review.date}-${review.maskedLogin}-${index}`}>
+                                  <div className="allegro-review-meta">
+                                    <strong>{review.maskedLogin}</strong>
+                                    <span>{review.date}</span>
+                                    <span>zakup: {review.storeAccount}</span>
+                                    {review.hasPhotos ? <span className="allegro-review-photo-tag">📷 zdjęcia klienta</span> : null}
+                                  </div>
+                                  <p>{review.body}</p>
+                                  {review.pros ? (
+                                    <p className="allegro-review-pros">
+                                      <strong>Zalety:</strong> {review.pros}
+                                    </p>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </ul>
+                            {MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.length > 6 ? (
+                              <button
+                                type="button"
+                                className="hero-product-reviews-toggle"
+                                onClick={() => setReviewsExpanded((prev) => !prev)}
+                              >
+                                {reviewsExpanded ? "Pokaż mniej opinii" : `Pokaż wszystkie opinie (${MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.length})`}
+                              </button>
+                            ) : null}
+                            <p className="allegro-review-source-note">
+                              Opinie klientów pochodzą z naszego ogłoszenia na Allegro.
+                            </p>
+                          </div>
+                        ) : (
+                          <ul className="hero-product-reviews">
+                            {displayedProduct.reviews.map((review) => (
+                              <li key={review}>{review}</li>
+                            ))}
+                          </ul>
+                        )
                       ) : null}
                       {activeProductTab === "instrukcje" && displayedProduct ? (
                         <ul className="hero-product-instructions">

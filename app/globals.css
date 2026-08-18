@@ -1058,6 +1058,131 @@ a {
   line-height: 1.6;
 }
 
+.hero-product-allegro-reviews {
+  display: grid;
+  gap: 1rem;
+}
+
+.allegro-rating-summary {
+  display: grid;
+  gap: 0.7rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(229, 241, 255, 0.22);
+  background: rgba(8, 20, 35, 0.5);
+  padding: 1rem 1.1rem;
+}
+
+.allegro-rating-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.allegro-rating-score strong {
+  font-size: 2.1rem;
+  color: #f2f7ff;
+  line-height: 1;
+}
+
+.allegro-rating-stars {
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+  color: rgba(240, 248, 255, 0.28);
+}
+
+.allegro-star.is-filled {
+  color: #f3b546;
+}
+
+.allegro-rating-count {
+  color: rgba(240, 248, 255, 0.78);
+  font-size: 0.94rem;
+}
+
+.allegro-rating-distribution {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.allegro-rating-bar-row {
+  display: grid;
+  grid-template-columns: 2.1rem 1fr 2.4rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+  color: rgba(240, 248, 255, 0.78);
+}
+
+.allegro-rating-bar-track {
+  height: 0.42rem;
+  border-radius: 999px;
+  background: rgba(240, 248, 255, 0.14);
+  overflow: hidden;
+}
+
+.allegro-rating-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(120deg, #f3b546, #ff8f1f);
+}
+
+.allegro-rating-bar-count {
+  text-align: right;
+}
+
+.allegro-rating-loading {
+  margin: 0;
+  color: rgba(240, 248, 255, 0.72);
+  font-size: 0.94rem;
+}
+
+.allegro-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+  font-size: 0.86rem;
+  color: rgba(240, 248, 255, 0.68);
+}
+
+.allegro-review-meta strong {
+  color: #f2f7ff;
+}
+
+.allegro-review-photo-tag {
+  border-radius: 999px;
+  padding: 0.1rem 0.56rem;
+  background: rgba(243, 181, 70, 0.16);
+  color: #f3b546;
+  font-size: 0.78rem;
+}
+
+.allegro-review-pros {
+  margin: 0.5rem 0 0;
+  font-size: 0.94rem;
+  color: rgba(240, 248, 255, 0.82);
+}
+
+.hero-product-reviews-toggle {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(229, 241, 255, 0.3);
+  background: rgba(8, 20, 35, 0.5);
+  color: #f2f7ff;
+  font-weight: 700;
+  padding: 0.6rem 1.1rem;
+  cursor: pointer;
+}
+
+.allegro-review-source-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(240, 248, 255, 0.58);
+}
+
 .hero-product-estimate {
   display: grid;
   gap: 0.84rem;
