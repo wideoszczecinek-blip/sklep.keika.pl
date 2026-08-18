@@ -822,6 +822,7 @@ export default function Home() {
   const [allegroRating, setAllegroRating] = useState<AllegroOfferRating | null>(null);
   const [allegroRatingLoading, setAllegroRatingLoading] = useState(false);
   const [reviewsExpanded, setReviewsExpanded] = useState(false);
+  const [reviewStarFilter, setReviewStarFilter] = useState<number | null>(null);
   const [productLanding, setProductLanding] = useState<ProductLandingContent | null>(null);
   const [pricingTable, setPricingTable] = useState<PricingTable | null>(null);
   const [dimensionWidth, setDimensionWidth] = useState("");
@@ -1701,6 +1702,9 @@ export default function Home() {
                             item?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
                           });
                         };
+                        const openZoom = (index: number) => {
+                          setZoomPreview({ title: displayedProduct.label, urls: galleryPhotos, index });
+                        };
                         return (
                           <div className="hero-product-gallery">
                             <div className="hero-product-gallery-row-wrap">
@@ -1718,8 +1722,11 @@ export default function Home() {
                                     key={`${url}-${index}`}
                                     type="button"
                                     className={`hero-product-gallery-row-item ${index === activeProductGallerySlide ? "is-active" : ""}`}
-                                    onClick={() => goToSlide(index)}
-                                    aria-label={`Pokaż zdjęcie ${index + 1} z ${galleryPhotos.length}`}
+                                    onClick={() => {
+                                      setActiveProductGallerySlide(index);
+                                      openZoom(index);
+                                    }}
+                                    aria-label={`Powiększ zdjęcie ${index + 1} z ${galleryPhotos.length}`}
                                   >
                                     <img
                                       src={optimizeImageUrl(url, 500)}
@@ -1738,11 +1745,35 @@ export default function Home() {
                                 ›
                               </button>
                             </div>
+                            <div className="hero-product-gallery-thumbs">
+                              {galleryPhotos.map((url, index) => (
+                                <button
+                                  key={`thumb-${url}-${index}`}
+                                  type="button"
+                                  className={index === activeProductGallerySlide ? "is-active" : ""}
+                                  onClick={() => goToSlide(index)}
+                                  aria-label={`Pokaż zdjęcie ${index + 1} z ${galleryPhotos.length}`}
+                                >
+                                  <img src={optimizeImageUrl(url, 160)} alt="" loading="lazy" />
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         );
                       })() : null}
                       {activeProductTab === "opinie" && displayedProduct ? (
-                        productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
+                        productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (() => {
+                          // Only reviews estimated at 3+ stars are ever kept in this
+                          // list to begin with (see moskitiery-ramkowe-reviews-data.ts).
+                          const qualifyingReviews = MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.filter(
+                            (review) => review.estimatedStars >= 3,
+                          );
+                          const visibleReviews = reviewStarFilter
+                            ? qualifyingReviews.filter((review) => review.estimatedStars === reviewStarFilter)
+                            : reviewsExpanded
+                              ? qualifyingReviews
+                              : qualifyingReviews.slice(0, 6);
+                          return (
                           <div className="hero-product-allegro-reviews">
                             {allegroRating ? (
                               <div className="allegro-rating-summary">
@@ -1759,7 +1790,7 @@ export default function Home() {
                                     ))}
                                   </span>
                                   <span className="allegro-rating-count">
-                                    {allegroRating.totalResponses.toLocaleString("pl-PL")} ocen na Allegro
+                                    {allegroRating.totalResponses.toLocaleString("pl-PL")} ocen klientów
                                   </span>
                                 </div>
                                 <div className="allegro-rating-distribution">
@@ -1767,66 +1798,103 @@ export default function Home() {
                                     const pct = allegroRating.totalResponses > 0
                                       ? Math.round((entry.count / allegroRating.totalResponses) * 100)
                                       : 0;
+                                    const isActiveFilter = reviewStarFilter === entry.stars;
                                     return (
-                                      <div key={entry.stars} className="allegro-rating-bar-row">
+                                      <button
+                                        type="button"
+                                        key={entry.stars}
+                                        className={`allegro-rating-bar-row ${isActiveFilter ? "is-active-filter" : ""}`}
+                                        onClick={() =>
+                                          setReviewStarFilter((prev) => (prev === entry.stars ? null : entry.stars))
+                                        }
+                                        aria-pressed={isActiveFilter}
+                                        aria-label={`Pokaż wyróżnione opinie z oceną ${entry.stars} gwiazdek`}
+                                      >
                                         <span>{entry.stars}★</span>
                                         <span className="allegro-rating-bar-track">
                                           <span className="allegro-rating-bar-fill" style={{ width: `${pct}%` }} />
                                         </span>
                                         <span className="allegro-rating-bar-count">{entry.count}</span>
-                                      </div>
+                                      </button>
                                     );
                                   })}
                                 </div>
+                                <p className="allegro-rating-distribution-note">
+                                  Rozkład ocen jest zbiorczy i realny. Kliknięcie liczby gwiazdek filtruje niżej
+                                  wyróżnione opinie z tekstem — ich ocena w gwiazdkach jest oceną szacowaną na
+                                  podstawie treści (opisano niżej), a nie liczbą przypisaną do rozkładu powyżej.
+                                </p>
                               </div>
                             ) : allegroRatingLoading ? (
-                              <p className="allegro-rating-loading">Wczytujemy ocenę z Allegro…</p>
+                              <p className="allegro-rating-loading">Wczytujemy ocenę…</p>
                             ) : null}
 
-                            <ul className="hero-product-reviews">
-                              {(reviewsExpanded
-                                ? MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS
-                                : MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.slice(0, 6)
-                              ).map((review, index) => (
-                                <li key={`${review.date}-${review.maskedLogin}-${index}`}>
-                                  <div className="allegro-review-meta">
-                                    <strong>{review.maskedLogin}</strong>
-                                    <span>{review.date}</span>
-                                    <span>zakup: {review.storeAccount}</span>
-                                    {review.hasPhotos ? <span className="allegro-review-photo-tag">📷 zdjęcia klienta</span> : null}
-                                  </div>
-                                  <p>{review.body}</p>
-                                  {review.pros || review.cons ? (
-                                    <div className="allegro-review-tags">
-                                      {review.pros ? (
-                                        <p className="allegro-review-tag allegro-review-tag-pros">
-                                          <strong>Zalety:</strong> {review.pros}
-                                        </p>
-                                      ) : null}
-                                      {review.cons ? (
-                                        <p className="allegro-review-tag allegro-review-tag-cons">
-                                          <strong>Wady:</strong> {review.cons}
-                                        </p>
-                                      ) : null}
+                            {reviewStarFilter ? (
+                              <div className="hero-product-reviews-filter-bar">
+                                <span>Wyróżnione opinie z oceną (szac.): {reviewStarFilter}★</span>
+                                <button type="button" onClick={() => setReviewStarFilter(null)}>
+                                  Wyczyść filtr
+                                </button>
+                              </div>
+                            ) : null}
+
+                            {visibleReviews.length === 0 ? (
+                              <p className="hero-product-reviews-empty">
+                                Nie wyróżniliśmy żadnej opinii z szacowaną oceną {reviewStarFilter}★ — to nie
+                                znaczy, że takich ocen nie było (patrz rozkład powyżej), po prostu nie wybraliśmy
+                                do tej listy żadnej z takim tonem treści.
+                              </p>
+                            ) : (
+                              <ul className="hero-product-reviews">
+                                {visibleReviews.map((review, index) => (
+                                  <li key={`${review.date}-${review.maskedLogin}-${index}`}>
+                                    <div className="allegro-review-meta">
+                                      <strong>{review.maskedLogin}</strong>
+                                      <span>{review.date}</span>
+                                      <span
+                                        className="allegro-review-estimated-stars"
+                                        title="Ocena szacowana na podstawie tonu treści opinii — nie jest to realna ocena gwiazdkowa pobrana z platformy (ta nie jest dostępna dla pojedynczych opinii)."
+                                      >
+                                        {"★".repeat(review.estimatedStars)}
+                                        {"☆".repeat(5 - review.estimatedStars)}
+                                        <em> (szac.)</em>
+                                      </span>
+                                      {review.hasPhotos ? <span className="allegro-review-photo-tag">📷 zdjęcia klienta</span> : null}
                                     </div>
-                                  ) : null}
-                                </li>
-                              ))}
-                            </ul>
-                            {MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.length > 6 ? (
+                                    <p>{review.body}</p>
+                                    {review.pros || review.cons ? (
+                                      <div className="allegro-review-tags">
+                                        {review.pros ? (
+                                          <p className="allegro-review-tag allegro-review-tag-pros">
+                                            <strong>Zalety:</strong> {review.pros}
+                                          </p>
+                                        ) : null}
+                                        {review.cons ? (
+                                          <p className="allegro-review-tag allegro-review-tag-cons">
+                                            <strong>Wady:</strong> {review.cons}
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                            {!reviewStarFilter && qualifyingReviews.length > 6 ? (
                               <button
                                 type="button"
                                 className="hero-product-reviews-toggle"
                                 onClick={() => setReviewsExpanded((prev) => !prev)}
                               >
-                                {reviewsExpanded ? "Pokaż mniej opinii" : `Pokaż wszystkie opinie (${MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.length})`}
+                                {reviewsExpanded ? "Pokaż mniej opinii" : `Pokaż wszystkie opinie (${qualifyingReviews.length})`}
                               </button>
                             ) : null}
                             <p className="allegro-review-source-note">
-                              Opinie klientów pochodzą z naszego ogłoszenia na Allegro.
+                              Prawdziwe opinie naszych klientów.
                             </p>
                           </div>
-                        ) : (
+                          );
+                        })() : (
                           <ul className="hero-product-reviews">
                             {displayedProduct.reviews.map((review) => (
                               <li key={review}>{review}</li>
