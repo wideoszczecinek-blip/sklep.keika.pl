@@ -168,6 +168,17 @@ const MOSKITIERY_RAMKOWE_SPEC_ITEMS: ProductSpecItem[] = [
   { label: "Złożenie", value: "Samodzielne, kilka–kilkanaście minut" },
 ];
 
+// Real product photos (own photoshoot, curated selection), hosted on the CRM
+// media store. Used for the moskitiery-ramkowe "Galeria zdjęć" tab instead of
+// the generic hero-carousel fallback gallery.
+const MOSKITIERY_RAMKOWE_GALLERY_PHOTOS: string[] = Array.from(
+  { length: 57 },
+  (_, index) =>
+    `https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/moskitiera-okienna-${String(
+      index + 1,
+    ).padStart(2, "0")}.jpg`,
+);
+
 type ProductLandingContent = {
   subtitle: string;
   description: string;
@@ -1669,14 +1680,19 @@ export default function Home() {
                           <p>{displayedProduct.description}</p>
                         )
                       ) : null}
-                      {activeProductTab === "galeria" && displayedProduct ? (
+                      {activeProductTab === "galeria" && displayedProduct ? (() => {
+                        const galleryPhotos =
+                          productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
+                            ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
+                            : displayedProduct.gallery;
+                        return (
                         <div className="hero-product-gallery">
                           <div className="hero-product-gallery-main">
                             <img
                               src={optimizeImageUrl(
-                                displayedProduct.gallery[
-                                  ((activeProductGallerySlide % displayedProduct.gallery.length) + displayedProduct.gallery.length) %
-                                    displayedProduct.gallery.length
+                                galleryPhotos[
+                                  ((activeProductGallerySlide % galleryPhotos.length) + galleryPhotos.length) %
+                                    galleryPhotos.length
                                 ],
                                 900,
                               )}
@@ -1685,7 +1701,7 @@ export default function Home() {
                             />
                           </div>
                           <div className="hero-product-gallery-thumbs">
-                            {displayedProduct.gallery.map((url, index) => (
+                            {galleryPhotos.map((url, index) => (
                               <button
                                 key={`${url}-${index}`}
                                 type="button"
@@ -1698,7 +1714,8 @@ export default function Home() {
                             ))}
                           </div>
                         </div>
-                      ) : null}
+                        );
+                      })() : null}
                       {activeProductTab === "opinie" && displayedProduct ? (
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                           <div className="hero-product-allegro-reviews">
@@ -2051,75 +2068,77 @@ export default function Home() {
                     {hasValidDimensions ? (
                     <div className="hero-product-mini-summary is-revealed">
                       <h3>Moskitiera okienna</h3>
-                      <div
-                        className="mosk-preview-stage"
-                        role="img"
-                        aria-label={`Podgląd: profil ${selectedHardwareOption?.label || "--"}, siatka ${selectedMesh?.label || "--"}`}
-                      >
-                        {/* Per the CRM admin panel (allegro_configurator.js /
-                            .alcfg-layer-preview*): every step has ONE shared PNG
-                            layer, tinted per-option by accent_color, rendered as
-                            a masked gradient "surface" plus a second, unmasked,
-                            low-opacity, multiply-blended "overlay" pass of the
-                            same PNG for texture. No base photo - these two
-                            layers per option are the entire preview. */}
-                        {selectedHardwareOption ? (
-                          <>
-                            <div
-                              className="mosk-preview-surface"
-                              style={buildMoskLayerSurfaceStyle(
-                                MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
-                                selectedHardwareOption.color,
-                                "solid",
-                              )}
-                            />
-                            <div
-                              className="mosk-preview-overlay"
-                              style={{
-                                backgroundImage: `url(${optimizeImageUrl(MOSKITIERY_PROFILE_DEFAULT_LAYER_URL, 500)})`,
-                                opacity: 0.42,
-                              }}
-                            />
-                          </>
-                        ) : null}
-                        {selectedMesh ? (
-                          <>
-                            <div
-                              className="mosk-preview-surface"
-                              style={buildMoskLayerSurfaceStyle(
-                                MOSKITIERY_MESH_LAYER_URL,
-                                selectedMesh.color,
-                                "mesh",
-                              )}
-                            />
-                            <div
-                              className="mosk-preview-overlay"
-                              style={{
-                                backgroundImage: `url(${optimizeImageUrl(MOSKITIERY_MESH_LAYER_URL, 500)})`,
-                                opacity: 0.46,
-                              }}
-                            />
-                          </>
-                        ) : null}
+                      <div className="hero-product-mini-summary-body">
+                        <div
+                          className="mosk-preview-stage"
+                          role="img"
+                          aria-label={`Podgląd: profil ${selectedHardwareOption?.label || "--"}, siatka ${selectedMesh?.label || "--"}`}
+                        >
+                          {/* Per the CRM admin panel (allegro_configurator.js /
+                              .alcfg-layer-preview*): every step has ONE shared PNG
+                              layer, tinted per-option by accent_color, rendered as
+                              a masked gradient "surface" plus a second, unmasked,
+                              low-opacity, multiply-blended "overlay" pass of the
+                              same PNG for texture. No base photo - these two
+                              layers per option are the entire preview. */}
+                          {selectedHardwareOption ? (
+                            <>
+                              <div
+                                className="mosk-preview-surface"
+                                style={buildMoskLayerSurfaceStyle(
+                                  MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
+                                  selectedHardwareOption.color,
+                                  "solid",
+                                )}
+                              />
+                              <div
+                                className="mosk-preview-overlay"
+                                style={{
+                                  backgroundImage: `url(${optimizeImageUrl(MOSKITIERY_PROFILE_DEFAULT_LAYER_URL, 500)})`,
+                                  opacity: 0.42,
+                                }}
+                              />
+                            </>
+                          ) : null}
+                          {selectedMesh ? (
+                            <>
+                              <div
+                                className="mosk-preview-surface"
+                                style={buildMoskLayerSurfaceStyle(
+                                  MOSKITIERY_MESH_LAYER_URL,
+                                  selectedMesh.color,
+                                  "mesh",
+                                )}
+                              />
+                              <div
+                                className="mosk-preview-overlay"
+                                style={{
+                                  backgroundImage: `url(${optimizeImageUrl(MOSKITIERY_MESH_LAYER_URL, 500)})`,
+                                  opacity: 0.46,
+                                }}
+                              />
+                            </>
+                          ) : null}
+                        </div>
+                        <dl>
+                          <div>
+                            <dt>Kolor profilu</dt>
+                            <dd>{selectedHardwareOption?.label || "--"}</dd>
+                          </div>
+                          <div>
+                            <dt>Kolor siatki</dt>
+                            <dd>{selectedMesh?.label || "--"}</dd>
+                          </div>
+                          <div>
+                            <dt>Rozmiar</dt>
+                            <dd>{hasValidDimensions ? `${widthNum} × ${heightNum} mm` : "--"}</dd>
+                          </div>
+                          <div>
+                            <dt>Ilość</dt>
+                            <dd>{quantityNum} szt.</dd>
+                          </div>
+                        </dl>
                       </div>
-                      <dl>
-                        <div>
-                          <dt>Kolor profilu</dt>
-                          <dd>{selectedHardwareOption?.label || "--"}</dd>
-                        </div>
-                        <div>
-                          <dt>Kolor siatki</dt>
-                          <dd>{selectedMesh?.label || "--"}</dd>
-                        </div>
-                        <div>
-                          <dt>Rozmiar</dt>
-                          <dd>{hasValidDimensions ? `${widthNum} × ${heightNum} mm` : "--"}</dd>
-                        </div>
-                        <div>
-                          <dt>Ilość</dt>
-                          <dd>{quantityNum} szt.</dd>
-                        </div>
-                      </dl>
                       <div className="hero-product-mini-summary-price">
                         <p>Kalkulacja ceny</p>
                         <strong className={isCalculatingPrice ? "is-calculating" : ""}>
