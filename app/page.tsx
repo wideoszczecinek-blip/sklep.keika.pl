@@ -168,16 +168,22 @@ const MOSKITIERY_RAMKOWE_SPEC_ITEMS: ProductSpecItem[] = [
   { label: "Złożenie", value: "Samodzielne, kilka–kilkanaście minut" },
 ];
 
-// Real product photos (own photoshoot, curated selection), hosted on the CRM
-// media store. Used for the moskitiery-ramkowe "Galeria zdjęć" tab instead of
-// the generic hero-carousel fallback gallery.
-const MOSKITIERY_RAMKOWE_GALLERY_PHOTOS: string[] = Array.from(
-  { length: 57 },
-  (_, index) =>
-    `https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/moskitiera-okienna-${String(
-      index + 1,
-    ).padStart(2, "0")}.jpg`,
-);
+// Real product photos, hosted on the CRM media store. Used for the
+// moskitiery-ramkowe "Galeria zdjęć" tab instead of the generic
+// hero-carousel fallback gallery. Order matches what a buyer expects to see
+// first: the real Allegro listing thumbnail, then the one real "installed
+// on an actual window" shot we have, then the own-photoshoot studio set.
+const MOSKITIERY_RAMKOWE_GALLERY_PHOTOS: string[] = [
+  "https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/moskitiera-okienna-allegro-miniaturka.jpg",
+  "https://crm-keika.groovemedia.pl/storage/shop/media/20260327_214156_d5ad04b7_moskitiera-okienna.jpg",
+  ...Array.from(
+    { length: 57 },
+    (_, index) =>
+      `https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/moskitiera-okienna-${String(
+        index + 1,
+      ).padStart(2, "0")}.jpg`,
+  ),
+];
 
 type ProductLandingContent = {
   subtitle: string;
@@ -824,6 +830,7 @@ export default function Home() {
   const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
   const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
+  const galleryRowRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const slug = productSlugFromSelected(displayedProduct);
@@ -1685,35 +1692,53 @@ export default function Home() {
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                             ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
                             : displayedProduct.gallery;
+                        const goToSlide = (index: number) => {
+                          const wrapped = ((index % galleryPhotos.length) + galleryPhotos.length) % galleryPhotos.length;
+                          setActiveProductGallerySlide(wrapped);
+                          window.requestAnimationFrame(() => {
+                            const row = galleryRowRef.current;
+                            const item = row?.children[wrapped] as HTMLElement | undefined;
+                            item?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                          });
+                        };
                         return (
-                        <div className="hero-product-gallery">
-                          <div className="hero-product-gallery-main">
-                            <img
-                              src={optimizeImageUrl(
-                                galleryPhotos[
-                                  ((activeProductGallerySlide % galleryPhotos.length) + galleryPhotos.length) %
-                                    galleryPhotos.length
-                                ],
-                                900,
-                              )}
-                              alt={displayedProduct.label}
-                              loading="eager"
-                            />
-                          </div>
-                          <div className="hero-product-gallery-thumbs">
-                            {galleryPhotos.map((url, index) => (
+                          <div className="hero-product-gallery">
+                            <div className="hero-product-gallery-row-wrap">
                               <button
-                                key={`${url}-${index}`}
                                 type="button"
-                                className={index === activeProductGallerySlide ? "is-active" : ""}
-                                onClick={() => setActiveProductGallerySlide(index)}
-                                aria-label={`Pokaż zdjęcie ${index + 1}`}
+                                className="hero-product-gallery-nav is-prev"
+                                onClick={() => goToSlide(activeProductGallerySlide - 1)}
+                                aria-label="Poprzednie zdjęcie"
                               >
-                                <img src={optimizeImageUrl(url, 160)} alt="" loading="lazy" />
+                                ‹
                               </button>
-                            ))}
+                              <div className="hero-product-gallery-row" ref={galleryRowRef}>
+                                {galleryPhotos.map((url, index) => (
+                                  <button
+                                    key={`${url}-${index}`}
+                                    type="button"
+                                    className={`hero-product-gallery-row-item ${index === activeProductGallerySlide ? "is-active" : ""}`}
+                                    onClick={() => goToSlide(index)}
+                                    aria-label={`Pokaż zdjęcie ${index + 1} z ${galleryPhotos.length}`}
+                                  >
+                                    <img
+                                      src={optimizeImageUrl(url, 500)}
+                                      alt={displayedProduct.label}
+                                      loading={index < 3 ? "eager" : "lazy"}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                className="hero-product-gallery-nav is-next"
+                                onClick={() => goToSlide(activeProductGallerySlide + 1)}
+                                aria-label="Następne zdjęcie"
+                              >
+                                ›
+                              </button>
+                            </div>
                           </div>
-                        </div>
                         );
                       })() : null}
                       {activeProductTab === "opinie" && displayedProduct ? (
@@ -1989,7 +2014,9 @@ export default function Home() {
                 {stepOneChosen ? (
                   <>
                     <p ref={stepTwoRef} className="hero-product-config-step-title hero-product-config-step-title--muted">
-                      <span className="hero-product-step-check is-muted" aria-hidden="true">2</span>
+                      <span className={`hero-product-step-check ${meshChosen ? "" : "is-muted"}`} aria-hidden="true">
+                        {meshChosen ? "✓" : "2"}
+                      </span>
                       Dobierz kolor siatki
                     </p>
                     <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
@@ -2023,7 +2050,9 @@ export default function Home() {
                     {meshChosen ? (
                       <>
                         <p ref={stepThreeRef} className="hero-product-config-step-title hero-product-config-step-title--muted">
-                          <span className="hero-product-step-check is-muted" aria-hidden="true">3</span>
+                          <span className={`hero-product-step-check ${hasValidDimensions ? "" : "is-muted"}`} aria-hidden="true">
+                            {hasValidDimensions ? "✓" : "3"}
+                          </span>
                           Podaj wymiary
                         </p>
                         <div className="hero-product-dimensions-grid">
