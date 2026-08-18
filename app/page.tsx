@@ -2057,7 +2057,12 @@ export default function Home() {
                           <div
                             className="mosk-preview-layer"
                             style={buildMoskMaskedLayerStyle(
-                              selectedHardwareOption.previewLayerUrl || MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
+                              // Per the CRM admin panel (allegro_configurator.js): a step
+                              // has ONE shared PNG layer, tinted per-option by accent_color.
+                              // A legacy per-option layer override exists only as a fallback
+                              // for other product lines (dachowe) - moskitiery always uses
+                              // the shared step-level layer.
+                              MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
                               selectedHardwareOption.color,
                               "solid",
                             )}
