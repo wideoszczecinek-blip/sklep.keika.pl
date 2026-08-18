@@ -2050,9 +2050,19 @@ export default function Home() {
                         <div
                           className="mosk-preview-base"
                           style={{
-                            backgroundImage: `url(${optimizeImageUrl(selectedHardwareOption?.imageUrl || displayedProduct.imageUrl, 500)})`,
+                            backgroundImage: `url(${optimizeImageUrl(displayedProduct.imageUrl, 500)})`,
                           }}
                         />
+                        {selectedHardwareOption ? (
+                          <div
+                            className="mosk-preview-layer"
+                            style={buildMoskMaskedLayerStyle(
+                              selectedHardwareOption.previewLayerUrl || MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
+                              selectedHardwareOption.color,
+                              "solid",
+                            )}
+                          />
+                        ) : null}
                         {selectedMesh ? (
                           <div
                             className="mosk-preview-layer mosk-preview-layer-mesh"
