@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
       },
     ],
+    // Next's image optimizer only accepts `w=` values found in one of these
+    // two lists. lib/image-optim.ts calls it with fixed widths tuned to each
+    // UI element (swatch thumb, gallery tile, full-bleed hero, ...), so those
+    // exact widths have to be allow-listed here or the request 400s.
+    // imageSizes: small, fixed-size UI elements (icons, swatches, thumbs).
+    imageSizes: [16, 32, 48, 64, 80, 96, 128, 160, 220, 240, 256, 360, 384, 500, 700],
+    // deviceSizes: larger, viewport-scale imagery (mockup previews, hero/background photos).
+    deviceSizes: [640, 750, 828, 900, 1080, 1200, 1800, 1920, 2000, 2048, 3840],
   },
 };
 
