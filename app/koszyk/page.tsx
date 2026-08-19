@@ -29,6 +29,21 @@ type OrderCreateResponse = {
   error?: string;
 };
 
+type DeliveryMethod = {
+  id: string;
+  label: string;
+  description: string;
+};
+
+// No real per-method shipping cost data exists yet - all options are free,
+// matching the site's existing blanket "Darmowa dostawa" promise rather than
+// inventing price tiers.
+const DELIVERY_METHODS: DeliveryMethod[] = [
+  { id: "kurier", label: "Kurier", description: "Dostawa pod wskazany adres" },
+  { id: "paczkomat", label: "Paczkomat InPost", description: "Odbiór z wybranego automatu paczkowego" },
+  { id: "odbior-osobisty", label: "Odbiór osobisty", description: "W siedzibie producenta" },
+];
+
 // Real checkout, reusing the exact quote -> order -> Stripe pipeline the
 // saved-quote flow already uses (see app/wycena/[quoteCode]/quote-checkout.tsx):
 // the cart's line items become one quote's "positions" (that field already
@@ -135,6 +150,7 @@ function StripePaymentStep({ orderCode }: { orderCode: string }) {
 export default function CartPage() {
   const [items, setItems] = useState<CartLineItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [deliveryMethod, setDeliveryMethod] = useState(DELIVERY_METHODS[0].id);
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -190,6 +206,9 @@ export default function CartPage() {
       const quoteResponse = await saveShopQuote(quotePayload);
       const quoteCode = quoteResponse.quote.quote_code;
 
+      const deliveryLabel = DELIVERY_METHODS.find((method) => method.id === deliveryMethod)?.label || "";
+      const noteWithDelivery = [`Metoda dostawy: ${deliveryLabel}`, form.note.trim()].filter(Boolean).join("\n\n");
+
       const response = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -202,7 +221,7 @@ export default function CartPage() {
             address_line_1: form.address1,
             address_line_2: form.address2,
           },
-          note_text: form.note,
+          note_text: noteWithDelivery,
         }),
       });
       const json = (await response.json()) as OrderCreateResponse;
@@ -238,29 +257,7 @@ export default function CartPage() {
       </header>
 
       <main className="cart-page-main">
-        {orderState ? (
-          <div className="cart-page-order-done">
-            <h2>Zamówienie utworzone</h2>
-            <p>
-              Numer zamówienia: <strong>{orderState.orderCode}</strong>
-            </p>
-            <p className="cart-page-order-note">
-              Wgląd do zamówienia będzie wymagał telefonu albo e-maila podanego w formularzu.
-            </p>
-            {orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
-              <PaymentStep
-                clientSecret={orderState.clientSecret}
-                publishableKey={orderState.publishableKey}
-                orderCode={orderState.orderCode}
-              />
-            ) : (
-              <div className="cart-page-checkout-note">
-                Płatność online nie jest jeszcze skonfigurowana w tym środowisku. Zamówienie zapisaliśmy pod
-                numerem <strong>{orderState.orderCode}</strong> - skontaktujemy się, aby dokończyć płatność.
-              </div>
-            )}
-          </div>
-        ) : !hydrated ? null : items.length === 0 ? (
+        {!hydrated ? null : items.length === 0 && !orderState ? (
           <div className="cart-page-empty">
             <p>Twój koszyk jest jeszcze pusty.</p>
             <Link href="/?produkt=moskitiery-ramkowe" className="cart-page-empty-cta">
@@ -269,128 +266,197 @@ export default function CartPage() {
           </div>
         ) : (
           <>
-            <ul className="cart-page-items">
-              {items.map((item) => (
-                <li key={item.id} className="cart-page-item">
-                  <div
-                    className="cart-page-item-thumb"
-                    style={item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined}
-                  />
-                  <div className="cart-page-item-info">
-                    <strong>{item.productLabel}</strong>
-                    <span className="cart-page-item-specs">
-                      {item.hardwareLabel ? `Profil: ${item.hardwareLabel}` : null}
-                      {item.meshLabel ? ` · Siatka: ${item.meshLabel}` : null}
-                      {item.widthMm && item.heightMm ? ` · ${item.widthMm} × ${item.heightMm} mm` : null}
-                    </span>
-                    <span className="cart-page-item-unit">{formatPln(item.price)} / szt.</span>
-                  </div>
-                  <div className="cart-page-item-qty">
-                    <button
-                      type="button"
-                      onClick={() => handleQtyChange(item.id, item.qty - 1)}
-                      disabled={item.qty <= 1}
-                      aria-label="Zmniejsz ilość"
-                    >
-                      −
-                    </button>
-                    <span>{item.qty}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleQtyChange(item.id, item.qty + 1)}
-                      aria-label="Zwiększ ilość"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <div className="cart-page-item-total">{formatPln(item.total)}</div>
-                  <button
-                    type="button"
-                    className="cart-page-item-remove"
-                    onClick={() => handleRemove(item.id)}
-                    aria-label="Usuń pozycję"
-                  >
-                    Usuń
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <div className="cart-page-checkout-layout">
-              <aside className="cart-page-summary">
-                <div className="cart-page-summary-row">
-                  <span>
-                    {summary.items} {summary.items === 1 ? "produkt" : "produktów"}
-                  </span>
-                  <strong>{formatPln(summary.total)}</strong>
-                </div>
-              </aside>
-
-              <section className="cart-checkout-form-card">
-                <h2>Podsumowanie i zamówienie</h2>
-                <p className="cart-checkout-intro">
-                  Dane zamówienia zapisują się w CRM, a płatność jest obsługiwana przez Stripe.
-                </p>
-                {error ? <div className="cart-checkout-error">{error}</div> : null}
-                <form className="cart-checkout-form" onSubmit={handleSubmit}>
-                  <div className="cart-checkout-form-grid">
-                    <label>
-                      Imię i nazwisko
-                      <input
-                        value={form.name}
-                        onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                        required
-                      />
-                    </label>
-                    <label>
-                      Telefon
-                      <input
-                        value={form.phone}
-                        onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      E-mail
-                      <input
-                        type="email"
-                        value={form.email}
-                        onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      Miasto
-                      <input
-                        value={form.city}
-                        onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      Kod pocztowy
-                      <input
-                        value={form.postcode}
-                        onChange={(event) => setForm((current) => ({ ...current, postcode: event.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      Adres
-                      <input
-                        value={form.address1}
-                        onChange={(event) => setForm((current) => ({ ...current, address1: event.target.value }))}
-                      />
-                    </label>
-                  </div>
-                  <label className="cart-checkout-note-field">
-                    Dodatkowe informacje
-                    <textarea
-                      value={form.note}
-                      onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+            {items.length > 0 ? (
+              <ul className="cart-page-items">
+                {items.map((item) => (
+                  <li key={item.id} className="cart-page-item">
+                    <div
+                      className="cart-page-item-thumb"
+                      style={item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined}
                     />
-                  </label>
-                  <button type="submit" className="cart-page-checkout-cta" disabled={isSubmitting}>
-                    {isSubmitting ? "Tworzymy zamówienie…" : "Utwórz zamówienie i przejdź do płatności"}
-                  </button>
-                </form>
-              </section>
+                    <div className="cart-page-item-info">
+                      <strong>{item.productLabel}</strong>
+                      <span className="cart-page-item-specs">
+                        {item.hardwareLabel ? `Profil: ${item.hardwareLabel}` : null}
+                        {item.meshLabel ? ` · Siatka: ${item.meshLabel}` : null}
+                        {item.widthMm && item.heightMm ? ` · ${item.widthMm} × ${item.heightMm} mm` : null}
+                      </span>
+                      <span className="cart-page-item-unit">{formatPln(item.price)} / szt.</span>
+                    </div>
+                    <div className="cart-page-item-qty">
+                      <button
+                        type="button"
+                        onClick={() => handleQtyChange(item.id, item.qty - 1)}
+                        disabled={item.qty <= 1}
+                        aria-label="Zmniejsz ilość"
+                      >
+                        −
+                      </button>
+                      <span>{item.qty}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleQtyChange(item.id, item.qty + 1)}
+                        aria-label="Zwiększ ilość"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="cart-page-item-total">{formatPln(item.total)}</div>
+                    <button
+                      type="button"
+                      className="cart-page-item-remove"
+                      onClick={() => handleRemove(item.id)}
+                      aria-label="Usuń pozycję"
+                    >
+                      Usuń
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="cart-page-order-note">Koszyk opróżniony po złożeniu zamówienia poniżej.</p>
+            )}
+
+            <div className="cart-checkout-layout">
+              <div className="cart-checkout-left">
+                <section className="cart-delivery-card">
+                  <h2>Metody dostawy</h2>
+                  <div className="cart-delivery-options">
+                    {DELIVERY_METHODS.map((method) => (
+                      <label
+                        key={method.id}
+                        className={`cart-delivery-option ${deliveryMethod === method.id ? "is-active" : ""}`}
+                      >
+                        <input
+                          type="radio"
+                          name="delivery-method"
+                          value={method.id}
+                          checked={deliveryMethod === method.id}
+                          onChange={() => setDeliveryMethod(method.id)}
+                          disabled={!!orderState}
+                        />
+                        <span className="cart-delivery-option-copy">
+                          <strong>{method.label}</strong>
+                          <small>{method.description}</small>
+                        </span>
+                        <span className="cart-delivery-option-price">Gratis</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="cart-checkout-form-card">
+                  <h2>Dane adresowe i kontaktowe</h2>
+                  <form id="checkout-form" className="cart-checkout-form" onSubmit={handleSubmit}>
+                    <fieldset disabled={!!orderState}>
+                      <div className="cart-checkout-form-grid">
+                        <label>
+                          Imię i nazwisko
+                          <input
+                            value={form.name}
+                            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                            required
+                          />
+                        </label>
+                        <label>
+                          Telefon
+                          <input
+                            value={form.phone}
+                            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                          />
+                        </label>
+                        <label>
+                          E-mail
+                          <input
+                            type="email"
+                            value={form.email}
+                            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                          />
+                        </label>
+                        <label>
+                          Miasto
+                          <input
+                            value={form.city}
+                            onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
+                          />
+                        </label>
+                        <label>
+                          Kod pocztowy
+                          <input
+                            value={form.postcode}
+                            onChange={(event) => setForm((current) => ({ ...current, postcode: event.target.value }))}
+                          />
+                        </label>
+                        <label>
+                          Adres
+                          <input
+                            value={form.address1}
+                            onChange={(event) => setForm((current) => ({ ...current, address1: event.target.value }))}
+                          />
+                        </label>
+                      </div>
+                      <label className="cart-checkout-note-field">
+                        Dodatkowe informacje
+                        <textarea
+                          value={form.note}
+                          onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+                        />
+                      </label>
+                    </fieldset>
+                  </form>
+                </section>
+              </div>
+
+              <aside className="cart-checkout-right">
+                <section className="cart-payment-card">
+                  <h2>Płatność</h2>
+                  {items.length > 0 ? (
+                    <div className="cart-page-summary-row">
+                      <span>
+                        {summary.items} {summary.items === 1 ? "produkt" : "produktów"}
+                      </span>
+                      <strong>{formatPln(summary.total)}</strong>
+                    </div>
+                  ) : null}
+
+                  {orderState ? (
+                    <>
+                      <p className="cart-page-order-note">
+                        Zamówienie <strong>{orderState.orderCode}</strong> utworzone. Wgląd do zamówienia będzie
+                        wymagał telefonu albo e-maila podanego w formularzu.
+                      </p>
+                      {orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
+                        <PaymentStep
+                          clientSecret={orderState.clientSecret}
+                          publishableKey={orderState.publishableKey}
+                          orderCode={orderState.orderCode}
+                        />
+                      ) : (
+                        <div className="cart-page-checkout-note">
+                          Płatność online nie jest jeszcze skonfigurowana w tym środowisku. Zamówienie zapisaliśmy
+                          pod numerem <strong>{orderState.orderCode}</strong> - skontaktujemy się, aby dokończyć
+                          płatność.
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="cart-checkout-intro">
+                        Dane zamówienia zapisują się w CRM, a płatność jest obsługiwana przez Stripe.
+                      </p>
+                      {error ? <div className="cart-checkout-error">{error}</div> : null}
+                      <button
+                        type="submit"
+                        form="checkout-form"
+                        className="cart-page-checkout-cta"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Tworzymy zamówienie…" : "Utwórz zamówienie i przejdź do płatności"}
+                      </button>
+                    </>
+                  )}
+                </section>
+              </aside>
             </div>
           </>
         )}
