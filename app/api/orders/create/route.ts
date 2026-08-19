@@ -38,14 +38,6 @@ export async function POST(request: Request) {
         ok: true,
         order: crmJson.order,
         payment_enabled: false,
-        _debug: {
-          has_stripe: !!stripe,
-          has_publishable_key: !!publishableKey,
-          publishable_key_len: publishableKey.length,
-          secret_key_env_present: !!process.env.STRIPE_SECRET_KEY,
-          secret_key_env_len: (process.env.STRIPE_SECRET_KEY || "").length,
-          amount_total: crmJson.order.amount_total,
-        },
       });
     }
 
