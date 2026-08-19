@@ -23,8 +23,21 @@ type OrderCreateResponse = {
     currency: string;
   };
   payment_enabled?: boolean;
+  payment_provider?: string;
   publishable_key?: string;
   client_secret?: string;
+  error?: string;
+};
+
+type CodSmsStartResponse = {
+  ok: boolean;
+  verification_token?: string;
+  error?: string;
+};
+
+type CodSmsVerifyResponse = {
+  ok: boolean;
+  verified?: boolean;
   error?: string;
 };
 
@@ -65,6 +78,10 @@ const PACZKOMAT_METHOD: DeliveryMethod = {
   description: "Odbiór z wybranego automatu paczkowego",
 };
 
+// Cash-on-delivery is a flat one-time surcharge on top of the order, not a
+// per-item fee - the courier collects it once for the whole parcel.
+const COD_SURCHARGE_AMOUNT = 25.9;
+
 function getAvailableDeliveryMethods(items: CartLineItem[]): DeliveryMethod[] {
   const fitsPaczkomat =
     items.length > 0 &&
@@ -78,12 +95,20 @@ function calcOrderSurcharge(items: CartLineItem[]): number {
   return items.reduce((max, item) => Math.max(max, item.oversizeSurchargeAmount || 0), 0);
 }
 
+type ExtraCharge = {
+  id: string;
+  slug: string;
+  label: string;
+  amount: number;
+  summary: string;
+};
+
 // Real checkout, reusing the exact quote -> order -> Stripe pipeline the
 // saved-quote flow already uses (see app/wycena/[quoteCode]/quote-checkout.tsx):
 // the cart's line items become one quote's "positions" (that field already
 // supports multiple items), quote_save.php returns a quote_code, then
 // /api/orders/create + Stripe work exactly as they do there.
-function buildQuotePayloadFromCart(items: CartLineItem[]) {
+function buildQuotePayloadFromCart(items: CartLineItem[], extraCharges: ExtraCharge[] = []) {
   const positions = items.map((item, index) => {
     const specs = [
       item.hardwareLabel ? `profil ${item.hardwareLabel}` : "",
@@ -112,25 +137,27 @@ function buildQuotePayloadFromCart(items: CartLineItem[]) {
     };
   });
 
-  // One-time oversized-parcel surcharge for the whole order, as its own
-  // quote position so it's transparent in the CRM and included in the total
-  // actually charged - not folded invisibly into one item's price.
-  const orderSurcharge = calcOrderSurcharge(items);
-  if (orderSurcharge > 0) {
+  // One-time surcharges for the whole order (oversized parcel, cash-on-
+  // delivery fee, ...), each as its own quote position so they're transparent
+  // in the CRM and included in the total actually charged - not folded
+  // invisibly into one item's price.
+  for (const extra of extraCharges) {
+    if (extra.amount <= 0) continue;
     positions.push({
-      id: "position-oversize-surcharge",
-      product_slug: "doplata-przesylka-dlugosciowa",
-      product_label: "Dopłata za przesyłkę długościową",
+      id: extra.id,
+      product_slug: extra.slug,
+      product_label: extra.label,
       quantity: 1,
       purchase_units: null,
-      total_amount: orderSurcharge.toFixed(2),
+      total_amount: extra.amount.toFixed(2),
       currency: "PLN",
-      summary: "Dopłata za przesyłkę długościową (jednorazowo dla całego zamówienia)",
+      summary: extra.summary,
       summary_rows: [],
     });
   }
 
-  const totalAmount = items.reduce((sum, item) => sum + item.total, 0) + orderSurcharge;
+  const extraTotal = extraCharges.reduce((sum, extra) => sum + (extra.amount > 0 ? extra.amount : 0), 0);
+  const totalAmount = items.reduce((sum, item) => sum + item.total, 0) + extraTotal;
 
   return {
     quote_code: "",
@@ -224,14 +251,24 @@ export default function CartPage() {
   const [nipLookupError, setNipLookupError] = useState("");
   const lastLookedUpNip = useRef("");
 
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("online");
+  const [codSms, setCodSms] = useState<{
+    status: "idle" | "sending" | "sent" | "verifying" | "verified" | "error";
+    token: string;
+    code: string;
+    error: string;
+  }>({ status: "idle", token: "", code: "", error: "" });
+
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittedRef = useRef(false);
   const [orderState, setOrderState] = useState<{
     orderCode: string;
+    amountTotal: string | null;
     clientSecret?: string;
     publishableKey?: string;
     paymentEnabled: boolean;
+    paymentProvider: string;
   } | null>(null);
 
   const sync = useCallback(() => {
@@ -306,7 +343,62 @@ export default function CartPage() {
   const contactReady = form.name.trim() !== "" && (form.phone.trim() !== "" || form.email.trim() !== "");
   const addressReady = !requiresAddress || (form.city.trim() !== "" && form.address1.trim() !== "");
   const invoiceReady = !wantsInvoice || (invoice.nip.trim().length === 10 && invoice.companyName.trim() !== "");
-  const checkoutReady = contactReady && addressReady && invoiceReady && items.length > 0;
+  // The payment section itself is always rendered (see JSX below) - this
+  // just controls whether it's locked/greyed out or interactive.
+  const deliveryDataReady = contactReady && addressReady && invoiceReady && items.length > 0;
+  const paymentReady = paymentMethod === "online" || codSms.status === "verified";
+  const checkoutReady = deliveryDataReady && paymentReady;
+
+  // Switching payment method invalidates any in-progress/verified SMS code
+  // for cash-on-delivery - start that mini-flow over.
+  useEffect(() => {
+    setCodSms({ status: "idle", token: "", code: "", error: "" });
+  }, [paymentMethod]);
+
+  async function sendCodSms() {
+    setCodSms({ status: "sending", token: "", code: "", error: "" });
+    try {
+      const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/cod_sms_start.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: form.phone, name: form.name }),
+      });
+      const json = (await response.json()) as CodSmsStartResponse;
+      if (!json.ok || !json.verification_token) {
+        throw new Error(json.error || "Nie udało się wysłać kodu SMS.");
+      }
+      setCodSms({ status: "sent", token: json.verification_token, code: "", error: "" });
+    } catch (smsError) {
+      setCodSms({
+        status: "error",
+        token: "",
+        code: "",
+        error: smsError instanceof Error ? smsError.message : "Nie udało się wysłać kodu SMS.",
+      });
+    }
+  }
+
+  async function verifyCodSms() {
+    setCodSms((current) => ({ ...current, status: "verifying", error: "" }));
+    try {
+      const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/cod_sms_verify.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verification_token: codSms.token, phone: form.phone, code: codSms.code }),
+      });
+      const json = (await response.json()) as CodSmsVerifyResponse;
+      if (!json.ok || !json.verified) {
+        throw new Error(json.error || "Niepoprawny kod SMS.");
+      }
+      setCodSms((current) => ({ ...current, status: "verified", error: "" }));
+    } catch (smsError) {
+      setCodSms((current) => ({
+        ...current,
+        status: "sent",
+        error: smsError instanceof Error ? smsError.message : "Niepoprawny kod SMS.",
+      }));
+    }
+  }
 
   const submitOrder = useCallback(async () => {
     if (submittedRef.current) return;
@@ -314,13 +406,36 @@ export default function CartPage() {
     setError("");
     setIsSubmitting(true);
     try {
-      const quotePayload = buildQuotePayloadFromCart(items);
+      const extraCharges: ExtraCharge[] = [
+        {
+          id: "position-oversize-surcharge",
+          slug: "doplata-przesylka-dlugosciowa",
+          label: "Dopłata za przesyłkę długościową",
+          amount: orderSurcharge,
+          summary: "Dopłata za przesyłkę długościową (jednorazowo dla całego zamówienia)",
+        },
+        {
+          id: "position-cod-fee",
+          slug: "doplata-platnosc-za-pobraniem",
+          label: "Dopłata za płatność za pobraniem",
+          amount: paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0,
+          summary: "Dopłata za płatność za pobraniem",
+        },
+      ];
+      const quotePayload = buildQuotePayloadFromCart(items, extraCharges);
       const quoteResponse = await saveShopQuote(quotePayload);
       const quoteCode = quoteResponse.quote.quote_code;
 
       const deliveryLabel =
         [...BASE_DELIVERY_METHODS, PACZKOMAT_METHOD].find((method) => method.id === deliveryMethod)?.label || "";
-      const noteWithDelivery = [`Metoda dostawy: ${deliveryLabel}`, form.note.trim()].filter(Boolean).join("\n\n");
+      const paymentLabel = paymentMethod === "cod" ? "Za pobraniem" : "Online (Stripe)";
+      const noteWithDelivery = [
+        `Metoda dostawy: ${deliveryLabel}`,
+        `Metoda płatności: ${paymentLabel}`,
+        form.note.trim(),
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
       const response = await fetch("/api/orders/create", {
         method: "POST",
@@ -343,6 +458,9 @@ export default function CartPage() {
               }
             : null,
           note_text: noteWithDelivery,
+          payment_provider: paymentMethod === "cod" ? "cod" : "stripe",
+          payment_method: paymentMethod === "cod" ? "cod" : "",
+          ...(paymentMethod === "cod" ? { cod_sms_verification_token: codSms.token } : {}),
         }),
       });
       const json = (await response.json()) as OrderCreateResponse;
@@ -352,9 +470,11 @@ export default function CartPage() {
 
       setOrderState({
         orderCode: json.order.order_code,
+        amountTotal: json.order.amount_total,
         clientSecret: json.client_secret,
         publishableKey: json.publishable_key,
         paymentEnabled: Boolean(json.payment_enabled && json.client_secret && json.publishable_key),
+        paymentProvider: json.payment_provider || (paymentMethod === "cod" ? "cod" : "stripe"),
       });
       clearCart();
       setItems([]);
@@ -364,17 +484,23 @@ export default function CartPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [items, deliveryMethod, form, wantsInvoice, invoice]);
+  }, [items, deliveryMethod, form, wantsInvoice, invoice, paymentMethod, codSms.token, orderSurcharge]);
 
-  // No "przejdź do płatności" button - the payment panel opens on its own
-  // once the required fields are filled in, after a short pause in typing.
+  // No "przejdź do płatności" button - for online payment, the payment panel
+  // opens on its own once the required fields are filled in, after a short
+  // pause in typing; for cash-on-delivery, it fires the instant the SMS code
+  // is verified (see the payment method section below).
   useEffect(() => {
     if (orderState || isSubmitting || !checkoutReady) return;
+    if (paymentMethod === "cod") {
+      void submitOrder();
+      return;
+    }
     const timer = window.setTimeout(() => {
       void submitOrder();
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [checkoutReady, orderState, isSubmitting, submitOrder]);
+  }, [checkoutReady, orderState, isSubmitting, paymentMethod, submitOrder]);
 
   return (
     <div className="cart-page">
@@ -642,11 +768,63 @@ export default function CartPage() {
                           <span>{formatPln(orderSurcharge)}</span>
                         </div>
                       ) : null}
+                      {paymentMethod === "cod" ? (
+                        <div className="cart-page-summary-row is-muted">
+                          <span>Dopłata za płatność za pobraniem</span>
+                          <span>{formatPln(COD_SURCHARGE_AMOUNT)}</span>
+                        </div>
+                      ) : null}
                       <div className="cart-page-summary-row">
                         <span>Razem</span>
-                        <strong>{formatPln(summary.total + orderSurcharge)}</strong>
+                        <strong>
+                          {formatPln(summary.total + orderSurcharge + (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0))}
+                        </strong>
                       </div>
                     </>
+                  ) : null}
+
+                  {/* Always rendered from the first paint, per design - just
+                      locked/greyed out until the delivery data on the left is
+                      complete, rather than appearing only once everything's
+                      filled in. */}
+                  {!orderState ? (
+                    <div className={`cart-payment-methods ${deliveryDataReady ? "" : "is-locked"}`}>
+                      <p className="cart-payment-methods-label">Metoda płatności</p>
+                      <label className={`cart-payment-method-option ${paymentMethod === "online" ? "is-active" : ""}`}>
+                        <input
+                          type="radio"
+                          name="payment-method"
+                          value="online"
+                          checked={paymentMethod === "online"}
+                          onChange={() => setPaymentMethod("online")}
+                          disabled={!deliveryDataReady}
+                        />
+                        <span className="cart-payment-method-copy">
+                          <strong>Płatność online</strong>
+                          <small>Karta, BLIK, Google Pay, Apple Pay, przelew</small>
+                        </span>
+                      </label>
+                      <label className={`cart-payment-method-option ${paymentMethod === "cod" ? "is-active" : ""}`}>
+                        <input
+                          type="radio"
+                          name="payment-method"
+                          value="cod"
+                          checked={paymentMethod === "cod"}
+                          onChange={() => setPaymentMethod("cod")}
+                          disabled={!deliveryDataReady}
+                        />
+                        <span className="cart-payment-method-copy">
+                          <strong>Płatność za pobraniem</strong>
+                          <small>Płacisz kurierowi przy odbiorze</small>
+                        </span>
+                        <span className="cart-delivery-option-price">+{formatPln(COD_SURCHARGE_AMOUNT)}</span>
+                      </label>
+                      {!deliveryDataReady ? (
+                        <p className="cart-payment-methods-hint">
+                          Uzupełnij dane po lewej (imię i nazwisko, kontakt, adres), aby wybrać płatność.
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
 
                   {orderState ? (
@@ -661,6 +839,12 @@ export default function CartPage() {
                           publishableKey={orderState.publishableKey}
                           orderCode={orderState.orderCode}
                         />
+                      ) : orderState.paymentProvider === "cod" ? (
+                        <div className="cart-page-checkout-note">
+                          Zamówienie przyjęte z płatnością za pobraniem. Kurier odbierze{" "}
+                          <strong>{orderState.amountTotal ? formatPln(Number(orderState.amountTotal)) : "kwotę zamówienia"}</strong>{" "}
+                          przy dostawie.
+                        </div>
                       ) : (
                         <div className="cart-page-checkout-note">
                           Płatność online nie jest jeszcze skonfigurowana w tym środowisku. Zamówienie zapisaliśmy
@@ -669,7 +853,7 @@ export default function CartPage() {
                         </div>
                       )}
                     </>
-                  ) : (
+                  ) : !deliveryDataReady ? null : paymentMethod === "online" ? (
                     <>
                       {error ? <div className="cart-checkout-error">{error}</div> : null}
                       {isSubmitting ? (
@@ -678,13 +862,69 @@ export default function CartPage() {
                           Przygotowujemy płatność…
                         </div>
                       ) : (
-                        <p className="cart-checkout-intro">
-                          {checkoutReady
-                            ? "Płatność otworzy się za chwilę…"
-                            : "Uzupełnij dane po lewej (imię i nazwisko, kontakt, adres), aby przejść do płatności."}
-                        </p>
+                        <p className="cart-checkout-intro">Płatność otworzy się za chwilę…</p>
                       )}
                     </>
+                  ) : (
+                    <div className="cart-cod-sms">
+                      {error ? <div className="cart-checkout-error">{error}</div> : null}
+                      {codSms.status === "idle" || codSms.status === "error" ? (
+                        <>
+                          <p className="cart-checkout-intro">
+                            Aby potwierdzić zamówienie za pobraniem, wyślemy kod SMS na numer{" "}
+                            <strong>{form.phone || "—"}</strong>.
+                          </p>
+                          {codSms.error ? <div className="cart-checkout-error">{codSms.error}</div> : null}
+                          <button
+                            type="button"
+                            className="cart-page-checkout-cta"
+                            onClick={() => void sendCodSms()}
+                            disabled={!form.phone.trim()}
+                          >
+                            Wyślij kod SMS
+                          </button>
+                        </>
+                      ) : codSms.status === "sending" ? (
+                        <div className="cart-payment-waiting">
+                          <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                          Wysyłamy SMS…
+                        </div>
+                      ) : codSms.status === "verified" ? (
+                        <div className="cart-payment-waiting">
+                          <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                          Potwierdzamy zamówienie…
+                        </div>
+                      ) : (
+                        <>
+                          <p className="cart-checkout-intro">
+                            Wpisz 6-cyfrowy kod z SMS wysłanego na <strong>{form.phone}</strong>.
+                          </p>
+                          {codSms.error ? <div className="cart-checkout-error">{codSms.error}</div> : null}
+                          <input
+                            inputMode="numeric"
+                            placeholder="123456"
+                            value={codSms.code}
+                            onChange={(event) =>
+                              setCodSms((current) => ({
+                                ...current,
+                                code: event.target.value.replace(/\D/g, "").slice(0, 6),
+                              }))
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="cart-page-checkout-cta"
+                            onClick={() => void verifyCodSms()}
+                            disabled={codSms.code.length !== 6 || codSms.status === "verifying"}
+                          >
+                            {codSms.status === "verifying" ? "Sprawdzamy…" : "Potwierdź kod"}
+                          </button>
+                          <button type="button" className="cart-cod-resend" onClick={() => void sendCodSms()}>
+                            Wyślij nowy kod
+                          </button>
+                        </>
+                      )}
+                    </div>
                   )}
                 </section>
               </aside>

@@ -5,12 +5,17 @@ import { getStripePublishableKey, getStripeServer } from "@/lib/stripe";
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
+    // Respect the payment method the client actually chose (e.g. "cod" for
+    // cash-on-delivery) instead of forcing "stripe" - the CRM's order_create
+    // branches on this (see shop_public_orders_create()'s COD/SMS check).
+    const paymentProvider =
+      typeof payload.payment_provider === "string" && payload.payment_provider ? payload.payment_provider : "stripe";
     const crmResponse = await fetch(`${crmBaseUrl}/biuro/api/shop-public/order_create`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...payload,
-        payment_provider: "stripe",
+        payment_provider: paymentProvider,
       }),
       cache: "no-store",
     });
@@ -31,6 +36,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Cash-on-delivery orders are already confirmed in the CRM once the SMS
+    // code is verified (see order_create.php) - there's no card payment to
+    // set up, so skip Stripe entirely.
+    if (paymentProvider === "cod") {
+      return NextResponse.json({
+        ok: true,
+        order: crmJson.order,
+        payment_enabled: false,
+        payment_provider: "cod",
+      });
+    }
+
     const stripe = getStripeServer();
     const publishableKey = getStripePublishableKey();
     if (!stripe || !publishableKey || !crmJson.order.amount_total) {
@@ -38,6 +55,7 @@ export async function POST(request: Request) {
         ok: true,
         order: crmJson.order,
         payment_enabled: false,
+        payment_provider: "stripe",
       });
     }
 
@@ -74,6 +92,7 @@ export async function POST(request: Request) {
       ok: true,
       order: crmJson.order,
       payment_enabled: true,
+      payment_provider: "stripe",
       client_secret: intent.client_secret,
       publishable_key: publishableKey,
     });

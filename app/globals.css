@@ -5324,6 +5324,107 @@ html[data-theme="light"] .mobile-fixed-cta {
   color: rgba(240, 248, 255, 0.6);
 }
 
+.cart-payment-methods {
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.2rem;
+  transition: opacity 0.2s ease;
+}
+
+.cart-payment-methods.is-locked {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.cart-payment-methods-label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(240, 248, 255, 0.5);
+}
+
+.cart-payment-method-option {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(229, 241, 255, 0.18);
+  background: rgba(240, 248, 255, 0.04);
+  padding: 0.65rem 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.cart-payment-method-option:hover {
+  border-color: rgba(229, 241, 255, 0.36);
+}
+
+.cart-payment-method-option.is-active {
+  border-color: rgba(111, 227, 191, 0.7);
+  background: rgba(44, 157, 130, 0.14);
+}
+
+.cart-payment-method-option input {
+  flex: 0 0 auto;
+  accent-color: #2c9d82;
+}
+
+.cart-payment-method-copy {
+  display: grid;
+  gap: 0.1rem;
+  flex: 1;
+}
+
+.cart-payment-method-copy strong {
+  color: #f2f7ff;
+  font-size: 0.9rem;
+}
+
+.cart-payment-method-copy small {
+  color: rgba(240, 248, 255, 0.6);
+  font-size: 0.76rem;
+}
+
+.cart-payment-methods-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: rgba(240, 248, 255, 0.5);
+}
+
+.cart-cod-sms {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.cart-cod-sms input {
+  border-radius: 0.6rem;
+  border: 1px solid rgba(229, 241, 255, 0.2);
+  background: rgba(240, 248, 255, 0.06);
+  color: #f2f7ff;
+  padding: 0.6rem 0.8rem;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.cart-cod-resend {
+  border: none;
+  background: none;
+  color: rgba(240, 248, 255, 0.6);
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  justify-self: center;
+}
+
+.cart-cod-resend:hover {
+  color: #6fe3bf;
+}
+
 .cart-delivery-note {
   margin: 0.6rem 0 0;
   font-size: 0.76rem;
