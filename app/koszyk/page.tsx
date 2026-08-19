@@ -485,7 +485,7 @@ export default function CartPage() {
 
                 <section className="cart-checkout-form-card">
                   <h2>Adres wysyłki</h2>
-                  <fieldset disabled={!!orderState}>
+                  <fieldset className="cart-checkout-form" disabled={!!orderState}>
                     <div className="cart-checkout-form-grid">
                       <label>
                         Imię i nazwisko
