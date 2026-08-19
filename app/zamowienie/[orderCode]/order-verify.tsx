@@ -1,14 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
 import type { PublicOrder } from "@/lib/shop-public";
+import { clearCart } from "@/lib/cart";
 
 export default function OrderVerify({ orderCode }: { orderCode: string }) {
   const [verifier, setVerifier] = useState("");
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Landing here straight from Stripe's redirect (BLIK, wallets, ... - any
+  // method that couldn't confirm inline on /koszyk) is the actual "payment
+  // went through" moment for those methods, so the cart only clears now,
+  // not back when the order was merely drafted.
+  useEffect(() => {
+    const redirectStatus = searchParams.get("redirect_status");
+    if (searchParams.get("from_payment") === "1" && (redirectStatus === "succeeded" || redirectStatus === "processing")) {
+      clearCart();
+    }
+  }, [searchParams]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

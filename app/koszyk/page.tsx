@@ -194,20 +194,22 @@ function PaymentStep({
   clientSecret,
   publishableKey,
   orderCode,
+  onPaid,
 }: {
   clientSecret: string;
   publishableKey: string;
   orderCode: string;
+  onPaid: () => void;
 }) {
   const stripePromise = loadStripe(publishableKey);
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <StripePaymentStep orderCode={orderCode} />
+      <StripePaymentStep orderCode={orderCode} onPaid={onPaid} />
     </Elements>
   );
 }
 
-function StripePaymentStep({ orderCode }: { orderCode: string }) {
+function StripePaymentStep({ orderCode, onPaid }: { orderCode: string; onPaid: () => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -217,16 +219,27 @@ function StripePaymentStep({ orderCode }: { orderCode: string }) {
     if (!stripe || !elements) return;
     setIsSubmitting(true);
     setError("");
+    // "if_required" keeps the customer on this page (and the order only
+    // becomes real to them) once the payment has actually gone through -
+    // only redirect-based methods (BLIK, wallets, ...) leave the page, in
+    // which case /zamowienie/[orderCode] takes over the "paid" handling.
     const result = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/zamowienie/${encodeURIComponent(orderCode)}?from_payment=1`,
       },
+      redirect: "if_required",
     });
     if (result.error) {
       setError(result.error.message || "Nie udało się rozpocząć płatności.");
       setIsSubmitting(false);
+      return;
     }
+    if (result.paymentIntent && (result.paymentIntent.status === "succeeded" || result.paymentIntent.status === "processing")) {
+      onPaid();
+      return;
+    }
+    setIsSubmitting(false);
   }
 
   return (
@@ -283,6 +296,12 @@ export default function CartPage() {
     paymentEnabled: boolean;
     paymentProvider: string;
   } | null>(null);
+  // For online payment, picking a delivery method and filling in the address
+  // only drafts the order - it isn't real until the card/BLIK/... payment
+  // actually goes through, so the cart stays intact until then. Cash-on-
+  // delivery has no separate payment step, so it's "paid" the moment the
+  // order is created (see submitOrder below).
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   const sync = useCallback(() => {
     setItems(readCartItems());
@@ -494,8 +513,14 @@ export default function CartPage() {
         paymentEnabled: Boolean(json.payment_enabled && json.client_secret && json.publishable_key),
         paymentProvider: json.payment_provider || (paymentMethod === "cod" ? "cod" : "stripe"),
       });
-      clearCart();
-      setItems([]);
+      // Cash-on-delivery has no further payment step - the order is real the
+      // moment it's created. Online payment isn't real yet at this point;
+      // the cart only clears once StripePaymentStep reports success (or a
+      // payment_enabled:false fallback, handled below).
+      if (paymentMethod === "cod" || !Boolean(json.payment_enabled && json.client_secret && json.publishable_key)) {
+        clearCart();
+        setItems([]);
+      }
     } catch (submitError) {
       submittedRef.current = false;
       setError(submitError instanceof Error ? submitError.message : "Wystąpił błąd.");
@@ -563,7 +588,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => handleQtyChange(item.id, item.qty - 1)}
-                        disabled={item.qty <= 1}
+                        disabled={item.qty <= 1 || !!orderState}
                         aria-label="Zmniejsz ilość"
                       >
                         −
@@ -572,6 +597,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => handleQtyChange(item.id, item.qty + 1)}
+                        disabled={!!orderState}
                         aria-label="Zwiększ ilość"
                       >
                         +
@@ -582,6 +608,7 @@ export default function CartPage() {
                       type="button"
                       className="cart-page-item-remove"
                       onClick={() => handleRemove(item.id)}
+                      disabled={!!orderState}
                       aria-label="Usuń pozycję"
                     >
                       Usuń
@@ -815,22 +842,45 @@ export default function CartPage() {
 
                   {orderState ? (
                     <>
-                      <p className="cart-page-order-note">
-                        Zamówienie <strong>{orderState.orderCode}</strong> utworzone. Wgląd do zamówienia będzie
-                        wymagał telefonu albo e-maila podanego w formularzu.
-                      </p>
-                      {orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
-                        <PaymentStep
-                          clientSecret={orderState.clientSecret}
-                          publishableKey={orderState.publishableKey}
-                          orderCode={orderState.orderCode}
-                        />
-                      ) : orderState.paymentProvider === "cod" ? (
-                        <div className="cart-page-checkout-note">
-                          Zamówienie przyjęte z płatnością za pobraniem. Kurier odbierze{" "}
-                          <strong>{orderState.amountTotal ? formatPln(Number(orderState.amountTotal)) : "kwotę zamówienia"}</strong>{" "}
-                          przy dostawie.
-                        </div>
+                      {orderState.paymentProvider === "cod" ? (
+                        <>
+                          <p className="cart-page-order-note">
+                            Zamówienie <strong>{orderState.orderCode}</strong> utworzone. Wgląd do zamówienia będzie
+                            wymagał telefonu albo e-maila podanego w formularzu.
+                          </p>
+                          <div className="cart-page-checkout-note">
+                            Zamówienie przyjęte z płatnością za pobraniem. Kurier odbierze{" "}
+                            <strong>
+                              {orderState.amountTotal ? formatPln(Number(orderState.amountTotal)) : "kwotę zamówienia"}
+                            </strong>{" "}
+                            przy dostawie.
+                          </div>
+                        </>
+                      ) : paymentConfirmed ? (
+                        <>
+                          <p className="cart-page-order-note">
+                            Płatność zakończona sukcesem - dziękujemy! Zamówienie <strong>{orderState.orderCode}</strong>{" "}
+                            jest potwierdzone. Wgląd do zamówienia będzie wymagał telefonu albo e-maila podanego w
+                            formularzu.
+                          </p>
+                        </>
+                      ) : orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
+                        <>
+                          <p className="cart-checkout-intro">
+                            Zamówienie <strong>{orderState.orderCode}</strong> zapisane jako wstępne - nie jest jeszcze
+                            złożone. Dokończ płatność poniżej, aby je potwierdzić.
+                          </p>
+                          <PaymentStep
+                            clientSecret={orderState.clientSecret}
+                            publishableKey={orderState.publishableKey}
+                            orderCode={orderState.orderCode}
+                            onPaid={() => {
+                              clearCart();
+                              setItems([]);
+                              setPaymentConfirmed(true);
+                            }}
+                          />
+                        </>
                       ) : (
                         <div className="cart-page-checkout-note">
                           Płatność online nie jest jeszcze skonfigurowana w tym środowisku. Zamówienie zapisaliśmy
