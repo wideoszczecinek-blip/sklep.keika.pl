@@ -1891,11 +1891,6 @@ export default function Home() {
                                     );
                                   })}
                                 </div>
-                                <p className="allegro-rating-distribution-note">
-                                  Rozkład ocen jest zbiorczy i realny. Kliknięcie liczby gwiazdek filtruje niżej
-                                  wyróżnione opinie z tekstem — ich ocena w gwiazdkach jest oceną szacowaną na
-                                  podstawie treści (opisano niżej), a nie liczbą przypisaną do rozkładu powyżej.
-                                </p>
                               </div>
                             ) : allegroRatingLoading ? (
                               <p className="allegro-rating-loading">Wczytujemy ocenę…</p>

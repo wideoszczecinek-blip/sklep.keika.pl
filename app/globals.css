@@ -1537,13 +1537,6 @@ a {
   color: #f2f7ff;
 }
 
-.allegro-rating-distribution-note {
-  margin: 0.2rem 0 0;
-  font-size: 0.72rem;
-  line-height: 1.4;
-  color: rgba(240, 248, 255, 0.5);
-}
-
 .hero-product-reviews-filter-bar {
   display: flex;
   align-items: center;
