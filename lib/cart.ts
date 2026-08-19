@@ -23,6 +23,10 @@ export type CartLineItem = {
   total: number; // price * qty
   imageUrl?: string;
   createdAt: string;
+  /** One-time oversized-parcel surcharge (zł) this item's dimensions require,
+   * 0/undefined if none. Charged once per order, not once per item - see
+   * app/koszyk/page.tsx. */
+  oversizeSurchargeAmount?: number;
 };
 
 export type CartSummary = {
@@ -78,6 +82,7 @@ export function readCartItems(): CartLineItem[] {
         total: Number.isFinite(total) ? total : 0,
         imageUrl: row.imageUrl ? String(row.imageUrl) : undefined,
         createdAt: String(row.createdAt ?? new Date().toISOString()),
+        oversizeSurchargeAmount: Number(row.oversizeSurchargeAmount ?? 0) || 0,
       } satisfies CartLineItem;
     });
 }

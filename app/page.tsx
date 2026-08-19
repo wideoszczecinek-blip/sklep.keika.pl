@@ -505,6 +505,31 @@ function moskBilledMeters(perimeterMeters: number): number {
   return Math.max(1, Math.ceil(perimeterMeters));
 }
 
+// Oversize handling for moskitiery-ramkowe dimensions:
+// - Neither dimension may exceed OVERSIZE_TECHNICAL_LIMIT_MM at the same
+//   time as the other (a hard technical/manufacturing limit, no way around it).
+// - Above OVERSIZE_SURCHARGE_THRESHOLD_MM on either dimension, the shipment
+//   becomes an oversized ("długościowa") parcel and needs a one-time
+//   surcharge for the whole order, tiered by the largest dimension involved.
+const OVERSIZE_TECHNICAL_LIMIT_MM = 1580;
+const OVERSIZE_SURCHARGE_THRESHOLD_MM = 1500;
+const OVERSIZE_SURCHARGE_TIER_1_MAX_MM = 2000;
+const OVERSIZE_SURCHARGE_TIER_2_MAX_MM = 2300;
+const OVERSIZE_SURCHARGE_TIER_1_AMOUNT = 19.9;
+const OVERSIZE_SURCHARGE_TIER_2_AMOUNT = 29;
+// Paczkomat InPost only fits parcels where neither dimension exceeds this -
+// used on /koszyk to decide whether to offer it at all.
+const PACZKOMAT_MAX_DIMENSION_MM = 640;
+
+/** Returns the one-time surcharge (zł) required for a given max dimension,
+ * 0 if none needed, or -1 if the dimension is beyond the supported range. */
+function moskOversizeSurchargeForDimension(maxDimMm: number): number {
+  if (maxDimMm <= OVERSIZE_SURCHARGE_THRESHOLD_MM) return 0;
+  if (maxDimMm <= OVERSIZE_SURCHARGE_TIER_1_MAX_MM) return OVERSIZE_SURCHARGE_TIER_1_AMOUNT;
+  if (maxDimMm <= OVERSIZE_SURCHARGE_TIER_2_MAX_MM) return OVERSIZE_SURCHARGE_TIER_2_AMOUNT;
+  return -1;
+}
+
 function productSlugFromSelected(product: SelectedProductView | null): string {
   if (!product) return "";
   const raw = String(product.linkUrl || "").trim();
@@ -800,6 +825,10 @@ export default function Home() {
   const [dimensionHeight, setDimensionHeight] = useState("");
   const [dimensionQuantity, setDimensionQuantity] = useState("1");
   const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
+  const [surchargeModal, setSurchargeModal] = useState<{ amount: number } | null>(null);
+  const [acceptedSurcharge, setAcceptedSurcharge] = useState<{ width: number; height: number; amount: number } | null>(
+    null,
+  );
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
   const galleryRowRef = useRef<HTMLDivElement | null>(null);
@@ -1441,8 +1470,52 @@ export default function Home() {
     // calculation change, not on every render.
   }, [hasValidDimensions, widthNum, heightNum, quantityNum]);
 
+  const bothDimensionsOverTechnicalLimit =
+    widthNum > OVERSIZE_TECHNICAL_LIMIT_MM && heightNum > OVERSIZE_TECHNICAL_LIMIT_MM;
+  const requiredSurchargeForCurrentDims = hasValidDimensions
+    ? moskOversizeSurchargeForDimension(Math.max(widthNum, heightNum))
+    : 0;
+  const surchargeSatisfied =
+    requiredSurchargeForCurrentDims <= 0 ||
+    (acceptedSurcharge !== null && acceptedSurcharge.width === widthNum && acceptedSurcharge.height === heightNum);
+  const dimensionsBlocked = bothDimensionsOverTechnicalLimit || requiredSurchargeForCurrentDims < 0 || !surchargeSatisfied;
+  const activeSurchargeAmount = surchargeSatisfied && requiredSurchargeForCurrentDims > 0 ? requiredSurchargeForCurrentDims : 0;
+
+  function handleDimensionBlur() {
+    if (!hasValidDimensions) return;
+    if (widthNum > OVERSIZE_TECHNICAL_LIMIT_MM && heightNum > OVERSIZE_TECHNICAL_LIMIT_MM) {
+      return; // shown inline near the inputs, nothing to revert here
+    }
+    const maxDim = Math.max(widthNum, heightNum);
+    const required = moskOversizeSurchargeForDimension(maxDim);
+    if (required <= 0) {
+      if (acceptedSurcharge) setAcceptedSurcharge(null);
+      return;
+    }
+    if (acceptedSurcharge && acceptedSurcharge.width === widthNum && acceptedSurcharge.height === heightNum) {
+      return;
+    }
+    if (required < 0) {
+      return; // inline "za duży wymiar" message handles this case
+    }
+    setSurchargeModal({ amount: required });
+  }
+
+  function handleAcceptSurcharge() {
+    if (!surchargeModal) return;
+    setAcceptedSurcharge({ width: widthNum, height: heightNum, amount: surchargeModal.amount });
+    setSurchargeModal(null);
+  }
+
+  function handleDeclineSurcharge() {
+    if (widthNum > OVERSIZE_SURCHARGE_THRESHOLD_MM) setDimensionWidth("");
+    if (heightNum > OVERSIZE_SURCHARGE_THRESHOLD_MM) setDimensionHeight("");
+    setSurchargeModal(null);
+  }
+
   function handleAddToCart() {
     if (!displayedProduct || dimensionUnitPrice === null || dimensionTotalPrice === null) return;
+    if (dimensionsBlocked) return;
     const slug = productSlugFromSelected(displayedProduct);
     const item: CartLineItem = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -1457,6 +1530,7 @@ export default function Home() {
       total: dimensionTotalPrice,
       imageUrl: selectedHardwareOption?.imageUrl,
       createdAt: new Date().toISOString(),
+      oversizeSurchargeAmount: activeSurchargeAmount,
     };
     const items = addCartItem(item);
     setCartItems(items);
@@ -2306,10 +2380,11 @@ export default function Home() {
                               type="number"
                               inputMode="numeric"
                               min={300}
-                              max={2000}
+                              max={2300}
                               placeholder="np. 1000"
                               value={dimensionWidth}
                               onChange={(event) => setDimensionWidth(event.target.value)}
+                              onBlur={handleDimensionBlur}
                             />
                           </label>
                           <label>
@@ -2318,10 +2393,11 @@ export default function Home() {
                               type="number"
                               inputMode="numeric"
                               min={300}
-                              max={2200}
+                              max={2300}
                               placeholder="np. 1200"
                               value={dimensionHeight}
                               onChange={(event) => setDimensionHeight(event.target.value)}
+                              onBlur={handleDimensionBlur}
                             />
                           </label>
                           <label>
@@ -2336,6 +2412,21 @@ export default function Home() {
                             />
                           </label>
                         </div>
+                        {bothDimensionsOverTechnicalLimit ? (
+                          <p className="hero-product-dimensions-error">
+                            Ten rozmiar przekracza możliwości techniczne produkcji - szerokość i wysokość nie mogą
+                            jednocześnie przekraczać 158 cm. Zmniejsz jeden z wymiarów.
+                          </p>
+                        ) : requiredSurchargeForCurrentDims < 0 ? (
+                          <p className="hero-product-dimensions-error">
+                            Maksymalny obsługiwany wymiar to 230 cm.
+                          </p>
+                        ) : activeSurchargeAmount > 0 ? (
+                          <p className="hero-product-dimensions-surcharge-note">
+                            Ten rozmiar wiąże się z jednorazową dopłatą {activeSurchargeAmount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                            za przesyłkę długościową (zaakceptowano).
+                          </p>
+                        ) : null}
                       </>
                     ) : null}
                     {hasValidDimensions ? (
@@ -2489,7 +2580,7 @@ export default function Home() {
                             type="button"
                             className="hero-product-add-to-cart"
                             onClick={handleAddToCart}
-                            disabled={isCalculatingPrice || dimensionTotalPrice === null}
+                            disabled={isCalculatingPrice || dimensionTotalPrice === null || dimensionsBlocked}
                           >
                             Dodaj do koszyka
                           </button>
@@ -2538,6 +2629,28 @@ export default function Home() {
           ) : null}
         </section>
       </main>
+      {surchargeModal ? (
+        <div className="surcharge-modal" role="dialog" aria-modal="true" aria-label="Dopłata za przesyłkę długościową">
+          <div className="surcharge-modal-shell">
+            <h3>Przesyłka długościowa</h3>
+            <p>
+              Przy tym rozmiarze zamówienie wymaga jednorazowej dopłaty logistycznej{" "}
+              <strong>
+                {surchargeModal.amount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+              </strong>{" "}
+              za przesyłkę długościową (dopłata dotyczy całego zamówienia, nie każdej pozycji osobno).
+            </p>
+            <div className="surcharge-modal-actions">
+              <button type="button" className="surcharge-modal-decline" onClick={handleDeclineSurcharge}>
+                Zmień wymiar
+              </button>
+              <button type="button" className="surcharge-modal-accept" onClick={handleAcceptSurcharge}>
+                Akceptuję dopłatę
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {zoomPreview ? (
         <div
           className="config-option-preview-modal"

@@ -46,15 +46,37 @@ type DeliveryMethod = {
   description: string;
 };
 
-// Paczkomat is out - the product doesn't fit parcel lockers. No real
-// per-carrier shipping cost data exists yet, so both couriers are shown
-// free, matching the site's existing blanket "Darmowa dostawa" promise
+// Paczkomat InPost only fits parcels where neither dimension exceeds this -
+// otherwise it's not offered at all (mirrors app/page.tsx's own limit).
+const PACZKOMAT_MAX_DIMENSION_MM = 640;
+
+// No real per-carrier shipping cost data exists yet, so every method is
+// shown free, matching the site's existing blanket "Darmowa dostawa" promise
 // rather than inventing price tiers.
-const DELIVERY_METHODS: DeliveryMethod[] = [
+const BASE_DELIVERY_METHODS: DeliveryMethod[] = [
   { id: "dpd", label: "Kurier DPD", description: "Dostawa pod wskazany adres" },
   { id: "gls", label: "Kurier GLS", description: "Dostawa pod wskazany adres" },
   { id: "odbior-osobisty", label: "Odbiór osobisty", description: "W siedzibie producenta" },
 ];
+
+const PACZKOMAT_METHOD: DeliveryMethod = {
+  id: "paczkomat",
+  label: "Paczkomat InPost",
+  description: "Odbiór z wybranego automatu paczkowego",
+};
+
+function getAvailableDeliveryMethods(items: CartLineItem[]): DeliveryMethod[] {
+  const fitsPaczkomat =
+    items.length > 0 &&
+    items.every((item) => item.widthMm <= PACZKOMAT_MAX_DIMENSION_MM && item.heightMm <= PACZKOMAT_MAX_DIMENSION_MM);
+  return fitsPaczkomat ? [...BASE_DELIVERY_METHODS.slice(0, 2), PACZKOMAT_METHOD, BASE_DELIVERY_METHODS[2]] : BASE_DELIVERY_METHODS;
+}
+
+/** One-time oversized-parcel surcharge for the whole order: the highest tier
+ * required by any item, charged once - not summed per item. */
+function calcOrderSurcharge(items: CartLineItem[]): number {
+  return items.reduce((max, item) => Math.max(max, item.oversizeSurchargeAmount || 0), 0);
+}
 
 // Real checkout, reusing the exact quote -> order -> Stripe pipeline the
 // saved-quote flow already uses (see app/wycena/[quoteCode]/quote-checkout.tsx):
@@ -90,7 +112,25 @@ function buildQuotePayloadFromCart(items: CartLineItem[]) {
     };
   });
 
-  const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
+  // One-time oversized-parcel surcharge for the whole order, as its own
+  // quote position so it's transparent in the CRM and included in the total
+  // actually charged - not folded invisibly into one item's price.
+  const orderSurcharge = calcOrderSurcharge(items);
+  if (orderSurcharge > 0) {
+    positions.push({
+      id: "position-oversize-surcharge",
+      product_slug: "doplata-przesylka-dlugosciowa",
+      product_label: "Dopłata za przesyłkę długościową",
+      quantity: 1,
+      purchase_units: null,
+      total_amount: orderSurcharge.toFixed(2),
+      currency: "PLN",
+      summary: "Dopłata za przesyłkę długościową (jednorazowo dla całego zamówienia)",
+      summary_rows: [],
+    });
+  }
+
+  const totalAmount = items.reduce((sum, item) => sum + item.total, 0) + orderSurcharge;
 
   return {
     quote_code: "",
@@ -162,7 +202,7 @@ function StripePaymentStep({ orderCode }: { orderCode: string }) {
 export default function CartPage() {
   const [items, setItems] = useState<CartLineItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const [deliveryMethod, setDeliveryMethod] = useState(DELIVERY_METHODS[0].id);
+  const [deliveryMethod, setDeliveryMethod] = useState(BASE_DELIVERY_METHODS[0].id);
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -212,6 +252,16 @@ export default function CartPage() {
   }, [sync]);
 
   const summary = summarizeCartItems(items);
+  const orderSurcharge = calcOrderSurcharge(items);
+  const availableDeliveryMethods = getAvailableDeliveryMethods(items);
+
+  useEffect(() => {
+    if (!availableDeliveryMethods.some((method) => method.id === deliveryMethod)) {
+      setDeliveryMethod(availableDeliveryMethods[0].id);
+    }
+    // Only re-check when the set of available methods actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableDeliveryMethods.map((m) => m.id).join(",")]);
 
   function handleQtyChange(id: string, nextQty: number) {
     setItems(updateCartItemQty(id, nextQty));
@@ -268,7 +318,8 @@ export default function CartPage() {
       const quoteResponse = await saveShopQuote(quotePayload);
       const quoteCode = quoteResponse.quote.quote_code;
 
-      const deliveryLabel = DELIVERY_METHODS.find((method) => method.id === deliveryMethod)?.label || "";
+      const deliveryLabel =
+        [...BASE_DELIVERY_METHODS, PACZKOMAT_METHOD].find((method) => method.id === deliveryMethod)?.label || "";
       const noteWithDelivery = [`Metoda dostawy: ${deliveryLabel}`, form.note.trim()].filter(Boolean).join("\n\n");
 
       const response = await fetch("/api/orders/create", {
@@ -403,7 +454,7 @@ export default function CartPage() {
                 <section className="cart-delivery-card">
                   <h2>Metody dostawy</h2>
                   <div className="cart-delivery-options">
-                    {DELIVERY_METHODS.map((method) => (
+                    {availableDeliveryMethods.map((method) => (
                       <label
                         key={method.id}
                         className={`cart-delivery-option ${deliveryMethod === method.id ? "is-active" : ""}`}
@@ -424,6 +475,12 @@ export default function CartPage() {
                       </label>
                     ))}
                   </div>
+                  {!availableDeliveryMethods.some((method) => method.id === "paczkomat") ? (
+                    <p className="cart-delivery-note">
+                      Paczkomat InPost jest dostępny tylko dla zamówień, w których żaden z wymiarów pozycji nie
+                      przekracza 64 cm.
+                    </p>
+                  ) : null}
                 </section>
 
                 <section className="cart-checkout-form-card">
@@ -572,12 +629,24 @@ export default function CartPage() {
                 <section className="cart-payment-card">
                   <h2>Płatność</h2>
                   {items.length > 0 ? (
-                    <div className="cart-page-summary-row">
-                      <span>
-                        {summary.items} {summary.items === 1 ? "produkt" : "produktów"}
-                      </span>
-                      <strong>{formatPln(summary.total)}</strong>
-                    </div>
+                    <>
+                      <div className="cart-page-summary-row is-muted">
+                        <span>
+                          {summary.items} {summary.items === 1 ? "produkt" : "produktów"}
+                        </span>
+                        <span>{formatPln(summary.total)}</span>
+                      </div>
+                      {orderSurcharge > 0 ? (
+                        <div className="cart-page-summary-row is-muted">
+                          <span>Dopłata za przesyłkę długościową</span>
+                          <span>{formatPln(orderSurcharge)}</span>
+                        </div>
+                      ) : null}
+                      <div className="cart-page-summary-row">
+                        <span>Razem</span>
+                        <strong>{formatPln(summary.total + orderSurcharge)}</strong>
+                      </div>
+                    </>
                   ) : null}
 
                   {orderState ? (
