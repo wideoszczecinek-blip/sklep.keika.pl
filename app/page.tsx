@@ -2116,9 +2116,11 @@ export default function Home() {
                         />
                       ) : null}
                       {selectedHardwareOption ? <strong>{selectedHardwareOption.label}</strong> : null}
-                      <span className="hero-product-step-head-chevron" aria-hidden="true">
-                        {stepOneCollapsed ? "▾" : "▴"}
-                      </span>
+                      {stepOneCollapsed ? (
+                        <span className="hero-product-step-head-change">Zmień</span>
+                      ) : (
+                        <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+                      )}
                     </span>
                   </button>
                   <div className="hero-product-step-body">
@@ -2208,9 +2210,11 @@ export default function Home() {
                             )
                           ) : null}
                           {selectedMesh ? <strong>{selectedMesh.label}</strong> : null}
-                          <span className="hero-product-step-head-chevron" aria-hidden="true">
-                            {stepTwoCollapsed ? "▾" : "▴"}
-                          </span>
+                          {stepTwoCollapsed ? (
+                            <span className="hero-product-step-head-change">Zmień</span>
+                          ) : (
+                            <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+                          )}
                         </span>
                       </button>
                       <div className="hero-product-step-body">

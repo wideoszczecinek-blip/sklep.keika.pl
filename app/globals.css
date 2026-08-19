@@ -1830,13 +1830,16 @@ a {
   top: 6.3rem;
   align-self: start;
   display: grid;
+  align-content: start;
   gap: 0.55rem;
   min-height: clamp(420px, 68vh, 780px);
   max-height: calc(100svh - 7.4rem);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+  padding: 1.1rem 1.2rem;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(229, 241, 255, 0.14);
+  background: rgba(6, 16, 28, 0.58);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 24px 48px rgba(4, 10, 20, 0.34);
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
@@ -1895,6 +1898,7 @@ a {
   justify-content: space-between;
   gap: 0.6rem;
   cursor: pointer;
+  min-height: 0;
 }
 
 .hero-product-step-head-meta {
@@ -1928,8 +1932,20 @@ a {
   opacity: 0.9;
 }
 
+.hero-product-step-head-change {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 1px solid rgba(240, 248, 255, 0.32);
+  background: rgba(240, 248, 255, 0.1);
+  color: #f2f7ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.28rem 0.62rem;
+}
+
 .hero-product-step-body {
   max-height: 560px;
+  min-height: 0;
   overflow: hidden;
   transition: max-height 0.34s ease, opacity 0.28s ease, transform 0.3s ease;
   opacity: 1;
