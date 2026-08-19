@@ -97,6 +97,10 @@ export function addCartItem(item: CartLineItem): CartLineItem[] {
   return items;
 }
 
+export function clearCart(): void {
+  writeCartItems([]);
+}
+
 export function removeCartItem(id: string): CartLineItem[] {
   const items = readCartItems().filter((item) => item.id !== id);
   writeCartItems(items);

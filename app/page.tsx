@@ -2108,6 +2108,13 @@ export default function Home() {
                       Wybierz kolor profili
                     </span>
                     <span className="hero-product-step-head-meta">
+                      {selectedHardwareOption && stepOneCollapsed ? (
+                        <span
+                          className="hero-product-step-head-swatch"
+                          style={{ backgroundImage: `url(${optimizeImageUrl(selectedHardwareOption.imageUrl, 64)})` }}
+                          aria-hidden="true"
+                        />
+                      ) : null}
                       {selectedHardwareOption ? <strong>{selectedHardwareOption.label}</strong> : null}
                       <span className="hero-product-step-head-chevron" aria-hidden="true">
                         {stepOneCollapsed ? "▾" : "▴"}
@@ -2185,6 +2192,21 @@ export default function Home() {
                           Dobierz kolor siatki
                         </span>
                         <span className="hero-product-step-head-meta">
+                          {selectedMesh && stepTwoCollapsed ? (
+                            selectedMesh.imageUrl ? (
+                              <span
+                                className="hero-product-step-head-swatch"
+                                style={{ backgroundImage: `url(${optimizeImageUrl(selectedMesh.imageUrl, 64)})` }}
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <span
+                                className="hero-product-step-head-swatch is-color-only"
+                                style={{ background: selectedMesh.color }}
+                                aria-hidden="true"
+                              />
+                            )
+                          ) : null}
                           {selectedMesh ? <strong>{selectedMesh.label}</strong> : null}
                           <span className="hero-product-step-head-chevron" aria-hidden="true">
                             {stepTwoCollapsed ? "▾" : "▴"}
