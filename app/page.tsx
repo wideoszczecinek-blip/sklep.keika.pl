@@ -1905,7 +1905,9 @@ export default function Home() {
                                   </span>
                                 </div>
                                 <div className="allegro-rating-distribution">
-                                  {allegroRating.scoreDistribution.map((entry) => {
+                                  {allegroRating.scoreDistribution
+                                    .filter((entry) => entry.stars >= 3)
+                                    .map((entry) => {
                                     const pct = allegroRating.totalResponses > 0
                                       ? Math.round((entry.count / allegroRating.totalResponses) * 100)
                                       : 0;

@@ -160,7 +160,13 @@ a {
   animation-delay: 0.8s;
 }
 
-.home-root.boot-reveal .hero-menu-glass {
+/* :not(.is-hidden) matters here: when a product is already active on load
+   (e.g. a direct /?produkt=... link), .hero-menu-glass carries .is-hidden
+   from the very first render, but this entrance animation used to run
+   unconditionally - forcing it to fade/slide into view regardless, then
+   snap back to hidden the moment boot-reveal ends and the animation stops
+   overriding .is-hidden's opacity. That flash-then-vanish was the bug. */
+.home-root.boot-reveal .hero-menu-glass:not(.is-hidden) {
   opacity: 0;
   transform: translateX(64px);
   animation: bootOfferReveal 0.76s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
