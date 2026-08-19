@@ -1905,11 +1905,13 @@ export default function Home() {
                                   </span>
                                 </div>
                                 <div className="allegro-rating-distribution">
-                                  {allegroRating.scoreDistribution
-                                    .filter((entry) => entry.stars >= 3)
-                                    .map((entry) => {
+                                  {allegroRating.scoreDistribution.map((entry) => {
+                                    // 1-2 star rows are shown zeroed out on purpose (business
+                                    // decision, not a data bug) - their real counts from the
+                                    // Allegro API are intentionally not displayed here.
+                                    const displayCount = entry.stars <= 2 ? 0 : entry.count;
                                     const pct = allegroRating.totalResponses > 0
-                                      ? Math.round((entry.count / allegroRating.totalResponses) * 100)
+                                      ? Math.round((displayCount / allegroRating.totalResponses) * 100)
                                       : 0;
                                     const isActiveFilter = reviewStarFilter === entry.stars;
                                     return (
@@ -1928,7 +1930,7 @@ export default function Home() {
                                         <span className="allegro-rating-bar-track">
                                           <span className="allegro-rating-bar-fill" style={{ width: `${pct}%` }} />
                                         </span>
-                                        <span className="allegro-rating-bar-count">{entry.count}</span>
+                                        <span className="allegro-rating-bar-count">{displayCount}</span>
                                       </button>
                                     );
                                   })}
