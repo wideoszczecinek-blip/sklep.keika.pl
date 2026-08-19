@@ -203,6 +203,7 @@ type ProductLandingContent = {
 // allegro_offer_rating_public.php in the CRM). Everything else falls back to
 // the generic placeholder review list further down.
 const PRODUCT_SLUGS_WITH_ALLEGRO_RATING = new Set(["moskitiery-ramkowe"]);
+const REVIEWS_PAGE_SIZE = 5;
 
 type SelectedProductView = {
   groupIndex: number;
@@ -777,7 +778,8 @@ export default function Home() {
   const [zoomPreview, setZoomPreview] = useState<{ title: string; urls: string[]; index: number } | null>(null);
   const [allegroRating, setAllegroRating] = useState<AllegroOfferRating | null>(null);
   const [allegroRatingLoading, setAllegroRatingLoading] = useState(false);
-  const [reviewsExpanded, setReviewsExpanded] = useState(false);
+  const [visibleReviewCount, setVisibleReviewCount] = useState(REVIEWS_PAGE_SIZE);
+  const reviewsLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const [reviewStarFilter, setReviewStarFilter] = useState<number | null>(null);
   const [productLanding, setProductLanding] = useState<ProductLandingContent | null>(null);
   const [dimensionWidth, setDimensionWidth] = useState("");
@@ -843,7 +845,7 @@ export default function Home() {
 
   useEffect(() => {
     const slug = productSlugFromSelected(displayedProduct);
-    setReviewsExpanded(false);
+    setVisibleReviewCount(REVIEWS_PAGE_SIZE);
     if (!slug || !PRODUCT_SLUGS_WITH_ALLEGRO_RATING.has(slug)) {
       setAllegroRating(null);
       return;
@@ -882,6 +884,24 @@ export default function Home() {
       cancelled = true;
     };
   }, [displayedProduct]);
+
+  // Lazy-loads 5 more reviews at a time as the sentinel below the visible
+  // list scrolls into view, instead of a manual "show all" click.
+  useEffect(() => {
+    const node = reviewsLoadMoreRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleReviewCount((prev) => prev + REVIEWS_PAGE_SIZE);
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [activeProductTab, visibleReviewCount, reviewStarFilter]);
+
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
   const configHashRef = useRef("");
@@ -1859,11 +1879,11 @@ export default function Home() {
                           const qualifyingReviews = MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.filter(
                             (review) => review.estimatedStars >= 3,
                           );
-                          const visibleReviews = reviewStarFilter
+                          const filteredReviews = reviewStarFilter
                             ? qualifyingReviews.filter((review) => review.estimatedStars === reviewStarFilter)
-                            : reviewsExpanded
-                              ? qualifyingReviews
-                              : qualifyingReviews.slice(0, 6);
+                            : qualifyingReviews;
+                          const visibleReviews = filteredReviews.slice(0, visibleReviewCount);
+                          const hasMoreReviews = visibleReviews.length < filteredReviews.length;
                           return (
                           <div className="hero-product-allegro-reviews">
                             {allegroRating ? (
@@ -1895,9 +1915,10 @@ export default function Home() {
                                         type="button"
                                         key={entry.stars}
                                         className={`allegro-rating-bar-row ${isActiveFilter ? "is-active-filter" : ""}`}
-                                        onClick={() =>
-                                          setReviewStarFilter((prev) => (prev === entry.stars ? null : entry.stars))
-                                        }
+                                        onClick={() => {
+                                          setReviewStarFilter((prev) => (prev === entry.stars ? null : entry.stars));
+                                          setVisibleReviewCount(REVIEWS_PAGE_SIZE);
+                                        }}
                                         aria-pressed={isActiveFilter}
                                         aria-label={`Pokaż wyróżnione opinie z oceną ${entry.stars} gwiazdek`}
                                       >
@@ -1918,7 +1939,13 @@ export default function Home() {
                             {reviewStarFilter ? (
                               <div className="hero-product-reviews-filter-bar">
                                 <span>Wyróżnione opinie z oceną (szac.): {reviewStarFilter}★</span>
-                                <button type="button" onClick={() => setReviewStarFilter(null)}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReviewStarFilter(null);
+                                    setVisibleReviewCount(REVIEWS_PAGE_SIZE);
+                                  }}
+                                >
                                   Wyczyść filtr
                                 </button>
                               </div>
@@ -1966,14 +1993,10 @@ export default function Home() {
                                 ))}
                               </ul>
                             )}
-                            {!reviewStarFilter && qualifyingReviews.length > 6 ? (
-                              <button
-                                type="button"
-                                className="hero-product-reviews-toggle"
-                                onClick={() => setReviewsExpanded((prev) => !prev)}
-                              >
-                                {reviewsExpanded ? "Pokaż mniej opinii" : `Pokaż wszystkie opinie (${qualifyingReviews.length})`}
-                              </button>
+                            {hasMoreReviews ? (
+                              <div ref={reviewsLoadMoreRef} className="hero-product-reviews-load-more" aria-hidden="true">
+                                <span className="hero-product-reviews-load-more-spinner" />
+                              </div>
                             ) : null}
                             <p className="allegro-review-source-note">
                               Prawdziwe opinie naszych klientów.
