@@ -4979,7 +4979,7 @@ html[data-theme="light"] .mobile-fixed-cta {
 .cart-page {
   min-height: 100vh;
   padding: 1.4rem 1.2rem 3rem;
-  max-width: 860px;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
@@ -5136,8 +5136,8 @@ html[data-theme="light"] .mobile-fixed-cta {
 
 .cart-checkout-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
+  gap: 1.2rem;
   align-items: start;
 }
 
@@ -5290,6 +5290,80 @@ html[data-theme="light"] .mobile-fixed-cta {
 .cart-checkout-form textarea {
   min-height: 80px;
   resize: vertical;
+}
+
+.cart-invoice-checkbox {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem !important;
+  color: rgba(240, 248, 255, 0.85) !important;
+  cursor: pointer;
+}
+
+.cart-invoice-checkbox input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: #2c9d82;
+}
+
+.cart-invoice-fields {
+  display: grid;
+  gap: 0.7rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(229, 241, 255, 0.14);
+  background: rgba(240, 248, 255, 0.03);
+  padding: 0.8rem;
+}
+
+.cart-invoice-nip-field {
+  max-width: 240px;
+}
+
+.cart-invoice-nip-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cart-invoice-nip-row input {
+  width: 100%;
+}
+
+.cart-invoice-nip-spinner {
+  position: absolute;
+  right: 0.6rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  border: 2px solid rgba(240, 248, 255, 0.18);
+  border-top-color: rgba(111, 227, 191, 0.9);
+  animation: cartSpin 0.7s linear infinite;
+}
+
+@keyframes cartSpin {
+  to { transform: rotate(360deg); }
+}
+
+.cart-invoice-nip-error {
+  color: #ffb199;
+}
+
+.cart-invoice-nip-hint {
+  color: rgba(240, 248, 255, 0.5);
+}
+
+.cart-payment-waiting {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: rgba(240, 248, 255, 0.78);
+  font-size: 0.86rem;
+}
+
+.cart-payment-waiting .cart-invoice-nip-spinner {
+  position: static;
 }
 
 .cart-checkout-error {

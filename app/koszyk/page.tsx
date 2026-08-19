@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
@@ -29,18 +28,31 @@ type OrderCreateResponse = {
   error?: string;
 };
 
+type NipLookupResponse = {
+  ok: boolean;
+  company?: {
+    nip: string;
+    name: string;
+    street: string;
+    post_code: string;
+    city: string;
+  };
+  error?: string;
+};
+
 type DeliveryMethod = {
   id: string;
   label: string;
   description: string;
 };
 
-// No real per-method shipping cost data exists yet - all options are free,
-// matching the site's existing blanket "Darmowa dostawa" promise rather than
-// inventing price tiers.
+// Paczkomat is out - the product doesn't fit parcel lockers. No real
+// per-carrier shipping cost data exists yet, so both couriers are shown
+// free, matching the site's existing blanket "Darmowa dostawa" promise
+// rather than inventing price tiers.
 const DELIVERY_METHODS: DeliveryMethod[] = [
-  { id: "kurier", label: "Kurier", description: "Dostawa pod wskazany adres" },
-  { id: "paczkomat", label: "Paczkomat InPost", description: "Odbiór z wybranego automatu paczkowego" },
+  { id: "dpd", label: "Kurier DPD", description: "Dostawa pod wskazany adres" },
+  { id: "gls", label: "Kurier GLS", description: "Dostawa pod wskazany adres" },
   { id: "odbior-osobisty", label: "Odbiór osobisty", description: "W siedzibie producenta" },
 ];
 
@@ -158,11 +170,23 @@ export default function CartPage() {
     city: "",
     postcode: "",
     address1: "",
-    address2: "",
     note: "",
   });
+  const [wantsInvoice, setWantsInvoice] = useState(false);
+  const [invoice, setInvoice] = useState({
+    nip: "",
+    companyName: "",
+    street: "",
+    postcode: "",
+    city: "",
+  });
+  const [nipLookupLoading, setNipLookupLoading] = useState(false);
+  const [nipLookupError, setNipLookupError] = useState("");
+  const lastLookedUpNip = useRef("");
+
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittedRef = useRef(false);
   const [orderState, setOrderState] = useState<{
     orderCode: string;
     clientSecret?: string;
@@ -197,8 +221,46 @@ export default function CartPage() {
     setItems(removeCartItem(id));
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  // NIP -> company name/address autofill (Ministry of Finance whitelist API,
+  // public, no key needed - see nip_lookup_public.php).
+  async function lookupNip(nipDigits: string) {
+    if (nipDigits.length !== 10 || lastLookedUpNip.current === nipDigits) return;
+    lastLookedUpNip.current = nipDigits;
+    setNipLookupLoading(true);
+    setNipLookupError("");
+    try {
+      const response = await fetch(
+        `https://crm-keika.groovemedia.pl/biuro/api/shop-public/nip_lookup_public.php?nip=${nipDigits}`,
+        { cache: "no-store" },
+      );
+      const json = (await response.json()) as NipLookupResponse;
+      if (!json.ok || !json.company) {
+        setNipLookupError(json.error || "Nie znaleziono firmy dla podanego NIP.");
+        return;
+      }
+      setInvoice((current) => ({
+        ...current,
+        companyName: json.company!.name || current.companyName,
+        street: json.company!.street || current.street,
+        postcode: json.company!.post_code || current.postcode,
+        city: json.company!.city || current.city,
+      }));
+    } catch {
+      setNipLookupError("Nie udało się połączyć z rejestrem NIP.");
+    } finally {
+      setNipLookupLoading(false);
+    }
+  }
+
+  const requiresAddress = deliveryMethod !== "odbior-osobisty";
+  const contactReady = form.name.trim() !== "" && (form.phone.trim() !== "" || form.email.trim() !== "");
+  const addressReady = !requiresAddress || (form.city.trim() !== "" && form.address1.trim() !== "");
+  const invoiceReady = !wantsInvoice || (invoice.nip.trim().length === 10 && invoice.companyName.trim() !== "");
+  const checkoutReady = contactReady && addressReady && invoiceReady && items.length > 0;
+
+  const submitOrder = useCallback(async () => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
     setError("");
     setIsSubmitting(true);
     try {
@@ -219,8 +281,16 @@ export default function CartPage() {
             city: form.city,
             postcode: form.postcode,
             address_line_1: form.address1,
-            address_line_2: form.address2,
           },
+          invoice: wantsInvoice
+            ? {
+                nip: invoice.nip,
+                company_name: invoice.companyName,
+                street: invoice.street,
+                postcode: invoice.postcode,
+                city: invoice.city,
+              }
+            : null,
           note_text: noteWithDelivery,
         }),
       });
@@ -238,11 +308,22 @@ export default function CartPage() {
       clearCart();
       setItems([]);
     } catch (submitError) {
+      submittedRef.current = false;
       setError(submitError instanceof Error ? submitError.message : "Wystąpił błąd.");
     } finally {
       setIsSubmitting(false);
     }
-  }
+  }, [items, deliveryMethod, form, wantsInvoice, invoice]);
+
+  // No "przejdź do płatności" button - the payment panel opens on its own
+  // once the required fields are filled in, after a short pause in typing.
+  useEffect(() => {
+    if (orderState || isSubmitting || !checkoutReady) return;
+    const timer = window.setTimeout(() => {
+      void submitOrder();
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [checkoutReady, orderState, isSubmitting, submitOrder]);
 
   return (
     <div className="cart-page">
@@ -346,64 +427,144 @@ export default function CartPage() {
                 </section>
 
                 <section className="cart-checkout-form-card">
-                  <h2>Dane adresowe i kontaktowe</h2>
-                  <form id="checkout-form" className="cart-checkout-form" onSubmit={handleSubmit}>
-                    <fieldset disabled={!!orderState}>
-                      <div className="cart-checkout-form-grid">
-                        <label>
-                          Imię i nazwisko
-                          <input
-                            value={form.name}
-                            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                            required
-                          />
-                        </label>
-                        <label>
-                          Telefon
-                          <input
-                            value={form.phone}
-                            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                          />
-                        </label>
-                        <label>
-                          E-mail
-                          <input
-                            type="email"
-                            value={form.email}
-                            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                          />
-                        </label>
-                        <label>
-                          Miasto
-                          <input
-                            value={form.city}
-                            onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
-                          />
-                        </label>
-                        <label>
-                          Kod pocztowy
-                          <input
-                            value={form.postcode}
-                            onChange={(event) => setForm((current) => ({ ...current, postcode: event.target.value }))}
-                          />
-                        </label>
-                        <label>
-                          Adres
-                          <input
-                            value={form.address1}
-                            onChange={(event) => setForm((current) => ({ ...current, address1: event.target.value }))}
-                          />
-                        </label>
-                      </div>
-                      <label className="cart-checkout-note-field">
-                        Dodatkowe informacje
-                        <textarea
-                          value={form.note}
-                          onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+                  <h2>Adres wysyłki</h2>
+                  <fieldset disabled={!!orderState}>
+                    <div className="cart-checkout-form-grid">
+                      <label>
+                        Imię i nazwisko
+                        <input
+                          value={form.name}
+                          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                          required
                         />
                       </label>
-                    </fieldset>
-                  </form>
+                      <label>
+                        Telefon
+                        <input
+                          value={form.phone}
+                          onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                        />
+                      </label>
+                      <label>
+                        E-mail
+                        <input
+                          type="email"
+                          value={form.email}
+                          onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                        />
+                      </label>
+                      {requiresAddress ? (
+                        <>
+                          <label>
+                            Miasto
+                            <input
+                              value={form.city}
+                              onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
+                            />
+                          </label>
+                          <label>
+                            Kod pocztowy
+                            <input
+                              value={form.postcode}
+                              onChange={(event) =>
+                                setForm((current) => ({ ...current, postcode: event.target.value }))
+                              }
+                            />
+                          </label>
+                          <label>
+                            Ulica i numer
+                            <input
+                              value={form.address1}
+                              onChange={(event) =>
+                                setForm((current) => ({ ...current, address1: event.target.value }))
+                              }
+                            />
+                          </label>
+                        </>
+                      ) : null}
+                    </div>
+
+                    <label className="cart-invoice-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={wantsInvoice}
+                        onChange={(event) => setWantsInvoice(event.target.checked)}
+                      />
+                      Chcę otrzymać fakturę
+                    </label>
+
+                    {wantsInvoice ? (
+                      <div className="cart-invoice-fields">
+                        <label className="cart-invoice-nip-field">
+                          NIP
+                          <div className="cart-invoice-nip-row">
+                            <input
+                              inputMode="numeric"
+                              placeholder="np. 1234567890"
+                              value={invoice.nip}
+                              onChange={(event) => {
+                                const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
+                                setInvoice((current) => ({ ...current, nip: digits }));
+                                setNipLookupError("");
+                              }}
+                              onBlur={() => {
+                                if (invoice.nip.length === 10) void lookupNip(invoice.nip);
+                              }}
+                            />
+                            {nipLookupLoading ? <span className="cart-invoice-nip-spinner" aria-hidden="true" /> : null}
+                          </div>
+                          {nipLookupError ? <small className="cart-invoice-nip-error">{nipLookupError}</small> : null}
+                          {!nipLookupError && !nipLookupLoading ? (
+                            <small className="cart-invoice-nip-hint">
+                              Dane firmy uzupełnią się automatycznie po wpisaniu NIP (Biała lista VAT, MF).
+                            </small>
+                          ) : null}
+                        </label>
+                        <div className="cart-checkout-form-grid">
+                          <label>
+                            Nazwa firmy
+                            <input
+                              value={invoice.companyName}
+                              onChange={(event) =>
+                                setInvoice((current) => ({ ...current, companyName: event.target.value }))
+                              }
+                            />
+                          </label>
+                          <label>
+                            Ulica i numer
+                            <input
+                              value={invoice.street}
+                              onChange={(event) => setInvoice((current) => ({ ...current, street: event.target.value }))}
+                            />
+                          </label>
+                          <label>
+                            Kod pocztowy
+                            <input
+                              value={invoice.postcode}
+                              onChange={(event) =>
+                                setInvoice((current) => ({ ...current, postcode: event.target.value }))
+                              }
+                            />
+                          </label>
+                          <label>
+                            Miasto
+                            <input
+                              value={invoice.city}
+                              onChange={(event) => setInvoice((current) => ({ ...current, city: event.target.value }))}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <label className="cart-checkout-note-field">
+                      Dodatkowe informacje
+                      <textarea
+                        value={form.note}
+                        onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+                      />
+                    </label>
+                  </fieldset>
                 </section>
               </div>
 
@@ -441,18 +602,19 @@ export default function CartPage() {
                     </>
                   ) : (
                     <>
-                      <p className="cart-checkout-intro">
-                        Dane zamówienia zapisują się w CRM, a płatność jest obsługiwana przez Stripe.
-                      </p>
                       {error ? <div className="cart-checkout-error">{error}</div> : null}
-                      <button
-                        type="submit"
-                        form="checkout-form"
-                        className="cart-page-checkout-cta"
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Tworzymy zamówienie…" : "Utwórz zamówienie i przejdź do płatności"}
-                      </button>
+                      {isSubmitting ? (
+                        <div className="cart-payment-waiting">
+                          <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                          Przygotowujemy płatność…
+                        </div>
+                      ) : (
+                        <p className="cart-checkout-intro">
+                          {checkoutReady
+                            ? "Płatność otworzy się za chwilę…"
+                            : "Uzupełnij dane po lewej (imię i nazwisko, kontakt, adres), aby przejść do płatności."}
+                        </p>
+                      )}
                     </>
                   )}
                 </section>
