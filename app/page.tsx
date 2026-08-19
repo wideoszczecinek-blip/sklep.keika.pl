@@ -334,7 +334,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     id: "bialy",
     label: "Biały",
     color: "#F7F7F7",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000347_2dc2ceab_Bialy_1.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_185025_f0caf59e_1__swatch_512.png",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000347_2dc2ceab_Bialy_1.jpg",
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000328_79e6551b_Bialy_2.jpg",
@@ -347,7 +347,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     id: "antracyt",
     label: "Antracyt",
     color: "#4B5563",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000554_035f1db1_Antracyt_1.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_185043_26e815ba_3__swatch_512.png",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000554_035f1db1_Antracyt_1.jpg",
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000546_c5c56ae1_Antracyt_2.jpg",
@@ -360,7 +360,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     id: "braz",
     label: "Brąz",
     color: "#442C17",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000635_9726bee7_Braz_1.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260519_220109_296c1915_Projekt-bez-nazwy-21.png",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000635_9726bee7_Braz_1.jpg",
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000647_361e63b8_Braz_2.jpg",
@@ -372,7 +372,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     id: "zloty-dab",
     label: "Złoty dąb",
     color: "#CD823D",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000729_eeabf87c_ZlotyDab_1.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260318_221333_7809c16f_Projekt-bez-nazwy-11__swatch_512.png",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000729_eeabf87c_ZlotyDab_1.jpg",
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000722_a4143e5c_ZlotyDab_2.jpg",
@@ -384,7 +384,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     id: "orzech",
     label: "Orzech",
     color: "#926449",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000812_2fb228c4_Orzech_1.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260318_221542_732d672a_Projekt-bez-nazwy-10__swatch_512.png",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000812_2fb228c4_Orzech_1.jpg",
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000800_202d5380_Orzech_2.jpg",
@@ -396,7 +396,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     id: "winchester",
     label: "Winchester",
     color: "#EC985F",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000852_41d51076_Winchester_1.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260318_221638_d6c6dfc5_Projekt-bez-nazwy-9__swatch_512.png",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000852_41d51076_Winchester_1.jpg",
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000848_017894bf_Winchester_2.jpg",
@@ -408,7 +408,7 @@ const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
     id: "mahon",
     label: "Mahoń",
     color: "#934B3E",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000920_fe216be2_Mahon_1.jpg",
+    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260318_221735_40f66eac_Projekt-bez-nazwy-8__swatch_512.png",
     galleryUrls: [
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000920_fe216be2_Mahon_1.jpg",
       "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000912_440c4496_Mahon_2.jpg",
@@ -778,6 +778,20 @@ export default function Home() {
   const [zoomPreview, setZoomPreview] = useState<{ title: string; urls: string[]; index: number } | null>(null);
   const [allegroRating, setAllegroRating] = useState<AllegroOfferRating | null>(null);
   const [allegroRatingLoading, setAllegroRatingLoading] = useState(false);
+  // Average/total shown to customers exclude 1-2 star ratings by design (the
+  // distribution rows for 1-2 stars are still shown, but zeroed out - see
+  // the "opinie" tab render below). Recomputed from the real distribution,
+  // not just re-labeled.
+  const displayRating = useMemo(() => {
+    if (!allegroRating) return null;
+    const kept = allegroRating.scoreDistribution.filter((entry) => entry.stars >= 3);
+    const total = kept.reduce((sum, entry) => sum + entry.count, 0);
+    const weightedSum = kept.reduce((sum, entry) => sum + entry.stars * entry.count, 0);
+    return {
+      averageScore: total > 0 ? weightedSum / total : allegroRating.averageScore,
+      totalResponses: total,
+    };
+  }, [allegroRating]);
   const [visibleReviewCount, setVisibleReviewCount] = useState(REVIEWS_PAGE_SIZE);
   const reviewsLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const [reviewStarFilter, setReviewStarFilter] = useState<number | null>(null);
@@ -1693,10 +1707,10 @@ export default function Home() {
                           <div className="pl-landing">
                             <div className="pl-trust-row">
                               {productLanding?.priceFrom ? <span className="pl-price">{productLanding.priceFrom}</span> : null}
-                              {allegroRating ? (
+                              {allegroRating && displayRating ? (
                                 <span className="pl-chip pl-chip-rating">
-                                  ★ {allegroRating.averageScore.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  <span className="pl-chip-muted"> · {allegroRating.totalResponses} opinii</span>
+                                  ★ {displayRating.averageScore.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  <span className="pl-chip-muted"> · {displayRating.totalResponses} opinii</span>
                                 </span>
                               ) : null}
                               <span className="pl-chip">5 lat gwarancji</span>
@@ -1886,32 +1900,33 @@ export default function Home() {
                           const hasMoreReviews = visibleReviews.length < filteredReviews.length;
                           return (
                           <div className="hero-product-allegro-reviews">
-                            {allegroRating ? (
+                            {allegroRating && displayRating ? (
                               <div className="allegro-rating-summary">
                                 <div className="allegro-rating-score">
-                                  <strong>{allegroRating.averageScore.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                  <strong>{displayRating.averageScore.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                                   <span className="allegro-rating-stars" aria-hidden="true">
                                     {[1, 2, 3, 4, 5].map((star) => (
                                       <span
                                         key={star}
-                                        className={`allegro-star ${star <= Math.round(allegroRating.averageScore) ? "is-filled" : ""}`}
+                                        className={`allegro-star ${star <= Math.round(displayRating.averageScore) ? "is-filled" : ""}`}
                                       >
                                         ★
                                       </span>
                                     ))}
                                   </span>
                                   <span className="allegro-rating-count">
-                                    {allegroRating.totalResponses.toLocaleString("pl-PL")} ocen klientów
+                                    {displayRating.totalResponses.toLocaleString("pl-PL")} ocen klientów
                                   </span>
                                 </div>
                                 <div className="allegro-rating-distribution">
                                   {allegroRating.scoreDistribution.map((entry) => {
                                     // 1-2 star rows are shown zeroed out on purpose (business
                                     // decision, not a data bug) - their real counts from the
-                                    // Allegro API are intentionally not displayed here.
+                                    // Allegro API are intentionally not displayed here. The
+                                    // average/total above are recomputed to exclude them too.
                                     const displayCount = entry.stars <= 2 ? 0 : entry.count;
-                                    const pct = allegroRating.totalResponses > 0
-                                      ? Math.round((displayCount / allegroRating.totalResponses) * 100)
+                                    const pct = displayRating.totalResponses > 0
+                                      ? Math.round((displayCount / displayRating.totalResponses) * 100)
                                       : 0;
                                     const isActiveFilter = reviewStarFilter === entry.stars;
                                     return (
