@@ -57,15 +57,23 @@ type DeliveryMethod = {
   id: string;
   label: string;
   description: string;
+  /** One-time flat fee shown as a price badge instead of "Gratis". */
+  extraFee?: number;
 };
 
 // Paczkomat InPost only fits parcels where neither dimension exceeds this -
 // otherwise it's not offered at all (mirrors app/page.tsx's own limit).
 const PACZKOMAT_MAX_DIMENSION_MM = 640;
 
+// Cash-on-delivery is a flat one-time surcharge on top of the order, not a
+// per-item fee - the courier collects it once for the whole parcel. It's a
+// delivery method choice (a courier variant), not a separate payment step.
+const COD_SURCHARGE_AMOUNT = 25.9;
+const COD_DELIVERY_METHOD_ID = "pobranie";
+
 // No real per-carrier shipping cost data exists yet, so every method is
-// shown free, matching the site's existing blanket "Darmowa dostawa" promise
-// rather than inventing price tiers.
+// shown free (except cash-on-delivery's real surcharge), matching the site's
+// existing blanket "Darmowa dostawa" promise rather than inventing price tiers.
 const BASE_DELIVERY_METHODS: DeliveryMethod[] = [
   { id: "dpd", label: "Kurier DPD", description: "Dostawa pod wskazany adres" },
   { id: "gls", label: "Kurier GLS", description: "Dostawa pod wskazany adres" },
@@ -78,15 +86,21 @@ const PACZKOMAT_METHOD: DeliveryMethod = {
   description: "Odbiór z wybranego automatu paczkowego",
 };
 
-// Cash-on-delivery is a flat one-time surcharge on top of the order, not a
-// per-item fee - the courier collects it once for the whole parcel.
-const COD_SURCHARGE_AMOUNT = 25.9;
+const COD_DELIVERY_METHOD: DeliveryMethod = {
+  id: COD_DELIVERY_METHOD_ID,
+  label: "Kurier - płatność za pobraniem",
+  description: "Płacisz kurierowi gotówką lub kartą przy odbiorze",
+  extraFee: COD_SURCHARGE_AMOUNT,
+};
 
 function getAvailableDeliveryMethods(items: CartLineItem[]): DeliveryMethod[] {
   const fitsPaczkomat =
     items.length > 0 &&
     items.every((item) => item.widthMm <= PACZKOMAT_MAX_DIMENSION_MM && item.heightMm <= PACZKOMAT_MAX_DIMENSION_MM);
-  return fitsPaczkomat ? [...BASE_DELIVERY_METHODS.slice(0, 2), PACZKOMAT_METHOD, BASE_DELIVERY_METHODS[2]] : BASE_DELIVERY_METHODS;
+  const courierMethods = fitsPaczkomat
+    ? [...BASE_DELIVERY_METHODS.slice(0, 2), PACZKOMAT_METHOD]
+    : BASE_DELIVERY_METHODS.slice(0, 2);
+  return [...courierMethods, COD_DELIVERY_METHOD, BASE_DELIVERY_METHODS[2]];
 }
 
 /** One-time oversized-parcel surcharge for the whole order: the highest tier
@@ -251,7 +265,6 @@ export default function CartPage() {
   const [nipLookupError, setNipLookupError] = useState("");
   const lastLookedUpNip = useRef("");
 
-  const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("online");
   const [codSms, setCodSms] = useState<{
     status: "idle" | "sending" | "sent" | "verifying" | "verified" | "error";
     token: string;
@@ -339,6 +352,10 @@ export default function CartPage() {
     }
   }
 
+  // Payment method is no longer a separate choice - cash-on-delivery is one
+  // of the delivery methods on the left, so it's derived straight from that.
+  const paymentMethod: "online" | "cod" = deliveryMethod === COD_DELIVERY_METHOD_ID ? "cod" : "online";
+
   const requiresAddress = deliveryMethod !== "odbior-osobisty";
   const contactReady = form.name.trim() !== "" && (form.phone.trim() !== "" || form.email.trim() !== "");
   const addressReady = !requiresAddress || (form.city.trim() !== "" && form.address1.trim() !== "");
@@ -349,8 +366,8 @@ export default function CartPage() {
   const paymentReady = paymentMethod === "online" || codSms.status === "verified";
   const checkoutReady = deliveryDataReady && paymentReady;
 
-  // Switching payment method invalidates any in-progress/verified SMS code
-  // for cash-on-delivery - start that mini-flow over.
+  // Switching to/away from the cash-on-delivery delivery method invalidates
+  // any in-progress/verified SMS code - start that mini-flow over.
   useEffect(() => {
     setCodSms({ status: "idle", token: "", code: "", error: "" });
   }, [paymentMethod]);
@@ -427,7 +444,8 @@ export default function CartPage() {
       const quoteCode = quoteResponse.quote.quote_code;
 
       const deliveryLabel =
-        [...BASE_DELIVERY_METHODS, PACZKOMAT_METHOD].find((method) => method.id === deliveryMethod)?.label || "";
+        [...BASE_DELIVERY_METHODS, PACZKOMAT_METHOD, COD_DELIVERY_METHOD].find((method) => method.id === deliveryMethod)
+          ?.label || "";
       const paymentLabel = paymentMethod === "cod" ? "Za pobraniem" : "Online (Stripe)";
       const noteWithDelivery = [
         `Metoda dostawy: ${deliveryLabel}`,
@@ -597,7 +615,9 @@ export default function CartPage() {
                           <strong>{method.label}</strong>
                           <small>{method.description}</small>
                         </span>
-                        <span className="cart-delivery-option-price">Gratis</span>
+                        <span className="cart-delivery-option-price">
+                          {method.extraFee ? `+${formatPln(method.extraFee)}` : "Gratis"}
+                        </span>
                       </label>
                     ))}
                   </div>
@@ -783,48 +803,14 @@ export default function CartPage() {
                     </>
                   ) : null}
 
-                  {/* Always rendered from the first paint, per design - just
-                      locked/greyed out until the delivery data on the left is
-                      complete, rather than appearing only once everything's
-                      filled in. */}
+                  {/* The payment method itself is no longer a choice made
+                      here - it follows straight from the delivery method
+                      picked on the left (cash-on-delivery is one of those
+                      options now). This badge just reflects that. */}
                   {!orderState ? (
-                    <div className={`cart-payment-methods ${deliveryDataReady ? "" : "is-locked"}`}>
-                      <p className="cart-payment-methods-label">Metoda płatności</p>
-                      <label className={`cart-payment-method-option ${paymentMethod === "online" ? "is-active" : ""}`}>
-                        <input
-                          type="radio"
-                          name="payment-method"
-                          value="online"
-                          checked={paymentMethod === "online"}
-                          onChange={() => setPaymentMethod("online")}
-                          disabled={!deliveryDataReady}
-                        />
-                        <span className="cart-payment-method-copy">
-                          <strong>Płatność online</strong>
-                          <small>Karta, BLIK, Google Pay, Apple Pay, przelew</small>
-                        </span>
-                      </label>
-                      <label className={`cart-payment-method-option ${paymentMethod === "cod" ? "is-active" : ""}`}>
-                        <input
-                          type="radio"
-                          name="payment-method"
-                          value="cod"
-                          checked={paymentMethod === "cod"}
-                          onChange={() => setPaymentMethod("cod")}
-                          disabled={!deliveryDataReady}
-                        />
-                        <span className="cart-payment-method-copy">
-                          <strong>Płatność za pobraniem</strong>
-                          <small>Płacisz kurierowi przy odbiorze</small>
-                        </span>
-                        <span className="cart-delivery-option-price">+{formatPln(COD_SURCHARGE_AMOUNT)}</span>
-                      </label>
-                      {!deliveryDataReady ? (
-                        <p className="cart-payment-methods-hint">
-                          Uzupełnij dane po lewej (imię i nazwisko, kontakt, adres), aby wybrać płatność.
-                        </p>
-                      ) : null}
-                    </div>
+                    <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
+                      {paymentMethod === "cod" ? "Płatność za pobraniem" : "Płatność online"}
+                    </p>
                   ) : null}
 
                   {orderState ? (
@@ -853,7 +839,11 @@ export default function CartPage() {
                         </div>
                       )}
                     </>
-                  ) : !deliveryDataReady ? null : paymentMethod === "online" ? (
+                  ) : !deliveryDataReady ? (
+                    <p className="cart-checkout-intro">
+                      Uzupełnij dane po lewej (imię i nazwisko, kontakt, adres), aby przejść do płatności.
+                    </p>
+                  ) : paymentMethod === "online" ? (
                     <>
                       {error ? <div className="cart-checkout-error">{error}</div> : null}
                       {isSubmitting ? (
