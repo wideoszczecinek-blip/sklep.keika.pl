@@ -6,6 +6,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 // import ThemeToggle from "@/app/components/theme-toggle";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
+import {
+  type CartLineItem,
+  type CartSummary,
+  addCartItem,
+  formatPln,
+  readCartItems,
+  summarizeCartItems,
+} from "@/lib/cart";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -81,11 +89,6 @@ type HeroMenuGroup = {
   imageUrl: string;
   iconUrl: string;
   items: HeroMenuItem[];
-};
-
-type CartSummary = {
-  items: number;
-  total: number;
 };
 
 type HeroCarouselSlide = {
@@ -429,13 +432,6 @@ const MESH_OPTIONS: MeshOption[] = [
   },
 ];
 
-type PricingTable = {
-  widthBreakpoints: number[];
-  heightBreakpoints: number[];
-  prices: number[][];
-};
-
-// Mirrors findPriceBreakpointIndex/resolveDimensionMatrixUnitPrice in
 // Ported byte-for-byte from the CRM admin panel's own live swatch preview
 // (assets/js/biuro/allegro_configurator.js: normalizeHexColor/hexToRgb/rgba/
 // shiftHex/buildLayerPreviewStyle/renderStepOptionColorPreview, CSS in
@@ -492,19 +488,20 @@ function buildMoskLayerSurfaceStyle(imageUrl: string, accentColor: string, mode:
   } as const;
 }
 
-function findPriceBreakpointIndex(breakpoints: number[], value: number): number {
-  if (!breakpoints.length) return 0;
-  const index = breakpoints.findIndex((entry) => value <= entry);
-  return index === -1 ? Math.max(0, breakpoints.length - 1) : index;
+// Real, current pricing for moskitiery-ramkowe (per business owner, not the
+// CRM's stale placeholder unit price): billed per running meter of frame
+// perimeter, rounded UP to each started meter ("każdy rozpoczęty metr
+// bieżący"). Two rates exist - the promotional one is the one actually
+// charged; the standard one is only shown crossed out for contrast.
+const MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD = 29.9;
+const MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO = 25.9;
+
+function moskPerimeterMeters(widthMm: number, heightMm: number): number {
+  return (2 * (widthMm + heightMm)) / 1000;
 }
 
-function lookupMatrixUnitPrice(table: PricingTable | null, width: number, height: number): number | null {
-  if (!table || !table.prices.length) return null;
-  const rowIndex = findPriceBreakpointIndex(table.heightBreakpoints, height);
-  const colIndex = findPriceBreakpointIndex(table.widthBreakpoints, width);
-  const row = table.prices[rowIndex] ?? table.prices[table.prices.length - 1] ?? [];
-  const raw = row[colIndex] ?? row[row.length - 1];
-  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+function moskBilledMeters(perimeterMeters: number): number {
+  return Math.max(1, Math.ceil(perimeterMeters));
 }
 
 function productSlugFromSelected(product: SelectedProductView | null): string {
@@ -749,57 +746,6 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   }
 }
 
-function readCartSummary(): CartSummary {
-  if (typeof window === "undefined") return { items: 0, total: 0 };
-
-  const keys = ["keika_cart", "shop_cart", "cart"];
-  let parsed: unknown = null;
-  for (const key of keys) {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) continue;
-    try {
-      parsed = JSON.parse(raw);
-      break;
-    } catch {
-      // ignore invalid json
-    }
-  }
-
-  if (!parsed) return { items: 0, total: 0 };
-
-  const rows = Array.isArray(parsed)
-    ? parsed
-    : Array.isArray((parsed as { items?: unknown }).items)
-      ? (parsed as { items: unknown[] }).items
-      : [];
-
-  let items = 0;
-  let total = 0;
-  for (const row of rows) {
-    if (!row || typeof row !== "object") continue;
-    const item = row as Record<string, unknown>;
-    const qtyRaw = Number(item.qty ?? item.quantity ?? item.count ?? 1);
-    const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
-
-    const explicitTotal = Number(item.total ?? item.line_total ?? item.price_total ?? NaN);
-    const unitPrice = Number(item.price ?? item.unit_price ?? item.unitPrice ?? 0);
-    const rowTotal = Number.isFinite(explicitTotal) ? explicitTotal : unitPrice * qty;
-
-    items += qty;
-    total += Number.isFinite(rowTotal) ? rowTotal : 0;
-  }
-
-  return { items: Math.max(0, Math.round(items)), total: Math.max(0, total) };
-}
-
-function formatPln(value: number): string {
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: "PLN",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
   const [configReady, setConfigReady] = useState(false);
@@ -809,6 +755,13 @@ export default function Home() {
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [heroSlidesReady, setHeroSlidesReady] = useState(false);
   const [cartSummary, setCartSummary] = useState<CartSummary>({ items: 0, total: 0 });
+  const [cartItems, setCartItems] = useState<CartLineItem[]>([]);
+  const [cartDisplayTotal, setCartDisplayTotal] = useState(0);
+  const [cartIsBumping, setCartIsBumping] = useState(false);
+  const [cartIsFlashing, setCartIsFlashing] = useState(false);
+  const [cartTooltipOpen, setCartTooltipOpen] = useState(false);
+  const [addToCartToast, setAddToCartToast] = useState<{ productSlug: string; productLabel: string } | null>(null);
+  const cartCountUpFrameRef = useRef<number | null>(null);
   const [activeHeadline, setActiveHeadline] = useState(0);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SelectedProductView | null>(null);
@@ -819,6 +772,7 @@ export default function Home() {
   const [selectedHardwareId, setSelectedHardwareId] = useState("");
   const [stepOneChosen, setStepOneChosen] = useState(false);
   const [stepOneCollapsed, setStepOneCollapsed] = useState(false);
+  const [stepTwoCollapsed, setStepTwoCollapsed] = useState(false);
   const [selectedMeshId, setSelectedMeshId] = useState("");
   const [zoomPreview, setZoomPreview] = useState<{ title: string; urls: string[]; index: number } | null>(null);
   const [allegroRating, setAllegroRating] = useState<AllegroOfferRating | null>(null);
@@ -826,53 +780,19 @@ export default function Home() {
   const [reviewsExpanded, setReviewsExpanded] = useState(false);
   const [reviewStarFilter, setReviewStarFilter] = useState<number | null>(null);
   const [productLanding, setProductLanding] = useState<ProductLandingContent | null>(null);
-  const [pricingTable, setPricingTable] = useState<PricingTable | null>(null);
   const [dimensionWidth, setDimensionWidth] = useState("");
   const [dimensionHeight, setDimensionHeight] = useState("");
   const [dimensionQuantity, setDimensionQuantity] = useState("1");
   const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
-  const stepTwoRef = useRef<HTMLParagraphElement | null>(null);
+  const stepTwoRef = useRef<HTMLButtonElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
   const galleryRowRef = useRef<HTMLDivElement | null>(null);
   const galleryThumbsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const slug = productSlugFromSelected(displayedProduct);
     setDimensionWidth("");
     setDimensionHeight("");
     setDimensionQuantity("1");
-    if (slug !== "moskitiery-ramkowe") {
-      setPricingTable(null);
-      return;
-    }
-    let cancelled = false;
-    fetch("https://crm-keika.groovemedia.pl/views/biuro/api/shop/configurator_public.php", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled) return;
-        const categories = Array.isArray(data?.config?.catalog?.categories) ? data.config.catalog.categories : [];
-        for (const category of categories) {
-          const products = Array.isArray(category?.products) ? category.products : [];
-          const product = products.find((entry: { id?: string }) => entry?.id === slug);
-          const pricing = product?.pricing_calculation;
-          if (pricing?.mode === "dimension_price_matrix" && Array.isArray(pricing.tables) && pricing.tables[0]) {
-            const table = pricing.tables[0];
-            setPricingTable({
-              widthBreakpoints: Array.isArray(table.width_breakpoints) ? table.width_breakpoints : [],
-              heightBreakpoints: Array.isArray(table.height_breakpoints) ? table.height_breakpoints : [],
-              prices: Array.isArray(table.prices) ? table.prices : [],
-            });
-            return;
-          }
-        }
-        setPricingTable(null);
-      })
-      .catch(() => {
-        if (!cancelled) setPricingTable(null);
-      });
-    return () => {
-      cancelled = true;
-    };
   }, [displayedProduct]);
 
   useEffect(() => {
@@ -1213,15 +1133,57 @@ export default function Home() {
   }, [heroMedia.length]);
 
   useEffect(() => {
-    const syncCart = () => setCartSummary(readCartSummary());
+    const syncCart = () => {
+      const items = readCartItems();
+      setCartItems(items);
+      setCartSummary(summarizeCartItems(items));
+    };
     syncCart();
     window.addEventListener("storage", syncCart);
     window.addEventListener("focus", syncCart);
+    window.addEventListener("keika-cart-updated", syncCart);
     return () => {
       window.removeEventListener("storage", syncCart);
       window.removeEventListener("focus", syncCart);
+      window.removeEventListener("keika-cart-updated", syncCart);
     };
   }, []);
+
+  // Animate the header cart total counting up to its new value whenever it
+  // increases (adding an item), then a brief green "flash" once it lands.
+  useEffect(() => {
+    if (cartCountUpFrameRef.current) {
+      window.cancelAnimationFrame(cartCountUpFrameRef.current);
+      cartCountUpFrameRef.current = null;
+    }
+    const target = cartSummary.total;
+    if (target <= cartDisplayTotal) {
+      setCartDisplayTotal(target);
+      return;
+    }
+    const start = cartDisplayTotal;
+    const startedAt = performance.now();
+    const duration = 650;
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCartDisplayTotal(start + (target - start) * eased);
+      if (progress < 1) {
+        cartCountUpFrameRef.current = window.requestAnimationFrame(step);
+      } else {
+        setCartDisplayTotal(target);
+        setCartIsFlashing(true);
+        window.setTimeout(() => setCartIsFlashing(false), 700);
+      }
+    };
+    cartCountUpFrameRef.current = window.requestAnimationFrame(step);
+    return () => {
+      if (cartCountUpFrameRef.current) window.cancelAnimationFrame(cartCountUpFrameRef.current);
+    };
+    // Only re-run when the real total changes - cartDisplayTotal itself is
+    // the thing being animated, not a dependency to react to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSummary.total]);
 
   useEffect(() => {
     if (bootPhase !== "loading") return;
@@ -1428,7 +1390,9 @@ export default function Home() {
   const heightNum = Number(dimensionHeight) || 0;
   const quantityNum = Math.max(1, Number(dimensionQuantity) || 1);
   const hasValidDimensions = widthNum > 0 && heightNum > 0;
-  const dimensionUnitPrice = hasValidDimensions ? lookupMatrixUnitPrice(pricingTable, widthNum, heightNum) : null;
+  const perimeterMeters = hasValidDimensions ? moskPerimeterMeters(widthNum, heightNum) : null;
+  const billedMeters = perimeterMeters !== null ? moskBilledMeters(perimeterMeters) : null;
+  const dimensionUnitPrice = billedMeters !== null ? billedMeters * MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO : null;
   const dimensionTotalPrice = dimensionUnitPrice !== null ? dimensionUnitPrice * quantityNum : null;
 
   useEffect(() => {
@@ -1442,6 +1406,31 @@ export default function Home() {
     // Re-runs (and re-shows "Obliczam...") whenever the actual inputs to the
     // calculation change, not on every render.
   }, [hasValidDimensions, widthNum, heightNum, quantityNum]);
+
+  function handleAddToCart() {
+    if (!displayedProduct || dimensionUnitPrice === null || dimensionTotalPrice === null) return;
+    const slug = productSlugFromSelected(displayedProduct);
+    const item: CartLineItem = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      productSlug: slug,
+      productLabel: displayedProduct.label,
+      hardwareLabel: selectedHardwareOption?.label || "",
+      meshLabel: selectedMesh?.label || "",
+      widthMm: widthNum,
+      heightMm: heightNum,
+      qty: quantityNum,
+      price: dimensionUnitPrice,
+      total: dimensionTotalPrice,
+      imageUrl: selectedHardwareOption?.imageUrl,
+      createdAt: new Date().toISOString(),
+    };
+    const items = addCartItem(item);
+    setCartItems(items);
+    setCartSummary(summarizeCartItems(items));
+    setCartIsBumping(true);
+    window.setTimeout(() => setCartIsBumping(false), 500);
+    setAddToCartToast({ productSlug: slug, productLabel: displayedProduct.label });
+  }
 
   return (
     <div
@@ -1524,36 +1513,66 @@ export default function Home() {
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
             {contactPhone}
           </a>
-          <a
-            className={`header-cart ${hasCartItems ? "has-items" : "is-empty"}`}
-            href="#koszyk"
-            aria-label={hasCartItems ? `Koszyk: ${cartQtyLabel}, ${formatPln(cartSummary.total)}` : "Koszyk jest pusty"}
+          <div
+            className="header-cart-wrap"
+            onMouseEnter={() => setCartTooltipOpen(true)}
+            onMouseLeave={() => setCartTooltipOpen(false)}
           >
-            <span className="header-cart-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M3 4h2l1.6 9.6a2 2 0 0 0 2 1.65h8.2a2 2 0 0 0 1.96-1.6L20 8H6"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle cx="9" cy="19.5" r="1.4" fill="currentColor" />
-                <circle cx="17" cy="19.5" r="1.4" fill="currentColor" />
-              </svg>
-              {hasCartItems ? <span className="header-cart-badge">{cartSummary.items}</span> : null}
-            </span>
-            {hasCartItems ? (
-              <span className="header-cart-copy">
-                <strong>{formatPln(cartSummary.total)}</strong>
-                <small>{cartQtyLabel}</small>
+            <a
+              className={`header-cart ${hasCartItems ? "has-items" : "is-empty"} ${cartIsBumping ? "is-bumping" : ""}`}
+              href="/koszyk"
+              aria-label={hasCartItems ? `Koszyk: ${cartQtyLabel}, ${formatPln(cartSummary.total)}` : "Koszyk jest pusty"}
+            >
+              <span className="header-cart-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M3 4h2l1.6 9.6a2 2 0 0 0 2 1.65h8.2a2 2 0 0 0 1.96-1.6L20 8H6"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <circle cx="9" cy="19.5" r="1.4" fill="currentColor" />
+                  <circle cx="17" cy="19.5" r="1.4" fill="currentColor" />
+                </svg>
+                {hasCartItems ? <span className="header-cart-badge">{cartSummary.items}</span> : null}
               </span>
-            ) : (
-              <span className="header-cart-copy">
-                <small>Koszyk</small>
-              </span>
-            )}
-          </a>
+              {hasCartItems ? (
+                <span className="header-cart-copy">
+                  <strong className={cartIsFlashing ? "is-flashing" : ""}>{formatPln(cartDisplayTotal)}</strong>
+                  <small>{cartQtyLabel}</small>
+                </span>
+              ) : (
+                <span className="header-cart-copy">
+                  <small>Koszyk</small>
+                </span>
+              )}
+            </a>
+            {cartTooltipOpen && hasCartItems ? (
+              <div className="header-cart-tooltip" role="tooltip">
+                <ul>
+                  {cartItems.slice(-4).reverse().map((item) => (
+                    <li key={item.id}>
+                      <span>
+                        {item.productLabel}
+                        {item.widthMm && item.heightMm ? ` ${item.widthMm}×${item.heightMm} mm` : ""}
+                        {item.qty > 1 ? ` × ${item.qty}` : ""}
+                      </span>
+                      <strong>{formatPln(item.total)}</strong>
+                    </li>
+                  ))}
+                  {cartItems.length > 4 ? <li className="header-cart-tooltip-more">i {cartItems.length - 4} więcej…</li> : null}
+                </ul>
+                <div className="header-cart-tooltip-total">
+                  <span>Razem</span>
+                  <strong>{formatPln(cartSummary.total)}</strong>
+                </div>
+                <a href="/koszyk" className="header-cart-tooltip-cta">
+                  Przejdź do koszyka
+                </a>
+              </div>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -2113,10 +2132,13 @@ export default function Home() {
                                 setStepOneCollapsed(true);
                                 if (!stepOneChosen) {
                                   setStepOneChosen(true);
-                                  window.setTimeout(() => {
-                                    stepTwoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                                  }, 120);
                                 }
+                                // Wait for the accordion's own 340ms fold
+                                // animation to finish before scrolling, so
+                                // the two motions don't fight each other.
+                                window.setTimeout(() => {
+                                  stepTwoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                }, 380);
                               }}
                             >
                               <span className="hardware-card-image" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 220)})` }} />
@@ -2148,40 +2170,59 @@ export default function Home() {
                 </section>
                 {stepOneChosen ? (
                   <>
-                    <p ref={stepTwoRef} className="hero-product-config-step-title hero-product-config-step-title--muted">
-                      <span className={`hero-product-step-check ${meshChosen ? "" : "is-muted"}`} aria-hidden="true">
-                        {meshChosen ? "✓" : "2"}
-                      </span>
-                      Dobierz kolor siatki
-                    </p>
-                    <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
-                      {MESH_OPTIONS.map((option) => {
-                        const isActive = option.id === selectedMeshId;
-                        return (
-                          <button
-                            key={option.id}
-                            type="button"
-                            className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
-                            onClick={() => {
-                              setSelectedMeshId(option.id);
-                              window.setTimeout(() => {
-                                stepThreeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                              }, 120);
-                            }}
-                          >
-                            {option.imageUrl ? (
-                              <span
-                                className="hero-product-mesh-option-image"
-                                style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 160)})` }}
-                              />
-                            ) : (
-                              <span className="hardware-dot" style={{ background: option.color }} />
-                            )}
-                            <strong>{option.label}</strong>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
+                      <button
+                        type="button"
+                        ref={stepTwoRef}
+                        className="hero-product-step-head"
+                        onClick={() => setStepTwoCollapsed((prev) => !prev)}
+                        aria-expanded={stepTwoCollapsed ? "false" : "true"}
+                      >
+                        <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+                          <span className={`hero-product-step-check ${meshChosen ? "" : "is-muted"}`} aria-hidden="true">
+                            {meshChosen ? "✓" : "2"}
+                          </span>
+                          Dobierz kolor siatki
+                        </span>
+                        <span className="hero-product-step-head-meta">
+                          {selectedMesh ? <strong>{selectedMesh.label}</strong> : null}
+                          <span className="hero-product-step-head-chevron" aria-hidden="true">
+                            {stepTwoCollapsed ? "▾" : "▴"}
+                          </span>
+                        </span>
+                      </button>
+                      <div className="hero-product-step-body">
+                        <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
+                          {MESH_OPTIONS.map((option) => {
+                            const isActive = option.id === selectedMeshId;
+                            return (
+                              <button
+                                key={option.id}
+                                type="button"
+                                className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
+                                onClick={() => {
+                                  setSelectedMeshId(option.id);
+                                  setStepTwoCollapsed(true);
+                                  window.setTimeout(() => {
+                                    stepThreeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                  }, 380);
+                                }}
+                              >
+                                {option.imageUrl ? (
+                                  <span
+                                    className="hero-product-mesh-option-image"
+                                    style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 160)})` }}
+                                  />
+                                ) : (
+                                  <span className="hardware-dot" style={{ background: option.color }} />
+                                )}
+                                <strong>{option.label}</strong>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </section>
                     {meshChosen ? (
                       <>
                         <p ref={stepThreeRef} className="hero-product-config-step-title hero-product-config-step-title--muted">
@@ -2303,16 +2344,89 @@ export default function Home() {
                           </div>
                         </dl>
                       </div>
-                      <div className="hero-product-mini-summary-price">
-                        <p>Kalkulacja ceny</p>
-                        <strong className={isCalculatingPrice ? "is-calculating" : ""}>
-                          {isCalculatingPrice
-                            ? "Obliczam…"
-                            : dimensionTotalPrice !== null
-                              ? `${dimensionTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
-                              : "Podaj wymiary"}
-                        </strong>
-                      </div>
+                      {addToCartToast ? (
+                        <div className="hero-product-added-toast">
+                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
+                          <p>
+                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
+                          </p>
+                          <div className="hero-product-added-toast-actions">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setDimensionWidth("");
+                                setDimensionHeight("");
+                                setDimensionQuantity("1");
+                              }}
+                            >
+                              Wyceń podobną moskitierę
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setSelectedHardwareId("");
+                                setSelectedMeshId("");
+                                setDimensionWidth("");
+                                setDimensionHeight("");
+                                setDimensionQuantity("1");
+                                setStepOneChosen(false);
+                                setStepOneCollapsed(false);
+                                setStepTwoCollapsed(false);
+                              }}
+                            >
+                              Wyceń nową moskitierę
+                            </button>
+                            <a href="/koszyk" className="is-primary">
+                              Przejdź do koszyka
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="hero-product-mini-summary-price">
+                            <div className="hero-product-mini-summary-price-details">
+                              <div>
+                                <dt>Obwód</dt>
+                                <dd>
+                                  {perimeterMeters !== null
+                                    ? `${perimeterMeters.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`
+                                    : "--"}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>Cena za 1 mb</dt>
+                                <dd>
+                                  <span className="price-per-mb-promo">
+                                    {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                  </span>
+                                  <span className="price-per-mb-standard">
+                                    {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                  </span>
+                                </dd>
+                              </div>
+                            </div>
+                            <div className="hero-product-mini-summary-price-final">
+                              <strong className={isCalculatingPrice ? "is-calculating" : ""}>
+                                {isCalculatingPrice
+                                  ? "Obliczam…"
+                                  : dimensionTotalPrice !== null
+                                    ? `${dimensionTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
+                                    : "Podaj wymiary"}
+                              </strong>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="hero-product-add-to-cart"
+                            onClick={handleAddToCart}
+                            disabled={isCalculatingPrice || dimensionTotalPrice === null}
+                          >
+                            Dodaj do koszyka
+                          </button>
+                        </>
+                      )}
                     </div>
                     ) : null}
                   </>
