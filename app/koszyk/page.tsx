@@ -879,6 +879,10 @@ export default function CartPage() {
                                 const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
                                 setInvoice((current) => ({ ...current, nip: digits }));
                                 setNipLookupError("");
+                                // Fetch the moment the 10th digit lands - no need to
+                                // leave the field first (onBlur below still covers a
+                                // pasted value where the field never gains focus).
+                                if (digits.length === 10) void lookupNip(digits);
                               }}
                               onBlur={() => {
                                 if (invoice.nip.length === 10) void lookupNip(invoice.nip);
