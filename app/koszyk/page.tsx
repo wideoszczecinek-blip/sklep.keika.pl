@@ -553,7 +553,7 @@ export default function CartPage() {
     orderStateRef.current = orderState;
   }, [orderState]);
   useEffect(() => {
-    const snapshot = JSON.stringify({ form, wantsInvoice, invoice, deliveryMethod });
+    const snapshot = JSON.stringify({ form, wantsInvoice, invoice, deliveryMethod, items });
     const current = orderStateRef.current;
     if (
       current &&
@@ -567,7 +567,7 @@ export default function CartPage() {
       submittedRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, wantsInvoice, invoice, deliveryMethod, paymentConfirmed]);
+  }, [form, wantsInvoice, invoice, deliveryMethod, items, paymentConfirmed]);
 
   async function sendCodSms() {
     setCodSms({ status: "sending", token: "", code: "", error: "" });
@@ -617,7 +617,7 @@ export default function CartPage() {
   const submitOrder = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
-    draftSnapshotRef.current = JSON.stringify({ form, wantsInvoice, invoice, deliveryMethod });
+    draftSnapshotRef.current = JSON.stringify({ form, wantsInvoice, invoice, deliveryMethod, items });
     setError("");
     setIsSubmitting(true);
     try {
@@ -767,7 +767,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => handleQtyChange(item.id, item.qty - 1)}
-                        disabled={item.qty <= 1 || !!orderState}
+                        disabled={item.qty <= 1 || dataLocked}
                         aria-label="Zmniejsz ilość"
                       >
                         −
@@ -776,7 +776,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => handleQtyChange(item.id, item.qty + 1)}
-                        disabled={!!orderState}
+                        disabled={dataLocked}
                         aria-label="Zwiększ ilość"
                       >
                         +
@@ -787,7 +787,7 @@ export default function CartPage() {
                       type="button"
                       className="cart-page-item-remove"
                       onClick={() => handleRemove(item.id)}
-                      disabled={!!orderState}
+                      disabled={dataLocked}
                       aria-label="Usuń pozycję"
                     >
                       Usuń
