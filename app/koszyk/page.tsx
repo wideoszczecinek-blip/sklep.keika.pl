@@ -190,48 +190,90 @@ function buildQuotePayloadFromCart(items: CartLineItem[], extraCharges: ExtraCha
   };
 }
 
+// Restyles Stripe's default (light/generic) Elements chrome to match the
+// site's own dark, rounded, teal-accented look instead of standing out as an
+// obviously bolted-on third-party widget.
+const STRIPE_APPEARANCE = {
+  theme: "night" as const,
+  variables: {
+    colorPrimary: "#6fe3bf",
+    colorBackground: "rgba(240, 248, 255, 0.06)",
+    colorText: "#f2f7ff",
+    colorTextSecondary: "rgba(240, 248, 255, 0.6)",
+    colorTextPlaceholder: "rgba(240, 248, 255, 0.35)",
+    colorDanger: "#ff8f7a",
+    fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    borderRadius: "10px",
+    spacingUnit: "4px",
+  },
+  rules: {
+    ".Label": {
+      color: "rgba(240, 248, 255, 0.72)",
+      fontSize: "0.82rem",
+      fontWeight: "600",
+    },
+    ".Input": {
+      border: "1px solid rgba(229, 241, 255, 0.2)",
+      backgroundColor: "rgba(240, 248, 255, 0.06)",
+      boxShadow: "none",
+    },
+    ".Input:focus": {
+      border: "1px solid rgba(111, 227, 191, 0.7)",
+      boxShadow: "0 0 0 1px rgba(111, 227, 191, 0.35)",
+    },
+    ".Tab": {
+      border: "1px solid rgba(229, 241, 255, 0.18)",
+      backgroundColor: "rgba(240, 248, 255, 0.04)",
+    },
+    ".Tab:hover": {
+      border: "1px solid rgba(229, 241, 255, 0.36)",
+    },
+    ".Tab--selected": {
+      border: "1px solid rgba(111, 227, 191, 0.7)",
+      backgroundColor: "rgba(44, 157, 130, 0.14)",
+    },
+    ".TabLabel": { color: "#f2f7ff" },
+    ".TabLabel--selected": { color: "#f2f7ff" },
+  },
+};
+
+type CheckoutContact = {
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  postcode: string;
+  address1: string;
+};
+
 function PaymentStep({
   clientSecret,
   publishableKey,
   orderCode,
-  customerEmail,
-  customerName,
-  customerPhone,
+  contact,
   onPaid,
 }: {
   clientSecret: string;
   publishableKey: string;
   orderCode: string;
-  customerEmail: string;
-  customerName: string;
-  customerPhone: string;
+  contact: CheckoutContact;
   onPaid: () => void;
 }) {
   const stripePromise = loadStripe(publishableKey);
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <StripePaymentStep
-        orderCode={orderCode}
-        customerEmail={customerEmail}
-        customerName={customerName}
-        customerPhone={customerPhone}
-        onPaid={onPaid}
-      />
+    <Elements stripe={stripePromise} options={{ clientSecret, appearance: STRIPE_APPEARANCE }}>
+      <StripePaymentStep orderCode={orderCode} contact={contact} onPaid={onPaid} />
     </Elements>
   );
 }
 
 function StripePaymentStep({
   orderCode,
-  customerEmail,
-  customerName,
-  customerPhone,
+  contact,
   onPaid,
 }: {
   orderCode: string;
-  customerEmail: string;
-  customerName: string;
-  customerPhone: string;
+  contact: CheckoutContact;
   onPaid: () => void;
 }) {
   const stripe = useStripe();
@@ -251,6 +293,23 @@ function StripePaymentStep({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/zamowienie/${encodeURIComponent(orderCode)}?from_payment=1`,
+        // The billing address field is hidden below (we already collect the
+        // shipping address in our own form) - Stripe still needs it though,
+        // so it's supplied here explicitly rather than left for the hidden
+        // UI to (not) fill in.
+        payment_method_data: {
+          billing_details: {
+            name: contact.name || undefined,
+            email: contact.email || undefined,
+            phone: contact.phone || undefined,
+            address: {
+              city: contact.city || undefined,
+              postal_code: contact.postcode || undefined,
+              line1: contact.address1 || undefined,
+              country: "PL",
+            },
+          },
+        },
       },
       redirect: "if_required",
     });
@@ -272,10 +331,22 @@ function StripePaymentStep({
         options={{
           defaultValues: {
             billingDetails: {
-              name: customerName || undefined,
-              email: customerEmail || undefined,
-              phone: customerPhone || undefined,
+              name: contact.name || undefined,
+              email: contact.email || undefined,
+              phone: contact.phone || undefined,
+              address: {
+                city: contact.city || undefined,
+                postal_code: contact.postcode || undefined,
+                line1: contact.address1 || undefined,
+                country: "PL",
+              },
             },
+          },
+          // We already collect the shipping address in our own form above -
+          // no need to ask for it again inside the Stripe form (applies to
+          // BLIK and every other method here, not just cards).
+          fields: {
+            billingDetails: { address: "never" },
           },
         }}
       />
@@ -421,12 +492,44 @@ export default function CartPage() {
   const deliveryDataReady = contactReady && addressReady && invoiceReady && items.length > 0;
   const paymentReady = paymentMethod === "online" || codSms.status === "verified";
   const checkoutReady = deliveryDataReady && paymentReady;
+  // Delivery/address data stays editable even once a draft order (and its
+  // Stripe payment form) already exists - a typo fix shouldn't require
+  // starting over. It only locks once the order is genuinely final: paid
+  // online, or cash-on-delivery (which has no further payment step at all).
+  const dataLocked = paymentConfirmed || (orderState !== null && orderState.paymentProvider === "cod");
 
   // Switching to/away from the cash-on-delivery delivery method invalidates
   // any in-progress/verified SMS code - start that mini-flow over.
   useEffect(() => {
     setCodSms({ status: "idle", token: "", code: "", error: "" });
   }, [paymentMethod]);
+
+  // Snapshot of the data a draft order/PaymentIntent was actually created
+  // with. If the customer edits anything after that (still possible - see
+  // dataLocked above), the existing draft no longer matches what they typed,
+  // so it's dropped and a fresh one gets created automatically (same debounced
+  // auto-submit effect as the first time).
+  const draftSnapshotRef = useRef("");
+  const orderStateRef = useRef(orderState);
+  useEffect(() => {
+    orderStateRef.current = orderState;
+  }, [orderState]);
+  useEffect(() => {
+    const snapshot = JSON.stringify({ form, wantsInvoice, invoice, deliveryMethod });
+    const current = orderStateRef.current;
+    if (
+      current &&
+      current.paymentProvider !== "cod" &&
+      !paymentConfirmed &&
+      draftSnapshotRef.current &&
+      draftSnapshotRef.current !== snapshot
+    ) {
+      setOrderState(null);
+      setError("");
+      submittedRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, wantsInvoice, invoice, deliveryMethod, paymentConfirmed]);
 
   async function sendCodSms() {
     setCodSms({ status: "sending", token: "", code: "", error: "" });
@@ -476,6 +579,7 @@ export default function CartPage() {
   const submitOrder = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
+    draftSnapshotRef.current = JSON.stringify({ form, wantsInvoice, invoice, deliveryMethod });
     setError("");
     setIsSubmitting(true);
     try {
@@ -673,7 +777,7 @@ export default function CartPage() {
                           value={method.id}
                           checked={deliveryMethod === method.id}
                           onChange={() => setDeliveryMethod(method.id)}
-                          disabled={!!orderState}
+                          disabled={dataLocked}
                         />
                         <span className="cart-delivery-option-copy">
                           <strong>{method.label}</strong>
@@ -695,7 +799,7 @@ export default function CartPage() {
 
                 <section className="cart-checkout-form-card">
                   <h2>Adres wysyłki</h2>
-                  <fieldset className="cart-checkout-form" disabled={!!orderState}>
+                  <fieldset className="cart-checkout-form" disabled={dataLocked}>
                     <div className="cart-checkout-form-grid">
                       <label>
                         Imię i nazwisko
@@ -913,9 +1017,14 @@ export default function CartPage() {
                             clientSecret={orderState.clientSecret}
                             publishableKey={orderState.publishableKey}
                             orderCode={orderState.orderCode}
-                            customerEmail={form.email}
-                            customerName={form.name}
-                            customerPhone={form.phone}
+                            contact={{
+                              name: form.name,
+                              phone: form.phone,
+                              email: form.email,
+                              city: form.city,
+                              postcode: form.postcode,
+                              address1: form.address1,
+                            }}
                             onPaid={() => {
                               clearCart();
                               setItems([]);
