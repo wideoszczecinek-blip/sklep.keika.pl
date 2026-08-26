@@ -64,12 +64,20 @@ export async function POST(request: Request) {
       Math.round(Number(crmJson.order.amount_total.replace(",", ".")) * 100),
     );
 
+    const customerEmail =
+      typeof payload.customer === "object" && payload.customer && typeof payload.customer.email === "string"
+        ? payload.customer.email.trim()
+        : "";
+
     const intent = await stripe.paymentIntents.create({
       amount,
       currency: (crmJson.order.currency || "pln").toLowerCase(),
       automatic_payment_methods: {
         enabled: true,
       },
+      // E-mail is required at checkout now - use it for the Stripe receipt
+      // too, on top of pre-filling the Payment Element (done client-side).
+      ...(customerEmail ? { receipt_email: customerEmail } : {}),
       metadata: {
         order_code: crmJson.order.order_code,
         quote_code: payload.quote_code || "",

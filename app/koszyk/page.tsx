@@ -194,22 +194,46 @@ function PaymentStep({
   clientSecret,
   publishableKey,
   orderCode,
+  customerEmail,
+  customerName,
+  customerPhone,
   onPaid,
 }: {
   clientSecret: string;
   publishableKey: string;
   orderCode: string;
+  customerEmail: string;
+  customerName: string;
+  customerPhone: string;
   onPaid: () => void;
 }) {
   const stripePromise = loadStripe(publishableKey);
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <StripePaymentStep orderCode={orderCode} onPaid={onPaid} />
+      <StripePaymentStep
+        orderCode={orderCode}
+        customerEmail={customerEmail}
+        customerName={customerName}
+        customerPhone={customerPhone}
+        onPaid={onPaid}
+      />
     </Elements>
   );
 }
 
-function StripePaymentStep({ orderCode, onPaid }: { orderCode: string; onPaid: () => void }) {
+function StripePaymentStep({
+  orderCode,
+  customerEmail,
+  customerName,
+  customerPhone,
+  onPaid,
+}: {
+  orderCode: string;
+  customerEmail: string;
+  customerName: string;
+  customerPhone: string;
+  onPaid: () => void;
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -244,7 +268,17 @@ function StripePaymentStep({ orderCode, onPaid }: { orderCode: string; onPaid: (
 
   return (
     <div className="cart-checkout-payment">
-      <PaymentElement />
+      <PaymentElement
+        options={{
+          defaultValues: {
+            billingDetails: {
+              name: customerName || undefined,
+              email: customerEmail || undefined,
+              phone: customerPhone || undefined,
+            },
+          },
+        }}
+      />
       {error ? <div className="cart-checkout-error">{error}</div> : null}
       <button type="button" className="cart-page-checkout-cta" onClick={handlePay} disabled={isSubmitting}>
         {isSubmitting ? "Przetwarzamy…" : "Zapłać i potwierdź zamówienie"}
@@ -376,7 +410,10 @@ export default function CartPage() {
   const paymentMethod: "online" | "cod" = deliveryMethod === COD_DELIVERY_METHOD_ID ? "cod" : "online";
 
   const requiresAddress = deliveryMethod !== "odbior-osobisty";
-  const contactReady = form.name.trim() !== "" && (form.phone.trim() !== "" || form.email.trim() !== "");
+  // E-mail is mandatory (not just "phone or e-mail" any more) - it's what
+  // gets pre-filled into the Stripe payment form and used for the receipt.
+  const emailValid = /\S+@\S+\.\S+/.test(form.email.trim());
+  const contactReady = form.name.trim() !== "" && form.phone.trim() !== "" && emailValid;
   const addressReady = !requiresAddress || (form.city.trim() !== "" && form.address1.trim() !== "");
   const invoiceReady = !wantsInvoice || (invoice.nip.trim().length === 10 && invoice.companyName.trim() !== "");
   // The payment section itself is always rendered (see JSX below) - this
@@ -673,6 +710,7 @@ export default function CartPage() {
                         <input
                           value={form.phone}
                           onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                          required
                         />
                       </label>
                       <label>
@@ -681,6 +719,7 @@ export default function CartPage() {
                           type="email"
                           value={form.email}
                           onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                          required
                         />
                       </label>
                       {requiresAddress ? (
@@ -874,6 +913,9 @@ export default function CartPage() {
                             clientSecret={orderState.clientSecret}
                             publishableKey={orderState.publishableKey}
                             orderCode={orderState.orderCode}
+                            customerEmail={form.email}
+                            customerName={form.name}
+                            customerPhone={form.phone}
                             onPaid={() => {
                               clearCart();
                               setItems([]);
