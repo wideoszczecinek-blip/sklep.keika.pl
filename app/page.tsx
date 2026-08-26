@@ -1827,15 +1827,6 @@ export default function Home() {
                                 razem z instrukcją. Zwykle zajmuje to kilka–kilkanaście minut.
                               </p>
                             </div>
-
-                            <div className="pl-cta-row">
-                              <a href={displayedProduct.linkUrl} className="pl-cta-button">
-                                Skonfiguruj i zobacz cenę
-                              </a>
-                              <span className="pl-cta-note">
-                                Cena wyliczana automatycznie po wybraniu wariantu i wymiarów.
-                              </span>
-                            </div>
                           </div>
                         ) : productLanding && productLanding.sections.length > 0 ? (
                           <div className="pl-landing">
