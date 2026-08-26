@@ -352,7 +352,7 @@ function StripePaymentStep({
       />
       {error ? <div className="cart-checkout-error">{error}</div> : null}
       <button type="button" className="cart-page-checkout-cta" onClick={handlePay} disabled={isSubmitting}>
-        {isSubmitting ? "Przetwarzamy…" : "Zapłać i potwierdź zamówienie"}
+        {isSubmitting ? "Przetwarzamy…" : "Zamawiam"}
       </button>
     </div>
   );
@@ -389,6 +389,10 @@ export default function CartPage() {
     code: string;
     error: string;
   }>({ status: "idle", token: "", code: "", error: "" });
+  // SMS verification for cash-on-delivery only starts once "Zamawiam" is
+  // clicked - it's not shown/sent proactively just because that delivery
+  // method is selected.
+  const [codModalOpen, setCodModalOpen] = useState(false);
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1061,65 +1065,19 @@ export default function CartPage() {
                       )}
                     </>
                   ) : (
-                    <div className="cart-cod-sms">
+                    <>
                       {error ? <div className="cart-checkout-error">{error}</div> : null}
-                      {codSms.status === "idle" || codSms.status === "error" ? (
-                        <>
-                          <p className="cart-checkout-intro">
-                            Aby potwierdzić zamówienie za pobraniem, wyślemy kod SMS na numer{" "}
-                            <strong>{form.phone || "—"}</strong>.
-                          </p>
-                          {codSms.error ? <div className="cart-checkout-error">{codSms.error}</div> : null}
-                          <button
-                            type="button"
-                            className="cart-page-checkout-cta"
-                            onClick={() => void sendCodSms()}
-                            disabled={!form.phone.trim()}
-                          >
-                            Wyślij kod SMS
-                          </button>
-                        </>
-                      ) : codSms.status === "sending" ? (
-                        <div className="cart-payment-waiting">
-                          <span className="cart-invoice-nip-spinner" aria-hidden="true" />
-                          Wysyłamy SMS…
-                        </div>
-                      ) : codSms.status === "verified" ? (
-                        <div className="cart-payment-waiting">
-                          <span className="cart-invoice-nip-spinner" aria-hidden="true" />
-                          Potwierdzamy zamówienie…
-                        </div>
-                      ) : (
-                        <>
-                          <p className="cart-checkout-intro">
-                            Wpisz 6-cyfrowy kod z SMS wysłanego na <strong>{form.phone}</strong>.
-                          </p>
-                          {codSms.error ? <div className="cart-checkout-error">{codSms.error}</div> : null}
-                          <input
-                            inputMode="numeric"
-                            placeholder="123456"
-                            value={codSms.code}
-                            onChange={(event) =>
-                              setCodSms((current) => ({
-                                ...current,
-                                code: event.target.value.replace(/\D/g, "").slice(0, 6),
-                              }))
-                            }
-                          />
-                          <button
-                            type="button"
-                            className="cart-page-checkout-cta"
-                            onClick={() => void verifyCodSms()}
-                            disabled={codSms.code.length !== 6 || codSms.status === "verifying"}
-                          >
-                            {codSms.status === "verifying" ? "Sprawdzamy…" : "Potwierdź kod"}
-                          </button>
-                          <button type="button" className="cart-cod-resend" onClick={() => void sendCodSms()}>
-                            Wyślij nowy kod
-                          </button>
-                        </>
-                      )}
-                    </div>
+                      <button
+                        type="button"
+                        className="cart-page-checkout-cta"
+                        onClick={() => {
+                          setCodModalOpen(true);
+                          void sendCodSms();
+                        }}
+                      >
+                        Zamawiam
+                      </button>
+                    </>
                   )}
                 </section>
               </aside>
@@ -1127,6 +1085,66 @@ export default function CartPage() {
           </>
         )}
       </main>
+
+      {codModalOpen && !orderState ? (
+        <div className="cod-sms-modal-overlay" role="dialog" aria-modal="true" aria-label="Potwierdzenie kodem SMS">
+          <div className="cod-sms-modal-shell">
+            <button
+              type="button"
+              className="cod-sms-modal-close"
+              aria-label="Zamknij"
+              onClick={() => {
+                setCodModalOpen(false);
+                setCodSms({ status: "idle", token: "", code: "", error: "" });
+              }}
+            >
+              ×
+            </button>
+            <h3>Potwierdź zamówienie kodem SMS</h3>
+            {codSms.status === "sending" ? (
+              <div className="cart-payment-waiting">
+                <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                Wysyłamy kod na numer {form.phone}…
+              </div>
+            ) : codSms.status === "verified" ? (
+              <div className="cart-payment-waiting">
+                <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                Potwierdzamy zamówienie…
+              </div>
+            ) : (
+              <>
+                <p>
+                  Wpisz kod SMS wysłany na numer <strong>{form.phone}</strong>.
+                </p>
+                {codSms.error ? <div className="cart-checkout-error">{codSms.error}</div> : null}
+                <input
+                  inputMode="numeric"
+                  placeholder="123456"
+                  autoFocus
+                  value={codSms.code}
+                  onChange={(event) =>
+                    setCodSms((current) => ({
+                      ...current,
+                      code: event.target.value.replace(/\D/g, "").slice(0, 6),
+                    }))
+                  }
+                />
+                <button
+                  type="button"
+                  className="cart-page-checkout-cta"
+                  onClick={() => void verifyCodSms()}
+                  disabled={codSms.code.length !== 6 || codSms.status === "verifying"}
+                >
+                  {codSms.status === "verifying" ? "Sprawdzamy…" : "Potwierdź kod"}
+                </button>
+                <button type="button" className="cart-cod-resend" onClick={() => void sendCodSms()}>
+                  Wyślij nowy kod
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
