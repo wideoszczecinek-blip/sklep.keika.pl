@@ -4086,6 +4086,77 @@ a {
   color: #f2f7ff;
 }
 
+.cart-terms-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(240, 248, 255, 0.68);
+  cursor: pointer;
+}
+
+.cart-terms-checkbox input {
+  margin-top: 0.15rem;
+  flex: 0 0 auto;
+  accent-color: #2c9d82;
+}
+
+.cart-terms-link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #6fe3bf;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cart-terms-link:hover {
+  color: #8ff0d1;
+}
+
+.legal-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(4, 10, 18, 0.76);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.legal-modal-shell {
+  position: relative;
+  width: min(94vw, 640px);
+  max-height: 82vh;
+  overflow-y: auto;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(229, 241, 255, 0.2);
+  background: rgba(20, 24, 34, 0.97);
+  padding: 1.6rem 1.6rem 1.5rem;
+  box-shadow: 0 30px 60px rgba(4, 10, 18, 0.5);
+}
+
+.legal-modal-shell h3 {
+  margin: 0 0 0.9rem;
+  color: #f2f7ff;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.2rem;
+}
+
+.legal-modal-body {
+  color: rgba(240, 248, 255, 0.82);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.legal-modal-body p {
+  margin: 0 0 0.9rem;
+}
+
 .hero-product-dimensions-error {
   margin: 0.4rem 0 0;
   font-size: 0.8rem;

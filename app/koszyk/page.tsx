@@ -252,17 +252,19 @@ function PaymentStep({
   orderCode,
   contact,
   onPaid,
+  termsAccepted,
 }: {
   clientSecret: string;
   publishableKey: string;
   orderCode: string;
   contact: CheckoutContact;
   onPaid: () => void;
+  termsAccepted: boolean;
 }) {
   const stripePromise = loadStripe(publishableKey);
   return (
     <Elements stripe={stripePromise} options={{ clientSecret, appearance: STRIPE_APPEARANCE }}>
-      <StripePaymentStep orderCode={orderCode} contact={contact} onPaid={onPaid} />
+      <StripePaymentStep orderCode={orderCode} contact={contact} onPaid={onPaid} termsAccepted={termsAccepted} />
     </Elements>
   );
 }
@@ -271,10 +273,12 @@ function StripePaymentStep({
   orderCode,
   contact,
   onPaid,
+  termsAccepted,
 }: {
   orderCode: string;
   contact: CheckoutContact;
   onPaid: () => void;
+  termsAccepted: boolean;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -351,7 +355,12 @@ function StripePaymentStep({
         }}
       />
       {error ? <div className="cart-checkout-error">{error}</div> : null}
-      <button type="button" className="cart-page-checkout-cta" onClick={handlePay} disabled={isSubmitting}>
+      <button
+        type="button"
+        className="cart-page-checkout-cta"
+        onClick={handlePay}
+        disabled={isSubmitting || !termsAccepted}
+      >
         {isSubmitting ? "Przetwarzamy…" : "Zamawiam"}
       </button>
     </div>
@@ -393,6 +402,31 @@ export default function CartPage() {
   // clicked - it's not shown/sent proactively just because that delivery
   // method is selected.
   const [codModalOpen, setCodModalOpen] = useState(false);
+
+  // Required consent checkbox - gates every "Zamawiam" CTA regardless of
+  // payment method. Both links currently open the same "regulamin" CRM page
+  // (shop terms and payment terms aren't split into two documents yet).
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalContent, setLegalContent] = useState<{ title: string; bodyHtml: string } | null>(null);
+  const [legalLoading, setLegalLoading] = useState(false);
+  const [legalError, setLegalError] = useState("");
+
+  useEffect(() => {
+    if (!legalModalOpen || legalContent || legalLoading) return;
+    setLegalLoading(true);
+    setLegalError("");
+    fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/legal?slug=regulamin", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json: { ok: boolean; page?: { title: string; body_html: string }; error?: string }) => {
+        if (!json.ok || !json.page) throw new Error(json.error || "Nie udało się wczytać regulaminu.");
+        setLegalContent({ title: json.page.title, bodyHtml: json.page.body_html || "" });
+      })
+      .catch((fetchError) => {
+        setLegalError(fetchError instanceof Error ? fetchError.message : "Nie udało się wczytać regulaminu.");
+      })
+      .finally(() => setLegalLoading(false));
+  }, [legalModalOpen, legalContent, legalLoading]);
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -991,6 +1025,28 @@ export default function CartPage() {
                     </p>
                   ) : null}
 
+                  {!dataLocked && items.length > 0 ? (
+                    <label className="cart-terms-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={termsAccepted}
+                        onChange={(event) => setTermsAccepted(event.target.checked)}
+                        required
+                      />
+                      <span>
+                        Przeczytałem i akceptuję{" "}
+                        <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
+                          regulamin sklepu
+                        </button>{" "}
+                        oraz{" "}
+                        <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
+                          regulamin płatności
+                        </button>
+                        .
+                      </span>
+                    </label>
+                  ) : null}
+
                   {orderState ? (
                     <>
                       {orderState.paymentProvider === "cod" ? (
@@ -1033,6 +1089,7 @@ export default function CartPage() {
                               postcode: form.postcode,
                               address1: form.address1,
                             }}
+                            termsAccepted={termsAccepted}
                             onPaid={() => {
                               clearCart();
                               setItems([]);
@@ -1074,6 +1131,7 @@ export default function CartPage() {
                           setCodModalOpen(true);
                           void sendCodSms();
                         }}
+                        disabled={!termsAccepted}
                       >
                         Zamawiam
                       </button>
@@ -1142,6 +1200,34 @@ export default function CartPage() {
                 </button>
               </>
             )}
+          </div>
+        </div>
+      ) : null}
+
+      {legalModalOpen ? (
+        <div className="legal-modal-overlay" role="dialog" aria-modal="true" aria-label="Regulamin">
+          <div className="legal-modal-shell">
+            <button
+              type="button"
+              className="cod-sms-modal-close"
+              aria-label="Zamknij"
+              onClick={() => setLegalModalOpen(false)}
+            >
+              ×
+            </button>
+            {legalLoading ? (
+              <div className="cart-payment-waiting">
+                <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                Wczytujemy regulamin…
+              </div>
+            ) : legalError ? (
+              <div className="cart-checkout-error">{legalError}</div>
+            ) : legalContent ? (
+              <>
+                <h3>{legalContent.title}</h3>
+                <div className="legal-modal-body" dangerouslySetInnerHTML={{ __html: legalContent.bodyHtml }} />
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}
