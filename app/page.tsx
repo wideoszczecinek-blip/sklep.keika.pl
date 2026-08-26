@@ -1780,7 +1780,23 @@ export default function Home() {
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                           <div className="pl-landing">
                             <div className="pl-trust-row">
-                              {productLanding?.priceFrom ? <span className="pl-price">{productLanding.priceFrom}</span> : null}
+                              <span className="pl-price">
+                                <span className="price-per-mb-promo">
+                                  {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}{" "}
+                                  zł
+                                </span>
+                                <span className="pl-price-unit"> / mb</span>
+                                <span className="price-per-mb-standard">
+                                  {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}{" "}
+                                  zł
+                                </span>
+                              </span>
                               {allegroRating && displayRating ? (
                                 <span className="pl-chip pl-chip-rating">
                                   ★ {displayRating.averageScore.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
