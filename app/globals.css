@@ -5273,7 +5273,7 @@ html[data-theme="light"] .mobile-fixed-cta {
 
 .cart-page-item {
   display: grid;
-  grid-template-columns: 64px 1fr auto auto auto;
+  grid-template-columns: 64px 1fr auto auto auto auto;
   align-items: center;
   gap: 0.8rem;
   border-radius: 0.9rem;
@@ -5358,6 +5358,67 @@ html[data-theme="light"] .mobile-fixed-cta {
 
 .cart-page-item-remove:hover {
   color: #ff8f7a;
+}
+
+.cart-page-item-edit {
+  border: none;
+  background: transparent;
+  color: #6fe3bf;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.cart-page-item-edit:hover {
+  color: #8ff0d1;
+}
+
+.cart-page-item-edit:disabled,
+.cart-page-item-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.edit-item-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(4, 10, 18, 0.76);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+}
+
+.edit-item-modal-panel {
+  position: relative;
+  top: auto;
+  align-self: auto;
+  width: min(94vw, 480px);
+  max-height: min(88vh, 780px);
+  overflow-y: auto;
+  margin: auto;
+}
+
+.edit-item-modal-close {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.8rem;
+  z-index: 2;
+  border: none;
+  background: none;
+  color: rgba(240, 248, 255, 0.6);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.2rem;
+}
+
+.edit-item-modal-close:hover {
+  color: #f2f7ff;
 }
 
 .cart-checkout-layout {
@@ -5718,7 +5779,7 @@ html[data-theme="light"] .mobile-fixed-cta {
     grid-template-areas:
       "thumb info"
       "qty total"
-      "remove remove";
+      "edit remove";
     row-gap: 0.5rem;
   }
 
@@ -5744,5 +5805,10 @@ html[data-theme="light"] .mobile-fixed-cta {
   .cart-page-item-remove {
     grid-area: remove;
     justify-self: end;
+  }
+
+  .cart-page-item-edit {
+    grid-area: edit;
+    justify-self: start;
   }
 }

@@ -121,6 +121,19 @@ export function updateCartItemQty(id: string, qty: number): CartLineItem[] {
   return items;
 }
 
+/** Replaces a cart item's whole configuration (color/mesh/dimensions/qty/
+ * price/...) in place, keeping its id and position - used by /koszyk's
+ * "Edytuj pozycję" modal, unlike updateCartItemQty above which only ever
+ * touches quantity. */
+export function updateCartItemConfig(
+  id: string,
+  patch: Omit<CartLineItem, "id" | "productSlug" | "productLabel" | "createdAt">,
+): CartLineItem[] {
+  const items = readCartItems().map((item) => (item.id === id ? { ...item, ...patch } : item));
+  writeCartItems(items);
+  return items;
+}
+
 export function summarizeCartItems(items: CartLineItem[]): CartSummary {
   let count = 0;
   let total = 0;

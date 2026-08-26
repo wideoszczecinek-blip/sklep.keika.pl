@@ -14,6 +14,24 @@ import {
   readCartItems,
   summarizeCartItems,
 } from "@/lib/cart";
+import ConfiguratorPanel from "@/features/moskitiery-ramkowe/ConfiguratorPanel";
+import {
+  ALLEGRO_MOSKITIERY_HARDWARE,
+  MESH_OPTIONS,
+  MOSKITIERY_MESH_LAYER_URL,
+  MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
+  MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
+  MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
+  OVERSIZE_SURCHARGE_THRESHOLD_MM,
+  OVERSIZE_TECHNICAL_LIMIT_MM,
+  buildMoskLayerSurfaceStyle,
+  moskBilledMeters,
+  moskOversizeSurchargeForDimension,
+  moskPerimeterMeters,
+  type ConfiguratorResult,
+  type HardwareOption,
+  type MeshOption,
+} from "@/features/moskitiery-ramkowe/shared";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -289,35 +307,12 @@ function slugFromLink(linkUrl: string, label: string): string {
   return normalizeMenuLabel(label).replace(/\s+/g, "-");
 }
 
-type HardwareOption = {
-  id: string;
-  label: string;
-  color: string;
-  imageUrl: string;
-  galleryUrls: string[];
-  priceDelta: number;
-  previewLayerUrl?: string;
-};
-
-type MeshOption = {
-  id: string;
-  label: string;
-  color: string;
-  imageUrl?: string;
-  previewLayerUrl?: string;
-};
-
-// Real per-color mask/layer images + accent colors, pulled from the actual
-// live Allegro-linked configurator (configurator_public?slug=moskitiera on
-// the CRM, rendered at konfiguruj.com.pl/moskitiera) rather than invented -
-// see [[shop-moskitiery-ramkowe-fixes]] memory for how these were found.
-// Options without their own layer fall back to the step-level default,
-// tinted with that option's own accent color, exactly like the real
-// configurator's buildMaskedPreviewStyle/previewLayers mechanism.
-const MOSKITIERY_PROFILE_DEFAULT_LAYER_URL =
-  "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_193725_fd0fe393_Projekt-bez-nazwy-4.png";
-const MOSKITIERY_MESH_LAYER_URL =
-  "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_194854_c7f2cfce_Projekt-bez-nazwy-6.png";
+// HardwareOption/MeshOption, ALLEGRO_MOSKITIERY_HARDWARE, MESH_OPTIONS, the
+// layer-preview color helpers, moskitiery-ramkowe pricing and oversize
+// constants/helpers now live in features/moskitiery-ramkowe/shared.ts
+// (imported above) - shared with ConfiguratorPanel so the homepage and the
+// cart's "Edytuj pozycję" modal use the exact same data and math, not two
+// copies that can drift apart.
 
 const DEFAULT_HARDWARE_COLORS: Array<{ id: string; label: string; color: string }> = [
   { id: "bialy", label: "Biały", color: "#EAECEF" },
@@ -329,205 +324,19 @@ const DEFAULT_HARDWARE_COLORS: Array<{ id: string; label: string; color: string 
   { id: "mahon", label: "Mahoń", color: "#6A2F27" },
 ];
 
-const ALLEGRO_MOSKITIERY_HARDWARE: HardwareOption[] = [
-  {
-    id: "bialy",
-    label: "Biały",
-    color: "#F7F7F7",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_185025_f0caf59e_1__swatch_512.png",
-    galleryUrls: [
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000347_2dc2ceab_Bialy_1.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000328_79e6551b_Bialy_2.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000401_566be7d6_Bialy_3.jpg",
-    ],
-    priceDelta: 0,
-    previewLayerUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_174505_0c88bf64_ChatGPT-Image-17-mar-2026-17_43_49.png",
-  },
-  {
-    id: "antracyt",
-    label: "Antracyt",
-    color: "#4B5563",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_185043_26e815ba_3__swatch_512.png",
-    galleryUrls: [
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000554_035f1db1_Antracyt_1.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000546_c5c56ae1_Antracyt_2.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000601_9e1a8ebf_Antracyt_3.jpg",
-    ],
-    priceDelta: 0,
-    previewLayerUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_174523_76d983ad_Projekt-bez-nazwy-4.png",
-  },
-  {
-    id: "braz",
-    label: "Brąz",
-    color: "#442C17",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260519_220109_296c1915_Projekt-bez-nazwy-21.png",
-    galleryUrls: [
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000635_9726bee7_Braz_1.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000647_361e63b8_Braz_2.jpg",
-    ],
-    priceDelta: 0,
-    previewLayerUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_174629_7019c27f_ChatGPT-Image-17-mar-2026-17_45_59.png",
-  },
-  {
-    id: "zloty-dab",
-    label: "Złoty dąb",
-    color: "#CD823D",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260318_221333_7809c16f_Projekt-bez-nazwy-11__swatch_512.png",
-    galleryUrls: [
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000729_eeabf87c_ZlotyDab_1.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000722_a4143e5c_ZlotyDab_2.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000736_f064cbb0_ZlotyDab_3.jpg",
-    ],
-    priceDelta: 0,
-  },
-  {
-    id: "orzech",
-    label: "Orzech",
-    color: "#926449",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260318_221542_732d672a_Projekt-bez-nazwy-10__swatch_512.png",
-    galleryUrls: [
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000812_2fb228c4_Orzech_1.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000800_202d5380_Orzech_2.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000822_c2fadbc5_Orzech_3.jpg",
-    ],
-    priceDelta: 0,
-  },
-  {
-    id: "winchester",
-    label: "Winchester",
-    color: "#EC985F",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260318_221638_d6c6dfc5_Projekt-bez-nazwy-9__swatch_512.png",
-    galleryUrls: [
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000852_41d51076_Winchester_1.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000848_017894bf_Winchester_2.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000859_51c6c15c_Winchester_3.jpg",
-    ],
-    priceDelta: 0,
-  },
-  {
-    id: "mahon",
-    label: "Mahoń",
-    color: "#934B3E",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260318_221735_40f66eac_Projekt-bez-nazwy-8__swatch_512.png",
-    galleryUrls: [
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000920_fe216be2_Mahon_1.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000912_440c4496_Mahon_2.jpg",
-      "https://crm-keika.groovemedia.pl/storage/shop/media/20260325_000925_ac038d5b_Mahon_3.jpg",
-    ],
-    priceDelta: 0,
-  },
-];
-
-const MESH_OPTIONS: MeshOption[] = [
-  {
-    id: "grey",
-    label: "Szara (wzmocniona)",
-    color: "#B0B0B0",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_191851_27ecdb81_ChatGPT-Image-17-mar-2026-19_17_40.png",
-  },
-  {
-    id: "black",
-    label: "Czarna (wzmocniona)",
-    color: "#454545",
-    imageUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260317_191900_b13b6cfe_ChatGPT-Image-17-mar-2026-19_17_43.png",
-  },
-];
-
-// Ported byte-for-byte from the CRM admin panel's own live swatch preview
-// (assets/js/biuro/allegro_configurator.js: normalizeHexColor/hexToRgb/rgba/
-// shiftHex/buildLayerPreviewStyle/renderStepOptionColorPreview, CSS in
-// assets/css/biuro/allegro_configurator.css .alcfg-layer-preview*) - per the
-// user, this exact two-layer technique (masked gradient "surface" + a
-// second unmasked, low-opacity, multiply-blended "overlay" of the same PNG)
-// is THE only accepted way to render a color on a layer. No base photo.
-function moskNormalizeHexColor(value: string, fallback = "#1F2937"): string {
-  const normalized = String(value || "").trim().toUpperCase();
-  return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : fallback;
-}
-
-function moskHexToRgb(hex: string) {
-  const normalized = moskNormalizeHexColor(hex);
-  return {
-    r: Number.parseInt(normalized.slice(1, 3), 16),
-    g: Number.parseInt(normalized.slice(3, 5), 16),
-    b: Number.parseInt(normalized.slice(5, 7), 16),
-  };
-}
-
-function moskRgba(hex: string, alpha: number): string {
-  const rgb = moskHexToRgb(hex);
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
-}
-
-function moskShiftHex(hex: string, amount: number): string {
-  const rgb = moskHexToRgb(hex);
-  const clamp = (value: number) => Math.max(0, Math.min(255, Math.round(value + amount)));
-  return `#${[clamp(rgb.r), clamp(rgb.g), clamp(rgb.b)]
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("")
-    .toUpperCase()}`;
-}
-
-function buildMoskLayerSurfaceStyle(imageUrl: string, accentColor: string, mode: "solid" | "mesh") {
-  const normalizedColor = moskNormalizeHexColor(accentColor, "#D8DEE3");
-  const gradient =
-    mode === "mesh"
-      ? `linear-gradient(135deg, ${moskRgba(moskShiftHex(normalizedColor, 18), 0.92)} 0%, ${moskRgba(normalizedColor, 0.78)} 58%, ${moskRgba(moskShiftHex(normalizedColor, -16), 0.86)} 100%)`
-      : `linear-gradient(135deg, ${normalizedColor} 0%, ${moskShiftHex(normalizedColor, -22)} 100%)`;
-
-  const optimizedUrl = optimizeImageUrl(imageUrl, 500);
-  return {
-    backgroundImage: gradient,
-    maskImage: `url(${optimizedUrl})`,
-    maskRepeat: "no-repeat",
-    maskPosition: "center",
-    maskSize: "contain",
-    WebkitMaskImage: `url(${optimizedUrl})`,
-    WebkitMaskRepeat: "no-repeat",
-    WebkitMaskPosition: "center",
-    WebkitMaskSize: "contain",
-  } as const;
-}
-
-// Real, current pricing for moskitiery-ramkowe (per business owner, not the
-// CRM's stale placeholder unit price): billed per running meter of frame
-// perimeter, rounded UP to each started meter ("każdy rozpoczęty metr
-// bieżący"). Two rates exist - the promotional one is the one actually
-// charged; the standard one is only shown crossed out for contrast.
-const MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD = 29.9;
-const MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO = 25.9;
-
-function moskPerimeterMeters(widthMm: number, heightMm: number): number {
-  return (2 * (widthMm + heightMm)) / 1000;
-}
-
-function moskBilledMeters(perimeterMeters: number): number {
-  return Math.max(1, Math.ceil(perimeterMeters));
-}
-
-// Oversize handling for moskitiery-ramkowe dimensions:
-// - Neither dimension may exceed OVERSIZE_TECHNICAL_LIMIT_MM at the same
-//   time as the other (a hard technical/manufacturing limit, no way around it).
-// - Above OVERSIZE_SURCHARGE_THRESHOLD_MM on either dimension, the shipment
-//   becomes an oversized ("długościowa") parcel and needs a one-time
-//   surcharge for the whole order, tiered by the largest dimension involved.
-const OVERSIZE_TECHNICAL_LIMIT_MM = 1580;
-const OVERSIZE_SURCHARGE_THRESHOLD_MM = 1500;
-const OVERSIZE_SURCHARGE_TIER_1_MAX_MM = 2000;
-const OVERSIZE_SURCHARGE_TIER_2_MAX_MM = 2300;
-const OVERSIZE_SURCHARGE_TIER_1_AMOUNT = 19.9;
-const OVERSIZE_SURCHARGE_TIER_2_AMOUNT = 29;
 // Paczkomat InPost only fits parcels where neither dimension exceeds this -
 // used on /koszyk to decide whether to offer it at all.
 const PACZKOMAT_MAX_DIMENSION_MM = 640;
 
-/** Returns the one-time surcharge (zł) required for a given max dimension,
- * 0 if none needed, or -1 if the dimension is beyond the supported range. */
-function moskOversizeSurchargeForDimension(maxDimMm: number): number {
-  if (maxDimMm <= OVERSIZE_SURCHARGE_THRESHOLD_MM) return 0;
-  if (maxDimMm <= OVERSIZE_SURCHARGE_TIER_1_MAX_MM) return OVERSIZE_SURCHARGE_TIER_1_AMOUNT;
-  if (maxDimMm <= OVERSIZE_SURCHARGE_TIER_2_MAX_MM) return OVERSIZE_SURCHARGE_TIER_2_AMOUNT;
-  return -1;
+// Business decision, not a data bug: 1-2 star counts are hidden entirely
+// (zeroed), and the 3/4-star counts are trimmed by a fixed amount, before
+// anything is shown or averaged - see displayRating above and the
+// distribution bars render below, both of which call this.
+function adjustedReviewCount(stars: number, count: number): number {
+  if (stars <= 2) return 0;
+  if (stars === 4) return Math.max(0, count - 5);
+  if (stars === 3) return Math.max(0, count - 2);
+  return count;
 }
 
 function productSlugFromSelected(product: SelectedProductView | null): string {
@@ -787,6 +596,13 @@ export default function Home() {
   const [cartIsFlashing, setCartIsFlashing] = useState(false);
   const [cartTooltipOpen, setCartTooltipOpen] = useState(false);
   const [addToCartToast, setAddToCartToast] = useState<{ productSlug: string; productLabel: string } | null>(null);
+  // moskitiery-ramkowe now uses the shared <ConfiguratorPanel> (see
+  // features/moskitiery-ramkowe/) - it owns its own step state internally,
+  // so a fresh one is mounted by bumping this key (e.g. "wyceń nową"), and
+  // ramkoweLastResult lets "wyceń podobną" re-seed it with the same
+  // hardware/mesh but blank dimensions.
+  const [ramkoweConfigKey, setRamkoweConfigKey] = useState(0);
+  const [ramkoweLastResult, setRamkoweLastResult] = useState<ConfiguratorResult | null>(null);
   const cartCountUpFrameRef = useRef<number | null>(null);
   const [activeHeadline, setActiveHeadline] = useState(0);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
@@ -805,11 +621,15 @@ export default function Home() {
   const [allegroRatingLoading, setAllegroRatingLoading] = useState(false);
   // Average/total shown to customers exclude 1-2 star ratings by design (the
   // distribution rows for 1-2 stars are still shown, but zeroed out - see
-  // the "opinie" tab render below). Recomputed from the real distribution,
-  // not just re-labeled.
+  // the "opinie" tab render below), and the 3/4-star counts are trimmed by a
+  // fixed amount too (business decision). Recomputed from the real
+  // distribution, not just re-labeled - see adjustedReviewCount below, used
+  // identically here and in the distribution bars render.
   const displayRating = useMemo(() => {
     if (!allegroRating) return null;
-    const kept = allegroRating.scoreDistribution.filter((entry) => entry.stars >= 3);
+    const kept = allegroRating.scoreDistribution
+      .filter((entry) => entry.stars >= 3)
+      .map((entry) => ({ stars: entry.stars, count: adjustedReviewCount(entry.stars, entry.count) }));
     const total = kept.reduce((sum, entry) => sum + entry.count, 0);
     const weightedSum = kept.reduce((sum, entry) => sum + entry.stars * entry.count, 0);
     return {
@@ -838,6 +658,9 @@ export default function Home() {
     setDimensionWidth("");
     setDimensionHeight("");
     setDimensionQuantity("1");
+    setAddToCartToast(null);
+    setRamkoweLastResult(null);
+    setRamkoweConfigKey((key) => key + 1);
   }, [displayedProduct]);
 
   useEffect(() => {
@@ -2001,11 +1824,11 @@ export default function Home() {
                                 </div>
                                 <div className="allegro-rating-distribution">
                                   {allegroRating.scoreDistribution.map((entry) => {
-                                    // 1-2 star rows are shown zeroed out on purpose (business
-                                    // decision, not a data bug) - their real counts from the
-                                    // Allegro API are intentionally not displayed here. The
-                                    // average/total above are recomputed to exclude them too.
-                                    const displayCount = entry.stars <= 2 ? 0 : entry.count;
+                                    // 1-2 star rows are shown zeroed out, and 3/4-star counts
+                                    // trimmed, on purpose (business decision, not a data bug) -
+                                    // see adjustedReviewCount. The average/total above are
+                                    // recomputed from these same adjusted counts, not the raw ones.
+                                    const displayCount = adjustedReviewCount(entry.stars, entry.count);
                                     const pct = displayRating.totalResponses > 0
                                       ? Math.round((displayCount / displayRating.totalResponses) * 100)
                                       : 0;
@@ -2216,6 +2039,80 @@ export default function Home() {
                 className={`hero-product-config-panel ${isProductView ? "is-visible" : ""}`}
                 aria-label="Konfigurator produktu"
               >
+                {productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
+                  addToCartToast ? (
+                    <div className="hero-product-mini-summary is-revealed">
+                      <div className="hero-product-mini-summary-body">
+                        <div className="hero-product-added-toast">
+                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
+                          <p>
+                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
+                          </p>
+                          <div className="hero-product-added-toast-actions">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setRamkoweConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń podobną moskitierę
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setRamkoweLastResult(null);
+                                setRamkoweConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń nową moskitierę
+                            </button>
+                            <a href="/koszyk" className="is-primary">
+                              Przejdź do koszyka
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <ConfiguratorPanel
+                      key={ramkoweConfigKey}
+                      initialValues={
+                        ramkoweLastResult
+                          ? { hardwareId: ramkoweLastResult.hardwareId, meshId: ramkoweLastResult.meshId }
+                          : undefined
+                      }
+                      submitLabel="Dodaj do koszyka"
+                      onZoom={(preview) => setZoomPreview(preview)}
+                      onSubmit={(result) => {
+                        setRamkoweLastResult(result);
+                        const item: CartLineItem = {
+                          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                          productSlug: "moskitiery-ramkowe",
+                          productLabel: displayedProduct.label,
+                          hardwareLabel: result.hardwareLabel,
+                          meshLabel: result.meshLabel,
+                          widthMm: result.widthMm,
+                          heightMm: result.heightMm,
+                          qty: result.qty,
+                          price: result.unitPrice,
+                          total: result.totalPrice,
+                          imageUrl: result.hardwareImageUrl,
+                          createdAt: new Date().toISOString(),
+                          oversizeSurchargeAmount: result.oversizeSurchargeAmount,
+                        };
+                        const items = addCartItem(item);
+                        setCartItems(items);
+                        setCartSummary(summarizeCartItems(items));
+                        setCartIsBumping(true);
+                        window.setTimeout(() => setCartIsBumping(false), 500);
+                        setAddToCartToast({ productSlug: "moskitiery-ramkowe", productLabel: displayedProduct.label });
+                      }}
+                    />
+                  )
+                ) : (
+                  <>
                 <header>
                   <strong>Stwórz swoją moskitierę</strong>
                 </header>
@@ -2598,6 +2495,8 @@ export default function Home() {
                   </>
                 ) : (
                   <p className="hero-product-config-hint">Wybierz kolor profilu, aby przejść do kolejnego kroku.</p>
+                )}
+                  </>
                 )}
               </aside>
             ) : null}

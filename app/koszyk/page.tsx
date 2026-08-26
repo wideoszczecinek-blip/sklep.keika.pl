@@ -12,8 +12,11 @@ import {
   readCartItems,
   removeCartItem,
   summarizeCartItems,
+  updateCartItemConfig,
   updateCartItemQty,
 } from "@/lib/cart";
+import ConfiguratorPanel from "@/features/moskitiery-ramkowe/ConfiguratorPanel";
+import { ALLEGRO_MOSKITIERY_HARDWARE, MESH_OPTIONS } from "@/features/moskitiery-ramkowe/shared";
 
 type OrderCreateResponse = {
   ok: boolean;
@@ -403,6 +406,11 @@ export default function CartPage() {
   // method is selected.
   const [codModalOpen, setCodModalOpen] = useState(false);
 
+  // "Edytuj pozycję" - the same <ConfiguratorPanel> the product page uses,
+  // seeded with this item's current config; only moskitiery-ramkowe items
+  // have one (it's the only product wired to that configurator so far).
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+
   // Required consent checkbox - gates every "Zamawiam" CTA regardless of
   // payment method. Both links currently open the same "regulamin" CRM page
   // (shop terms and payment terms aren't split into two documents yet).
@@ -517,6 +525,8 @@ export default function CartPage() {
   // Payment method is no longer a separate choice - cash-on-delivery is one
   // of the delivery methods on the left, so it's derived straight from that.
   const paymentMethod: "online" | "cod" = deliveryMethod === COD_DELIVERY_METHOD_ID ? "cod" : "online";
+
+  const editingItem = editingItemId ? items.find((item) => item.id === editingItemId) || null : null;
 
   const requiresAddress = deliveryMethod !== "odbior-osobisty";
   // E-mail is mandatory (not just "phone or e-mail" any more) - it's what
@@ -792,6 +802,16 @@ export default function CartPage() {
                     >
                       Usuń
                     </button>
+                    {item.productSlug === "moskitiery-ramkowe" ? (
+                      <button
+                        type="button"
+                        className="cart-page-item-edit"
+                        onClick={() => setEditingItemId(item.id)}
+                        disabled={dataLocked}
+                      >
+                        Edytuj pozycję
+                      </button>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -1228,6 +1248,47 @@ export default function CartPage() {
                 <div className="legal-modal-body" dangerouslySetInnerHTML={{ __html: legalContent.bodyHtml }} />
               </>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {editingItem ? (
+        <div className="edit-item-modal-overlay" role="dialog" aria-modal="true" aria-label="Edytuj pozycję">
+          <div className="hero-product-config-panel is-visible edit-item-modal-panel">
+            <button
+              type="button"
+              className="edit-item-modal-close"
+              aria-label="Zamknij"
+              onClick={() => setEditingItemId(null)}
+            >
+              ×
+            </button>
+            <ConfiguratorPanel
+              key={editingItem.id}
+              initialValues={{
+                hardwareId: ALLEGRO_MOSKITIERY_HARDWARE.find((option) => option.label === editingItem.hardwareLabel)?.id,
+                meshId: MESH_OPTIONS.find((option) => option.label === editingItem.meshLabel)?.id,
+                widthMm: editingItem.widthMm,
+                heightMm: editingItem.heightMm,
+                qty: editingItem.qty,
+              }}
+              submitLabel="Zapisz zmiany"
+              onSubmit={(result) => {
+                const updated = updateCartItemConfig(editingItem.id, {
+                  hardwareLabel: result.hardwareLabel,
+                  meshLabel: result.meshLabel,
+                  widthMm: result.widthMm,
+                  heightMm: result.heightMm,
+                  qty: result.qty,
+                  price: result.unitPrice,
+                  total: result.totalPrice,
+                  imageUrl: result.hardwareImageUrl,
+                  oversizeSurchargeAmount: result.oversizeSurchargeAmount,
+                });
+                setItems(updated);
+                setEditingItemId(null);
+              }}
+            />
           </div>
         </div>
       ) : null}
