@@ -421,8 +421,8 @@ export default function CartPage() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   // Required consent checkbox - gates every "Zamawiam" CTA regardless of
-  // payment method. Both links currently open the same "regulamin" CRM page
-  // (shop terms and payment terms aren't split into two documents yet).
+  // payment method. Single link/document: "Regulamin sklepu i płatności"
+  // (shop terms and payment terms live together, not as two documents).
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [legalContent, setLegalContent] = useState<{ title: string; bodyHtml: string } | null>(null);
@@ -1094,11 +1094,7 @@ export default function CartPage() {
                       <span>
                         Przeczytałem i akceptuję{" "}
                         <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
-                          regulamin sklepu
-                        </button>{" "}
-                        oraz{" "}
-                        <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
-                          regulamin płatności
+                          regulamin sklepu i płatności
                         </button>
                         .
                       </span>
