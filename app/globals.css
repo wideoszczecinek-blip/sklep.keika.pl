@@ -4386,6 +4386,20 @@ a {
     --mobile-offer-btn-height: 2.95rem;
   }
 
+  /* .hero-full is locked to exactly one viewport tall with overflow:hidden
+     for the full-bleed marketing hero - fine there since that content
+     always fits. But the product/configurator view (hero-inner.product-mode)
+     stacks far more content (specs, color/mesh pickers, dimensions, price,
+     CTA) than one mobile screen, and with the outer box clipped there was no
+     way to scroll down to it at all - color/mesh/dimensions/price were
+     simply unreachable. Letting this box scroll internally (background
+     photo layers stay pinned since they're absolutely positioned within it)
+     fixes that without touching the desktop layout or the hero carousel. */
+  .hero-full {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .hero-header {
     padding-top: 0.75rem;
   }
