@@ -375,7 +375,8 @@ export default function CartPage() {
   const [hydrated, setHydrated] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState(BASE_DELIVERY_METHODS[0].id);
   const [form, setForm] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     phone: "",
     email: "",
     city: "",
@@ -532,7 +533,8 @@ export default function CartPage() {
   // E-mail is mandatory (not just "phone or e-mail" any more) - it's what
   // gets pre-filled into the Stripe payment form and used for the receipt.
   const emailValid = /\S+@\S+\.\S+/.test(form.email.trim());
-  const contactReady = form.name.trim() !== "" && form.phone.trim() !== "" && emailValid;
+  const contactReady =
+    form.firstName.trim() !== "" && form.lastName.trim() !== "" && form.phone.trim() !== "" && emailValid;
   const addressReady = !requiresAddress || (form.city.trim() !== "" && form.address1.trim() !== "");
   const invoiceReady = !wantsInvoice || (invoice.nip.trim().length === 10 && invoice.companyName.trim() !== "");
   // The payment section itself is always rendered (see JSX below) - this
@@ -582,10 +584,18 @@ export default function CartPage() {
   async function sendCodSms() {
     setCodSms({ status: "sending", token: "", code: "", error: "" });
     try {
+      // Same total the "Razem" row shows once cash-on-delivery is picked -
+      // included in the SMS text so the customer sees the exact amount
+      // they're committing to accept on delivery, not just the code.
+      const codTotal = summary.total + orderSurcharge + COD_SURCHARGE_AMOUNT;
       const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/cod_sms_start.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: form.phone, name: form.name }),
+        body: JSON.stringify({
+          phone: form.phone,
+          name: form.firstName,
+          amount: codTotal.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        }),
       });
       const json = (await response.json()) as CodSmsStartResponse;
       if (!json.ok || !json.verification_token) {
@@ -668,7 +678,7 @@ export default function CartPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           quote_code: quoteCode,
-          customer: { name: form.name, phone: form.phone, email: form.email },
+          customer: { name: `${form.firstName} ${form.lastName}`.trim(), phone: form.phone, email: form.email },
           shipping: {
             city: form.city,
             postcode: form.postcode,
@@ -722,6 +732,16 @@ export default function CartPage() {
   // opens on its own once the required fields are filled in, after a short
   // pause in typing; for cash-on-delivery, it fires the instant the SMS code
   // is verified (see the payment method section below).
+  //
+  // Deliberately NOT watching isSubmitting here: a failed submitOrder() call
+  // flips isSubmitting true->false, and if it were a dependency that alone
+  // would re-run this effect and immediately retry - with orderState still
+  // null and checkoutReady still true, nothing else stops it from retrying
+  // forever (this was a real bug: a single failed order-create turned into
+  // dozens of rapid-fire retries). isSubmitting is still read inside as a
+  // guard against a genuinely concurrent call; it just shouldn't itself
+  // trigger a new attempt. A failed attempt now stops and waits for an
+  // actual new action (edited data, or the manual "Spróbuj ponownie").
   useEffect(() => {
     if (orderState || isSubmitting || !checkoutReady) return;
     if (paymentMethod === "cod") {
@@ -732,7 +752,8 @@ export default function CartPage() {
       void submitOrder();
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [checkoutReady, orderState, isSubmitting, paymentMethod, submitOrder]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkoutReady, orderState, paymentMethod, submitOrder]);
 
   return (
     <div className="cart-page">
@@ -860,10 +881,18 @@ export default function CartPage() {
                   <fieldset className="cart-checkout-form" disabled={dataLocked}>
                     <div className="cart-checkout-form-grid">
                       <label>
-                        Imię i nazwisko
+                        Imię
                         <input
-                          value={form.name}
-                          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                          value={form.firstName}
+                          onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Nazwisko
+                        <input
+                          value={form.lastName}
+                          onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
                           required
                         />
                       </label>
@@ -1102,7 +1131,7 @@ export default function CartPage() {
                             publishableKey={orderState.publishableKey}
                             orderCode={orderState.orderCode}
                             contact={{
-                              name: form.name,
+                              name: `${form.firstName} ${form.lastName}`.trim(),
                               phone: form.phone,
                               email: form.email,
                               city: form.city,
@@ -1131,8 +1160,22 @@ export default function CartPage() {
                     </p>
                   ) : paymentMethod === "online" ? (
                     <>
-                      {error ? <div className="cart-checkout-error">{error}</div> : null}
-                      {isSubmitting ? (
+                      {error ? (
+                        <>
+                          <div className="cart-checkout-error">{error}</div>
+                          <button
+                            type="button"
+                            className="cart-page-checkout-cta"
+                            onClick={() => {
+                              setError("");
+                              submittedRef.current = false;
+                              void submitOrder();
+                            }}
+                          >
+                            Spróbuj ponownie
+                          </button>
+                        </>
+                      ) : isSubmitting ? (
                         <div className="cart-payment-waiting">
                           <span className="cart-invoice-nip-spinner" aria-hidden="true" />
                           Przygotowujemy płatność…
@@ -1185,10 +1228,27 @@ export default function CartPage() {
                 Wysyłamy kod na numer {form.phone}…
               </div>
             ) : codSms.status === "verified" ? (
-              <div className="cart-payment-waiting">
-                <span className="cart-invoice-nip-spinner" aria-hidden="true" />
-                Potwierdzamy zamówienie…
-              </div>
+              error ? (
+                <>
+                  <div className="cart-checkout-error">{error}</div>
+                  <button
+                    type="button"
+                    className="cart-page-checkout-cta"
+                    onClick={() => {
+                      setError("");
+                      submittedRef.current = false;
+                      void submitOrder();
+                    }}
+                  >
+                    Spróbuj ponownie
+                  </button>
+                </>
+              ) : (
+                <div className="cart-payment-waiting">
+                  <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                  Potwierdzamy zamówienie…
+                </div>
+              )
             ) : (
               <>
                 <p>
