@@ -4157,6 +4157,42 @@ a {
   margin: 0 0 0.9rem;
 }
 
+.legal-modal-body h3 {
+  margin: 1.8rem 0 0.6rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f2f7ff;
+}
+
+.legal-modal-body h3:first-child {
+  margin-top: 0;
+}
+
+.legal-modal-body ol {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 0 0.9rem;
+  padding-left: 1.3rem;
+}
+
+.legal-modal-body li {
+  line-height: 1.65;
+}
+
+.legal-modal-body li ol {
+  margin: 0.55rem 0 0;
+  gap: 0.5rem;
+}
+
+.legal-modal-body strong {
+  color: #f2f7ff;
+}
+
+.legal-modal-body sup {
+  font-size: 0.7em;
+}
+
 .hero-product-dimensions-error {
   margin: 0.4rem 0 0;
   font-size: 0.8rem;
