@@ -77,11 +77,21 @@ const COD_DELIVERY_METHOD_ID = "pobranie";
 // No real per-carrier shipping cost data exists yet, so every method is
 // shown free (except cash-on-delivery's real surcharge), matching the site's
 // existing blanket "Darmowa dostawa" promise rather than inventing price tiers.
-const BASE_DELIVERY_METHODS: DeliveryMethod[] = [
-  { id: "dpd", label: "Kurier DPD", description: "Dostawa pod wskazany adres" },
-  { id: "gls", label: "Kurier GLS", description: "Dostawa pod wskazany adres" },
-  { id: "odbior-osobisty", label: "Odbiór osobisty", description: "W siedzibie producenta" },
-];
+//
+// The customer just picks "Kurier" - which actual carrier (DPD, GLS, ...)
+// ships it is our own internal decision made during fulfillment, not
+// something we ask them to choose.
+const COURIER_METHOD: DeliveryMethod = {
+  id: "kurier",
+  label: "Kurier",
+  description: "Dostawa pod wskazany adres",
+};
+
+const PICKUP_METHOD: DeliveryMethod = {
+  id: "odbior-osobisty",
+  label: "Odbiór osobisty",
+  description: "W siedzibie producenta",
+};
 
 const PACZKOMAT_METHOD: DeliveryMethod = {
   id: "paczkomat",
@@ -100,10 +110,8 @@ function getAvailableDeliveryMethods(items: CartLineItem[]): DeliveryMethod[] {
   const fitsPaczkomat =
     items.length > 0 &&
     items.every((item) => item.widthMm <= PACZKOMAT_MAX_DIMENSION_MM && item.heightMm <= PACZKOMAT_MAX_DIMENSION_MM);
-  const courierMethods = fitsPaczkomat
-    ? [...BASE_DELIVERY_METHODS.slice(0, 2), PACZKOMAT_METHOD]
-    : BASE_DELIVERY_METHODS.slice(0, 2);
-  return [...courierMethods, COD_DELIVERY_METHOD, BASE_DELIVERY_METHODS[2]];
+  const courierMethods = fitsPaczkomat ? [COURIER_METHOD, PACZKOMAT_METHOD] : [COURIER_METHOD];
+  return [...courierMethods, COD_DELIVERY_METHOD, PICKUP_METHOD];
 }
 
 /** One-time oversized-parcel surcharge for the whole order: the highest tier
@@ -373,7 +381,7 @@ function StripePaymentStep({
 export default function CartPage() {
   const [items, setItems] = useState<CartLineItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const [deliveryMethod, setDeliveryMethod] = useState(BASE_DELIVERY_METHODS[0].id);
+  const [deliveryMethod, setDeliveryMethod] = useState(COURIER_METHOD.id);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -662,8 +670,9 @@ export default function CartPage() {
       const quoteCode = quoteResponse.quote.quote_code;
 
       const deliveryLabel =
-        [...BASE_DELIVERY_METHODS, PACZKOMAT_METHOD, COD_DELIVERY_METHOD].find((method) => method.id === deliveryMethod)
-          ?.label || "";
+        [COURIER_METHOD, PACZKOMAT_METHOD, COD_DELIVERY_METHOD, PICKUP_METHOD].find(
+          (method) => method.id === deliveryMethod,
+        )?.label || "";
       const paymentLabel = paymentMethod === "cod" ? "Za pobraniem" : "Online (Stripe)";
       const noteWithDelivery = [
         `Metoda dostawy: ${deliveryLabel}`,
