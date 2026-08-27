@@ -2386,7 +2386,7 @@ export default function Home() {
                         {bothDimensionsOverTechnicalLimit ? (
                           <p className="hero-product-dimensions-error">
                             Ten rozmiar przekracza możliwości techniczne produkcji - szerokość i wysokość nie mogą
-                            jednocześnie przekraczać 158 cm. Zmniejsz jeden z wymiarów.
+                            jednocześnie przekraczać 160 cm. Zmniejsz jeden z wymiarów.
                           </p>
                         ) : requiredSurchargeForCurrentDims < 0 ? (
                           <p className="hero-product-dimensions-error">

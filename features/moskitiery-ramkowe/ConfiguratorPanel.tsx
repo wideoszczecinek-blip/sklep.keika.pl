@@ -14,6 +14,7 @@ import {
   MESH_OPTIONS,
   MOSKITIERY_MESH_LAYER_URL,
   MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
+  MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
   OVERSIZE_SURCHARGE_THRESHOLD_MM,
@@ -100,7 +101,14 @@ export default function ConfiguratorPanel({
   const widthNum = Number(dimensionWidth) || 0;
   const heightNum = Number(dimensionHeight) || 0;
   const quantityNum = Math.max(1, Number(dimensionQuantity) || 1);
-  const hasValidDimensions = widthNum > 0 && heightNum > 0;
+  // Below MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM isn't a manufacturable frame -
+  // flagged separately from "not filled in yet" so there's a clear inline
+  // reason once the customer has actually typed something too small.
+  const widthBelowMinimum = widthNum > 0 && widthNum < MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM;
+  const heightBelowMinimum = heightNum > 0 && heightNum < MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM;
+  const belowMinimumDimension = widthBelowMinimum || heightBelowMinimum;
+  const hasValidDimensions =
+    widthNum >= MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM && heightNum >= MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM;
   const perimeterMeters = hasValidDimensions ? moskPerimeterMeters(widthNum, heightNum) : null;
   const billedMeters = perimeterMeters !== null ? moskBilledMeters(perimeterMeters) : null;
   const dimensionUnitPrice = billedMeters !== null ? billedMeters * MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO : null;
@@ -349,7 +357,7 @@ export default function ConfiguratorPanel({
                   <input
                     type="number"
                     inputMode="numeric"
-                    min={300}
+                    min={MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}
                     max={2300}
                     placeholder="np. 1000"
                     value={dimensionWidth}
@@ -362,7 +370,7 @@ export default function ConfiguratorPanel({
                   <input
                     type="number"
                     inputMode="numeric"
-                    min={300}
+                    min={MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}
                     max={2300}
                     placeholder="np. 1200"
                     value={dimensionHeight}
@@ -382,10 +390,14 @@ export default function ConfiguratorPanel({
                   />
                 </label>
               </div>
-              {bothDimensionsOverTechnicalLimit ? (
+              {belowMinimumDimension ? (
+                <p className="hero-product-dimensions-error">
+                  Minimalny wymiar to {MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM} mm (15 cm) na każdym boku.
+                </p>
+              ) : bothDimensionsOverTechnicalLimit ? (
                 <p className="hero-product-dimensions-error">
                   Ten rozmiar przekracza możliwości techniczne produkcji - szerokość i wysokość nie mogą jednocześnie
-                  przekraczać 158 cm. Zmniejsz jeden z wymiarów.
+                  przekraczać 160 cm. Zmniejsz jeden z wymiarów.
                 </p>
               ) : requiredSurchargeForCurrentDims < 0 ? (
                 <p className="hero-product-dimensions-error">Maksymalny obsługiwany wymiar to 230 cm.</p>

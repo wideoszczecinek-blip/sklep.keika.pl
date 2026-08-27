@@ -207,13 +207,19 @@ export function moskBilledMeters(perimeterMeters: number): number {
   return Math.max(1, Math.ceil(perimeterMeters));
 }
 
+// Smallest orderable moskitiera-ramkowa - below this on either side it's not
+// a manufacturable frame.
+export const MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM = 150;
+
 // Oversize handling for moskitiery-ramkowe dimensions:
 // - Neither dimension may exceed OVERSIZE_TECHNICAL_LIMIT_MM at the same
 //   time as the other (a hard technical/manufacturing limit, no way around it).
 // - Above OVERSIZE_SURCHARGE_THRESHOLD_MM on either dimension, the shipment
 //   becomes an oversized ("długościowa") parcel and needs a one-time
 //   surcharge for the whole order, tiered by the largest dimension involved.
-export const OVERSIZE_TECHNICAL_LIMIT_MM = 1580;
+// - OVERSIZE_SURCHARGE_TIER_2_MAX_MM doubles as the hard per-side maximum -
+//   moskOversizeSurchargeForDimension() returns -1 past it (see below).
+export const OVERSIZE_TECHNICAL_LIMIT_MM = 1600;
 export const OVERSIZE_SURCHARGE_THRESHOLD_MM = 1500;
 export const OVERSIZE_SURCHARGE_TIER_1_MAX_MM = 2000;
 export const OVERSIZE_SURCHARGE_TIER_2_MAX_MM = 2300;

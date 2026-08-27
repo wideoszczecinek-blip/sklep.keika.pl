@@ -4938,8 +4938,18 @@ a {
   }
 
   .hero-product-content {
-    min-height: 152px;
-    max-height: 62vh;
+    /* Base rule gives this its own internal scrollbar (max-height + auto
+       overflow) - fine on desktop, but on mobile it meant swiping inside
+       the description text only scrolled that small nested box while the
+       title above stayed put, and swiping elsewhere scrolled the outer
+       page instead - two different scroll targets depending on exactly
+       where a finger landed. Folding it into the single outer scroll (no
+       cap, no separate scrollbar) means everything, title included, moves
+       together the way one continuous page normally would. */
+    min-height: 0;
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
   }
 
   .hero-product-config-panel {
