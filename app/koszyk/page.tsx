@@ -896,12 +896,6 @@ export default function CartPage() {
                       </label>
                     ))}
                   </div>
-                  {!availableDeliveryMethods.some((method) => method.id === "paczkomat") ? (
-                    <p className="cart-delivery-note">
-                      Paczkomat InPost jest dostępny tylko dla zamówień, w których żaden z wymiarów pozycji nie
-                      przekracza 64 cm.
-                    </p>
-                  ) : null}
                 </section>
 
                 <section className="cart-checkout-form-card">
