@@ -72,9 +72,13 @@ export async function POST(request: Request) {
     const intent = await stripe.paymentIntents.create({
       amount,
       currency: (crmJson.order.currency || "pln").toLowerCase(),
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      // Explicit list instead of automatic_payment_methods: with "automatic"
+      // Stripe's own "Link" express-checkout (email/phone + SMS code, a
+      // separate Stripe product) can take over as the default option once it
+      // recognizes a returning customer, pushing card/BLIK/Przelewy24 behind
+      // a "pay another way" step - confusing for someone expecting to just
+      // pick a method. This keeps the 4 real methods and never offers Link.
+      payment_method_types: ["card", "blik", "p24", "revolut_pay"],
       // E-mail is required at checkout now - use it for the Stripe receipt
       // too, on top of pre-filling the Payment Element (done client-side).
       ...(customerEmail ? { receipt_email: customerEmail } : {}),

@@ -2547,32 +2547,60 @@ export default function Home() {
             <nav className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""}`} aria-label="Sekcje produktu">
               <button
                 type="button"
-                className={activeProductTab === "opis" ? "is-active" : ""}
-                onClick={() => setActiveProductTab("opis")}
+                className="hero-product-bottom-tabs-configure"
+                onClick={() => {
+                  // Mobile only: .hero-full scrolls internally, so plain
+                  // scrollIntoView on the target isn't reliable here - same
+                  // manual computation as the configurator's own step
+                  // transitions (see ConfiguratorPanel.scrollStepIntoView).
+                  const target = document.querySelector<HTMLElement>(".hero-product-config-panel");
+                  const container = target?.closest<HTMLElement>(".hero-full");
+                  if (target && container && container.scrollHeight > container.clientHeight) {
+                    const containerRect = container.getBoundingClientRect();
+                    const targetRect = target.getBoundingClientRect();
+                    const delta = targetRect.top - containerRect.top - 96;
+                    const nextTop = Math.max(
+                      0,
+                      Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight),
+                    );
+                    container.scrollTo({ top: nextTop, behavior: "smooth" });
+                  } else {
+                    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }}
               >
-                Opis produktu
+                Konfiguruj
               </button>
-              <button
-                type="button"
-                className={activeProductTab === "galeria" ? "is-active" : ""}
-                onClick={() => setActiveProductTab("galeria")}
-              >
-                Galeria zdjęć
-              </button>
-              <button
-                type="button"
-                className={activeProductTab === "opinie" ? "is-active" : ""}
-                onClick={() => setActiveProductTab("opinie")}
-              >
-                Opinie
-              </button>
-              <button
-                type="button"
-                className={activeProductTab === "instrukcje" ? "is-active" : ""}
-                onClick={() => setActiveProductTab("instrukcje")}
-              >
-                Instrukcje
-              </button>
+              <div className="hero-product-bottom-tabs-scroll">
+                <button
+                  type="button"
+                  className={activeProductTab === "opis" ? "is-active" : ""}
+                  onClick={() => setActiveProductTab("opis")}
+                >
+                  Opis produktu
+                </button>
+                <button
+                  type="button"
+                  className={activeProductTab === "galeria" ? "is-active" : ""}
+                  onClick={() => setActiveProductTab("galeria")}
+                >
+                  Galeria zdjęć
+                </button>
+                <button
+                  type="button"
+                  className={activeProductTab === "opinie" ? "is-active" : ""}
+                  onClick={() => setActiveProductTab("opinie")}
+                >
+                  Opinie
+                </button>
+                <button
+                  type="button"
+                  className={activeProductTab === "instrukcje" ? "is-active" : ""}
+                  onClick={() => setActiveProductTab("instrukcje")}
+                >
+                  Instrukcje
+                </button>
+              </div>
             </nav>
           ) : null}
         </section>

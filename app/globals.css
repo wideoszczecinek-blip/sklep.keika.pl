@@ -2518,6 +2518,17 @@ a {
   color: #172235;
 }
 
+/* Desktop keeps the original flat 4-button row - the wrapper stays out of
+   the box model entirely and the "Konfiguruj" shortcut (mobile-only, see
+   below) is hidden. */
+.hero-product-bottom-tabs-configure {
+  display: none;
+}
+
+.hero-product-bottom-tabs-scroll {
+  display: contents;
+}
+
 .metrics-strip {
   width: 100%;
   display: grid;
@@ -4863,8 +4874,9 @@ a {
     transform: translateY(130%);
     bottom: calc(env(safe-area-inset-bottom, 0px) + 0.8rem);
     display: flex;
-    overflow-x: auto;
-    justify-content: flex-start;
+    align-items: center;
+    gap: 0.3rem;
+    overflow: hidden;
   }
 
   .hero-product-bottom-tabs.is-visible {
@@ -4876,8 +4888,42 @@ a {
     flex: 0 0 auto;
   }
 
+  /* Always-visible, pinned first - the other four scroll next to it instead
+     of everything competing for space in one row (where the last one or two
+     ended up cut off with no hint there was more). */
+  .hero-product-bottom-tabs button.hero-product-bottom-tabs-configure {
+    display: block;
+    flex: 0 0 auto;
+    background: linear-gradient(120deg, #ff9f0a, #ff7b00);
+    color: #172235;
+    margin-right: 0.1rem;
+  }
+
+  .hero-product-bottom-tabs-scroll {
+    display: flex;
+    gap: 0.2rem;
+    overflow-x: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    -webkit-overflow-scrolling: touch;
+    /* Fades the trailing edge so "there's more, swipe" is visible instead
+       of the strip just looking abruptly cut off. */
+    mask-image: linear-gradient(to right, black calc(100% - 22px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 22px), transparent 100%);
+  }
+
+  .hero-product-bottom-tabs-scroll button {
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
   .hero-product-panel {
     padding-right: 0.2rem;
+    /* The bottom tab bar is fixed/floating - without this, whatever content
+       happened to be scrolled to that position (end of the description,
+       start of the configurator) rendered underneath it instead of clear
+       of it. */
+    padding-bottom: 4.6rem;
   }
 
   .hero-product-content {
