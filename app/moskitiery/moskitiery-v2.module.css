@@ -162,16 +162,11 @@
 
 .topButton,
 .footerLink,
-.lookupLink {
+.lookupLink,
+.ghostButton {
   color: var(--text-primary);
   background: rgba(248, 250, 252, 0.9);
   border: 1px solid rgba(17, 32, 53, 0.08);
-}
-
-.ghostButton {
-  color: #f8fbff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .ctaButton {
@@ -205,13 +200,10 @@
 
 .topButton:hover,
 .footerLink:hover,
-.lookupLink:hover {
+.lookupLink:hover,
+.ghostButton:hover {
   background: #fff;
   box-shadow: 0 12px 24px rgba(20, 35, 56, 0.08);
-}
-
-.ghostButton:hover {
-  background: rgba(255, 255, 255, 0.14);
 }
 
 .ctaButton:hover {

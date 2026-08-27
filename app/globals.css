@@ -4448,7 +4448,11 @@ a {
   }
 
   .hero-title-carousel {
-    min-height: clamp(7rem, 4.8rem + 13vw, 9.8rem);
+    /* Tall enough for a 4-line wrapped headline ("DOPASUJ ROLETY DO SWOICH
+       POTRZEB" etc.) at this breakpoint's font-size - the old, shorter
+       clamp let long headlines overflow the reserved box and overlap the
+       subtitle line directly below it. */
+    min-height: clamp(11.6rem, 8vw + 8.8rem, 13rem);
   }
 
   .hero-eyebrow-carousel {
@@ -5894,4 +5898,197 @@ html[data-theme="light"] .mobile-fixed-cta {
     grid-area: edit;
     justify-self: start;
   }
+}
+
+/* Light theme - the cart page, its item/delivery/payment cards and the
+   regulamin/COD-SMS modals were built dark-first with literal colors (white
+   text, translucent-dark-navy cards) that never got a light pass, so in
+   light mode they rendered as barely-there light-grey text on light-grey
+   cards over the (correctly light) page background. Mirrors the same navy
+   ink / white-card / teal-accent palette already used for the header and
+   hero elsewhere in this file. */
+html[data-theme="light"] .cart-page-brand,
+html[data-theme="light"] .cart-page-header h1 {
+  color: #132843;
+}
+
+html[data-theme="light"] .cart-page-back {
+  color: rgba(19, 40, 67, 0.68);
+}
+
+html[data-theme="light"] .cart-page-back:hover {
+  color: #132843;
+}
+
+html[data-theme="light"] .cart-page-empty {
+  border-color: rgba(26, 51, 82, 0.16);
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(19, 40, 67, 0.82);
+}
+
+html[data-theme="light"] .cart-page-item,
+html[data-theme="light"] .cart-delivery-card,
+html[data-theme="light"] .cart-checkout-form-card {
+  border-color: rgba(26, 51, 82, 0.14);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+html[data-theme="light"] .cart-page-item-thumb {
+  background-color: rgba(19, 40, 67, 0.06);
+}
+
+html[data-theme="light"] .cart-page-item-info strong,
+html[data-theme="light"] .cart-page-item-qty span,
+html[data-theme="light"] .cart-page-item-total,
+html[data-theme="light"] .cart-delivery-card h2,
+html[data-theme="light"] .cart-checkout-form-card h2,
+html[data-theme="light"] .cart-payment-card h2,
+html[data-theme="light"] .cart-delivery-option-copy strong,
+html[data-theme="light"] .cart-page-summary-row,
+html[data-theme="light"] .cod-sms-modal-shell h3,
+html[data-theme="light"] .legal-modal-shell h3,
+html[data-theme="light"] .legal-modal-body h3,
+html[data-theme="light"] .legal-modal-body strong {
+  color: #132843;
+}
+
+html[data-theme="light"] .cart-page-item-specs,
+html[data-theme="light"] .cart-checkout-intro,
+html[data-theme="light"] .cart-delivery-note,
+html[data-theme="light"] .cart-page-checkout-note,
+html[data-theme="light"] .cart-terms-checkbox,
+html[data-theme="light"] .cart-checkout-form label,
+html[data-theme="light"] .cart-checkout-note-field,
+html[data-theme="light"] .cart-invoice-nip-hint,
+html[data-theme="light"] .cart-payment-waiting,
+html[data-theme="light"] .cart-page-order-note,
+html[data-theme="light"] .cod-sms-modal-shell p,
+html[data-theme="light"] .legal-modal-body {
+  color: rgba(19, 40, 67, 0.72);
+}
+
+html[data-theme="light"] .cart-page-item-unit,
+html[data-theme="light"] .cart-delivery-option-copy small,
+html[data-theme="light"] .cart-page-summary-row.is-muted {
+  color: rgba(19, 40, 67, 0.55);
+}
+
+html[data-theme="light"] .cart-page-item-qty button {
+  border-color: rgba(26, 51, 82, 0.24);
+  background: rgba(19, 40, 67, 0.05);
+  color: #132843;
+}
+
+html[data-theme="light"] .cart-page-item-remove {
+  color: rgba(19, 40, 67, 0.5);
+}
+
+html[data-theme="light"] .cart-page-item-remove:hover {
+  color: #c4432c;
+}
+
+html[data-theme="light"] .cart-page-item-edit,
+html[data-theme="light"] .cart-terms-link,
+html[data-theme="light"] .cart-delivery-option-price,
+html[data-theme="light"] .cart-page-order-note strong,
+html[data-theme="light"] .cart-page-checkout-note a,
+html[data-theme="light"] .cart-page-checkout-note strong,
+html[data-theme="light"] .cod-sms-modal-shell strong {
+  color: #0e7c77;
+}
+
+html[data-theme="light"] .cart-page-item-edit:hover,
+html[data-theme="light"] .cart-terms-link:hover,
+html[data-theme="light"] .cart-cod-resend:hover {
+  color: #0a5f5b;
+}
+
+html[data-theme="light"] .edit-item-modal-close,
+html[data-theme="light"] .legal-modal-close,
+html[data-theme="light"] .cod-sms-modal-close,
+html[data-theme="light"] .cart-cod-resend {
+  color: rgba(19, 40, 67, 0.5);
+}
+
+html[data-theme="light"] .edit-item-modal-close:hover,
+html[data-theme="light"] .legal-modal-close:hover,
+html[data-theme="light"] .cod-sms-modal-close:hover {
+  color: #132843;
+}
+
+html[data-theme="light"] .cart-delivery-option {
+  border-color: rgba(26, 51, 82, 0.16);
+  background: rgba(19, 40, 67, 0.03);
+}
+
+html[data-theme="light"] .cart-delivery-option:hover {
+  border-color: rgba(26, 51, 82, 0.3);
+}
+
+html[data-theme="light"] .cart-delivery-option.is-active {
+  border-color: rgba(14, 124, 119, 0.55);
+  background: rgba(14, 124, 119, 0.08);
+}
+
+html[data-theme="light"] .cart-payment-card {
+  border-color: rgba(14, 124, 119, 0.32);
+  background: rgba(14, 124, 119, 0.07);
+}
+
+html[data-theme="light"] .cart-payment-method-badge {
+  border-color: rgba(14, 124, 119, 0.4);
+  background: rgba(14, 124, 119, 0.1);
+  color: #0e7c77;
+}
+
+html[data-theme="light"] .cart-payment-method-badge.is-muted {
+  border-color: rgba(26, 51, 82, 0.16);
+  background: rgba(19, 40, 67, 0.04);
+  color: rgba(19, 40, 67, 0.55);
+}
+
+html[data-theme="light"] .cart-checkout-form input,
+html[data-theme="light"] .cart-checkout-form textarea,
+html[data-theme="light"] .cod-sms-modal-shell input {
+  border-color: rgba(26, 51, 82, 0.22);
+  background: rgba(255, 255, 255, 0.92);
+  color: #132843;
+}
+
+html[data-theme="light"] .cart-invoice-checkbox {
+  color: rgba(19, 40, 67, 0.82) !important;
+}
+
+html[data-theme="light"] .cart-invoice-fields {
+  border-color: rgba(26, 51, 82, 0.14);
+  background: rgba(19, 40, 67, 0.02);
+}
+
+html[data-theme="light"] .cart-invoice-nip-spinner {
+  border-color: rgba(19, 40, 67, 0.18);
+  border-top-color: rgba(14, 124, 119, 0.9);
+}
+
+html[data-theme="light"] .cart-invoice-nip-error {
+  color: #c4432c;
+}
+
+html[data-theme="light"] .cart-checkout-error {
+  border-color: rgba(196, 67, 44, 0.4);
+  background: rgba(196, 67, 44, 0.1);
+  color: #8a2c1c;
+}
+
+html[data-theme="light"] .cod-sms-modal-overlay,
+html[data-theme="light"] .legal-modal-overlay,
+html[data-theme="light"] .edit-item-modal-overlay {
+  background: rgba(19, 40, 67, 0.32);
+}
+
+html[data-theme="light"] .cod-sms-modal-shell,
+html[data-theme="light"] .legal-modal-shell,
+html[data-theme="light"] .legal-modal-topbar {
+  border-color: rgba(26, 51, 82, 0.16);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 30px 60px rgba(19, 40, 67, 0.18);
 }
