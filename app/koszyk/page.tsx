@@ -1170,7 +1170,14 @@ export default function CartPage() {
                     </>
                   ) : !deliveryDataReady ? (
                     <p className="cart-checkout-intro">
-                      Uzupełnij dane po lewej (imię i nazwisko, kontakt, adres), aby przejść do płatności.
+                      {/* Desktop: the form really is the left column here.
+                          Mobile stacks everything in one column, so the
+                          form sits above this instead - CSS swaps which
+                          span shows per the same breakpoint the layout
+                          itself switches at. */}
+                      <span className="cart-checkout-intro-desktop">Uzupełnij dane po lewej</span>
+                      <span className="cart-checkout-intro-mobile">Uzupełnij dane powyżej</span>{" "}
+                      (imię i nazwisko, kontakt, adres), aby przejść do płatności.
                     </p>
                   ) : paymentMethod === "online" ? (
                     <>

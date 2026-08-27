@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 // Light/dark toggle disabled for now (only one product live) - bring back
 // once the whole shop is ready, see header-actions below.
 // import ThemeToggle from "@/app/components/theme-toggle";
@@ -600,6 +601,28 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   }
 }
 
+/** Renders children through a portal to document.body on mobile, in place
+ * otherwise. Needed for the "Dodano do koszyka!" overlay: it lives inside
+ * .hero-product-config-panel, an ancestor that gets `transform` during its
+ * own fade-in/out animation - which makes it the containing block for any
+ * `position: fixed` descendant (a CSS rule, not a bug), so the overlay was
+ * centering itself within that panel's box instead of the real viewport.
+ * Portaling out to <body> escapes that entirely. useLayoutEffect (not
+ * useEffect) so the mobile check lands before paint - this only ever mounts
+ * client-side (after "Dodaj do koszyka"), never during SSR. */
+function MobileOverlayPortal({ children }: { children: React.ReactNode }) {
+  const [isMobile, setIsMobile] = useState(false);
+  useLayoutEffect(() => {
+    const mql = window.matchMedia("(max-width: 760px)");
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+  if (!isMobile) return <>{children}</>;
+  return createPortal(children, document.body);
+}
+
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig | null>(null);
   const [configReady, setConfigReady] = useState(false);
@@ -615,39 +638,6 @@ export default function Home() {
   const [cartIsFlashing, setCartIsFlashing] = useState(false);
   const [cartTooltipOpen, setCartTooltipOpen] = useState(false);
   const [addToCartToast, setAddToCartToast] = useState<{ productSlug: string; productLabel: string } | null>(null);
-  // Mobile only (desktop never had this problem - the config panel is
-  // sticky-positioned there and fits on screen; .hero-full's scroll fix
-  // below is itself mobile-only, but overflow:hidden still allows
-  // *programmatic* scrollTo() on desktop, which was silently repositioning
-  // the desktop hero too). On mobile .hero-full scrolls internally, so the
-  // "Dodano do koszyka!" panel (replacing the step accordion in place)
-  // could render below whatever the customer had scrolled to while filling
-  // in dimensions - centers it in view instead. A short delay (not just one
-  // rAF) waits out the browser's own scroll-anchoring adjustment as the
-  // panel's content height shrinks from the full accordion to the compact
-  // toast, which was still settling when measured too early and threw the
-  // centering off.
-  useEffect(() => {
-    if (!addToCartToast) return;
-    if (typeof window === "undefined" || !window.matchMedia("(max-width: 760px)").matches) return;
-    const timer = window.setTimeout(() => {
-      const toast = document.querySelector<HTMLElement>(".hero-product-added-toast");
-      const container = toast?.closest<HTMLElement>(".hero-full");
-      if (!toast || !container) return;
-      const containerRect = container.getBoundingClientRect();
-      const toastRect = toast.getBoundingClientRect();
-      const offsetInContainer = toastRect.top - containerRect.top + container.scrollTop;
-      const nextTop = Math.max(
-        0,
-        Math.min(
-          offsetInContainer - (container.clientHeight - toastRect.height) / 2,
-          container.scrollHeight - container.clientHeight,
-        ),
-      );
-      container.scrollTo({ top: nextTop, behavior: "smooth" });
-    }, 220);
-    return () => window.clearTimeout(timer);
-  }, [addToCartToast]);
   // moskitiery-ramkowe now uses the shared <ConfiguratorPanel> (see
   // features/moskitiery-ramkowe/) - it owns its own step state internally,
   // so a fresh one is mounted by bumping this key (e.g. "wyceń nową"), and
@@ -2116,7 +2106,8 @@ export default function Home() {
               >
                 {productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                   addToCartToast ? (
-                    <div className="hero-product-mini-summary is-revealed">
+                    <MobileOverlayPortal>
+                    <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
                       <div className="hero-product-mini-summary-body">
                         <div className="hero-product-added-toast">
                           <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
@@ -2150,6 +2141,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
+                    </MobileOverlayPortal>
                   ) : (
                     <ConfiguratorPanel
                       key={ramkoweConfigKey}
