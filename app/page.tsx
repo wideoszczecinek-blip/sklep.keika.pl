@@ -1206,6 +1206,11 @@ export default function Home() {
     };
     setSelectedProduct(nextProduct);
     setDisplayedProduct(nextProduct);
+    // On mobile .hero-full scrolls internally (the configurator has far more
+    // content than one screen) - without this, opening a product while
+    // already scrolled down in it (or in the previous product) would land
+    // the customer mid-page instead of at the top of the new panel.
+    document.querySelector(".hero-full")?.scrollTo({ top: 0, behavior: "auto" });
     window.requestAnimationFrame(() => {
       setIsProductView(true);
     });

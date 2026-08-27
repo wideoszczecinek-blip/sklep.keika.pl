@@ -62,6 +62,27 @@ export default function ConfiguratorPanel({
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
 
+  // Keeps the newly-opened step clear of the fixed .hero-header. Computed
+  // and applied by hand (instead of scrollIntoView) because on mobile the
+  // real scroll container is .hero-full, not the window/body - scrollIntoView
+  // there interacted unpredictably with the still-settling accordion
+  // fold/unfold layout shift happening in the same instant.
+  const MOBILE_HEADER_CLEARANCE_PX = 96;
+  function scrollStepIntoView(target: HTMLElement | null) {
+    if (!target) return;
+    const container = target.closest(".hero-full") as HTMLElement | null;
+    if (!container || container.scrollHeight <= container.clientHeight) {
+      // Desktop (or nothing to scroll): fall back to the plain browser API.
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const delta = targetRect.top - containerRect.top - MOBILE_HEADER_CLEARANCE_PX;
+    const nextTop = Math.max(0, Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight));
+    container.scrollTo({ top: nextTop, behavior: "smooth" });
+  }
+
   function openZoom(preview: ZoomPreview) {
     if (onZoom) onZoom(preview);
     else setInternalZoomPreview(preview);
@@ -211,7 +232,7 @@ export default function ConfiguratorPanel({
                       // finish before scrolling, so the two motions don't
                       // fight each other.
                       window.setTimeout(() => {
-                        stepTwoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        scrollStepIntoView(stepTwoRef.current);
                       }, 380);
                     }}
                   >
@@ -295,7 +316,7 @@ export default function ConfiguratorPanel({
                         setSelectedMeshId(option.id);
                         setStepTwoCollapsed(true);
                         window.setTimeout(() => {
-                          stepThreeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          scrollStepIntoView(stepThreeRef.current);
                         }, 380);
                       }}
                     >

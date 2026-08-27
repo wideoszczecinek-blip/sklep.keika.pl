@@ -4452,6 +4452,15 @@ a {
     display: none;
   }
 
+  /* The header has no background by design on the full-bleed hero (it sits
+     over a static photo there). Now that the product view scrolls beneath
+     it, transparent meant scrolled-past text/buttons showed straight
+     through the header - give it a solid backdrop only in that state. */
+  .home-root.product-focus-active .hero-header {
+    background: rgba(5, 13, 24, 0.86);
+    backdrop-filter: blur(10px);
+  }
+
   .hero-menu-card {
     min-height: 84px;
   }
@@ -4881,10 +4890,23 @@ a {
     top: auto;
     min-height: 280px;
     max-height: none;
+    /* Early in the flow (e.g. right after step 1 folds shut) there isn't
+       enough real content below the newly-opened step to let the scroll
+       container reach it - the browser's max-scroll is capped by actual
+       content height, so the step could get stuck well below the header
+       with no way to bring it fully into view. This reserves scroll room
+       so any step can always be scrolled flush under the header. */
+    padding-bottom: 60vh;
   }
 
+  /* Explicit 2 equal columns, not a single "1fr" track - with only one
+     explicit column, .hardware-card.is-last-solo's `grid-column: 2 / span 1`
+     (meant to center a leftover 7th swatch under a 3-column desktop grid)
+     had nothing to land in, so the grid fabricated an implicit second
+     column sized to that one card's own content instead of an equal share -
+     column 1 ended up visibly wider than column 2. */
   .hero-product-hardware-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
