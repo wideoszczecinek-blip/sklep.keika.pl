@@ -615,6 +615,35 @@ export default function Home() {
   const [cartIsFlashing, setCartIsFlashing] = useState(false);
   const [cartTooltipOpen, setCartTooltipOpen] = useState(false);
   const [addToCartToast, setAddToCartToast] = useState<{ productSlug: string; productLabel: string } | null>(null);
+  // On mobile .hero-full scrolls internally, so the "Dodano do koszyka!"
+  // panel (which replaces the step accordion in place) could render well
+  // below whatever the customer had scrolled to while filling in
+  // dimensions - centers it in view instead, same manual computation used
+  // for the configurator's own step transitions and the "Konfiguruj" jump.
+  useEffect(() => {
+    if (!addToCartToast) return;
+    const raf = window.requestAnimationFrame(() => {
+      const toast = document.querySelector<HTMLElement>(".hero-product-added-toast");
+      if (!toast) return;
+      const container = toast.closest<HTMLElement>(".hero-full");
+      if (container && container.scrollHeight > container.clientHeight) {
+        const containerRect = container.getBoundingClientRect();
+        const toastRect = toast.getBoundingClientRect();
+        const offsetInContainer = toastRect.top - containerRect.top + container.scrollTop;
+        const nextTop = Math.max(
+          0,
+          Math.min(
+            offsetInContainer - (container.clientHeight - toastRect.height) / 2,
+            container.scrollHeight - container.clientHeight,
+          ),
+        );
+        container.scrollTo({ top: nextTop, behavior: "smooth" });
+      } else {
+        toast.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [addToCartToast]);
   // moskitiery-ramkowe now uses the shared <ConfiguratorPanel> (see
   // features/moskitiery-ramkowe/) - it owns its own step state internally,
   // so a fresh one is mounted by bumping this key (e.g. "wyceń nową"), and
