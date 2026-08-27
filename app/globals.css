@@ -736,6 +736,12 @@ a {
 
 .hero-inner.product-mode {
   position: relative;
+  /* The marketing hero's 1360px cap made sense for one big headline, but
+     left large amounts of unused margin on wide monitors once the product
+     view's description/gallery/reviews column is what's filling the space -
+     it just looked cramped in a narrow strip instead. Self-limits back to
+     96vw on anything narrower, same as before. */
+  width: min(1680px, 96vw);
   grid-template-columns: minmax(0, 65%) minmax(0, 35%);
   align-items: stretch;
   gap: clamp(1.1rem, 1.8vw, 1.8rem);
@@ -744,6 +750,11 @@ a {
 .hero-inner.product-mode .hero-copy {
   grid-column: 1;
   grid-row: 1;
+  /* The base .hero-copy's 780px cap (sized for one big marketing headline)
+     was overriding the wider grid column above, leaving the actual
+     description/gallery/reviews content stuck in a narrow strip with empty
+     space on either side even after widening .hero-inner itself. */
+  max-width: none;
 }
 
 .hero-inner.product-mode .hero-product-config-panel {

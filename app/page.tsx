@@ -615,34 +615,38 @@ export default function Home() {
   const [cartIsFlashing, setCartIsFlashing] = useState(false);
   const [cartTooltipOpen, setCartTooltipOpen] = useState(false);
   const [addToCartToast, setAddToCartToast] = useState<{ productSlug: string; productLabel: string } | null>(null);
-  // On mobile .hero-full scrolls internally, so the "Dodano do koszyka!"
-  // panel (which replaces the step accordion in place) could render well
-  // below whatever the customer had scrolled to while filling in
-  // dimensions - centers it in view instead, same manual computation used
-  // for the configurator's own step transitions and the "Konfiguruj" jump.
+  // Mobile only (desktop never had this problem - the config panel is
+  // sticky-positioned there and fits on screen; .hero-full's scroll fix
+  // below is itself mobile-only, but overflow:hidden still allows
+  // *programmatic* scrollTo() on desktop, which was silently repositioning
+  // the desktop hero too). On mobile .hero-full scrolls internally, so the
+  // "Dodano do koszyka!" panel (replacing the step accordion in place)
+  // could render below whatever the customer had scrolled to while filling
+  // in dimensions - centers it in view instead. A short delay (not just one
+  // rAF) waits out the browser's own scroll-anchoring adjustment as the
+  // panel's content height shrinks from the full accordion to the compact
+  // toast, which was still settling when measured too early and threw the
+  // centering off.
   useEffect(() => {
     if (!addToCartToast) return;
-    const raf = window.requestAnimationFrame(() => {
+    if (typeof window === "undefined" || !window.matchMedia("(max-width: 760px)").matches) return;
+    const timer = window.setTimeout(() => {
       const toast = document.querySelector<HTMLElement>(".hero-product-added-toast");
-      if (!toast) return;
-      const container = toast.closest<HTMLElement>(".hero-full");
-      if (container && container.scrollHeight > container.clientHeight) {
-        const containerRect = container.getBoundingClientRect();
-        const toastRect = toast.getBoundingClientRect();
-        const offsetInContainer = toastRect.top - containerRect.top + container.scrollTop;
-        const nextTop = Math.max(
-          0,
-          Math.min(
-            offsetInContainer - (container.clientHeight - toastRect.height) / 2,
-            container.scrollHeight - container.clientHeight,
-          ),
-        );
-        container.scrollTo({ top: nextTop, behavior: "smooth" });
-      } else {
-        toast.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    });
-    return () => window.cancelAnimationFrame(raf);
+      const container = toast?.closest<HTMLElement>(".hero-full");
+      if (!toast || !container) return;
+      const containerRect = container.getBoundingClientRect();
+      const toastRect = toast.getBoundingClientRect();
+      const offsetInContainer = toastRect.top - containerRect.top + container.scrollTop;
+      const nextTop = Math.max(
+        0,
+        Math.min(
+          offsetInContainer - (container.clientHeight - toastRect.height) / 2,
+          container.scrollHeight - container.clientHeight,
+        ),
+      );
+      container.scrollTo({ top: nextTop, behavior: "smooth" });
+    }, 220);
+    return () => window.clearTimeout(timer);
   }, [addToCartToast]);
   // moskitiery-ramkowe now uses the shared <ConfiguratorPanel> (see
   // features/moskitiery-ramkowe/) - it owns its own step state internally,
