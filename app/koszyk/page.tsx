@@ -1296,27 +1296,33 @@ export default function CartPage() {
       {legalModalOpen ? (
         <div className="legal-modal-overlay" role="dialog" aria-modal="true" aria-label="Regulamin">
           <div className="legal-modal-shell">
-            <button
-              type="button"
-              className="cod-sms-modal-close"
-              aria-label="Zamknij"
-              onClick={() => setLegalModalOpen(false)}
-            >
-              ×
-            </button>
-            {legalLoading ? (
-              <div className="cart-payment-waiting">
-                <span className="cart-invoice-nip-spinner" aria-hidden="true" />
-                Wczytujemy regulamin…
-              </div>
-            ) : legalError ? (
-              <div className="cart-checkout-error">{legalError}</div>
-            ) : legalContent ? (
-              <>
-                <h3>{legalContent.title}</h3>
-                <div className="legal-modal-body" dangerouslySetInnerHTML={{ __html: legalContent.bodyHtml }} />
-              </>
-            ) : null}
+            {/* Sticky so it stays reachable no matter how far the (often
+                long) regulamin text below has been scrolled. */}
+            <div className="legal-modal-topbar">
+              <button
+                type="button"
+                className="legal-modal-close"
+                aria-label="Zamknij"
+                onClick={() => setLegalModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="legal-modal-inner">
+              {legalLoading ? (
+                <div className="cart-payment-waiting">
+                  <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                  Wczytujemy regulamin…
+                </div>
+              ) : legalError ? (
+                <div className="cart-checkout-error">{legalError}</div>
+              ) : legalContent ? (
+                <>
+                  <h3>{legalContent.title}</h3>
+                  <div className="legal-modal-body" dangerouslySetInnerHTML={{ __html: legalContent.bodyHtml }} />
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}

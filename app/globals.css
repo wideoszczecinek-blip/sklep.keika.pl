@@ -4136,8 +4136,40 @@ a {
   border-radius: 1.1rem;
   border: 1px solid rgba(229, 241, 255, 0.2);
   background: rgba(20, 24, 34, 0.97);
-  padding: 1.6rem 1.6rem 1.5rem;
   box-shadow: 0 30px 60px rgba(4, 10, 18, 0.5);
+}
+
+/* Pinned to the top of the modal's own scroll area (not the viewport) so
+   the close button stays reachable no matter how far the regulamin text
+   below has been scrolled - a plain absolute-positioned button would have
+   scrolled away with the content instead. */
+.legal-modal-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 0.6rem 0;
+  background: rgba(20, 24, 34, 0.97);
+  border-radius: 1.1rem 1.1rem 0 0;
+}
+
+.legal-modal-close {
+  border: none;
+  background: none;
+  color: rgba(240, 248, 255, 0.6);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+}
+
+.legal-modal-close:hover {
+  color: #f2f7ff;
+}
+
+.legal-modal-inner {
+  padding: 0.3rem 1.6rem 1.6rem;
 }
 
 .legal-modal-shell h3 {
