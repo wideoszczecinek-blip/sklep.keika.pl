@@ -296,6 +296,11 @@ function StripePaymentStep({
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // Stripe takes a few seconds to determine which methods (BLIK, Przelewy24,
+  // Revolut, ...) are actually eligible before painting them in - without
+  // this, that gap looked like "only a card field, nothing else" and some
+  // customers ordered before the rest had a chance to appear.
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
 
   async function handlePay() {
     if (!stripe || !elements) return;
@@ -343,35 +348,44 @@ function StripePaymentStep({
 
   return (
     <div className="cart-checkout-payment">
-      <PaymentElement
-        options={{
-          defaultValues: {
-            billingDetails: {
-              name: contact.name || undefined,
-              email: contact.email || undefined,
-              phone: contact.phone || undefined,
-              address: {
-                city: contact.city || undefined,
-                postal_code: contact.postcode || undefined,
-                line1: contact.address1 || undefined,
-                country: "PL",
+      {paymentMethodsLoading ? (
+        <div className="cart-payment-waiting">
+          <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+          Wczytujemy dostępne metody płatności…
+        </div>
+      ) : null}
+      <div className={paymentMethodsLoading ? "cart-payment-element-loading" : undefined}>
+        <PaymentElement
+          onReady={() => setPaymentMethodsLoading(false)}
+          options={{
+            defaultValues: {
+              billingDetails: {
+                name: contact.name || undefined,
+                email: contact.email || undefined,
+                phone: contact.phone || undefined,
+                address: {
+                  city: contact.city || undefined,
+                  postal_code: contact.postcode || undefined,
+                  line1: contact.address1 || undefined,
+                  country: "PL",
+                },
               },
             },
-          },
-          // We already collect the shipping address in our own form above -
-          // no need to ask for it again inside the Stripe form (applies to
-          // BLIK and every other method here, not just cards).
-          fields: {
-            billingDetails: { address: "never" },
-          },
-        }}
-      />
+            // We already collect the shipping address in our own form above -
+            // no need to ask for it again inside the Stripe form (applies to
+            // BLIK and every other method here, not just cards).
+            fields: {
+              billingDetails: { address: "never" },
+            },
+          }}
+        />
+      </div>
       {error ? <div className="cart-checkout-error">{error}</div> : null}
       <button
         type="button"
         className="cart-page-checkout-cta"
         onClick={handlePay}
-        disabled={isSubmitting || !termsAccepted}
+        disabled={isSubmitting || !termsAccepted || paymentMethodsLoading}
       >
         {isSubmitting ? "Przetwarzamy…" : "Zamawiam"}
       </button>
@@ -1132,10 +1146,6 @@ export default function CartPage() {
                         </>
                       ) : orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
                         <>
-                          <p className="cart-checkout-intro">
-                            Zamówienie <strong>{orderState.orderCode}</strong> zapisane jako wstępne - nie jest jeszcze
-                            złożone. Dokończ płatność poniżej, aby je potwierdzić.
-                          </p>
                           <PaymentStep
                             clientSecret={orderState.clientSecret}
                             publishableKey={orderState.publishableKey}

@@ -5822,6 +5822,15 @@ html[data-theme="light"] .mobile-fixed-cta {
   position: static;
 }
 
+/* Keeps the Stripe element mounted (it needs real width to size/init
+   itself) while collapsing its visible height so the "Wczytujemy dostępne
+   metody płatności…" line above doesn't sit over a tall blank gap before
+   the methods actually paint in. */
+.cart-payment-element-loading {
+  max-height: 0;
+  overflow: hidden;
+}
+
 .cart-checkout-error {
   border-radius: 0.6rem;
   border: 1px solid rgba(255, 143, 122, 0.4);
