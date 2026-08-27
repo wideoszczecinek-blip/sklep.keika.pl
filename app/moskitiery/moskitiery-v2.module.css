@@ -1234,6 +1234,7 @@
   margin: 0 0 1em;
   padding-left: 1.4rem;
   color: var(--text-secondary);
+  list-style: decimal;
 }
 
 .legalHtml li {
@@ -1243,6 +1244,7 @@
 .legalHtml li ol {
   margin: 0.6em 0 0;
   gap: 0.5em;
+  list-style-type: lower-alpha;
 }
 
 .legalHtml strong {

@@ -4174,6 +4174,7 @@ a {
   gap: 0.55rem;
   margin: 0 0 0.9rem;
   padding-left: 1.3rem;
+  list-style: decimal;
 }
 
 .legal-modal-body li {
@@ -4183,6 +4184,7 @@ a {
 .legal-modal-body li ol {
   margin: 0.55rem 0 0;
   gap: 0.5rem;
+  list-style-type: lower-alpha;
 }
 
 .legal-modal-body strong {
