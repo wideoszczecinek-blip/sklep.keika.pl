@@ -17,6 +17,7 @@ import {
 } from "@/lib/cart";
 import ConfiguratorPanel from "@/features/moskitiery-ramkowe/ConfiguratorPanel";
 import { ALLEGRO_MOSKITIERY_HARDWARE, MESH_OPTIONS } from "@/features/moskitiery-ramkowe/shared";
+import { readLastPage } from "../components/last-page-tracker";
 
 type OrderCreateResponse = {
   ok: boolean;
@@ -381,6 +382,9 @@ function StripePaymentStep({
 export default function CartPage() {
   const [items, setItems] = useState<CartLineItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  // Where the customer actually was right before opening the cart (product +
+  // step + query string) - "/" until we know better, filled in on mount.
+  const [backHref, setBackHref] = useState("/");
   const [deliveryMethod, setDeliveryMethod] = useState(COURIER_METHOD.id);
   const [form, setForm] = useState({
     firstName: "",
@@ -466,6 +470,7 @@ export default function CartPage() {
   const sync = useCallback(() => {
     setItems(readCartItems());
     setHydrated(true);
+    setBackHref(readLastPage());
   }, []);
 
   useEffect(() => {
@@ -771,7 +776,7 @@ export default function CartPage() {
           keika
         </Link>
         <h1>Koszyk</h1>
-        <Link href="/" className="cart-page-back">
+        <Link href={backHref} className="cart-page-back">
           ← Wróć do konfiguratora
         </Link>
       </header>

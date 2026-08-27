@@ -14,6 +14,7 @@ import {
   readCartItems,
   summarizeCartItems,
 } from "@/lib/cart";
+import InfoModal from "./components/info-modal";
 import ConfiguratorPanel from "@/features/moskitiery-ramkowe/ConfiguratorPanel";
 import {
   ALLEGRO_MOSKITIERY_HARDWARE,
@@ -119,6 +120,24 @@ type TopLink = {
   label: string;
   url: string;
 };
+
+// Maps a top-menu link's URL to the CRM legal-page slug it should open as a
+// modal instead of navigating to. Anything not recognized here (external
+// links, or a URL a CRM editor sets to something else entirely) still
+// navigates normally.
+const TOP_LINK_INFO_SLUGS: Record<string, string> = {
+  "/regulamin": "regulamin",
+  "/o-nas": "o-nas",
+  "/kontakt": "kontakt",
+  "/bezpieczenstwo": "bezpieczenstwo",
+};
+
+function resolveInfoSlug(url: string): string | null {
+  const clean = url.split("?")[0].split("#")[0];
+  if (TOP_LINK_INFO_SLUGS[clean]) return TOP_LINK_INFO_SLUGS[clean];
+  const legalMatch = clean.match(/^\/legal\/([a-z0-9-]+)$/i);
+  return legalMatch ? legalMatch[1] : null;
+}
 
 type ProductTabKey = "opis" | "galeria" | "opinie" | "instrukcje";
 
@@ -606,6 +625,9 @@ export default function Home() {
   const cartCountUpFrameRef = useRef<number | null>(null);
   const [activeHeadline, setActiveHeadline] = useState(0);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
+  // Menu links for a known CRM legal page (regulamin, o-nas, kontakt,
+  // bezpieczenstwo, ...) open in place as a modal instead of navigating away.
+  const [infoModalSlug, setInfoModalSlug] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<SelectedProductView | null>(null);
   const [displayedProduct, setDisplayedProduct] = useState<SelectedProductView | null>(null);
   const [isProductView, setIsProductView] = useState(false);
@@ -1398,15 +1420,30 @@ export default function Home() {
               </span>
             </button>
             <nav id="top-links-dropdown" className="top-links-dropdown" aria-label="Menu dodatkowe">
-              {topLinks.map((entry) => (
-                <a
-                  key={`${entry.label}-${entry.url}`}
-                  href={entry.url}
-                  onClick={() => setTopMenuOpen(false)}
-                >
-                  {entry.label}
-                </a>
-              ))}
+              {topLinks.map((entry) => {
+                const infoSlug = resolveInfoSlug(entry.url);
+                return infoSlug ? (
+                  <button
+                    key={`${entry.label}-${entry.url}`}
+                    type="button"
+                    className="top-link-button"
+                    onClick={() => {
+                      setTopMenuOpen(false);
+                      setInfoModalSlug(infoSlug);
+                    }}
+                  >
+                    {entry.label}
+                  </button>
+                ) : (
+                  <a
+                    key={`${entry.label}-${entry.url}`}
+                    href={entry.url}
+                    onClick={() => setTopMenuOpen(false)}
+                  >
+                    {entry.label}
+                  </a>
+                );
+              })}
             </nav>
           </div>
         </div>
@@ -2619,6 +2656,8 @@ export default function Home() {
           </div>
         </div>
       ) : null}
+
+      {infoModalSlug ? <InfoModal slug={infoModalSlug} onClose={() => setInfoModalSlug(null)} /> : null}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import LastPageTracker from "./components/last-page-tracker";
 
 export const metadata: Metadata = {
   title: "KEIKA | Rolety i Markizy na Wymiar",
@@ -39,7 +40,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <LastPageTracker />
+        {children}
+      </body>
     </html>
   );
 }
