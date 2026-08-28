@@ -742,7 +742,12 @@ a {
      it just looked cramped in a narrow strip instead. Self-limits back to
      96vw on anything narrower, same as before. */
   width: min(1680px, 96vw);
-  grid-template-columns: minmax(0, 65%) minmax(0, 35%);
+  /* A straight 65%/35% split shrinks both columns together as the window
+     narrows, so the configurator (swatches, dimension inputs) got cramped
+     right along with the description. The configurator should stay usable
+     first - left column now absorbs the available space and narrows on its
+     own, right column holds its size until there's truly no room left. */
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 588px);
   align-items: stretch;
   gap: clamp(1.1rem, 1.8vw, 1.8rem);
 }
@@ -2954,7 +2959,7 @@ a {
 
 .product-layout {
   display: grid;
-  grid-template-columns: minmax(0, 65%) minmax(0, 35%);
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 588px);
   gap: 1rem;
 }
 
