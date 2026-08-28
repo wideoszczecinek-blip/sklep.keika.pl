@@ -757,6 +757,15 @@ a {
   max-width: none;
 }
 
+.hero-inner.product-mode .hero-product-panel {
+  /* .hero-product-panel's own 74ch (~638px) readability cap - sized for a
+     paragraph of text - was ALSO overriding the widened grid column, right
+     alongside the .hero-copy fix above. It was the real reason the gallery/
+     spec-grid/description still rendered in a narrow strip with a large gap
+     before the configurator panel, even after that first fix. */
+  max-width: none;
+}
+
 .hero-inner.product-mode .hero-product-config-panel {
   grid-column: 2;
   grid-row: 1;
