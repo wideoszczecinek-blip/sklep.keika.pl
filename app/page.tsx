@@ -502,6 +502,36 @@ function hardwareOptionsForProduct(
   }));
 }
 
+// Product gallery ("Galeria zdjęć"): a true circular coverflow, not a
+// native horizontal scroller - scrolling from the last photo back to the
+// first via native scroll-into-view would visibly rewind across every photo
+// in between (jarring for the 59-photo moskitiery-ramkowe gallery
+// especially). Instead this computes each rendered item's *signed shortest*
+// distance from the active index around the loop (galleryCircularOffset)
+// and only renders a small window of items near the active one
+// (galleryVisibleIndices), each positioned/scaled purely by that offset via
+// a CSS transform with its own transition - so index 0 sitting right next
+// to the last index is just one short step in either direction, animated
+// exactly like any other neighboring step, never a long rewind.
+function galleryCircularOffset(index: number, active: number, total: number): number {
+  if (total <= 0) return 0;
+  let diff = (index - active) % total;
+  if (diff > total / 2) diff -= total;
+  if (diff < -total / 2) diff += total;
+  return diff;
+}
+
+function galleryVisibleIndices(active: number, total: number, radius: number): number[] {
+  if (total <= 0) return [];
+  const count = Math.min(total, radius * 2 + 1);
+  const half = Math.floor(count / 2);
+  const indices: number[] = [];
+  for (let offset = -half; offset <= count - half - 1; offset += 1) {
+    indices.push(((active + offset) % total + total) % total);
+  }
+  return indices;
+}
+
 function normalizeMenuLabel(raw: string): string {
   return String(raw || "")
     .toLowerCase()
@@ -849,8 +879,6 @@ export default function Home() {
   );
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
-  const galleryRowRef = useRef<HTMLDivElement | null>(null);
-  const galleryThumbsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setDimensionWidth("");
@@ -1997,21 +2025,20 @@ export default function Home() {
                             : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
                               ? ROLETY_DACHOWE_GALLERY_PHOTOS
                               : displayedProduct.gallery;
+                        const total = galleryPhotos.length;
                         const goToSlide = (index: number) => {
-                          const wrapped = ((index % galleryPhotos.length) + galleryPhotos.length) % galleryPhotos.length;
-                          setActiveProductGallerySlide(wrapped);
-                          window.requestAnimationFrame(() => {
-                            const row = galleryRowRef.current;
-                            const item = row?.children[wrapped] as HTMLElement | undefined;
-                            item?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-                            const thumbs = galleryThumbsRef.current;
-                            const thumb = thumbs?.children[wrapped] as HTMLElement | undefined;
-                            thumb?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-                          });
+                          setActiveProductGallerySlide(((index % total) + total) % total);
                         };
                         const openZoom = (index: number) => {
                           setZoomPreview({ title: displayedProduct.label, urls: galleryPhotos, index });
                         };
+                        // Coverflow scale/spacing per step away from the active
+                        // photo - the visible one is meaningfully bigger, each
+                        // neighbor further out shrinks more.
+                        const mainScaleForDistance = (distance: number) =>
+                          distance === 0 ? 1 : distance === 1 ? 0.72 : distance === 2 ? 0.55 : 0.42;
+                        const mainIndices = galleryVisibleIndices(activeProductGallerySlide, total, 3);
+                        const thumbIndices = galleryVisibleIndices(activeProductGallerySlide, total, 5);
                         return (
                           <div className="hero-product-gallery">
                             <div className="hero-product-gallery-row-wrap">
@@ -2023,25 +2050,36 @@ export default function Home() {
                               >
                                 ‹
                               </button>
-                              <div className="hero-product-gallery-row" ref={galleryRowRef}>
-                                {galleryPhotos.map((url, index) => (
-                                  <button
-                                    key={`${url}-${index}`}
-                                    type="button"
-                                    className={`hero-product-gallery-row-item ${index === activeProductGallerySlide ? "is-active" : ""}`}
-                                    onClick={() => {
-                                      setActiveProductGallerySlide(index);
-                                      openZoom(index);
-                                    }}
-                                    aria-label={`Powiększ zdjęcie ${index + 1} z ${galleryPhotos.length}`}
-                                  >
-                                    <img
-                                      src={optimizeImageUrl(url, 500)}
-                                      alt={displayedProduct.label}
-                                      loading={index < 3 ? "eager" : "lazy"}
-                                    />
-                                  </button>
-                                ))}
+                              <div className="hero-product-gallery-row">
+                                {mainIndices.map((index) => {
+                                  const distance = galleryCircularOffset(index, activeProductGallerySlide, total);
+                                  const isActive = distance === 0;
+                                  return (
+                                    <button
+                                      key={`gallery-${index}`}
+                                      type="button"
+                                      className={`hero-product-gallery-row-item ${isActive ? "is-active" : ""}`}
+                                      style={{
+                                        transform: `translate(-50%, -50%) translateX(${distance * 58}%) scale(${mainScaleForDistance(Math.abs(distance))})`,
+                                        zIndex: 100 - Math.abs(distance),
+                                        opacity: Math.abs(distance) > 3 ? 0 : 1,
+                                        pointerEvents: Math.abs(distance) > 3 ? "none" : "auto",
+                                      }}
+                                      onClick={() => (isActive ? openZoom(index) : goToSlide(index))}
+                                      aria-label={
+                                        isActive
+                                          ? `Powiększ zdjęcie ${index + 1} z ${total}`
+                                          : `Pokaż zdjęcie ${index + 1} z ${total}`
+                                      }
+                                    >
+                                      <img
+                                        src={optimizeImageUrl(galleryPhotos[index], 500)}
+                                        alt={displayedProduct.label}
+                                        loading={isActive ? "eager" : "lazy"}
+                                      />
+                                    </button>
+                                  );
+                                })}
                               </div>
                               <button
                                 type="button"
@@ -2061,16 +2099,16 @@ export default function Home() {
                               >
                                 ‹
                               </button>
-                              <div className="hero-product-gallery-thumbs" ref={galleryThumbsRef}>
-                                {galleryPhotos.map((url, index) => (
+                              <div className="hero-product-gallery-thumbs">
+                                {thumbIndices.map((index) => (
                                   <button
-                                    key={`thumb-${url}-${index}`}
+                                    key={`thumb-${index}`}
                                     type="button"
                                     className={index === activeProductGallerySlide ? "is-active" : ""}
                                     onClick={() => goToSlide(index)}
-                                    aria-label={`Pokaż zdjęcie ${index + 1} z ${galleryPhotos.length}`}
+                                    aria-label={`Pokaż zdjęcie ${index + 1} z ${total}`}
                                   >
-                                    <img src={optimizeImageUrl(url, 160)} alt="" loading="lazy" />
+                                    <img src={optimizeImageUrl(galleryPhotos[index], 160)} alt="" loading="lazy" />
                                   </button>
                                 ))}
                               </div>
