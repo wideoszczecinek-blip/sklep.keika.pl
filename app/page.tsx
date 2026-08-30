@@ -34,6 +34,11 @@ import {
   type HardwareOption,
   type MeshOption,
 } from "@/features/moskitiery-ramkowe/shared";
+import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
+import {
+  ROLETY_DACHOWE_PRICE,
+  type ConfiguratorResult as RoletyDachoweConfiguratorResult,
+} from "@/features/rolety-dachowe/shared";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -228,6 +233,68 @@ const MOSKITIERY_RAMKOWE_GALLERY_PHOTOS: string[] = [
   ),
 ];
 
+// rolety-dachowe (roof window blinds) - real content pulled from the same
+// live CRM product record features/rolety-dachowe/shared.ts's options come
+// from (configurator_public?slug=rolety-dachowe, fetched 2026-08-30), not
+// invented. Only 2 real photos exist for this product (its Allegro
+// catalog thumbnail and the "wybierz model okna" helper illustration) -
+// deliberately not padded out with stock/placeholder photos.
+const ROLETY_DACHOWE_GALLERY_PHOTOS: string[] = [
+  "https://crm-keika.groovemedia.pl/storage/shop/media/20260327_214003_14dc8ed5_KONFIGURATOR-2.png",
+  "https://crm-keika.groovemedia.pl/storage/shop/media/20260809_002723_40b6e7e0_A-7.webp",
+];
+
+const ROLETY_DACHOWE_FEATURE_BULLETS: ProductFeatureBullet[] = [
+  {
+    lead: "19 kolorów tkaniny Termo",
+    detail: "tkanina nie przepuszcza światła i dzięki powłoce termicznej na zewnątrz skutecznie zmniejsza nagrzewanie się pomieszczenia",
+  },
+  {
+    lead: "2 kolory kasety i prowadnic",
+    detail: "Anoda (srebrny) i Biały",
+  },
+  {
+    lead: "Ponad 400 modeli okien w bibliotece",
+    detail: "Velux, Fakro, Roto, OKPOL i inne — wybierz swój model, a rozmiar rolety dobierzemy automatycznie",
+  },
+  {
+    lead: "Stała cena niezależnie od rozmiaru",
+    detail: `${ROLETY_DACHOWE_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł za sztukę`,
+  },
+  {
+    lead: "Nie znalazłeś swojego modelu?",
+    detail: "podaj własny wymiar (Wymiar A / Wymiar B) — roletę wykonamy na miarę",
+  },
+];
+
+const ROLETY_DACHOWE_SPEC_ITEMS: ProductSpecItem[] = [
+  { label: "Kaseta i prowadnice", value: "2 kolory: Anoda, Biały" },
+  { label: "Tkanina", value: "Termo, 19 kolorów" },
+  { label: "Dopasowanie", value: "Pod model okna dachowego (biblioteka 400+ modeli)" },
+  { label: "Cena", value: `${ROLETY_DACHOWE_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł / szt.` },
+];
+
+// Verbatim from the same CRM record's measurement_guide_sections - real
+// instructions specific to this product, not the generic fallback.
+const ROLETY_DACHOWE_INSTRUCTION_STEPS: ProductInstructionStep[] = [
+  {
+    title: "1. Zmierz szerokość",
+    body: "Zmierz wymiar poziomy miejsca montażu od lewej do prawej krawędzi. Wpisz wynik w milimetrach. Pomiaru dokonaj dokładnie w widocznym - zaznaczonym miejscu - nie przy samej szybie tylko na rancie ramy, w miejscu gdzie będzie montowana roleta.",
+  },
+  {
+    title: "2. Zmierz wysokość",
+    body: "Zmierz wymiar pionowy od górnej do dolnej krawędzi miejsca montażu. Również wpisz wynik w milimetrach. Pomiaru również nie dokonuj przy szybie tylko w miejscach zaznaczonych - na rancie ramy.",
+  },
+  {
+    title: "3. Albo po prostu wybierz model okna",
+    body: "Zamiast ręcznego pomiaru możesz wyszukać swój model okna (Velux, Fakro, Roto, OKPOL i inne) w bibliotece ponad 400 modeli — rozmiar rolety dobierzemy automatycznie.",
+  },
+  {
+    title: "4. Ważne: zaokrąglone listwy",
+    body: "Te rolety nie będą kompatybilne z zaokrąglonymi listwami (jeżeli łuk jest minimalny - kilka milimetrów - roleta będzie pasować, natomiast przy oknach z typowo okrągłym profilem niestety nie).",
+  },
+];
+
 type ProductLandingContent = {
   subtitle: string;
   description: string;
@@ -261,6 +328,9 @@ function productDescription(label: string): string {
   const normalized = normalizeMenuLabel(label);
   if (normalized.includes("moskitier")) {
     return "Moskitiery na wymiar z naciskiem na prosty pomiar, szybką realizację i estetyczny montaż bez zbędnych komplikacji.";
+  }
+  if (normalized.includes("rolet") && normalized.includes("dachow")) {
+    return "Rolety dachowe dobierane pod model okna z biblioteki ponad 400 modeli — albo na własny wymiar, jeśli Twojego modelu nie ma na liście.";
   }
   if (normalized.includes("zaluzj")) {
     return "Nowoczesne żaluzje dopasowane do wnętrza, z naciskiem na precyzję wykonania i wygodną codzienną regulację światła.";
@@ -312,6 +382,9 @@ function productInstructionSteps(label: string): ProductInstructionStep[] {
   const normalized = normalizeMenuLabel(label);
   if (normalized.includes("moskitier")) {
     return MOSKITIERY_RAMKOWE_INSTRUCTION_STEPS;
+  }
+  if (normalized.includes("rolet") && normalized.includes("dachow")) {
+    return ROLETY_DACHOWE_INSTRUCTION_STEPS;
   }
   return GENERIC_INSTRUCTION_STEPS;
 }
@@ -463,7 +536,7 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
   }
 
   if (groupSlug === "oslony-wewnetrzne" && /^rolety do okien dachowych$/.test(label)) {
-    return "/kategoria/rolety-do-okien-dachowych";
+    return "/produkt/rolety-dachowe";
   }
 
   if (groupSlug === "oslony-zewnetrzne" && /^rolety zewnetrzne$/.test(label)) {
@@ -544,7 +617,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
       { label: "Plisy", iconUrl: iconInside, linkUrl: "/kategoria/plisy" },
       { label: "Żaluzje", iconUrl: iconInside, linkUrl: "/kategoria/zaluzje" },
       { label: "Rolety rzymskie", iconUrl: iconInside, linkUrl: "/produkt/rolety-rzymskie" },
-      { label: "Rolety do okien dachowych", iconUrl: iconInside, linkUrl: "/kategoria/rolety-do-okien-dachowych" },
+      { label: "Rolety do okien dachowych", iconUrl: iconInside, linkUrl: "/produkt/rolety-dachowe" },
       { label: "Verticale", iconUrl: iconInside, linkUrl: "#kolekcje" },
     ],
   },
@@ -646,6 +719,10 @@ export default function Home() {
   // hardware/mesh but blank dimensions.
   const [ramkoweConfigKey, setRamkoweConfigKey] = useState(0);
   const [ramkoweLastResult, setRamkoweLastResult] = useState<ConfiguratorResult | null>(null);
+  // Same pattern as ramkoweConfigKey/ramkoweLastResult above, for
+  // rolety-dachowe's own <ConfiguratorPanel> (features/rolety-dachowe/).
+  const [rdConfigKey, setRdConfigKey] = useState(0);
+  const [rdLastResult, setRdLastResult] = useState<RoletyDachoweConfiguratorResult | null>(null);
   const cartCountUpFrameRef = useRef<number | null>(null);
   const [activeHeadline, setActiveHeadline] = useState(0);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
@@ -1835,6 +1912,52 @@ export default function Home() {
                               </p>
                             </div>
                           </div>
+                        ) : productSlugFromSelected(displayedProduct) === "rolety-dachowe" ? (
+                          <div className="pl-landing">
+                            <div className="pl-trust-row">
+                              <span className="pl-price">
+                                {ROLETY_DACHOWE_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                <span className="pl-price-unit"> / szt.</span>
+                              </span>
+                              <span className="pl-chip">400+ modeli okien</span>
+                              <span className="pl-chip">Darmowa dostawa</span>
+                            </div>
+
+                            <p className="pl-subtitle">
+                              Roleta dachowa dobierana pod Twój model okna — albo na własny wymiar.
+                            </p>
+
+                            <div
+                              className="pl-hero-photo"
+                              style={{ backgroundImage: `url(${optimizeImageUrl(ROLETY_DACHOWE_GALLERY_PHOTOS[0], 700)})` }}
+                            />
+
+                            <div className="pl-spec-grid">
+                              {ROLETY_DACHOWE_SPEC_ITEMS.map((item) => (
+                                <div className="pl-spec-item" key={item.label}>
+                                  <span className="pl-spec-label">{item.label}</span>
+                                  <span className="pl-spec-value">{item.value}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <ul className="pl-feature-list">
+                              {ROLETY_DACHOWE_FEATURE_BULLETS.map((bullet) => (
+                                <li key={bullet.lead}>
+                                  <strong>{bullet.lead}</strong>
+                                  {bullet.detail ? <span> — {bullet.detail}</span> : null}
+                                </li>
+                              ))}
+                            </ul>
+
+                            <div className="pl-callout">
+                              <strong>Rolety nie pasują do okien z zaokrągloną listwą</strong>
+                              <p>
+                                Jeżeli łuk jest minimalny (kilka milimetrów), roleta będzie pasować — natomiast przy
+                                oknach z typowo okrągłym profilem niestety nie.
+                              </p>
+                            </div>
+                          </div>
                         ) : productLanding && productLanding.sections.length > 0 ? (
                           <div className="pl-landing">
                             <div className="pl-trust-row">
@@ -1871,7 +1994,9 @@ export default function Home() {
                         const galleryPhotos =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                             ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
-                            : displayedProduct.gallery;
+                            : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
+                              ? ROLETY_DACHOWE_GALLERY_PHOTOS
+                              : displayedProduct.gallery;
                         const goToSlide = (index: number) => {
                           const wrapped = ((index % galleryPhotos.length) + galleryPhotos.length) % galleryPhotos.length;
                           setActiveProductGallerySlide(wrapped);
@@ -2297,6 +2422,80 @@ export default function Home() {
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
                         setAddToCartToast({ productSlug: "moskitiery-ramkowe", productLabel: displayedProduct.label });
+                      }}
+                    />
+                  )
+                ) : productSlugFromSelected(displayedProduct) === "rolety-dachowe" ? (
+                  addToCartToast ? (
+                    <MobileOverlayPortal>
+                    <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
+                      <div className="hero-product-mini-summary-body">
+                        <div className="hero-product-added-toast">
+                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
+                          <p>
+                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
+                          </p>
+                          <div className="hero-product-added-toast-actions">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setRdConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń podobną roletę
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setRdLastResult(null);
+                                setRdConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń nową roletę
+                            </button>
+                            <a href="/koszyk" className="is-primary">
+                              Przejdź do koszyka
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    </MobileOverlayPortal>
+                  ) : (
+                    <RoletyDachoweConfiguratorPanel
+                      key={rdConfigKey}
+                      initialValues={
+                        rdLastResult
+                          ? { hardwareId: rdLastResult.hardwareId, fabricId: rdLastResult.fabricId }
+                          : undefined
+                      }
+                      submitLabel="Dodaj do koszyka"
+                      onZoom={(preview) => setZoomPreview(preview)}
+                      onSubmit={(result) => {
+                        setRdLastResult(result);
+                        const item: CartLineItem = {
+                          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                          productSlug: "rolety-dachowe",
+                          productLabel: displayedProduct.label,
+                          hardwareLabel: result.hardwareLabel,
+                          meshLabel: result.fabricLabel,
+                          modelLabel: result.windowProducer ? `${result.windowProducer} ${result.windowModel}` : result.windowModel,
+                          widthMm: result.widthMm,
+                          heightMm: result.heightMm,
+                          qty: result.qty,
+                          price: result.unitPrice,
+                          total: result.totalPrice,
+                          imageUrl: result.hardwareImageUrl,
+                          createdAt: new Date().toISOString(),
+                        };
+                        const items = addCartItem(item);
+                        setCartItems(items);
+                        setCartSummary(summarizeCartItems(items));
+                        setCartIsBumping(true);
+                        window.setTimeout(() => setCartIsBumping(false), 500);
+                        setAddToCartToast({ productSlug: "rolety-dachowe", productLabel: displayedProduct.label });
                       }}
                     />
                   )

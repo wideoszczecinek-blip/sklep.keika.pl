@@ -27,6 +27,11 @@ export type CartLineItem = {
    * 0/undefined if none. Charged once per order, not once per item - see
    * app/koszyk/page.tsx. */
   oversizeSurchargeAmount?: number;
+  /** rolety-dachowe only: the chosen window model ("Velux MK04") or "Wymiar
+   * własny" for a manual entry - undefined for other products. Additive/
+   * optional so existing stored items from before this field existed still
+   * parse fine. */
+  modelLabel?: string;
 };
 
 export type CartSummary = {
@@ -83,6 +88,7 @@ export function readCartItems(): CartLineItem[] {
         imageUrl: row.imageUrl ? String(row.imageUrl) : undefined,
         createdAt: String(row.createdAt ?? new Date().toISOString()),
         oversizeSurchargeAmount: Number(row.oversizeSurchargeAmount ?? 0) || 0,
+        modelLabel: row.modelLabel ? String(row.modelLabel) : undefined,
       } satisfies CartLineItem;
     });
 }

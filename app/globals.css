@@ -2268,6 +2268,62 @@ a {
   border-color: rgba(140, 239, 232, 0.7);
 }
 
+/* rolety-dachowe's window-model search step (see
+   features/rolety-dachowe/ConfiguratorPanel.tsx) - a plain list of matches,
+   styled like the existing step option buttons rather than a new pattern. */
+.rd-window-results {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rd-window-results button {
+  width: 100%;
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(197, 222, 247, 0.24);
+  background: rgba(11, 24, 40, 0.5);
+  color: #edf6ff;
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.rd-window-results button:hover,
+.rd-window-results button:focus-visible {
+  border-color: rgba(240, 122, 32, 0.55);
+  background: rgba(240, 122, 32, 0.1);
+}
+
+.rd-window-results button span {
+  font-size: 0.76rem;
+  color: rgba(240, 248, 255, 0.7);
+}
+
+/* Quantity is an editable input sitting inline in the price-details <dd>
+   here (rolety-dachowe has nothing else to show in that row - flat price,
+   no perimeter/rate breakdown like moskitiery-ramkowe), so it needs its own
+   compact sizing rather than the full-width dimensions-grid input style. */
+.rd-qty-input {
+  width: 4.2rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(197, 222, 247, 0.36);
+  background: rgba(11, 24, 40, 0.5);
+  color: #edf6ff;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.rd-qty-input:focus {
+  outline: none;
+  border-color: rgba(140, 239, 232, 0.7);
+}
+
 .hero-product-mini-summary {
   border-radius: 1rem;
   border: 1px solid rgba(229, 241, 255, 0.2);

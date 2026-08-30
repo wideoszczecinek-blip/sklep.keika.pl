@@ -17,6 +17,8 @@ import {
 } from "@/lib/cart";
 import ConfiguratorPanel from "@/features/moskitiery-ramkowe/ConfiguratorPanel";
 import { ALLEGRO_MOSKITIERY_HARDWARE, MESH_OPTIONS } from "@/features/moskitiery-ramkowe/shared";
+import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
+import { ROLETY_DACHOWE_FABRIC, ROLETY_DACHOWE_HARDWARE } from "@/features/rolety-dachowe/shared";
 import { readLastPage } from "../components/last-page-tracker";
 
 type OrderCreateResponse = {
@@ -134,11 +136,26 @@ type ExtraCharge = {
 // the cart's line items become one quote's "positions" (that field already
 // supports multiple items), quote_save.php returns a quote_code, then
 // /api/orders/create + Stripe work exactly as they do there.
+// hardwareLabel/meshLabel are generic cart-schema field names shared across
+// products (see lib/cart.ts), but what they actually mean depends on which
+// product the item is - "siatka" (mesh) means nothing on a roof blind order.
+// Centralizes the per-product wording so the quote payload sent to the CRM,
+// the cart line summary, and the "Edytuj pozycję" step reuse (below) all
+// agree instead of drifting.
+function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: string } {
+  if (productSlug === "rolety-dachowe") {
+    return { hardware: "Kolor kasety", mesh: "Kolor materiału" };
+  }
+  return { hardware: "Kolor profilu", mesh: "Kolor siatki" };
+}
+
 function buildQuotePayloadFromCart(items: CartLineItem[], extraCharges: ExtraCharge[] = []) {
   const positions = items.map((item, index) => {
+    const fieldLabels = cartItemFieldLabels(item.productSlug);
     const specs = [
-      item.hardwareLabel ? `profil ${item.hardwareLabel}` : "",
-      item.meshLabel ? `siatka ${item.meshLabel}` : "",
+      item.hardwareLabel ? `${fieldLabels.hardware.toLowerCase()} ${item.hardwareLabel}` : "",
+      item.meshLabel ? `${fieldLabels.mesh.toLowerCase()} ${item.meshLabel}` : "",
+      item.modelLabel ? `model okna ${item.modelLabel}` : "",
       item.widthMm && item.heightMm ? `${item.widthMm} × ${item.heightMm} mm` : "",
     ]
       .filter(Boolean)
@@ -153,8 +170,9 @@ function buildQuotePayloadFromCart(items: CartLineItem[], extraCharges: ExtraCha
       currency: "PLN",
       summary: `${item.productLabel}${specs ? ` — ${specs}` : ""}`,
       summary_rows: [
-        item.hardwareLabel ? { label: "Kolor profilu", value: item.hardwareLabel, note: "" } : null,
-        item.meshLabel ? { label: "Kolor siatki", value: item.meshLabel, note: "" } : null,
+        item.hardwareLabel ? { label: fieldLabels.hardware, value: item.hardwareLabel, note: "" } : null,
+        item.meshLabel ? { label: fieldLabels.mesh, value: item.meshLabel, note: "" } : null,
+        item.modelLabel ? { label: "Model okna", value: item.modelLabel, note: "" } : null,
         item.widthMm && item.heightMm
           ? { label: "Rozmiar", value: `${item.widthMm} × ${item.heightMm} mm`, note: "" }
           : null,
@@ -816,8 +834,9 @@ export default function CartPage() {
                     <div className="cart-page-item-info">
                       <strong>{item.productLabel}</strong>
                       <span className="cart-page-item-specs">
-                        {item.hardwareLabel ? `Profil: ${item.hardwareLabel}` : null}
-                        {item.meshLabel ? ` · Siatka: ${item.meshLabel}` : null}
+                        {item.hardwareLabel ? `${cartItemFieldLabels(item.productSlug).hardware}: ${item.hardwareLabel}` : null}
+                        {item.meshLabel ? ` · ${cartItemFieldLabels(item.productSlug).mesh}: ${item.meshLabel}` : null}
+                        {item.modelLabel ? ` · Model okna: ${item.modelLabel}` : null}
                         {item.widthMm && item.heightMm ? ` · ${item.widthMm} × ${item.heightMm} mm` : null}
                       </span>
                       <span className="cart-page-item-unit">{formatPln(item.price)} / szt.</span>
@@ -1350,32 +1369,61 @@ export default function CartPage() {
             >
               ×
             </button>
-            <ConfiguratorPanel
-              key={editingItem.id}
-              initialValues={{
-                hardwareId: ALLEGRO_MOSKITIERY_HARDWARE.find((option) => option.label === editingItem.hardwareLabel)?.id,
-                meshId: MESH_OPTIONS.find((option) => option.label === editingItem.meshLabel)?.id,
-                widthMm: editingItem.widthMm,
-                heightMm: editingItem.heightMm,
-                qty: editingItem.qty,
-              }}
-              submitLabel="Zapisz zmiany"
-              onSubmit={(result) => {
-                const updated = updateCartItemConfig(editingItem.id, {
-                  hardwareLabel: result.hardwareLabel,
-                  meshLabel: result.meshLabel,
-                  widthMm: result.widthMm,
-                  heightMm: result.heightMm,
-                  qty: result.qty,
-                  price: result.unitPrice,
-                  total: result.totalPrice,
-                  imageUrl: result.hardwareImageUrl,
-                  oversizeSurchargeAmount: result.oversizeSurchargeAmount,
-                });
-                setItems(updated);
-                setEditingItemId(null);
-              }}
-            />
+            {editingItem.productSlug === "rolety-dachowe" ? (
+              <RoletyDachoweConfiguratorPanel
+                key={editingItem.id}
+                initialValues={{
+                  hardwareId: ROLETY_DACHOWE_HARDWARE.find((option) => option.label === editingItem.hardwareLabel)?.id,
+                  fabricId: ROLETY_DACHOWE_FABRIC.find((option) => option.label === editingItem.meshLabel)?.id,
+                  widthMm: editingItem.widthMm,
+                  heightMm: editingItem.heightMm,
+                  qty: editingItem.qty,
+                }}
+                submitLabel="Zapisz zmiany"
+                onSubmit={(result) => {
+                  const updated = updateCartItemConfig(editingItem.id, {
+                    hardwareLabel: result.hardwareLabel,
+                    meshLabel: result.fabricLabel,
+                    modelLabel: result.windowProducer ? `${result.windowProducer} ${result.windowModel}` : result.windowModel,
+                    widthMm: result.widthMm,
+                    heightMm: result.heightMm,
+                    qty: result.qty,
+                    price: result.unitPrice,
+                    total: result.totalPrice,
+                    imageUrl: result.hardwareImageUrl,
+                  });
+                  setItems(updated);
+                  setEditingItemId(null);
+                }}
+              />
+            ) : (
+              <ConfiguratorPanel
+                key={editingItem.id}
+                initialValues={{
+                  hardwareId: ALLEGRO_MOSKITIERY_HARDWARE.find((option) => option.label === editingItem.hardwareLabel)?.id,
+                  meshId: MESH_OPTIONS.find((option) => option.label === editingItem.meshLabel)?.id,
+                  widthMm: editingItem.widthMm,
+                  heightMm: editingItem.heightMm,
+                  qty: editingItem.qty,
+                }}
+                submitLabel="Zapisz zmiany"
+                onSubmit={(result) => {
+                  const updated = updateCartItemConfig(editingItem.id, {
+                    hardwareLabel: result.hardwareLabel,
+                    meshLabel: result.meshLabel,
+                    widthMm: result.widthMm,
+                    heightMm: result.heightMm,
+                    qty: result.qty,
+                    price: result.unitPrice,
+                    total: result.totalPrice,
+                    imageUrl: result.hardwareImageUrl,
+                    oversizeSurchargeAmount: result.oversizeSurchargeAmount,
+                  });
+                  setItems(updated);
+                  setEditingItemId(null);
+                }}
+              />
+            )}
           </div>
         </div>
       ) : null}
