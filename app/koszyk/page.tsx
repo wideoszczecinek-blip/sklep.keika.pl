@@ -150,6 +150,26 @@ type DiscountCheckResponse = {
 // Centralizes the per-product wording so the quote payload sent to the CRM,
 // the cart line summary, and the "Edytuj pozycję" step reuse (below) all
 // agree instead of drifting.
+// Wraps one checkout input/textarea with fill-state feedback: a soft accent
+// while it's still empty or not yet valid, green + a checkmark once it's
+// correctly filled in. Purely visual - doesn't touch the field's own value/
+// onChange/validation logic, which stays exactly as each call site already
+// had it.
+function CartFieldStatus({ valid, children }: { valid: boolean; children: React.ReactNode }) {
+  return (
+    <div className={`cart-field ${valid ? "is-valid" : "is-pending"}`}>
+      <span className="cart-field-input-wrap">
+        {children}
+        {valid ? (
+          <span className="cart-field-check" aria-hidden="true">
+            ✓
+          </span>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
 function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: string } {
   if (productSlug === "rolety-dachowe") {
     return { hardware: "Kolor kasety", mesh: "Kolor materiału" };
@@ -627,6 +647,22 @@ export default function CartPage() {
     form.firstName.trim() !== "" && form.lastName.trim() !== "" && form.phone.trim() !== "" && emailValid;
   const addressReady = !requiresAddress || (form.city.trim() !== "" && form.address1.trim() !== "");
   const invoiceReady = !wantsInvoice || (invoice.nip.trim().length === 10 && invoice.companyName.trim() !== "");
+  // Per-field "is this one correctly filled in?" booleans, purely for the
+  // subtle-accent/green-checkmark feedback on each input (see
+  // CartFieldStatus) - deliberately mirror the readiness checks above
+  // rather than inventing stricter rules a field doesn't actually need to
+  // pass to submit.
+  const firstNameFieldValid = form.firstName.trim() !== "";
+  const lastNameFieldValid = form.lastName.trim() !== "";
+  const phoneFieldValid = form.phone.trim() !== "";
+  const cityFieldValid = form.city.trim() !== "";
+  const postcodeFieldValid = /^\d{2}-?\d{3}$/.test(form.postcode.trim());
+  const address1FieldValid = form.address1.trim() !== "";
+  const nipFieldValid = invoice.nip.trim().length === 10;
+  const companyNameFieldValid = invoice.companyName.trim() !== "";
+  const invoiceStreetFieldValid = invoice.street.trim() !== "";
+  const invoicePostcodeFieldValid = /^\d{2}-?\d{3}$/.test(invoice.postcode.trim());
+  const invoiceCityFieldValid = invoice.city.trim() !== "";
   // The payment section itself is always rendered (see JSX below) - this
   // just controls whether it's locked/greyed out or interactive.
   const deliveryDataReady = contactReady && addressReady && invoiceReady && items.length > 0;
@@ -1003,63 +1039,77 @@ export default function CartPage() {
                     <div className="cart-checkout-form-grid">
                       <label>
                         Imię
-                        <input
-                          value={form.firstName}
-                          onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
-                          required
-                        />
+                        <CartFieldStatus valid={firstNameFieldValid}>
+                          <input
+                            value={form.firstName}
+                            onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
                       </label>
                       <label>
                         Nazwisko
-                        <input
-                          value={form.lastName}
-                          onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
-                          required
-                        />
+                        <CartFieldStatus valid={lastNameFieldValid}>
+                          <input
+                            value={form.lastName}
+                            onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
                       </label>
                       <label>
                         Telefon
-                        <input
-                          value={form.phone}
-                          onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                          required
-                        />
+                        <CartFieldStatus valid={phoneFieldValid}>
+                          <input
+                            value={form.phone}
+                            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
                       </label>
                       <label>
                         E-mail
-                        <input
-                          type="email"
-                          value={form.email}
-                          onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                          required
-                        />
+                        <CartFieldStatus valid={emailValid}>
+                          <input
+                            type="email"
+                            value={form.email}
+                            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
                       </label>
                       {requiresAddress ? (
                         <>
                           <label>
                             Miasto
-                            <input
-                              value={form.city}
-                              onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
-                            />
+                            <CartFieldStatus valid={cityFieldValid}>
+                              <input
+                                value={form.city}
+                                onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
+                              />
+                            </CartFieldStatus>
                           </label>
                           <label>
                             Kod pocztowy
-                            <input
-                              value={form.postcode}
-                              onChange={(event) =>
-                                setForm((current) => ({ ...current, postcode: event.target.value }))
-                              }
-                            />
+                            <CartFieldStatus valid={postcodeFieldValid}>
+                              <input
+                                value={form.postcode}
+                                onChange={(event) =>
+                                  setForm((current) => ({ ...current, postcode: event.target.value }))
+                                }
+                              />
+                            </CartFieldStatus>
                           </label>
                           <label>
                             Ulica i numer
-                            <input
-                              value={form.address1}
-                              onChange={(event) =>
-                                setForm((current) => ({ ...current, address1: event.target.value }))
-                              }
-                            />
+                            <CartFieldStatus valid={address1FieldValid}>
+                              <input
+                                value={form.address1}
+                                onChange={(event) =>
+                                  setForm((current) => ({ ...current, address1: event.target.value }))
+                                }
+                              />
+                            </CartFieldStatus>
                           </label>
                         </>
                       ) : null}
@@ -1079,23 +1129,27 @@ export default function CartPage() {
                         <label className="cart-invoice-nip-field">
                           NIP
                           <div className="cart-invoice-nip-row">
-                            <input
-                              inputMode="numeric"
-                              placeholder="np. 1234567890"
-                              value={invoice.nip}
-                              onChange={(event) => {
-                                const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
-                                setInvoice((current) => ({ ...current, nip: digits }));
-                                setNipLookupError("");
-                                // Fetch the moment the 10th digit lands - no need to
-                                // leave the field first (onBlur below still covers a
-                                // pasted value where the field never gains focus).
-                                if (digits.length === 10) void lookupNip(digits);
-                              }}
-                              onBlur={() => {
-                                if (invoice.nip.length === 10) void lookupNip(invoice.nip);
-                              }}
-                            />
+                            {/* Checkmark deliberately suppressed while the spinner is
+                                showing - both render at the same corner spot. */}
+                            <CartFieldStatus valid={nipFieldValid && !nipLookupLoading}>
+                              <input
+                                inputMode="numeric"
+                                placeholder="np. 1234567890"
+                                value={invoice.nip}
+                                onChange={(event) => {
+                                  const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
+                                  setInvoice((current) => ({ ...current, nip: digits }));
+                                  setNipLookupError("");
+                                  // Fetch the moment the 10th digit lands - no need to
+                                  // leave the field first (onBlur below still covers a
+                                  // pasted value where the field never gains focus).
+                                  if (digits.length === 10) void lookupNip(digits);
+                                }}
+                                onBlur={() => {
+                                  if (invoice.nip.length === 10) void lookupNip(invoice.nip);
+                                }}
+                              />
+                            </CartFieldStatus>
                             {nipLookupLoading ? <span className="cart-invoice-nip-spinner" aria-hidden="true" /> : null}
                           </div>
                           {nipLookupError ? <small className="cart-invoice-nip-error">{nipLookupError}</small> : null}
@@ -1108,35 +1162,43 @@ export default function CartPage() {
                         <div className="cart-checkout-form-grid">
                           <label>
                             Nazwa firmy
-                            <input
-                              value={invoice.companyName}
-                              onChange={(event) =>
-                                setInvoice((current) => ({ ...current, companyName: event.target.value }))
-                              }
-                            />
+                            <CartFieldStatus valid={companyNameFieldValid}>
+                              <input
+                                value={invoice.companyName}
+                                onChange={(event) =>
+                                  setInvoice((current) => ({ ...current, companyName: event.target.value }))
+                                }
+                              />
+                            </CartFieldStatus>
                           </label>
                           <label>
                             Ulica i numer
-                            <input
-                              value={invoice.street}
-                              onChange={(event) => setInvoice((current) => ({ ...current, street: event.target.value }))}
-                            />
+                            <CartFieldStatus valid={invoiceStreetFieldValid}>
+                              <input
+                                value={invoice.street}
+                                onChange={(event) => setInvoice((current) => ({ ...current, street: event.target.value }))}
+                              />
+                            </CartFieldStatus>
                           </label>
                           <label>
                             Kod pocztowy
-                            <input
-                              value={invoice.postcode}
-                              onChange={(event) =>
-                                setInvoice((current) => ({ ...current, postcode: event.target.value }))
-                              }
-                            />
+                            <CartFieldStatus valid={invoicePostcodeFieldValid}>
+                              <input
+                                value={invoice.postcode}
+                                onChange={(event) =>
+                                  setInvoice((current) => ({ ...current, postcode: event.target.value }))
+                                }
+                              />
+                            </CartFieldStatus>
                           </label>
                           <label>
                             Miasto
-                            <input
-                              value={invoice.city}
-                              onChange={(event) => setInvoice((current) => ({ ...current, city: event.target.value }))}
-                            />
+                            <CartFieldStatus valid={invoiceCityFieldValid}>
+                              <input
+                                value={invoice.city}
+                                onChange={(event) => setInvoice((current) => ({ ...current, city: event.target.value }))}
+                              />
+                            </CartFieldStatus>
                           </label>
                         </div>
                       </div>
