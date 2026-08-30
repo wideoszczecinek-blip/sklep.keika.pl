@@ -1491,6 +1491,13 @@ a {
   gap: 0.6rem;
 }
 
+.hero-product-faq-empty {
+  margin: 0;
+  color: rgba(240, 248, 255, 0.62);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
 .hero-product-faq-item {
   border-radius: 0.75rem;
   border: 1px solid rgba(229, 241, 255, 0.22);

@@ -805,8 +805,8 @@ export default function Home() {
       opis: opisSectionRef,
       galeria: galeriaSectionRef,
       opinie: opinieSectionRef,
-      instrukcje: instrukcjeSectionRef,
       faq: faqSectionRef,
+      instrukcje: instrukcjeSectionRef,
     }),
     [],
   );
@@ -843,8 +843,8 @@ export default function Home() {
       ["opis", opisSectionRef.current],
       ["galeria", galeriaSectionRef.current],
       ["opinie", opinieSectionRef.current],
-      ["instrukcje", instrukcjeSectionRef.current],
       ["faq", faqSectionRef.current],
+      ["instrukcje", instrukcjeSectionRef.current],
     ];
     const validSections = sections.filter((entry): entry is [ProductTabKey, HTMLElement] => Boolean(entry[1]));
     if (!validSections.length) return;
@@ -2492,6 +2492,21 @@ export default function Home() {
                         )
                       ) : null}
                       </section>
+                      <section id="product-section-faq" ref={faqSectionRef} className="hero-product-section">
+                        <h2 className="hero-product-section-title">FAQ - Pytania i Odpowiedzi</h2>
+                        {productLanding?.faq?.length ? (
+                          <div className="hero-product-faq">
+                            {productLanding.faq.map((entry, index) => (
+                              <details key={`${entry.question}-${index}`} className="hero-product-faq-item">
+                                <summary>{entry.question}</summary>
+                                <p>{entry.answer}</p>
+                              </details>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="hero-product-faq-empty">Wkrótce dodamy tu odpowiedzi na najczęstsze pytania.</p>
+                        )}
+                      </section>
                       <section id="product-section-instrukcje" ref={instrukcjeSectionRef} className="hero-product-section">
                       <h2 className="hero-product-section-title">Instrukcje</h2>
                       {displayedProduct ? (
@@ -2508,19 +2523,6 @@ export default function Home() {
                         </ul>
                       ) : null}
                       </section>
-                      {productLanding?.faq?.length ? (
-                        <section id="product-section-faq" ref={faqSectionRef} className="hero-product-section">
-                          <h2 className="hero-product-section-title">Najczęściej zadawane pytania</h2>
-                          <div className="hero-product-faq">
-                            {productLanding.faq.map((entry, index) => (
-                              <details key={`${entry.question}-${index}`} className="hero-product-faq-item">
-                                <summary>{entry.question}</summary>
-                                <p>{entry.answer}</p>
-                              </details>
-                            ))}
-                          </div>
-                        </section>
-                      ) : null}
                     </div>
                   </section>
               </div>
@@ -3213,20 +3215,18 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
+                  className={activeProductTab === "faq" ? "is-active" : ""}
+                  onClick={() => scrollToProductSection("faq")}
+                >
+                  FAQ
+                </button>
+                <button
+                  type="button"
                   className={activeProductTab === "instrukcje" ? "is-active" : ""}
                   onClick={() => scrollToProductSection("instrukcje")}
                 >
                   Instrukcje
                 </button>
-                {productLanding?.faq?.length ? (
-                  <button
-                    type="button"
-                    className={activeProductTab === "faq" ? "is-active" : ""}
-                    onClick={() => scrollToProductSection("faq")}
-                  >
-                    FAQ
-                  </button>
-                ) : null}
               </div>
             </nav>
           ) : null}
