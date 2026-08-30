@@ -3291,7 +3291,7 @@ export default function Home() {
                 </button>
               ) : null}
               <img
-                src={optimizeImageUrl(zoomPreview.urls[zoomPreview.index], 1600, 85)}
+                src={optimizeImageUrl(zoomPreview.urls[zoomPreview.index], 1800, 80)}
                 alt={zoomPreview.title}
                 className="config-option-preview-image"
                 loading="eager"
