@@ -1766,6 +1766,7 @@ export default function Home() {
                   <h1>{displayedProduct?.label || ""}</h1>
                     <div className="hero-product-content">
                       <section id="product-section-opis" ref={opisSectionRef} className="hero-product-section">
+                      <h2 className="hero-product-section-title">Opis produktu</h2>
                       {displayedProduct ? (
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                           <div className="pl-landing">
@@ -1865,6 +1866,7 @@ export default function Home() {
                       ) : null}
                       </section>
                       <section id="product-section-galeria" ref={galeriaSectionRef} className="hero-product-section">
+                      <h2 className="hero-product-section-title">Galeria zdjęć</h2>
                       {displayedProduct ? (() => {
                         const galleryPhotos =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
@@ -1961,6 +1963,7 @@ export default function Home() {
                       })() : null}
                       </section>
                       <section id="product-section-opinie" ref={opinieSectionRef} className="hero-product-section">
+                      <h2 className="hero-product-section-title">Opinie</h2>
                       {displayedProduct ? (
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (() => {
                           // Only reviews estimated at 3+ stars are ever kept in this
@@ -2113,6 +2116,7 @@ export default function Home() {
                       ) : null}
                       </section>
                       <section id="product-section-instrukcje" ref={instrukcjeSectionRef} className="hero-product-section">
+                      <h2 className="hero-product-section-title">Instrukcje</h2>
                       {displayedProduct ? (
                         <ul className="hero-product-instructions">
                           {productInstructionSteps(displayedProduct.label).map((step) => (

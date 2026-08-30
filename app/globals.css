@@ -1223,6 +1223,31 @@ a {
   border-top: 1px solid rgba(229, 241, 255, 0.14);
 }
 
+/* Opis/Galeria/Opinie/Instrukcje used to run straight into each other with
+   no label of their own, just the divider above - easy to lose track of
+   which section you're reading once you've scrolled a screen or two down.
+   Deliberately not shouting: a small orange accent mark carries the color,
+   the text itself stays the same weight/size family as the rest of the
+   left column's headings. */
+.hero-product-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #f2f7ff;
+}
+
+.hero-product-section-title::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.3rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff9f0a, #f07a20);
+}
+
 .hero-product-content p {
   margin: 0;
   font-size: clamp(1.12rem, 0.96rem + 0.66vw, 1.44rem);
