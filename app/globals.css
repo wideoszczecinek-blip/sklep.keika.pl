@@ -1930,6 +1930,20 @@ a {
   gap: 0.55rem;
   min-height: clamp(420px, 68vh, 780px);
   max-height: calc(100svh - 7.4rem);
+  /* Desktop only in effect - mobile's override below sets max-height:none,
+     so there's nothing to scroll there and this stays a no-op. Without
+     this, the panel had a height cap but no scrollbox of its own, so any
+     scrollIntoView() triggered by interacting with a field inside it (the
+     step-transition ones a bit below, or the browser's own focus-scroll)
+     climbed up past this panel to .hero-full - the single container this
+     panel shares with the left description column - dragging that column's
+     scroll position along too. Giving the panel its own scroll here makes
+     it the nearest scrollable ancestor, so those scrolls stay contained to
+     the configurator and the two columns move fully independently.
+     overscroll-behavior keeps wheel-scrolling from leaking into the left
+     column once this panel's own scroll hits its top or bottom edge. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.1rem 1.2rem;
   border-radius: 1.2rem;
   border: 1px solid rgba(229, 241, 255, 0.14);
@@ -5011,6 +5025,13 @@ a {
     top: auto;
     min-height: 280px;
     max-height: none;
+    /* No cap here, so nothing to scroll - matches .hero-product-content
+       above, folding this back into the single shared outer scroll that
+       mobile's stacked-sections flow relies on (see the openMenuIndex/
+       scrollToProductSection comments in page.tsx). The desktop-only
+       independent scrollbox added to the base rule is for the sticky
+       two-column layout, which doesn't exist at this width. */
+    overflow-y: visible;
     /* Early in the flow (e.g. right after step 1 folds shut) there isn't
        enough real content below the newly-opened step to let the scroll
        container reach it - the browser's max-scroll is capped by actual
