@@ -1374,6 +1374,7 @@ export default function CartPage() {
                 key={editingItem.id}
                 initialValues={{
                   hardwareId: ROLETY_DACHOWE_HARDWARE.find((option) => option.label === editingItem.hardwareLabel)?.id,
+                  materialTypeId: ROLETY_DACHOWE_FABRIC.find((option) => option.label === editingItem.meshLabel)?.materialTypeId,
                   fabricId: ROLETY_DACHOWE_FABRIC.find((option) => option.label === editingItem.meshLabel)?.id,
                   widthMm: editingItem.widthMm,
                   heightMm: editingItem.heightMm,

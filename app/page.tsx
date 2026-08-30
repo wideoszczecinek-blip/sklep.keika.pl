@@ -36,7 +36,7 @@ import {
 } from "@/features/moskitiery-ramkowe/shared";
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import {
-  ROLETY_DACHOWE_PRICE,
+  ROLETY_DACHOWE_STARTING_PRICE,
   type ConfiguratorResult as RoletyDachoweConfiguratorResult,
 } from "@/features/rolety-dachowe/shared";
 
@@ -246,20 +246,20 @@ const ROLETY_DACHOWE_GALLERY_PHOTOS: string[] = [
 
 const ROLETY_DACHOWE_FEATURE_BULLETS: ProductFeatureBullet[] = [
   {
-    lead: "19 kolorów tkaniny Termo",
-    detail: "tkanina nie przepuszcza światła i dzięki powłoce termicznej na zewnątrz skutecznie zmniejsza nagrzewanie się pomieszczenia",
+    lead: "73 kolory tkaniny — Termo i Półprzepuszczalna Deko",
+    detail: "Termo nie przepuszcza światła i dzięki powłoce termicznej na zewnątrz skutecznie zmniejsza nagrzewanie się pomieszczenia; Deko subtelnie rozprasza światło",
   },
   {
-    lead: "2 kolory kasety i prowadnic",
-    detail: "Anoda (srebrny) i Biały",
+    lead: "3 kolory kasety i prowadnic",
+    detail: "Anoda (srebrny), Biały i Jasna Sosna",
   },
   {
     lead: "Ponad 400 modeli okien w bibliotece",
     detail: "Velux, Fakro, Roto, OKPOL i inne — wybierz swój model, a rozmiar rolety dobierzemy automatycznie",
   },
   {
-    lead: "Stała cena niezależnie od rozmiaru",
-    detail: `${ROLETY_DACHOWE_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł za sztukę`,
+    lead: "Cena dobierana automatycznie z cennika",
+    detail: `zależnie od koloru, materiału i rozmiaru — od ${ROLETY_DACHOWE_STARTING_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł za sztukę`,
   },
   {
     lead: "Nie znalazłeś swojego modelu?",
@@ -268,10 +268,10 @@ const ROLETY_DACHOWE_FEATURE_BULLETS: ProductFeatureBullet[] = [
 ];
 
 const ROLETY_DACHOWE_SPEC_ITEMS: ProductSpecItem[] = [
-  { label: "Kaseta i prowadnice", value: "2 kolory: Anoda, Biały" },
-  { label: "Tkanina", value: "Termo, 19 kolorów" },
+  { label: "Kaseta i prowadnice", value: "3 kolory: Anoda, Biały, Jasna Sosna" },
+  { label: "Tkanina", value: "Termo (19) i Deko (54), 73 kolory łącznie" },
   { label: "Dopasowanie", value: "Pod model okna dachowego (biblioteka 400+ modeli)" },
-  { label: "Cena", value: `${ROLETY_DACHOWE_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł / szt.` },
+  { label: "Cena", value: `od ${ROLETY_DACHOWE_STARTING_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł / szt., zależnie od wymiaru` },
 ];
 
 // Verbatim from the same CRM record's measurement_guide_sections - real
@@ -1916,7 +1916,7 @@ export default function Home() {
                           <div className="pl-landing">
                             <div className="pl-trust-row">
                               <span className="pl-price">
-                                {ROLETY_DACHOWE_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                od {ROLETY_DACHOWE_STARTING_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
                                 <span className="pl-price-unit"> / szt.</span>
                               </span>
                               <span className="pl-chip">400+ modeli okien</span>
@@ -2468,7 +2468,11 @@ export default function Home() {
                       key={rdConfigKey}
                       initialValues={
                         rdLastResult
-                          ? { hardwareId: rdLastResult.hardwareId, fabricId: rdLastResult.fabricId }
+                          ? {
+                              hardwareId: rdLastResult.hardwareId,
+                              materialTypeId: rdLastResult.materialTypeId,
+                              fabricId: rdLastResult.fabricId,
+                            }
                           : undefined
                       }
                       submitLabel="Dodaj do koszyka"
