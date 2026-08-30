@@ -71,9 +71,37 @@ export default function ConfiguratorPanel({
   const MOBILE_HEADER_CLEARANCE_PX = 96;
   function scrollStepIntoView(target: HTMLElement | null) {
     if (!target) return;
+
+    // Desktop: .hero-product-config-panel is its own independent scrollbox
+    // (overflow-y:auto, see its CSS) precisely so this never has to touch
+    // .hero-full - the left description column shares only that outer
+    // container with the panel, and .hero-full has real overflow on desktop
+    // too (the stacked description/gallery/reviews flow), so scrolling it
+    // here would drag that column's position along with the step reveal.
+    // Detected via computed overflow-y rather than a width breakpoint so
+    // this tracks the actual CSS decision - mobile's override resets it
+    // back to visible (see that selector's mobile media query), which is
+    // how this correctly falls through to the .hero-full path below there.
+    const panel = target.closest(".hero-product-config-panel") as HTMLElement | null;
+    if (panel && getComputedStyle(panel).overflowY === "auto") {
+      if (panel.scrollHeight > panel.clientHeight) {
+        const panelRect = panel.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const targetCenter = targetRect.top - panelRect.top + targetRect.height / 2;
+        const delta = targetCenter - panel.clientHeight / 2;
+        const nextTop = Math.max(0, Math.min(panel.scrollTop + delta, panel.scrollHeight - panel.clientHeight));
+        panel.scrollTo({ top: nextTop, behavior: "smooth" });
+      }
+      // Nothing to scroll inside the panel: the step is already as visible
+      // as it can be within it, so there's nothing more to do - critically,
+      // never fall through to .hero-full here even though it does have
+      // scrollable room, or the left column moves again.
+      return;
+    }
+
     const container = target.closest(".hero-full") as HTMLElement | null;
     if (!container || container.scrollHeight <= container.clientHeight) {
-      // Desktop (or nothing to scroll): fall back to the plain browser API.
+      // Nothing to scroll at all: fall back to the plain browser API.
       target.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
