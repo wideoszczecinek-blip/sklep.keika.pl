@@ -6635,26 +6635,31 @@ html[data-theme="light"] .mobile-fixed-cta {
 
 .cart-field.is-valid input,
 .cart-field.is-valid textarea {
-  border-color: rgba(111, 227, 191, 0.55);
-  box-shadow: 0 0 0 3px rgba(111, 227, 191, 0.09);
-  padding-right: 2.1rem;
+  border-color: rgba(31, 174, 106, 0.7);
+  box-shadow: 0 0 0 3px rgba(31, 174, 106, 0.14);
+  padding-right: 2.3rem;
 }
 
+/* Same solid, unmissable "success" circle as .hero-product-added-toast-icon
+   (the "Dodano do koszyka!" checkmark) - deliberately bold, not a faint tint,
+   so a correctly-filled field is obvious at a glance. */
 .cart-field-check {
   position: absolute;
-  right: 0.6rem;
+  right: 0.55rem;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.3rem;
+  height: 1.3rem;
   border-radius: 999px;
-  background: rgba(111, 227, 191, 0.18);
-  color: #6fe3bf;
-  font-size: 0.72rem;
+  background: #1fae6a;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 800;
   line-height: 1;
+  box-shadow: 0 2px 8px rgba(31, 174, 106, 0.45);
   pointer-events: none;
 }
 
@@ -6666,13 +6671,14 @@ html[data-theme="light"] .cart-field.is-pending textarea {
 
 html[data-theme="light"] .cart-field.is-valid input,
 html[data-theme="light"] .cart-field.is-valid textarea {
-  border-color: rgba(15, 148, 110, 0.4);
-  box-shadow: 0 0 0 3px rgba(15, 148, 110, 0.08);
+  border-color: rgba(31, 174, 106, 0.6);
+  box-shadow: 0 0 0 3px rgba(31, 174, 106, 0.12);
 }
 
 html[data-theme="light"] .cart-field-check {
-  background: rgba(15, 148, 110, 0.14);
-  color: #0f946e;
+  background: #1fae6a;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(31, 174, 106, 0.4);
 }
 
 .cart-invoice-checkbox {
