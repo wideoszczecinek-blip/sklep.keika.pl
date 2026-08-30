@@ -2063,7 +2063,6 @@ export default function Home() {
                   <h1>{displayedProduct?.label || ""}</h1>
                     <div className="hero-product-content">
                       <section id="product-section-opis" ref={opisSectionRef} className="hero-product-section">
-                      <h2 className="hero-product-section-title">Opis produktu</h2>
                       {displayedProduct ? (
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                           <div className="pl-landing">
@@ -2125,6 +2124,7 @@ export default function Home() {
                               )}
                             </div>
 
+                            <h2 className="hero-product-section-title">Opis produktu</h2>
                             {productLanding?.description ? (
                               <div
                                 className="pl-description"
@@ -2185,6 +2185,7 @@ export default function Home() {
                               )}
                             </div>
 
+                            <h2 className="hero-product-section-title">Opis produktu</h2>
                             {productLanding?.description ? (
                               <div
                                 className="pl-description"
@@ -2214,6 +2215,7 @@ export default function Home() {
                           </div>
                         ) : productLanding && productLanding.sections.length > 0 ? (
                           <div className="pl-landing">
+                            <h2 className="hero-product-section-title">Opis produktu</h2>
                             <div className="pl-trust-row">
                               {productLanding.priceFrom ? <span className="pl-price">{productLanding.priceFrom}</span> : null}
                               <span className="pl-chip">5 lat gwarancji</span>
@@ -2238,7 +2240,10 @@ export default function Home() {
                             </div>
                           </div>
                         ) : (
-                          <p>{displayedProduct.description}</p>
+                          <>
+                            <h2 className="hero-product-section-title">Opis produktu</h2>
+                            <p>{displayedProduct.description}</p>
+                          </>
                         )
                       ) : null}
                       </section>
