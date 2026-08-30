@@ -654,7 +654,100 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<SelectedProductView | null>(null);
   const [displayedProduct, setDisplayedProduct] = useState<SelectedProductView | null>(null);
   const [isProductView, setIsProductView] = useState(false);
+  // Opis/Galeria/Opinie/Instrukcje are one continuous stacked page now, not
+  // a tab-switcher - activeProductTab still exists, just repurposed to drive
+  // which nav pill is highlighted (via the scroll-spy effect below) instead
+  // of which content is rendered.
   const [activeProductTab, setActiveProductTab] = useState<ProductTabKey>("opis");
+  const opisSectionRef = useRef<HTMLElement | null>(null);
+  const galeriaSectionRef = useRef<HTMLElement | null>(null);
+  const opinieSectionRef = useRef<HTMLElement | null>(null);
+  const instrukcjeSectionRef = useRef<HTMLElement | null>(null);
+  const productSectionRefs = useMemo<Record<ProductTabKey, React.RefObject<HTMLElement | null>>>(
+    () => ({
+      opis: opisSectionRef,
+      galeria: galeriaSectionRef,
+      opinie: opinieSectionRef,
+      instrukcje: instrukcjeSectionRef,
+    }),
+    [],
+  );
+
+  // Mobile: .hero-full scrolls internally, so a plain scrollIntoView isn't
+  // reliable (same reasoning as the configurator's own step transitions and
+  // the "Konfiguruj" shortcut). Desktop: .hero-full scrolls too now that the
+  // four sections are stacked instead of tab-switched, same computation
+  // works for both.
+  function scrollToProductSection(key: ProductTabKey) {
+    const target = productSectionRefs[key]?.current;
+    if (!target) return;
+    const runScroll = () => {
+      const container = target.closest<HTMLElement>(".hero-full");
+      if (container && container.scrollHeight > container.clientHeight) {
+        const containerRect = container.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const delta = targetRect.top - containerRect.top - 96;
+        const nextTop = Math.max(
+          0,
+          Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight),
+        );
+        container.scrollTo({ top: nextTop, behavior: "smooth" });
+      } else {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+    if (key === "instrukcje") {
+      // Jumping straight to the last section lands the scroll position
+      // at/past the reviews "load more" sentinel while it's still
+      // paginated - every appended page reflows the layout, which
+      // re-triggers that sentinel's IntersectionObserver (it's still in
+      // view right after the jump), cascading into a runaway load-more
+      // loop that keeps growing the page out from under the delta we
+      // already computed. Load every review up front, let two paint
+      // frames settle the layout, then compute/animate the scroll so
+      // nothing shifts mid-flight.
+      setVisibleReviewCount(MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.length);
+      requestAnimationFrame(() => requestAnimationFrame(runScroll));
+    } else {
+      runScroll();
+    }
+  }
+
+  // Scroll-spy: highlights whichever section's top has most recently
+  // crossed the "just under the header" line as the active nav pill.
+  useEffect(() => {
+    if (!isProductView) return;
+    const container = opisSectionRef.current?.closest<HTMLElement>(".hero-full");
+    const sections: Array<[ProductTabKey, HTMLElement | null]> = [
+      ["opis", opisSectionRef.current],
+      ["galeria", galeriaSectionRef.current],
+      ["opinie", opinieSectionRef.current],
+      ["instrukcje", instrukcjeSectionRef.current],
+    ];
+    const validSections = sections.filter((entry): entry is [ProductTabKey, HTMLElement] => Boolean(entry[1]));
+    if (!validSections.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length === 0) return;
+        const key = validSections.find(([, el]) => el === visible[0].target)?.[0];
+        if (key) setActiveProductTab(key);
+      },
+      {
+        root: container ?? null,
+        // A band starting just under the fixed header, ending well before
+        // the bottom - a section counts as "active" once its top has
+        // crossed into that band, not merely because any sliver is visible.
+        rootMargin: "-110px 0px -70% 0px",
+        threshold: 0,
+      },
+    );
+    validSections.forEach(([, el]) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [isProductView, displayedProduct]);
   const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
   const [selectedHardwareId, setSelectedHardwareId] = useState("");
   const [stepOneChosen, setStepOneChosen] = useState(false);
@@ -797,17 +890,24 @@ export default function Home() {
   }, [displayedProduct]);
 
   // Lazy-loads 5 more reviews at a time as the sentinel below the visible
-  // list scrolls into view, instead of a manual "show all" click.
+  // list scrolls into view, instead of a manual "show all" click. Opis/
+  // Galeria/Opinie/Instrukcje are a stacked flow now and the real scroll
+  // container is .hero-full, not the browser viewport - without an explicit
+  // root here, this defaulted to the viewport, so it kept firing (loading
+  // more reviews, growing the Opinie section) while merely scrolling past
+  // it toward a later section, shifting that later section's position out
+  // from under an already-committed scrollTo() target mid-animation.
   useEffect(() => {
     const node = reviewsLoadMoreRef.current;
     if (!node) return;
+    const root = node.closest<HTMLElement>(".hero-full") ?? null;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
           setVisibleReviewCount((prev) => prev + REVIEWS_PAGE_SIZE);
         }
       },
-      { rootMargin: "200px" },
+      { root, rootMargin: "200px" },
     );
     observer.observe(node);
     return () => observer.disconnect();
@@ -1664,7 +1764,8 @@ export default function Home() {
                   <p className="hero-product-group">{displayedProduct?.groupTitle || ""}</p>
                   <h1>{displayedProduct?.label || ""}</h1>
                     <div className="hero-product-content">
-                      {activeProductTab === "opis" && displayedProduct ? (
+                      <section id="product-section-opis" ref={opisSectionRef} className="hero-product-section">
+                      {displayedProduct ? (
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                           <div className="pl-landing">
                             <div className="pl-trust-row">
@@ -1761,7 +1862,9 @@ export default function Home() {
                           <p>{displayedProduct.description}</p>
                         )
                       ) : null}
-                      {activeProductTab === "galeria" && displayedProduct ? (() => {
+                      </section>
+                      <section id="product-section-galeria" ref={galeriaSectionRef} className="hero-product-section">
+                      {displayedProduct ? (() => {
                         const galleryPhotos =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                             ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
@@ -1855,7 +1958,9 @@ export default function Home() {
                           </div>
                         );
                       })() : null}
-                      {activeProductTab === "opinie" && displayedProduct ? (
+                      </section>
+                      <section id="product-section-opinie" ref={opinieSectionRef} className="hero-product-section">
+                      {displayedProduct ? (
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (() => {
                           // Only reviews estimated at 3+ stars are ever kept in this
                           // list to begin with (see moskitiery-ramkowe-reviews-data.ts).
@@ -1999,7 +2104,9 @@ export default function Home() {
                           </ul>
                         )
                       ) : null}
-                      {activeProductTab === "instrukcje" && displayedProduct ? (
+                      </section>
+                      <section id="product-section-instrukcje" ref={instrukcjeSectionRef} className="hero-product-section">
+                      {displayedProduct ? (
                         <ul className="hero-product-instructions">
                           {productInstructionSteps(displayedProduct.label).map((step) => (
                             <li key={step.title}>
@@ -2009,6 +2116,7 @@ export default function Home() {
                           ))}
                         </ul>
                       ) : null}
+                      </section>
                     </div>
                   </section>
               </div>
@@ -2600,28 +2708,28 @@ export default function Home() {
                 <button
                   type="button"
                   className={activeProductTab === "opis" ? "is-active" : ""}
-                  onClick={() => setActiveProductTab("opis")}
+                  onClick={() => scrollToProductSection("opis")}
                 >
                   Opis produktu
                 </button>
                 <button
                   type="button"
                   className={activeProductTab === "galeria" ? "is-active" : ""}
-                  onClick={() => setActiveProductTab("galeria")}
+                  onClick={() => scrollToProductSection("galeria")}
                 >
                   Galeria zdjęć
                 </button>
                 <button
                   type="button"
                   className={activeProductTab === "opinie" ? "is-active" : ""}
-                  onClick={() => setActiveProductTab("opinie")}
+                  onClick={() => scrollToProductSection("opinie")}
                 >
                   Opinie
                 </button>
                 <button
                   type="button"
                   className={activeProductTab === "instrukcje" ? "is-active" : ""}
-                  onClick={() => setActiveProductTab("instrukcje")}
+                  onClick={() => scrollToProductSection("instrukcje")}
                 >
                   Instrukcje
                 </button>

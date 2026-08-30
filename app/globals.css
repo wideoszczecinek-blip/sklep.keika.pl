@@ -663,6 +663,18 @@ a {
   isolation: isolate;
 }
 
+/* The marketing hero carousel (not viewing a product) stays locked to
+   exactly one viewport tall at every size, as designed. But the product
+   view's Opis/Galeria/Opinie/Instrukcje now stack into one continuous flow
+   (see .hero-product-section) - on desktop just as much as mobile, that's
+   taller than one screen, so this needs to scroll here too, not just under
+   the mobile breakpoint. The sticky configurator panel keeps working the
+   same way regardless (position:sticky just needs a real scrolling
+   ancestor, which this now is). */
+.home-root.product-focus-active .hero-full {
+  overflow-y: auto;
+}
+
 .hero-slides {
   position: absolute;
   inset: 0;
@@ -1169,23 +1181,27 @@ a {
 }
 
 .hero-product-content {
+  /* Opis/Galeria/Opinie/Instrukcje are one continuous stacked flow now
+     (see .hero-product-section below), not a tab-switcher with one section
+     visible in a small internal scrollbox at a time - grows to fit all
+     four, no cap of its own. The real scrolling happens on .hero-full. */
   min-height: 260px;
-  max-height: min(52vh, 560px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 0.5rem;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(240, 248, 255, 0.32) transparent;
+  /* Without this, the last section (Instrukcje) had nowhere left to scroll
+     to once its own content ran out - clicking it (or scroll-spy reaching
+     it) couldn't bring its top flush under the header the way the other
+     three could, the same "not enough scroll room" issue the configurator's
+     own step transitions had. */
+  padding-bottom: 70vh;
 }
 
-.hero-product-content::-webkit-scrollbar {
-  width: 6px;
+.hero-product-section {
+  scroll-margin-top: 6.5rem;
 }
 
-.hero-product-content::-webkit-scrollbar-thumb {
-  background: rgba(240, 248, 255, 0.28);
-  border-radius: 999px;
+.hero-product-section + .hero-product-section {
+  margin-top: 2.4rem;
+  padding-top: 2.4rem;
+  border-top: 1px solid rgba(229, 241, 255, 0.14);
 }
 
 .hero-product-content p {
