@@ -1633,6 +1633,81 @@ a {
   gap: 0.55rem;
 }
 
+/* CRM-authored rich-text product description (Sklep WWW -> Produkty i
+   konfiguratory -> [produkt] -> Opis: pełny opis produktu), rendered as
+   real HTML - see .legal-modal-body for the same pattern used elsewhere for
+   admin-authored content. Kept unstyled/plain when the admin hasn't typed
+   anything (the block doesn't render at all in that case). */
+.pl-description {
+  color: rgba(240, 248, 255, 0.88);
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.pl-description > *:first-child {
+  margin-top: 0;
+}
+
+.pl-description > *:last-child {
+  margin-bottom: 0;
+}
+
+.pl-description p {
+  margin: 0 0 0.9rem;
+}
+
+.pl-description h1,
+.pl-description h2,
+.pl-description h3 {
+  margin: 1.2rem 0 0.6rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f2f7ff;
+}
+
+.pl-description h1 {
+  font-size: 1.3rem;
+}
+
+.pl-description h2 {
+  font-size: 1.14rem;
+}
+
+.pl-description h3 {
+  font-size: 1.02rem;
+}
+
+.pl-description ul,
+.pl-description ol {
+  margin: 0 0 0.9rem;
+  padding-left: 1.3rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.pl-description ul {
+  list-style: disc;
+}
+
+.pl-description ol {
+  list-style: decimal;
+}
+
+.pl-description li {
+  line-height: 1.6;
+}
+
+.pl-description strong,
+.pl-description b {
+  color: #f2f7ff;
+}
+
+.pl-description a {
+  color: #7ae9e2;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
 .pl-feature-list li {
   font-size: 0.9rem;
   line-height: 1.55;

@@ -2025,6 +2025,13 @@ export default function Home() {
                               )}
                             </div>
 
+                            {productLanding?.description ? (
+                              <div
+                                className="pl-description"
+                                dangerouslySetInnerHTML={{ __html: productLanding.description }}
+                              />
+                            ) : null}
+
                             <ul className="pl-feature-list">
                               {(productLanding?.featureBullets?.length
                                 ? productLanding.featureBullets
@@ -2075,6 +2082,13 @@ export default function Home() {
                                 ),
                               )}
                             </div>
+
+                            {productLanding?.description ? (
+                              <div
+                                className="pl-description"
+                                dangerouslySetInnerHTML={{ __html: productLanding.description }}
+                              />
+                            ) : null}
 
                             <ul className="pl-feature-list">
                               {(productLanding?.featureBullets?.length
