@@ -1881,17 +1881,22 @@ a {
   padding: 0.8rem 0;
 }
 
-.hero-product-reviews-load-more-spinner {
-  width: 1.6rem;
-  height: 1.6rem;
+.hero-product-reviews-load-more-btn {
+  border: 1px solid rgba(240, 248, 255, 0.22);
+  background: rgba(240, 248, 255, 0.08);
+  color: #f2f7ff;
   border-radius: 999px;
-  border: 2px solid rgba(240, 248, 255, 0.18);
-  border-top-color: rgba(240, 248, 255, 0.72);
-  animation: reviewsLoadMoreSpin 0.7s linear infinite;
+  padding: 0.6rem 1.6rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-@keyframes reviewsLoadMoreSpin {
-  to { transform: rotate(360deg); }
+.hero-product-reviews-load-more-btn:hover,
+.hero-product-reviews-load-more-btn:focus-visible {
+  background: rgba(240, 248, 255, 0.16);
+  border-color: rgba(240, 248, 255, 0.36);
 }
 
 .allegro-review-source-note {

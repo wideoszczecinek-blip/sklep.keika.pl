@@ -682,35 +682,18 @@ export default function Home() {
   function scrollToProductSection(key: ProductTabKey) {
     const target = productSectionRefs[key]?.current;
     if (!target) return;
-    const runScroll = () => {
-      const container = target.closest<HTMLElement>(".hero-full");
-      if (container && container.scrollHeight > container.clientHeight) {
-        const containerRect = container.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        const delta = targetRect.top - containerRect.top - 96;
-        const nextTop = Math.max(
-          0,
-          Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight),
-        );
-        container.scrollTo({ top: nextTop, behavior: "smooth" });
-      } else {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    };
-    if (key === "instrukcje") {
-      // Jumping straight to the last section lands the scroll position
-      // at/past the reviews "load more" sentinel while it's still
-      // paginated - every appended page reflows the layout, which
-      // re-triggers that sentinel's IntersectionObserver (it's still in
-      // view right after the jump), cascading into a runaway load-more
-      // loop that keeps growing the page out from under the delta we
-      // already computed. Load every review up front, let two paint
-      // frames settle the layout, then compute/animate the scroll so
-      // nothing shifts mid-flight.
-      setVisibleReviewCount(MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.length);
-      requestAnimationFrame(() => requestAnimationFrame(runScroll));
+    const container = target.closest<HTMLElement>(".hero-full");
+    if (container && container.scrollHeight > container.clientHeight) {
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const delta = targetRect.top - containerRect.top - 96;
+      const nextTop = Math.max(
+        0,
+        Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight),
+      );
+      container.scrollTo({ top: nextTop, behavior: "smooth" });
     } else {
-      runScroll();
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
@@ -777,7 +760,6 @@ export default function Home() {
     };
   }, [allegroRating]);
   const [visibleReviewCount, setVisibleReviewCount] = useState(REVIEWS_PAGE_SIZE);
-  const reviewsLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const [reviewStarFilter, setReviewStarFilter] = useState<number | null>(null);
   const [productLanding, setProductLanding] = useState<ProductLandingContent | null>(null);
   const [dimensionWidth, setDimensionWidth] = useState("");
@@ -889,30 +871,6 @@ export default function Home() {
       cancelled = true;
     };
   }, [displayedProduct]);
-
-  // Lazy-loads 5 more reviews at a time as the sentinel below the visible
-  // list scrolls into view, instead of a manual "show all" click. Opis/
-  // Galeria/Opinie/Instrukcje are a stacked flow now and the real scroll
-  // container is .hero-full, not the browser viewport - without an explicit
-  // root here, this defaulted to the viewport, so it kept firing (loading
-  // more reviews, growing the Opinie section) while merely scrolling past
-  // it toward a later section, shifting that later section's position out
-  // from under an already-committed scrollTo() target mid-animation.
-  useEffect(() => {
-    const node = reviewsLoadMoreRef.current;
-    if (!node) return;
-    const root = node.closest<HTMLElement>(".hero-full") ?? null;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setVisibleReviewCount((prev) => prev + REVIEWS_PAGE_SIZE);
-        }
-      },
-      { root, rootMargin: "200px" },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [activeProductTab, visibleReviewCount, reviewStarFilter]);
 
   const defaultConfigEndpoint = "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || defaultConfigEndpoint;
@@ -2130,8 +2088,14 @@ export default function Home() {
                               </ul>
                             )}
                             {hasMoreReviews ? (
-                              <div ref={reviewsLoadMoreRef} className="hero-product-reviews-load-more" aria-hidden="true">
-                                <span className="hero-product-reviews-load-more-spinner" />
+                              <div className="hero-product-reviews-load-more">
+                                <button
+                                  type="button"
+                                  className="hero-product-reviews-load-more-btn"
+                                  onClick={() => setVisibleReviewCount((prev) => prev + REVIEWS_PAGE_SIZE)}
+                                >
+                                  Pokaż więcej
+                                </button>
                               </div>
                             ) : null}
                             <p className="allegro-review-source-note">
