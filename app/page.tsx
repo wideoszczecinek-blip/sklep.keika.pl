@@ -840,6 +840,16 @@ export default function Home() {
     return () => observer.disconnect();
   }, [isProductView, displayedProduct]);
   const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
+  // Swipe-to-navigate for the gallery coverflow (see galleryCircularOffset/
+  // galleryVisibleIndices below) - it's no longer a native horizontal
+  // scroller (that's what made the true circular loop possible: a scroll
+  // container can't jump from the last photo to the first without visibly
+  // rewinding through everything between), so touch/drag has to be handled
+  // by hand instead of coming for free with overflow-x:auto. Plain refs,
+  // not state - this only needs to be read on pointerup, never drives a
+  // render while dragging.
+  const gallerySwipeStartXRef = useRef<number | null>(null);
+  const gallerySwipeSuppressClickRef = useRef(false);
   const [selectedHardwareId, setSelectedHardwareId] = useState("");
   const [stepOneChosen, setStepOneChosen] = useState(false);
   const [stepOneCollapsed, setStepOneCollapsed] = useState(false);
@@ -2032,6 +2042,55 @@ export default function Home() {
                         const openZoom = (index: number) => {
                           setZoomPreview({ title: displayedProduct.label, urls: galleryPhotos, index });
                         };
+                        const GALLERY_SWIPE_THRESHOLD_PX = 40;
+                        // Both pointer AND touch listeners, deliberately -
+                        // touchend was found to fire reliably while the
+                        // matching pointerup sometimes doesn't (verified via
+                        // Puppeteer's touch simulation; not worth trusting
+                        // pointerup alone on a real device either given
+                        // that). handleGallerySwipeEndX is shared between
+                        // both so there's exactly one place computing the
+                        // actual navigation, and startXRef being cleared by
+                        // whichever handler runs first makes the other one
+                        // (if it also fires for the same gesture) a no-op.
+                        const handleGallerySwipeStartX = (clientX: number) => {
+                          gallerySwipeStartXRef.current = clientX;
+                        };
+                        const handleGallerySwipeEndX = (clientX: number) => {
+                          const startX = gallerySwipeStartXRef.current;
+                          gallerySwipeStartXRef.current = null;
+                          if (startX === null) return;
+                          const deltaX = clientX - startX;
+                          if (Math.abs(deltaX) < GALLERY_SWIPE_THRESHOLD_PX) return;
+                          // A real swipe happened - the click that follows
+                          // (pointerup/touchend both still produce one) would
+                          // otherwise also open the zoom lightbox or
+                          // double-navigate right after the swipe.
+                          gallerySwipeSuppressClickRef.current = true;
+                          goToSlide(activeProductGallerySlide + (deltaX < 0 ? 1 : -1));
+                        };
+                        const handleGallerySwipeCancel = () => {
+                          gallerySwipeStartXRef.current = null;
+                        };
+                        const handleGalleryPointerDown = (event: React.PointerEvent<HTMLDivElement>) =>
+                          handleGallerySwipeStartX(event.clientX);
+                        const handleGalleryPointerUp = (event: React.PointerEvent<HTMLDivElement>) =>
+                          handleGallerySwipeEndX(event.clientX);
+                        const handleGalleryTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+                          const x = event.touches[0]?.clientX;
+                          if (x !== undefined) handleGallerySwipeStartX(x);
+                        };
+                        const handleGalleryTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+                          const x = event.changedTouches[0]?.clientX;
+                          if (x !== undefined) handleGallerySwipeEndX(x);
+                        };
+                        const handleGalleryItemClick = (onActivate: () => void) => () => {
+                          if (gallerySwipeSuppressClickRef.current) {
+                            gallerySwipeSuppressClickRef.current = false;
+                            return;
+                          }
+                          onActivate();
+                        };
                         // Coverflow scale/spacing per step away from the active
                         // photo - the visible one is meaningfully bigger, each
                         // neighbor further out shrinks more.
@@ -2050,7 +2109,16 @@ export default function Home() {
                               >
                                 ‹
                               </button>
-                              <div className="hero-product-gallery-row">
+                              <div
+                                className="hero-product-gallery-row"
+                                onPointerDown={handleGalleryPointerDown}
+                                onPointerUp={handleGalleryPointerUp}
+                                onPointerCancel={handleGallerySwipeCancel}
+                                onPointerLeave={handleGallerySwipeCancel}
+                                onTouchStart={handleGalleryTouchStart}
+                                onTouchEnd={handleGalleryTouchEnd}
+                                onTouchCancel={handleGallerySwipeCancel}
+                              >
                                 {mainIndices.map((index) => {
                                   const distance = galleryCircularOffset(index, activeProductGallerySlide, total);
                                   const isActive = distance === 0;
@@ -2065,7 +2133,7 @@ export default function Home() {
                                         opacity: Math.abs(distance) > 3 ? 0 : 1,
                                         pointerEvents: Math.abs(distance) > 3 ? "none" : "auto",
                                       }}
-                                      onClick={() => (isActive ? openZoom(index) : goToSlide(index))}
+                                      onClick={handleGalleryItemClick(() => (isActive ? openZoom(index) : goToSlide(index)))}
                                       aria-label={
                                         isActive
                                           ? `Powiększ zdjęcie ${index + 1} z ${total}`

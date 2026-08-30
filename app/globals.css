@@ -1281,6 +1281,11 @@ a {
   overflow: hidden;
   flex: 1;
   min-width: 0;
+  /* Own horizontal swipe handling (see the pointer handlers in page.tsx) -
+     this tells the browser to keep handling vertical page scroll natively
+     but leave horizontal gestures here to that JS instead of trying to
+     interpret them itself (e.g. as a back/forward navigation swipe). */
+  touch-action: pan-y;
 }
 
 .hero-product-gallery-row-item {
