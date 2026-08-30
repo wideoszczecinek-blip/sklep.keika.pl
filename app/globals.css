@@ -1486,6 +1486,54 @@ a {
   line-height: 1.6;
 }
 
+.hero-product-faq {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.hero-product-faq-item {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(229, 241, 255, 0.22);
+  background: rgba(8, 20, 35, 0.5);
+  padding: 0.9rem 1rem;
+}
+
+.hero-product-faq-item summary {
+  cursor: pointer;
+  list-style: none;
+  color: #f2f7ff;
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.hero-product-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.hero-product-faq-item summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: #f3b546;
+  transition: transform 0.2s ease;
+}
+
+.hero-product-faq-item[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.hero-product-faq-item p {
+  margin: 0.6rem 0 0;
+  color: rgba(240, 248, 255, 0.88);
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
 .pl-landing {
   display: grid;
   gap: 1.1rem;
@@ -1979,6 +2027,49 @@ a {
   margin: 0;
   font-size: 0.82rem;
   color: rgba(240, 248, 255, 0.58);
+}
+
+/* Additional reviews entered directly in the CRM (Sklep WWW -> Produkty i
+   konfiguratory -> Opinie), shown appended below the Allegro-sourced list
+   above rather than replacing it. */
+.hero-product-crm-reviews {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.hero-product-crm-reviews li {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(229, 241, 255, 0.22);
+  background: rgba(8, 20, 35, 0.5);
+  padding: 0.7rem 0.8rem;
+}
+
+.hero-product-crm-review-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.hero-product-crm-review-head strong {
+  color: #f2f7ff;
+  font-size: 0.9rem;
+}
+
+.hero-product-crm-review-date {
+  color: rgba(240, 248, 255, 0.58);
+  font-size: 0.8rem;
+}
+
+.hero-product-crm-reviews p {
+  margin: 0;
+  color: rgba(240, 248, 255, 0.9);
+  font-size: 0.94rem;
+  line-height: 1.5;
 }
 
 .hero-product-estimate {
@@ -4177,7 +4268,11 @@ a {
 
 .config-option-preview-shell {
   position: relative;
-  width: min(94vw, 760px);
+  /* Wide cap so the active photo can go genuinely large (per-product
+     zoom used to be capped at 760px, cramped compared to the in-page
+     gallery it's meant to match) - still leaves room on desktop for the
+     nav arrows either side. */
+  width: min(96vw, 1320px);
   border-radius: 1rem;
   border: 1px solid rgba(194, 228, 255, 0.42);
   background: rgba(9, 22, 38, 0.92);
@@ -4489,12 +4584,62 @@ a {
   cursor: pointer;
 }
 
+.config-option-preview-media {
+  position: relative;
+}
+
 .config-option-preview-image {
   width: 100%;
-  max-height: min(72vh, 620px);
+  max-height: min(78vh, 920px);
   object-fit: contain;
   border-radius: 0.72rem;
   display: block;
+  margin: 0 auto;
+}
+
+/* Full thumbnail strip, all photos, always visible and scrollable - the
+   modal's answer to the in-page gallery's own thumb row
+   (.hero-product-gallery-thumbs). Desktop width is the constraint here (not
+   height), so unlike the in-page coverflow this deliberately skips
+   rendering blurred side-neighbor photos next to the main image - the
+   thumbnail strip is what carries "browse the rest" instead. */
+.config-option-preview-thumbs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding: 0.15rem;
+  scrollbar-width: thin;
+}
+
+.config-option-preview-thumbs button {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  width: 68px;
+  height: 48px;
+  padding: 0;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(230, 242, 255, 0.3);
+  background: rgba(8, 20, 35, 0.6);
+  overflow: hidden;
+  opacity: 0.62;
+  cursor: pointer;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.config-option-preview-thumbs button.is-active {
+  opacity: 1;
+  border-color: rgba(122, 233, 226, 0.92);
+}
+
+.config-option-preview-thumbs img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .config-option-preview-nav {
@@ -5596,6 +5741,15 @@ html[data-theme="light"] .config-option-preview-nav {
 
 html[data-theme="light"] .config-option-preview-shell p {
   color: #173453;
+}
+
+html[data-theme="light"] .config-option-preview-thumbs button {
+  border-color: rgba(35, 66, 99, 0.24);
+  background: rgba(249, 253, 255, 0.95);
+}
+
+html[data-theme="light"] .config-option-preview-thumbs button.is-active {
+  border-color: rgba(39, 148, 139, 0.75);
 }
 
 html[data-theme="light"] .config-selection-toast {

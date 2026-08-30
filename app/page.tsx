@@ -145,7 +145,7 @@ function resolveInfoSlug(url: string): string | null {
   return legalMatch ? legalMatch[1] : null;
 }
 
-type ProductTabKey = "opis" | "galeria" | "opinie" | "instrukcje";
+type ProductTabKey = "opis" | "galeria" | "opinie" | "instrukcje" | "faq";
 
 type ProductInstructionStep = {
   title: string;
@@ -295,6 +295,23 @@ const ROLETY_DACHOWE_INSTRUCTION_STEPS: ProductInstructionStep[] = [
   },
 ];
 
+type ProductCallout = {
+  title: string;
+  body: string;
+};
+
+type ProductFaqEntry = {
+  question: string;
+  answer: string;
+};
+
+type ProductReview = {
+  author: string;
+  stars: number;
+  text: string;
+  date: string;
+};
+
 type ProductLandingContent = {
   subtitle: string;
   description: string;
@@ -302,6 +319,17 @@ type ProductLandingContent = {
   badge: string;
   gallery: string[];
   sections: ProductLandingSection[];
+  // CRM-editable description-tab content (Sklep WWW -> Produkty i
+  // konfiguratory -> [produkt]). Empty arrays/fields mean "not set in CRM
+  // yet" - the moskitiery-ramkowe/rolety-dachowe branches fall back to their
+  // own built-in copy in that case; FAQ has no built-in fallback, it simply
+  // doesn't render until the CRM has at least one entry.
+  specItems: ProductSpecItem[];
+  featureBullets: ProductFeatureBullet[];
+  callout: ProductCallout | null;
+  instructionSteps: ProductInstructionStep[];
+  reviews: ProductReview[];
+  faq: ProductFaqEntry[];
 };
 
 // Product slugs that have a real, live Allegro rating wired up (see
@@ -771,12 +799,14 @@ export default function Home() {
   const galeriaSectionRef = useRef<HTMLElement | null>(null);
   const opinieSectionRef = useRef<HTMLElement | null>(null);
   const instrukcjeSectionRef = useRef<HTMLElement | null>(null);
+  const faqSectionRef = useRef<HTMLElement | null>(null);
   const productSectionRefs = useMemo<Record<ProductTabKey, React.RefObject<HTMLElement | null>>>(
     () => ({
       opis: opisSectionRef,
       galeria: galeriaSectionRef,
       opinie: opinieSectionRef,
       instrukcje: instrukcjeSectionRef,
+      faq: faqSectionRef,
     }),
     [],
   );
@@ -814,6 +844,7 @@ export default function Home() {
       ["galeria", galeriaSectionRef.current],
       ["opinie", opinieSectionRef.current],
       ["instrukcje", instrukcjeSectionRef.current],
+      ["faq", faqSectionRef.current],
     ];
     const validSections = sections.filter((entry): entry is [ProductTabKey, HTMLElement] => Boolean(entry[1]));
     if (!validSections.length) return;
@@ -926,6 +957,53 @@ export default function Home() {
               }))
               .filter((entry: ProductLandingSection) => entry.title || entry.body)
           : [];
+        const specItems: ProductSpecItem[] = Array.isArray(product.spec_items)
+          ? product.spec_items
+              .map((entry: { label?: string; value?: string }) => ({
+                label: String(entry?.label || "").trim(),
+                value: String(entry?.value || "").trim(),
+              }))
+              .filter((entry: ProductSpecItem) => entry.label || entry.value)
+          : [];
+        const featureBullets: ProductFeatureBullet[] = Array.isArray(product.feature_bullets)
+          ? product.feature_bullets
+              .map((entry: { lead?: string; detail?: string }) => ({
+                lead: String(entry?.lead || "").trim(),
+                detail: String(entry?.detail || "").trim(),
+              }))
+              .filter((entry: ProductFeatureBullet) => entry.lead || entry.detail)
+          : [];
+        const calloutRaw = product.callout;
+        const callout: ProductCallout | null =
+          calloutRaw && (String(calloutRaw.title || "").trim() || String(calloutRaw.body || "").trim())
+            ? { title: String(calloutRaw.title || "").trim(), body: String(calloutRaw.body || "").trim() }
+            : null;
+        const instructionSteps: ProductInstructionStep[] = Array.isArray(product.instruction_steps)
+          ? product.instruction_steps
+              .map((entry: { title?: string; body?: string }) => ({
+                title: String(entry?.title || "").trim(),
+                body: String(entry?.body || "").trim(),
+              }))
+              .filter((entry: ProductInstructionStep) => entry.title || entry.body)
+          : [];
+        const reviews: ProductReview[] = Array.isArray(product.reviews)
+          ? product.reviews
+              .map((entry: { author?: string; stars?: number; text?: string; date?: string }) => ({
+                author: String(entry?.author || "").trim(),
+                stars: Math.min(5, Math.max(1, Number(entry?.stars) || 5)),
+                text: String(entry?.text || "").trim(),
+                date: String(entry?.date || "").trim(),
+              }))
+              .filter((entry: ProductReview) => entry.text)
+          : [];
+        const faq: ProductFaqEntry[] = Array.isArray(product.faq)
+          ? product.faq
+              .map((entry: { question?: string; answer?: string }) => ({
+                question: String(entry?.question || "").trim(),
+                answer: String(entry?.answer || "").trim(),
+              }))
+              .filter((entry: ProductFaqEntry) => entry.question && entry.answer)
+          : [];
         setProductLanding({
           subtitle: String(product.subtitle || "").trim(),
           description: String(product.description || "").trim(),
@@ -935,6 +1013,12 @@ export default function Home() {
             ? product.gallery_urls.filter((url: unknown): url is string => typeof url === "string" && url.trim() !== "")
             : [],
           sections,
+          specItems,
+          featureBullets,
+          callout,
+          instructionSteps,
+          reviews,
+          faq,
         });
       })
       .catch(() => {
@@ -1931,16 +2015,21 @@ export default function Home() {
                             ) : null}
 
                             <div className="pl-spec-grid">
-                              {MOSKITIERY_RAMKOWE_SPEC_ITEMS.map((item) => (
-                                <div className="pl-spec-item" key={item.label}>
-                                  <span className="pl-spec-label">{item.label}</span>
-                                  <span className="pl-spec-value">{item.value}</span>
-                                </div>
-                              ))}
+                              {(productLanding?.specItems?.length ? productLanding.specItems : MOSKITIERY_RAMKOWE_SPEC_ITEMS).map(
+                                (item) => (
+                                  <div className="pl-spec-item" key={item.label}>
+                                    <span className="pl-spec-label">{item.label}</span>
+                                    <span className="pl-spec-value">{item.value}</span>
+                                  </div>
+                                ),
+                              )}
                             </div>
 
                             <ul className="pl-feature-list">
-                              {MOSKITIERY_RAMKOWE_FEATURE_BULLETS.map((bullet) => (
+                              {(productLanding?.featureBullets?.length
+                                ? productLanding.featureBullets
+                                : MOSKITIERY_RAMKOWE_FEATURE_BULLETS
+                              ).map((bullet) => (
                                 <li key={bullet.lead}>
                                   <strong>{bullet.lead}</strong>
                                   {bullet.detail ? <span> — {bullet.detail}</span> : null}
@@ -1949,10 +2038,10 @@ export default function Home() {
                             </ul>
 
                             <div className="pl-callout">
-                              <strong>Produkt do samodzielnego złożenia</strong>
+                              <strong>{productLanding?.callout?.title || "Produkt do samodzielnego złożenia"}</strong>
                               <p>
-                                Składasz ramkę, naciągasz siatkę i przykręcasz zaczepy — wszystko masz w komplecie,
-                                razem z instrukcją. Zwykle zajmuje to kilka–kilkanaście minut.
+                                {productLanding?.callout?.body ||
+                                  "Składasz ramkę, naciągasz siatkę i przykręcasz zaczepy — wszystko masz w komplecie, razem z instrukcją. Zwykle zajmuje to kilka–kilkanaście minut."}
                               </p>
                             </div>
                           </div>
@@ -1977,16 +2066,21 @@ export default function Home() {
                             />
 
                             <div className="pl-spec-grid">
-                              {ROLETY_DACHOWE_SPEC_ITEMS.map((item) => (
-                                <div className="pl-spec-item" key={item.label}>
-                                  <span className="pl-spec-label">{item.label}</span>
-                                  <span className="pl-spec-value">{item.value}</span>
-                                </div>
-                              ))}
+                              {(productLanding?.specItems?.length ? productLanding.specItems : ROLETY_DACHOWE_SPEC_ITEMS).map(
+                                (item) => (
+                                  <div className="pl-spec-item" key={item.label}>
+                                    <span className="pl-spec-label">{item.label}</span>
+                                    <span className="pl-spec-value">{item.value}</span>
+                                  </div>
+                                ),
+                              )}
                             </div>
 
                             <ul className="pl-feature-list">
-                              {ROLETY_DACHOWE_FEATURE_BULLETS.map((bullet) => (
+                              {(productLanding?.featureBullets?.length
+                                ? productLanding.featureBullets
+                                : ROLETY_DACHOWE_FEATURE_BULLETS
+                              ).map((bullet) => (
                                 <li key={bullet.lead}>
                                   <strong>{bullet.lead}</strong>
                                   {bullet.detail ? <span> — {bullet.detail}</span> : null}
@@ -1995,10 +2089,10 @@ export default function Home() {
                             </ul>
 
                             <div className="pl-callout">
-                              <strong>Rolety nie pasują do okien z zaokrągloną listwą</strong>
+                              <strong>{productLanding?.callout?.title || "Rolety nie pasują do okien z zaokrągloną listwą"}</strong>
                               <p>
-                                Jeżeli łuk jest minimalny (kilka milimetrów), roleta będzie pasować — natomiast przy
-                                oknach z typowo okrągłym profilem niestety nie.
+                                {productLanding?.callout?.body ||
+                                  "Jeżeli łuk jest minimalny (kilka milimetrów), roleta będzie pasować — natomiast przy oknach z typowo okrągłym profilem niestety nie."}
                               </p>
                             </div>
                           </div>
@@ -2035,12 +2129,24 @@ export default function Home() {
                       <section id="product-section-galeria" ref={galeriaSectionRef} className="hero-product-section">
                       <h2 className="hero-product-section-title">Galeria zdjęć</h2>
                       {displayedProduct ? (() => {
-                        const galleryPhotos =
+                        // CRM-managed gallery (Sklep WWW -> Produkty i
+                        // konfiguratory) becomes authoritative once the admin
+                        // has curated it up to at least the size of the
+                        // built-in real-photo set - a smaller CRM gallery
+                        // (e.g. the handful of URLs saved earlier for other
+                        // purposes, before this field was editable here) is
+                        // treated as "not yet caught up" rather than swapping
+                        // the live gallery down to fewer real photos.
+                        const builtinGallery =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                             ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
                             : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
                               ? ROLETY_DACHOWE_GALLERY_PHOTOS
                               : displayedProduct.gallery;
+                        const galleryPhotos =
+                          productLanding?.gallery?.length && productLanding.gallery.length >= builtinGallery.length
+                            ? productLanding.gallery
+                            : builtinGallery;
                         const total = galleryPhotos.length;
                         const goToSlide = (index: number) => {
                           setActiveProductGallerySlide(((index % total) + total) % total);
@@ -2341,6 +2447,26 @@ export default function Home() {
                             <p className="allegro-review-source-note">
                               Prawdziwe opinie naszych klientów.
                             </p>
+                            {productLanding?.reviews?.length ? (
+                              <ul className="hero-product-crm-reviews">
+                                {productLanding.reviews.map((review, index) => (
+                                  <li key={`${review.author}-${index}`}>
+                                    <div className="hero-product-crm-review-head">
+                                      <span className="allegro-rating-stars" aria-hidden="true">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <span key={star} className={`allegro-star ${star <= review.stars ? "is-filled" : ""}`}>
+                                            ★
+                                          </span>
+                                        ))}
+                                      </span>
+                                      {review.author ? <strong>{review.author}</strong> : null}
+                                      {review.date ? <span className="hero-product-crm-review-date">{review.date}</span> : null}
+                                    </div>
+                                    <p>{review.text}</p>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
                           </div>
                           );
                         })() : (
@@ -2356,7 +2482,10 @@ export default function Home() {
                       <h2 className="hero-product-section-title">Instrukcje</h2>
                       {displayedProduct ? (
                         <ul className="hero-product-instructions">
-                          {productInstructionSteps(displayedProduct.label).map((step) => (
+                          {(productLanding?.instructionSteps?.length
+                            ? productLanding.instructionSteps
+                            : productInstructionSteps(displayedProduct.label)
+                          ).map((step) => (
                             <li key={step.title}>
                               <strong>{step.title}</strong>
                               <p>{step.body}</p>
@@ -2365,6 +2494,19 @@ export default function Home() {
                         </ul>
                       ) : null}
                       </section>
+                      {productLanding?.faq?.length ? (
+                        <section id="product-section-faq" ref={faqSectionRef} className="hero-product-section">
+                          <h2 className="hero-product-section-title">Najczęściej zadawane pytania</h2>
+                          <div className="hero-product-faq">
+                            {productLanding.faq.map((entry, index) => (
+                              <details key={`${entry.question}-${index}`} className="hero-product-faq-item">
+                                <summary>{entry.question}</summary>
+                                <p>{entry.answer}</p>
+                              </details>
+                            ))}
+                          </div>
+                        </section>
+                      ) : null}
                     </div>
                   </section>
               </div>
@@ -3062,6 +3204,15 @@ export default function Home() {
                 >
                   Instrukcje
                 </button>
+                {productLanding?.faq?.length ? (
+                  <button
+                    type="button"
+                    className={activeProductTab === "faq" ? "is-active" : ""}
+                    onClick={() => scrollToProductSection("faq")}
+                  >
+                    FAQ
+                  </button>
+                ) : null}
               </div>
             </nav>
           ) : null}
@@ -3106,48 +3257,65 @@ export default function Home() {
             >
               ×
             </button>
-            {zoomPreview.urls.length > 1 ? (
-              <button
-                type="button"
-                className="config-option-preview-nav is-prev"
-                aria-label="Poprzednie zdjęcie"
-                onClick={() =>
-                  setZoomPreview((prev) => {
-                    if (!prev) return prev;
-                    const nextIndex = (prev.index - 1 + prev.urls.length) % prev.urls.length;
-                    return { ...prev, index: nextIndex };
-                  })
-                }
-              >
-                ‹
-              </button>
-            ) : null}
-            {zoomPreview.urls.length > 1 ? (
-              <button
-                type="button"
-                className="config-option-preview-nav is-next"
-                aria-label="Następne zdjęcie"
-                onClick={() =>
-                  setZoomPreview((prev) => {
-                    if (!prev) return prev;
-                    const nextIndex = (prev.index + 1) % prev.urls.length;
-                    return { ...prev, index: nextIndex };
-                  })
-                }
-              >
-                ›
-              </button>
-            ) : null}
-            <img
-              src={optimizeImageUrl(zoomPreview.urls[zoomPreview.index], 1200, 80)}
-              alt={zoomPreview.title}
-              className="config-option-preview-image"
-              loading="eager"
-            />
+            <div className="config-option-preview-media">
+              {zoomPreview.urls.length > 1 ? (
+                <button
+                  type="button"
+                  className="config-option-preview-nav is-prev"
+                  aria-label="Poprzednie zdjęcie"
+                  onClick={() =>
+                    setZoomPreview((prev) => {
+                      if (!prev) return prev;
+                      const nextIndex = (prev.index - 1 + prev.urls.length) % prev.urls.length;
+                      return { ...prev, index: nextIndex };
+                    })
+                  }
+                >
+                  ‹
+                </button>
+              ) : null}
+              {zoomPreview.urls.length > 1 ? (
+                <button
+                  type="button"
+                  className="config-option-preview-nav is-next"
+                  aria-label="Następne zdjęcie"
+                  onClick={() =>
+                    setZoomPreview((prev) => {
+                      if (!prev) return prev;
+                      const nextIndex = (prev.index + 1) % prev.urls.length;
+                      return { ...prev, index: nextIndex };
+                    })
+                  }
+                >
+                  ›
+                </button>
+              ) : null}
+              <img
+                src={optimizeImageUrl(zoomPreview.urls[zoomPreview.index], 1600, 85)}
+                alt={zoomPreview.title}
+                className="config-option-preview-image"
+                loading="eager"
+              />
+            </div>
             <p>
               {zoomPreview.title}
               {zoomPreview.urls.length > 1 ? ` • ${zoomPreview.index + 1}/${zoomPreview.urls.length}` : ""}
             </p>
+            {zoomPreview.urls.length > 1 ? (
+              <div className="config-option-preview-thumbs">
+                {zoomPreview.urls.map((url, index) => (
+                  <button
+                    key={`${url}-${index}`}
+                    type="button"
+                    className={index === zoomPreview.index ? "is-active" : ""}
+                    onClick={() => setZoomPreview((prev) => (prev ? { ...prev, index } : prev))}
+                    aria-label={`Pokaż zdjęcie ${index + 1} z ${zoomPreview.urls.length}`}
+                  >
+                    <img src={optimizeImageUrl(url, 160)} alt="" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
