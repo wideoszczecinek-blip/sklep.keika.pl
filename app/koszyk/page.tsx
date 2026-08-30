@@ -887,6 +887,7 @@ export default function CartPage() {
 
   return (
     <div className="cart-page">
+      <div className="cart-page-gradient-bg" aria-hidden="true" />
       <header className="cart-page-header">
         <Link href="/" className="cart-page-brand">
           keika

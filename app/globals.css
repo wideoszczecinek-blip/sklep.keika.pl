@@ -5150,6 +5150,14 @@ a {
     max-height: none;
     overflow-y: visible;
     padding-right: 0;
+    /* Base rule's 70vh padding-bottom exists only to give the LAST section
+       room to scroll flush under the header when .hero-product-content is
+       the outer scroll container (desktop). On mobile the config panel
+       immediately follows in normal flow and already reserves its own
+       scroll room (see .hero-product-config-panel's padding-bottom below),
+       so this left a pointless empty gap between Instrukcje and the
+       configurator with nothing in it. */
+    padding-bottom: 0;
   }
 
   .hero-product-config-panel {
@@ -5627,6 +5635,30 @@ html[data-theme="light"] .mobile-fixed-cta {
   padding: 1.4rem 1.2rem 3rem;
   max-width: 1240px;
   margin: 0 auto;
+  position: relative;
+}
+
+/* Same slow-drifting gradient backdrop as the product view (see
+   .hero-product-gradient-bg) - the business owner liked it there and asked
+   for it here too. Always on for this page (no photo/video mechanism to
+   toggle away from, unlike the homepage). */
+.cart-page-gradient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -5;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 159, 10, 0.16), transparent 42%),
+    radial-gradient(circle at 82% 76%, rgba(122, 233, 226, 0.12), transparent 46%),
+    linear-gradient(135deg, #060c18 0%, #0d1a2c 48%, #071019 100%);
+  background-size: 180% 180%;
+  background-position: 20% 30%;
+  animation: heroProductGradientDrift 26s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-page-gradient-bg {
+    animation: none;
+  }
 }
 
 .cart-page-header {
