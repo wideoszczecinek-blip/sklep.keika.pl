@@ -628,6 +628,7 @@ export default function Home() {
   const [configReady, setConfigReady] = useState(false);
   const [bootPhase, setBootPhase] = useState<"loading" | "reveal" | "ready">("loading");
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
+  const menuCardRefs = useRef<Array<HTMLElement | null>>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [heroSlidesReady, setHeroSlidesReady] = useState(false);
@@ -996,6 +997,60 @@ export default function Home() {
       document.removeEventListener("touchstart", handlePointerDown);
     };
   }, []);
+
+  // Mobile: .hero-menu-glass is a bottom-anchored floating panel with its
+  // own capped height + internal scroll (see the mobile media query), not a
+  // full-screen sheet - opening a category's accordion list can land it
+  // mostly below that panel's own visible area with no way to tell without
+  // scrolling first. Bring the just-opened card's head to the top of the
+  // panel automatically, same idea as the product-section scroll-spy above.
+  useEffect(() => {
+    if (openMenuIndex === null) return;
+    const card = menuCardRefs.current[openMenuIndex];
+    const container = heroMenuRef.current;
+    if (!card || !container) return;
+
+    const runScroll = () => {
+      if (container.scrollHeight <= container.clientHeight) return;
+      const containerRect = container.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const delta = cardRect.top - containerRect.top;
+      const nextTop = Math.max(
+        0,
+        Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight),
+      );
+      container.scrollTo({ top: nextTop, behavior: "smooth" });
+    };
+
+    // The just-opened list's own max-height transition (see
+    // .hero-menu-card-list.is-open) still has to grow from 0 before the
+    // panel's scrollHeight reflects the space it actually needs - scrolling
+    // before that finishes clamps the target back down to the
+    // pre-expansion height. Wait for it (with a timeout fallback slightly
+    // past its 0.58s duration in case the event doesn't fire).
+    const list = card.querySelector<HTMLElement>(".hero-menu-card-list");
+    if (!list) {
+      runScroll();
+      return;
+    }
+    let done = false;
+    const onEnd = (event: TransitionEvent) => {
+      if (event.propertyName !== "max-height" || done) return;
+      done = true;
+      runScroll();
+    };
+    list.addEventListener("transitionend", onEnd);
+    const fallback = window.setTimeout(() => {
+      if (!done) {
+        done = true;
+        runScroll();
+      }
+    }, 650);
+    return () => {
+      list.removeEventListener("transitionend", onEnd);
+      window.clearTimeout(fallback);
+    };
+  }, [openMenuIndex]);
 
   const branding = config?.branding || {};
   const endpointOrigin = useMemo(() => {
@@ -2145,6 +2200,9 @@ export default function Home() {
               {heroMenuGroups.map((item, index) => (
                 <article
                   key={item.title}
+                  ref={(el) => {
+                    menuCardRefs.current[index] = el;
+                  }}
                   className={`hero-menu-card ${openMenuIndex === index ? "is-open" : ""}`}
                 >
                   <div
