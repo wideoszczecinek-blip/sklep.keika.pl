@@ -131,6 +131,19 @@ type ExtraCharge = {
   summary: string;
 };
 
+type AppliedDiscount = {
+  code: string;
+  type: "percent" | "amount";
+  value: number;
+  amount: number;
+};
+
+type DiscountCheckResponse = {
+  ok: boolean;
+  discount?: { code: string; type: "percent" | "amount"; value: number; amount: number };
+  error?: string;
+};
+
 // Real checkout, reusing the exact quote -> order -> Stripe pipeline the
 // saved-quote flow already uses (see app/wycena/[quoteCode]/quote-checkout.tsx):
 // the cart's line items become one quote's "positions" (that field already
@@ -149,7 +162,11 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
   return { hardware: "Kolor profilu", mesh: "Kolor siatki" };
 }
 
-function buildQuotePayloadFromCart(items: CartLineItem[], extraCharges: ExtraCharge[] = []) {
+function buildQuotePayloadFromCart(
+  items: CartLineItem[],
+  extraCharges: ExtraCharge[] = [],
+  discount: AppliedDiscount | null = null,
+) {
   const positions = items.map((item, index) => {
     const fieldLabels = cartItemFieldLabels(item.productSlug);
     const specs = [
@@ -200,8 +217,30 @@ function buildQuotePayloadFromCart(items: CartLineItem[], extraCharges: ExtraCha
     });
   }
 
+  // Discount code position (see core/lib/shop_discount_codes.php on the CRM
+  // side): deliberately NOT going through the extraCharges loop above, which
+  // only ever adds positive amounts. Its own total_amount here is just for
+  // this immediate client-side display - the id ("rabat-<CODE>") is what
+  // actually matters, since quote_save.php always re-validates the code and
+  // recomputes the real discount amount server-side before persisting
+  // anything (a tampered amount here can't reduce what's actually charged).
+  if (discount && discount.amount > 0) {
+    positions.push({
+      id: `rabat-${discount.code}`,
+      product_slug: "rabat",
+      product_label: "Kod rabatowy",
+      quantity: 1,
+      purchase_units: null,
+      total_amount: (-discount.amount).toFixed(2),
+      currency: "PLN",
+      summary: `Kod rabatowy ${discount.code} (-${discount.amount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł)`,
+      summary_rows: [],
+    });
+  }
+
   const extraTotal = extraCharges.reduce((sum, extra) => sum + (extra.amount > 0 ? extra.amount : 0), 0);
-  const totalAmount = items.reduce((sum, item) => sum + item.total, 0) + extraTotal;
+  const discountTotal = discount && discount.amount > 0 ? discount.amount : 0;
+  const totalAmount = items.reduce((sum, item) => sum + item.total, 0) + extraTotal - discountTotal;
 
   return {
     quote_code: "",
@@ -460,6 +499,17 @@ export default function CartPage() {
   // payment method. Single link/document: "Regulamin sklepu i płatności"
   // (shop terms and payment terms live together, not as two documents).
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // Discount code (see core/lib/shop_discount_codes.php on the CRM side).
+  // "Sprawdź" just previews the discount for display - it's re-validated
+  // server-side from scratch when the order actually gets placed (see
+  // buildQuotePayloadFromCart/submitOrder below), so a stale or tampered
+  // client-side amount here can never reduce what's actually charged.
+  const [discountCodeInput, setDiscountCodeInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
+  const [discountChecking, setDiscountChecking] = useState(false);
+  const [discountError, setDiscountError] = useState("");
+
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [legalContent, setLegalContent] = useState<{ title: string; bodyHtml: string } | null>(null);
   const [legalLoading, setLegalLoading] = useState(false);
@@ -632,7 +682,10 @@ export default function CartPage() {
       // Same total the "Razem" row shows once cash-on-delivery is picked -
       // included in the SMS text so the customer sees the exact amount
       // they're committing to accept on delivery, not just the code.
-      const codTotal = summary.total + orderSurcharge + COD_SURCHARGE_AMOUNT;
+      const codTotal = Math.max(
+        0,
+        summary.total - (appliedDiscount?.amount || 0) + orderSurcharge + COD_SURCHARGE_AMOUNT,
+      );
       const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/cod_sms_start.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -679,6 +732,37 @@ export default function CartPage() {
     }
   }
 
+  async function checkDiscountCode() {
+    const code = discountCodeInput.trim();
+    if (!code) return;
+    setDiscountChecking(true);
+    setDiscountError("");
+    try {
+      const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/discount_code_check.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: summary.total }),
+      });
+      const json = (await response.json()) as DiscountCheckResponse;
+      if (!json.ok || !json.discount) {
+        throw new Error(json.error || "Nieprawidłowy kod rabatowy.");
+      }
+      setAppliedDiscount(json.discount);
+      setDiscountCodeInput(json.discount.code);
+    } catch (checkError) {
+      setAppliedDiscount(null);
+      setDiscountError(checkError instanceof Error ? checkError.message : "Nie udało się sprawdzić kodu.");
+    } finally {
+      setDiscountChecking(false);
+    }
+  }
+
+  function removeDiscountCode() {
+    setAppliedDiscount(null);
+    setDiscountCodeInput("");
+    setDiscountError("");
+  }
+
   const submitOrder = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
@@ -702,7 +786,7 @@ export default function CartPage() {
           summary: "Dopłata za płatność za pobraniem",
         },
       ];
-      const quotePayload = buildQuotePayloadFromCart(items, extraCharges);
+      const quotePayload = buildQuotePayloadFromCart(items, extraCharges, appliedDiscount);
       const quoteResponse = await saveShopQuote(quotePayload);
       const quoteCode = quoteResponse.quote.quote_code;
 
@@ -772,7 +856,7 @@ export default function CartPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [items, deliveryMethod, form, wantsInvoice, invoice, paymentMethod, codSms.token, orderSurcharge]);
+  }, [items, deliveryMethod, form, wantsInvoice, invoice, paymentMethod, codSms.token, orderSurcharge, appliedDiscount]);
 
   // No "przejdź do płatności" button - for online payment, the payment panel
   // opens on its own once the required fields are filled in, after a short
@@ -1078,12 +1162,62 @@ export default function CartPage() {
                   <h2>Płatność</h2>
                   {items.length > 0 ? (
                     <>
+                      <div className="cart-discount-code">
+                        <span className="cart-discount-code-label">Kod rabatowy</span>
+                        {appliedDiscount ? (
+                          <div className="cart-discount-code-applied">
+                            <span>
+                              <strong>{appliedDiscount.code}</strong>{" "}
+                              {appliedDiscount.type === "percent"
+                                ? `-${appliedDiscount.value.toLocaleString("pl-PL")}%`
+                                : `-${formatPln(appliedDiscount.value)}`}
+                            </span>
+                            <button type="button" onClick={removeDiscountCode}>
+                              Usuń
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="cart-discount-code-row">
+                            <input
+                              type="text"
+                              value={discountCodeInput}
+                              onChange={(event) => {
+                                setDiscountCodeInput(event.target.value);
+                                if (discountError) setDiscountError("");
+                              }}
+                              placeholder="np. LATO2026"
+                              disabled={discountChecking}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  checkDiscountCode();
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={checkDiscountCode}
+                              disabled={discountChecking || !discountCodeInput.trim()}
+                            >
+                              {discountChecking ? "Sprawdzam…" : "Sprawdź"}
+                            </button>
+                          </div>
+                        )}
+                        {discountError ? <p className="cart-discount-code-error">{discountError}</p> : null}
+                      </div>
+
                       <div className="cart-page-summary-row is-muted">
                         <span>
                           {summary.items} {summary.items === 1 ? "produkt" : "produktów"}
                         </span>
                         <span>{formatPln(summary.total)}</span>
                       </div>
+                      {appliedDiscount ? (
+                        <div className="cart-page-summary-row is-muted">
+                          <span>Kod rabatowy {appliedDiscount.code}</span>
+                          <span>-{formatPln(appliedDiscount.amount)}</span>
+                        </div>
+                      ) : null}
                       {orderSurcharge > 0 ? (
                         <div className="cart-page-summary-row is-muted">
                           <span>Dopłata za przesyłkę długościową</span>
@@ -1099,7 +1233,15 @@ export default function CartPage() {
                       <div className="cart-page-summary-row">
                         <span>Razem</span>
                         <strong>
-                          {formatPln(summary.total + orderSurcharge + (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0))}
+                          {formatPln(
+                            Math.max(
+                              0,
+                              summary.total -
+                                (appliedDiscount?.amount || 0) +
+                                orderSurcharge +
+                                (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
+                            ),
+                          )}
                         </strong>
                       </div>
                     </>
