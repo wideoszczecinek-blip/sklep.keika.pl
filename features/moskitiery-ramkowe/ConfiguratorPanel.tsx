@@ -433,7 +433,7 @@ export default function ConfiguratorPanel({
                 <p className="hero-product-dimensions-surcharge-note">
                   Ten rozmiar wiąże się z jednorazową dopłatą{" "}
                   {activeSurchargeAmount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
-                  zł za przesyłkę długościową (zaakceptowano).
+                  zł za przesyłkę dłużycową (zaakceptowano).
                 </p>
               ) : null}
             </>
@@ -552,15 +552,15 @@ export default function ConfiguratorPanel({
       )}
 
       {surchargeModal ? (
-        <div className="surcharge-modal" role="dialog" aria-modal="true" aria-label="Dopłata za przesyłkę długościową">
+        <div className="surcharge-modal" role="dialog" aria-modal="true" aria-label="Dopłata za przesyłkę dłużycową">
           <div className="surcharge-modal-shell">
-            <h3>Przesyłka długościowa</h3>
+            <h3>Przesyłka dłużycowa</h3>
             <p>
               Przy tym rozmiarze zamówienie wymaga jednorazowej dopłaty logistycznej{" "}
               <strong>
                 {surchargeModal.amount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
               </strong>{" "}
-              za przesyłkę długościową (dopłata dotyczy całego zamówienia, nie każdej pozycji osobno).
+              za przesyłkę dłużycową (dopłata dotyczy całego zamówienia, nie każdej pozycji osobno).
             </p>
             <div className="surcharge-modal-actions">
               <button type="button" className="surcharge-modal-decline" onClick={handleDeclineSurcharge}>

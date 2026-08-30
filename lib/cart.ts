@@ -150,6 +150,16 @@ export function summarizeCartItems(items: CartLineItem[]): CartSummary {
   return { items: Math.max(0, Math.round(count)), total: Math.max(0, total) };
 }
 
+/** One-time oversized-parcel surcharge for the whole cart: the highest tier
+ * required by any single item, charged once per order - not summed per item.
+ * Mirrors what the cart page's own checkout total already adds on top of
+ * the item subtotal (see koszyk/page.tsx's "Razem" row), shared here so
+ * every other place that shows a cart total (e.g. the header mini-cart
+ * badge) can include it too instead of quietly under-counting. */
+export function calcCartOversizeSurcharge(items: CartLineItem[]): number {
+  return items.reduce((max, item) => Math.max(max, item.oversizeSurchargeAmount || 0), 0);
+}
+
 export function readCartSummary(): CartSummary {
   return summarizeCartItems(readCartItems());
 }

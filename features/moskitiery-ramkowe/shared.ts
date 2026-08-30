@@ -215,7 +215,7 @@ export const MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM = 150;
 // - Neither dimension may exceed OVERSIZE_TECHNICAL_LIMIT_MM at the same
 //   time as the other (a hard technical/manufacturing limit, no way around it).
 // - Above OVERSIZE_SURCHARGE_THRESHOLD_MM on either dimension, the shipment
-//   becomes an oversized ("długościowa") parcel and needs a one-time
+//   becomes an oversized ("dłużycowa") parcel and needs a one-time
 //   surcharge for the whole order, tiered by the largest dimension involved.
 // - OVERSIZE_SURCHARGE_TIER_2_MAX_MM doubles as the hard per-side maximum -
 //   moskOversizeSurchargeForDimension() returns -1 past it (see below).

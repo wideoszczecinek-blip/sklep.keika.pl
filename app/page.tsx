@@ -11,11 +11,21 @@ import {
   type CartLineItem,
   type CartSummary,
   addCartItem,
+  calcCartOversizeSurcharge,
   formatPln,
   readCartItems,
   summarizeCartItems,
 } from "@/lib/cart";
 import InfoModal from "./components/info-modal";
+
+// The header mini-cart badge/total should show what the customer will
+// actually pay, same as the cart page's own "Razem" row - which means
+// including the one-time oversize-shipment surcharge on top of the item
+// subtotal summarizeCartItems() gives on its own (see calcCartOversizeSurcharge).
+function cartSummaryWithSurcharge(items: CartLineItem[]): CartSummary {
+  const base = summarizeCartItems(items);
+  return { ...base, total: base.total + calcCartOversizeSurcharge(items) };
+}
 import ConfiguratorPanel from "@/features/moskitiery-ramkowe/ConfiguratorPanel";
 import {
   ALLEGRO_MOSKITIERY_HARDWARE,
@@ -217,6 +227,55 @@ const MOSKITIERY_RAMKOWE_SPEC_ITEMS: ProductSpecItem[] = [
   { label: "Montaż", value: "Bez wiercenia, zaczepy sprężynowe" },
   { label: "Złożenie", value: "Samodzielne, kilka–kilkanaście minut" },
 ];
+
+// Small suggestive icons for moskitiery-ramkowe's own 4 spec labels only
+// (keyed by the exact label text) - not a generic per-product icon system,
+// since an arbitrary CRM-entered label has no reliable icon to infer. Any
+// other product's spec grid (including a CRM-edited moskitiery-ramkowe one
+// with different labels) simply renders without an icon.
+function moskitieryRamkoweSpecIcon(label: string): React.ReactNode | null {
+  const common = { viewBox: "0 0 24 24", fill: "none", "aria-hidden": true } as const;
+  switch (label) {
+    case "Rama":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.7" />
+          <rect x="7.5" y="7.5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
+        </svg>
+      );
+    case "Siatka":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="18" height="18" rx="2.5" stroke="currentColor" strokeWidth="1.7" />
+          <line x1="9" y1="3" x2="9" y2="21" stroke="currentColor" strokeWidth="1.3" />
+          <line x1="15" y1="3" x2="15" y2="21" stroke="currentColor" strokeWidth="1.3" />
+          <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth="1.3" />
+          <line x1="3" y1="15" x2="21" y2="15" stroke="currentColor" strokeWidth="1.3" />
+        </svg>
+      );
+    case "Montaż":
+      return (
+        <svg {...common}>
+          <path
+            d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.24-3.24a6 6 0 0 1-7.93 7.93l-6.9 6.9a2.03 2.03 0 0 1-2.87-2.87l6.9-6.9a6 6 0 0 1 7.93-7.93L14.7 6.3z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case "Złożenie":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.7" />
+          <path d="M7 12.5l3 3 7-7.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
 
 // Real product photos, hosted on the CRM media store. Used for the
 // moskitiery-ramkowe "Galeria zdjęć" tab instead of the generic
@@ -1400,7 +1459,7 @@ export default function Home() {
     const syncCart = () => {
       const items = readCartItems();
       setCartItems(items);
-      setCartSummary(summarizeCartItems(items));
+      setCartSummary(cartSummaryWithSurcharge(items));
     };
     syncCart();
     window.addEventListener("storage", syncCart);
@@ -1740,7 +1799,7 @@ export default function Home() {
     };
     const items = addCartItem(item);
     setCartItems(items);
-    setCartSummary(summarizeCartItems(items));
+    setCartSummary(cartSummaryWithSurcharge(items));
     setCartIsBumping(true);
     window.setTimeout(() => setCartIsBumping(false), 500);
     setAddToCartToast({ productSlug: slug, productLabel: displayedProduct.label });
@@ -2049,12 +2108,20 @@ export default function Home() {
 
                             <div className="pl-spec-grid">
                               {(productLanding?.specItems?.length ? productLanding.specItems : MOSKITIERY_RAMKOWE_SPEC_ITEMS).map(
-                                (item) => (
-                                  <div className="pl-spec-item" key={item.label}>
-                                    <span className="pl-spec-label">{item.label}</span>
-                                    <span className="pl-spec-value">{item.value}</span>
-                                  </div>
-                                ),
+                                (item) => {
+                                  const icon = moskitieryRamkoweSpecIcon(item.label);
+                                  return (
+                                    <div className="pl-spec-item" key={item.label}>
+                                      {icon ? (
+                                        <span className="pl-spec-icon">{icon}</span>
+                                      ) : null}
+                                      <div className="pl-spec-item-text">
+                                        <span className="pl-spec-label">{item.label}</span>
+                                        <span className="pl-spec-value">{item.value}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                },
                               )}
                             </div>
 
@@ -2109,8 +2176,10 @@ export default function Home() {
                               {(productLanding?.specItems?.length ? productLanding.specItems : ROLETY_DACHOWE_SPEC_ITEMS).map(
                                 (item) => (
                                   <div className="pl-spec-item" key={item.label}>
-                                    <span className="pl-spec-label">{item.label}</span>
-                                    <span className="pl-spec-value">{item.value}</span>
+                                    <div className="pl-spec-item-text">
+                                      <span className="pl-spec-label">{item.label}</span>
+                                      <span className="pl-spec-value">{item.value}</span>
+                                    </div>
                                   </div>
                                 ),
                               )}
@@ -2727,7 +2796,7 @@ export default function Home() {
                         };
                         const items = addCartItem(item);
                         setCartItems(items);
-                        setCartSummary(summarizeCartItems(items));
+                        setCartSummary(cartSummaryWithSurcharge(items));
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
                         setAddToCartToast({ productSlug: "moskitiery-ramkowe", productLabel: displayedProduct.label });
@@ -2805,7 +2874,7 @@ export default function Home() {
                         };
                         const items = addCartItem(item);
                         setCartItems(items);
-                        setCartSummary(summarizeCartItems(items));
+                        setCartSummary(cartSummaryWithSurcharge(items));
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
                         setAddToCartToast({ productSlug: "rolety-dachowe", productLabel: displayedProduct.label });
@@ -3029,7 +3098,7 @@ export default function Home() {
                         ) : activeSurchargeAmount > 0 ? (
                           <p className="hero-product-dimensions-surcharge-note">
                             Ten rozmiar wiąże się z jednorazową dopłatą {activeSurchargeAmount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
-                            za przesyłkę długościową (zaakceptowano).
+                            za przesyłkę dłużycową (zaakceptowano).
                           </p>
                         ) : null}
                       </>
@@ -3272,15 +3341,15 @@ export default function Home() {
         </section>
       </main>
       {surchargeModal ? (
-        <div className="surcharge-modal" role="dialog" aria-modal="true" aria-label="Dopłata za przesyłkę długościową">
+        <div className="surcharge-modal" role="dialog" aria-modal="true" aria-label="Dopłata za przesyłkę dłużycową">
           <div className="surcharge-modal-shell">
-            <h3>Przesyłka długościowa</h3>
+            <h3>Przesyłka dłużycowa</h3>
             <p>
               Przy tym rozmiarze zamówienie wymaga jednorazowej dopłaty logistycznej{" "}
               <strong>
                 {surchargeModal.amount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
               </strong>{" "}
-              za przesyłkę długościową (dopłata dotyczy całego zamówienia, nie każdej pozycji osobno).
+              za przesyłkę dłużycową (dopłata dotyczy całego zamówienia, nie każdej pozycji osobno).
             </p>
             <div className="surcharge-modal-actions">
               <button type="button" className="surcharge-modal-decline" onClick={handleDeclineSurcharge}>

@@ -7,6 +7,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { saveShopQuote } from "@/features/moskitiery/api";
 import {
   type CartLineItem,
+  calcCartOversizeSurcharge,
   clearCart,
   formatPln,
   readCartItems,
@@ -115,12 +116,6 @@ function getAvailableDeliveryMethods(items: CartLineItem[]): DeliveryMethod[] {
     items.every((item) => item.widthMm <= PACZKOMAT_MAX_DIMENSION_MM && item.heightMm <= PACZKOMAT_MAX_DIMENSION_MM);
   const courierMethods = fitsPaczkomat ? [COURIER_METHOD, PACZKOMAT_METHOD] : [COURIER_METHOD];
   return [...courierMethods, COD_DELIVERY_METHOD, PICKUP_METHOD];
-}
-
-/** One-time oversized-parcel surcharge for the whole order: the highest tier
- * required by any item, charged once - not summed per item. */
-function calcOrderSurcharge(items: CartLineItem[]): number {
-  return items.reduce((max, item) => Math.max(max, item.oversizeSurchargeAmount || 0), 0);
 }
 
 type ExtraCharge = {
@@ -568,7 +563,7 @@ export default function CartPage() {
   }, [sync]);
 
   const summary = summarizeCartItems(items);
-  const orderSurcharge = calcOrderSurcharge(items);
+  const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items);
 
   useEffect(() => {
@@ -774,9 +769,9 @@ export default function CartPage() {
         {
           id: "position-oversize-surcharge",
           slug: "doplata-przesylka-dlugosciowa",
-          label: "Dopłata za przesyłkę długościową",
+          label: "Dopłata za przesyłkę dłużycową",
           amount: orderSurcharge,
-          summary: "Dopłata za przesyłkę długościową (jednorazowo dla całego zamówienia)",
+          summary: "Dopłata za przesyłkę dłużycową (jednorazowo dla całego zamówienia)",
         },
         {
           id: "position-cod-fee",
@@ -1221,7 +1216,7 @@ export default function CartPage() {
                       ) : null}
                       {orderSurcharge > 0 ? (
                         <div className="cart-page-summary-row is-muted">
-                          <span>Dopłata za przesyłkę długościową</span>
+                          <span>Dopłata za przesyłkę dłużycową</span>
                           <span>{formatPln(orderSurcharge)}</span>
                         </div>
                       ) : null}
