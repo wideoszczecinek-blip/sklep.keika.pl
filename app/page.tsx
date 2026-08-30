@@ -150,6 +150,8 @@ type ProductTabKey = "opis" | "galeria" | "opinie" | "instrukcje" | "faq";
 type ProductInstructionStep = {
   title: string;
   body: string;
+  mediaUrl?: string;
+  mediaType?: "image" | "video";
 };
 
 type AllegroOfferRating = {
@@ -910,6 +912,35 @@ export default function Home() {
   const [visibleReviewCount, setVisibleReviewCount] = useState(REVIEWS_PAGE_SIZE);
   const [reviewStarFilter, setReviewStarFilter] = useState<number | null>(null);
   const [productLanding, setProductLanding] = useState<ProductLandingContent | null>(null);
+  // Standalone modal for a single instruction step - same content as the
+  // inline accordion in the Instrukcje section, but addressable from
+  // anywhere on the site via a URL hash (#instrukcja-1, #instrukcja-2, ...)
+  // so other parts of the page/site can link straight to one specific step
+  // without needing to know about this component's internals.
+  const [instructionModalIndex, setInstructionModalIndex] = useState<number | null>(null);
+  const activeInstructionSteps = useMemo<ProductInstructionStep[]>(() => {
+    if (productLanding?.instructionSteps?.length) return productLanding.instructionSteps;
+    if (!displayedProduct) return [];
+    return productInstructionSteps(displayedProduct.label);
+  }, [productLanding, displayedProduct]);
+
+  // Deep-link support: any link anywhere (this page or elsewhere on the
+  // site) pointing at #instrukcja-N opens that instruction step (1-indexed)
+  // straight into the standalone modal, without needing to wire up a click
+  // handler at the link's own location.
+  useEffect(() => {
+    const applyHash = () => {
+      const match = /^#instrukcja-(\d+)$/.exec(window.location.hash);
+      if (!match) return;
+      const index = Number(match[1]) - 1;
+      if (index >= 0 && index < activeInstructionSteps.length) {
+        setInstructionModalIndex(index);
+      }
+    };
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, [activeInstructionSteps]);
   const [dimensionWidth, setDimensionWidth] = useState("");
   const [dimensionHeight, setDimensionHeight] = useState("");
   const [dimensionQuantity, setDimensionQuantity] = useState("1");
@@ -980,11 +1011,13 @@ export default function Home() {
             : null;
         const instructionSteps: ProductInstructionStep[] = Array.isArray(product.instruction_steps)
           ? product.instruction_steps
-              .map((entry: { title?: string; body?: string }) => ({
+              .map((entry: { title?: string; body?: string; media_url?: string; media_type?: string }) => ({
                 title: String(entry?.title || "").trim(),
                 body: String(entry?.body || "").trim(),
+                mediaUrl: String(entry?.media_url || "").trim(),
+                mediaType: entry?.media_type === "video" ? ("video" as const) : ("image" as const),
               }))
-              .filter((entry: ProductInstructionStep) => entry.title || entry.body)
+              .filter((entry: ProductInstructionStep) => entry.title || entry.body || entry.mediaUrl)
           : [];
         const reviews: ProductReview[] = Array.isArray(product.reviews)
           ? product.reviews
@@ -2510,17 +2543,23 @@ export default function Home() {
                       <section id="product-section-instrukcje" ref={instrukcjeSectionRef} className="hero-product-section">
                       <h2 className="hero-product-section-title">Instrukcje</h2>
                       {displayedProduct ? (
-                        <ul className="hero-product-instructions">
-                          {(productLanding?.instructionSteps?.length
-                            ? productLanding.instructionSteps
-                            : productInstructionSteps(displayedProduct.label)
-                          ).map((step) => (
-                            <li key={step.title}>
-                              <strong>{step.title}</strong>
+                        <div className="hero-product-instructions">
+                          {activeInstructionSteps.map((step, index) => (
+                            <details key={`${step.title}-${index}`} className="hero-product-instruction-item">
+                              <summary>{step.title}</summary>
+                              {step.mediaUrl ? (
+                                <div className="hero-product-instruction-media">
+                                  {step.mediaType === "video" ? (
+                                    <video src={step.mediaUrl} controls playsInline preload="metadata" />
+                                  ) : (
+                                    <img src={optimizeImageUrl(step.mediaUrl, 700)} alt={step.title} loading="lazy" />
+                                  )}
+                                </div>
+                              ) : null}
                               <p>{step.body}</p>
-                            </li>
+                            </details>
                           ))}
-                        </ul>
+                        </div>
                       ) : null}
                       </section>
                     </div>
@@ -3330,6 +3369,82 @@ export default function Home() {
                 ))}
               </div>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {instructionModalIndex !== null && activeInstructionSteps[instructionModalIndex] ? (
+        <div
+          className="instruction-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={activeInstructionSteps[instructionModalIndex].title}
+          onClick={() => {
+            setInstructionModalIndex(null);
+            if (/^#instrukcja-\d+$/.test(window.location.hash)) {
+              history.replaceState(null, "", window.location.pathname + window.location.search);
+            }
+          }}
+        >
+          <div className="instruction-modal-shell" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="instruction-modal-close"
+              aria-label="Zamknij instrukcję"
+              onClick={() => {
+                setInstructionModalIndex(null);
+                if (/^#instrukcja-\d+$/.test(window.location.hash)) {
+                  history.replaceState(null, "", window.location.pathname + window.location.search);
+                }
+              }}
+            >
+              ×
+            </button>
+            {activeInstructionSteps.length > 1 ? (
+              <button
+                type="button"
+                className="instruction-modal-nav is-prev"
+                aria-label="Poprzedni krok"
+                onClick={() =>
+                  setInstructionModalIndex((prev) =>
+                    prev === null ? prev : (prev - 1 + activeInstructionSteps.length) % activeInstructionSteps.length,
+                  )
+                }
+              >
+                ‹
+              </button>
+            ) : null}
+            {activeInstructionSteps.length > 1 ? (
+              <button
+                type="button"
+                className="instruction-modal-nav is-next"
+                aria-label="Następny krok"
+                onClick={() =>
+                  setInstructionModalIndex((prev) => (prev === null ? prev : (prev + 1) % activeInstructionSteps.length))
+                }
+              >
+                ›
+              </button>
+            ) : null}
+            <h3>{activeInstructionSteps[instructionModalIndex].title}</h3>
+            {activeInstructionSteps[instructionModalIndex].mediaUrl ? (
+              <div className="instruction-modal-media">
+                {activeInstructionSteps[instructionModalIndex].mediaType === "video" ? (
+                  <video
+                    src={activeInstructionSteps[instructionModalIndex].mediaUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : (
+                  <img
+                    src={optimizeImageUrl(activeInstructionSteps[instructionModalIndex].mediaUrl || "", 1200, 80)}
+                    alt={activeInstructionSteps[instructionModalIndex].title}
+                  />
+                )}
+              </div>
+            ) : null}
+            <p>{activeInstructionSteps[instructionModalIndex].body}</p>
           </div>
         </div>
       ) : null}

@@ -1457,30 +1457,69 @@ a {
   line-height: 1.42;
 }
 
+/* Instructions render as accordions now (same visual language as
+   .hero-product-faq-item) - clicking a step inline expands/collapses it in
+   place; the standalone instruction modal (.instruction-modal) is a
+   separate, hash-addressable way to reach the same content from elsewhere
+   on the site without disturbing this inline behavior. */
 .hero-product-instructions {
-  list-style: none;
-  padding: 0;
-  margin: 0;
   display: grid;
   gap: 0.6rem;
 }
 
-.hero-product-instructions li {
+.hero-product-instruction-item {
   border-radius: 0.75rem;
   border: 1px solid rgba(229, 241, 255, 0.22);
   background: rgba(8, 20, 35, 0.5);
   padding: 0.9rem 1rem;
 }
 
-.hero-product-instructions strong {
-  display: block;
+.hero-product-instruction-item summary {
+  cursor: pointer;
+  list-style: none;
   color: #f2f7ff;
   font-size: 1rem;
-  margin-bottom: 0.28rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.hero-product-instruction-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.hero-product-instruction-item summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: #f3b546;
+  transition: transform 0.2s ease;
+}
+
+.hero-product-instruction-item[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.hero-product-instruction-media {
+  margin: 0.7rem 0;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: rgba(4, 10, 18, 0.5);
+}
+
+.hero-product-instruction-media img,
+.hero-product-instruction-media video {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
 }
 
 .hero-product-instructions p {
-  margin: 0;
+  margin: 0.6rem 0 0;
   color: rgba(240, 248, 255, 0.88);
   font-size: 0.98rem;
   line-height: 1.6;
@@ -4359,6 +4398,126 @@ a {
   border: 1px solid rgba(194, 228, 255, 0.42);
   background: rgba(9, 22, 38, 0.92);
   padding: 0.75rem;
+}
+
+/* Standalone instruction-step modal - the addressable-from-anywhere
+   equivalent of one .hero-product-instruction-item accordion row (see
+   #instrukcja-N hash handling in page.tsx). */
+.instruction-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 96;
+  background: rgba(4, 10, 18, 0.76);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.instruction-modal-shell {
+  position: relative;
+  width: min(94vw, 640px);
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 1rem;
+  border: 1px solid rgba(194, 228, 255, 0.42);
+  background: rgba(9, 22, 38, 0.94);
+  padding: 1.4rem 1.3rem 1.2rem;
+}
+
+.instruction-modal-shell h3 {
+  margin: 0 0 0.4rem;
+  padding-right: 1.6rem;
+  color: #f2f7ff;
+  font-size: 1.14rem;
+  font-weight: 800;
+}
+
+.instruction-modal-shell p {
+  margin: 0;
+  color: rgba(240, 248, 255, 0.9);
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.instruction-modal-media {
+  margin: 0.8rem 0;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: rgba(4, 10, 18, 0.5);
+}
+
+.instruction-modal-media img,
+.instruction-modal-media video {
+  display: block;
+  width: 100%;
+  max-height: 50vh;
+  object-fit: contain;
+}
+
+.instruction-modal-close {
+  position: absolute;
+  right: 0.6rem;
+  top: 0.6rem;
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(194, 228, 255, 0.46);
+  background: rgba(8, 20, 34, 0.8);
+  color: #eef8ff;
+  font-size: 1.18rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.instruction-modal-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(194, 228, 255, 0.46);
+  background: rgba(8, 20, 34, 0.8);
+  color: #eef8ff;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.instruction-modal-nav.is-prev {
+  left: -0.4rem;
+}
+
+.instruction-modal-nav.is-next {
+  right: -0.4rem;
+}
+
+html[data-theme="light"] .instruction-modal {
+  background: rgba(238, 246, 255, 0.74);
+}
+
+html[data-theme="light"] .instruction-modal-shell {
+  border-color: rgba(29, 59, 92, 0.24);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+html[data-theme="light"] .instruction-modal-shell h3 {
+  color: #132843;
+}
+
+html[data-theme="light"] .instruction-modal-shell p {
+  color: rgba(19, 40, 67, 0.78);
+}
+
+html[data-theme="light"] .instruction-modal-close,
+html[data-theme="light"] .instruction-modal-nav {
+  border-color: rgba(35, 66, 99, 0.38);
+  background: rgba(249, 253, 255, 0.95);
+  color: #163553;
 }
 
 .surcharge-modal {
