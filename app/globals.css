@@ -676,7 +676,17 @@ a {
 }
 
 .hero-slides {
-  position: absolute;
+  /* Fixed, not absolute: .hero-full now scrolls internally in product view
+     (see .home-root.product-focus-active .hero-full above), and this sits
+     as a sibling of the scrollable content sharing that same containing
+     block - as absolute it was getting carried along with the scroll
+     instead of staying put as a static backdrop. Safe to pin to the real
+     viewport here: nothing between this and <body> sets a transform/filter
+     that would locally scope position:fixed, and .home-root/main/.hero-full
+     already match the viewport exactly whenever nothing has scrolled yet
+     (marketing hero, first paint of a product), so this looks identical
+     there and only differs once product-view content is scrolled. */
+  position: fixed;
   inset: 0;
   z-index: -5;
   background: #050b16;
@@ -716,7 +726,9 @@ a {
 }
 
 .hero-dim {
-  position: absolute;
+  /* Fixed for the same reason as .hero-slides above - stays a static
+     backdrop instead of scrolling with .hero-full's content. */
+  position: fixed;
   inset: 0;
   z-index: -4;
   background:
@@ -725,7 +737,8 @@ a {
 }
 
 .hero-grain {
-  position: absolute;
+  /* Fixed for the same reason as .hero-slides above. */
+  position: fixed;
   inset: 0;
   z-index: -3;
   opacity: 0.12;
