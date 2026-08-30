@@ -747,6 +747,48 @@ a {
   background-size: 190px 190px, 240px 240px;
 }
 
+/* Tried in place of the photo/video background for the product view only
+   (per the business owner, "on trial" - the mechanism above is deliberately
+   left fully intact, not deleted, so reverting is just deleting this block
+   and the one below it). Dark and mostly still, so body text stays exactly
+   as readable as it was over .hero-dim's scrim - the color only shows up as
+   two very soft, slow-drifting blooms (site's own orange + teal accents),
+   never as a wash bright enough to fight the text sitting on top of it. */
+.home-root.product-focus-active .hero-slides,
+.home-root.product-focus-active .hero-dim,
+.home-root.product-focus-active .hero-grain {
+  display: none;
+}
+
+.hero-product-gradient-bg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: -5;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 159, 10, 0.16), transparent 42%),
+    radial-gradient(circle at 82% 76%, rgba(122, 233, 226, 0.12), transparent 46%),
+    linear-gradient(135deg, #060c18 0%, #0d1a2c 48%, #071019 100%);
+  background-size: 180% 180%;
+  background-position: 20% 30%;
+  animation: heroProductGradientDrift 26s ease-in-out infinite;
+}
+
+.home-root.product-focus-active .hero-product-gradient-bg {
+  display: block;
+}
+
+@keyframes heroProductGradientDrift {
+  0%, 100% { background-position: 20% 30%; }
+  50% { background-position: 78% 68%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-product-gradient-bg {
+    animation: none;
+  }
+}
+
 .hero-inner {
   min-height: 100svh;
   width: min(1360px, 96vw);

@@ -1824,6 +1824,12 @@ export default function Home() {
 
           <div className="hero-dim" aria-hidden="true" />
           <div className="hero-grain" aria-hidden="true" />
+          {/* Product-view-only alternative background, tried in place of the
+              photo/video hero-slides above (hidden via CSS in product view -
+              see .home-root.product-focus-active .hero-slides/.hero-dim/
+              .hero-grain in globals.css - not removed, so this is a one-line
+              flip back if it doesn't work out). Pure CSS, no state. */}
+          <div className="hero-product-gradient-bg" aria-hidden="true" />
 
           <div className={`hero-inner ${displayedProduct ? "product-mode" : ""}`}>
             <div className="hero-copy">
