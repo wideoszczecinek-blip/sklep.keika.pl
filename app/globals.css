@@ -1057,7 +1057,13 @@ a {
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
-  transition: max-height 0.58s ease, opacity 0.38s ease;
+  /* max-height uses ease-out (fronts-loads its growth) rather than ease -
+     the mobile auto-scroll-into-view effect (see the openMenuIndex effect
+     in page.tsx) can only compensate as fast as this box actually grows,
+     since scrollTop is clamped to the container's real current layout;
+     "ease"'s slow start left a felt ~200ms pause before either the list or
+     the compensating scroll visibly moved. */
+  transition: max-height 0.58s ease-out, opacity 0.38s ease;
 }
 
 .hero-menu-card-list.is-open {

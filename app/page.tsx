@@ -1004,52 +1004,40 @@ export default function Home() {
   // mostly below that panel's own visible area with no way to tell without
   // scrolling first. Bring the just-opened card's head to the top of the
   // panel automatically, same idea as the product-section scroll-spy above.
+  //
+  // The list reveals itself via a CSS max-height transition (see
+  // .hero-menu-card-list.is-open, 0.58s), so the panel's true scrollHeight
+  // only grows gradually, frame by frame, as that plays out - waiting for
+  // it to finish before scrolling once (an earlier version of this effect)
+  // made the list visibly pop open first and only jump into place after a
+  // pause. Instead, re-measure and nudge scrollTop every animation frame
+  // for the same duration, so the compensating scroll grows in lockstep
+  // with the content instead of trailing behind it.
   useEffect(() => {
     if (openMenuIndex === null) return;
     const card = menuCardRefs.current[openMenuIndex];
     const container = heroMenuRef.current;
     if (!card || !container) return;
 
-    const runScroll = () => {
-      if (container.scrollHeight <= container.clientHeight) return;
-      const containerRect = container.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
-      const delta = cardRect.top - containerRect.top;
-      const nextTop = Math.max(
-        0,
-        Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight),
-      );
-      container.scrollTo({ top: nextTop, behavior: "smooth" });
-    };
-
-    // The just-opened list's own max-height transition (see
-    // .hero-menu-card-list.is-open) still has to grow from 0 before the
-    // panel's scrollHeight reflects the space it actually needs - scrolling
-    // before that finishes clamps the target back down to the
-    // pre-expansion height. Wait for it (with a timeout fallback slightly
-    // past its 0.58s duration in case the event doesn't fire).
-    const list = card.querySelector<HTMLElement>(".hero-menu-card-list");
-    if (!list) {
-      runScroll();
-      return;
-    }
-    let done = false;
-    const onEnd = (event: TransitionEvent) => {
-      if (event.propertyName !== "max-height" || done) return;
-      done = true;
-      runScroll();
-    };
-    list.addEventListener("transitionend", onEnd);
-    const fallback = window.setTimeout(() => {
-      if (!done) {
-        done = true;
-        runScroll();
+    let rafId = 0;
+    const start = performance.now();
+    const tick = () => {
+      if (container.scrollHeight > container.clientHeight) {
+        const containerRect = container.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        const delta = cardRect.top - containerRect.top;
+        const nextTop = Math.max(
+          0,
+          Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight),
+        );
+        container.scrollTop = nextTop;
       }
-    }, 650);
-    return () => {
-      list.removeEventListener("transitionend", onEnd);
-      window.clearTimeout(fallback);
+      if (performance.now() - start < 650) {
+        rafId = requestAnimationFrame(tick);
+      }
     };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, [openMenuIndex]);
 
   const branding = config?.branding || {};
