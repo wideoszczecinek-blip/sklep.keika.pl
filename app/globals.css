@@ -1591,11 +1591,79 @@ html[data-theme="light"] .hero-product-gradient-bg {
   transform: scale(1.06);
 }
 
-.hero-product-instructions p {
+/* Step body is pasted-rich-text from the CRM (same minimal editor as the
+   product description) - bold, headings, lists and links keep whatever
+   formatting was pasted in, rendered here rather than flattened to plain
+   text. Mirrors .pl-description's tag styling for visual consistency. */
+.hero-product-instruction-body {
   margin: 0.6rem 0 0;
   color: rgba(240, 248, 255, 0.88);
   font-size: 0.98rem;
   line-height: 1.6;
+}
+
+.hero-product-instruction-body > *:first-child {
+  margin-top: 0;
+}
+
+.hero-product-instruction-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.hero-product-instruction-body p {
+  margin: 0 0 0.7rem;
+}
+
+.hero-product-instruction-body h1,
+.hero-product-instruction-body h2,
+.hero-product-instruction-body h3 {
+  margin: 0.9rem 0 0.5rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f2f7ff;
+}
+
+.hero-product-instruction-body h1 {
+  font-size: 1.16rem;
+}
+
+.hero-product-instruction-body h2 {
+  font-size: 1.06rem;
+}
+
+.hero-product-instruction-body h3 {
+  font-size: 1rem;
+}
+
+.hero-product-instruction-body ul,
+.hero-product-instruction-body ol {
+  margin: 0 0 0.7rem;
+  padding-left: 1.3rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.hero-product-instruction-body ul {
+  list-style: disc;
+}
+
+.hero-product-instruction-body ol {
+  list-style: decimal;
+}
+
+.hero-product-instruction-body li {
+  line-height: 1.6;
+}
+
+.hero-product-instruction-body strong,
+.hero-product-instruction-body b {
+  color: #f2f7ff;
+}
+
+.hero-product-instruction-body a {
+  color: #7ae9e2;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 .hero-product-faq {
@@ -4558,7 +4626,7 @@ html[data-theme="light"] .hero-product-gradient-bg {
   font-weight: 800;
 }
 
-.instruction-modal-shell p {
+.instruction-modal-shell .hero-product-instruction-body {
   margin: 0;
   color: rgba(240, 248, 255, 0.9);
   font-size: 0.98rem;
@@ -4634,7 +4702,7 @@ html[data-theme="light"] .instruction-modal-shell h3 {
   color: #132843;
 }
 
-html[data-theme="light"] .instruction-modal-shell p {
+html[data-theme="light"] .instruction-modal-shell .hero-product-instruction-body {
   color: rgba(19, 40, 67, 0.78);
 }
 
@@ -7269,8 +7337,16 @@ html[data-theme="light"] .hero-product-instruction-media {
   background: rgba(19, 40, 67, 0.060);
 }
 
-html[data-theme="light"] .hero-product-instructions p {
+html[data-theme="light"] .hero-product-instruction-body {
   color: rgba(19, 40, 67, 0.88);
+}
+
+html[data-theme="light"] .hero-product-instruction-body h1,
+html[data-theme="light"] .hero-product-instruction-body h2,
+html[data-theme="light"] .hero-product-instruction-body h3,
+html[data-theme="light"] .hero-product-instruction-body strong,
+html[data-theme="light"] .hero-product-instruction-body b {
+  color: #16314e;
 }
 
 html[data-theme="light"] .hero-product-faq-empty {

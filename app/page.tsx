@@ -2720,7 +2720,7 @@ export default function Home() {
                                   )}
                                 </div>
                               ) : null}
-                              <p>{step.body}</p>
+                              <div className="hero-product-instruction-body" dangerouslySetInnerHTML={{ __html: step.body }} />
                             </details>
                           ))}
                         </div>
@@ -3632,7 +3632,10 @@ export default function Home() {
                 )}
               </div>
             ) : null}
-            <p>{activeInstructionSteps[instructionModalIndex].body}</p>
+            <div
+              className="hero-product-instruction-body"
+              dangerouslySetInnerHTML={{ __html: activeInstructionSteps[instructionModalIndex].body }}
+            />
           </div>
         </div>
       ) : null}
