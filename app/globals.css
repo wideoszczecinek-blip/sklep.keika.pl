@@ -782,10 +782,11 @@ a {
  * effect in page.tsx. Revert by deleting that effect block; these CSS rules
  * are harmless left in place (never activate without it). */
 html[data-theme="light"] .hero-product-gradient-bg {
-  background:
-    radial-gradient(circle at 18% 22%, rgba(255, 159, 10, 0.14), transparent 42%),
-    radial-gradient(circle at 82% 76%, rgba(111, 227, 191, 0.16), transparent 46%),
-    linear-gradient(135deg, #ffffff 0%, #f4f8fd 48%, #eaf1f9 100%);
+  /* Flat white, not a soft tinted wash - the earlier gradient-blob version
+     read as "SaaS app" rather than "e-commerce catalog" (see e-markizy.pl:
+     plain white ground, color spent only on flat, deliberate accents). */
+  background: #ffffff;
+  animation: none;
 }
 
 @keyframes heroProductGradientDrift {
@@ -7216,13 +7217,28 @@ html[data-theme="light"] .hero-product-faq-item p {
   color: rgba(19, 40, 67, 0.88);
 }
 
+/* The price is the single most important thing on the page - bold, solid,
+   high-contrast brand orange, not the soft mint used against the dark
+   background (which read as weak/unconvincing on white). */
+html[data-theme="light"] .price-per-mb-promo {
+  color: #d9600a;
+}
+
+html[data-theme="light"] .pl-price {
+  color: #d9600a;
+}
+
+html[data-theme="light"] .pl-chip-rating {
+  color: #c9820a;
+}
+
 html[data-theme="light"] .pl-price-unit {
   color: rgba(19, 40, 67, 0.5);
 }
 
 html[data-theme="light"] .pl-chip {
-  border: 1px solid rgba(19, 40, 67, 0.24);
-  background: rgba(19, 40, 67, 0.060);
+  border: 1px solid #e7e9ee;
+  background: #f6f7f9;
   color: rgba(19, 40, 67, 0.86);
 }
 
@@ -7239,8 +7255,11 @@ html[data-theme="light"] .pl-hero-photo {
 }
 
 html[data-theme="light"] .pl-spec-item {
-  background: radial-gradient(circle at 100% 0%, rgba(255, 159, 10, 0.1), transparent 60%),
-    rgba(19, 40, 67, 0.043);
+  /* Flat, not the orange-glow-blob-over-a-navy-tint mix the base rule uses
+     for dark mode - that combination read as a dirty tan on white. Plain
+     light-grey tile with a crisp border instead. */
+  background: #f6f7f9;
+  border-color: #e7e9ee;
 }
 
 html[data-theme="light"] .pl-spec-value {
