@@ -7304,6 +7304,42 @@ html[data-theme="light"] .pl-spec-value {
   color: rgba(19, 40, 67, 0.7);
 }
 
+/* Missed earlier: this was set to pure white on purpose for the dark
+   background ("bold + brighter white" per an earlier request) - on white
+   it's nearly invisible. Bold + dark navy instead. */
+html[data-theme="light"] .pl-spec-label {
+  color: #16314e;
+}
+
+html[data-theme="light"] .pl-description h1,
+html[data-theme="light"] .pl-description h2,
+html[data-theme="light"] .pl-description h3,
+html[data-theme="light"] .pl-description strong,
+html[data-theme="light"] .pl-description b {
+  color: #16314e;
+}
+
+html[data-theme="light"] .header-cart.is-empty {
+  border-color: #e2e6ec;
+  background: #f6f7f9;
+  color: rgba(19, 40, 67, 0.78);
+}
+
+html[data-theme="light"] .header-cart.is-empty:hover {
+  border-color: #d3d8e0;
+  background: #eef0f3;
+}
+
+html[data-theme="light"] .header-cart.is-empty .header-cart-icon {
+  color: rgba(19, 40, 67, 0.78);
+}
+
+html[data-theme="light"] .hero-product-reviews-load-more-btn:hover,
+html[data-theme="light"] .hero-product-reviews-load-more-btn:focus-visible {
+  background: rgba(19, 40, 67, 0.12);
+  border-color: rgba(19, 40, 67, 0.36);
+}
+
 html[data-theme="light"] .pl-description {
   color: rgba(19, 40, 67, 0.88);
 }

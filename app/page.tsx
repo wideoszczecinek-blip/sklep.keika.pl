@@ -2587,9 +2587,6 @@ export default function Home() {
                                 </button>
                               </div>
                             ) : null}
-                            <p className="allegro-review-source-note">
-                              Prawdziwe opinie naszych klientów.
-                            </p>
                             {productLanding?.reviews?.length ? (
                               <ul className="hero-product-crm-reviews">
                                 {productLanding.reviews.map((review, index) => (
