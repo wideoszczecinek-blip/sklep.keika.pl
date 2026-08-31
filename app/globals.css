@@ -5742,9 +5742,10 @@ html[data-theme="light"] .top-link-button:focus-visible {
 }
 
 html[data-theme="light"] .hero-dim {
-  background:
-    radial-gradient(circle at 12% 32%, rgba(225, 240, 255, 0.34), transparent 38%),
-    linear-gradient(90deg, rgba(243, 248, 254, 0.82) 0%, rgba(240, 247, 255, 0.52) 42%, rgba(242, 248, 255, 0.22) 100%);
+  /* Much lighter wash than the original attempt - that one read as a milky
+     fog over the whole photo instead of a crisp catalog shot with just
+     enough scrim behind the headline to keep the dark text readable. */
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.22) 38%, transparent 62%);
 }
 
 html[data-theme="light"] .hero-grain {
@@ -6110,6 +6111,11 @@ html[data-theme="light"] .mobile-fixed-cta {
   background-size: 180% 180%;
   background-position: 20% 30%;
   animation: heroProductGradientDrift 26s ease-in-out infinite;
+}
+
+html[data-theme="light"] .cart-page-gradient-bg {
+  background: #ffffff;
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6917,6 +6923,10 @@ html[data-theme="light"] .cart-field-check {
    hero elsewhere in this file. */
 html[data-theme="light"] .cart-page-brand,
 html[data-theme="light"] .cart-page-header h1 {
+  color: #132843;
+}
+
+html[data-theme="light"] .cart-page-brand {
   color: #132843;
 }
 
