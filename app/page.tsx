@@ -467,6 +467,30 @@ const MOSKITIERY_RAMKOWE_INSTRUCTION_STEPS: ProductInstructionStep[] = [
   },
 ];
 
+// Instruction videos ship with zero native controls (no seek bar, no
+// play/pause, nothing to click by accident) - fullscreen is the one
+// interaction still offered, wired up by hand since removing the native
+// controls bar also removes its built-in fullscreen button.
+function requestInstructionVideoFullscreen(video: HTMLVideoElement | null): void {
+  if (!video) return;
+  const anyVideo = video as HTMLVideoElement & {
+    webkitEnterFullscreen?: () => void;
+    webkitRequestFullscreen?: () => void;
+  };
+  if (typeof anyVideo.webkitEnterFullscreen === "function") {
+    // iOS Safari: only the video element itself can go fullscreen.
+    anyVideo.webkitEnterFullscreen();
+    return;
+  }
+  if (typeof video.requestFullscreen === "function") {
+    video.requestFullscreen().catch(() => {});
+    return;
+  }
+  if (typeof anyVideo.webkitRequestFullscreen === "function") {
+    anyVideo.webkitRequestFullscreen();
+  }
+}
+
 function productInstructionSteps(label: string): ProductInstructionStep[] {
   const normalized = normalizeMenuLabel(label);
   if (normalized.includes("moskitier")) {
@@ -986,6 +1010,13 @@ export default function Home() {
   // so other parts of the page/site can link straight to one specific step
   // without needing to know about this component's internals.
   const [instructionModalIndex, setInstructionModalIndex] = useState<number | null>(null);
+  // Instruction videos autoplay the instant their accordion row opens (and
+  // pause + rewind the instant it closes) instead of relying on the
+  // <video autoplay> heuristic, which only fires once on mount and doesn't
+  // reliably re-trigger as a <details> element is toggled shut/open. One
+  // ref per step, keyed by index.
+  const instructionVideoRefs = useRef<Record<number, HTMLVideoElement | null>>({});
+  const instructionModalVideoRef = useRef<HTMLVideoElement | null>(null);
   const activeInstructionSteps = useMemo<ProductInstructionStep[]>(() => {
     if (productLanding?.instructionSteps?.length) return productLanding.instructionSteps;
     if (!displayedProduct) return [];
@@ -2638,14 +2669,54 @@ export default function Home() {
                       {displayedProduct ? (
                         <div className="hero-product-instructions">
                           {activeInstructionSteps.map((step, index) => (
-                            <details key={`${step.title}-${index}`} className="hero-product-instruction-item">
+                            <details
+                              key={`${step.title}-${index}`}
+                              className="hero-product-instruction-item"
+                              onToggle={(event) => {
+                                const video = instructionVideoRefs.current[index];
+                                if (!video) return;
+                                if (event.currentTarget.open) {
+                                  video.currentTime = 0;
+                                  video.play().catch(() => {});
+                                } else {
+                                  video.pause();
+                                }
+                              }}
+                            >
                               <summary>{step.title}</summary>
                               {step.mediaUrl ? (
                                 <div className="hero-product-instruction-media">
                                   {step.mediaType === "video" ? (
-                                    <video src={step.mediaUrl} controls playsInline preload="metadata" />
+                                    <>
+                                      <video
+                                        ref={(el) => {
+                                          instructionVideoRefs.current[index] = el;
+                                        }}
+                                        src={step.mediaUrl}
+                                        muted
+                                        loop
+                                        playsInline
+                                        preload="metadata"
+                                      />
+                                      <button
+                                        type="button"
+                                        className="hero-product-instruction-media-fullscreen"
+                                        aria-label="Pełny ekran"
+                                        onClick={() => requestInstructionVideoFullscreen(instructionVideoRefs.current[index])}
+                                      >
+                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                          <path
+                                            d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          />
+                                        </svg>
+                                      </button>
+                                    </>
                                   ) : (
-                                    <img src={optimizeImageUrl(step.mediaUrl, 700)} alt={step.title} loading="lazy" />
+                                    <img src={optimizeImageUrl(step.mediaUrl, 900)} alt={step.title} loading="lazy" />
                                   )}
                                 </div>
                               ) : null}
@@ -3523,12 +3594,36 @@ export default function Home() {
             {activeInstructionSteps[instructionModalIndex].mediaUrl ? (
               <div className="instruction-modal-media">
                 {activeInstructionSteps[instructionModalIndex].mediaType === "video" ? (
-                  <video
-                    src={activeInstructionSteps[instructionModalIndex].mediaUrl}
-                    controls
-                    playsInline
-                    preload="metadata"
-                  />
+                  <>
+                    <video
+                      key={instructionModalIndex}
+                      ref={(el) => {
+                        instructionModalVideoRef.current = el;
+                      }}
+                      src={activeInstructionSteps[instructionModalIndex].mediaUrl}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                    <button
+                      type="button"
+                      className="hero-product-instruction-media-fullscreen"
+                      aria-label="Pełny ekran"
+                      onClick={() => requestInstructionVideoFullscreen(instructionModalVideoRef.current)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path
+                          d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </>
                 ) : (
                   <img
                     src={optimizeImageUrl(activeInstructionSteps[instructionModalIndex].mediaUrl || "", 1200, 80)}
