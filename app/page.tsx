@@ -2098,12 +2098,10 @@ export default function Home() {
                               {productLanding?.subtitle || "Na wymiar, bez wiercenia, mocna rama aluminiowa i wzmocniona siatka."}
                             </p>
 
-                            {productLanding?.gallery?.[0] ? (
-                              <div
-                                className="pl-hero-photo"
-                                style={{ backgroundImage: `url(${optimizeImageUrl(productLanding.gallery[0], 700)})` }}
-                              />
-                            ) : null}
+                            <div
+                              className="pl-hero-photo"
+                              style={{ backgroundImage: "url(/moskitiery-ramkowe-baner.svg)" }}
+                            />
 
                             <div className="pl-spec-grid">
                               {(productLanding?.specItems?.length ? productLanding.specItems : MOSKITIERY_RAMKOWE_SPEC_ITEMS).map(
