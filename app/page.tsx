@@ -2101,11 +2101,21 @@ export default function Home() {
                             <video
                               className="pl-hero-banner"
                               src="/moskitiery-ramkowe-baner.mp4"
-                              autoPlay
                               muted
                               loop
                               playsInline
                               preload="auto"
+                              ref={(el) => {
+                                // 0.4s delayed start instead of autoPlay firing
+                                // the instant it mounts - dataset flag guards
+                                // against arming a second timer if this ref
+                                // callback ever re-runs for the same element.
+                                if (!el || el.dataset.delayedPlayArmed === "1") return;
+                                el.dataset.delayedPlayArmed = "1";
+                                window.setTimeout(() => {
+                                  el.play().catch(() => {});
+                                }, 400);
+                              }}
                             />
 
                             <div className="pl-spec-grid">
