@@ -1611,7 +1611,14 @@ html[data-theme="light"] .hero-product-gradient-bg {
 }
 
 .hero-product-instruction-body p {
+  /* .hero-product-content p (an ancestor, sized for the big top-level
+     description copy) declares its own font-size/line-height - since that
+     beats plain inheritance from this component's own font-size, every <p>
+     rendered here needs its size stated explicitly or it silently inherits
+     that much larger clamp() instead. */
   margin: 0 0 0.7rem;
+  font-size: 0.98rem;
+  line-height: 1.6;
 }
 
 .hero-product-instruction-body h1,
