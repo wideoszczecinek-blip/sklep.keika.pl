@@ -466,6 +466,12 @@ function StripePaymentStep({
 }
 
 export default function CartPage() {
+  // TEST - light theme trial, same toggle as app/page.tsx (see the
+  // html[data-theme="light"] rules already in globals.css for this page,
+  // written earlier). Revert by deleting this effect block.
+  useEffect(() => {
+    document.documentElement.dataset.theme = "light";
+  }, []);
   const [items, setItems] = useState<CartLineItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   // Where the customer actually was right before opening the cart (product +
