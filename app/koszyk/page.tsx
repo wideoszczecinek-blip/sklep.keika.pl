@@ -321,6 +321,54 @@ const STRIPE_APPEARANCE = {
   },
 };
 
+// TEST - light theme trial: Stripe Elements renders inside its own iframe,
+// so it can't be reached by the html[data-theme="light"] CSS rules at all -
+// it needs its own light appearance object, picked at render time (see
+// PaymentStep below). Revert by always using STRIPE_APPEARANCE again.
+const STRIPE_APPEARANCE_LIGHT = {
+  theme: "stripe" as const,
+  variables: {
+    colorPrimary: "#d9600a",
+    colorBackground: "#ffffff",
+    colorText: "#16314e",
+    colorTextSecondary: "rgba(19, 40, 67, 0.6)",
+    colorTextPlaceholder: "rgba(19, 40, 67, 0.35)",
+    colorDanger: "#c4432c",
+    fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    borderRadius: "10px",
+    spacingUnit: "4px",
+  },
+  rules: {
+    ".Label": {
+      color: "rgba(19, 40, 67, 0.72)",
+      fontSize: "0.82rem",
+      fontWeight: "600",
+    },
+    ".Input": {
+      border: "1px solid #e2e6ec",
+      backgroundColor: "#ffffff",
+      boxShadow: "none",
+    },
+    ".Input:focus": {
+      border: "1px solid #d9600a",
+      boxShadow: "0 0 0 1px rgba(217, 96, 10, 0.35)",
+    },
+    ".Tab": {
+      border: "1px solid #e2e6ec",
+      backgroundColor: "#f6f7f9",
+    },
+    ".Tab:hover": {
+      border: "1px solid #d3d8e0",
+    },
+    ".Tab--selected": {
+      border: "1px solid #d9600a",
+      backgroundColor: "rgba(217, 96, 10, 0.08)",
+    },
+    ".TabLabel": { color: "#16314e" },
+    ".TabLabel--selected": { color: "#16314e" },
+  },
+};
+
 type CheckoutContact = {
   name: string;
   phone: string;
@@ -346,8 +394,12 @@ function PaymentStep({
   termsAccepted: boolean;
 }) {
   const stripePromise = loadStripe(publishableKey);
+  const isLightTheme = typeof document !== "undefined" && document.documentElement.dataset.theme === "light";
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, appearance: STRIPE_APPEARANCE }}>
+    <Elements
+      stripe={stripePromise}
+      options={{ clientSecret, appearance: isLightTheme ? STRIPE_APPEARANCE_LIGHT : STRIPE_APPEARANCE }}
+    >
       <StripePaymentStep orderCode={orderCode} contact={contact} onPaid={onPaid} termsAccepted={termsAccepted} />
     </Elements>
   );

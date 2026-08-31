@@ -654,6 +654,34 @@ a {
   color: #22150a;
 }
 
+html[data-theme="light"] .header-cart-tooltip {
+  border-color: #e2e6ec;
+  background: #ffffff;
+  box-shadow: 0 20px 40px rgba(19, 40, 67, 0.14);
+}
+
+html[data-theme="light"] .header-cart-tooltip li {
+  color: rgba(19, 40, 67, 0.78);
+  border-bottom-color: #eef0f3;
+}
+
+html[data-theme="light"] .header-cart-tooltip li strong {
+  color: #16314e;
+}
+
+html[data-theme="light"] .header-cart-tooltip-more {
+  color: rgba(19, 40, 67, 0.5) !important;
+}
+
+html[data-theme="light"] .header-cart-tooltip-total {
+  color: rgba(19, 40, 67, 0.85);
+  border-top-color: #eef0f3;
+}
+
+html[data-theme="light"] .header-cart-tooltip-total strong {
+  color: #1a6b52;
+}
+
 .hero-full {
   position: relative;
   height: 100%;
