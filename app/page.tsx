@@ -931,6 +931,18 @@ export default function Home() {
     validSections.forEach(([, el]) => observer.observe(el));
     return () => observer.disconnect();
   }, [isProductView, displayedProduct]);
+
+  // TEST - light theme trial, moskitiery only (see html[data-theme="light"]
+  // rules already throughout globals.css - this just activates them). To
+  // revert: delete this effect block.
+  useEffect(() => {
+    const slug = productSlugFromSelected(displayedProduct);
+    const shouldBeLight = isProductView && slug.startsWith("moskitiery");
+    document.documentElement.dataset.theme = shouldBeLight ? "light" : "";
+    return () => {
+      document.documentElement.dataset.theme = "";
+    };
+  }, [isProductView, displayedProduct]);
   const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
   // Swipe-to-navigate for the gallery coverflow (see galleryCircularOffset/
   // galleryVisibleIndices below) - it's no longer a native horizontal
