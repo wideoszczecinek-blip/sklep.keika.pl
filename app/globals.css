@@ -778,6 +778,16 @@ a {
   display: block;
 }
 
+/* TEST: light theme for the product view - see the html[data-theme="light"]
+ * effect in page.tsx. Revert by deleting that effect block; these CSS rules
+ * are harmless left in place (never activate without it). */
+html[data-theme="light"] .hero-product-gradient-bg {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 159, 10, 0.14), transparent 42%),
+    radial-gradient(circle at 82% 76%, rgba(111, 227, 191, 0.16), transparent 46%),
+    linear-gradient(135deg, #ffffff 0%, #f4f8fd 48%, #eaf1f9 100%);
+}
+
 @keyframes heroProductGradientDrift {
   0%, 100% { background-position: 20% 30%; }
   50% { background-position: 78% 68%; }
@@ -7112,4 +7122,431 @@ html[data-theme="light"] .legal-modal-topbar {
   border-color: rgba(26, 51, 82, 0.16);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 30px 60px rgba(19, 40, 67, 0.18);
+}
+/* ===== TEST: light theme overrides for the product page (moskitiery) =====
+   Auto-generated pass covering .pl-*/.hero-product-*/.allegro-*/etc. Revert
+   by removing the data-theme-setting effect in page.tsx - these rules never
+   activate without it, safe to leave in place either way. ===== */
+
+html[data-theme="light"] .hero-product-menu-toggle {
+  border: 1px solid rgba(19, 40, 67, 0.28);
+  background: rgba(19, 40, 67, 0.070);
+  color: #16314e;
+  box-shadow: 0 14px 30px rgba(19, 40, 67, 0.041);
+}
+
+html[data-theme="light"] .hero-product-menu-toggle-icon span {
+  background: #16314e;
+}
+
+html[data-theme="light"] .hero-product-menu-toggle-text small {
+  color: rgba(19, 40, 67, 0.72);
+}
+
+html[data-theme="light"] .hero-product-group {
+  color: rgba(19, 40, 67, 0.72);
+}
+
+html[data-theme="light"] .hero-product-section + .hero-product-section {
+  border-top: 1px solid rgba(19, 40, 67, 0.14);
+}
+
+html[data-theme="light"] .hero-product-section-title {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-content p {
+  color: rgba(19, 40, 67, 0.92);
+}
+
+html[data-theme="light"] .hero-product-gallery-row-item {
+  border: 1px solid rgba(19, 40, 67, 0.28);
+  box-shadow: 0 18px 34px rgba(19, 40, 67, 0.043);
+  background: rgba(19, 40, 67, 0.070);
+}
+
+html[data-theme="light"] .hero-product-gallery-nav {
+  border: 1px solid rgba(19, 40, 67, 0.3);
+  background: rgba(19, 40, 67, 0.070);
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-gallery-thumbs button {
+  border: 1px solid rgba(19, 40, 67, 0.3);
+  background: rgba(19, 40, 67, 0.070);
+}
+
+html[data-theme="light"] .hero-product-reviews li {
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  background: rgba(19, 40, 67, 0.060);
+  color: rgba(19, 40, 67, 0.92);
+}
+
+html[data-theme="light"] .hero-product-instruction-item {
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  background: rgba(19, 40, 67, 0.060);
+}
+
+html[data-theme="light"] .hero-product-instruction-item summary {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-instruction-media {
+  background: rgba(19, 40, 67, 0.060);
+}
+
+html[data-theme="light"] .hero-product-instructions p {
+  color: rgba(19, 40, 67, 0.88);
+}
+
+html[data-theme="light"] .hero-product-faq-empty {
+  color: rgba(19, 40, 67, 0.62);
+}
+
+html[data-theme="light"] .hero-product-faq-item {
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  background: rgba(19, 40, 67, 0.060);
+}
+
+html[data-theme="light"] .hero-product-faq-item summary {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-faq-item p {
+  color: rgba(19, 40, 67, 0.88);
+}
+
+html[data-theme="light"] .pl-price-unit {
+  color: rgba(19, 40, 67, 0.5);
+}
+
+html[data-theme="light"] .pl-chip {
+  border: 1px solid rgba(19, 40, 67, 0.24);
+  background: rgba(19, 40, 67, 0.060);
+  color: rgba(19, 40, 67, 0.86);
+}
+
+html[data-theme="light"] .pl-chip-muted {
+  color: rgba(19, 40, 67, 0.68);
+}
+
+html[data-theme="light"] .pl-subtitle {
+  color: rgba(19, 40, 67, 0.88);
+}
+
+html[data-theme="light"] .pl-hero-photo {
+  background-color: rgba(19, 40, 67, 0.06);
+}
+
+html[data-theme="light"] .pl-spec-item {
+  background: radial-gradient(circle at 100% 0%, rgba(255, 159, 10, 0.1), transparent 60%),
+    rgba(19, 40, 67, 0.043);
+}
+
+html[data-theme="light"] .pl-spec-value {
+  color: rgba(19, 40, 67, 0.7);
+}
+
+html[data-theme="light"] .pl-description {
+  color: rgba(19, 40, 67, 0.88);
+}
+
+html[data-theme="light"] .pl-feature-list li {
+  color: rgba(19, 40, 67, 0.86);
+}
+
+html[data-theme="light"] .pl-feature-list li strong {
+  color: #16314e;
+}
+
+html[data-theme="light"] .pl-callout p {
+  color: rgba(19, 40, 67, 0.86);
+}
+
+html[data-theme="light"] .pl-quick-facts li {
+  color: rgba(19, 40, 67, 0.86);
+}
+
+html[data-theme="light"] .pl-benefit {
+  border: 1px solid rgba(19, 40, 67, 0.16);
+  background: rgba(19, 40, 67, 0.043);
+}
+
+html[data-theme="light"] .pl-benefit-media {
+  background-color: rgba(19, 40, 67, 0.06);
+}
+
+html[data-theme="light"] .pl-benefit-copy h3 {
+  color: #16314e;
+}
+
+html[data-theme="light"] .pl-benefit-copy p {
+  color: rgba(19, 40, 67, 0.8);
+}
+
+html[data-theme="light"] .pl-cta-note {
+  color: rgba(19, 40, 67, 0.6);
+}
+
+html[data-theme="light"] .allegro-rating-summary {
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  background: rgba(19, 40, 67, 0.060);
+}
+
+html[data-theme="light"] .allegro-rating-score strong {
+  color: #16314e;
+}
+
+html[data-theme="light"] .allegro-rating-stars {
+  color: rgba(19, 40, 67, 0.28);
+}
+
+html[data-theme="light"] .allegro-rating-count {
+  color: rgba(19, 40, 67, 0.78);
+}
+
+html[data-theme="light"] .allegro-rating-bar-row {
+  color: rgba(19, 40, 67, 0.78);
+}
+
+html[data-theme="light"] .allegro-rating-bar-row:hover {
+  background: rgba(19, 40, 67, 0.08);
+}
+
+html[data-theme="light"] .allegro-rating-bar-row.is-active-filter {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-reviews-filter-bar {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-reviews-filter-bar button {
+  background: rgba(19, 40, 67, 0.14);
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-reviews-empty {
+  color: rgba(19, 40, 67, 0.7);
+}
+
+html[data-theme="light"] .allegro-review-estimated-stars em {
+  color: rgba(19, 40, 67, 0.5);
+}
+
+html[data-theme="light"] .allegro-rating-bar-track {
+  background: rgba(19, 40, 67, 0.14);
+}
+
+html[data-theme="light"] .allegro-rating-loading {
+  color: rgba(19, 40, 67, 0.72);
+}
+
+html[data-theme="light"] .allegro-review-meta {
+  color: rgba(19, 40, 67, 0.6);
+}
+
+html[data-theme="light"] .allegro-review-meta strong {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-reviews-load-more-btn {
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  background: rgba(19, 40, 67, 0.08);
+  color: #16314e;
+}
+
+html[data-theme="light"] .allegro-review-source-note {
+  color: rgba(19, 40, 67, 0.58);
+}
+
+html[data-theme="light"] .hero-product-crm-reviews li {
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  background: rgba(19, 40, 67, 0.060);
+}
+
+html[data-theme="light"] .hero-product-crm-review-head strong {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-crm-review-date {
+  color: rgba(19, 40, 67, 0.58);
+}
+
+html[data-theme="light"] .hero-product-crm-reviews p {
+  color: rgba(19, 40, 67, 0.9);
+}
+
+html[data-theme="light"] .hero-product-config-panel {
+  border: 1px solid rgba(19, 40, 67, 0.14);
+  background: rgba(19, 40, 67, 0.070);
+  box-shadow: 0 24px 48px rgba(19, 40, 67, 0.041);
+}
+
+html[data-theme="light"] .hero-product-config-panel > header strong {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-config-step-title {
+  color: rgba(19, 40, 67, 0.95);
+}
+
+html[data-theme="light"] .hero-product-step-accordion {
+  border-bottom: 1px solid rgba(19, 40, 67, 0.14);
+}
+
+html[data-theme="light"] .hero-product-step-head-meta {
+  color: rgba(19, 40, 67, 0.86);
+}
+
+html[data-theme="light"] .hero-product-step-head-swatch {
+  border: 1px solid rgba(19, 40, 67, 0.32);
+}
+
+html[data-theme="light"] .hero-product-step-head-change {
+  border: 1px solid rgba(19, 40, 67, 0.32);
+  background: rgba(19, 40, 67, 0.1);
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-config-step-title--muted {
+  color: rgba(19, 40, 67, 0.92);
+}
+
+html[data-theme="light"] .hero-product-step-check.is-muted {
+  background: #16314e;
+}
+
+html[data-theme="light"] .hero-product-hardware-grid .hardware-card {
+  background: rgba(19, 40, 67, 0.062);
+  border: 1px solid rgba(19, 40, 67, 0.34);
+  box-shadow: 0 10px 20px rgba(19, 40, 67, 0.041);
+}
+
+html[data-theme="light"] .hero-product-hardware-grid .hardware-card strong {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-config-hint {
+  color: rgba(19, 40, 67, 0.84);
+}
+
+html[data-theme="light"] .hero-product-mesh-option {
+  border: 1px solid rgba(19, 40, 67, 0.36);
+  background: rgba(19, 40, 67, 0.060);
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-mesh-option.is-active {
+  box-shadow: 0 10px 20px rgba(19, 40, 67, 0.034);
+}
+
+html[data-theme="light"] .hero-product-dimensions-grid label {
+  color: rgba(19, 40, 67, 0.78);
+}
+
+html[data-theme="light"] .hero-product-dimensions-grid input {
+  border: 1px solid rgba(19, 40, 67, 0.36);
+  background: rgba(19, 40, 67, 0.060);
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-mini-summary {
+  border: 1px solid rgba(19, 40, 67, 0.2);
+  background: rgba(19, 40, 67, 0.060);
+}
+
+html[data-theme="light"] .hero-product-mini-summary h3 {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-mini-summary-preview {
+  border: 1px solid rgba(19, 40, 67, 0.16);
+  background: rgba(19, 40, 67, 0.04);
+}
+
+html[data-theme="light"] .hero-product-mini-summary dl div {
+  color: rgba(19, 40, 67, 0.72);
+  border-bottom: 1px solid rgba(19, 40, 67, 0.14);
+}
+
+html[data-theme="light"] .hero-product-mini-summary dd {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-mini-summary-price-details dt {
+  color: rgba(19, 40, 67, 0.62);
+}
+
+html[data-theme="light"] .hero-product-mini-summary-price-details dd {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-mini-summary-price-final strong {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-mini-summary-price-final strong.is-calculating {
+  color: rgba(19, 40, 67, 0.7);
+}
+
+html[data-theme="light"] .hero-product-added-toast p {
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-added-toast-actions button {
+  border: 1px solid rgba(19, 40, 67, 0.28);
+  background: rgba(19, 40, 67, 0.060);
+  color: rgba(19, 40, 67, 0.88);
+}
+
+html[data-theme="light"] .hero-product-added-toast-actions button:hover {
+  border-color: rgba(19, 40, 67, 0.5);
+  background: rgba(19, 40, 67, 0.070);
+}
+
+html[data-theme="light"] .hero-product-config-steps li {
+  color: rgba(19, 40, 67, 0.95);
+}
+
+html[data-theme="light"] .hero-product-bottom-tabs {
+  border: 1px solid rgba(19, 40, 67, 0.34);
+  background: rgba(19, 40, 67, 0.070);
+  box-shadow: 0 16px 34px rgba(19, 40, 67, 0.041);
+}
+
+html[data-theme="light"] .hero-product-bottom-tabs button {
+  color: rgba(19, 40, 67, 0.84);
+}
+
+html[data-theme="light"] .configurator-eyebrow {
+  color: rgba(19, 40, 67, 0.76);
+}
+
+html[data-theme="light"] .fabric-swatch-color {
+  border: 1px solid rgba(19, 40, 67, 0.22);
+}
+
+html[data-theme="light"] .config-preview-mockup {
+  border: 1px solid rgba(19, 40, 67, 0.3);
+}
+
+html[data-theme="light"] .config-preview-mockup::after {
+  background: linear-gradient(180deg, rgba(19, 40, 67, 0.017), rgba(19, 40, 67, 0.067));
+}
+
+html[data-theme="light"] .instruction-modal-media {
+  background: rgba(19, 40, 67, 0.060);
+}
+
+html[data-theme="light"] .hero-product-added-toast-overlay {
+  background: rgba(19, 40, 67, 0.070);
+}
+
+html[data-theme="light"] .allegro-review-tag-pros {
+  color: #1a6b52;
+}
+
+html[data-theme="light"] .allegro-review-tag-cons {
+  color: #a13030;
 }
