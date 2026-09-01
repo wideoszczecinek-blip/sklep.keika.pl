@@ -318,12 +318,12 @@ a {
   transform: translateY(0);
 }
 
-.top-links-wrap:hover .top-links-dropdown,
-.top-links-wrap:focus-within .top-links-dropdown {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-}
+/* No :hover-triggered open here on purpose: the toggle button already opens
+   this on click (with a proper outside-click-to-close handler in page.tsx),
+   and a redundant :hover rule fought it - the gap between the button and
+   the dropdown below it meant moving the cursor there in a straight line
+   crossed dead space, dropping :hover and closing the menu before the
+   pointer ever reached a link. */
 
 .top-links-dropdown a,
 .top-link-button {
@@ -1247,6 +1247,92 @@ html[data-theme="light"] .hero-product-gradient-bg {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Product-switcher flyout: opens in place under the header pill instead of
+   navigating back to the homepage grid - same category/product data as
+   .hero-menu-glass, just rendered as a compact dropdown. */
+.hero-product-menu-flyout-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.hero-product-menu-flyout {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.52rem);
+  z-index: 60;
+  width: min(320px, calc(100vw - 2rem));
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  display: grid;
+  gap: 0.6rem;
+  border: 1px solid rgba(190, 222, 255, 0.4);
+  border-radius: 0.86rem;
+  background: rgba(5, 13, 24, 0.94);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(12px);
+  padding: 0.7rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.hero-product-menu-flyout-wrap.is-open .hero-product-menu-flyout {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.hero-product-menu-flyout-group-title {
+  margin: 0 0 0.3rem;
+  padding: 0 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(231, 243, 255, 0.6);
+}
+
+.hero-product-menu-flyout-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.hero-product-menu-flyout-group a {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.6rem;
+  color: #f1f7ff;
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 600;
+  transition: background 0.15s ease;
+}
+
+.hero-product-menu-flyout-group a:hover,
+.hero-product-menu-flyout-group a:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hero-product-menu-flyout-group a.is-current {
+  background: rgba(255, 159, 10, 0.16);
+  color: #ffb768;
+}
+
+.hero-product-menu-flyout-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .hero-product-panel {
@@ -5877,6 +5963,30 @@ html[data-theme="light"] .top-link-button:hover,
 html[data-theme="light"] .top-link-button:focus-visible {
   border-color: rgba(75, 149, 210, 0.58);
   background: rgba(232, 243, 255, 0.96);
+}
+
+html[data-theme="light"] .hero-product-menu-flyout {
+  border-color: rgba(35, 66, 99, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 34px rgba(30, 56, 82, 0.16);
+}
+
+html[data-theme="light"] .hero-product-menu-flyout-group-title {
+  color: rgba(19, 40, 67, 0.6);
+}
+
+html[data-theme="light"] .hero-product-menu-flyout-group a {
+  color: #183453;
+}
+
+html[data-theme="light"] .hero-product-menu-flyout-group a:hover,
+html[data-theme="light"] .hero-product-menu-flyout-group a:focus-visible {
+  background: rgba(19, 40, 67, 0.07);
+}
+
+html[data-theme="light"] .hero-product-menu-flyout-group a.is-current {
+  background: rgba(255, 122, 32, 0.14);
+  color: #c65a12;
 }
 
 html[data-theme="light"] .hero-dim {

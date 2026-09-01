@@ -869,6 +869,13 @@ export default function Home() {
   const cartCountUpFrameRef = useRef<number | null>(null);
   const [activeHeadline, setActiveHeadline] = useState(0);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
+  // The "Produkty / <current product>" pill in the header, shown while on a
+  // product page. Used to just navigate straight back to the homepage grid
+  // (isProductView=false) - jarring, since it looked like it should just
+  // open a small menu in place. Now it opens a compact flyout with the same
+  // categories/products as the homepage grid; picking one switches products
+  // directly via activateProductView without ever leaving product view.
+  const [productMenuOpen, setProductMenuOpen] = useState(false);
   // Menu links for a known CRM legal page (regulamin, o-nas, kontakt,
   // bezpieczenstwo, ...) open in place as a modal instead of navigating away.
   const [infoModalSlug, setInfoModalSlug] = useState<string | null>(null);
@@ -1225,6 +1232,7 @@ export default function Home() {
   const configHashRef = useRef("");
   const heroMenuRef = useRef<HTMLElement | null>(null);
   const topMenuRef = useRef<HTMLDivElement | null>(null);
+  const productMenuFlyoutRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -1293,6 +1301,11 @@ export default function Home() {
       const topRoot = topMenuRef.current;
       if (topRoot && !topRoot.contains(target)) {
         setTopMenuOpen(false);
+      }
+
+      const productMenuRoot = productMenuFlyoutRef.current;
+      if (productMenuRoot && !productMenuRoot.contains(target)) {
+        setProductMenuOpen(false);
       }
     };
 
@@ -1926,31 +1939,63 @@ export default function Home() {
         </div>
         <div className="header-actions">
           {displayedProduct ? (
-            <button
-              type="button"
-              className={`hero-product-menu-toggle ${isProductView ? "is-visible" : ""}`}
-              onClick={() => {
-                setIsProductView(false);
-                setSelectedProduct(null);
-                setOpenMenuIndex(displayedProduct.groupIndex);
-                if (typeof window !== "undefined") {
-                  const nextUrl = new URL(window.location.href);
-                  nextUrl.searchParams.delete("produkt");
-                  window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
-                }
-              }}
-              aria-label={`Pokaż listę produktów, obecnie: ${displayedProduct.label}`}
+            <div
+              className={`hero-product-menu-flyout-wrap ${productMenuOpen ? "is-open" : ""}`}
+              ref={productMenuFlyoutRef}
             >
-              <span className="hero-product-menu-toggle-icon" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </span>
-              <span className="hero-product-menu-toggle-text">
-                <small>Produkty</small>
-                <strong>{displayedProduct.label}</strong>
-              </span>
-            </button>
+              <button
+                type="button"
+                className={`hero-product-menu-toggle ${isProductView ? "is-visible" : ""}`}
+                onClick={() => setProductMenuOpen((prev) => !prev)}
+                aria-expanded={productMenuOpen ? "true" : "false"}
+                aria-controls="hero-product-menu-flyout"
+                aria-label={`Pokaż listę produktów, obecnie: ${displayedProduct.label}`}
+              >
+                <span className="hero-product-menu-toggle-icon" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                <span className="hero-product-menu-toggle-text">
+                  <small>Produkty</small>
+                  <strong>{displayedProduct.label}</strong>
+                </span>
+              </button>
+              <div id="hero-product-menu-flyout" className="hero-product-menu-flyout" aria-label="Wybierz produkt">
+                {heroMenuGroups.map((group, groupIndex) => (
+                  <div key={group.title} className="hero-product-menu-flyout-group">
+                    <p className="hero-product-menu-flyout-group-title">{group.title}</p>
+                    <ul>
+                      {group.items.map((subItem) => (
+                        <li key={`${group.title}-${subItem.label}`}>
+                          <a
+                            href={subItem.linkUrl}
+                            className={subItem.label === displayedProduct.label ? "is-current" : ""}
+                            onClick={(event) => {
+                              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                                return;
+                              }
+                              event.preventDefault();
+                              setProductMenuOpen(false);
+                              if (subItem.label === displayedProduct.label) return;
+                              activateProductView(group, groupIndex, subItem);
+                            }}
+                          >
+                            <img
+                              src={optimizeImageUrl(subItem.iconUrl, 64)}
+                              alt=""
+                              className="hero-product-menu-flyout-icon"
+                              loading="lazy"
+                            />
+                            {subItem.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : null}
           {/* Light/dark toggle disabled for now (only one product live) -
               bring back once the whole shop is ready. */}
