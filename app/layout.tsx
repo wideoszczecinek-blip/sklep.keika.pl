@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import LastPageTracker from "./components/last-page-tracker";
+import ConsentBanner from "./components/consent-banner";
 
 export const metadata: Metadata = {
   title: "KEIKA | Rolety i Markizy na Wymiar",
   description:
     "Nowoczesny sklep KEIKA: rolety, markizy i moskitiery na wymiar z ekspresową wyceną.",
+  // Weryfikacja domeny w Meta Business (opcjonalnie - alternatywa dla rekordu
+  // DNS TXT). Ustaw NEXT_PUBLIC_META_DOMAIN_VERIFICATION w Vercel na wartość
+  // z "content" podaną przez Meta.
+  ...(process.env.NEXT_PUBLIC_META_DOMAIN_VERIFICATION
+    ? { other: { "facebook-domain-verification": process.env.NEXT_PUBLIC_META_DOMAIN_VERIFICATION } }
+    : {}),
 };
 
 const THEME_INIT_SCRIPT = `
@@ -66,6 +73,7 @@ export default function RootLayout({
       <body>
         <LastPageTracker />
         {children}
+        <ConsentBanner />
       </body>
     </html>
   );

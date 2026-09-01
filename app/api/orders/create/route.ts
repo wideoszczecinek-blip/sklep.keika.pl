@@ -10,12 +10,23 @@ export async function POST(request: Request) {
     // branches on this (see shop_public_orders_create()'s COD/SMS check).
     const paymentProvider =
       typeof payload.payment_provider === "string" && payload.payment_provider ? payload.payment_provider : "stripe";
+
+    // Prawdziwy IP klienta (nagłówek od Vercela) - browser nie zna własnego,
+    // a Meta CAPI korzysta z niego przy dopasowaniu. Doklejamy do bloku
+    // tracking, który shop_public_orders_create() zapisuje przy zamówieniu.
+    const forwardedFor = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "";
+    const clientIp = forwardedFor.split(",")[0]?.trim() || "";
+    const tracking =
+      typeof payload.tracking === "object" && payload.tracking ? { ...payload.tracking } : {};
+    if (clientIp && !tracking.ip) tracking.ip = clientIp;
+
     const crmResponse = await fetch(`${crmBaseUrl}/biuro/api/shop-public/order_create`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...payload,
         payment_provider: paymentProvider,
+        tracking,
       }),
       cache: "no-store",
     });

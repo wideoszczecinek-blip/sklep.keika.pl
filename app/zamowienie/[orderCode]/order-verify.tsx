@@ -21,8 +21,16 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     const redirectStatus = searchParams.get("redirect_status");
     if (searchParams.get("from_payment") === "1" && (redirectStatus === "succeeded" || redirectStatus === "processing")) {
       clearCart();
+      // Meta Purchase (przeglądarka) dla metod redirectowych (BLIK/wallets),
+      // które nie potwierdzają się inline na /koszyk. event_id = order_code
+      // -> deduplikacja z serwerowym Purchase z CRM (który niesie wartość).
+      void import("@/lib/tracking")
+        .then(({ track }) => {
+          track("Purchase", { currency: "PLN", order_id: orderCode }, { eventId: orderCode, skipCapi: true });
+        })
+        .catch(() => {});
     }
-  }, [searchParams]);
+  }, [searchParams, orderCode]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

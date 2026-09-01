@@ -1060,6 +1060,23 @@ export default function Home() {
     setRamkoweConfigKey((key) => key + 1);
   }, [displayedProduct]);
 
+  // Meta ViewContent - gdy klient wchodzi w widok konkretnego produktu.
+  // Homepage jest SPA (widok produktu to stan + pushState, nie route), więc
+  // to jest właściwy moment na ViewContent zamiast PageView per-URL.
+  const viewContentSlug = productSlugFromSelected(displayedProduct);
+  useEffect(() => {
+    if (!isProductView || !viewContentSlug) return;
+    void import("@/lib/tracking")
+      .then(({ track }) => {
+        track("ViewContent", {
+          content_ids: [viewContentSlug],
+          content_name: displayedProduct?.label || viewContentSlug,
+          content_type: "product",
+        });
+      })
+      .catch(() => {});
+  }, [isProductView, viewContentSlug, displayedProduct?.label]);
+
   useEffect(() => {
     const slug = productSlugFromSelected(displayedProduct);
     if (!slug) {

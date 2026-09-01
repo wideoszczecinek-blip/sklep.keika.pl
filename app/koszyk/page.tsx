@@ -628,6 +628,26 @@ export default function CartPage() {
     setBackHref(readLastPage());
   }, []);
 
+  // Meta InitiateCheckout - raz, gdy klient wejdzie na /koszyk z niepustym
+  // koszykiem (to jest moment "rozpoczęcia checkoutu").
+  const initiateCheckoutSentRef = useRef(false);
+  useEffect(() => {
+    if (initiateCheckoutSentRef.current || !hydrated || items.length === 0) return;
+    initiateCheckoutSentRef.current = true;
+    const value = items.reduce((sum, it) => sum + it.total, 0);
+    void import("@/lib/tracking")
+      .then(({ track }) => {
+        track("InitiateCheckout", {
+          value,
+          currency: "PLN",
+          content_ids: items.map((it) => it.productSlug),
+          contents: items.map((it) => ({ id: it.productSlug, quantity: it.qty, item_price: it.price })),
+          num_items: items.reduce((sum, it) => sum + it.qty, 0),
+        });
+      })
+      .catch(() => {});
+  }, [hydrated, items]);
+
   useEffect(() => {
     sync();
     window.addEventListener("storage", sync);
@@ -892,6 +912,16 @@ export default function CartPage() {
         .filter(Boolean)
         .join("\n\n");
 
+      // Atrybucja Meta/UTM (fbp, fbc, fbclid, utm_*, landing_url, ua) - serwer
+      // CRM użyje jej do serwerowego Purchase w Meta CAPI (event_id = order_code).
+      let tracking: Record<string, string> = {};
+      try {
+        const mod = await import("@/lib/tracking");
+        tracking = mod.getAttributionPayload();
+      } catch {
+        /* tracking never blocks checkout */
+      }
+
       const response = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -915,6 +945,7 @@ export default function CartPage() {
           note_text: noteWithDelivery,
           payment_provider: paymentMethod === "cod" ? "cod" : "stripe",
           payment_method: paymentMethod === "cod" ? "cod" : "",
+          tracking,
           ...(paymentMethod === "cod" ? { cod_sms_verification_token: codSms.token } : {}),
         }),
       });
@@ -973,6 +1004,33 @@ export default function CartPage() {
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkoutReady, orderState, paymentMethod, submitOrder]);
+
+  // Meta Purchase (przeglądarka) - w momencie realnego zakończenia: COD
+  // przyjęte albo płatność online potwierdzona inline. event_id = order_code,
+  // ten sam co serwerowy Purchase z CRM (core/lib/shop_order_accept.php) ->
+  // deduplikacja. Serwer i tak jest źródłem prawdy dla wartości; to zdarzenie
+  // dokłada sygnały z przeglądarki (cookies, IP, UA).
+  const purchaseSentRef = useRef(false);
+  useEffect(() => {
+    if (purchaseSentRef.current || !orderState) return;
+    const done = orderState.paymentProvider === "cod" || paymentConfirmed;
+    if (!done) return;
+    purchaseSentRef.current = true;
+    const { orderCode, amountTotal } = orderState;
+    void import("@/lib/tracking")
+      .then(({ track }) => {
+        track(
+          "Purchase",
+          {
+            value: amountTotal ? Number(amountTotal) : undefined,
+            currency: "PLN",
+            order_id: orderCode,
+          },
+          { eventId: orderCode, skipCapi: true },
+        );
+      })
+      .catch(() => {});
+  }, [orderState, paymentConfirmed]);
 
   return (
     <div className="cart-page">
