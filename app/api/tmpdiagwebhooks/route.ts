@@ -46,3 +46,17 @@ export async function POST(request: Request) {
     secret: created.secret,
   });
 }
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id") || "";
+  if (!id) {
+    return NextResponse.json({ ok: false, error: "pass ?id=we_..." }, { status: 400 });
+  }
+  const stripe = getStripeServer();
+  if (!stripe) {
+    return NextResponse.json({ ok: false, error: "no stripe client" });
+  }
+  const deleted = await stripe.webhookEndpoints.del(id);
+  return NextResponse.json({ ok: true, deleted });
+}
