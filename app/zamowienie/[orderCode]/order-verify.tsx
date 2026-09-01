@@ -136,6 +136,11 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
           Zamówienie {order.order_code}
           {order.crm_order_number ? ` (nr ${order.crm_order_number})` : ""}
         </h2>
+        {!order.crm_order_number ? (
+          <p className={styles.sectionIntro}>
+            To numer tymczasowy - po przyjęciu zamówienia do realizacji otrzyma numer docelowy.
+          </p>
+        ) : null}
         <div className={styles.orderMeta}>
           <div>Status: <strong>{order.friendly_status}</strong></div>
           <div>Płatność: <strong>{paymentLabel}</strong></div>
