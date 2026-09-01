@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
@@ -395,7 +395,12 @@ function PaymentStep({
   onPaid: () => void;
   termsAccepted: boolean;
 }) {
-  const stripePromise = loadStripe(publishableKey);
+  // loadStripe() must only run once per key - Elements refuses to accept a
+  // new `stripe` prop after mount ("Unsupported prop change"), which is
+  // exactly what happened here before: this component re-renders (e.g. the
+  // parent's isSubmitting/error state changing) called loadStripe() fresh
+  // every time, handing Elements a brand new promise on each render.
+  const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
   const isLightTheme = typeof document !== "undefined" && document.documentElement.dataset.theme === "light";
   return (
     <Elements
@@ -449,10 +454,18 @@ function StripePaymentStep({
             name: contact.name || undefined,
             email: contact.email || undefined,
             phone: contact.phone || undefined,
+            // Opting out of the address fields in the PaymentElement below
+            // (fields.billingDetails.address: "never") means Stripe won't
+            // collect this itself and expects the *complete* address shape
+            // handed to confirmPayment instead - state included, even
+            // though Poland doesn't use one, or confirmPayment throws
+            // ("did not pass ...address.state") instead of just treating a
+            // missing key as blank.
             address: {
               city: contact.city || undefined,
               postal_code: contact.postcode || undefined,
               line1: contact.address1 || undefined,
+              state: "",
               country: "PL",
             },
           },
