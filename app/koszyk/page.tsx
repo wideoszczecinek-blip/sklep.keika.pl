@@ -482,6 +482,17 @@ function StripePaymentStep({
       onPaid();
       return;
     }
+    // Async methods (BLIK above all) can come back here with neither
+    // result.error nor a succeeded/processing intent - e.g. the customer
+    // rejected the BLIK push in their banking app. Stripe's SDK resolves
+    // that as a plain non-error result once its own internal polling gives
+    // up, not as result.error, so without this the payment box just went
+    // quiet with zero feedback ("the window just disappeared").
+    setError(
+      result.paymentIntent?.status === "requires_payment_method"
+        ? "Płatność nie została zatwierdzona (np. odrzucona w aplikacji bankowej). Spróbuj ponownie."
+        : "Nie udało się dokończyć płatności. Spróbuj ponownie.",
+    );
     setIsSubmitting(false);
   }
 
@@ -533,12 +544,8 @@ function StripePaymentStep({
 }
 
 export default function CartPage() {
-  // TEST - light theme trial, same toggle as app/page.tsx (see the
-  // html[data-theme="light"] rules already in globals.css for this page,
-  // written earlier). Revert by deleting this effect block.
-  useEffect(() => {
-    document.documentElement.dataset.theme = "light";
-  }, []);
+  // Light theme is now applied unconditionally in app/layout.tsx's blocking
+  // head script (before first paint, no flash) - no longer needed here.
   const [items, setItems] = useState<CartLineItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   // Where the customer actually was right before opening the cart (product +

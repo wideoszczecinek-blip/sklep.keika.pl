@@ -15,46 +15,15 @@ export const metadata: Metadata = {
     : {}),
 };
 
+// Light is the only theme now (definitive, not a per-visitor toggle) - this
+// used to pick dark/light per-device (dark forced on mobile, saved choice or
+// system preference on desktop), which is exactly what caused a visible
+// dark-then-light flash: this blocking script would paint dark first, then
+// a later page-level useEffect (post-hydration) flipped it to light. Setting
+// the attribute here, unconditionally, is what actually avoids the flash -
+// it runs before first paint, no JS-after-hydration round trip needed.
 const THEME_INIT_SCRIPT = `
-(() => {
-  const KEY = "keika-theme";
-  const DARK = "dark";
-  const LIGHT = "light";
-  const MOBILE_QUERY = "(max-width: 760px)";
-  function apply() {
-    try {
-      const isMobile =
-        typeof window.matchMedia === "function" && window.matchMedia(MOBILE_QUERY).matches;
-      if (isMobile) {
-        // The mobile visual system (glass cards over photos, hero overlays,
-        // spec chips, ...) is built dark-first and hasn't had a full
-        // light-theme pass - forcing dark here avoids the low-contrast
-        // "light text on a light photo" look on phones regardless of the
-        // device's own light/dark setting. Desktop keeps respecting the
-        // saved choice / system preference below.
-        document.documentElement.setAttribute("data-theme", DARK);
-        return;
-      }
-      const saved = window.localStorage.getItem(KEY);
-      const hasSaved = saved === DARK || saved === LIGHT;
-      const prefersDark =
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const nextTheme = hasSaved ? saved : (prefersDark ? DARK : LIGHT);
-      document.documentElement.setAttribute("data-theme", nextTheme);
-    } catch {
-      document.documentElement.setAttribute("data-theme", DARK);
-    }
-  }
-  apply();
-  if (typeof window.matchMedia === "function") {
-    try {
-      window.matchMedia(MOBILE_QUERY).addEventListener("change", apply);
-    } catch {
-      // older Safari - no live re-check on resize/rotate, initial apply() still ran
-    }
-  }
-})();
+document.documentElement.setAttribute("data-theme", "light");
 `;
 
 export default function RootLayout({

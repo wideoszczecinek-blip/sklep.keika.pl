@@ -963,14 +963,8 @@ export default function Home() {
     return () => observer.disconnect();
   }, [isProductView, displayedProduct]);
 
-  // TEST - light theme trial, now site-wide (started moskitiery-only, user
-  // asked to extend it to the rest of the site). See the
-  // html[data-theme="light"] rules throughout globals.css - this just
-  // activates them. To revert to the original dark design everywhere:
-  // delete this effect block.
-  useEffect(() => {
-    document.documentElement.dataset.theme = "light";
-  }, []);
+  // Light theme is now applied unconditionally in app/layout.tsx's blocking
+  // head script (before first paint, no flash) - no longer needed here.
   const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
   // Swipe-to-navigate for the gallery coverflow (see galleryCircularOffset/
   // galleryVisibleIndices below) - it's no longer a native horizontal

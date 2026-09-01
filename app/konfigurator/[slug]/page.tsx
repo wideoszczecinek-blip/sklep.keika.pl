@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import ThemeToggle from "@/app/components/theme-toggle";
 import MoskitieryFlowEntry from "@/features/moskitiery/MoskitieryFlowEntry";
 import { optimizeImageUrl } from "@/lib/image-optim";
 
@@ -1413,7 +1412,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
           </div>
         </div>
         <div className="header-actions">
-          <ThemeToggle />
+          {/* Light theme only now, no per-visitor toggle. */}
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
             {contactPhone}
           </a>
