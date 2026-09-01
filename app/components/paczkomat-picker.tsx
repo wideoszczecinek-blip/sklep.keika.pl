@@ -59,7 +59,7 @@ export default function PaczkomatPicker({ value, onChange }: Props) {
       const map = L.map(mapContainerRef.current, {
         center: [WARSAW_FALLBACK.lat, WARSAW_FALLBACK.lng],
         zoom: 12,
-        scrollWheelZoom: false,
+        scrollWheelZoom: true,
       });
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -171,6 +171,20 @@ export default function PaczkomatPicker({ value, onChange }: Props) {
     void fetchPoints({ query: trimmed });
   }
 
+  // Auto-search as the customer types (debounced) - once the place name is
+  // unambiguous enough, results (and the map) update on their own without
+  // waiting for "Szukaj" to be clicked. Skipped while the box is empty so
+  // clearing it doesn't wipe out the geolocation-based results still shown.
+  useEffect(() => {
+    const trimmed = searchText.trim();
+    if (trimmed.length < 3) return;
+    const timeoutId = window.setTimeout(() => {
+      void fetchPoints({ query: trimmed });
+    }, 450);
+    return () => window.clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText]);
+
   return (
     <div className="paczkomat-picker">
       <form className="paczkomat-picker-search" onSubmit={handleSearchSubmit}>
@@ -185,6 +199,12 @@ export default function PaczkomatPicker({ value, onChange }: Props) {
         </button>
       </form>
 
+      {value ? (
+        <p className="paczkomat-picker-selected">
+          Wybrany paczkomat: <strong>{value.id}</strong> — {value.address}
+        </p>
+      ) : null}
+
       {locating ? (
         <p className="paczkomat-picker-status">Szukamy paczkomatów najbliżej Ciebie…</p>
       ) : null}
@@ -195,14 +215,11 @@ export default function PaczkomatPicker({ value, onChange }: Props) {
       ) : null}
       {error ? <p className="paczkomat-picker-error">{error}</p> : null}
 
-      <div className="paczkomat-picker-map" ref={mapContainerRef} />
-
-      {value ? (
-        <p className="paczkomat-picker-selected">
-          Wybrany paczkomat: <strong>{value.id}</strong> — {value.address}
-        </p>
-      ) : null}
-
+      {/* Results list sits right under the search box, acting like a
+          type-ahead: as soon as a place name is unambiguous enough, matches
+          show up here immediately, above the map rather than only below
+          it - picking one (or just letting the top match stand) recenters
+          the map instead of requiring a scroll down to see it. */}
       {points.length > 0 ? (
         <ul className="paczkomat-picker-list">
           {points.map((point) => (
@@ -228,6 +245,8 @@ export default function PaczkomatPicker({ value, onChange }: Props) {
           ))}
         </ul>
       ) : null}
+
+      <div className="paczkomat-picker-map" ref={mapContainerRef} />
     </div>
   );
 }
