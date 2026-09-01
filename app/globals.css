@@ -7273,9 +7273,9 @@ html[data-theme="light"] .legal-modal-topbar {
   box-shadow: 0 30px 60px rgba(19, 40, 67, 0.18);
 }
 /* ===== TEST: light theme overrides for the product page (moskitiery) =====
-   Auto-generated pass covering .pl-*/.hero-product-*/.allegro-*/etc. Revert
-   by removing the data-theme-setting effect in page.tsx - these rules never
-   activate without it, safe to leave in place either way. ===== */
+   Auto-generated pass covering .pl-, .hero-product-, .allegro- etc. prefixes.
+   Revert by removing the data-theme-setting effect in page.tsx - these rules
+   never activate without it, safe to leave in place either way. ===== */
 
 html[data-theme="light"] .hero-product-menu-toggle {
   border: 1px solid rgba(19, 40, 67, 0.28);
