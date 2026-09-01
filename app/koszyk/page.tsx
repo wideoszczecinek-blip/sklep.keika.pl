@@ -21,6 +21,8 @@ import { ALLEGRO_MOSKITIERY_HARDWARE, MESH_OPTIONS } from "@/features/moskitiery
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import { ROLETY_DACHOWE_FABRIC, ROLETY_DACHOWE_HARDWARE } from "@/features/rolety-dachowe/shared";
 import { readLastPage } from "../components/last-page-tracker";
+import PaczkomatPicker from "../components/paczkomat-picker";
+import type { PaczkomatPoint } from "../api/paczkomaty/route";
 
 type OrderCreateResponse = {
   ok: boolean;
@@ -530,6 +532,7 @@ export default function CartPage() {
   // step + query string) - "/" until we know better, filled in on mount.
   const [backHref, setBackHref] = useState("/");
   const [deliveryMethod, setDeliveryMethod] = useState(COURIER_METHOD.id);
+  const [selectedPaczkomat, setSelectedPaczkomat] = useState<PaczkomatPoint | null>(null);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -724,6 +727,7 @@ export default function CartPage() {
   const contactReady =
     form.firstName.trim() !== "" && form.lastName.trim() !== "" && form.phone.trim() !== "" && emailValid;
   const addressReady = !requiresAddress || (form.city.trim() !== "" && form.address1.trim() !== "");
+  const paczkomatReady = deliveryMethod !== PACZKOMAT_METHOD.id || selectedPaczkomat !== null;
   const invoiceReady = !wantsInvoice || (invoice.nip.trim().length === 10 && invoice.companyName.trim() !== "");
   // Per-field "is this one correctly filled in?" booleans, purely for the
   // subtle-accent/green-checkmark feedback on each input (see
@@ -743,7 +747,7 @@ export default function CartPage() {
   const invoiceCityFieldValid = invoice.city.trim() !== "";
   // The payment section itself is always rendered (see JSX below) - this
   // just controls whether it's locked/greyed out or interactive.
-  const deliveryDataReady = contactReady && addressReady && invoiceReady && items.length > 0;
+  const deliveryDataReady = contactReady && addressReady && paczkomatReady && invoiceReady && items.length > 0;
   const paymentReady = paymentMethod === "online" || codSms.status === "verified";
   const checkoutReady = deliveryDataReady && paymentReady;
   // Delivery/address data stays editable even once a draft order (and its
@@ -903,9 +907,14 @@ export default function CartPage() {
         [COURIER_METHOD, PACZKOMAT_METHOD, COD_DELIVERY_METHOD, PICKUP_METHOD].find(
           (method) => method.id === deliveryMethod,
         )?.label || "";
+      const paczkomatLine =
+        deliveryMethod === PACZKOMAT_METHOD.id && selectedPaczkomat
+          ? `Paczkomat: ${selectedPaczkomat.id} - ${selectedPaczkomat.address}`
+          : "";
       const paymentLabel = paymentMethod === "cod" ? "Za pobraniem" : "Online (Stripe)";
       const noteWithDelivery = [
         `Metoda dostawy: ${deliveryLabel}`,
+        paczkomatLine,
         `Metoda płatności: ${paymentLabel}`,
         form.note.trim(),
       ]
@@ -932,6 +941,12 @@ export default function CartPage() {
             city: form.city,
             postcode: form.postcode,
             address_line_1: form.address1,
+            ...(deliveryMethod === PACZKOMAT_METHOD.id && selectedPaczkomat
+              ? {
+                  paczkomat_id: selectedPaczkomat.id,
+                  paczkomat_address: selectedPaczkomat.address,
+                }
+              : {}),
           },
           invoice: wantsInvoice
             ? {
@@ -976,7 +991,18 @@ export default function CartPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [items, deliveryMethod, form, wantsInvoice, invoice, paymentMethod, codSms.token, orderSurcharge, appliedDiscount]);
+  }, [
+    items,
+    deliveryMethod,
+    selectedPaczkomat,
+    form,
+    wantsInvoice,
+    invoice,
+    paymentMethod,
+    codSms.token,
+    orderSurcharge,
+    appliedDiscount,
+  ]);
 
   // No "przejdź do płatności" button - for online payment, the payment panel
   // opens on its own once the required fields are filled in, after a short
@@ -1124,28 +1150,40 @@ export default function CartPage() {
                 <section className="cart-delivery-card">
                   <h2>Metody dostawy</h2>
                   <div className="cart-delivery-options">
-                    {availableDeliveryMethods.map((method) => (
-                      <label
-                        key={method.id}
-                        className={`cart-delivery-option ${deliveryMethod === method.id ? "is-active" : ""}`}
-                      >
-                        <input
-                          type="radio"
-                          name="delivery-method"
-                          value={method.id}
-                          checked={deliveryMethod === method.id}
-                          onChange={() => setDeliveryMethod(method.id)}
-                          disabled={dataLocked}
-                        />
-                        <span className="cart-delivery-option-copy">
-                          <strong>{method.label}</strong>
-                          <small>{method.description}</small>
-                        </span>
-                        <span className="cart-delivery-option-price">
-                          {method.extraFee ? `+${formatPln(method.extraFee)}` : "Gratis"}
-                        </span>
-                      </label>
-                    ))}
+                    {availableDeliveryMethods.map((method) => {
+                      const isPaczkomat = method.id === PACZKOMAT_METHOD.id;
+                      const isActive = deliveryMethod === method.id;
+                      return (
+                        <div key={method.id} className="cart-delivery-option-group">
+                          <label className={`cart-delivery-option ${isActive ? "is-active" : ""}`}>
+                            <input
+                              type="radio"
+                              name="delivery-method"
+                              value={method.id}
+                              checked={isActive}
+                              onChange={() => setDeliveryMethod(method.id)}
+                              disabled={dataLocked}
+                            />
+                            <span className="cart-delivery-option-copy">
+                              <strong>{method.label}</strong>
+                              <small>{method.description}</small>
+                            </span>
+                            <span className="cart-delivery-option-price">
+                              {method.extraFee ? `+${formatPln(method.extraFee)}` : "Gratis"}
+                            </span>
+                          </label>
+                          {isPaczkomat ? (
+                            <div className={`cart-paczkomat-accordion ${isActive ? "is-open" : ""}`}>
+                              <div className="cart-paczkomat-accordion-inner">
+                                {isActive ? (
+                                  <PaczkomatPicker value={selectedPaczkomat} onChange={setSelectedPaczkomat} />
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 </section>
 
@@ -1510,9 +1548,15 @@ export default function CartPage() {
                           form sits above this instead - CSS swaps which
                           span shows per the same breakpoint the layout
                           itself switches at. */}
-                      <span className="cart-checkout-intro-desktop">Uzupełnij dane po lewej</span>
-                      <span className="cart-checkout-intro-mobile">Uzupełnij dane powyżej</span>{" "}
-                      (imię i nazwisko, kontakt, adres), aby przejść do płatności.
+                      {!paczkomatReady ? (
+                        "Wybierz paczkomat powyżej, aby przejść do płatności."
+                      ) : (
+                        <>
+                          <span className="cart-checkout-intro-desktop">Uzupełnij dane po lewej</span>
+                          <span className="cart-checkout-intro-mobile">Uzupełnij dane powyżej</span>{" "}
+                          (imię i nazwisko, kontakt, adres), aby przejść do płatności.
+                        </>
+                      )}
                     </p>
                   ) : paymentMethod === "online" ? (
                     <>

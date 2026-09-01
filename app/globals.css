@@ -6680,6 +6680,165 @@ html[data-theme="light"] .cart-page-gradient-bg {
   font-size: 0.82rem;
 }
 
+.cart-delivery-option-group {
+  display: grid;
+}
+
+/* Collapsed by default (max-height:0, no padding) - the inner picker only
+   mounts once the radio above is actually checked (see page.tsx), both to
+   avoid an unprompted geolocation dialog for every visitor and so the panel
+   genuinely has nothing to animate open from. */
+.cart-paczkomat-accordion {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+
+.cart-paczkomat-accordion.is-open {
+  max-height: 720px;
+}
+
+.cart-paczkomat-accordion-inner {
+  padding: 0.8rem 0.2rem 0.2rem;
+}
+
+.paczkomat-picker {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.paczkomat-picker-search {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.paczkomat-picker-search input {
+  flex: 1;
+  min-width: 0;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(229, 241, 255, 0.22);
+  background: rgba(240, 248, 255, 0.05);
+  color: #f2f7ff;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.86rem;
+}
+
+.paczkomat-picker-search input:focus {
+  outline: none;
+  border-color: rgba(111, 227, 191, 0.6);
+}
+
+.paczkomat-picker-search button {
+  flex: 0 0 auto;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(111, 227, 191, 0.5);
+  background: rgba(44, 157, 130, 0.16);
+  color: #6fe3bf;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+}
+
+.paczkomat-picker-search button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.paczkomat-picker-status {
+  margin: 0;
+  color: rgba(240, 248, 255, 0.6);
+  font-size: 0.8rem;
+}
+
+.paczkomat-picker-error {
+  margin: 0;
+  color: #ff9d84;
+  font-size: 0.8rem;
+}
+
+.paczkomat-picker-map {
+  height: 280px;
+  width: 100%;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  border: 1px solid rgba(229, 241, 255, 0.18);
+}
+
+.paczkomat-picker-selected {
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(111, 227, 191, 0.4);
+  background: rgba(44, 157, 130, 0.14);
+  color: #f2f7ff;
+  font-size: 0.84rem;
+}
+
+.paczkomat-picker-selected strong {
+  color: #6fe3bf;
+}
+
+.paczkomat-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.paczkomat-picker-list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 0.15rem 0.6rem;
+  text-align: left;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(229, 241, 255, 0.16);
+  background: rgba(240, 248, 255, 0.03);
+  color: #f2f7ff;
+  padding: 0.5rem 0.65rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.paczkomat-picker-list button:hover {
+  border-color: rgba(229, 241, 255, 0.36);
+}
+
+.paczkomat-picker-list button.is-selected {
+  border-color: rgba(111, 227, 191, 0.7);
+  background: rgba(44, 157, 130, 0.14);
+}
+
+.paczkomat-picker-list-name {
+  font-weight: 700;
+  font-size: 0.82rem;
+  grid-column: 1;
+}
+
+.paczkomat-picker-list-address {
+  grid-column: 1 / -1;
+  color: rgba(240, 248, 255, 0.62);
+  font-size: 0.76rem;
+}
+
+.paczkomat-picker-list-distance {
+  grid-column: 3;
+  color: #6fe3bf;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.paczkomat-marker {
+  background: none;
+  border: none;
+}
+
 .cart-page-summary-row {
   display: flex;
   align-items: baseline;
@@ -7294,6 +7453,63 @@ html[data-theme="light"] .cart-delivery-option:hover {
 html[data-theme="light"] .cart-delivery-option.is-active {
   border-color: rgba(14, 124, 119, 0.55);
   background: rgba(14, 124, 119, 0.08);
+}
+
+html[data-theme="light"] .paczkomat-picker-search input {
+  border-color: rgba(26, 51, 82, 0.22);
+  background: #fff;
+  color: #132843;
+}
+
+html[data-theme="light"] .paczkomat-picker-search button {
+  border-color: rgba(14, 124, 119, 0.45);
+  background: rgba(14, 124, 119, 0.1);
+  color: #0e7c77;
+}
+
+html[data-theme="light"] .paczkomat-picker-status {
+  color: rgba(19, 40, 67, 0.6);
+}
+
+html[data-theme="light"] .paczkomat-picker-error {
+  color: #b3401f;
+}
+
+html[data-theme="light"] .paczkomat-picker-map {
+  border-color: rgba(26, 51, 82, 0.16);
+}
+
+html[data-theme="light"] .paczkomat-picker-selected {
+  border-color: rgba(14, 124, 119, 0.4);
+  background: rgba(14, 124, 119, 0.08);
+  color: #132843;
+}
+
+html[data-theme="light"] .paczkomat-picker-selected strong {
+  color: #0e7c77;
+}
+
+html[data-theme="light"] .paczkomat-picker-list button {
+  border-color: rgba(26, 51, 82, 0.16);
+  background: rgba(19, 40, 67, 0.02);
+  color: #132843;
+}
+
+html[data-theme="light"] .paczkomat-picker-list button:hover {
+  border-color: rgba(26, 51, 82, 0.3);
+}
+
+html[data-theme="light"] .paczkomat-picker-list button.is-selected {
+  border-color: rgba(14, 124, 119, 0.55);
+  background: rgba(14, 124, 119, 0.08);
+}
+
+html[data-theme="light"] .paczkomat-picker-list-address {
+  color: rgba(19, 40, 67, 0.6);
+}
+
+html[data-theme="light"] .paczkomat-picker-list-distance {
+  color: #0e7c77;
 }
 
 html[data-theme="light"] .cart-payment-card {
