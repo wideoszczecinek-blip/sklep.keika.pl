@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
@@ -29,7 +29,10 @@ function PaymentStep({
   publishableKey: string;
   orderCode: string;
 }) {
-  const stripePromise = loadStripe(publishableKey);
+  // See app/components/stripe-payment-step.tsx for why this must be
+  // memoized: Elements refuses a new `stripe` prop after mount, and
+  // loadStripe() here used to run fresh on every re-render.
+  const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
 
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
