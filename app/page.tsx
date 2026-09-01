@@ -32,6 +32,7 @@ import {
   MESH_OPTIONS,
   MOSKITIERY_MESH_LAYER_URL,
   MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
+  MOSKITIERY_RAMKOWE_PRICE_ON_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
   OVERSIZE_SURCHARGE_THRESHOLD_MM,
@@ -2172,13 +2173,15 @@ export default function Home() {
                                   zł
                                 </span>
                                 <span className="pl-price-unit"> / mb</span>
-                                <span className="price-per-mb-standard">
-                                  {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}{" "}
-                                  zł
-                                </span>
+                                {MOSKITIERY_RAMKOWE_PRICE_ON_PROMO ? (
+                                  <span className="price-per-mb-standard">
+                                    {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })}{" "}
+                                    zł
+                                  </span>
+                                ) : null}
                               </span>
                               {allegroRating && displayRating ? (
                                 <span className="pl-chip pl-chip-rating">
@@ -3385,9 +3388,11 @@ export default function Home() {
                                   <span className="price-per-mb-promo">
                                     {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
                                   </span>
-                                  <span className="price-per-mb-standard">
-                                    {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
-                                  </span>
+                                  {MOSKITIERY_RAMKOWE_PRICE_ON_PROMO ? (
+                                    <span className="price-per-mb-standard">
+                                      {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                    </span>
+                                  ) : null}
                                 </dd>
                               </div>
                             </div>

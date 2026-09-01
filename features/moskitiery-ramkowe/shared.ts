@@ -194,10 +194,15 @@ export function buildMoskLayerSurfaceStyle(imageUrl: string, accentColor: string
 // Real, current pricing for moskitiery-ramkowe (per business owner, not the
 // CRM's stale placeholder unit price): billed per running meter of frame
 // perimeter, rounded UP to each started meter ("każdy rozpoczęty metr
-// bieżący"). Two rates exist - the promotional one is the one actually
-// charged; the standard one is only shown crossed out for contrast.
+// bieżący"). STANDARD is the list rate; PROMO is what's actually charged and
+// is only surfaced as a discount when it's genuinely below STANDARD.
 export const MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD = 29.9;
-export const MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO = 25.9;
+export const MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO = 29.9;
+
+/** True only when PROMO is a real discount off STANDARD - gates the crossed-out
+ *  "regular price" in the UI so it never renders the same number twice. */
+export const MOSKITIERY_RAMKOWE_PRICE_ON_PROMO =
+  MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO < MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD;
 
 export function moskPerimeterMeters(widthMm: number, heightMm: number): number {
   return (2 * (widthMm + heightMm)) / 1000;
