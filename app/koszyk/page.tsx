@@ -29,6 +29,7 @@ type OrderCreateResponse = {
     order_code: string;
     amount_total: string | null;
     currency: string;
+    access_token?: string;
   };
   payment_enabled?: boolean;
   payment_provider?: string;
@@ -373,6 +374,7 @@ export default function CartPage() {
     publishableKey?: string;
     paymentEnabled: boolean;
     paymentProvider: string;
+    accessToken?: string;
   } | null>(null);
   // For online payment, picking a delivery method and filling in the address
   // only drafts the order - it isn't real until the card/BLIK/... payment
@@ -511,6 +513,17 @@ export default function CartPage() {
   // starting over. It only locks once the order is genuinely final: paid
   // online, or cash-on-delivery (which has no further payment step at all).
   const dataLocked = paymentConfirmed || (orderState !== null && orderState.paymentProvider === "cod");
+  // The moment the order is genuinely final (COD - nothing further to pay,
+  // or online payment confirmed) - swap the whole cart/checkout layout for a
+  // dedicated thank-you view instead of leaving the (now pointless) delivery
+  // method + address form sitting there with just a one-line note appended.
+  const orderConfirmed = orderState !== null && (orderState.paymentProvider === "cod" || paymentConfirmed);
+  const orderTrackingLink =
+    orderState !== null
+      ? `/zamowienie/${encodeURIComponent(orderState.orderCode)}${
+          orderState.accessToken ? `?access_token=${encodeURIComponent(orderState.accessToken)}` : ""
+        }`
+      : "";
 
   // Switching to/away from the cash-on-delivery delivery method invalidates
   // any in-progress/verified SMS code - start that mini-flow over.
@@ -523,6 +536,24 @@ export default function CartPage() {
   // dataLocked above), the existing draft no longer matches what they typed,
   // so it's dropped and a fresh one gets created automatically (same debounced
   // auto-submit effect as the first time).
+  // Just for the thank-you screen's "masz pytania?" line - same site config
+  // the homepage header already shows, fetched directly (this page has never
+  // pulled in the shared site-content loader, which is a server-only cache()
+  // helper anyway).
+  const [siteContact, setSiteContact] = useState<{ phone: string; email: string }>({ phone: "", email: "" });
+  useEffect(() => {
+    fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/site")
+      .then((response) => response.json())
+      .then((json) => {
+        const site = json?.site || json;
+        setSiteContact({
+          phone: typeof site?.contact_phone === "string" ? site.contact_phone : "",
+          email: typeof site?.contact_email === "string" ? site.contact_email : "",
+        });
+      })
+      .catch(() => {});
+  }, []);
+
   const draftSnapshotRef = useRef("");
   const orderStateRef = useRef(orderState);
   useEffect(() => {
@@ -732,6 +763,7 @@ export default function CartPage() {
         publishableKey: json.publishable_key,
         paymentEnabled: Boolean(json.payment_enabled && json.client_secret && json.publishable_key),
         paymentProvider: json.payment_provider || (paymentMethod === "cod" ? "cod" : "stripe"),
+        accessToken: json.order.access_token,
       });
       // Cash-on-delivery has no further payment step - the order is real the
       // moment it's created. Online payment isn't real yet at this point;
@@ -828,7 +860,70 @@ export default function CartPage() {
       </header>
 
       <main className="cart-page-main">
-        {!hydrated ? null : items.length === 0 && !orderState ? (
+        {!hydrated ? null : orderConfirmed && orderState ? (
+          <div className="cart-thankyou">
+            <div className="cart-thankyou-check" aria-hidden="true">
+              ✓
+            </div>
+            <h1>Dziękujemy za zamówienie!</h1>
+            <p className="cart-thankyou-code">
+              Numer zamówienia: <strong>{orderState.orderCode}</strong>
+            </p>
+
+            <div className="cart-thankyou-note">
+              {orderState.paymentProvider === "cod" ? (
+                <p>
+                  Zamówienie przyjęte z płatnością za pobraniem. Kurier odbierze{" "}
+                  <strong>
+                    {orderState.amountTotal ? formatPln(Number(orderState.amountTotal)) : "kwotę zamówienia"}
+                  </strong>{" "}
+                  przy dostawie.
+                </p>
+              ) : (
+                <p>
+                  Płatność zakończona sukcesem
+                  {orderState.amountTotal ? (
+                    <>
+                      {" "}
+                      - opłacono <strong>{formatPln(Number(orderState.amountTotal))}</strong>
+                    </>
+                  ) : null}
+                  .
+                </p>
+              )}
+            </div>
+
+            <div className="cart-thankyou-next">
+              <h2>Co dalej?</h2>
+              <ul>
+                <li>Potwierdzenie zamówienia wysłaliśmy na podany adres e-mail.</li>
+                <li>Zamówienie trafiło do realizacji - o kolejnych krokach (i przesyłce) poinformujemy mailowo.</li>
+                <li>Status zamówienia możesz sprawdzić w każdej chwili poniżej, bez logowania.</li>
+              </ul>
+            </div>
+
+            <Link href={orderTrackingLink} className="cart-page-checkout-cta cart-thankyou-track">
+              Śledź status zamówienia
+            </Link>
+
+            {siteContact.phone || siteContact.email ? (
+              <div className="cart-thankyou-contact">
+                <p>Masz pytania w sprawie zamówienia?</p>
+                <p>
+                  {siteContact.phone ? (
+                    <a href={`tel:${siteContact.phone.replace(/\s+/g, "")}`}>{siteContact.phone}</a>
+                  ) : null}
+                  {siteContact.phone && siteContact.email ? " · " : null}
+                  {siteContact.email ? <a href={`mailto:${siteContact.email}`}>{siteContact.email}</a> : null}
+                </p>
+              </div>
+            ) : null}
+
+            <Link href="/" className="cart-thankyou-back">
+              ← Wróć do sklepu
+            </Link>
+          </div>
+        ) : items.length === 0 && !orderState ? (
           <div className="cart-page-empty">
             <p>Twój koszyk jest jeszcze pusty.</p>
             <Link href="/?produkt=moskitiery-ramkowe" className="cart-page-empty-cta">
@@ -1245,29 +1340,11 @@ export default function CartPage() {
 
                   {orderState ? (
                     <>
-                      {orderState.paymentProvider === "cod" ? (
-                        <>
-                          <p className="cart-page-order-note">
-                            Zamówienie <strong>{orderState.orderCode}</strong> utworzone. Wgląd do zamówienia będzie
-                            wymagał telefonu albo e-maila podanego w formularzu.
-                          </p>
-                          <div className="cart-page-checkout-note">
-                            Zamówienie przyjęte z płatnością za pobraniem. Kurier odbierze{" "}
-                            <strong>
-                              {orderState.amountTotal ? formatPln(Number(orderState.amountTotal)) : "kwotę zamówienia"}
-                            </strong>{" "}
-                            przy dostawie.
-                          </div>
-                        </>
-                      ) : paymentConfirmed ? (
-                        <>
-                          <p className="cart-page-order-note">
-                            Płatność zakończona sukcesem - dziękujemy! Zamówienie <strong>{orderState.orderCode}</strong>{" "}
-                            jest potwierdzone. Wgląd do zamówienia będzie wymagał telefonu albo e-maila podanego w
-                            formularzu.
-                          </p>
-                        </>
-                      ) : orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
+                      {/* orderConfirmed (COD, or paymentConfirmed) is handled
+                          entirely by the thank-you view above, which
+                          replaces this whole layout - only the still-in-
+                          -progress online payment states reach here. */}
+                      {orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
                         <>
                           <PaymentStep
                             clientSecret={orderState.clientSecret}

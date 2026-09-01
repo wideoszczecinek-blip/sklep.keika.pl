@@ -36,6 +36,8 @@ export async function POST(request: Request) {
         order_code: string;
         amount_total: string | null;
         currency: string;
+        access_token?: string;
+        crm_order_number?: string;
       };
       error?: string;
     };

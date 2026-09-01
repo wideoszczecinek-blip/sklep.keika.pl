@@ -201,12 +201,21 @@ export type PublicQuoteResponse = {
   quote: import("@/features/moskitiery/types").SavedQuote | null;
 };
 
+export type PublicOrderShipment = {
+  carrier: string;
+  tracking_number: string;
+  tracking_link: string;
+};
+
 export type PublicOrder = {
   order_code: string;
   quote_code: string;
   product_slug: string;
   product_label: string;
   status: string;
+  /** Human-facing status label (Polish) - use this for display instead of
+   * `status`/the CRM's internal order_status vocabulary. */
+  friendly_status: string;
   payment_provider: string;
   payment_status: string;
   amount_total: string | null;
@@ -221,6 +230,17 @@ export type PublicOrder = {
   created_at: string;
   updated_at: string;
   paid_at: string;
+  access_token?: string;
+  /** The CRM's human production order number ("N/MM/RRRR"), once accepted -
+   * empty until then. */
+  crm_order_number: string;
+  /** Estimated completion date, exactly as production entered it (free-form
+   * text) - empty until production has actually planned it. Always show
+   * this as an estimate, never a promise. */
+  estimated_completion: string;
+  invoice_issued: boolean;
+  invoice_required: boolean;
+  shipments: PublicOrderShipment[];
   customer_name?: string;
   customer_phone?: string;
   customer_email?: string;

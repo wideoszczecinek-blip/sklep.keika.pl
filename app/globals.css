@@ -6417,6 +6417,129 @@ html[data-theme="light"] .cart-page-gradient-bg {
   color: rgba(240, 248, 255, 0.82);
 }
 
+/* Replaces the whole cart/checkout layout once an order is genuinely final
+   (COD, or online payment confirmed) - a dedicated thank-you view instead
+   of the delivery-method/address form still sitting there, locked, with
+   just a one-line note appended. */
+.cart-thankyou {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 0.6rem;
+  max-width: 40rem;
+  margin: 0 auto;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(111, 227, 191, 0.28);
+  background: rgba(44, 157, 130, 0.1);
+  padding: 2.4rem 1.6rem;
+}
+
+.cart-thankyou-check {
+  width: 3.2rem;
+  height: 3.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6fe3bf, #2c9d82);
+  color: #04252a;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+}
+
+.cart-thankyou h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-family: var(--font-heading), sans-serif;
+  color: #f2f7ff;
+}
+
+.cart-thankyou-code {
+  margin: 0 0 0.6rem;
+  color: rgba(240, 248, 255, 0.72);
+  font-size: 0.94rem;
+}
+
+.cart-thankyou-code strong {
+  color: #6fe3bf;
+}
+
+.cart-thankyou-note {
+  margin: 0 0 0.8rem;
+  color: #f2f7ff;
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+.cart-thankyou-note strong {
+  color: #6fe3bf;
+}
+
+.cart-thankyou-next {
+  width: 100%;
+  text-align: left;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(229, 241, 255, 0.16);
+  background: rgba(240, 248, 255, 0.04);
+  padding: 1rem 1.2rem;
+  margin: 0.6rem 0 1rem;
+}
+
+.cart-thankyou-next h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.98rem;
+  color: #f2f7ff;
+}
+
+.cart-thankyou-next ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.4rem;
+  color: rgba(240, 248, 255, 0.78);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.cart-thankyou-track {
+  display: block;
+  max-width: 22rem;
+  text-align: center;
+  text-decoration: none;
+  margin: 0.4rem 0;
+}
+
+.cart-thankyou-contact {
+  margin-top: 1rem;
+  color: rgba(240, 248, 255, 0.66);
+  font-size: 0.86rem;
+}
+
+.cart-thankyou-contact p {
+  margin: 0.15rem 0;
+}
+
+.cart-thankyou-contact a {
+  color: #6fe3bf;
+  text-decoration: none;
+}
+
+.cart-thankyou-contact a:hover {
+  text-decoration: underline;
+}
+
+.cart-thankyou-back {
+  margin-top: 1.2rem;
+  color: rgba(240, 248, 255, 0.6);
+  font-size: 0.86rem;
+  text-decoration: none;
+}
+
+.cart-thankyou-back:hover {
+  color: #f2f7ff;
+}
+
 .cart-page-empty-cta {
   text-decoration: none;
   border-radius: 999px;
@@ -7349,6 +7472,53 @@ html[data-theme="light"] .cart-page-empty {
   border-color: rgba(26, 51, 82, 0.16);
   background: rgba(255, 255, 255, 0.86);
   color: rgba(19, 40, 67, 0.82);
+}
+
+html[data-theme="light"] .cart-thankyou {
+  border-color: rgba(14, 124, 119, 0.3);
+  background: rgba(14, 124, 119, 0.07);
+}
+
+html[data-theme="light"] .cart-thankyou-check {
+  color: #ffffff;
+  background: linear-gradient(135deg, #1fb88f, #0e7c77);
+}
+
+html[data-theme="light"] .cart-thankyou h1,
+html[data-theme="light"] .cart-thankyou-note,
+html[data-theme="light"] .cart-thankyou-next h2 {
+  color: #132843;
+}
+
+html[data-theme="light"] .cart-thankyou-code {
+  color: rgba(19, 40, 67, 0.7);
+}
+
+html[data-theme="light"] .cart-thankyou-code strong,
+html[data-theme="light"] .cart-thankyou-note strong {
+  color: #0e7c77;
+}
+
+html[data-theme="light"] .cart-thankyou-next {
+  border-color: rgba(26, 51, 82, 0.14);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] .cart-thankyou-next ul {
+  color: rgba(19, 40, 67, 0.72);
+}
+
+html[data-theme="light"] .cart-thankyou-contact {
+  color: rgba(19, 40, 67, 0.6);
+}
+
+html[data-theme="light"] .cart-thankyou-contact a,
+html[data-theme="light"] .cart-thankyou-back:hover {
+  color: #0e7c77;
+}
+
+html[data-theme="light"] .cart-thankyou-back {
+  color: rgba(19, 40, 67, 0.5);
 }
 
 html[data-theme="light"] .cart-page-item,

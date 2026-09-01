@@ -12,6 +12,15 @@ import PaymentStep, { type CheckoutContact } from "@/app/components/stripe-payme
 // e-mail's whole reason to exist).
 const RETRYABLE_PAYMENT_STATUSES = new Set(["failed", "requires_payment", "canceled", ""]);
 
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  paid: "Opłacone",
+  cod_pending: "Za pobraniem (nieopłacone)",
+  requires_payment: "Oczekuje na płatność",
+  failed: "Nieudana płatność",
+  canceled: "Anulowana",
+  pending: "Oczekuje",
+};
+
 export default function OrderVerify({ orderCode }: { orderCode: string }) {
   const [verifier, setVerifier] = useState("");
   const [order, setOrder] = useState<PublicOrder | null>(null);
@@ -119,18 +128,57 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   if (order) {
     const canRetryPayment =
       order.payment_provider === "stripe" && RETRYABLE_PAYMENT_STATUSES.has(order.payment_status) && !justPaid;
+    const paymentLabel = justPaid ? "Opłacone" : PAYMENT_STATUS_LABELS[order.payment_status] || order.payment_status;
 
     return (
       <section className={styles.orderCard}>
-        <h2>Zamówienie {order.order_code}</h2>
+        <h2>
+          Zamówienie {order.order_code}
+          {order.crm_order_number ? ` (nr ${order.crm_order_number})` : ""}
+        </h2>
         <div className={styles.orderMeta}>
-          <div>Status: <strong>{order.status}</strong></div>
-          <div>Płatność: <strong>{justPaid ? "opłacone" : order.payment_status}</strong></div>
+          <div>Status: <strong>{order.friendly_status}</strong></div>
+          <div>Płatność: <strong>{paymentLabel}</strong></div>
           <div>Kwota: <strong>{order.amount_total ? `${order.amount_total} ${order.currency}` : "—"}</strong></div>
           <div>Produkt: <strong>{order.product_label}</strong></div>
+          {order.customer_name ? <div>Odbiorca: <strong>{order.customer_name}</strong></div> : null}
           <div>Adres: <strong>{order.shipping_address_line_1}</strong> {order.shipping_address_line_2}</div>
           <div>Miasto: <strong>{order.shipping_postcode} {order.shipping_city}</strong></div>
+          {order.invoice_required ? (
+            <div>Faktura VAT: <strong>{order.invoice_issued ? "wystawiona" : "w przygotowaniu"}</strong></div>
+          ) : null}
         </div>
+
+        {order.estimated_completion ? (
+          <div className={styles.noticeBox}>
+            Szacowany termin realizacji: <strong>{order.estimated_completion}</strong>
+            <br />
+            <small>To termin orientacyjny, wyznaczony na podstawie aktualnego planu produkcji - może ulec zmianie.</small>
+          </div>
+        ) : null}
+
+        {order.shipments.length > 0 ? (
+          <div className={styles.orderMeta}>
+            <h3>Przesyłka</h3>
+            {order.shipments.map((shipment, index) => (
+              <div key={`${shipment.tracking_number}-${index}`}>
+                {shipment.carrier ? `${shipment.carrier} - ` : ""}
+                <strong>{shipment.tracking_number}</strong>
+                {shipment.tracking_link ? (
+                  <>
+                    {" "}
+                    (
+                    <a href={shipment.tracking_link} target="_blank" rel="noopener noreferrer">
+                      śledź przesyłkę
+                    </a>
+                    )
+                  </>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {order.note_text ? <div className={styles.noticeBox}>{order.note_text}</div> : null}
         {order.summary_text ? <div className={styles.copyHtml}><p>{order.summary_text}</p></div> : null}
 
