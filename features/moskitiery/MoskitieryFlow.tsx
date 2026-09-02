@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackStorefrontEvent } from "@/lib/shop-public";
+import { trackShopStep } from "@/lib/track-step";
 import {
   fetchShopConfiguratorConfig,
   pingShopPresence,
@@ -778,6 +779,17 @@ export default function MoskitieryFlow({
     };
 
     analyticsEventsRef.current = [...analyticsEventsRef.current.slice(-79), nextEvent];
+    // This log used to only ever reach the CRM once a quote actually got
+    // saved - anyone who left before that point (very plausibly most people
+    // who abandon) left zero trace anywhere. Streaming it live to the same
+    // table "Odwiedzający" reads means every step survives regardless of
+    // whether a quote is ever saved. update_dimension/update_quantity are
+    // excluded here specifically - they fire on every keystroke in a number
+    // input (still recorded locally above, just not one HTTP request + DB
+    // row per digit typed).
+    if (type !== "update_dimension" && type !== "update_quantity") {
+      trackShopStep(type, label, meta);
+    }
   }
 
   function registerInteraction(

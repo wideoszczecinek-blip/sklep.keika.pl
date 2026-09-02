@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 // import ThemeToggle from "@/app/components/theme-toggle";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackStorefrontEvent } from "@/lib/shop-public";
+import { trackShopStep } from "@/lib/track-step";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 import {
   type CartLineItem,
@@ -985,6 +986,7 @@ export default function Home() {
   function scrollToProductSection(key: ProductTabKey) {
     const target = productSectionRefs[key]?.current;
     if (!target) return;
+    trackShopStep("product_section_nav", key, { product_slug: productSlugFromSelected(displayedProduct) });
     const container = target.closest<HTMLElement>(".hero-full");
     if (container && container.scrollHeight > container.clientHeight) {
       const containerRect = container.getBoundingClientRect();

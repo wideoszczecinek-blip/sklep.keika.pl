@@ -9,6 +9,7 @@
 // contract) but with this product's own real step content and pricing.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { trackShopStep } from "@/lib/track-step";
 import {
   ROLETY_DACHOWE_FABRIC,
   ROLETY_DACHOWE_HARDWARE,
@@ -91,6 +92,7 @@ export default function ConfiguratorPanel({
   }
 
   function openZoom(preview: ZoomPreview) {
+    trackShopStep("gallery_zoom_open", preview?.title || "rolety-dachowe", { image_index: preview?.index ?? 0 });
     if (onZoom) onZoom(preview);
     else setInternalZoomPreview(preview);
   }
@@ -183,7 +185,10 @@ export default function ConfiguratorPanel({
         <button
           type="button"
           className="hero-product-step-head"
-          onClick={() => setStepOneCollapsed((prev) => !prev)}
+          onClick={() => {
+            trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed });
+            setStepOneCollapsed((prev) => !prev);
+          }}
           aria-expanded={stepOneCollapsed ? "false" : "true"}
         >
           <span className="hero-product-config-step-title">
@@ -217,6 +222,7 @@ export default function ConfiguratorPanel({
                     type="button"
                     className="hardware-card-main"
                     onClick={() => {
+                      trackShopStep("select_hardware_color", option.label, { option_id: option.id });
                       setSelectedHardwareId(option.id);
                       setStepOneCollapsed(true);
                       if (!stepOneChosen) setStepOneChosen(true);
@@ -257,7 +263,10 @@ export default function ConfiguratorPanel({
               type="button"
               ref={stepTwoRef}
               className="hero-product-step-head"
-              onClick={() => setStepTwoCollapsed((prev) => !prev)}
+              onClick={() => {
+                trackShopStep("configurator_step_toggle", "material_type", { collapsed_after: !stepTwoCollapsed });
+                setStepTwoCollapsed((prev) => !prev);
+              }}
               aria-expanded={stepTwoCollapsed ? "false" : "true"}
             >
               <span className="hero-product-config-step-title hero-product-config-step-title--muted">
@@ -286,6 +295,7 @@ export default function ConfiguratorPanel({
                       className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
                       title={option.subtitle}
                       onClick={() => {
+                        trackShopStep("select_material_type", option.label, { option_id: option.id });
                         setSelectedMaterialTypeId(option.id);
                         setStepTwoCollapsed(true);
                         window.setTimeout(() => {
@@ -315,7 +325,10 @@ export default function ConfiguratorPanel({
                   type="button"
                   ref={stepThreeRef}
                   className="hero-product-step-head"
-                  onClick={() => setStepThreeCollapsed((prev) => !prev)}
+                  onClick={() => {
+                    trackShopStep("configurator_step_toggle", "fabric_color", { collapsed_after: !stepThreeCollapsed });
+                    setStepThreeCollapsed((prev) => !prev);
+                  }}
                   aria-expanded={stepThreeCollapsed ? "false" : "true"}
                 >
                   <span className="hero-product-config-step-title hero-product-config-step-title--muted">
@@ -351,6 +364,7 @@ export default function ConfiguratorPanel({
                           className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
                           title={option.subtitle ? `${option.label} — ${option.subtitle}` : option.label}
                           onClick={() => {
+                            trackShopStep("select_fabric_color", option.label, { option_id: option.id });
                             setSelectedFabricId(option.id);
                             setStepThreeCollapsed(true);
                             window.setTimeout(() => {
@@ -403,6 +417,9 @@ export default function ConfiguratorPanel({
                               <button
                                 type="button"
                                 onClick={() => {
+                                  trackShopStep("select_window_model", `${entry.producer} ${entry.model}`, {
+                                    certain: entry.certain,
+                                  });
                                   setSelectedWindow(entry);
                                   setWindowQuery(`${entry.producer} ${entry.model}`);
                                 }}
@@ -428,6 +445,10 @@ export default function ConfiguratorPanel({
                         type="button"
                         className="hero-product-reviews-load-more-btn"
                         onClick={() => {
+                          // Real friction signal: they couldn't find their
+                          // window in the library and fell back to manual
+                          // entry - worth knowing which searches trigger this.
+                          trackShopStep("window_model_not_found", windowQuery || "(puste zapytanie)");
                           setManualMode(true);
                           setSelectedWindow(null);
                         }}

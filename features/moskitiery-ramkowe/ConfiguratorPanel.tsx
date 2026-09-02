@@ -9,6 +9,7 @@
 // via onSubmit) changed.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { trackShopStep } from "@/lib/track-step";
 import {
   ALLEGRO_MOSKITIERY_HARDWARE,
   MESH_OPTIONS,
@@ -114,6 +115,7 @@ export default function ConfiguratorPanel({
   }
 
   function openZoom(preview: ZoomPreview) {
+    trackShopStep("gallery_zoom_open", preview?.title || "moskitiery-ramkowe", { image_index: preview?.index ?? 0 });
     if (onZoom) onZoom(preview);
     else setInternalZoomPreview(preview);
   }
@@ -166,7 +168,9 @@ export default function ConfiguratorPanel({
 
   function handleDimensionBlur() {
     if (!hasValidDimensions) return;
+    trackShopStep("enter_dimensions", "moskitiery-ramkowe", { width_mm: widthNum, height_mm: heightNum, qty: quantityNum });
     if (widthNum > OVERSIZE_TECHNICAL_LIMIT_MM && heightNum > OVERSIZE_TECHNICAL_LIMIT_MM) {
+      trackShopStep("dimensions_over_limit", "moskitiery-ramkowe", { width_mm: widthNum, height_mm: heightNum });
       return; // shown inline near the inputs, nothing to revert here
     }
     const maxDim = Math.max(widthNum, heightNum);
@@ -186,11 +190,16 @@ export default function ConfiguratorPanel({
 
   function handleAcceptSurcharge() {
     if (!surchargeModal) return;
+    trackShopStep("surcharge_accepted", "moskitiery-ramkowe", { amount: surchargeModal.amount, width_mm: widthNum, height_mm: heightNum });
     setAcceptedSurcharge({ width: widthNum, height: heightNum, amount: surchargeModal.amount });
     setSurchargeModal(null);
   }
 
   function handleDeclineSurcharge() {
+    // A real "co ich zniechęca" moment - shown a price they weren't
+    // expecting, they backed out of the oversized dimensions instead of
+    // paying the surcharge.
+    trackShopStep("surcharge_declined", "moskitiery-ramkowe", { amount: surchargeModal?.amount ?? 0, width_mm: widthNum, height_mm: heightNum });
     if (widthNum > OVERSIZE_SURCHARGE_THRESHOLD_MM) setDimensionWidth("");
     if (heightNum > OVERSIZE_SURCHARGE_THRESHOLD_MM) setDimensionHeight("");
     setSurchargeModal(null);
@@ -223,7 +232,10 @@ export default function ConfiguratorPanel({
         <button
           type="button"
           className="hero-product-step-head"
-          onClick={() => setStepOneCollapsed((prev) => !prev)}
+          onClick={() => {
+            trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed });
+            setStepOneCollapsed((prev) => !prev);
+          }}
           aria-expanded={stepOneCollapsed ? "false" : "true"}
         >
           <span className="hero-product-config-step-title">
@@ -260,6 +272,7 @@ export default function ConfiguratorPanel({
                     type="button"
                     className="hardware-card-main"
                     onClick={() => {
+                      trackShopStep("select_hardware_color", option.label, { option_id: option.id });
                       setSelectedHardwareId(option.id);
                       setStepOneCollapsed(true);
                       if (!stepOneChosen) {
@@ -307,7 +320,10 @@ export default function ConfiguratorPanel({
               type="button"
               ref={stepTwoRef}
               className="hero-product-step-head"
-              onClick={() => setStepTwoCollapsed((prev) => !prev)}
+              onClick={() => {
+                trackShopStep("configurator_step_toggle", "mesh_color", { collapsed_after: !stepTwoCollapsed });
+                setStepTwoCollapsed((prev) => !prev);
+              }}
               aria-expanded={stepTwoCollapsed ? "false" : "true"}
             >
               <span className="hero-product-config-step-title hero-product-config-step-title--muted">
@@ -350,6 +366,7 @@ export default function ConfiguratorPanel({
                       type="button"
                       className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
                       onClick={() => {
+                        trackShopStep("select_mesh_color", option.label, { option_id: option.id });
                         setSelectedMeshId(option.id);
                         setStepTwoCollapsed(true);
                         window.setTimeout(() => {
