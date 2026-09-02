@@ -5343,6 +5343,13 @@ html[data-theme="light"] .instruction-modal-nav {
     padding: 0.5rem;
   }
 
+  /* Homepage's embedded product view only: the "PRODUKTY / <nazwa>"
+     product-switcher pill - hidden along with the logo, leaving just the
+     hamburger and cart icon per the same rule as the other pages. */
+  .hero-header.is-compact .hero-product-menu-toggle {
+    display: none;
+  }
+
   .header-left {
     gap: 0.28rem;
   }

@@ -888,6 +888,25 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<SelectedProductView | null>(null);
   const [displayedProduct, setDisplayedProduct] = useState<SelectedProductView | null>(null);
   const [isProductView, setIsProductView] = useState(false);
+  // Drives .hero-header.is-compact (mobile only, see globals.css): past an
+  // 80px scroll the full header hides, leaving a pinned hamburger + small
+  // cart icon. .hero-full - not window - is the real scroll container here
+  // (see the scrollIntoView comments elsewhere in this file for why).
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+  useEffect(() => {
+    if (!isProductView) {
+      setIsHeaderCompact(false);
+      return;
+    }
+    const container = document.querySelector<HTMLElement>(".hero-full");
+    if (!container) return;
+    function onScroll() {
+      setIsHeaderCompact((container?.scrollTop || 0) > 80);
+    }
+    onScroll();
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
+  }, [isProductView]);
   // Opis/Galeria/Opinie/Instrukcje are one continuous stacked page now, not
   // a tab-switcher - activeProductTab still exists, just repurposed to drive
   // which nav pill is highlighted (via the scroll-spy effect below) instead
@@ -1885,7 +1904,7 @@ export default function Home() {
           <p>Wczytujemy najlepsze rozwiązania</p>
         </div>
       </div>
-      <header className="hero-header">
+      <header className={`hero-header${isHeaderCompact ? " is-compact" : ""}`}>
         <div className="header-left">
           <a className="brand" href="/" aria-label="KEIKA strona główna">
             {logoUrl ? (
