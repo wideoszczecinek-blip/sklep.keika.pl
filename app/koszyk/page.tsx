@@ -22,6 +22,29 @@ import { readLastPage } from "../components/last-page-tracker";
 import PaczkomatPicker from "../components/paczkomat-picker";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import PaymentStep, { type CheckoutContact } from "../components/stripe-payment-step";
+import { trackStorefrontEvent } from "@/lib/shop-public";
+
+// Checkout is the single highest-value place to know "co ich zniechęca" -
+// every validation error, failed discount code, and failed order/payment
+// attempt fires one of these instead of only ever showing an inline
+// message the customer sees and staff never do. Fire-and-forget by design
+// (never blocks/breaks checkout if analytics itself has a hiccup).
+function trackCheckoutIssue(eventName: string, label: string, meta?: Record<string, string | number | boolean | null>) {
+  let sessionToken = "";
+  try {
+    sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+  } catch {
+    // sessionStorage niedostępny - event i tak poleci bez grupowania w sesję.
+  }
+  void trackStorefrontEvent({
+    event_name: eventName,
+    event_label: label,
+    page_slug: "/koszyk",
+    session_token: sessionToken,
+    device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+    meta,
+  }).catch(() => null);
+}
 
 type OrderCreateResponse = {
   ok: boolean;
@@ -623,12 +646,9 @@ export default function CartPage() {
       }
       setCodSms({ status: "sent", token: json.verification_token, code: "", error: "" });
     } catch (smsError) {
-      setCodSms({
-        status: "error",
-        token: "",
-        code: "",
-        error: smsError instanceof Error ? smsError.message : "Nie udało się wysłać kodu SMS.",
-      });
+      const message = smsError instanceof Error ? smsError.message : "Nie udało się wysłać kodu SMS.";
+      setCodSms({ status: "error", token: "", code: "", error: message });
+      trackCheckoutIssue("checkout_error", "cod_sms_send_failed", { message });
     }
   }
 
@@ -646,11 +666,9 @@ export default function CartPage() {
       }
       setCodSms((current) => ({ ...current, status: "verified", error: "" }));
     } catch (smsError) {
-      setCodSms((current) => ({
-        ...current,
-        status: "sent",
-        error: smsError instanceof Error ? smsError.message : "Niepoprawny kod SMS.",
-      }));
+      const message = smsError instanceof Error ? smsError.message : "Niepoprawny kod SMS.";
+      setCodSms((current) => ({ ...current, status: "sent", error: message }));
+      trackCheckoutIssue("checkout_error", "cod_sms_verify_failed", { message });
     }
   }
 
@@ -674,6 +692,7 @@ export default function CartPage() {
     } catch (checkError) {
       setAppliedDiscount(null);
       setDiscountError(checkError instanceof Error ? checkError.message : "Nie udało się sprawdzić kodu.");
+      trackCheckoutIssue("discount_code_invalid", code);
     } finally {
       setDiscountChecking(false);
     }
@@ -838,7 +857,9 @@ export default function CartPage() {
       }
     } catch (submitError) {
       submittedRef.current = false;
-      setError(submitError instanceof Error ? submitError.message : "Wystąpił błąd.");
+      const message = submitError instanceof Error ? submitError.message : "Wystąpił błąd.";
+      setError(message);
+      trackCheckoutIssue("checkout_error", "order_submit_failed", { message, payment_method: paymentMethod });
     } finally {
       setIsSubmitting(false);
     }

@@ -3,6 +3,27 @@
 import { useMemo, useState } from "react";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
+import { trackStorefrontEvent } from "@/lib/shop-public";
+
+// Payment failing is the single most direct "co ich zniechęca" signal there
+// is - a lost sale at the very last step. Fire-and-forget, never blocks the
+// actual error message shown to the customer.
+function trackPaymentIssue(label: string, orderCode: string, message: string) {
+  let sessionToken = "";
+  try {
+    sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+  } catch {
+    // sessionStorage niedostępny - event i tak poleci bez grupowania w sesję.
+  }
+  void trackStorefrontEvent({
+    event_name: "payment_failed_client",
+    event_label: label,
+    order_code: orderCode,
+    session_token: sessionToken,
+    device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+    meta: { message: message.slice(0, 300) },
+  }).catch(() => null);
+}
 
 // Shared by the real checkout (/koszyk) and the "retry a failed payment"
 // flow (/zamowienie/[orderCode]) - both just need a clientSecret/
@@ -167,8 +188,10 @@ function StripePaymentStep({
       redirect: "if_required",
     });
     if (result.error) {
-      setError(result.error.message || "Nie udało się rozpocząć płatności.");
+      const message = result.error.message || "Nie udało się rozpocząć płatności.";
+      setError(message);
       setIsSubmitting(false);
+      trackPaymentIssue(result.error.code || "stripe_error", orderCode, message);
       return;
     }
     if (result.paymentIntent && (result.paymentIntent.status === "succeeded" || result.paymentIntent.status === "processing")) {
@@ -181,12 +204,13 @@ function StripePaymentStep({
     // that as a plain non-error result once its own internal polling gives
     // up, not as result.error, so without this the payment box just went
     // quiet with zero feedback ("the window just disappeared").
-    setError(
+    const rejectedMessage =
       result.paymentIntent?.status === "requires_payment_method"
         ? "Płatność nie została zatwierdzona (np. odrzucona w aplikacji bankowej). Spróbuj ponownie."
-        : "Nie udało się dokończyć płatności. Spróbuj ponownie.",
-    );
+        : "Nie udało się dokończyć płatności. Spróbuj ponownie.";
+    setError(rejectedMessage);
     setIsSubmitting(false);
+    trackPaymentIssue(result.paymentIntent?.status || "unknown_status", orderCode, rejectedMessage);
   }
 
   return (

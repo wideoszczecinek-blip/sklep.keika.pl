@@ -122,6 +122,7 @@ export function addCartItem(item: CartLineItem): CartLineItem[] {
     .catch(() => {
       /* tracking never blocks the cart */
     });
+  void trackCartEventToCrm("add_to_cart", item.productSlug, item);
   return items;
 }
 
@@ -130,9 +131,41 @@ export function clearCart(): void {
 }
 
 export function removeCartItem(id: string): CartLineItem[] {
+  const removed = readCartItems().find((item) => item.id === id);
   const items = readCartItems().filter((item) => item.id !== id);
   writeCartItems(items);
+  if (removed) {
+    void trackCartEventToCrm("remove_from_cart", removed.productSlug, removed);
+  }
   return items;
+}
+
+/** Separate from the Meta AddToCart tracking above (which only reaches
+ * Meta's own dashboard) - this is the CRM's own visitor-tracking table, so
+ * cart abandonment ("do którego miejsca dochodzą") is actually queryable
+ * in-house, not just visible as an aggregate ad-platform funnel number. */
+function trackCartEventToCrm(eventName: string, productSlug: string, item: CartLineItem): void {
+  if (typeof window === "undefined") return;
+  let sessionToken = "";
+  try {
+    sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+  } catch {
+    // sessionStorage niedostępny - event i tak poleci bez grupowania w sesję.
+  }
+  void import("@/lib/shop-public")
+    .then(({ trackStorefrontEvent }) =>
+      trackStorefrontEvent({
+        event_name: eventName,
+        event_label: productSlug,
+        page_slug: window.location.pathname + window.location.search,
+        session_token: sessionToken,
+        device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+        meta: { product_slug: productSlug, qty: item.qty, total: item.total },
+      }),
+    )
+    .catch(() => {
+      /* tracking never blocks the cart */
+    });
 }
 
 export function updateCartItemQty(id: string, qty: number): CartLineItem[] {

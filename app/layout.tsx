@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import LastPageTracker from "./components/last-page-tracker";
 import ConsentBanner from "./components/consent-banner";
+import SiteAnalytics from "./components/site-analytics";
 
 export const metadata: Metadata = {
   title: "KEIKA | Rolety i Markizy na Wymiar",
@@ -41,6 +42,7 @@ export default function RootLayout({
       </head>
       <body>
         <LastPageTracker />
+        <SiteAnalytics />
         {children}
         <ConsentBanner />
       </body>
