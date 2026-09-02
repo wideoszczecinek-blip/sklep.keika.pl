@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import MoskitieryFlowEntry from "@/features/moskitiery/MoskitieryFlowEntry";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useScrolledPast } from "@/lib/use-scrolled";
+import CatalogHeader from "@/app/components/catalog-header";
 
 type ProductItem = {
   name?: string;
@@ -1390,44 +1391,13 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
           : undefined,
       }}
     >
-      <header className={`hero-header${isHeaderCompact ? " is-compact" : ""}`}>
-        <div className="header-left">
-          <Link className="brand" href="/" aria-label="KEIKA strona główna">
-            {logoUrl ? (
-              <img src={optimizeImageUrl(logoUrl, 240)} alt={branding.site_title || "KEIKA"} className="brand-logo" />
-            ) : (
-              branding.site_title || "KEIKA"
-            )}
-          </Link>
-          <div className="top-links-wrap">
-            <button type="button" className="top-links-toggle" aria-expanded="false">
-              <span className="top-links-toggle-label">Menu</span>
-              <span className="top-links-toggle-icon" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </span>
-            </button>
-            <nav className="top-links-dropdown" aria-label="Menu dodatkowe">
-              {topLinks.map((entry) => (
-                <a key={`${entry.label}-${entry.url}`} href={entry.url || "#"}>
-                  {entry.label || "Link"}
-                </a>
-              ))}
-            </nav>
-          </div>
-        </div>
-        <div className="header-actions">
-          {/* Light theme only now, no per-visitor toggle. */}
-          <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
-            {contactPhone}
-          </a>
-          <a className="header-cart has-items" href="#koszyk">
-            <span className="header-cart-title">Koszyk</span>
-            <small>Przejdź do koszyka</small>
-          </a>
-        </div>
-      </header>
+      <CatalogHeader
+        logoUrl={logoUrl}
+        siteTitle={branding.site_title || "KEIKA"}
+        topLinks={topLinks}
+        contactPhone={contactPhone}
+        isCompact={isHeaderCompact}
+      />
 
       <main className="catalog-main">
         {loading ? (
