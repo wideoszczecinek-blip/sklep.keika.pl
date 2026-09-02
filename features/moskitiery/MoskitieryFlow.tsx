@@ -574,6 +574,45 @@ export default function MoskitieryFlow({
   const [clickCount, setClickCount] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
 
+  // This standalone route never gets the site's normal <header> (logo,
+  // menu, cart) - it renders directly under /konfigurator/[slug] with
+  // nothing above it, so the dark hero below ended up doubling as a
+  // de-facto page header on mobile. A small persistent light bar (menu +
+  // cart, same pattern the rest of the shop uses) fixes both: a real,
+  // navigable header exists, and it isn't dark.
+  const [cartCount, setCartCount] = useState(0);
+  const [miniMenuOpen, setMiniMenuOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function syncCartCount() {
+      try {
+        const { readCartSummary } = await import("@/lib/cart");
+        if (!cancelled) setCartCount(readCartSummary().items);
+      } catch {
+        // Koszyk niedostępny w tym kontekście - licznik zostaje na 0.
+      }
+    }
+    void syncCartCount();
+    window.addEventListener("keika-cart-updated", syncCartCount);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("keika-cart-updated", syncCartCount);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!miniMenuOpen) return;
+    function handleOutsideClick(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (!target.closest(`.${styles.miniHeaderMenuWrap}`)) {
+        setMiniMenuOpen(false);
+      }
+    }
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
+  }, [miniMenuOpen]);
+
   const sessionTokenRef = useRef("");
   const sessionStartedMsRef = useRef(Date.now());
   const sessionStartedAtRef = useRef(new Date().toISOString());
@@ -1264,9 +1303,52 @@ export default function MoskitieryFlow({
     selectedProduct,
   ]);
 
+  const miniHeader = (
+    <header className={styles.miniHeader}>
+      <div className={styles.miniHeaderMenuWrap}>
+        <button
+          type="button"
+          className={styles.miniHeaderMenuBtn}
+          aria-label={miniMenuOpen ? "Zamknij menu" : "Otwórz menu"}
+          aria-expanded={miniMenuOpen}
+          onClick={() => setMiniMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        {miniMenuOpen ? (
+          <div className={styles.miniHeaderDropdown}>
+            <a href="/">Strona główna</a>
+            <a href="/kategoria/moskitiery">Moskitiery</a>
+            <a href="/koszyk">Koszyk</a>
+          </div>
+        ) : null}
+      </div>
+      <a href="/" className={styles.miniHeaderBrand}>
+        keika
+      </a>
+      <a href="/koszyk" className={styles.miniHeaderCartBtn} aria-label="Koszyk">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M3 4h2l1.6 9.6a2 2 0 0 0 2 1.65h8.2a2 2 0 0 0 1.96-1.6L20 8H6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="9" cy="19.5" r="1.4" fill="currentColor" />
+          <circle cx="17" cy="19.5" r="1.4" fill="currentColor" />
+        </svg>
+        {cartCount > 0 ? <span className={styles.miniHeaderCartBadge}>{cartCount}</span> : null}
+      </a>
+    </header>
+  );
+
   if (loading) {
     return (
       <div className={styles.pageShell}>
+        {miniHeader}
         <section className={styles.loadingCard}>
           Ładuję konfigurator sklepu WWW…
         </section>
@@ -1277,6 +1359,7 @@ export default function MoskitieryFlow({
   if (errorMessage && !config) {
     return (
       <div className={styles.pageShell}>
+        {miniHeader}
         <section className={styles.loadingCard}>{errorMessage}</section>
       </div>
     );
@@ -1284,6 +1367,7 @@ export default function MoskitieryFlow({
 
   return (
     <div className={styles.pageShell}>
+      {miniHeader}
       <section
         className={styles.hero}
         style={

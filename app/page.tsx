@@ -818,25 +818,23 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   }
 }
 
-/** Renders children through a portal to document.body on mobile, in place
- * otherwise. Needed for the "Dodano do koszyka!" overlay: it lives inside
+/** Renders children through a portal to document.body, at every width.
+ * Needed for the "Dodano do koszyka!" overlay: it lives inside
  * .hero-product-config-panel, an ancestor that gets `transform` during its
  * own fade-in/out animation - which makes it the containing block for any
  * `position: fixed` descendant (a CSS rule, not a bug), so the overlay was
  * centering itself within that panel's box instead of the real viewport.
- * Portaling out to <body> escapes that entirely. useLayoutEffect (not
- * useEffect) so the mobile check lands before paint - this only ever mounts
- * client-side (after "Dodaj do koszyka"), never during SSR. */
+ * On desktop this also meant the toast was rendered in place (no portal),
+ * sitting inline inside that narrow side column - it looked like a stray
+ * half-width sliver of the section instead of a confirmation. Portaling out
+ * to <body> unconditionally escapes both problems at once. This only ever
+ * mounts client-side (after "Dodaj do koszyka"), never during SSR. */
 function MobileOverlayPortal({ children }: { children: React.ReactNode }) {
-  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
   useLayoutEffect(() => {
-    const mql = window.matchMedia("(max-width: 760px)");
-    const update = () => setIsMobile(mql.matches);
-    update();
-    mql.addEventListener("change", update);
-    return () => mql.removeEventListener("change", update);
+    setMounted(true);
   }, []);
-  if (!isMobile) return <>{children}</>;
+  if (!mounted) return <>{children}</>;
   return createPortal(children, document.body);
 }
 

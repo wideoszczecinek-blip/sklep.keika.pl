@@ -2928,6 +2928,31 @@ html[data-theme="light"] .hero-product-gradient-bg {
   align-items: center;
 }
 
+/* "Dodano do koszyka!" - a fixed, viewport-centered overlay so it's never at
+   the mercy of scroll position or, on desktop, confined to the width of the
+   narrow .hero-product-config-panel side column it lives inside (which made
+   it look like a stray half-width sliver of the section instead of the
+   confirmation it is). Applies at every width now, not just mobile - see
+   MobileOverlayPortal in page.tsx for why this is safe to portal to <body>
+   at any size. */
+.hero-product-added-toast-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(5, 13, 24, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.hero-product-added-toast-overlay .hero-product-mini-summary-body {
+  width: min(94vw, 420px);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
 @media (max-width: 480px) {
   .hero-product-mini-summary-body {
     grid-template-columns: 1fr;
@@ -5853,29 +5878,6 @@ html[data-theme="light"] .instruction-modal-nav {
     padding-bottom: 60vh;
   }
 
-  /* "Dodano do koszyka!" - scrolling it into view (even centered) kept
-     landing wrong depending on exactly where the customer had scrolled to
-     and how much the panel's content height changed in that same instant.
-     A fixed, viewport-centered overlay sidesteps all of that - it's always
-     centered by construction, regardless of scroll position. */
-  .hero-product-added-toast-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 90;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1.2rem;
-    background: rgba(5, 13, 24, 0.72);
-    backdrop-filter: blur(6px);
-  }
-
-  .hero-product-added-toast-overlay .hero-product-mini-summary-body {
-    width: min(94vw, 420px);
-    max-height: 85vh;
-    overflow-y: auto;
-  }
-
   /* Explicit 2 equal columns, not a single "1fr" track - with only one
      explicit column, .hardware-card.is-last-solo's `grid-column: 2 / span 1`
      (meant to center a leftover 7th swatch under a 3-column desktop grid)
@@ -7061,6 +7063,40 @@ html[data-theme="light"] .cart-page-gradient-bg {
   margin: 0;
   font-size: 0.78rem;
   color: #ff9d9d;
+}
+
+.cart-promo-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px dashed rgba(255, 127, 0, 0.55);
+  border-radius: 0.7rem;
+  background: linear-gradient(120deg, rgba(255, 159, 10, 0.14), rgba(255, 123, 0, 0.08));
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.cart-promo-banner:hover {
+  border-color: rgba(255, 123, 0, 0.85);
+  background: linear-gradient(120deg, rgba(255, 159, 10, 0.2), rgba(255, 123, 0, 0.12));
+  transform: translateY(-1px);
+}
+
+.cart-promo-banner-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #b45309;
+}
+
+.cart-promo-banner-price {
+  font-size: 1.3rem;
+  color: #c2410c;
 }
 
 .cart-payment-method-badge {

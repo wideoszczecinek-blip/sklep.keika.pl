@@ -343,6 +343,14 @@ export default function CartPage() {
   const [discountChecking, setDiscountChecking] = useState(false);
   const [discountError, setDiscountError] = useState("");
 
+  // Standing "SEZON20" promo preview shown under the total to nudge people
+  // who haven't typed a code in yet - fetched read-only (same endpoint the
+  // "Sprawdź" button uses) so it silently disappears if the code ever
+  // expires or gets deactivated, instead of advertising a dead promo.
+  const [sezon20Promo, setSezon20Promo] = useState<{ type: "percent" | "amount"; value: number; amount: number } | null>(
+    null,
+  );
+
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [legalContent, setLegalContent] = useState<{ title: string; bodyHtml: string } | null>(null);
   const [legalLoading, setLegalLoading] = useState(false);
@@ -632,8 +640,8 @@ export default function CartPage() {
     }
   }
 
-  async function checkDiscountCode() {
-    const code = discountCodeInput.trim();
+  async function checkDiscountCode(codeOverride?: string) {
+    const code = (codeOverride ?? discountCodeInput).trim();
     if (!code) return;
     setDiscountChecking(true);
     setDiscountError("");
@@ -655,6 +663,40 @@ export default function CartPage() {
     } finally {
       setDiscountChecking(false);
     }
+  }
+
+  // Silent, error-swallowing preview of the standing SEZON20 promo (distinct
+  // from checkDiscountCode above, which is user-triggered and surfaces
+  // errors) - refetched whenever the subtotal changes since the code's
+  // discount amount depends on it, skipped entirely once any code (SEZON20
+  // or otherwise) is actually applied.
+  useEffect(() => {
+    if (appliedDiscount || summary.total <= 0) {
+      setSezon20Promo(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/discount_code_check.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "SEZON20", subtotal: summary.total }),
+    })
+      .then((response) => response.json())
+      .then((json: DiscountCheckResponse) => {
+        if (cancelled) return;
+        setSezon20Promo(json.ok && json.discount ? json.discount : null);
+      })
+      .catch(() => {
+        if (!cancelled) setSezon20Promo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appliedDiscount, summary.total]);
+
+  function applySezon20Promo() {
+    setDiscountCodeInput("SEZON20");
+    void checkDiscountCode("SEZON20");
   }
 
   function removeDiscountCode() {
@@ -1259,7 +1301,7 @@ export default function CartPage() {
                             />
                             <button
                               type="button"
-                              onClick={checkDiscountCode}
+                              onClick={() => checkDiscountCode()}
                               disabled={discountChecking || !discountCodeInput.trim()}
                             >
                               {discountChecking ? "Sprawdzam…" : "Sprawdź"}
@@ -1307,6 +1349,28 @@ export default function CartPage() {
                           )}
                         </strong>
                       </div>
+
+                      {sezon20Promo ? (
+                        <button type="button" className="cart-promo-banner" onClick={applySezon20Promo}>
+                          <span className="cart-promo-banner-label">
+                            Zamów z kodem rabatowym SEZON20{" "}
+                            {sezon20Promo.type === "percent"
+                              ? `-${sezon20Promo.value.toLocaleString("pl-PL")}%`
+                              : `-${formatPln(sezon20Promo.value)}`}
+                          </span>
+                          <strong className="cart-promo-banner-price">
+                            {formatPln(
+                              Math.max(
+                                0,
+                                summary.total -
+                                  sezon20Promo.amount +
+                                  orderSurcharge +
+                                  (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
+                              ),
+                            )}
+                          </strong>
+                        </button>
+                      ) : null}
                     </>
                   ) : null}
 

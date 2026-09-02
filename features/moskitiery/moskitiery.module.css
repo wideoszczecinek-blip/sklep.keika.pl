@@ -27,6 +27,126 @@
   color: #475569;
 }
 
+/* This standalone route (/konfigurator/[slug]) never gets the shop's normal
+   header - it renders with nothing above it, so .hero below used to double
+   as a de-facto page header: dark, and with no way back to the rest of the
+   shop. A small persistent light bar fixes both at once. Sticky (not
+   fixed) so it simply stays docked at the top as the page scrolls, inset
+   by .pageShell's own padding rather than bleeding to the screen edges. */
+.miniHeader {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+}
+
+.miniHeaderMenuWrap {
+  position: relative;
+}
+
+.miniHeaderMenuBtn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+}
+
+.miniHeaderMenuBtn span {
+  display: block;
+  width: 16px;
+  height: 2px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: #0f172a;
+}
+
+.miniHeaderBrand {
+  font-family: var(--font-heading, inherit);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.miniHeaderCartBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(13, 148, 136, 0.1);
+  color: #0f766e;
+}
+
+.miniHeaderCartBtn svg {
+  width: 19px;
+  height: 19px;
+}
+
+.miniHeaderCartBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  background: #ff7b00;
+  color: #fff;
+}
+
+.miniHeaderDropdown {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  min-width: 200px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16);
+}
+
+.miniHeaderDropdown a {
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #0f172a;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.miniHeaderDropdown a:hover {
+  background: rgba(13, 148, 136, 0.08);
+}
+
 .hero {
   position: relative;
   display: grid;
