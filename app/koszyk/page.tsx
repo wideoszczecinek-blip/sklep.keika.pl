@@ -80,10 +80,14 @@ const PACZKOMAT_MAX_DIMENSION_MM = 640;
 const COD_SURCHARGE_AMOUNT = 25.9;
 const COD_DELIVERY_METHOD_ID = "pobranie";
 
-// No real per-carrier shipping cost data exists yet, so every method is
-// shown free (except cash-on-delivery's real surcharge), matching the site's
-// existing blanket "Darmowa dostawa" promise rather than inventing price tiers.
-//
+// Darmowa dostawa od 99 zł - poniżej tej kwoty koszyk dolicza stały koszt
+// wysyłki. Odbiór osobisty jest zawsze bez opłaty (nic nie jest fizycznie
+// wysyłane), płatność za pobraniem dolicza swoją odrębną, już istniejącą
+// dopłatę (COD_SURCHARGE_AMOUNT) NIEZALEŻNIE od kosztu samej wysyłki - obie
+// się sumują poniżej progu.
+const FREE_SHIPPING_THRESHOLD = 99;
+const SHIPPING_FEE_AMOUNT = 12.9;
+
 // The customer just picks "Kurier" - which actual carrier (DPD, GLS, ...)
 // ships it is our own internal decision made during fulfillment, not
 // something we ask them to choose.
@@ -109,15 +113,21 @@ const COD_DELIVERY_METHOD: DeliveryMethod = {
   id: COD_DELIVERY_METHOD_ID,
   label: "Kurier - płatność za pobraniem",
   description: "Płacisz kurierowi gotówką lub kartą przy odbiorze",
-  extraFee: COD_SURCHARGE_AMOUNT,
 };
 
-function getAvailableDeliveryMethods(items: CartLineItem[]): DeliveryMethod[] {
+function getAvailableDeliveryMethods(items: CartLineItem[], subtotal: number): DeliveryMethod[] {
   const fitsPaczkomat =
     items.length > 0 &&
     items.every((item) => item.widthMm <= PACZKOMAT_MAX_DIMENSION_MM && item.heightMm <= PACZKOMAT_MAX_DIMENSION_MM);
-  const courierMethods = fitsPaczkomat ? [COURIER_METHOD, PACZKOMAT_METHOD] : [COURIER_METHOD];
-  return [...courierMethods, COD_DELIVERY_METHOD, PICKUP_METHOD];
+  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? undefined : SHIPPING_FEE_AMOUNT;
+  const courier: DeliveryMethod = { ...COURIER_METHOD, extraFee: shippingFee };
+  const paczkomat: DeliveryMethod = { ...PACZKOMAT_METHOD, extraFee: shippingFee };
+  const cod: DeliveryMethod = {
+    ...COD_DELIVERY_METHOD,
+    extraFee: (shippingFee || 0) + COD_SURCHARGE_AMOUNT,
+  };
+  const courierMethods = fitsPaczkomat ? [courier, paczkomat] : [courier];
+  return [...courierMethods, cod, PICKUP_METHOD];
 }
 
 type ExtraCharge = {
@@ -431,7 +441,11 @@ export default function CartPage() {
 
   const summary = summarizeCartItems(items);
   const orderSurcharge = calcCartOversizeSurcharge(items);
-  const availableDeliveryMethods = getAvailableDeliveryMethods(items);
+  const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
+  // Odbiór osobisty nigdy nie ma kosztu wysyłki - nic nie jest wysyłane.
+  const shippingFee =
+    deliveryMethod === PICKUP_METHOD.id || summary.total >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE_AMOUNT;
+  const amountToFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - summary.total);
 
   useEffect(() => {
     if (!availableDeliveryMethods.some((method) => method.id === deliveryMethod)) {
@@ -592,7 +606,7 @@ export default function CartPage() {
       // they're committing to accept on delivery, not just the code.
       const codTotal = Math.max(
         0,
-        summary.total - (appliedDiscount?.amount || 0) + orderSurcharge + COD_SURCHARGE_AMOUNT,
+        summary.total - (appliedDiscount?.amount || 0) + shippingFee + orderSurcharge + COD_SURCHARGE_AMOUNT,
       );
       const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/cod_sms_start.php", {
         method: "POST",
@@ -721,6 +735,13 @@ export default function CartPage() {
           summary: "Dopłata za przesyłkę dłużycową (jednorazowo dla całego zamówienia)",
         },
         {
+          id: "position-shipping-fee",
+          slug: "koszt-dostawy",
+          label: "Koszt dostawy",
+          amount: shippingFee,
+          summary: `Koszt dostawy (poniżej progu darmowej dostawy ${FREE_SHIPPING_THRESHOLD} zł)`,
+        },
+        {
           id: "position-cod-fee",
           slug: "doplata-platnosc-za-pobraniem",
           label: "Dopłata za płatność za pobraniem",
@@ -831,6 +852,7 @@ export default function CartPage() {
     paymentMethod,
     codSms.token,
     orderSurcharge,
+    shippingFee,
     appliedDiscount,
   ]);
 
@@ -1323,6 +1345,12 @@ export default function CartPage() {
                           <span>-{formatPln(appliedDiscount.amount)}</span>
                         </div>
                       ) : null}
+                      {deliveryMethod !== PICKUP_METHOD.id ? (
+                        <div className="cart-page-summary-row is-muted">
+                          <span>Koszt dostawy</span>
+                          <span>{shippingFee > 0 ? formatPln(shippingFee) : "Gratis"}</span>
+                        </div>
+                      ) : null}
                       {orderSurcharge > 0 ? (
                         <div className="cart-page-summary-row is-muted">
                           <span>Dopłata za przesyłkę dłużycową</span>
@@ -1343,12 +1371,22 @@ export default function CartPage() {
                               0,
                               summary.total -
                                 (appliedDiscount?.amount || 0) +
+                                shippingFee +
                                 orderSurcharge +
                                 (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
                             ),
                           )}
                         </strong>
                       </div>
+
+                      {shippingFee > 0 && amountToFreeShipping > 0 ? (
+                        <p className="cart-free-shipping-progress">
+                          Dodaj produkty za jeszcze <strong>{formatPln(amountToFreeShipping)}</strong>, aby otrzymać{" "}
+                          <strong>darmową dostawę</strong>.
+                        </p>
+                      ) : deliveryMethod !== PICKUP_METHOD.id ? (
+                        <p className="cart-free-shipping-progress is-qualified">✓ Twoje zamówienie kwalifikuje się do darmowej dostawy.</p>
+                      ) : null}
 
                       {sezon20Promo ? (
                         <button type="button" className="cart-promo-banner" onClick={applySezon20Promo}>
@@ -1364,6 +1402,7 @@ export default function CartPage() {
                                 0,
                                 summary.total -
                                   sezon20Promo.amount +
+                                  shippingFee +
                                   orderSurcharge +
                                   (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
                               ),

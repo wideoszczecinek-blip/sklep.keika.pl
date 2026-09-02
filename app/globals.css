@@ -7065,6 +7065,26 @@ html[data-theme="light"] .cart-page-gradient-bg {
   color: #ff9d9d;
 }
 
+.cart-free-shipping-progress {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  background: rgba(14, 124, 119, 0.08);
+  color: #0e7c77;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.cart-free-shipping-progress strong {
+  color: #0a5f5b;
+}
+
+.cart-free-shipping-progress.is-qualified {
+  background: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+  font-weight: 700;
+}
+
 .cart-promo-banner {
   display: flex;
   flex-direction: column;

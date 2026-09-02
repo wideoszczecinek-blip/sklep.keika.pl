@@ -538,7 +538,7 @@ export default function MoskitieryLandingClient({
 
           <div className={styles.heroCopy}>
             <div className={styles.heroEyebrowRow}>
-              <span className={styles.deliveryPulse}>Darmowa dostawa</span>
+              <span className={styles.deliveryPulse}>Darmowa dostawa od 99 zł</span>
               <div className={styles.heroHint}>
                 <p>
                   Zamów do 15:00. Wysyłka <strong>{deliveryInfo.shippingLabel}</strong>, dostawa{" "}

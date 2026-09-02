@@ -2188,7 +2188,7 @@ export default function Home() {
                                 </span>
                               ) : null}
                               <span className="pl-chip">5 lat gwarancji</span>
-                              <span className="pl-chip">Darmowa dostawa</span>
+                              <span className="pl-chip">Darmowa dostawa od 99 zł</span>
                             </div>
 
                             <p className="pl-subtitle">
@@ -2270,7 +2270,7 @@ export default function Home() {
                                 <span className="pl-price-unit"> / szt.</span>
                               </span>
                               <span className="pl-chip">400+ modeli okien</span>
-                              <span className="pl-chip">Darmowa dostawa</span>
+                              <span className="pl-chip">Darmowa dostawa od 99 zł</span>
                             </div>
 
                             <p className="pl-subtitle">
@@ -2329,7 +2329,7 @@ export default function Home() {
                             <div className="pl-trust-row">
                               {productLanding.priceFrom ? <span className="pl-price">{productLanding.priceFrom}</span> : null}
                               <span className="pl-chip">5 lat gwarancji</span>
-                              <span className="pl-chip">Darmowa dostawa</span>
+                              <span className="pl-chip">Darmowa dostawa od 99 zł</span>
                             </div>
                             {productLanding.subtitle ? <p className="pl-subtitle">{productLanding.subtitle}</p> : null}
                             <div className="pl-benefits">
