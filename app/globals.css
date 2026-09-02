@@ -5394,10 +5394,16 @@ html[data-theme="light"] .instruction-modal-nav {
   /* The header has no background by design on the full-bleed hero (it sits
      over a static photo there). Now that the product view scrolls beneath
      it, transparent meant scrolled-past text/buttons showed straight
-     through the header - give it a solid backdrop only in that state. */
+     through the header - give it a solid backdrop only in that state. Light,
+     not the dark rgba(5,13,24,...) this used to be - every element inside
+     (.brand, .top-links-toggle, .hero-product-menu-toggle, .header-cart)
+     already carries a light-theme override for the transparent/photo state,
+     so a dark backdrop here specifically read as a leftover dark surface
+     the moment someone opened a product on mobile. */
   .home-root.product-focus-active .hero-header {
-    background: rgba(5, 13, 24, 0.86);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(10px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
   }
 
   .hero-menu-card {
