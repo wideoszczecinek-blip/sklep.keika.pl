@@ -33,9 +33,17 @@
    shop. A small persistent light bar fixes both at once. Sticky (not
    fixed) so it simply stays docked at the top as the page scrolls, inset
    by .pageShell's own padding rather than bleeding to the screen edges. */
+/* Fixed, not sticky: .hero's own min-content width can exceed the
+   viewport on narrow screens (it scrolls the page horizontally rather than
+   wrapping), and a sticky element inherits its containing block's box - it
+   was growing past the viewport edge right along with it, taking the cart
+   button off-screen. Fixed anchors to the real viewport via left/right
+   regardless of what the rest of the page does. */
 .miniHeader {
-  position: sticky;
-  top: 0;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  right: 12px;
   z-index: 40;
   display: flex;
   align-items: center;
@@ -47,6 +55,13 @@
   background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(14px);
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+}
+
+/* Reserves the room .miniHeader's fixed positioning removed from flow -
+   without this the hero sat right under the real viewport top, hidden
+   behind the bar. */
+.miniHeaderSpacer {
+  height: 54px;
 }
 
 .miniHeaderMenuWrap {

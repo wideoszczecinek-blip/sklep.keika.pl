@@ -1349,6 +1349,7 @@ export default function MoskitieryFlow({
     return (
       <div className={styles.pageShell}>
         {miniHeader}
+        <div className={styles.miniHeaderSpacer} aria-hidden="true" />
         <section className={styles.loadingCard}>
           Ładuję konfigurator sklepu WWW…
         </section>
@@ -1360,6 +1361,7 @@ export default function MoskitieryFlow({
     return (
       <div className={styles.pageShell}>
         {miniHeader}
+        <div className={styles.miniHeaderSpacer} aria-hidden="true" />
         <section className={styles.loadingCard}>{errorMessage}</section>
       </div>
     );
@@ -1368,6 +1370,7 @@ export default function MoskitieryFlow({
   return (
     <div className={styles.pageShell}>
       {miniHeader}
+      <div className={styles.miniHeaderSpacer} aria-hidden="true" />
       <section
         className={styles.hero}
         style={
