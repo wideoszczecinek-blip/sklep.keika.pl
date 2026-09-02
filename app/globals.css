@@ -1887,6 +1887,44 @@ html[data-theme="light"] .hero-product-gradient-bg {
   border-radius: 0.9rem;
 }
 
+/* "Zamów dziś, wyślemy w <dzień>" - same real capacity system as the
+   Allegro configurator's own belka, not a fake countdown. Light palette
+   directly (no separate [data-theme=light] override) - this class is new,
+   never rendered dark. */
+.pl-shipping-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: 0.8rem;
+  background: rgba(14, 124, 119, 0.09);
+  border: 1px solid rgba(14, 124, 119, 0.28);
+}
+
+.pl-shipping-banner-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  flex: none;
+}
+
+.pl-shipping-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pl-shipping-banner-text strong {
+  color: #0e7c77;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.pl-shipping-banner-text small {
+  color: rgba(19, 40, 67, 0.62);
+  font-size: 0.78rem;
+}
+
 .pl-spec-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

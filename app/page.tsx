@@ -962,6 +962,37 @@ export default function Home() {
   // which nav pill is highlighted (via the scroll-spy effect below) instead
   // of which content is rendered.
   const [activeProductTab, setActiveProductTab] = useState<ProductTabKey>("opis");
+  // "Zamów dziś, wyślemy w <dzień>" - same real daily-capacity system
+  // already driving this on the Allegro configurator (shipping_banner.php
+  // proxies allegro_configurator_public_offer_shipping_banner() directly),
+  // not a separate/fake promise - one shared production queue regardless of
+  // which storefront the order came in through.
+  const [shippingBanner, setShippingBanner] = useState<{ headline: string; cta_text: string } | null>(null);
+  useEffect(() => {
+    const slug = productSlugFromSelected(displayedProduct);
+    if (!slug) {
+      setShippingBanner(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`https://crm-keika.groovemedia.pl/biuro/api/shop-public/shipping_banner.php?product=${encodeURIComponent(slug)}`)
+      .then((response) => response.json())
+      .then((json: { ok: boolean; banner?: { available?: boolean; headline?: string; cta_text?: string } }) => {
+        if (cancelled) return;
+        const banner = json.ok ? json.banner : null;
+        setShippingBanner(
+          banner && banner.available && banner.headline
+            ? { headline: banner.headline, cta_text: banner.cta_text || "" }
+            : null,
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setShippingBanner(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayedProduct]);
   const opisSectionRef = useRef<HTMLElement | null>(null);
   const galeriaSectionRef = useRef<HTMLElement | null>(null);
   const opinieSectionRef = useRef<HTMLElement | null>(null);
@@ -2271,6 +2302,16 @@ export default function Home() {
                             <p className="pl-subtitle">
                               {productLanding?.subtitle || "Na wymiar, bez wiercenia, mocna rama aluminiowa i wzmocniona siatka."}
                             </p>
+
+                            {shippingBanner ? (
+                              <div className="pl-shipping-banner">
+                                <span className="pl-shipping-banner-icon" aria-hidden="true">🚚</span>
+                                <span className="pl-shipping-banner-text">
+                                  <strong>{shippingBanner.headline}</strong>
+                                  {shippingBanner.cta_text ? <small>{shippingBanner.cta_text}</small> : null}
+                                </span>
+                              </div>
+                            ) : null}
 
                             <video
                               className="pl-hero-banner"

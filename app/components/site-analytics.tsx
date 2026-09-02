@@ -133,5 +133,29 @@ export default function SiteAnalytics() {
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
+  // The CRM's "ilość osób online" counts anyone with an event in the last
+  // 2 minutes - without this, that only ever caught someone mid-click,
+  // undercounting anyone just reading a page. A heartbeat while the tab is
+  // actually visible (not backgrounded/minimized) keeps a real visitor
+  // "online" the whole time they're genuinely looking at the site.
+  useEffect(() => {
+    function beat() {
+      if (document.visibilityState !== "visible") return;
+      sendBeaconEvent({
+        event_name: "heartbeat",
+        page_slug: window.location.pathname + window.location.search,
+        session_token: sessionTokenRef.current,
+        device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+      });
+    }
+    beat();
+    const interval = window.setInterval(beat, 45000);
+    document.addEventListener("visibilitychange", beat);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", beat);
+    };
+  }, []);
+
   return null;
 }
