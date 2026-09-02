@@ -2928,29 +2928,16 @@ html[data-theme="light"] .hero-product-gradient-bg {
   align-items: center;
 }
 
-/* "Dodano do koszyka!" - a fixed, viewport-centered overlay so it's never at
-   the mercy of scroll position or, on desktop, confined to the width of the
-   narrow .hero-product-config-panel side column it lives inside (which made
-   it look like a stray half-width sliver of the section instead of the
-   confirmation it is). Applies at every width now, not just mobile - see
-   MobileOverlayPortal in page.tsx for why this is safe to portal to <body>
-   at any size. */
-.hero-product-added-toast-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.2rem;
-  background: rgba(5, 13, 24, 0.72);
-  backdrop-filter: blur(6px);
-}
-
+/* The actual width bug (all widths, not just mobile): .hero-product-mini-summary-body
+   is a 2-column grid built for a real product summary (icon column + details
+   column) - the toast only ever puts ONE child in there
+   (.hero-product-added-toast), so it sat in just the first column with the
+   second left empty, reading as "half the section" even though the outer
+   card itself was already full width. Single column here so it actually
+   fills whatever width it has, on the mobile overlay below and in its
+   normal in-page spot on desktop. */
 .hero-product-added-toast-overlay .hero-product-mini-summary-body {
-  width: min(94vw, 420px);
-  max-height: 85vh;
-  overflow-y: auto;
+  grid-template-columns: 1fr;
 }
 
 @media (max-width: 480px) {
@@ -5909,6 +5896,34 @@ html[data-theme="light"] .instruction-modal-nav {
        with no way to bring it fully into view. This reserves scroll room
        so any step can always be scrolled flush under the header. */
     padding-bottom: 60vh;
+  }
+
+  /* "Dodano do koszyka!" - scrolling it into view (even centered) kept
+     landing wrong depending on exactly where the customer had scrolled to
+     and how much the panel's content height changed in that same instant.
+     A fixed, viewport-centered overlay sidesteps all of that - it's always
+     centered by construction, regardless of scroll position. Mobile only:
+     on desktop this popped the confirmation out of the configurator
+     section into a dimmed, dead-center modal that read as an unrelated
+     popup - it stays in its normal spot there (see MobileOverlayPortal in
+     page.tsx), the real bug being its width, fixed above in
+     .hero-product-added-toast-overlay .hero-product-mini-summary-body. */
+  .hero-product-added-toast-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.2rem;
+    background: rgba(5, 13, 24, 0.72);
+    backdrop-filter: blur(6px);
+  }
+
+  .hero-product-added-toast-overlay .hero-product-mini-summary-body {
+    width: min(94vw, 420px);
+    max-height: 85vh;
+    overflow-y: auto;
   }
 
   /* Explicit 2 equal columns, not a single "1fr" track - with only one
