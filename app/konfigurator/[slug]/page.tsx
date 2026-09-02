@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import MoskitieryFlowEntry from "@/features/moskitiery/MoskitieryFlowEntry";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { useScrolledPast } from "@/lib/use-scrolled";
 
 type ProductItem = {
   name?: string;
@@ -670,6 +671,11 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   const routerSlug = Array.isArray(routerParams?.slug) ? routerParams.slug[0] : routerParams?.slug;
   const propSlug = Array.isArray(params?.slug) ? params?.slug[0] : params?.slug;
   const slug = String(routerSlug || propSlug || "").trim();
+  // Called unconditionally, before the moskitiery early return below, so
+  // hook order stays stable regardless of which branch this slug takes
+  // (Rules of Hooks) - its value is simply unused on the moskitiery branch,
+  // which has its own compact header (see MoskitieryFlow's miniHeader).
+  const isHeaderCompact = useScrolledPast(80);
 
   if (slug.startsWith("moskitiery")) {
     return <MoskitieryFlowEntry initialProductSlug={slug} />;
@@ -1384,7 +1390,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
           : undefined,
       }}
     >
-      <header className="hero-header">
+      <header className={`hero-header${isHeaderCompact ? " is-compact" : ""}`}>
         <div className="header-left">
           <Link className="brand" href="/" aria-label="KEIKA strona główna">
             {logoUrl ? (

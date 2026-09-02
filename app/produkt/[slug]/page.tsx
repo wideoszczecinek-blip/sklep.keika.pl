@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { useScrolledPast } from "@/lib/use-scrolled";
 
 type ProductItem = {
   name?: string;
@@ -442,6 +443,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
     : routerParams?.slug;
   const propSlug = Array.isArray(params?.slug) ? params?.slug?.[0] : params?.slug;
   const slug = String(routerSlug || propSlug || "").trim();
+  const isHeaderCompact = useScrolledPast(80);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
@@ -737,7 +739,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
 
   return (
     <div className="catalog-root" style={{ backgroundImage: bg ? `url(${optimizeImageUrl(bg, 1800, 70)})` : undefined }}>
-      <header className="hero-header">
+      <header className={`hero-header${isHeaderCompact ? " is-compact" : ""}`}>
         <div className="header-left">
           <Link className="brand" href="/" aria-label="KEIKA strona główna">
             {logoUrl ? <img src={optimizeImageUrl(logoUrl, 240)} alt={branding.site_title || "KEIKA"} className="brand-logo" /> : (branding.site_title || "KEIKA")}

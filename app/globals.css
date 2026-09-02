@@ -3510,7 +3510,13 @@ html[data-theme="light"] .hero-product-gradient-bg {
   background: var(--catalog-overlay);
 }
 
-.catalog-root > * {
+/* :not(.hero-header) - this rule and .hero-header's own position:fixed have
+   identical specificity (one class each), and this one came later in the
+   cascade, so it was silently winning and turning the header into a normal
+   in-flow block: it scrolled away instead of staying pinned, which is also
+   why an icon-only "stays visible while scrolling" compact mode below could
+   never have worked before this was found. */
+.catalog-root > *:not(.hero-header) {
   position: relative;
   z-index: 1;
 }
@@ -5321,6 +5327,33 @@ html[data-theme="light"] .instruction-modal-nav {
 
   .hero-header {
     padding-top: 0.75rem;
+    transition: padding 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* Scrolled past the top of the page: the full header (logo, cart
+     label/price) hides, leaving only the hamburger toggle and a small cart
+     icon pinned - matches product.tsx/kategoria/konfigurator's shared
+     useScrolledPast() hook. Needs its own light backdrop now that it's
+     sitting over scrolled-past content instead of the transparent top of
+     the hero photo. */
+  .hero-header.is-compact {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
+  }
+
+  .hero-header.is-compact .brand {
+    display: none;
+  }
+
+  .hero-header.is-compact .header-cart-copy {
+    display: none;
+  }
+
+  .hero-header.is-compact .header-cart {
+    padding: 0.5rem;
   }
 
   .header-left {
