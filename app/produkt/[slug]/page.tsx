@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useScrolledPast } from "@/lib/use-scrolled";
+import { trackStorefrontEvent } from "@/lib/shop-public";
 import CatalogHeader from "@/app/components/catalog-header";
 
 type ProductItem = {
@@ -445,6 +446,21 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
   const propSlug = Array.isArray(params?.slug) ? params?.slug?.[0] : params?.slug;
   const slug = String(routerSlug || propSlug || "").trim();
   const isHeaderCompact = useScrolledPast(80);
+  // This route never called the CRM's own visitor-tracking endpoint at all
+  // (see the matching comment in app/page.tsx) - "Odwiedzający" was missing
+  // every visit that landed here.
+  useEffect(() => {
+    if (!slug) return;
+    void trackStorefrontEvent({
+      event_name: "view_product",
+      event_label: slug,
+      page_slug: `/produkt/${slug}`,
+      device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+      referrer: document.referrer || "",
+      meta: { product_slug: slug },
+    }).catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";

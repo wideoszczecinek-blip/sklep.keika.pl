@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import MoskitieryFlowEntry from "@/features/moskitiery/MoskitieryFlowEntry";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useScrolledPast } from "@/lib/use-scrolled";
+import { trackStorefrontEvent } from "@/lib/shop-public";
 import CatalogHeader from "@/app/components/catalog-header";
 
 type ProductItem = {
@@ -677,6 +678,24 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
   // (Rules of Hooks) - its value is simply unused on the moskitiery branch,
   // which has its own compact header (see MoskitieryFlow's miniHeader).
   const isHeaderCompact = useScrolledPast(80);
+  // Same hook-order reasoning as above. Skips the moskitiery branch inside
+  // the effect (not by conditioning the call) - that flow has its own
+  // separate quote-based tracking in MoskitieryFlow.tsx, tracking it again
+  // here would double-count. Every other product on this route never called
+  // the CRM's own visitor-tracking endpoint at all (see the matching
+  // comment in app/page.tsx).
+  useEffect(() => {
+    if (!slug || slug.startsWith("moskitiery")) return;
+    void trackStorefrontEvent({
+      event_name: "view_configurator",
+      event_label: slug,
+      page_slug: `/konfigurator/${slug}`,
+      device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+      referrer: document.referrer || "",
+      meta: { product_slug: slug },
+    }).catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 
   if (slug.startsWith("moskitiery")) {
     return <MoskitieryFlowEntry initialProductSlug={slug} />;

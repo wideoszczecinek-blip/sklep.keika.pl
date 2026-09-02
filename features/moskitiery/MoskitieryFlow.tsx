@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { trackStorefrontEvent } from "@/lib/shop-public";
 import {
   fetchShopConfiguratorConfig,
   pingShopPresence,
@@ -1188,6 +1189,20 @@ export default function MoskitieryFlow({
 
         sessionTokenRef.current = getOrCreateSessionToken();
         setStoredQuoteLink(getStoredQuoteLink());
+        // This flow (/konfigurator/moskitiery-*) tracks interactions into
+        // the quote's own analytics JSON (shop_www_quotes), but never once
+        // recorded a visit into shop_www_analytics_events - the table the
+        // CRM's "Odwiedzający" tab actually reads. Real ad traffic landing
+        // directly on this route was invisible there.
+        void trackStorefrontEvent({
+          event_name: "view_configurator",
+          event_label: initialProduct?.slug || requestedProductSlug || "moskitiery",
+          page_slug: `/konfigurator/${initialProduct?.slug || requestedProductSlug || "moskitiery-ramkowe"}`,
+          session_token: sessionTokenRef.current,
+          device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+          referrer: document.referrer || "",
+          meta: { product_slug: initialProduct?.slug || requestedProductSlug || "" },
+        }).catch(() => null);
       } catch (error) {
         setErrorMessage("Nie udało się pobrać konfiguracji moskitier.");
         console.error(error);

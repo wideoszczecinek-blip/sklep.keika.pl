@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 // once the whole shop is ready, see header-actions below.
 // import ThemeToggle from "@/app/components/theme-toggle";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { trackStorefrontEvent } from "@/lib/shop-public";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 import {
   type CartLineItem,
@@ -893,6 +894,54 @@ export default function Home() {
   // cart icon. .hero-full - not window - is the real scroll container here
   // (see the scrollIntoView comments elsewhere in this file for why).
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+  // This page (the real destination for most traffic, including every Meta
+  // ad click landing on / or /?produkt=...) never once called the CRM's own
+  // visitor-tracking endpoint - only the separate /moskitiery landing page
+  // did. "Odwiedzający" in the CRM was reporting almost nothing not because
+  // visits weren't happening, but because they were never recorded. A
+  // sessionStorage token groups the events from one visit together instead
+  // of each becoming its own single-event "session".
+  useEffect(() => {
+    let sessionToken = "";
+    try {
+      const key = "keika_shop_session_token";
+      sessionToken = window.sessionStorage.getItem(key) || "";
+      if (!sessionToken) {
+        sessionToken = `s_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        window.sessionStorage.setItem(key, sessionToken);
+      }
+    } catch {
+      // sessionStorage niedostępny (np. tryb prywatny) - event i tak poleci, bez grupowania w sesję.
+    }
+    void trackStorefrontEvent({
+      event_name: "view_storefront",
+      event_label: "homepage",
+      page_slug: "/",
+      session_token: sessionToken,
+      device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+      referrer: document.referrer || "",
+    }).catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!displayedProduct) return;
+    let sessionToken = "";
+    try {
+      sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+    } catch {
+      // patrz komentarz wyżej
+    }
+    void trackStorefrontEvent({
+      event_name: "view_product",
+      event_label: productSlugFromSelected(displayedProduct),
+      page_slug: `/?produkt=${productSlugFromSelected(displayedProduct)}`,
+      session_token: sessionToken,
+      device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+      meta: { product_slug: productSlugFromSelected(displayedProduct) },
+    }).catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayedProduct]);
   useEffect(() => {
     if (!isProductView) {
       setIsHeaderCompact(false);
