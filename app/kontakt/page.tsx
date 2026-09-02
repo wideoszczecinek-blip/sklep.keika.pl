@@ -1,5 +1,6 @@
 import { fetchLegalPage, fetchSiteContent } from "@/lib/shop-public";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
+import ContactForm from "./contact-form";
 
 export default async function ContactPage() {
   const [{ site }, { page }] = await Promise.all([
@@ -21,6 +22,12 @@ export default async function ContactPage() {
             className={styles.legalHtml}
             dangerouslySetInnerHTML={{ __html: page.body_html || "<p>Treść zostanie uzupełniona w CRM.</p>" }}
           />
+        </article>
+
+        <article className={styles.legalCard}>
+          <h1>Napisz do nas</h1>
+          <p className={styles.sectionIntro}>Odpowiadamy najszybciej jak możemy, zwykle w ciągu jednego dnia roboczego.</p>
+          <ContactForm />
         </article>
       </div>
     </main>
