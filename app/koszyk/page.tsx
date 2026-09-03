@@ -103,12 +103,14 @@ const PACZKOMAT_MAX_DIMENSION_MM = 640;
 const COD_SURCHARGE_AMOUNT = 25.9;
 const COD_DELIVERY_METHOD_ID = "pobranie";
 
-// Darmowa dostawa od 99 zł - poniżej tej kwoty koszyk dolicza stały koszt
-// wysyłki. Odbiór osobisty jest zawsze bez opłaty (nic nie jest fizycznie
-// wysyłane), płatność za pobraniem dolicza swoją odrębną, już istniejącą
-// dopłatę (COD_SURCHARGE_AMOUNT) NIEZALEŻNIE od kosztu samej wysyłki - obie
-// się sumują poniżej progu.
-const FREE_SHIPPING_THRESHOLD = 99;
+// Darmowa dostawa od 79 zł liczonych PO wszelkich rabatach (decyzja
+// właściciela 2026-09-03 - typowa pojedyncza moskitiera z kodem SEZON20 to
+// ~95 zł, więc przy progu 99 zł prawie każde pojedyncze zamówienie płaciło
+// za dostawę). Poniżej tej kwoty koszyk dolicza stały koszt wysyłki. Odbiór
+// osobisty jest zawsze bez opłaty (nic nie jest fizycznie wysyłane),
+// płatność za pobraniem dolicza swoją odrębną dopłatę (COD_SURCHARGE_AMOUNT)
+// NIEZALEŻNIE od kosztu samej wysyłki - obie się sumują poniżej progu.
+const FREE_SHIPPING_THRESHOLD = 79;
 const SHIPPING_FEE_AMOUNT = 12.9;
 
 // The customer just picks "Kurier" - which actual carrier (DPD, GLS, ...)
