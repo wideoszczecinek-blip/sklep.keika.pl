@@ -77,14 +77,11 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     const redirectStatus = searchParams.get("redirect_status");
     if (searchParams.get("from_payment") === "1" && (redirectStatus === "succeeded" || redirectStatus === "processing")) {
       clearCart();
-      // Meta Purchase (przeglądarka) dla metod redirectowych (BLIK/wallets),
-      // które nie potwierdzają się inline na /koszyk. event_id = order_code
-      // -> deduplikacja z serwerowym Purchase z CRM (który niesie wartość).
-      void import("@/lib/tracking")
-        .then(({ track }) => {
-          track("Purchase", { currency: "PLN", order_id: orderCode }, { eventId: orderCode, skipCapi: true });
-        })
-        .catch(() => {});
+      // Meta Purchase leci WYŁĄCZNIE serwerowo z CRM (Conversions API,
+      // event_id = order_code) - przeglądarkowy fbq('Purchase') został
+      // usunięty 2026-09-03: Meta nie deduplikowała go z serwerowym (dublował
+      // konwersje, a zestaw optymalizuje pod Zakup), a i tak ~97% ruchu to
+      // przeglądarka w aplikacji FB, gdzie fbq bywa blokowany.
     }
   }, [searchParams, orderCode]);
 

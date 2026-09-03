@@ -906,32 +906,14 @@ export default function CartPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkoutReady, orderState, paymentMethod, submitOrder]);
 
-  // Meta Purchase (przeglądarka) - w momencie realnego zakończenia: COD
-  // przyjęte albo płatność online potwierdzona inline. event_id = order_code,
-  // ten sam co serwerowy Purchase z CRM (core/lib/shop_order_accept.php) ->
-  // deduplikacja. Serwer i tak jest źródłem prawdy dla wartości; to zdarzenie
-  // dokłada sygnały z przeglądarki (cookies, IP, UA).
-  const purchaseSentRef = useRef(false);
-  useEffect(() => {
-    if (purchaseSentRef.current || !orderState) return;
-    const done = orderState.paymentProvider === "cod" || paymentConfirmed;
-    if (!done) return;
-    purchaseSentRef.current = true;
-    const { orderCode, amountTotal } = orderState;
-    void import("@/lib/tracking")
-      .then(({ track }) => {
-        track(
-          "Purchase",
-          {
-            value: amountTotal ? Number(amountTotal) : undefined,
-            currency: "PLN",
-            order_id: orderCode,
-          },
-          { eventId: orderCode, skipCapi: true },
-        );
-      })
-      .catch(() => {});
-  }, [orderState, paymentConfirmed]);
+  // Meta Purchase leci WYŁĄCZNIE serwerowo z CRM (Conversions API, event_id =
+  // order_code, z wartością + zahaszowanym e-mailem/telefonem + fbc/fbp).
+  // Przeglądarkowy fbq('Purchase') usunięty 2026-09-03: Meta go nie
+  // deduplikowała z serwerowym (podwójne liczenie konwersji, a zestaw
+  // optymalizuje pod Zakup), a ~97% ruchu to przeglądarka w aplikacji FB,
+  // gdzie fbq i tak bywa blokowany. Górny lejek (ViewContent/AddToCart/
+  // InitiateCheckout) nadal leci z przeglądarki - tam podwójne liczenie nie
+  // psuje optymalizacji pod Zakup.
 
   return (
     <div className="cart-page">
@@ -1035,7 +1017,19 @@ export default function CartPage() {
                         {item.modelLabel ? ` · Model okna: ${item.modelLabel}` : null}
                         {item.widthMm && item.heightMm ? ` · ${item.widthMm} × ${item.heightMm} mm` : null}
                       </span>
-                      <span className="cart-page-item-unit">{formatPln(item.price)} / szt.</span>
+                      <span className="cart-page-item-unit">
+                        {appliedDiscount?.type === "percent" ? (
+                          <>
+                            <span className="cart-page-item-price-original">{formatPln(item.price)}</span>
+                            <span className="cart-page-item-price-discounted">
+                              {formatPln(item.price * (1 - appliedDiscount.value / 100))}
+                            </span>
+                          </>
+                        ) : (
+                          formatPln(item.price)
+                        )}{" "}
+                        / szt.
+                      </span>
                     </div>
                     <div className="cart-page-item-qty">
                       <button
@@ -1056,7 +1050,18 @@ export default function CartPage() {
                         +
                       </button>
                     </div>
-                    <div className="cart-page-item-total">{formatPln(item.total)}</div>
+                    <div className="cart-page-item-total">
+                      {appliedDiscount?.type === "percent" ? (
+                        <>
+                          <span className="cart-page-item-price-original">{formatPln(item.total)}</span>
+                          <span className="cart-page-item-price-discounted">
+                            {formatPln(item.total * (1 - appliedDiscount.value / 100))}
+                          </span>
+                        </>
+                      ) : (
+                        formatPln(item.total)
+                      )}
+                    </div>
                     <button
                       type="button"
                       className="cart-page-item-remove"
