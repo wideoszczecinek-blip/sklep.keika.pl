@@ -4022,6 +4022,10 @@ export default function Home() {
               <MeasurementHelp
                 phone={contactPhone}
                 productSlug={productSlugFromSelected(displayedProduct) || undefined}
+                onOpenChat={() => {
+                  setInstructionModalIndex(null);
+                  setInstructionModalSingleStep(false);
+                }}
               />
             ) : (
               <div

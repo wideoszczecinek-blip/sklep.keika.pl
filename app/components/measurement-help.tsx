@@ -14,6 +14,10 @@ import { trackShopStep } from "@/lib/track-step";
 type Props = {
   phone: string;
   productSlug?: string;
+  /** Called right before Crisp is opened so the host can close its own modal -
+   * the chat should own the screen like a normal site chat, not sit behind
+   * a dialog. */
+  onOpenChat?: () => void;
 };
 
 const CONTACT_ENDPOINT = "https://crm-keika.groovemedia.pl/biuro/api/shop-public/contact_submit.php";
@@ -23,7 +27,7 @@ function telHref(phone: string): string {
   return `tel:${cleaned}`;
 }
 
-export default function MeasurementHelp({ phone, productSlug }: Props) {
+export default function MeasurementHelp({ phone, productSlug, onOpenChat }: Props) {
   const [mode, setMode] = useState<"menu" | "form">("menu");
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -92,14 +96,15 @@ export default function MeasurementHelp({ phone, productSlug }: Props) {
 
           <button
             type="button"
-            className="measurement-help-btn"
+            className="measurement-help-btn is-primary"
             onClick={() => {
               trackShopStep("measurement_help_request", "chat", { product_slug: productSlug || "" });
+              onOpenChat?.();
               openCrispChat();
             }}
           >
-            <span className="measurement-help-btn-title">Porozmawiaj na czacie</span>
-            <span className="measurement-help-btn-sub">Odpisujemy na żywo w godzinach pracy</span>
+            <span className="measurement-help-btn-title">Napisz na czacie</span>
+            <span className="measurement-help-btn-sub">Odpisujemy na żywo — okno chatu schowasz do dymka</span>
           </button>
 
           <button
