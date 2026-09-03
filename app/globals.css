@@ -2937,103 +2937,90 @@ html[data-theme="light"] .pl-description-photo {
   opacity: 0.5;
 }
 
-/* "Poproś o pomoc" panel inside the measurement-instructions modal */
-.measurement-help,
-.measurement-help * {
+/* "Poproś o pomoc" - measurement-instructions modal. Own .mhelp namespace
+   (NOT .measurement-help-* - that collides with an old "?" icon button
+   further down this file, which shrank these to 1.3rem circles). */
+.mhelp {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.mhelp * {
   box-sizing: border-box;
 }
 
-.measurement-help {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  width: 100%;
-  margin-top: 0.5rem;
-  padding-top: 0.8rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.22);
+.mhelp-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
-.measurement-help-lead {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.45;
-  opacity: 0.82;
-}
-
-.measurement-help-actions {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.measurement-help-btn {
+.mhelp-cta {
   display: block;
   width: 100%;
-  margin: 0;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid rgba(148, 163, 184, 0.32);
-  border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
+  margin: 0 0 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.7rem;
+  background: transparent;
   color: inherit;
   font: inherit;
-  text-align: left;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
   text-decoration: none;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
   -webkit-appearance: none;
   appearance: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.measurement-help-btn:hover {
+.mhelp-cta:last-child {
+  margin-bottom: 0;
+}
+
+.mhelp-cta:hover {
   border-color: rgb(255, 90, 0);
-  background: rgba(255, 90, 0, 0.07);
+  background: rgba(255, 90, 0, 0.06);
 }
 
-.measurement-help-btn.is-primary {
-  border-color: rgba(255, 90, 0, 0.55);
-  background: rgba(255, 90, 0, 0.1);
+.mhelp-cta-primary {
+  border-color: rgb(255, 90, 0);
+  background: rgb(255, 90, 0);
+  color: #fff;
 }
 
-.measurement-help-btn-title {
-  display: block;
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1.3;
+.mhelp-cta-primary:hover {
+  background: #e85300;
+  border-color: #e85300;
 }
 
-.measurement-help-btn-sub {
-  display: block;
-  margin-top: 0.1rem;
-  font-size: 0.78rem;
-  line-height: 1.35;
-  opacity: 0.7;
-}
-
-.measurement-help-form {
+.mhelp-form {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
+  gap: 0.55rem;
 }
 
-.measurement-help-form input,
-.measurement-help-form textarea {
+.mhelp-form input,
+.mhelp-form textarea {
   display: block;
   width: 100%;
-  padding: 0.6rem 0.7rem;
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.45);
   border-radius: 0.6rem;
   background: rgba(255, 255, 255, 0.06);
   color: inherit;
   font: inherit;
 }
 
-.measurement-help-form textarea {
+.mhelp-form textarea {
   resize: vertical;
 }
 
-.measurement-help-hp {
+.mhelp-hp {
   position: absolute !important;
   left: -9999px !important;
   width: 1px;
@@ -3041,16 +3028,15 @@ html[data-theme="light"] .pl-description-photo {
   overflow: hidden;
 }
 
-.measurement-help-form-actions {
+.mhelp-form-row {
   display: flex;
-  justify-content: space-between;
   gap: 0.6rem;
-  margin-top: 0.1rem;
+  margin-top: 0.15rem;
 }
 
-.measurement-help-back {
-  padding: 0.55rem 0.9rem;
-  border: 1px solid rgba(148, 163, 184, 0.4);
+.mhelp-back {
+  padding: 0.6rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.45);
   border-radius: 0.6rem;
   background: none;
   color: inherit;
@@ -3058,9 +3044,9 @@ html[data-theme="light"] .pl-description-photo {
   cursor: pointer;
 }
 
-.measurement-help-submit {
+.mhelp-submit {
   flex: 1;
-  padding: 0.55rem 1.2rem;
+  padding: 0.6rem 1.2rem;
   border: none;
   border-radius: 0.6rem;
   background: rgb(255, 90, 0);
@@ -3070,42 +3056,44 @@ html[data-theme="light"] .pl-description-photo {
   cursor: pointer;
 }
 
-.measurement-help-submit:disabled {
+.mhelp-submit:disabled {
   opacity: 0.6;
   cursor: wait;
 }
 
-.measurement-help-error {
+.mhelp-error {
   margin: 0;
   color: #dc2626;
   font-size: 0.82rem;
 }
 
-.measurement-help--done {
+.mhelp-done {
   text-align: center;
   padding: 0.6rem 0 0.2rem;
 }
 
-.measurement-help--done p {
+.mhelp-done p {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;
   opacity: 0.8;
 }
 
-html[data-theme="light"] .measurement-help-btn,
-html[data-theme="light"] .measurement-help-form input,
-html[data-theme="light"] .measurement-help-form textarea {
+html[data-theme="light"] .mhelp-cta,
+html[data-theme="light"] .mhelp-form input,
+html[data-theme="light"] .mhelp-form textarea {
   background: #fff;
-  border-color: rgba(15, 23, 42, 0.14);
+  border-color: rgba(15, 23, 42, 0.16);
 }
 
-html[data-theme="light"] .measurement-help-btn:hover {
+html[data-theme="light"] .mhelp-cta:hover {
   background: rgba(255, 90, 0, 0.06);
+  border-color: rgb(255, 90, 0);
 }
 
-html[data-theme="light"] .measurement-help-btn.is-primary {
-  background: rgba(255, 90, 0, 0.08);
-  border-color: rgba(255, 90, 0, 0.5);
+html[data-theme="light"] .mhelp-cta-primary {
+  background: rgb(255, 90, 0);
+  border-color: rgb(255, 90, 0);
+  color: #fff;
 }
 
 .hero-product-step-accordion {
@@ -5367,8 +5355,10 @@ html[data-theme="light"] .catalog-product-description-photo {
 
 .instruction-modal-media {
   position: relative;
-  margin: 0.8rem 0;
-  border-radius: 0.7rem;
+  /* Break out of the shell's 1.3rem horizontal padding so the video runs
+     edge-to-edge across the modal ("na całą szerokość"). */
+  margin: 0.8rem -1.3rem;
+  width: calc(100% + 2.6rem);
   overflow: hidden;
   background: rgba(4, 10, 18, 0.5);
 }
@@ -5377,7 +5367,8 @@ html[data-theme="light"] .catalog-product-description-photo {
 .instruction-modal-media video {
   display: block;
   width: 100%;
-  max-height: 50vh;
+  height: auto;
+  max-height: 78vh;
   object-fit: contain;
 }
 
