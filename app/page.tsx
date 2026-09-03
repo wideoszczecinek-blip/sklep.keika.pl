@@ -2,12 +2,22 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-// Light/dark toggle disabled for now (only one product live) - bring back
-// once the whole shop is ready, see header-actions below.
-// import ThemeToggle from "@/app/components/theme-toggle";
+
+// Header "Produkty" pill/switcher - same "only one product really live"
+// reasoning as the theme toggle above. Flip to true once rolety-dachowe (or
+// any other product) is ready for customers to switch into from here.
+const SHOW_PRODUCT_SWITCHER_MENU = false;
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import { trackShopStep } from "@/lib/track-step";
+import {
+  PROMO_ACTIVATED_EVENT,
+  activatePromoCode,
+  applyPromoToPrice,
+  fetchPromoPreview,
+  isPromoActive,
+  type PromoPreview,
+} from "@/lib/promo";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 import {
   type CartLineItem,
@@ -19,6 +29,7 @@ import {
   summarizeCartItems,
 } from "@/lib/cart";
 import InfoModal from "./components/info-modal";
+import MeasurementHelp from "./components/measurement-help";
 
 // The header mini-cart badge/total should show what the customer will
 // actually pay, same as the cart page's own "Razem" row - which means
@@ -558,6 +569,39 @@ function productSlugFromSelected(product: SelectedProductView | null): string {
   return String(product.shareSlug || "").trim();
 }
 
+// Same CRM-override-aware resolution the "Galeria zdjęć" section below uses
+// (see the builtinGallery/galleryPhotos logic there) - kept in sync
+// deliberately rather than each picking its own source, so "zdjęcie główne"
+// under the description is never a different photo than gallery slide #1.
+function resolveMainProductPhoto(
+  product: SelectedProductView | null,
+  productLanding: ProductLandingContent | null,
+): string {
+  if (!product) return "";
+  const slug = productSlugFromSelected(product);
+  const builtinGallery =
+    slug === "moskitiery-ramkowe"
+      ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
+      : slug === "rolety-dachowe"
+        ? ROLETY_DACHOWE_GALLERY_PHOTOS
+        : product.gallery;
+  const galleryPhotos =
+    productLanding?.gallery?.length && productLanding.gallery.length >= builtinGallery.length
+      ? productLanding.gallery
+      : builtinGallery;
+  return galleryPhotos[0] || "";
+}
+
+// End-of-section nudge (after Opinie, after FAQ - see product-section-cta
+// below) - product-specific wording where we have it, a plain fallback for
+// anything else rather than saying "moskitierę" on a different product.
+function productSectionCtaLabel(product: SelectedProductView | null): string {
+  const slug = productSlugFromSelected(product);
+  if (slug === "moskitiery-ramkowe") return "Wyceń swoją moskitierę";
+  if (slug === "rolety-dachowe") return "Wyceń swoją roletę";
+  return "Skonfiguruj i zobacz cenę";
+}
+
 function hardwareOptionsForProduct(
   product: SelectedProductView | null,
   config: HomepageConfig | null,
@@ -713,7 +757,7 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
 }
 
 const fallbackHeroSlides = [
-  "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=2200&q=80",
+  "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2200&q=80",
   "https://images.unsplash.com/photo-1600210492493-0946911123ea?auto=format&fit=crop&w=2200&q=80",
   "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=2200&q=80",
   "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=2200&q=80",
@@ -755,7 +799,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
     slug: "oslony-wewnetrzne",
     title: "Osłony wewnętrzne",
     imageUrl:
-      "https://images.unsplash.com/photo-1616628182509-6f11d7f2376d?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1611048268330-53de574cae3b?auto=format&fit=crop&w=1600&q=80",
     iconUrl: iconInside,
     items: [
       { label: "Rolety tradycyjne", iconUrl: iconInside, linkUrl: "/kategoria/oslony-wewnetrzne" },
@@ -993,6 +1037,43 @@ export default function Home() {
       cancelled = true;
     };
   }, [displayedProduct]);
+
+  // "Tylko dzisiaj z kodem SEZON20" - the top-of-page promo banner (see
+  // lib/promo.ts). Separate state from ConfiguratorPanel's own promo banner
+  // near the price-in-cart - the two are siblings on this page with no
+  // parent/child relationship, so PROMO_ACTIVATED_EVENT is what keeps them
+  // in sync the instant either one is activated, not just after a remount.
+  const [topPromoActive, setTopPromoActive] = useState(false);
+  const [topPromoPreview, setTopPromoPreview] = useState<PromoPreview | null>(null);
+  useEffect(() => {
+    setTopPromoActive(isPromoActive());
+    const handleActivated = () => setTopPromoActive(isPromoActive());
+    window.addEventListener(PROMO_ACTIVATED_EVENT, handleActivated);
+    return () => window.removeEventListener(PROMO_ACTIVATED_EVENT, handleActivated);
+  }, []);
+  useEffect(() => {
+    // Percent discounts scale the same regardless of subtotal, so any
+    // positive number here works as a probe - the per-mb starting price is
+    // as good as any (and already at hand for moskitiery-ramkowe).
+    if (productSlugFromSelected(displayedProduct) !== "moskitiery-ramkowe") {
+      setTopPromoPreview(null);
+      return;
+    }
+    let cancelled = false;
+    fetchPromoPreview(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO).then((preview) => {
+      if (!cancelled) setTopPromoPreview(preview);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayedProduct]);
+  function activateTopPromo() {
+    if (!topPromoPreview) return;
+    setTopPromoActive(true);
+    activatePromoCode();
+    trackShopStep("promo_code_activated", "SEZON20", { source: "top_banner", amount: topPromoPreview.amount });
+  }
+
   const opisSectionRef = useRef<HTMLElement | null>(null);
   const galeriaSectionRef = useRef<HTMLElement | null>(null);
   const opinieSectionRef = useRef<HTMLElement | null>(null);
@@ -1030,6 +1111,27 @@ export default function Home() {
       container.scrollTo({ top: nextTop, behavior: "smooth" });
     } else {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  // Shared by the bottom-tabs "Konfiguruj" button and the shipping
+  // banner's "Oblicz cenę" CTA - same manual scroll-container computation
+  // as scrollToProductSection above (mobile: .hero-full scrolls internally,
+  // so a plain scrollIntoView on the target isn't reliable).
+  function scrollToConfigPanel() {
+    const target = document.querySelector<HTMLElement>(".hero-product-config-panel");
+    const container = target?.closest<HTMLElement>(".hero-full");
+    if (target && container && container.scrollHeight > container.clientHeight) {
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const delta = targetRect.top - containerRect.top - 96;
+      const nextTop = Math.max(
+        0,
+        Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight),
+      );
+      container.scrollTo({ top: nextTop, behavior: "smooth" });
+    } else {
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
@@ -1118,6 +1220,12 @@ export default function Home() {
   // so other parts of the page/site can link straight to one specific step
   // without needing to know about this component's internals.
   const [instructionModalIndex, setInstructionModalIndex] = useState<number | null>(null);
+  // "Jak zmierzyć?" from the configurator's dimensions step opens straight
+  // to the one real measurement step (with its video) and hides prev/next -
+  // the business owner's explicit "wyświetlaj tylko instrukcję pomiaru",
+  // not a jumping-off point into the fitting/assembly steps that happen to
+  // share this same modal for the normal "Instrukcje" tab/deep-link case.
+  const [instructionModalSingleStep, setInstructionModalSingleStep] = useState(false);
   // Instruction videos autoplay the instant their accordion row opens (and
   // pause + rewind the instant it closes) instead of relying on the
   // <video autoplay> heuristic, which only fires once on mount and doesn't
@@ -1141,6 +1249,7 @@ export default function Home() {
       if (!match) return;
       const index = Number(match[1]) - 1;
       if (index >= 0 && index < activeInstructionSteps.length) {
+        setInstructionModalSingleStep(false);
         setInstructionModalIndex(index);
       }
     };
@@ -2039,7 +2148,13 @@ export default function Home() {
           </div>
         </div>
         <div className="header-actions">
-          {displayedProduct ? (
+          {/* "Produkty" pill + flyout switcher - hidden for now on the
+              business owner's instruction (only moskitiery-ramkowe is
+              really live; rolety-dachowe isn't ready for customers to
+              stumble into via this yet). SHOW_PRODUCT_SWITCHER_MENU is the
+              one-line flip to bring it back once there's a real second
+              product to switch to. */}
+          {displayedProduct && SHOW_PRODUCT_SWITCHER_MENU ? (
             <div
               className={`hero-product-menu-flyout-wrap ${productMenuOpen ? "is-open" : ""}`}
               ref={productMenuFlyoutRef}
@@ -2098,9 +2213,6 @@ export default function Home() {
               </div>
             </div>
           ) : null}
-          {/* Light/dark toggle disabled for now (only one product live) -
-              bring back once the whole shop is ready. */}
-          {/* <ThemeToggle /> */}
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
             {contactPhone}
           </a>
@@ -2269,25 +2381,75 @@ export default function Home() {
                       {displayedProduct ? (
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                           <div className="pl-landing">
+                            {topPromoPreview || topPromoActive ? (
+                              <div className={`pl-sezon-banner ${topPromoActive ? "is-active" : ""}`}>
+                                <div className="pl-sezon-banner-top">
+                                  <span className="pl-sezon-banner-badge" aria-hidden="true">
+                                    {topPromoActive ? "✓" : "-20%"}
+                                  </span>
+                                  <div className="pl-sezon-banner-copy">
+                                    <strong className="pl-sezon-banner-text">
+                                      {topPromoActive ? (
+                                        <>Kod SEZON20 aktywny</>
+                                      ) : (
+                                        <>Tylko dzisiaj: kod SEZON20</>
+                                      )}
+                                    </strong>
+                                    <span className="pl-sezon-banner-sub">
+                                      {topPromoActive
+                                        ? "Widzisz ceny z rabatem"
+                                        : "Aktywuj i zobacz niższą cenę od razu"}
+                                    </span>
+                                  </div>
+                                </div>
+                                {!topPromoActive ? (
+                                  <button type="button" className="pl-sezon-banner-cta" onClick={activateTopPromo}>
+                                    Aktywuj rabat -20%
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
                             <div className="pl-trust-row">
                               <span className="pl-price">
-                                <span className="price-per-mb-promo">
-                                  {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}{" "}
-                                  zł
-                                </span>
-                                <span className="pl-price-unit"> / mb</span>
-                                {MOSKITIERY_RAMKOWE_PRICE_ON_PROMO ? (
-                                  <span className="price-per-mb-standard">
-                                    {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2,
-                                    })}{" "}
-                                    zł
-                                  </span>
-                                ) : null}
+                                {topPromoActive && topPromoPreview ? (
+                                  <>
+                                    <span className="pl-price-original">
+                                      {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      })}{" "}
+                                      zł
+                                    </span>
+                                    <span className="price-per-mb-promo pl-price-sezon-active">
+                                      {applyPromoToPrice(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, topPromoPreview)!.toLocaleString(
+                                        "pl-PL",
+                                        { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                                      )}{" "}
+                                      zł
+                                    </span>
+                                    <span className="pl-price-unit"> / mb</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="price-per-mb-promo">
+                                      {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      })}{" "}
+                                      zł
+                                    </span>
+                                    <span className="pl-price-unit"> / mb</span>
+                                    {MOSKITIERY_RAMKOWE_PRICE_ON_PROMO ? (
+                                      <span className="price-per-mb-standard">
+                                        {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2,
+                                        })}{" "}
+                                        zł
+                                      </span>
+                                    ) : null}
+                                  </>
+                                )}
                               </span>
                               {allegroRating && displayRating ? (
                                 <span className="pl-chip pl-chip-rating">
@@ -2305,11 +2467,20 @@ export default function Home() {
 
                             {shippingBanner ? (
                               <div className="pl-shipping-banner">
-                                <span className="pl-shipping-banner-icon" aria-hidden="true">🚚</span>
-                                <span className="pl-shipping-banner-text">
+                                <div className="pl-shipping-banner-headline">
+                                  <span className="pl-shipping-banner-icon" aria-hidden="true">🚚</span>
                                   <strong>{shippingBanner.headline}</strong>
-                                  {shippingBanner.cta_text ? <small>{shippingBanner.cta_text}</small> : null}
-                                </span>
+                                </div>
+                                {shippingBanner.cta_text ? (
+                                  <small className="pl-shipping-banner-subtext">{shippingBanner.cta_text}</small>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="pl-inline-cta-button pl-shipping-banner-cta"
+                                  onClick={scrollToConfigPanel}
+                                >
+                                  Sprawdź cenę swojej moskitiery
+                                </button>
                               </div>
                             ) : null}
 
@@ -2359,6 +2530,14 @@ export default function Home() {
                                 dangerouslySetInnerHTML={{ __html: productLanding.description }}
                               />
                             ) : null}
+                            {resolveMainProductPhoto(displayedProduct, productLanding) ? (
+                              <img
+                                className="pl-description-photo"
+                                src={optimizeImageUrl(resolveMainProductPhoto(displayedProduct, productLanding), 900)}
+                                alt={displayedProduct.label}
+                                loading="lazy"
+                              />
+                            ) : null}
 
                             <ul className="pl-feature-list">
                               {(productLanding?.featureBullets?.length
@@ -2378,6 +2557,13 @@ export default function Home() {
                                 {productLanding?.callout?.body ||
                                   "Składasz ramkę, naciągasz siatkę i przykręcasz zaczepy — wszystko masz w komplecie, razem z instrukcją. Zwykle zajmuje to kilka–kilkanaście minut."}
                               </p>
+                              <button
+                                type="button"
+                                className="pl-inline-cta-button pl-callout-cta"
+                                onClick={scrollToConfigPanel}
+                              >
+                                Zamów teraz z rabatem -20%
+                              </button>
                             </div>
                           </div>
                         ) : productSlugFromSelected(displayedProduct) === "rolety-dachowe" ? (
@@ -2420,6 +2606,14 @@ export default function Home() {
                                 dangerouslySetInnerHTML={{ __html: productLanding.description }}
                               />
                             ) : null}
+                            {resolveMainProductPhoto(displayedProduct, productLanding) ? (
+                              <img
+                                className="pl-description-photo"
+                                src={optimizeImageUrl(resolveMainProductPhoto(displayedProduct, productLanding), 900)}
+                                alt={displayedProduct.label}
+                                loading="lazy"
+                              />
+                            ) : null}
 
                             <ul className="pl-feature-list">
                               {(productLanding?.featureBullets?.length
@@ -2450,6 +2644,14 @@ export default function Home() {
                               <span className="pl-chip">Darmowa dostawa od 99 zł</span>
                             </div>
                             {productLanding.subtitle ? <p className="pl-subtitle">{productLanding.subtitle}</p> : null}
+                            {resolveMainProductPhoto(displayedProduct, productLanding) ? (
+                              <img
+                                className="pl-description-photo"
+                                src={optimizeImageUrl(resolveMainProductPhoto(displayedProduct, productLanding), 900)}
+                                alt={displayedProduct.label}
+                                loading="lazy"
+                              />
+                            ) : null}
                             <div className="pl-benefits">
                               {productLanding.sections.map((section, index) => (
                                 <div className="pl-benefit" key={`${section.title}-${index}`}>
@@ -2471,6 +2673,14 @@ export default function Home() {
                           <>
                             <h2 className="hero-product-section-title">Opis produktu</h2>
                             <p>{displayedProduct.description}</p>
+                            {resolveMainProductPhoto(displayedProduct, productLanding) ? (
+                              <img
+                                className="pl-description-photo"
+                                src={optimizeImageUrl(resolveMainProductPhoto(displayedProduct, productLanding), 900)}
+                                alt={displayedProduct.label}
+                                loading="lazy"
+                              />
+                            ) : null}
                           </>
                         )
                       ) : null}
@@ -2823,6 +3033,11 @@ export default function Home() {
                           </ul>
                         )
                       ) : null}
+                      <div className="hero-product-section-cta">
+                        <button type="button" className="pl-inline-cta-button" onClick={scrollToConfigPanel}>
+                          {productSectionCtaLabel(displayedProduct)}
+                        </button>
+                      </div>
                       </section>
                       <section id="product-section-faq" ref={faqSectionRef} className="hero-product-section">
                         <h2 className="hero-product-section-title">FAQ - Pytania i Odpowiedzi</h2>
@@ -2838,6 +3053,11 @@ export default function Home() {
                         ) : (
                           <p className="hero-product-faq-empty">Wkrótce dodamy tu odpowiedzi na najczęstsze pytania.</p>
                         )}
+                        <div className="hero-product-section-cta">
+                          <button type="button" className="pl-inline-cta-button" onClick={scrollToConfigPanel}>
+                            {productSectionCtaLabel(displayedProduct)}
+                          </button>
+                        </div>
                       </section>
                       <section id="product-section-instrukcje" ref={instrukcjeSectionRef} className="hero-product-section">
                       <h2 className="hero-product-section-title">Instrukcje</h2>
@@ -3047,6 +3267,13 @@ export default function Home() {
                       }
                       submitLabel="Dodaj do koszyka"
                       onZoom={(preview) => setZoomPreview(preview)}
+                      onOpenInstructions={() => {
+                        const measurementIndex = activeInstructionSteps.findIndex((step) =>
+                          normalizeMenuLabel(step.title).includes("pomiar"),
+                        );
+                        setInstructionModalSingleStep(true);
+                        setInstructionModalIndex(measurementIndex >= 0 ? measurementIndex : 0);
+                      }}
                       onSubmit={(result) => {
                         setRamkoweLastResult(result);
                         const item: CartLineItem = {
@@ -3548,26 +3775,7 @@ export default function Home() {
               <button
                 type="button"
                 className="hero-product-bottom-tabs-configure"
-                onClick={() => {
-                  // Mobile only: .hero-full scrolls internally, so plain
-                  // scrollIntoView on the target isn't reliable here - same
-                  // manual computation as the configurator's own step
-                  // transitions (see ConfiguratorPanel.scrollStepIntoView).
-                  const target = document.querySelector<HTMLElement>(".hero-product-config-panel");
-                  const container = target?.closest<HTMLElement>(".hero-full");
-                  if (target && container && container.scrollHeight > container.clientHeight) {
-                    const containerRect = container.getBoundingClientRect();
-                    const targetRect = target.getBoundingClientRect();
-                    const delta = targetRect.top - containerRect.top - 96;
-                    const nextTop = Math.max(
-                      0,
-                      Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight),
-                    );
-                    container.scrollTo({ top: nextTop, behavior: "smooth" });
-                  } else {
-                    target?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }
-                }}
+                onClick={scrollToConfigPanel}
               >
                 Konfiguruj
               </button>
@@ -3722,6 +3930,7 @@ export default function Home() {
           aria-label={activeInstructionSteps[instructionModalIndex].title}
           onClick={() => {
             setInstructionModalIndex(null);
+            setInstructionModalSingleStep(false);
             if (/^#instrukcja-\d+$/.test(window.location.hash)) {
               history.replaceState(null, "", window.location.pathname + window.location.search);
             }
@@ -3741,7 +3950,7 @@ export default function Home() {
             >
               ×
             </button>
-            {activeInstructionSteps.length > 1 ? (
+            {activeInstructionSteps.length > 1 && !instructionModalSingleStep ? (
               <button
                 type="button"
                 className="instruction-modal-nav is-prev"
@@ -3755,7 +3964,7 @@ export default function Home() {
                 ‹
               </button>
             ) : null}
-            {activeInstructionSteps.length > 1 ? (
+            {activeInstructionSteps.length > 1 && !instructionModalSingleStep ? (
               <button
                 type="button"
                 className="instruction-modal-nav is-next"
@@ -3809,10 +4018,17 @@ export default function Home() {
                 )}
               </div>
             ) : null}
-            <div
-              className="hero-product-instruction-body"
-              dangerouslySetInnerHTML={{ __html: activeInstructionSteps[instructionModalIndex].body }}
-            />
+            {instructionModalSingleStep ? (
+              <MeasurementHelp
+                phone={contactPhone}
+                productSlug={productSlugFromSelected(displayedProduct) || undefined}
+              />
+            ) : (
+              <div
+                className="hero-product-instruction-body"
+                dangerouslySetInnerHTML={{ __html: activeInstructionSteps[instructionModalIndex].body }}
+              />
+            )}
           </div>
         </div>
       ) : null}

@@ -11,6 +11,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackShopStep } from "@/lib/track-step";
 import {
+  PROMO_ACTIVATED_EVENT,
+  PROMO_CODE,
+  activatePromoCode,
+  applyPromoToPrice,
+  fetchPromoPreview,
+  isPromoActive,
+  type PromoPreview,
+} from "@/lib/promo";
+import {
   ALLEGRO_MOSKITIERY_HARDWARE,
   MESH_OPTIONS,
   MOSKITIERY_MESH_LAYER_URL,
@@ -36,6 +45,7 @@ export default function ConfiguratorPanel({
   submitLabel,
   onSubmit,
   onZoom,
+  onOpenInstructions,
 }: {
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
@@ -44,6 +54,12 @@ export default function ConfiguratorPanel({
    * already has its own shared zoom modal (the homepage does, for the
    * gallery tab too) to funnel clicks into that instead of stacking two. */
   onZoom?: (preview: ZoomPreview) => void;
+  /** Opens the host page's own measurement-instructions popup (the homepage
+   * already has one - see instructionModalIndex in app/page.tsx) from the
+   * "podaj wymiary" step. Omit to hide the link entirely - the cart's
+   * "Edytuj pozycję" modal has no such popup of its own to open, and
+   * duplicating one there wasn't asked for. */
+  onOpenInstructions?: () => void;
 }) {
   const hardwareOptions = ALLEGRO_MOSKITIERY_HARDWARE;
 
@@ -145,6 +161,49 @@ export default function ConfiguratorPanel({
   const dimensionUnitPrice = billedMeters !== null ? billedMeters * MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO : null;
   const dimensionTotalPrice = dimensionUnitPrice !== null ? dimensionUnitPrice * quantityNum : null;
 
+  // Seasonal SEZON20 banner near the price - real discount math still comes
+  // from the code, not a hardcoded "20%" here (see lib/promo.ts). Activating
+  // it anywhere on the page (this panel's own banner, or the top-of-page
+  // one in app/page.tsx) shows up here instantly via PROMO_ACTIVATED_EVENT,
+  // not just after a remount - the two are separately-mounted siblings with
+  // no parent/child relationship to pass state through otherwise. Once
+  // activated, it's remembered (localStorage) so it's already applied by
+  // the time the customer reaches checkout - koszyk/page.tsx reads the same
+  // key on mount.
+  const [promoPreview, setPromoPreview] = useState<PromoPreview | null>(null);
+  const [promoActive, setPromoActive] = useState(false);
+
+  useEffect(() => {
+    setPromoActive(isPromoActive());
+    const handleActivated = () => setPromoActive(isPromoActive());
+    window.addEventListener(PROMO_ACTIVATED_EVENT, handleActivated);
+    return () => window.removeEventListener(PROMO_ACTIVATED_EVENT, handleActivated);
+  }, []);
+
+  useEffect(() => {
+    if (dimensionTotalPrice === null || dimensionTotalPrice <= 0) {
+      setPromoPreview(null);
+      return;
+    }
+    let cancelled = false;
+    fetchPromoPreview(dimensionTotalPrice).then((preview) => {
+      if (!cancelled) setPromoPreview(preview);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dimensionTotalPrice]);
+
+  function activatePromo() {
+    if (!promoPreview) return;
+    setPromoActive(true);
+    activatePromoCode();
+    trackShopStep("promo_code_activated", PROMO_CODE, { amount: promoPreview.amount });
+  }
+
+  const promoDiscountedTotal =
+    promoActive && dimensionTotalPrice !== null ? applyPromoToPrice(dimensionTotalPrice, promoPreview) : null;
+
   useEffect(() => {
     if (!hasValidDimensions) {
       setIsCalculatingPrice(false);
@@ -226,7 +285,7 @@ export default function ConfiguratorPanel({
   return (
     <>
       <header>
-        <strong>Stwórz swoją moskitierę</strong>
+        <strong>Wyceń swoją moskitierę</strong>
       </header>
       <section className={`hero-product-step-accordion ${stepOneCollapsed ? "is-collapsed" : ""}`}>
         <button
@@ -397,6 +456,27 @@ export default function ConfiguratorPanel({
                 </span>
                 Podaj wymiary
               </p>
+              {onOpenInstructions ? (
+                <button
+                  type="button"
+                  className="hero-product-dimensions-help-cta"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    trackShopStep("open_modal", "measurement_instructions", { product_slug: "moskitiery-ramkowe" });
+                    onOpenInstructions();
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" stroke="currentColor" strokeWidth="2" />
+                    <path d="M12 17v-5M12 8h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                  <span>
+                    <strong>Nie wiesz jak zmierzyć?</strong>
+                    Zobacz krótką instrukcję — i poproś nas o pomoc, jeśli okno jest nietypowe
+                  </span>
+                  <span className="hero-product-dimensions-help-cta-arrow" aria-hidden="true">›</span>
+                </button>
+              ) : null}
               <div className="hero-product-dimensions-grid">
                 <label>
                   Szerokość (mm)
@@ -535,27 +615,69 @@ export default function ConfiguratorPanel({
                   <div>
                     <dt>Cena za 1 mb</dt>
                     <dd>
-                      <span className="price-per-mb-promo">
-                        {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
-                      </span>
-                      {MOSKITIERY_RAMKOWE_PRICE_ON_PROMO ? (
-                        <span className="price-per-mb-standard">
-                          {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
-                        </span>
-                      ) : null}
+                      {promoActive && promoPreview ? (
+                        <>
+                          <span className="price-per-mb-standard">
+                            {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                          </span>
+                          <span className="price-per-mb-promo pl-price-sezon-active">
+                            {applyPromoToPrice(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, promoPreview)!.toLocaleString(
+                              "pl-PL",
+                              { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                            )}{" "}
+                            zł
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="price-per-mb-promo">
+                            {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                          </span>
+                          {MOSKITIERY_RAMKOWE_PRICE_ON_PROMO ? (
+                            <span className="price-per-mb-standard">
+                              {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                            </span>
+                          ) : null}
+                        </>
+                      )}
                     </dd>
                   </div>
                 </div>
                 <div className="hero-product-mini-summary-price-final">
+                  {promoDiscountedTotal !== null && !isCalculatingPrice ? (
+                    <span className="price-final-original">
+                      {dimensionTotalPrice!.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                    </span>
+                  ) : null}
                   <strong className={isCalculatingPrice ? "is-calculating" : ""}>
                     {isCalculatingPrice
                       ? "Obliczam…"
-                      : dimensionTotalPrice !== null
-                        ? `${dimensionTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
-                        : "Podaj wymiary"}
+                      : promoDiscountedTotal !== null
+                        ? `${promoDiscountedTotal.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
+                        : dimensionTotalPrice !== null
+                          ? `${dimensionTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
+                          : "Podaj wymiary"}
                   </strong>
                 </div>
               </div>
+              {promoPreview ? (
+                <div className={`hero-product-promo-banner ${promoActive ? "is-active" : ""}`}>
+                  {promoActive ? (
+                    <span className="hero-product-promo-banner-text">
+                      ✓ Kod <strong>{PROMO_CODE}</strong> aktywny - rabat naliczy się automatycznie w koszyku.
+                    </span>
+                  ) : (
+                    <>
+                      <span className="hero-product-promo-banner-text">
+                        🔥 <strong>-20%</strong> z kodem <strong>{PROMO_CODE}</strong>
+                      </span>
+                      <button type="button" className="hero-product-promo-banner-cta" onClick={activatePromo}>
+                        Aktywuj rabat
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : null}
               <button
                 type="button"
                 className="hero-product-add-to-cart"
