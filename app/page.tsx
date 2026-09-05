@@ -30,6 +30,12 @@ import {
 } from "@/lib/cart";
 import InfoModal from "./components/info-modal";
 import MeasurementHelp from "./components/measurement-help";
+import { openCrispChat } from "@/lib/crisp";
+import {
+  getRescueGrant,
+  resolveResumeToken,
+  setRescueGrant,
+} from "@/lib/rescue";
 
 // The header mini-cart badge/total should show what the customer will
 // actually pay, same as the cart page's own "Razem" row - which means
@@ -63,6 +69,9 @@ import {
   ROLETY_DACHOWE_STARTING_PRICE,
   type ConfiguratorResult as RoletyDachoweConfiguratorResult,
 } from "@/features/rolety-dachowe/shared";
+import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
+import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
+import { isProductSlugLive, PRODUCT_LOCKED_MESSAGE } from "@/lib/product-availability";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -907,6 +916,10 @@ export default function Home() {
   const [cartIsFlashing, setCartIsFlashing] = useState(false);
   const [cartTooltipOpen, setCartTooltipOpen] = useState(false);
   const [addToCartToast, setAddToCartToast] = useState<{ productSlug: string; productLabel: string } | null>(null);
+  // Label of whichever locked product the visitor just tried to open via a
+  // real navigation attempt (menu/flyout click) - see activateProductView()
+  // below and lib/product-availability.ts. null hides the notice.
+  const [productLockedNotice, setProductLockedNotice] = useState<string | null>(null);
   // moskitiery-ramkowe now uses the shared <ConfiguratorPanel> (see
   // features/moskitiery-ramkowe/) - it owns its own step state internally,
   // so a fresh one is mounted by bumping this key (e.g. "wyceń nową"), and
@@ -918,6 +931,11 @@ export default function Home() {
   // rolety-dachowe's own <ConfiguratorPanel> (features/rolety-dachowe/).
   const [rdConfigKey, setRdConfigKey] = useState(0);
   const [rdLastResult, setRdLastResult] = useState<RoletyDachoweConfiguratorResult | null>(null);
+  // Same pattern again, for plisy's own <ConfiguratorPanel>
+  // (features/plisy/) - see that folder's shared.ts for why its option data
+  // is fetched live from the CRM instead of hardcoded like the two above.
+  const [plisyConfigKey, setPlisyConfigKey] = useState(0);
+  const [plisyLastResult, setPlisyLastResult] = useState<PlisyConfiguratorResult | null>(null);
   const cartCountUpFrameRef = useRef<number | null>(null);
   const [activeHeadline, setActiveHeadline] = useState(0);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
@@ -939,6 +957,35 @@ export default function Home() {
   // cart icon. .hero-full - not window - is the real scroll container here
   // (see the scrollIntoView comments elsewhere in this file for why).
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+  // Facebook/Instagram's in-app browser draws its own bottom toolbar that
+  // window.innerHeight doesn't know about (only window.visualViewport does)
+  // - a pure-CSS `.hero-product-bottom-tabs { position: fixed; bottom: ... }`
+  // anchors to innerHeight and ends up hidden behind that toolbar instead of
+  // sitting on the real visible edge, so the bar reads as "not at the bottom
+  // of the screen" there specifically. visualViewport.height + offsetTop is
+  // the true visible height; the gap vs innerHeight becomes extra bottom
+  // offset. Stays 0 in a normal mobile browser (Safari/Chrome), so nothing
+  // changes there.
+  const [inAppBrowserBottomInset, setInAppBrowserBottomInset] = useState(0);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) {
+      return;
+    }
+    const viewport = window.visualViewport;
+    const updateInset = (): void => {
+      const inset = Math.round(window.innerHeight - (viewport.height + viewport.offsetTop));
+      setInAppBrowserBottomInset(Math.max(0, inset));
+    };
+    updateInset();
+    viewport.addEventListener("resize", updateInset);
+    viewport.addEventListener("scroll", updateInset);
+    window.addEventListener("orientationchange", updateInset);
+    return () => {
+      viewport.removeEventListener("resize", updateInset);
+      viewport.removeEventListener("scroll", updateInset);
+      window.removeEventListener("orientationchange", updateInset);
+    };
+  }, []);
   // This page (the real destination for most traffic, including every Meta
   // ad click landing on / or /?produkt=...) never once called the CRM's own
   // visitor-tracking endpoint - only the separate /moskitiery landing page
@@ -1045,6 +1092,22 @@ export default function Home() {
   // in sync the instant either one is activated, not just after a remount.
   const [topPromoActive, setTopPromoActive] = useState(false);
   const [topPromoPreview, setTopPromoPreview] = useState<PromoPreview | null>(null);
+  // The header cart icon (badge, tooltip, animated total) showed the raw
+  // pre-discount sum even with the promo active - it read cartSummary.total
+  // directly instead of going through this. Percent-type discounts scale
+  // the same regardless of what subtotal topPromoPreview itself was fetched
+  // against, so this is safe to apply to the whole cart's total, not just
+  // the single-product price topPromoPreview was originally fetched for.
+  const [activeRescuePercent, setActiveRescuePercent] = useState(0);
+  useEffect(() => {
+    setActiveRescuePercent(getRescueGrant()?.percent || 0);
+  }, []);
+  const headerCartDiscountPercent =
+    (topPromoActive && topPromoPreview?.type === "percent" ? topPromoPreview.value : 0) + activeRescuePercent;
+  const cartTotalWithPromo =
+    headerCartDiscountPercent > 0
+      ? Math.max(0, cartSummary.total * (1 - headerCartDiscountPercent / 100))
+      : cartSummary.total;
   useEffect(() => {
     setTopPromoActive(isPromoActive());
     const handleActivated = () => setTopPromoActive(isPromoActive());
@@ -1759,7 +1822,7 @@ export default function Home() {
       window.cancelAnimationFrame(cartCountUpFrameRef.current);
       cartCountUpFrameRef.current = null;
     }
-    const target = cartSummary.total;
+    const target = cartTotalWithPromo;
     if (target <= cartDisplayTotal) {
       setCartDisplayTotal(target);
       return;
@@ -1786,7 +1849,7 @@ export default function Home() {
     // Only re-run when the real total changes - cartDisplayTotal itself is
     // the thing being animated, not a dependency to react to.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartSummary.total]);
+  }, [cartTotalWithPromo]);
 
   useEffect(() => {
     if (bootPhase !== "loading") return;
@@ -1877,11 +1940,24 @@ export default function Home() {
     subItem: HeroMenuItem,
     options?: { updateUrl?: boolean },
   ) {
+    const shareSlug = slugFromLink(subItem.linkUrl, subItem.label);
+    // options.updateUrl === false uniquely identifies the mount-time
+    // "?produkt=..." URL resolution (activateFromUrl() below) rather than
+    // an actual menu click - a direct/bookmarked link must keep working for
+    // internal preview even while every click-through entry point is
+    // locked, per explicit requirement. Every other call site (header mega
+    // menu, in-page "Produkty" flyout) omits `options` entirely, so this is
+    // a real user-initiated navigation attempt and gets the "w budowie"
+    // notice instead of switching product.
+    if (options?.updateUrl !== false && !isProductSlugLive(shareSlug)) {
+      setProductLockedNotice(subItem.label);
+      window.setTimeout(() => setProductLockedNotice(null), 3200);
+      return;
+    }
     const heroImages = heroMedia
       .filter((entry) => entry.type === "image" && entry.url)
       .map((entry) => entry.url);
     const gallery = [group.imageUrl, ...heroImages].filter((url, index, array) => url && array.indexOf(url) === index).slice(0, 8);
-    const shareSlug = slugFromLink(subItem.linkUrl, subItem.label);
     const nextProduct: SelectedProductView = {
       groupIndex,
       groupSlug: group.slug,
@@ -2085,6 +2161,69 @@ export default function Home() {
     setAddToCartToast({ productSlug: slug, productLabel: displayedProduct.label });
   }
 
+  // NOTE: an exit-intent "rescue" modal used to be wired here, gated on this
+  // component's own selectedHardwareId/selectedMeshId/dimensionWidth/
+  // dimensionHeight state - but that state is dead for the real moskitiery-
+  // ramkowe UI below, which delegates to <ConfiguratorPanel> (its own,
+  // separate state - see features/moskitiery-ramkowe/ConfiguratorPanel.tsx's
+  // top comment: "ported verbatim from the panel that used to live inline in
+  // app/page.tsx"). Found live 2026-09-03 via a headless-browser test: every
+  // trigger silently no-opped because hasRescueEligibleProgress could never
+  // become true through the real UI. The feature now lives inside
+  // ConfiguratorPanel itself (enableRescueModal prop), which has the real,
+  // live progress state.
+
+  // Resume link (?resume_token=...) - restores a rescued configuration
+  // straight into the cart (same shape "Dodaj do koszyka" produces) rather
+  // than trying to re-open live editing, which needs none of ConfiguratorPanel's
+  // own selection-state mapping. Runs once on mount.
+  const resumeHandledRef = useRef(false);
+  const [rescueResumeToast, setRescueResumeToast] = useState<{
+    productLabel: string;
+    itemCount: number;
+    discountPercent: number;
+  } | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined" || resumeHandledRef.current) return;
+    const current = new URL(window.location.href);
+    const resumeToken = (current.searchParams.get("resume_token") || "").trim();
+    if (!resumeToken) return;
+    resumeHandledRef.current = true;
+    void resolveResumeToken(resumeToken).then((resolved) => {
+      history.replaceState(null, "", window.location.pathname + window.location.search.replace(/[?&]resume_token=[^&]*/, "").replace(/^&/, "?"));
+      if (!resolved || resolved.items.length === 0) return;
+      // Every position the quote carried, not just the first - a saved
+      // cart with several items used to silently lose all but one here.
+      // addCartItem() re-reads storage itself on every call, so chaining
+      // it in a loop (rather than seeding from this component's own
+      // cartItems state, which this mount-only effect could otherwise see
+      // stale) stays correct regardless of init timing.
+      let items: CartLineItem[] = [];
+      for (const item of resolved.items) {
+        items = addCartItem(item);
+      }
+      setCartItems(items);
+      setCartSummary(cartSummaryWithSurcharge(items));
+      if (resolved.rescueDiscountPercent > 0) {
+        setRescueGrant({ quoteCode: resolved.quoteCode, percent: resolved.rescueDiscountPercent });
+      }
+      // Re-activate whatever site-wide promo (SEZON20 etc.) was active on
+      // the device that saved this quote - without this, the cart/config
+      // comes back but a discount the customer had already activated
+      // silently doesn't, even though everything else did.
+      if (resolved.promoCode) {
+        activatePromoCode(resolved.promoCode);
+      }
+      setRescueResumeToast({
+        productLabel: resolved.items[0].productLabel,
+        itemCount: resolved.items.length,
+        discountPercent: resolved.rescueDiscountPercent,
+      });
+      window.setTimeout(() => setRescueResumeToast(null), 6000);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div
       className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${displayedProduct ? "product-focus-active" : ""}`}
@@ -2216,6 +2355,34 @@ export default function Home() {
           <a className="phone" href={`tel:${contactPhone.replace(/\s+/g, "")}`}>
             {contactPhone}
           </a>
+          {/* Portal target for ConfiguratorPanel's <SaveShareWidget> (owns
+              the real "is there a draft to save" state - see that
+              component's own top comment for why it lives there and
+              portals in here instead of floating). display:contents so it
+              contributes nothing of its own to this flex row - the
+              portaled button is the real flex item. */}
+          <div id="header-save-share-slot" style={{ display: "contents" }} />
+          <button
+            type="button"
+            className="header-chat-button"
+            onClick={() => openCrispChat()}
+            aria-label="Otwórz czat z konsultantem"
+          >
+            <span className="header-chat-button-ping" aria-hidden="true" />
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M4 12c0-4.42 3.58-8 8-8s8 3.58 8 8-3.58 8-8 8c-1.1 0-2.15-.22-3.1-.62L4 21l1.4-4.2A7.94 7.94 0 0 1 4 12Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="8.5" cy="12" r="1" fill="currentColor" />
+              <circle cx="12" cy="12" r="1" fill="currentColor" />
+              <circle cx="15.5" cy="12" r="1" fill="currentColor" />
+            </svg>
+            <span className="header-chat-button-dot" aria-hidden="true" />
+          </button>
           <div
             className="header-cart-wrap"
             onMouseEnter={() => setCartTooltipOpen(true)}
@@ -2224,7 +2391,7 @@ export default function Home() {
             <a
               className={`header-cart ${hasCartItems ? "has-items" : "is-empty"} ${cartIsBumping ? "is-bumping" : ""}`}
               href="/koszyk"
-              aria-label={hasCartItems ? `Koszyk: ${cartQtyLabel}, ${formatPln(cartSummary.total)}` : "Koszyk jest pusty"}
+              aria-label={hasCartItems ? `Koszyk: ${cartQtyLabel}, ${formatPln(cartTotalWithPromo)}` : "Koszyk jest pusty"}
             >
               <span className="header-cart-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -2261,14 +2428,18 @@ export default function Home() {
                         {item.widthMm && item.heightMm ? ` ${item.widthMm}×${item.heightMm} mm` : ""}
                         {item.qty > 1 ? ` × ${item.qty}` : ""}
                       </span>
-                      <strong>{formatPln(item.total)}</strong>
+                      <strong>
+                        {headerCartDiscountPercent > 0
+                          ? formatPln(Math.max(0, item.total * (1 - headerCartDiscountPercent / 100)))
+                          : formatPln(item.total)}
+                      </strong>
                     </li>
                   ))}
                   {cartItems.length > 4 ? <li className="header-cart-tooltip-more">i {cartItems.length - 4} więcej…</li> : null}
                 </ul>
                 <div className="header-cart-tooltip-total">
                   <span>Razem</span>
-                  <strong>{formatPln(cartSummary.total)}</strong>
+                  <strong>{formatPln(cartTotalWithPromo)}</strong>
                 </div>
                 <a href="/koszyk" className="header-cart-tooltip-cta">
                   Przejdź do koszyka
@@ -3266,6 +3437,8 @@ export default function Home() {
                           : undefined
                       }
                       submitLabel="Dodaj do koszyka"
+                      enableRescueModal
+                      enableSaveShareBanner
                       onZoom={(preview) => setZoomPreview(preview)}
                       onOpenInstructions={() => {
                         const measurementIndex = activeInstructionSteps.findIndex((step) =>
@@ -3375,6 +3548,84 @@ export default function Home() {
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
                         setAddToCartToast({ productSlug: "rolety-dachowe", productLabel: displayedProduct.label });
+                      }}
+                    />
+                  )
+                ) : productSlugFromSelected(displayedProduct) === "plisy" ? (
+                  addToCartToast ? (
+                    <MobileOverlayPortal>
+                    <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
+                      <div className="hero-product-mini-summary-body">
+                        <div className="hero-product-added-toast">
+                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
+                          <p>
+                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
+                          </p>
+                          <div className="hero-product-added-toast-actions">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setPlisyConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń podobną plisę
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setPlisyLastResult(null);
+                                setPlisyConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń nową plisę
+                            </button>
+                            <a href="/koszyk" className="is-primary">
+                              Przejdź do koszyka
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    </MobileOverlayPortal>
+                  ) : (
+                    <PlisyConfiguratorPanel
+                      key={plisyConfigKey}
+                      initialValues={
+                        plisyLastResult
+                          ? {
+                              mountId: plisyLastResult.mountId,
+                              hardwareId: plisyLastResult.hardwareId,
+                              fabricGroupId: plisyLastResult.fabricGroupId,
+                              fabricId: plisyLastResult.fabricId,
+                            }
+                          : undefined
+                      }
+                      submitLabel="Dodaj do koszyka"
+                      onZoom={(preview) => setZoomPreview(preview)}
+                      onSubmit={(result) => {
+                        setPlisyLastResult(result);
+                        const item: CartLineItem = {
+                          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                          productSlug: "plisy",
+                          productLabel: displayedProduct.label,
+                          hardwareLabel: result.hardwareLabel,
+                          meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
+                          mountLabel: result.mountLabel || undefined,
+                          widthMm: result.widthMm,
+                          heightMm: result.heightMm,
+                          qty: result.qty,
+                          price: result.unitPrice,
+                          total: result.totalPrice,
+                          createdAt: new Date().toISOString(),
+                        };
+                        const items = addCartItem(item);
+                        setCartItems(items);
+                        setCartSummary(cartSummaryWithSurcharge(items));
+                        setCartIsBumping(true);
+                        window.setTimeout(() => setCartIsBumping(false), 500);
+                        setAddToCartToast({ productSlug: "plisy", productLabel: displayedProduct.label });
                       }}
                     />
                   )
@@ -3771,7 +4022,15 @@ export default function Home() {
             ) : null}
           </div>
           {displayedProduct ? (
-            <nav className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""}`} aria-label="Sekcje produktu">
+            <nav
+              className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""}`}
+              aria-label="Sekcje produktu"
+              style={
+                inAppBrowserBottomInset > 0
+                  ? { bottom: `calc(env(safe-area-inset-bottom, 0px) + 0.8rem + ${inAppBrowserBottomInset}px)` }
+                  : undefined
+              }
+            >
               <button
                 type="button"
                 className="hero-product-bottom-tabs-configure"
@@ -4038,6 +4297,25 @@ export default function Home() {
       ) : null}
 
       {infoModalSlug ? <InfoModal slug={infoModalSlug} onClose={() => setInfoModalSlug(null)} /> : null}
+
+      {rescueResumeToast ? (
+        <div className="rescue-resume-toast">
+          <strong>Wczytaliśmy zapisaną wycenę!</strong>
+          <span>
+            {rescueResumeToast.itemCount > 1
+              ? `${rescueResumeToast.itemCount} pozycje dodane do koszyka`
+              : `${rescueResumeToast.productLabel} dodane do koszyka`}
+            {rescueResumeToast.discountPercent > 0 ? ` - Twój rabat -${rescueResumeToast.discountPercent}% jest aktywny` : ""}.
+          </span>
+        </div>
+      ) : null}
+
+      {productLockedNotice ? (
+        <div className="product-locked-toast" role="status">
+          <strong>{productLockedNotice}</strong>
+          <span>{PRODUCT_LOCKED_MESSAGE}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
