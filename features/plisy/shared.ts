@@ -277,6 +277,25 @@ export function buildPlisySurfaceStyle(imageUrl: string, accentColor: string) {
   } as const;
 }
 
+/**
+ * Hardware finishes are product photos, rather than texture masks. Rendering
+ * them through CSS `mask-image` made the tile disappear in some browsers,
+ * while the very same image still opened correctly in the zoom modal. Keep
+ * this separate from `buildPlisySurfaceStyle()`, which is still appropriate
+ * for fabric textures in the live preview.
+ */
+export function buildPlisyHardwareSwatchStyle(imageUrl: string, accentColor: string) {
+  const normalizedColor = plNormalizeHexColor(accentColor, "#D8DEE3");
+  const fallback = `linear-gradient(135deg, ${normalizedColor} 0%, ${plShiftHex(normalizedColor, -22)} 100%)`;
+  if (!imageUrl) {
+    return { backgroundImage: fallback } as const;
+  }
+
+  return {
+    backgroundImage: `url(${optimizeImageUrl(imageUrl, 360)})`,
+  } as const;
+}
+
 function plRoundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }

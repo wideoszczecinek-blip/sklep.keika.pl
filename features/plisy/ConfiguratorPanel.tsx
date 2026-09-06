@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackShopStep } from "@/lib/track-step";
 import {
+  buildPlisyHardwareSwatchStyle,
   buildPlisySurfaceStyle,
   calcPlisyPrice,
   fetchPlisyProfile,
@@ -354,7 +355,7 @@ export default function ConfiguratorPanel({
             {selectedHardware && stepOneCollapsed ? (
               <span
                 className="hero-product-step-head-swatch"
-                style={buildPlisySurfaceStyle(selectedHardware.imageUrl, selectedHardware.color)}
+                style={buildPlisyHardwareSwatchStyle(selectedHardware.imageUrl, selectedHardware.color)}
                 aria-hidden="true"
               />
             ) : null}
@@ -386,7 +387,10 @@ export default function ConfiguratorPanel({
                       }, 380);
                     }}
                   >
-                    <span className="hardware-card-image" style={buildPlisySurfaceStyle(option.imageUrl, option.color)} />
+                    <span
+                      className="hardware-card-image"
+                      style={buildPlisyHardwareSwatchStyle(option.imageUrl, option.color)}
+                    />
                     {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
                     <span className="hardware-card-footer">
                       <span className="hardware-dot" style={{ background: option.color }} />
