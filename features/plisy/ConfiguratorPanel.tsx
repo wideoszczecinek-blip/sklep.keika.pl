@@ -448,7 +448,10 @@ export default function ConfiguratorPanel({
                 )}
               </span>
             </button>
-            <div className="hero-product-step-body">
+            <div
+              className="hero-product-step-body"
+              style={stepTwoCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}
+            >
               <div
                 className="hero-product-mesh-grid hero-product-mesh-grid--visual"
                 style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
