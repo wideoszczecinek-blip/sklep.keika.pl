@@ -7,6 +7,7 @@ import { optimizeImageUrl } from "@/lib/image-optim";
 import { useScrolledPast } from "@/lib/use-scrolled";
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import CatalogHeader from "@/app/components/catalog-header";
+import { isProductSlugLive, PRODUCT_LOCKED_MESSAGE } from "@/lib/product-availability";
 
 type ProductItem = {
   name?: string;
@@ -522,6 +523,9 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
   }, [slug]);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  // Label of whichever locked product the visitor just tried to open from
+  // this category grid - see lib/product-availability.ts.
+  const [lockedNotice, setLockedNotice] = useState<string | null>(null);
   const configEndpoint = process.env.NEXT_PUBLIC_CRM_SHOP_CONFIG_URL || "https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public";
   const endpointOrigin = useMemo(() => {
     try {
@@ -666,7 +670,20 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
                       <p>{product.subtitle || "Konfiguracja i szybka wycena."}</p>
                       <div className="catalog-product-row">
                         <strong>{formatPrice(product.price_from || "")}</strong>
-                        <Link href={productSlug ? `/produkt/${productSlug}` : "#"}>Szczegóły</Link>
+                        {productSlug && isProductSlugLive(productSlug) ? (
+                          <Link href={`/produkt/${productSlug}`}>Szczegóły</Link>
+                        ) : (
+                          <button
+                            type="button"
+                            className="catalog-product-locked-link"
+                            onClick={() => {
+                              setLockedNotice(product.name || "Ten produkt");
+                              window.setTimeout(() => setLockedNotice(null), 3200);
+                            }}
+                          >
+                            Szczegóły
+                          </button>
+                        )}
                       </div>
                     </div>
                   </article>
@@ -676,6 +693,13 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
           </>
         )}
       </main>
+
+      {lockedNotice ? (
+        <div className="product-locked-toast" role="status">
+          <strong>{lockedNotice}</strong>
+          <span>{PRODUCT_LOCKED_MESSAGE}</span>
+        </div>
+      ) : null}
     </div>
   );
 }

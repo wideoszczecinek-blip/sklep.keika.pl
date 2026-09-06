@@ -3,6 +3,7 @@ import "./globals.css";
 import LastPageTracker from "./components/last-page-tracker";
 import ConsentBanner from "./components/consent-banner";
 import SiteAnalytics from "./components/site-analytics";
+import ChatBubble from "./components/chat-bubble";
 
 export const metadata: Metadata = {
   title: "KEIKA | Rolety i Markizy na Wymiar",
@@ -35,6 +36,14 @@ export default function RootLayout({
   return (
     <html lang="pl" suppressHydrationWarning>
       <head>
+        {/* Belt-and-suspenders against a phone's own "force dark for web
+            content" browser feature (Android Chrome/Samsung Internet) -
+            that repaints pages algorithmically based on the OS dark setting,
+            independently of the page's own CSS/JS, unless the page declares
+            itself light-only. This is static, present in the very first
+            bytes of the response - no JS execution/timing involved at all,
+            unlike the attribute the script below sets. */}
+        <meta name="color-scheme" content="light" />
         <script
           id="theme-init"
           dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
@@ -45,6 +54,7 @@ export default function RootLayout({
         <SiteAnalytics />
         {children}
         <ConsentBanner />
+        <ChatBubble />
       </body>
     </html>
   );

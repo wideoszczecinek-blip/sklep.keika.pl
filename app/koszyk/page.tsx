@@ -15,14 +15,21 @@ import {
   updateCartItemQty,
 } from "@/lib/cart";
 import ConfiguratorPanel from "@/features/moskitiery-ramkowe/ConfiguratorPanel";
-import { ALLEGRO_MOSKITIERY_HARDWARE, MESH_OPTIONS } from "@/features/moskitiery-ramkowe/shared";
+import {
+  ALLEGRO_MOSKITIERY_HARDWARE,
+  MESH_OPTIONS,
+  OVERSIZE_SURCHARGE_THRESHOLD_MM,
+} from "@/features/moskitiery-ramkowe/shared";
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import { ROLETY_DACHOWE_FABRIC, ROLETY_DACHOWE_HARDWARE } from "@/features/rolety-dachowe/shared";
+import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import { readLastPage } from "../components/last-page-tracker";
 import PaczkomatPicker from "../components/paczkomat-picker";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import PaymentStep, { type CheckoutContact } from "../components/stripe-payment-step";
 import { trackStorefrontEvent } from "@/lib/shop-public";
+import { isPromoActive, PROMO_CODE } from "@/lib/promo";
+import { getRescueGrant, type RescueGrant } from "@/lib/rescue";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
 // every validation error, failed discount code, and failed order/payment
@@ -211,6 +218,9 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
   if (productSlug === "rolety-dachowe") {
     return { hardware: "Kolor kasety", mesh: "Kolor materiału" };
   }
+  if (productSlug === "plisy") {
+    return { hardware: "Kolor mechanizmu", mesh: "Kolekcja i kolor tkaniny" };
+  }
   return { hardware: "Kolor profilu", mesh: "Kolor siatki" };
 }
 
@@ -218,10 +228,12 @@ function buildQuotePayloadFromCart(
   items: CartLineItem[],
   extraCharges: ExtraCharge[] = [],
   discount: AppliedDiscount | null = null,
+  rescueGrant: RescueGrant | null = null,
 ) {
   const positions = items.map((item, index) => {
     const fieldLabels = cartItemFieldLabels(item.productSlug);
     const specs = [
+      item.mountLabel ? `rodzaj montażu ${item.mountLabel}` : "",
       item.hardwareLabel ? `${fieldLabels.hardware.toLowerCase()} ${item.hardwareLabel}` : "",
       item.meshLabel ? `${fieldLabels.mesh.toLowerCase()} ${item.meshLabel}` : "",
       item.modelLabel ? `model okna ${item.modelLabel}` : "",
@@ -239,6 +251,7 @@ function buildQuotePayloadFromCart(
       currency: "PLN",
       summary: `${item.productLabel}${specs ? ` — ${specs}` : ""}`,
       summary_rows: [
+        item.mountLabel ? { label: "Rodzaj montażu", value: item.mountLabel, note: "" } : null,
         item.hardwareLabel ? { label: fieldLabels.hardware, value: item.hardwareLabel, note: "" } : null,
         item.meshLabel ? { label: fieldLabels.mesh, value: item.meshLabel, note: "" } : null,
         item.modelLabel ? { label: "Model okna", value: item.modelLabel, note: "" } : null,
@@ -290,9 +303,31 @@ function buildQuotePayloadFromCart(
     });
   }
 
+  // Rescue discount (exit-intent modal, see lib/rescue.ts) - its own
+  // position id/slug ("rabat-ratunek", not "rabat") so it stacks additively
+  // alongside a typed/promo code instead of competing for the same slot.
+  // This preview amount is display-only, same trust model as the code
+  // discount above - quote_save.php re-validates the source quote_code and
+  // recomputes the real amount server-side before persisting anything.
+  const itemsSubtotal = items.reduce((sum, item) => sum + item.total, 0);
+  const rescueAmount = rescueGrant ? Math.max(0, itemsSubtotal * (rescueGrant.percent / 100)) : 0;
+  if (rescueGrant && rescueAmount > 0) {
+    positions.push({
+      id: `rabat-ratunek-${rescueGrant.quoteCode}`,
+      product_slug: "rabat-ratunek",
+      product_label: "Rabat za zapisanie wyceny",
+      quantity: 1,
+      purchase_units: null,
+      total_amount: (-rescueAmount).toFixed(2),
+      currency: "PLN",
+      summary: `Rabat za zapisanie wyceny (-${rescueGrant.percent}%, -${rescueAmount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł)`,
+      summary_rows: [],
+    });
+  }
+
   const extraTotal = extraCharges.reduce((sum, extra) => sum + (extra.amount > 0 ? extra.amount : 0), 0);
   const discountTotal = discount && discount.amount > 0 ? discount.amount : 0;
-  const totalAmount = items.reduce((sum, item) => sum + item.total, 0) + extraTotal - discountTotal;
+  const totalAmount = itemsSubtotal + extraTotal - discountTotal - rescueAmount;
 
   return {
     quote_code: "",
@@ -375,6 +410,16 @@ export default function CartPage() {
   // client-side amount here can never reduce what's actually charged.
   const [discountCodeInput, setDiscountCodeInput] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
+  // Rescue discount (exit-intent modal on the homepage, see lib/rescue.ts) -
+  // read once on mount; stacks additively alongside appliedDiscount above,
+  // never replaces it (business decision: during SEZON20, a rescued
+  // customer gets -25% total, not just -20% or just -5%).
+  const [rescueGrant, setRescueGrantState] = useState<RescueGrant | null>(null);
+  useEffect(() => {
+    setRescueGrantState(getRescueGrant());
+  }, []);
+  const combinedDiscountPercent =
+    (appliedDiscount?.type === "percent" ? appliedDiscount.value : 0) + (rescueGrant?.percent || 0);
   const [discountChecking, setDiscountChecking] = useState(false);
   const [discountError, setDiscountError] = useState("");
 
@@ -465,6 +510,7 @@ export default function CartPage() {
   }, [sync]);
 
   const summary = summarizeCartItems(items);
+  const rescueAmount = rescueGrant ? Math.max(0, summary.total * (rescueGrant.percent / 100)) : 0;
   const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
   // Odbiór osobisty nigdy nie ma kosztu wysyłki - nic nie jest wysyłane.
@@ -531,14 +577,16 @@ export default function CartPage() {
   const emailValid = /\S+@\S+\.\S+/.test(form.email.trim());
   const contactReady =
     form.firstName.trim() !== "" && form.lastName.trim() !== "" && form.phone.trim() !== "" && emailValid;
-  const addressReady = !requiresAddress || (form.city.trim() !== "" && form.address1.trim() !== "");
-  const paczkomatReady = deliveryMethod !== PACZKOMAT_METHOD.id || selectedPaczkomat !== null;
-  const invoiceReady = !wantsInvoice || (invoice.nip.trim().length === 10 && invoice.companyName.trim() !== "");
-  // Per-field "is this one correctly filled in?" booleans, purely for the
-  // subtle-accent/green-checkmark feedback on each input (see
-  // CartFieldStatus) - deliberately mirror the readiness checks above
-  // rather than inventing stricter rules a field doesn't actually need to
-  // pass to submit.
+  // Per-field "is this one correctly filled in?" booleans - used both for
+  // the subtle-accent/green-checkmark feedback on each input (see
+  // CartFieldStatus) *and*, as of now, for the actual readiness gates right
+  // below. postcodeFieldValid/invoiceStreetFieldValid/
+  // invoicePostcodeFieldValid/invoiceCityFieldValid used to exist only for
+  // the checkmark - addressReady/invoiceReady never checked them, so the
+  // auto-submit effect further down (which creates the real order + Stripe
+  // PaymentIntent) could fire the moment city+street were filled in, even
+  // with an empty/malformed postcode still sitting in the field, or with a
+  // company name but no street/postcode/city on an invoice.
   const firstNameFieldValid = form.firstName.trim() !== "";
   const lastNameFieldValid = form.lastName.trim() !== "";
   const phoneFieldValid = form.phone.trim() !== "";
@@ -550,6 +598,11 @@ export default function CartPage() {
   const invoiceStreetFieldValid = invoice.street.trim() !== "";
   const invoicePostcodeFieldValid = /^\d{2}-?\d{3}$/.test(invoice.postcode.trim());
   const invoiceCityFieldValid = invoice.city.trim() !== "";
+  const addressReady = !requiresAddress || (cityFieldValid && address1FieldValid && postcodeFieldValid);
+  const paczkomatReady = deliveryMethod !== PACZKOMAT_METHOD.id || selectedPaczkomat !== null;
+  const invoiceReady =
+    !wantsInvoice ||
+    (nipFieldValid && companyNameFieldValid && invoiceStreetFieldValid && invoicePostcodeFieldValid && invoiceCityFieldValid);
   // The payment section itself is always rendered (see JSX below) - this
   // just controls whether it's locked/greyed out or interactive.
   const deliveryDataReady = contactReady && addressReady && paczkomatReady && invoiceReady && items.length > 0;
@@ -602,12 +655,41 @@ export default function CartPage() {
   }, []);
 
   const draftSnapshotRef = useRef("");
+  // The quote_code from this checkout session's last successful save, if
+  // any - threaded back into buildQuotePayloadFromCart() below so a
+  // resubmission (see the reset-effect further down: any edit while a
+  // PaymentIntent is already in flight tears it down and re-submits)
+  // *updates the same quote row* instead of minting an entirely new,
+  // independently-validated one each time. shop_public_orders_create()
+  // (CRM side) already reuses the same order_code for exactly this reason
+  // ("Reuse a recent still-unpaid draft... instead of stacking a new one")
+  // - this brings the quote layer in line with that same intent, so a
+  // struggling/retried checkout produces one continuously-revalidated quote
+  // instead of several independent ones that could in principle disagree
+  // with each other (each is still always re-validated fresh server-side
+  // regardless - this only removes the *duplication*, not the validation).
+  const lastQuoteCodeRef = useRef("");
   const orderStateRef = useRef(orderState);
   useEffect(() => {
     orderStateRef.current = orderState;
   }, [orderState]);
+  // Only re-create the order/PaymentIntent when something that actually
+  // changes the *charged amount* changes (items, delivery method, an
+  // applied discount) - not on every keystroke in the contact/address/
+  // invoice fields, which is what this used to do (the snapshot included
+  // `form`/`invoice`/`wantsInvoice`). Real customer impact, confirmed live
+  // in Stripe: a single ~600 zł order accumulated *six* abandoned
+  // PaymentIntents in three minutes, all "Incomplete" with no payment
+  // method attached at all - the customer was just fixing a typo in their
+  // address/phone while the payment form was already up, and each edit
+  // silently threw away the in-progress PaymentIntent and minted a new one
+  // underneath them, exactly the kind of churn that makes a checkout feel
+  // broken even when the eventual attempt succeeds. The comment on
+  // `dataLocked` above already documented the *intended* behaviour ("a typo
+  // fix shouldn't require starting over") - this brings the code in line
+  // with it instead of contradicting it.
   useEffect(() => {
-    const snapshot = JSON.stringify({ form, wantsInvoice, invoice, deliveryMethod, items });
+    const snapshot = JSON.stringify({ items, deliveryMethod, appliedDiscount });
     const current = orderStateRef.current;
     if (
       current &&
@@ -621,7 +703,7 @@ export default function CartPage() {
       submittedRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, wantsInvoice, invoice, deliveryMethod, items, paymentConfirmed]);
+  }, [items, deliveryMethod, appliedDiscount, paymentConfirmed]);
 
   async function sendCodSms() {
     setCodSms({ status: "sending", token: "", code: "", error: "" });
@@ -631,7 +713,7 @@ export default function CartPage() {
       // they're committing to accept on delivery, not just the code.
       const codTotal = Math.max(
         0,
-        summary.total - (appliedDiscount?.amount || 0) + shippingFee + orderSurcharge + COD_SURCHARGE_AMOUNT,
+        summary.total - (appliedDiscount?.amount || 0) - rescueAmount + shippingFee + orderSurcharge + COD_SURCHARGE_AMOUNT,
       );
       const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/cod_sms_start.php", {
         method: "POST",
@@ -740,10 +822,31 @@ export default function CartPage() {
     setDiscountError("");
   }
 
+  // A promo code activated from the configurator's own SEZON20 banner (see
+  // ConfiguratorPanel.tsx's ACTIVE_PROMO_STORAGE_KEY) shows up here already
+  // applied - the customer doesn't retype anything. Guarded so it only ever
+  // auto-applies once per page load, never fights a code the customer
+  // already typed/removed by hand in this same session.
+  const autoAppliedPromoRef = useRef(false);
+  useEffect(() => {
+    if (autoAppliedPromoRef.current || appliedDiscount || summary.total <= 0) return;
+    // isPromoActive() checks the cookie first, localStorage second - reading
+    // localStorage directly here (as this used to) missed the cookie
+    // entirely, which is exactly what broke this for a customer arriving
+    // from a Facebook link (Facebook's in-app browser can silently
+    // partition/block localStorage - see lib/promo.ts).
+    const storedCode = isPromoActive(PROMO_CODE) ? PROMO_CODE : "";
+    if (!storedCode) return;
+    autoAppliedPromoRef.current = true;
+    setDiscountCodeInput(storedCode);
+    void checkDiscountCode(storedCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary.total]);
+
   const submitOrder = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
-    draftSnapshotRef.current = JSON.stringify({ form, wantsInvoice, invoice, deliveryMethod, items });
+    draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod, appliedDiscount });
     setError("");
     setIsSubmitting(true);
     try {
@@ -770,9 +873,24 @@ export default function CartPage() {
           summary: "Dopłata za płatność za pobraniem",
         },
       ];
-      const quotePayload = buildQuotePayloadFromCart(items, extraCharges, appliedDiscount);
+      let quoteSessionToken = "";
+      try {
+        quoteSessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+      } catch {
+        // sessionStorage niedostępny - wycena i tak się zapisze.
+      }
+      const quotePayload = {
+        ...buildQuotePayloadFromCart(items, extraCharges, appliedDiscount, rescueGrant),
+        // Reuse this checkout session's own quote_code if we already have
+        // one (see lastQuoteCodeRef's doc comment above) - quote_save.php
+        // re-validates the discount fresh from these exact positions either
+        // way, this just makes it update the same row instead of a new one.
+        quote_code: lastQuoteCodeRef.current || "",
+        session_token: quoteSessionToken,
+      };
       const quoteResponse = await saveShopQuote(quotePayload);
       const quoteCode = quoteResponse.quote.quote_code;
+      lastQuoteCodeRef.current = quoteCode;
 
       const deliveryLabel =
         [COURIER_METHOD, PACZKOMAT_METHOD, COD_DELIVERY_METHOD, PICKUP_METHOD].find(
@@ -802,11 +920,23 @@ export default function CartPage() {
         /* tracking never blocks checkout */
       }
 
+      // Site-wide analytics session token (see lib/track-step.ts /
+      // site-analytics.tsx) - lets the CRM dashboard's "kto jest teraz na
+      // stronie" tooltip match this live browsing session straight to the
+      // order it just created (see shop_www_quotes_build_live_online_breakdown()).
+      let checkoutSessionToken = "";
+      try {
+        checkoutSessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+      } catch {
+        // sessionStorage niedostępny - zamówienie i tak przejdzie, po prostu bez tego dopasowania.
+      }
+
       const response = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           quote_code: quoteCode,
+          session_token: checkoutSessionToken,
           customer: { name: `${form.firstName} ${form.lastName}`.trim(), phone: form.phone, email: form.email },
           shipping: {
             city: form.city,
@@ -856,6 +986,7 @@ export default function CartPage() {
       if (paymentMethod === "cod" || !Boolean(json.payment_enabled && json.client_secret && json.publishable_key)) {
         clearCart();
         setItems([]);
+        lastQuoteCodeRef.current = "";
       }
     } catch (submitError) {
       submittedRef.current = false;
@@ -1012,17 +1143,22 @@ export default function CartPage() {
                     <div className="cart-page-item-info">
                       <strong>{item.productLabel}</strong>
                       <span className="cart-page-item-specs">
-                        {item.hardwareLabel ? `${cartItemFieldLabels(item.productSlug).hardware}: ${item.hardwareLabel}` : null}
-                        {item.meshLabel ? ` · ${cartItemFieldLabels(item.productSlug).mesh}: ${item.meshLabel}` : null}
-                        {item.modelLabel ? ` · Model okna: ${item.modelLabel}` : null}
-                        {item.widthMm && item.heightMm ? ` · ${item.widthMm} × ${item.heightMm} mm` : null}
+                        {[
+                          item.mountLabel ? `Rodzaj montażu: ${item.mountLabel}` : "",
+                          item.hardwareLabel ? `${cartItemFieldLabels(item.productSlug).hardware}: ${item.hardwareLabel}` : "",
+                          item.meshLabel ? `${cartItemFieldLabels(item.productSlug).mesh}: ${item.meshLabel}` : "",
+                          item.modelLabel ? `Model okna: ${item.modelLabel}` : "",
+                          item.widthMm && item.heightMm ? `${item.widthMm} × ${item.heightMm} mm` : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
                       <span className="cart-page-item-unit">
-                        {appliedDiscount?.type === "percent" ? (
+                        {combinedDiscountPercent > 0 ? (
                           <>
-                            <span className="cart-page-item-price-original">{formatPln(item.price)}</span>
+                            <span className="cart-page-item-price-original">{formatPln(item.price)}</span>{" "}
                             <span className="cart-page-item-price-discounted">
-                              {formatPln(item.price * (1 - appliedDiscount.value / 100))}
+                              {formatPln(item.price * (1 - combinedDiscountPercent / 100))}
                             </span>
                           </>
                         ) : (
@@ -1030,6 +1166,12 @@ export default function CartPage() {
                         )}{" "}
                         / szt.
                       </span>
+                      {item.oversizeSurchargeAmount ? (
+                        <span className="cart-page-item-surcharge-note">
+                          + {formatPln(item.oversizeSurchargeAmount)} dopłaty za przesyłkę dłużycową (rozmiar
+                          przekracza {OVERSIZE_SURCHARGE_THRESHOLD_MM} mm)
+                        </span>
+                      ) : null}
                     </div>
                     <div className="cart-page-item-qty">
                       <button
@@ -1051,11 +1193,11 @@ export default function CartPage() {
                       </button>
                     </div>
                     <div className="cart-page-item-total">
-                      {appliedDiscount?.type === "percent" ? (
+                      {combinedDiscountPercent > 0 ? (
                         <>
                           <span className="cart-page-item-price-original">{formatPln(item.total)}</span>
                           <span className="cart-page-item-price-discounted">
-                            {formatPln(item.total * (1 - appliedDiscount.value / 100))}
+                            {formatPln(item.total * (1 - combinedDiscountPercent / 100))}
                           </span>
                         </>
                       ) : (
@@ -1373,6 +1515,12 @@ export default function CartPage() {
                           <span>-{formatPln(appliedDiscount.amount)}</span>
                         </div>
                       ) : null}
+                      {rescueGrant && rescueAmount > 0 ? (
+                        <div className="cart-page-summary-row is-muted">
+                          <span>Rabat za zapisanie wyceny (-{rescueGrant.percent}%)</span>
+                          <span>-{formatPln(rescueAmount)}</span>
+                        </div>
+                      ) : null}
                       {deliveryMethod !== PICKUP_METHOD.id ? (
                         <div className="cart-page-summary-row is-muted">
                           <span>Koszt dostawy</span>
@@ -1398,7 +1546,8 @@ export default function CartPage() {
                             Math.max(
                               0,
                               summary.total -
-                                (appliedDiscount?.amount || 0) +
+                                (appliedDiscount?.amount || 0) -
+                                rescueAmount +
                                 shippingFee +
                                 orderSurcharge +
                                 (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
@@ -1409,11 +1558,11 @@ export default function CartPage() {
 
                       {shippingFee > 0 && amountToFreeShipping > 0 ? (
                         <p className="cart-free-shipping-progress">
-                          Dodaj produkty za jeszcze <strong>{formatPln(amountToFreeShipping)}</strong>, aby otrzymać{" "}
-                          <strong>darmową dostawę</strong>.
+                          Brakuje <strong>{formatPln(amountToFreeShipping)}</strong> do <strong>darmowej dostawy</strong>.{" "}
+                          <a href="/produkt/moskitiery-ramkowe" className="cart-free-shipping-cta">
+                            Wyceń dodatkową moskitierę
+                          </a>
                         </p>
-                      ) : deliveryMethod !== PICKUP_METHOD.id ? (
-                        <p className="cart-free-shipping-progress is-qualified">✓ Twoje zamówienie kwalifikuje się do darmowej dostawy.</p>
                       ) : null}
 
                       {sezon20Promo ? (
@@ -1446,9 +1595,22 @@ export default function CartPage() {
                       picked on the left (cash-on-delivery is one of those
                       options now). This badge just reflects that. */}
                   {!orderState ? (
-                    <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
-                      {paymentMethod === "cod" ? "Płatność za pobraniem" : "Płatność online"}
-                    </p>
+                    isSubmitting && checkoutReady ? (
+                      // Distinct from the "uzupełnij dane" badge below - this
+                      // is the brief gap while a just-applied discount/qty
+                      // change tears down the old PaymentIntent (wrong
+                      // amount now) and mints a correct one. Without this,
+                      // the payment panel just blanks back to its pre-order
+                      // look for a few seconds, which reads as "moja
+                      // płatność zniknęła" rather than "przelicza się".
+                      <p className="cart-payment-method-badge cart-payment-method-badge--recalculating">
+                        Przeliczamy zamówienie z rabatem…
+                      </p>
+                    ) : (
+                      <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
+                        {paymentMethod === "cod" ? "Płatność za pobraniem" : "Płatność online"}
+                      </p>
+                    )
                   ) : null}
 
                   {!dataLocked && items.length > 0 ? (
@@ -1493,6 +1655,7 @@ export default function CartPage() {
                             onPaid={() => {
                               clearCart();
                               setItems([]);
+                              lastQuoteCodeRef.current = "";
                               setPaymentConfirmed(true);
                             }}
                           />
@@ -1716,6 +1879,37 @@ export default function CartPage() {
                     price: result.unitPrice,
                     total: result.totalPrice,
                     imageUrl: result.hardwareImageUrl,
+                  });
+                  setItems(updated);
+                  setEditingItemId(null);
+                }}
+              />
+            ) : editingItem.productSlug === "plisy" ? (
+              <PlisyConfiguratorPanel
+                key={editingItem.id}
+                initialValues={{
+                  // Plisy's option data is fetched live from the CRM inside
+                  // the panel itself (see features/plisy/shared.ts), not a
+                  // static local constant like the other two products above
+                  // - so there's no label->id lookup table available here to
+                  // pre-select mount/hardware/fabric. Width/height/qty still
+                  // carry over since those are stored as plain values, not
+                  // ids; the user just re-picks the visual options.
+                  widthMm: editingItem.widthMm,
+                  heightMm: editingItem.heightMm,
+                  qty: editingItem.qty,
+                }}
+                submitLabel="Zapisz zmiany"
+                onSubmit={(result) => {
+                  const updated = updateCartItemConfig(editingItem.id, {
+                    hardwareLabel: result.hardwareLabel,
+                    meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
+                    mountLabel: result.mountLabel || undefined,
+                    widthMm: result.widthMm,
+                    heightMm: result.heightMm,
+                    qty: result.qty,
+                    price: result.unitPrice,
+                    total: result.totalPrice,
                   });
                   setItems(updated);
                   setEditingItemId(null);

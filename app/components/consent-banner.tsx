@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   CONSENT_CHANGED_EVENT,
   consentDecided,
   initTracking,
   setConsent,
 } from "@/lib/tracking";
+import InfoModal from "./info-modal";
 import styles from "./consent-banner.module.css";
 
 /**
@@ -35,6 +36,11 @@ export default function ConsentBanner() {
     () => consentDecided(),
     () => true,
   );
+  // Szczegóły (typy cookies, Meta Pixel, podstawa prawna, ...) żyją w
+  // osobnym modalu (treść z CRM, slug "cookies") - baner sam ma zostać
+  // minimalny, nie wyliczać niczego wprost (biznesowa decyzja: to nie
+  // miejsce na prawniczy tekst, tylko na szybką decyzję).
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     if (decided && consentDecided()) {
@@ -45,29 +51,29 @@ export default function ConsentBanner() {
   if (decided) return null;
 
   return (
-    <div className={styles.wrap} role="dialog" aria-label="Zgoda na pliki cookie">
-      <p className={styles.text}>
-        Używamy plików cookie i podobnych technologii (m.in. Meta Pixel), aby
-        analizować ruch i mierzyć skuteczność reklam. Możesz zaakceptować
-        wszystkie albo korzystać tylko z niezbędnych.{" "}
-        <a href="/regulamin" target="_blank" rel="noopener noreferrer">
-          Więcej informacji
-        </a>
-        .
-      </p>
-      <div className={styles.row}>
-        <button type="button" className={styles.btn} onClick={() => setConsent(false)}>
-          Tylko niezbędne
-        </button>
-        <span className={styles.spacer} />
-        <button
-          type="button"
-          className={`${styles.btn} ${styles.btnPrimary}`}
-          onClick={() => setConsent(true)}
-        >
-          Akceptuję
-        </button>
+    <>
+      <div className={styles.wrap} role="dialog" aria-label="Zgoda na pliki cookie">
+        <p className={styles.text}>
+          Korzystamy z plików cookie, by sklep działał poprawnie i żebyśmy mogli go ulepszać.{" "}
+          <button type="button" className={styles.detailsLink} onClick={() => setShowDetails(true)}>
+            Szczegółowe informacje
+          </button>
+        </p>
+        <div className={styles.row}>
+          <button type="button" className={styles.btn} onClick={() => setConsent(false)}>
+            Tylko niezbędne
+          </button>
+          <span className={styles.spacer} />
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            onClick={() => setConsent(true)}
+          >
+            Akceptuję
+          </button>
+        </div>
       </div>
-    </div>
+      {showDetails ? <InfoModal slug="cookies" onClose={() => setShowDetails(false)} /> : null}
+    </>
   );
 }

@@ -8,7 +8,20 @@
 // only the state ownership and the post-submit step (now the caller's job
 // via onSubmit) changed.
 import { useEffect, useMemo, useRef, useState } from "react";
+import MobileOverlayPortal from "@/app/components/mobile-overlay-portal";
+import PromoCountdownBanner from "@/app/components/promo-countdown-banner";
+import PromoSaveModal from "@/app/components/promo-save-modal";
+import RescueModal from "@/app/components/rescue-modal";
+import SaveShareWidget from "@/app/components/save-share-widget";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import {
+  buildRescuePosition,
+  hasSeenRescueModal,
+  isRescueDismissedForGood,
+  markRescueDismissedForGood,
+  markRescueModalShown,
+  saveRescueContact,
+} from "@/lib/rescue";
 import { trackShopStep } from "@/lib/track-step";
 import {
   PROMO_ACTIVATED_EVENT,
@@ -19,6 +32,7 @@ import {
   isPromoActive,
   type PromoPreview,
 } from "@/lib/promo";
+import { ensurePromoQuoteCode, hasSavedPromoLink } from "@/lib/promo-save";
 import {
   ALLEGRO_MOSKITIERY_HARDWARE,
   MESH_OPTIONS,
@@ -46,6 +60,8 @@ export default function ConfiguratorPanel({
   onSubmit,
   onZoom,
   onOpenInstructions,
+  enableRescueModal,
+  enableSaveShareBanner,
 }: {
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
@@ -60,6 +76,16 @@ export default function ConfiguratorPanel({
    * "Edytuj pozycję" modal has no such popup of its own to open, and
    * duplicating one there wasn't asked for. */
   onOpenInstructions?: () => void;
+  /** Exit-intent "rescue" modal (save + resume link + one-time +5%) - only
+   * the real product-page instance wants this; the cart's "Edytuj pozycję"
+   * modal edits an item that's already in the cart, so there's nothing to
+   * "rescue" there. Default off. */
+  enableRescueModal?: boolean;
+  /** Proactive "save or share this configuration" banner (see
+   * app/components/save-share-widget.tsx) - separate from the rescue modal
+   * above (voluntary, no discount, can show every visit), same default-off
+   * reasoning for the cart's edit modal. */
+  enableSaveShareBanner?: boolean;
 }) {
   const hardwareOptions = ALLEGRO_MOSKITIERY_HARDWARE;
 
@@ -160,6 +186,137 @@ export default function ConfiguratorPanel({
   const billedMeters = perimeterMeters !== null ? moskBilledMeters(perimeterMeters) : null;
   const dimensionUnitPrice = billedMeters !== null ? billedMeters * MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO : null;
   const dimensionTotalPrice = dimensionUnitPrice !== null ? dimensionUnitPrice * quantityNum : null;
+
+  // Exit-intent "rescue" modal - a visitor about to leave mid-configuration
+  // gets one chance (per browser, ever) to leave an e-mail/phone and get a
+  // resume link + a one-time +5% discount. This lives here (not in the host
+  // page) because this component owns the only state that actually reflects
+  // real progress - see the top-of-file comment for why. "Real progress"
+  // mirrors exactly what already gates the submit button below.
+  const rescueEligible = enableRescueModal && Boolean(selectedHardwareOption && selectedMesh && dimensionTotalPrice !== null);
+  const [rescueModalOpen, setRescueModalOpen] = useState(false);
+  const rescueEligibleRef = useRef(rescueEligible);
+  rescueEligibleRef.current = rescueEligible;
+
+  // "Kup w ciągu 24h albo rabat SEZON20 przepada" - jeżeli klient ma już
+  // aktywny kod i próbuje wyjść ze strony bez ręcznego zapisania linku
+  // (banner/mini-modal, promo-countdown-banner.tsx), ten sam exit-intent
+  // sygnał pokazuje wariant "zaraz stracisz rabat" ZAMIAST standardowego
+  // rabatu ratunkowego - nigdy oba naraz (dublowanie rabatu na rabacie).
+  // Świadomy zakres: mouseleave/blur (desktop) działają niezależnie od
+  // tego, czy klient cokolwiek już skonfigurował (enableRescueModal
+  // wystarcza), ale mobilny back-button/25s-timeout niżej nadal wymagają
+  // rescueEligible (prawdziwej konfiguracji) - nie rozszerzam tych dwóch
+  // triggerów w tym przejściu, żeby nie zwiększać zakresu zmian w tym
+  // pliku ponad potrzebę.
+  const [promoExitModalOpen, setPromoExitModalOpen] = useState(false);
+  const [promoExitQuoteCode, setPromoExitQuoteCode] = useState("");
+
+  function openRescueModalOnce() {
+    if (hasSeenRescueModal() || isRescueDismissedForGood()) return;
+    if (isPromoActive() && !hasSavedPromoLink()) {
+      markRescueModalShown();
+      void ensurePromoQuoteCode().then((state) => {
+        if (state?.quoteCode) setPromoExitQuoteCode(state.quoteCode);
+      });
+      setPromoExitModalOpen(true);
+      return;
+    }
+    if (!rescueEligibleRef.current) return;
+    markRescueModalShown();
+    setRescueModalOpen(true);
+  }
+
+  function closeRescueModal() {
+    markRescueDismissedForGood();
+    setRescueModalOpen(false);
+  }
+
+  function closePromoExitModal() {
+    markRescueDismissedForGood();
+    setPromoExitModalOpen(false);
+  }
+
+  // Desktop: cursor leaving toward the browser chrome (tabs/back/close
+  // button), or the window simply losing focus (alt-tab, clicking the
+  // taskbar, closing via the OS). `mouseleave` on <html> (not `mouseout` +
+  // a clientY<=0 check on document, which this used to be) fires exactly
+  // once when the pointer genuinely leaves the page - no dependency on
+  // catching one specific bubbled event at one specific pixel, which real
+  // browsers don't guarantee (fast mouse movement can skip straight from a
+  // positive Y to "outside" without ever firing an event exactly at the
+  // boundary - a real, documented limitation of the naive clientY check,
+  // confirmed live: a real mouse-to-the-X-button close never triggered it,
+  // even though a synthetic dispatchEvent test of the same code did).
+  // `blur` is a second, independent signal for everything mouseleave can't
+  // see (closing via taskbar/Alt+F4, switching windows without the cursor
+  // visibly leaving first).
+  useEffect(() => {
+    if (!enableRescueModal) return;
+    function handleLeaveSignal() {
+      openRescueModalOnce();
+    }
+    document.documentElement.addEventListener("mouseleave", handleLeaveSignal);
+    window.addEventListener("blur", handleLeaveSignal);
+    return () => {
+      document.documentElement.removeEventListener("mouseleave", handleLeaveSignal);
+      window.removeEventListener("blur", handleLeaveSignal);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enableRescueModal]);
+
+  // Mobile: intercept the first back-button press instead of navigating
+  // away - a dummy history entry is pushed once real progress exists, so
+  // the very next "back" lands on it (popstate) rather than leaving the site.
+  useEffect(() => {
+    if (!rescueEligible || hasSeenRescueModal() || isRescueDismissedForGood()) return;
+    window.history.pushState({ rescueGuard: true }, "");
+    function handlePopState() {
+      openRescueModalOnce();
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rescueEligible]);
+
+  // Universal fallback: catches tab-close/app-switch on mobile, which
+  // neither of the above can see - real progress plus ~25s of no further
+  // interaction at all.
+  useEffect(() => {
+    if (!rescueEligible) return;
+    const timer = window.setTimeout(() => openRescueModalOnce(), 25000);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rescueEligible, widthNum, heightNum, selectedHardwareId, selectedMeshId, quantityNum]);
+
+  function submitRescueContact(contact: { email?: string; phone?: string }) {
+    let sessionToken = "";
+    try {
+      sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+    } catch {
+      // sessionStorage niedostępny - wycena i tak się zapisze.
+    }
+    return saveRescueContact({
+      position: buildRescuePosition({
+        productSlug: "moskitiery-ramkowe",
+        productLabel: "Moskitiery ramkowe",
+        hardwareLabel: selectedHardwareOption?.label || "",
+        meshLabel: selectedMesh?.label || "",
+        widthMm: widthNum,
+        heightMm: heightNum,
+        qty: quantityNum,
+        total: dimensionTotalPrice || 0,
+      }),
+      sessionToken,
+      email: contact.email,
+      phone: contact.phone,
+      // Carries whatever site-wide promo (SEZON20 etc.) is currently
+      // active on this device into the saved quote, so the rescue link
+      // re-activates it on whichever device opens it too - see
+      // lib/rescue.ts's saveRescueContact() doc comment.
+      promoCode: isPromoActive() ? PROMO_CODE : undefined,
+    });
+  }
 
   // Seasonal SEZON20 banner near the price - real discount math still comes
   // from the code, not a hardcoded "20%" here (see lib/promo.ts). Activating
@@ -678,6 +835,7 @@ export default function ConfiguratorPanel({
                   )}
                 </div>
               ) : null}
+              <PromoCountdownBanner code={PROMO_CODE} />
               <button
                 type="button"
                 className="hero-product-add-to-cart"
@@ -777,6 +935,62 @@ export default function ConfiguratorPanel({
             </p>
           </div>
         </div>
+      ) : null}
+
+      {rescueModalOpen && selectedHardwareOption && selectedMesh && dimensionTotalPrice !== null ? (
+        <MobileOverlayPortal>
+          <RescueModal
+            productLabel="Moskitiery ramkowe"
+            priceLine={`, ${dimensionTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`}
+            totalAmount={dimensionTotalPrice}
+            otherDiscountPercent={promoActive && promoPreview?.type === "percent" ? promoPreview.value : 0}
+            onSubmit={submitRescueContact}
+            onClose={closeRescueModal}
+          />
+        </MobileOverlayPortal>
+      ) : null}
+
+      {promoExitModalOpen ? (
+        // No MobileOverlayPortal wrapper here, unlike RescueModal above -
+        // PromoSaveModal already self-portals straight to document.body
+        // (same as save-share-widget.tsx's own modal), MobileOverlayPortal
+        // is specifically for RescueModal, which doesn't.
+        <PromoSaveModal
+          quoteCode={promoExitQuoteCode}
+          shareUrl={
+            promoExitQuoteCode
+              ? `https://sklep.keika.pl/wycena/${encodeURIComponent(promoExitQuoteCode)}`
+              : "https://sklep.keika.pl/"
+          }
+          onClose={closePromoExitModal}
+        />
+      ) : null}
+
+      {enableSaveShareBanner ? (
+        <SaveShareWidget
+          headerSlotId="header-save-share-slot"
+          productSlug="moskitiery-ramkowe"
+          productLabel="Moskitiery ramkowe"
+          priceLine={
+            dimensionTotalPrice !== null
+              ? `, ${dimensionTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
+              : ""
+          }
+          buildPosition={() =>
+            selectedHardwareOption && selectedMesh && dimensionTotalPrice !== null
+              ? buildRescuePosition({
+                  productSlug: "moskitiery-ramkowe",
+                  productLabel: "Moskitiery ramkowe",
+                  hardwareLabel: selectedHardwareOption.label || "",
+                  meshLabel: selectedMesh.label || "",
+                  widthMm: widthNum,
+                  heightMm: heightNum,
+                  qty: quantityNum,
+                  total: dimensionTotalPrice,
+                })
+              : null
+          }
+        />
       ) : null}
     </>
   );

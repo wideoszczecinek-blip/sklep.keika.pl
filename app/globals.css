@@ -553,6 +553,80 @@ a {
   transform-origin: left center;
 }
 
+/* Header-integrated chat launcher - sits in the same row, right before the
+   cart icon (not a floating overlay like app/components/chat-bubble.tsx,
+   which this page deliberately doesn't render - see that file's top
+   comment). Self-contained background (works over both the photo hero and
+   the white blurred compact header) so it doesn't need separate light/dark
+   handling the way a text-only header link would. */
+.header-chat-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(155deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(0, 127, 123, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, width 0.25s ease, height 0.25s ease;
+}
+
+.header-chat-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(0, 127, 123, 0.34);
+}
+
+.header-chat-button svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  transition: width 0.25s ease, height 0.25s ease;
+}
+
+.header-chat-button-ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.5;
+  animation: chatBubblePing 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.header-chat-button-dot {
+  position: absolute;
+  top: -0.1rem;
+  right: -0.1rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: #22c55e;
+  border: 2px solid #fff;
+}
+
+/* Same breakpoint/condition as .hero-header.is-compact's other shrinking
+   rules (.brand, .header-cart, ...) - matches the cart icon shrinking right
+   next to it, not a separate rule of its own. */
+.hero-header.is-compact .header-chat-button {
+  width: 1.85rem;
+  height: 1.85rem;
+}
+
+.hero-header.is-compact .header-chat-button svg {
+  width: 0.92rem;
+  height: 0.92rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-chat-button-ping {
+    animation: none;
+    display: none;
+  }
+}
+
 .header-cart-wrap {
   position: relative;
 }
@@ -3232,6 +3306,52 @@ html[data-theme="light"] .mhelp-cta-primary {
   transform: scale(1.04);
 }
 
+/* Square swatches, scoped to the mount-type step only (Plisy's "Rodzaj
+   montażu") - NOT the shared .hero-product-hardware-grid rule above, which
+   every hardware/mesh-color step across every product also uses (including
+   moskitiery-ramkowe's real production hardware step). Squaring that shared
+   rule directly briefly shipped 2026-09-06 and silently clipped
+   moskitiery-ramkowe's hardware grid (7 colors -> 4 rows -> ~1236px content
+   inside .hero-product-step-body's fixed 560px max-height) - reverted
+   immediately, square treatment now lives only here. See
+   [[plisy-mount-swatch-image-bug]]. */
+.hero-product-mount-grid .hardware-card-image {
+  aspect-ratio: 1 / 1;
+}
+
+/* The mount step's accordion needs a taller reveal cap than the shared
+   560px default (.hero-product-step-body) - square cards in a 2-column
+   grid run taller than the short rectangular swatches everyone else uses.
+   Scoped to this one step's accordion so it doesn't change the open/close
+   animation feel for hardware/fabric/dimensions elsewhere. */
+.hero-product-step-accordion--mount .hero-product-step-body {
+  max-height: 1000px;
+}
+
+/* Plisy's hardware/mechanizm-color swatches are real 600x300 (2:1) photos,
+   not the square-ish thumbnails the shared .hardware-card-image rule
+   assumes - scoped here (not on the shared rule) for the exact reason
+   documented above: touching .hero-product-hardware-grid directly once
+   already silently clipped moskitiery-ramkowe's hardware step, which
+   reuses that same shared class with differently-shaped images. */
+.hero-product-hardware-color-grid .hardware-card-image {
+  aspect-ratio: 2 / 1;
+  min-height: 0;
+  background-size: cover;
+}
+
+/* 10 colors x 2:1 cards already fit under the shared 560px cap, but the
+   admin adds these live from the CRM with no upper bound - a generous cap
+   plus an internal scrollbar (rather than another guessed fixed max-height,
+   see the mount-step comment above for how that guessing game went wrong
+   once already) means the next added color degrades to "scroll a bit"
+   instead of silently vanishing off the bottom with no visible cue. */
+.hero-product-step-accordion--hardware-color .hero-product-step-body {
+  max-height: 720px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .hero-product-hardware-grid .hardware-card small {
   display: none;
 }
@@ -3239,6 +3359,21 @@ html[data-theme="light"] .mhelp-cta-primary {
 .hero-product-hardware-grid .hardware-card strong {
   color: #f1f7ff;
   font-size: 0.92rem;
+}
+
+.hardware-price-badge {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  background: #20b879;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 10px rgba(9, 21, 34, 0.28);
+  z-index: 1;
 }
 
 .hardware-selected-badge {
@@ -3665,6 +3800,60 @@ html[data-theme="light"] .mhelp-cta-primary {
 
 .hero-product-promo-banner-cta:hover {
   transform: translateY(-1px);
+}
+
+/* "Kup w ciagu 24h albo rabat przepada" - own visual identity, distinct
+   from both the orange "activate me" and green "aktywny" states of
+   pl-sezon-banner/hero-product-promo-banner above (which this always
+   renders right after) - blue reads as "informational/urgent" without
+   competing with either of those two colors, and stays legible sitting
+   directly under either one. Dark-first hardcoded like its neighbors in
+   this file, with an explicit light-theme override below, not the
+   CSS-custom-property token system the rescue-modal and save-share-modal
+   classes use - this lives inside those already-dark-hardcoded panels, so
+   matching their convention keeps it visually consistent with what it is
+   nested in, same reasoning as hero-product-promo-banner-text itself. */
+.promo-countdown-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.7rem;
+  margin: 0.5rem 0 0.7rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(94, 158, 255, 0.4);
+  background: rgba(94, 158, 255, 0.1);
+}
+
+.promo-countdown-banner-text {
+  flex: 1 1 14rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #eaf2ff;
+}
+
+.promo-countdown-banner-text strong {
+  color: #8fb3ff;
+}
+
+.promo-countdown-banner-cta {
+  flex: none;
+  border: 1px solid rgba(94, 158, 255, 0.55);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: #eaf2ff;
+  background: rgba(94, 158, 255, 0.16);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.promo-countdown-banner-cta:hover {
+  transform: translateY(-1px);
+  background: rgba(94, 158, 255, 0.26);
 }
 
 .hero-product-add-to-cart {
@@ -4258,13 +4447,25 @@ html[data-theme="light"] .catalog-product-description-photo {
   font-size: 1rem;
 }
 
-.catalog-product-row a {
+.catalog-product-row a,
+.catalog-product-locked-link {
   text-decoration: none;
   border-radius: 999px;
   border: 1px solid rgba(152, 238, 233, 0.68);
   color: #e9fbff;
   padding: 0.4rem 0.7rem;
   font-weight: 700;
+}
+
+/* A card whose product isn't launched yet (lib/product-availability.ts) -
+   looks identical to the real "Szczegóły" link above so the grid never
+   looks broken/incomplete, but is a <button> that shows a toast instead of
+   navigating. */
+.catalog-product-locked-link {
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
 }
 
 .product-layout {
@@ -6855,6 +7056,7 @@ html[data-theme="light"] .product-swatch-card small {
 }
 
 html[data-theme="light"] .catalog-product-row a,
+html[data-theme="light"] .catalog-product-locked-link,
 html[data-theme="light"] .product-anchor-nav a,
 html[data-theme="light"] .product-info-actions a:last-child,
 html[data-theme="light"] .measurement-actions button,
@@ -7298,6 +7500,12 @@ html[data-theme="light"] .cart-page-gradient-bg {
 .cart-page-item-unit {
   font-size: 0.74rem;
   color: rgba(240, 248, 255, 0.5);
+}
+
+.cart-page-item-surcharge-note {
+  font-size: 0.74rem;
+  color: #ffb768;
+  font-weight: 600;
 }
 
 .cart-page-item-qty {
@@ -7866,6 +8074,33 @@ html[data-theme="light"] .cart-page-gradient-bg {
   color: rgba(240, 248, 255, 0.6);
 }
 
+/* Distinct from both the ready (green) and muted (dim) states above - an
+   active in-progress look, so a discount/qty change that briefly tears down
+   and re-creates the PaymentIntent reads as "still working on it" rather
+   than "your payment vanished". */
+.cart-payment-method-badge--recalculating {
+  border-color: rgba(122, 168, 255, 0.4);
+  background: rgba(90, 140, 240, 0.14);
+  color: #8fb3ff;
+  animation: cart-recalculating-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cart-recalculating-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-payment-method-badge--recalculating {
+    animation: none;
+  }
+}
+
 .cart-cod-resend {
   border: none;
   background: none;
@@ -8093,6 +8328,37 @@ html[data-theme="light"] .cart-field-check {
 
 .cart-payment-waiting .cart-invoice-nip-spinner {
   position: static;
+}
+
+/* Distinct "confirm in your banking app" state (BLIK etc.) - column, not the
+   base's one-line row, and enough visual weight to not read as a generic
+   loading spinner: this is the moment the customer must go do something in
+   another app, not just wait. */
+.cart-payment-waiting-bank {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  padding: 1.6rem 1.2rem;
+  border-radius: var(--radius-lg);
+  background: var(--theme-glass-bg);
+  border: 1px solid var(--theme-glass-border);
+}
+
+.cart-payment-waiting-bank strong {
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.cart-payment-waiting-bank p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  max-width: 28rem;
+}
+
+.cart-payment-waiting-bank .cart-invoice-nip-spinner {
+  margin-bottom: 0.3rem;
 }
 
 /* Keeps the Stripe element mounted (it needs real width to size/init
@@ -8358,6 +8624,10 @@ html[data-theme="light"] .cart-page-summary-row.is-muted {
   color: rgba(19, 40, 67, 0.55);
 }
 
+html[data-theme="light"] .cart-page-item-surcharge-note {
+  color: #b6570f;
+}
+
 html[data-theme="light"] .cart-page-item-qty button {
   border-color: rgba(26, 51, 82, 0.24);
   background: rgba(19, 40, 67, 0.05);
@@ -8511,6 +8781,12 @@ html[data-theme="light"] .cart-payment-method-badge.is-muted {
   border-color: rgba(26, 51, 82, 0.16);
   background: rgba(19, 40, 67, 0.04);
   color: rgba(19, 40, 67, 0.55);
+}
+
+html[data-theme="light"] .cart-payment-method-badge--recalculating {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
 }
 
 html[data-theme="light"] .cart-checkout-form input,
@@ -8999,6 +9275,29 @@ html[data-theme="light"] .hero-product-promo-banner-text {
   color: #16314e;
 }
 
+html[data-theme="light"] .promo-countdown-banner {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+html[data-theme="light"] .promo-countdown-banner-text {
+  color: #16314e;
+}
+
+html[data-theme="light"] .promo-countdown-banner-text strong {
+  color: #2563eb;
+}
+
+html[data-theme="light"] .promo-countdown-banner-cta {
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #16314e;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+html[data-theme="light"] .promo-countdown-banner-cta:hover {
+  background: rgba(37, 99, 235, 0.2);
+}
+
 html[data-theme="light"] .hero-product-added-toast p {
   color: #16314e;
 }
@@ -9058,4 +9357,1220 @@ html[data-theme="light"] .allegro-review-tag-pros {
 
 html[data-theme="light"] .allegro-review-tag-cons {
   color: #a13030;
+}
+
+/* Exit-intent "rescue" modal (app/components/rescue-modal.tsx). Uses the
+   theme tokens directly (--bg/--ink/... always resolve light, see the note
+   at the top of this file) rather than a separate [data-theme="light"]
+   override block - no dark variant needed since there isn't one anymore. */
+.rescue-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  background: rgba(19, 40, 67, 0.45);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: rescueModalFadeIn 0.25s ease both;
+}
+
+@keyframes rescueModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.rescue-modal-shell {
+  position: relative;
+  width: min(94vw, 480px);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 1.8rem 1.6rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  animation: rescueModalRise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes rescueModalRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rescue-modal-overlay,
+  .rescue-modal-shell {
+    animation: none;
+  }
+}
+
+.rescue-modal-close {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rescue-modal-close:hover {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
+
+.rescue-modal-shell h3 {
+  margin: 0 0 0.7rem;
+  padding-right: 1.6rem;
+  color: var(--ink);
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.25rem;
+  text-wrap: balance;
+}
+
+.rescue-modal-lead {
+  margin: 0 0 1.2rem;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.rescue-modal-lead strong {
+  color: var(--accent-deep);
+}
+
+/* The discount is the hero, not the fine print - a big, urgent badge above
+   the headline on both the ask and the success screen, not just a
+   "-5%" buried mid-sentence. */
+.rescue-modal-discount-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.9rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff9f0a, #ff6b00);
+  box-shadow: 0 10px 22px rgba(255, 107, 0, 0.28);
+}
+
+.rescue-modal-discount-badge strong {
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.rescue-modal-discount-badge span {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+/* The grand-total savings across every active discount, not just the
+   rescue's own increment - a lone "-5%" on a 120 zł cart is only a few
+   złoty and doesn't read as compelling on its own. */
+.rescue-modal-savings-strip {
+  margin: 0 0 1.1rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.7rem;
+  background: linear-gradient(135deg, rgba(255, 159, 10, 0.14), rgba(255, 107, 0, 0.08));
+  border: 1px solid rgba(255, 107, 0, 0.22);
+  color: var(--ink);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.rescue-modal-savings-strip strong {
+  color: #c2410c;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.rescue-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.rescue-modal-form input {
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.rescue-modal-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 168, 163, 0.16);
+}
+
+.rescue-modal-form button {
+  padding: 0.85rem 1rem;
+  border-radius: 0.7rem;
+  border: none;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.rescue-modal-form button:hover:not(:disabled) {
+  background: var(--accent-deep);
+}
+
+.rescue-modal-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rescue-modal-error {
+  margin: 0.6rem 0 0;
+  color: #c4432c;
+  font-size: 0.85rem;
+}
+
+.rescue-modal-skip {
+  display: block;
+  margin: 0.9rem auto 0;
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rescue-modal-done {
+  text-align: center;
+}
+
+.rescue-modal-done-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.8rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 1.4rem;
+}
+
+.rescue-modal-done h3 {
+  padding-right: 0;
+}
+
+.rescue-modal-done p {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0 0 1.2rem;
+}
+
+.rescue-modal-done p strong {
+  color: var(--accent-deep);
+}
+
+.rescue-modal-done-cta {
+  padding: 0.7rem 1.4rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rescue-modal-share-lead {
+  margin: 0 0 0.6rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.rescue-modal-share-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4.6rem, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.rescue-modal-share-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.65rem 0.3rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.rescue-modal-share-option span {
+  font-size: 1.15rem;
+}
+
+.rescue-modal-share-option:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 20px rgba(0, 168, 163, 0.14);
+}
+
+.rescue-modal-share-option.is-primary {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #fff;
+  border-color: transparent;
+}
+
+.rescue-modal-qr {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  border-radius: 0.9rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.rescue-modal-qr img {
+  width: 140px;
+  height: 140px;
+  border-radius: 0.5rem;
+}
+
+/* Shown once, right after a resume link (?resume_token=...) successfully
+   restores a saved configuration into the cart. */
+.rescue-resume-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.2rem;
+  z-index: 125;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: min(92vw, 420px);
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  animation: rescueToastRise 0.3s ease both;
+}
+
+.rescue-resume-toast strong {
+  color: var(--accent-deep);
+  font-size: 0.92rem;
+}
+
+.rescue-resume-toast span {
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+}
+
+@keyframes rescueToastRise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rescue-resume-toast {
+    animation: none;
+  }
+}
+
+/* Shown when a visitor clicks a menu/flyout entry for a product that isn't
+   launched yet (lib/product-availability.ts) - same shell as
+   .rescue-resume-toast, neutral tone instead of a success one since this
+   isn't good news for the visitor. */
+.product-locked-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.2rem;
+  z-index: 125;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: min(92vw, 420px);
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  animation: rescueToastRise 0.3s ease both;
+}
+
+.product-locked-toast strong {
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.product-locked-toast span {
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-locked-toast {
+    animation: none;
+  }
+}
+
+/* Global chat launcher (app/components/chat-bubble.tsx) - present on every
+   page via app/layout.tsx. */
+/* Anchored under the header, not the bottom of the screen - a fixed bottom-
+   right bubble collided head-on with .hero-product-bottom-tabs (the mobile
+   Opis/Galeria/Opinie/.../"Konfiguruj" pill, also bottom-fixed and nearly
+   full-width there). Top-right clears that entirely on every viewport. */
+.chat-bubble-root {
+  position: fixed;
+  right: clamp(0.9rem, 3vw, 1.6rem);
+  top: calc(env(safe-area-inset-top, 0px) + 4.5rem);
+  z-index: 58;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.7rem;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.chat-bubble-root.is-entered {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.chat-bubble-launcher {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(155deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #fff;
+  box-shadow: 0 14px 32px rgba(0, 127, 123, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.chat-bubble-launcher:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 18px 38px rgba(0, 127, 123, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.chat-bubble-icon {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.chat-bubble-launcher-ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.55;
+  animation: chatBubblePing 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes chatBubblePing {
+  0% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  75%,
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+.chat-bubble-online-dot {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.15rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  background: #22c55e;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+}
+
+.chat-bubble-teaser {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: min(15.5rem, 72vw);
+  padding: 0.75rem 0.9rem 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  animation: chatTeaserRise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.chat-bubble-teaser-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.chat-bubble-teaser-text strong {
+  font-size: 0.88rem;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.chat-bubble-teaser-text span {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+
+.chat-bubble-teaser-close {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  font-size: 0.65rem;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(19, 40, 67, 0.12);
+}
+
+@keyframes chatTeaserRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  .chat-bubble-launcher {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+
+  .chat-bubble-teaser {
+    max-width: min(13.5rem, 68vw);
+    padding: 0.65rem 0.8rem 0.65rem 0.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble-root {
+    transition: none;
+  }
+
+  .chat-bubble-launcher-ping {
+    animation: none;
+    display: none;
+  }
+
+  .chat-bubble-teaser {
+    animation: none;
+  }
+}
+
+/* Save/share icon + teaser, portaled into #header-save-share-slot inside
+   the real header row (app/page.tsx) - see save-share-widget.tsx's top
+   comment for why this is a portal into ordinary flow rather than a fixed
+   overlay. Icon styling mirrors .header-chat-button (same size, same
+   compact-mode shrink) since the two now sit side by side. */
+.header-save-share-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.header-save-share-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--ink) 0%, #1d3b5c 100%);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(19, 40, 67, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, width 0.25s ease, height 0.25s ease;
+}
+
+.header-save-share-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(19, 40, 67, 0.34);
+}
+
+.header-save-share-button svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  transition: width 0.25s ease, height 0.25s ease;
+}
+
+.hero-header.is-compact .header-save-share-button {
+  width: 1.85rem;
+  height: 1.85rem;
+}
+
+.hero-header.is-compact .header-save-share-button svg {
+  width: 0.92rem;
+  height: 0.92rem;
+}
+
+/* Plain hover/focus label, separate from the timed .header-save-share-teaser
+   bubble above - only rendered in JSX while that teaser isn't showing, so
+   the two never stack on top of each other. */
+.header-save-share-hint {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 50%;
+  transform: translateX(50%) translateY(-4px);
+  z-index: 75;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.55rem;
+  background: rgba(9, 21, 37, 0.96);
+  color: #f2f7ff;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.header-save-share-button:hover .header-save-share-hint,
+.header-save-share-button:focus-visible .header-save-share-hint {
+  opacity: 1;
+  transform: translateX(50%) translateY(0);
+}
+
+html[data-theme="light"] .header-save-share-hint {
+  background: #13283f;
+  color: #fff;
+}
+
+.header-save-share-teaser {
+  position: absolute;
+  top: calc(100% + 0.7rem);
+  right: 0;
+  z-index: 70;
+  width: min(19rem, 82vw);
+  padding: 0.9rem 1.6rem 0.9rem 1rem;
+  border-radius: var(--radius-lg);
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  animation: saveShareTeaserRise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.header-save-share-teaser::before {
+  content: "";
+  position: absolute;
+  top: -0.4rem;
+  right: 0.85rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-right: none;
+  transform: rotate(45deg);
+}
+
+.header-save-share-teaser-text {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.83rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.header-save-share-teaser-close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #f5f7fa;
+  color: var(--ink-soft);
+  font-size: 0.6rem;
+  cursor: pointer;
+}
+
+@keyframes saveShareTeaserRise {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  .header-save-share-teaser {
+    width: min(17rem, 88vw);
+  }
+}
+
+/* "Kup w ciagu 24h albo rabat przepada" - the countdown banners own save
+   modal (app/components/promo-save-modal.tsx), reused as-is for the
+   exit-intent "zaraz stracisz rabat" variant too (features/moskitiery-
+   ramkowe/ConfiguratorPanel.tsx). Token-based like the rescue-modal and
+   save-share-modal classes above (this is a top-level portaled overlay,
+   not nested inside a dark-hardcoded panel like promo-countdown-banner
+   is), deliberately its own option-grid layout (2 cols, not 3) since it
+   only ever has up to 4 options (Udostepnij/Kopiuj/SMS/E-mail) vs three. */
+.promo-save-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(9, 18, 32, 0.5);
+  backdrop-filter: blur(4px);
+  animation: saveShareOverlayFadeIn 0.2s ease both;
+}
+
+.promo-save-modal-shell {
+  position: relative;
+  width: min(26rem, 100%);
+  max-height: min(90vh, 34rem);
+  overflow-y: auto;
+  padding: 1.8rem 1.6rem 1.6rem;
+  border-radius: var(--radius-xl);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  animation: saveShareModalRise 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-save-modal-overlay,
+  .promo-save-modal-shell {
+    animation: none;
+  }
+}
+
+.promo-save-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.promo-save-modal-close:hover {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
+
+.promo-save-modal-shell h3 {
+  margin: 0 1.6rem 0.6rem 0;
+  font-size: 1.15rem;
+  color: var(--ink);
+  font-family: var(--font-heading), sans-serif;
+}
+
+.promo-save-modal-lead {
+  margin: 0 0 0.9rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.promo-save-modal-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.promo-save-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 0.4rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.promo-save-option span {
+  font-size: 1.2rem;
+}
+
+.promo-save-option span svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.promo-save-option:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 20px rgba(0, 168, 163, 0.14);
+}
+
+.promo-save-option.is-primary {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #fff;
+  border-color: transparent;
+}
+
+.promo-save-modal-linkbox {
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.promo-save-modal-linkbox code {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.promo-save-modal-back {
+  display: block;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.promo-save-modal-back:hover {
+  color: var(--ink);
+}
+
+.promo-save-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.promo-save-modal-form input {
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.promo-save-modal-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 168, 163, 0.16);
+}
+
+.promo-save-modal-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.promo-save-modal-consent-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.promo-save-modal-consent-option:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--ink);
+  background: rgba(0, 168, 163, 0.06);
+}
+
+.promo-save-modal-consent-option input {
+  flex: none;
+  margin-top: 0.15rem;
+  accent-color: var(--accent);
+}
+
+.promo-save-modal-form button[type="submit"] {
+  padding: 0.85rem 1rem;
+  border-radius: 0.7rem;
+  border: none;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.promo-save-modal-form button[type="submit"]:hover:not(:disabled) {
+  background: var(--accent-deep);
+}
+
+.promo-save-modal-form button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.promo-save-modal-error {
+  margin: 0.6rem 0 0;
+  color: #c4432c;
+  font-size: 0.85rem;
+}
+
+.promo-save-modal-done {
+  text-align: center;
+}
+
+.promo-save-modal-done-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.8rem;
+  border-radius: 999px;
+  background: rgba(0, 168, 163, 0.14);
+  color: var(--accent-deep);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.promo-save-modal-done h3 {
+  margin: 0 0 0.5rem;
+}
+
+.promo-save-modal-done p {
+  margin: 0 0 1.2rem;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.promo-save-modal-done-cta {
+  padding: 0.7rem 1.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-share-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(9, 18, 32, 0.5);
+  backdrop-filter: blur(4px);
+  animation: saveShareOverlayFadeIn 0.2s ease both;
+}
+
+@keyframes saveShareOverlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.save-share-modal-shell {
+  position: relative;
+  width: min(26rem, 100%);
+  max-height: min(90vh, 34rem);
+  overflow-y: auto;
+  padding: 1.8rem 1.6rem 1.6rem;
+  border-radius: var(--radius-xl);
+  background: #fff;
+  box-shadow: var(--shadow);
+  animation: saveShareModalRise 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes saveShareModalRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.save-share-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.save-share-modal-shell h3 {
+  margin: 0 1.6rem 0.6rem 0;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+
+.save-share-modal-lead {
+  margin: 0 0 0.9rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.save-share-modal-config {
+  margin: 0 0 1.1rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-lg);
+  background: rgba(0, 168, 163, 0.08);
+  border: 1px solid rgba(0, 168, 163, 0.18);
+  color: var(--accent-deep);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.save-share-modal-loading {
+  padding: 1rem 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+.save-share-modal-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.save-share-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 0.4rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: #fbfdff;
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.save-share-option span {
+  font-size: 1.2rem;
+}
+
+.save-share-option span svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.save-share-option:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 20px rgba(0, 168, 163, 0.14);
+}
+
+.save-share-option.is-primary {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #fff;
+  border-color: transparent;
+}
+
+.save-share-send-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: -0.3rem 0 1rem;
+}
+
+.save-share-send-form input {
+  flex: 1 1 12rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.save-share-send-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 168, 163, 0.16);
+}
+
+.save-share-send-form button {
+  padding: 0.6rem 1rem;
+  border-radius: 0.6rem;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.save-share-send-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-share-send-status {
+  width: 100%;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.save-share-send-status.is-ok {
+  color: #15803d;
+}
+
+.save-share-send-status.is-error {
+  color: #b91c1c;
+}
+
+.save-share-modal-linkbox {
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-lg);
+  background: #f5f7fa;
+  border: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.save-share-modal-linkbox code {
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.save-share-modal-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-save-share-teaser,
+  .save-share-modal-overlay,
+  .save-share-modal-shell {
+    animation: none;
+  }
 }

@@ -12,12 +12,14 @@ import { trackStorefrontEvent } from "@/lib/shop-public";
 import { trackShopStep } from "@/lib/track-step";
 import {
   PROMO_ACTIVATED_EVENT,
+  PROMO_CODE,
   activatePromoCode,
   applyPromoToPrice,
   fetchPromoPreview,
   isPromoActive,
   type PromoPreview,
 } from "@/lib/promo";
+import PromoCountdownBanner from "./components/promo-countdown-banner";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 import {
   type CartLineItem,
@@ -2580,6 +2582,7 @@ export default function Home() {
                                 ) : null}
                               </div>
                             ) : null}
+                            <PromoCountdownBanner code={PROMO_CODE} />
                             <div className="pl-trust-row">
                               <span className="pl-price">
                                 {topPromoActive && topPromoPreview ? (

@@ -32,6 +32,11 @@ export type CartLineItem = {
    * optional so existing stored items from before this field existed still
    * parse fine. */
   modelLabel?: string;
+  /** plisy only: the chosen mounting type ("Bezinwazyjny") - undefined for
+   * other products and for plisy items added before this field existed
+   * (mount_options may also be empty on the CRM profile, skipping the step
+   * entirely). Additive/optional, same convention as modelLabel above. */
+  mountLabel?: string;
 };
 
 export type CartSummary = {
@@ -89,6 +94,7 @@ export function readCartItems(): CartLineItem[] {
         createdAt: String(row.createdAt ?? new Date().toISOString()),
         oversizeSurchargeAmount: Number(row.oversizeSurchargeAmount ?? 0) || 0,
         modelLabel: row.modelLabel ? String(row.modelLabel) : undefined,
+        mountLabel: row.mountLabel ? String(row.mountLabel) : undefined,
       } satisfies CartLineItem;
     });
 }

@@ -970,6 +970,14 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               <article id="opis" className="catalog-card">
                 <h3>Opis</h3>
                 <p>{foundProduct.description || foundProduct.subtitle || "Opis produktu uzupełnisz w panelu CRM."}</p>
+                {productImage || galleryTiles[0] ? (
+                  <img
+                    className="catalog-product-description-photo"
+                    src={optimizeImageUrl(productImage || galleryTiles[0], 900)}
+                    alt={foundProduct.name || "Zdjęcie produktu"}
+                    loading="lazy"
+                  />
+                ) : null}
                 {linkedFabricLibraries.length > 0 ? (
                   <p><strong>Powiązane biblioteki tkanin:</strong> {linkedFabricLibraries.map((library) => library.label || library.id).join(", ")}</p>
                 ) : null}

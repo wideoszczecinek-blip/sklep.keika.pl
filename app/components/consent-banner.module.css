@@ -42,6 +42,18 @@
   text-decoration: underline;
 }
 
+.detailsLink {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  color: var(--accent, #00a8a3);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;

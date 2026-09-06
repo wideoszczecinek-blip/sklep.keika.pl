@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import RescueModal from "@/app/components/rescue-modal";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import {
+  hasSeenRescueModal,
+  isRescueDismissedForGood,
+  markRescueDismissedForGood,
+  markRescueModalShown,
+} from "@/lib/rescue";
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import { trackShopStep } from "@/lib/track-step";
 import {
@@ -720,6 +727,115 @@ export default function MoskitieryFlow({
     return savedPositionsAmount + parseMoney(draftPosition?.total_amount ?? "0");
   }, [draftPosition, positions]);
 
+  // Exit-intent "rescue" modal - see app/page.tsx for the twin implementation
+  // used by the other configurator shell (the moskitiery-ramkowe product's
+  // *actual* live route, /moskitiery, renders this component instead, which
+  // never had this feature - hence porting it here too). "Real progress" is
+  // a complete draft position (mirrors the "Zapisz wycenę" button's own
+  // gate) - whether or not it's been explicitly added to `positions` yet.
+  const rescueEligible = Boolean(draftPosition);
+  const [rescueModalOpen, setRescueModalOpen] = useState(false);
+  const rescueEligibleRef = useRef(rescueEligible);
+  rescueEligibleRef.current = rescueEligible;
+
+  function openRescueModalOnce() {
+    if (!rescueEligibleRef.current) return;
+    if (hasSeenRescueModal() || isRescueDismissedForGood()) return;
+    markRescueModalShown();
+    setRescueModalOpen(true);
+  }
+
+  function closeRescueModal() {
+    markRescueDismissedForGood();
+    setRescueModalOpen(false);
+  }
+
+  async function submitRescueContact(contact: {
+    email?: string;
+    phone?: string;
+  }): Promise<{ ok: boolean; error?: string }> {
+    if (!selectedProduct) {
+      return { ok: false, error: "Brak wybranego produktu." };
+    }
+    const effectivePositions = positions.length > 0 ? positions : draftPosition ? [draftPosition] : [];
+    if (effectivePositions.length === 0) {
+      return { ok: false, error: "Brak danych do zapisania." };
+    }
+    try {
+      let analyticsSessionToken = "";
+      try {
+        analyticsSessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+      } catch {
+        // sessionStorage niedostępny - wycena i tak się zapisze.
+      }
+      const payload = {
+        quote_code: quote?.quote_code ?? "",
+        resume_token: quote?.resume_token ?? resumeToken,
+        session_token: analyticsSessionToken,
+        product_slug: selectedProduct.slug,
+        product_label: selectedProduct.label,
+        offer_id: selectedProduct.offer_id,
+        offer_url: "",
+        currency: selectedProduct.display_price_currency || "PLN",
+        total_amount: totalAmount > 0 ? totalAmount.toFixed(2) : null,
+        items_count: effectivePositions.reduce((sum, position) => sum + position.quantity, 0),
+        units_count: effectivePositions.reduce(
+          (sum, position) => sum + (position.purchase_units ?? 0),
+          0,
+        ),
+        position_count: effectivePositions.length,
+        summary_text: effectivePositions.map((position) => position.summary).join("\n\n"),
+        positions: effectivePositions,
+        draft: buildDraftPayload(selectedProduct, selectedAnswers, dimensions, quantity),
+        analytics: buildAnalyticsPayload(),
+        client_context: getClientContext(),
+        rescue_contact: { email: contact.email || "", phone: contact.phone || "" },
+      };
+      const response = await saveShopQuote(payload);
+      if (response.quote) {
+        applySavedQuote(response.quote);
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Nie udało się zapisać. Spróbuj ponownie." };
+    }
+  }
+
+  // Desktop: cursor leaving toward the browser chrome (tabs/back button).
+  useEffect(() => {
+    function handleMouseOut(event: MouseEvent) {
+      if (event.clientY > 0) return;
+      openRescueModalOnce();
+    }
+    document.addEventListener("mouseout", handleMouseOut);
+    return () => document.removeEventListener("mouseout", handleMouseOut);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Mobile: intercept the first back-button press instead of navigating
+  // away - a dummy history entry is pushed once real progress exists, so
+  // the very next "back" lands on it (popstate) rather than leaving the site.
+  useEffect(() => {
+    if (!rescueEligible || hasSeenRescueModal() || isRescueDismissedForGood()) return;
+    window.history.pushState({ rescueGuard: true }, "");
+    function handlePopState() {
+      openRescueModalOnce();
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rescueEligible]);
+
+  // Universal fallback: catches tab-close/app-switch on mobile, which
+  // neither of the above can see - real progress plus ~25s of no further
+  // interaction at all.
+  useEffect(() => {
+    if (!rescueEligible) return;
+    const timer = window.setTimeout(() => openRescueModalOnce(), 25000);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rescueEligible, draftPosition]);
+
   const activeBackground =
     config?.homepage.backgrounds[
       activeSlideIndex % (config?.homepage.backgrounds.length || 1)
@@ -956,9 +1072,23 @@ export default function MoskitieryFlow({
       setErrorMessage("");
       setStatusMessage("Zapisuję wycenę do CRM…");
 
+      // Site-wide analytics session token (sessionStorage key, see
+      // lib/track-step.ts) - deliberately NOT the same as this file's own
+      // getOrCreateSessionToken() above (a separate, localStorage-persisted
+      // per-device id used only for shop_www_quote_sessions presence
+      // pings). This one is what the CRM dashboard's live-online tooltip
+      // joins a browsing session to its saved quote through.
+      let analyticsSessionToken = "";
+      try {
+        analyticsSessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+      } catch {
+        // sessionStorage niedostępny - wycena i tak się zapisze.
+      }
+
       const payload = {
         quote_code: quote?.quote_code ?? "",
         resume_token: quote?.resume_token ?? resumeToken,
+        session_token: analyticsSessionToken,
         product_slug: selectedProduct.slug,
         product_label: selectedProduct.label,
         offer_id: selectedProduct.offer_id,
@@ -1410,7 +1540,7 @@ export default function MoskitieryFlow({
       >
         <div className={styles.heroCopy}>
           <span className={styles.heroEyebrow}>Konfigurator moskitier</span>
-          <h1>Stwórz swoją moskitierę</h1>
+          <h1>Wyceń swoją moskitierę</h1>
           <p>
             Wybierz wariant, kolor profilu i siatki, podaj wymiary — cenę wyliczymy
             automatycznie, a gotową konfigurację zapiszemy do wyceny.
@@ -2003,6 +2133,19 @@ export default function MoskitieryFlow({
           ) : null}
         </aside>
       </section>
+
+      {rescueModalOpen && draftPosition ? (
+        <RescueModal
+          productLabel={selectedProduct?.label ?? draftPosition.product_label}
+          priceLine={
+            draftPosition.total_amount
+              ? `, ${formatMoney(parseMoney(draftPosition.total_amount), selectedProduct?.display_price_currency ?? "PLN")}`
+              : ""
+          }
+          onSubmit={submitRescueContact}
+          onClose={closeRescueModal}
+        />
+      ) : null}
     </div>
   );
 }
