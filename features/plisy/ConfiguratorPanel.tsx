@@ -477,7 +477,7 @@ export default function ConfiguratorPanel({
                         className="hero-product-mesh-option-image"
                         style={
                           group.imageUrl
-                            ? { backgroundImage: `url(${optimizeImageUrl(group.imageUrl, 160)})` }
+                            ? { backgroundImage: `url(${optimizeImageUrl(group.imageUrl, 640, 80)})` }
                             : { background: group.swatches[0]?.color || "#E2E8F0" }
                         }
                       />
