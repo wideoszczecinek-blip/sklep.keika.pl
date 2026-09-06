@@ -14,10 +14,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackShopStep } from "@/lib/track-step";
 import {
+  applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
   buildPlisySurfaceStyle,
   calcPlisyPrice,
   fetchPlisyProfile,
+  formatPriceDeltaBadge,
   type ConfiguratorInitialValues,
   type ConfiguratorResult,
   type PlisyProfile,
@@ -172,11 +174,15 @@ export default function ConfiguratorPanel({
     profile && dimensionsValid && selectedHardwareId && selectedFabricGroupId
       ? calcPlisyPrice(profile, widthNum, heightNum, selectedHardwareId, selectedFabricGroupId)
       : null;
-  // Mount type's "Dopłata (zł)" is a flat per-unit surcharge on top of the
-  // size/hardware/fabric matrix price - shown as a "+X zł" badge on the
-  // swatch itself (step 1), so it has to actually land in the charged
-  // price or that badge would be advertising a cost nobody pays.
-  const unitPrice = matrixUnitPrice !== null ? matrixUnitPrice + (selectedMount?.priceDelta || 0) : null;
+  // Every step's "Dopłata / rabat" (montaż, kolor osprzętu, kolor tkaniny)
+  // lands in the charged price now, not just mount's - each is a badge on
+  // its own swatch, so it has to actually be applied or the badge would be
+  // advertising a cost nobody pays. Order is fixed by the business owner:
+  // matrix price first, then every flat-zł delta added, then every percent
+  // delta combined into one multiplier applied last - see
+  // applyPriceDeltas() in shared.ts.
+  const unitPrice =
+    matrixUnitPrice !== null ? applyPriceDeltas(matrixUnitPrice, [selectedMount, selectedHardware, selectedFabric]) : null;
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
 
   function handleSubmit() {
@@ -308,9 +314,9 @@ export default function ConfiguratorPanel({
                         .config-option-zoom below, which never had this bug
                         for the same reason. */}
                     {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                    {option.priceDelta > 0 ? (
+                    {formatPriceDeltaBadge(option.priceDelta, option.priceDeltaType) ? (
                       <span className="hardware-price-badge">
-                        +{option.priceDelta.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                        {formatPriceDeltaBadge(option.priceDelta, option.priceDeltaType)}
                       </span>
                     ) : null}
                     {option.imageUrl ? (

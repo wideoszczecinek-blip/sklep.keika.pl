@@ -12,12 +12,19 @@ import { optimizeImageUrl } from "@/lib/image-optim";
 const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 const PLISY_PRODUCT_SLUG = "plisy";
 
+// Every "Dopłata / rabat" field on a swatch/option in the CRM can be entered
+// either as a flat zł amount or as a percent - sign still carries the
+// dopłata (positive) vs rabat (negative) meaning either way, only the unit
+// changes. See applyPriceDeltas() below for how the two combine.
+export type PriceDeltaType = "amount" | "percent";
+
 export type HardwareOption = {
   id: string;
   label: string;
   color: string;
   imageUrl: string;
   priceDelta: number;
+  priceDeltaType: PriceDeltaType;
 };
 
 export type MountOption = {
@@ -26,6 +33,7 @@ export type MountOption = {
   note: string;
   imageUrl: string;
   priceDelta: number;
+  priceDeltaType: PriceDeltaType;
 };
 
 export type FabricSwatch = {
@@ -36,6 +44,7 @@ export type FabricSwatch = {
   imageUrl: string;
   thumbnailUrl: string;
   priceDelta: number;
+  priceDeltaType: PriceDeltaType;
 };
 
 export type FabricGroup = {
@@ -83,6 +92,7 @@ type RawStep = {
     accent_color?: string;
     image_url?: string;
     price_delta?: number;
+    price_delta_type?: string;
   }>;
   groups?: Array<{
     id: string;
@@ -97,6 +107,7 @@ type RawStep = {
       image_url?: string;
       thumbnail_url?: string;
       price_delta?: number;
+      price_delta_type?: string;
     }>;
   }>;
 };
@@ -122,6 +133,10 @@ type RawProduct = {
   };
   configurator: { steps: RawStep[] };
 };
+
+function toPriceDeltaType(value: string | undefined): PriceDeltaType {
+  return value === "percent" ? "percent" : "amount";
+}
 
 /** Fetches the live plisy profile from the CRM's public configurator
  * endpoint. Returns null on any failure or if the profile has no real
@@ -157,6 +172,7 @@ export async function fetchPlisyProfile(): Promise<PlisyProfile | null> {
       note: option.subtitle || "",
       imageUrl: option.image_url || "",
       priceDelta: Number(option.price_delta) || 0,
+      priceDeltaType: toPriceDeltaType(option.price_delta_type),
     }));
 
     const hardware: HardwareOption[] = (hardwareStep?.options || []).map((option) => ({
@@ -165,6 +181,7 @@ export async function fetchPlisyProfile(): Promise<PlisyProfile | null> {
       color: option.accent_color || "#E2E8F0",
       imageUrl: option.image_url || "",
       priceDelta: Number(option.price_delta) || 0,
+      priceDeltaType: toPriceDeltaType(option.price_delta_type),
     }));
 
     const fabricGroups: FabricGroup[] = (fabricStep?.groups || []).map((group) => ({
@@ -180,6 +197,7 @@ export async function fetchPlisyProfile(): Promise<PlisyProfile | null> {
         imageUrl: swatch.image_url || "",
         thumbnailUrl: swatch.thumbnail_url || swatch.image_url || "",
         priceDelta: Number(swatch.price_delta) || 0,
+        priceDeltaType: toPriceDeltaType(swatch.price_delta_type),
       })),
     }));
 
@@ -349,6 +367,42 @@ export function calcPlisyPrice(
   return plRoundMoney(
     Math.max(0, matrixPrice * (1 + profile.priceAdjustmentPercent / 100) + profile.priceAdjustmentAmount),
   );
+}
+
+type PriceDeltaLike = { priceDelta: number; priceDeltaType: PriceDeltaType } | null | undefined;
+
+/**
+ * Applies every selected option's dopłata/rabat to a base price, in the
+ * fixed order the business owner asked for: the table price first, then
+ * every flat-amount delta added on top (a negative one being a "rabat
+ * kwotowy"), and only at the very end every percent delta combined into one
+ * multiplier - two "+5%" deltas together mean "+10% of the amount-adjusted
+ * price", not one +5% compounding on the other's result.
+ */
+export function applyPriceDeltas(baseAmount: number, deltas: PriceDeltaLike[]): number {
+  let amountSum = 0;
+  let percentSum = 0;
+  for (const delta of deltas) {
+    if (!delta || !Number.isFinite(delta.priceDelta) || delta.priceDelta === 0) continue;
+    if (delta.priceDeltaType === "percent") {
+      percentSum += delta.priceDelta;
+    } else {
+      amountSum += delta.priceDelta;
+    }
+  }
+  return plRoundMoney(Math.max(0, (baseAmount + amountSum) * (1 + percentSum / 100)));
+}
+
+/** "+X zł" / "-X zł" / "+X%" / "-X%" badge text for a single option's
+ * dopłata/rabat, or null when there's nothing worth showing (delta is 0). */
+export function formatPriceDeltaBadge(priceDelta: number, priceDeltaType: PriceDeltaType): string | null {
+  if (!Number.isFinite(priceDelta) || priceDelta === 0) return null;
+  const sign = priceDelta > 0 ? "+" : "-";
+  const magnitude = Math.abs(priceDelta);
+  if (priceDeltaType === "percent") {
+    return `${sign}${magnitude.toLocaleString("pl-PL", { maximumFractionDigits: 2 })}%`;
+  }
+  return `${sign}${magnitude.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 }
 
 export type ConfiguratorInitialValues = {
