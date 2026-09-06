@@ -449,7 +449,10 @@ export default function ConfiguratorPanel({
               </span>
             </button>
             <div className="hero-product-step-body">
-              <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
+              <div
+                className="hero-product-mesh-grid hero-product-mesh-grid--visual"
+                style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
+              >
                 {profile.fabricGroups.map((group) => {
                   const isActive = group.id === selectedFabricGroupId;
                   return (
