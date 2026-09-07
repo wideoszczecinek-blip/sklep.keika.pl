@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 
 // Header "Produkty" pill/switcher - same "only one product really live"
 // reasoning as the theme toggle above. Flip to true once rolety-dachowe (or
@@ -50,7 +51,6 @@ function cartSummaryWithSurcharge(items: CartLineItem[]): CartSummary {
   const base = summarizeCartItems(items);
   return { ...base, total: base.total + calcCartOversizeSurcharge(items) };
 }
-import ConfiguratorPanel from "@/features/moskitiery-ramkowe/ConfiguratorPanel";
 import {
   ALLEGRO_MOSKITIERY_HARDWARE,
   MESH_OPTIONS,
@@ -69,14 +69,30 @@ import {
   type HardwareOption,
   type MeshOption,
 } from "@/features/moskitiery-ramkowe/shared";
-import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import {
   ROLETY_DACHOWE_STARTING_PRICE,
   type ConfiguratorResult as RoletyDachoweConfiguratorResult,
 } from "@/features/rolety-dachowe/shared";
-import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
 import { isProductSlugLive, PRODUCT_LOCKED_MESSAGE } from "@/lib/product-availability";
+
+// The three product configurators are the heaviest part of this page's
+// bundle (each pulls in its own step UI, pricing, rescue/save modals,
+// SaveShareWidget, ...) and none of them are needed for the first paint of
+// either the homepage grid or a product landing view - the configurator
+// panel is a sticky sidebar / below-the-fold section that the boot overlay
+// covers until it is ready anyway. Splitting them out with next/dynamic
+// keeps that weight off every non-configuring visitor (and off the homepage
+// entirely). ssr:false because they are client-only ("use client", browser
+// APIs, localStorage) and were never server-rendered here in practice.
+// The boot sequence waits for the active product's chunk before lifting the
+// overlay (see configuratorChunkReady below), so this never shows an empty
+// panel frame.
+const ConfiguratorPanel = dynamic(() => import("@/features/moskitiery-ramkowe/ConfiguratorPanel"), { ssr: false });
+const RoletyDachoweConfiguratorPanel = dynamic(() => import("@/features/rolety-dachowe/ConfiguratorPanel"), {
+  ssr: false,
+});
+const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/ConfiguratorPanel"), { ssr: false });
 
 type HeroMedia = {
   type: "image" | "video";
@@ -914,6 +930,16 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [heroSlidesReady, setHeroSlidesReady] = useState(false);
+  // Gates the boot overlay together with configReady/heroSlidesReady: on a
+  // direct /?produkt=... entry the overlay must not lift until the code for
+  // that product's (now dynamically imported) configurator panel has
+  // arrived, otherwise the sticky config sidebar would flash in empty. On
+  // the plain homepage there is no configurator to wait for, so it starts
+  // satisfied. The boot hard-timeout below is still the backstop if the
+  // chunk request itself stalls.
+  const [configuratorChunkReady, setConfiguratorChunkReady] = useState(
+    () => typeof window === "undefined" || !new URLSearchParams(window.location.search).has("produkt"),
+  );
   const [cartSummary, setCartSummary] = useState<CartSummary>({ items: 0, total: 0 });
   const [cartItems, setCartItems] = useState<CartLineItem[]>([]);
   const [cartDisplayTotal, setCartDisplayTotal] = useState(0);
@@ -1387,6 +1413,36 @@ export default function Home() {
       .catch(() => {});
   }, [isProductView, viewContentSlug, displayedProduct?.label]);
 
+  // Start fetching the code for the active product's configurator as early
+  // as possible (in parallel with hydration + the content fetches) and flip
+  // configuratorChunkReady once it lands, so the boot overlay can lift with
+  // the panel already mounted. Failure resolves it too - a missing chunk
+  // must never wedge the boot.
+  useEffect(() => {
+    const slug = productSlugFromSelected(displayedProduct);
+    if (!slug) {
+      setConfiguratorChunkReady(true);
+      return;
+    }
+    let cancelled = false;
+    const load =
+      slug === "rolety-dachowe"
+        ? import("@/features/rolety-dachowe/ConfiguratorPanel")
+        : slug === "plisy"
+          ? import("@/features/plisy/ConfiguratorPanel")
+          : import("@/features/moskitiery-ramkowe/ConfiguratorPanel");
+    load
+      .then(() => {
+        if (!cancelled) setConfiguratorChunkReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setConfiguratorChunkReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayedProduct]);
+
   useEffect(() => {
     const slug = productSlugFromSelected(displayedProduct);
     if (!slug) {
@@ -1807,11 +1863,18 @@ export default function Home() {
       };
     }
 
+    // Probe the SAME optimized variant the .hero-slide background actually
+    // renders (optimizeImageUrl(url, 2000, 70)), not the raw source. The
+    // source images are 2-3 MB PNGs uploaded to the CRM at full resolution;
+    // probing the raw URL made the boot overlay wait on a multi-megabyte
+    // download that is never displayed (the visible background is the
+    // ~200 KB WebP the optimizer returns), so heroSlidesReady only ever
+    // resolved via the hard timeout on a slow connection.
     const probe = new Image();
     probe.decoding = "async";
     probe.onload = reveal;
     probe.onerror = reveal;
-    probe.src = firstMedia.url;
+    probe.src = optimizeImageUrl(firstMedia.url, 2000, 70);
 
     return () => {
       cancelled = true;
@@ -1883,9 +1946,9 @@ export default function Home() {
 
   useEffect(() => {
     if (bootPhase !== "loading") return;
-    if (!configReady || !heroSlidesReady) return;
+    if (!configReady || !heroSlidesReady || !configuratorChunkReady) return;
     setBootPhase("reveal");
-  }, [bootPhase, configReady, heroSlidesReady]);
+  }, [bootPhase, configReady, heroSlidesReady, configuratorChunkReady]);
 
   useEffect(() => {
     if (bootPhase !== "loading") return;
@@ -1900,14 +1963,23 @@ export default function Home() {
 
   useEffect(() => {
     if (bootPhase !== "reveal") return;
-    const readyTimer = window.setTimeout(() => {
-      setBootPhase("ready");
-    }, 2100);
+    // The reveal-phase entrance choreography (see .home-root.boot-reveal
+    // rules in globals.css) staggers a title blur-in, an offer-panel
+    // slide-in and a header fade over ~1.9 s - but on a direct /?produkt=
+    // entry .hero-copy-content and .hero-menu-glass are already .is-hidden,
+    // so that stagger animates nothing visible there. Only the plain
+    // homepage actually plays it, so a product-view load can settle to
+    // "ready" as soon as the overlay's own 0.56 s fade is comfortably done
+    // instead of sitting on the spinner for the full stagger.
+    const readyTimer = window.setTimeout(
+      () => setBootPhase("ready"),
+      displayedProduct ? 900 : 2100,
+    );
 
     return () => {
       window.clearTimeout(readyTimer);
     };
-  }, [bootPhase]);
+  }, [bootPhase, displayedProduct]);
 
   const heroMenuGroups = useMemo(() => {
     if (!Array.isArray(config?.menu_groups) || config.menu_groups.length === 0) {
