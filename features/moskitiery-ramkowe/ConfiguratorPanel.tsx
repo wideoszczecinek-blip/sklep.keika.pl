@@ -8,7 +8,7 @@
 // only the state ownership and the post-submit step (now the caller's job
 // via onSubmit) changed.
 import { useEffect, useMemo, useRef, useState } from "react";
-import PromoCountdownBanner from "@/app/components/promo-countdown-banner";
+import PromoCountdownBanner, { AUTO_OPEN_TRACK_KEY } from "@/app/components/promo-countdown-banner";
 import PromoSaveModal from "@/app/components/promo-save-modal";
 import SaveShareWidget from "@/app/components/save-share-widget";
 import { optimizeImageUrl } from "@/lib/image-optim";
@@ -26,6 +26,7 @@ import {
   activatePromoCode,
   applyPromoToPrice,
   fetchPromoPreview,
+  getPromoActivatedAt,
   getPromoRemainingMs,
   isPromoActive,
   type PromoPreview,
@@ -226,6 +227,19 @@ export default function ConfiguratorPanel({
       // Case 3: turn it on for them now - the modal below frames this as
       // "we did it for you" instead of "you're about to lose it".
       activatePromoCode();
+      // PromoCountdownBanner listens for this same activation and auto-opens
+      // its OWN save/share modal ~1.2s later (see AUTO_OPEN_TRACK_KEY there)
+      // - without marking it done here too, that fires right on top of the
+      // modal this effect is about to open, stacking two save/share prompts
+      // for the exact same activation.
+      const activatedAt = getPromoActivatedAt();
+      if (activatedAt !== null) {
+        try {
+          window.localStorage.setItem(AUTO_OPEN_TRACK_KEY, String(activatedAt));
+        } catch {
+          // localStorage niedostępny - baner i tak nie ma jak wtedy nic zapisać ani otworzyć drugi raz.
+        }
+      }
     }
     setPromoExitAutoActivated(!wasPromoActive);
     // Snapshot at the moment the exit-intent fires - this modal is a brief

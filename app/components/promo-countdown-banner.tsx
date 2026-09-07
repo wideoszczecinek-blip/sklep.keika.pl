@@ -27,7 +27,13 @@ import PromoSaveModal from "./promo-save-modal";
 // przycisk CTA. Tylko raz na aktywację (keika_shop_promo_auto_modal_at
 // poniżej), nigdy gdy link już zapisany.
 const AUTO_OPEN_DELAY_MS = 1200;
-const AUTO_OPEN_TRACK_KEY = "keika_shop_promo_auto_modal_at";
+// Exported so a caller that already shows its OWN "you've got the discount,
+// save it" prompt for a given activation (the exit-intent modal in
+// features/moskitiery-ramkowe/ConfiguratorPanel.tsx, when it activates
+// SEZON20 for a visitor who never had) can mark that activation as already
+// handled - otherwise this banner's own auto-open below fires 1200ms later
+// for the exact same activation, stacking a second, redundant modal on top.
+export const AUTO_OPEN_TRACK_KEY = "keika_shop_promo_auto_modal_at";
 
 export type PromoCountdownState = {
   remainingMs: number;
