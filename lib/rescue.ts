@@ -236,19 +236,22 @@ function extractSpecsFromSummaryRows(rows: SummaryRow[]): {
   return { hardwareLabel, meshLabel, widthMm, heightMm };
 }
 
-/** Resolves a resume link (?resume_token=...) into every ready-to-add
- * CartLineItem the quote carries, plus whatever rescue discount is still
- * unused on it. Returns null on any failure or if the quote never had a
- * real product position at all (an exit-intent capture with nothing
- * configured yet, in principle possible, has nothing useful to resume
- * into). A quote saved from the cart-fallback tier of the save/share
- * widget (lib/share.ts) can carry *several* product positions - this used
- * to pick only the first one via .find() and silently drop the rest, the
- * real cause of "my cart didn't come back" reports; now maps every real
- * position, not just one. */
-export async function resolveResumeToken(resumeToken: string): Promise<{
+type RawResumeQuote = {
+  quote_code: string;
+  product_slug?: string;
+  rescue_discount_percent?: number;
+  promo_deadline_at_ms?: number;
+  payload?: { positions?: Array<Record<string, unknown>>; promo_code?: string };
+};
+
+export type ResumeState = {
   items: CartLineItem[];
   quoteCode: string;
+  /** Raw as the quote carries it - may be empty or the generic "produkt"
+   * placeholder (a promo-activation-only quote with no real product chosen
+   * yet, see lib/promo-save.ts's ensurePromoQuoteCode()). Callers that need
+   * a page to redirect to should fall back to a real slug themselves. */
+  productSlug: string;
   rescueDiscountPercent: number;
   /** The site-wide promo code (SEZON20 etc.) that was active on the device
    * that saved this quote, if any - empty string when none was. Caller
@@ -256,51 +259,74 @@ export async function resolveResumeToken(resumeToken: string): Promise<{
    * carries over to this device too, same as rescueDiscountPercent
    * already does for the rescue grant. */
   promoCode: string;
-} | null> {
+  /** Only set while the tracked deadline is still in the future - see
+   * syncPromoDeadlineFromServer() (lib/promo.ts), which this is meant to
+   * feed: carries over the *real* remaining time, never restarts a fresh
+   * window on a device that opens the link later. */
+  promoDeadlineAtMs: number | null;
+};
+
+/** Maps one CRM quote row (whatever shape quote.php returns) into every
+ * ready-to-add CartLineItem it carries, plus whatever discounts are still
+ * unused on it. Never bails just because there are zero product positions
+ * (a promo-activation-only quote, in principle possible and now common via
+ * the SEZON20 countdown banner's "Zapisz link" - see /wizyta/[quoteCode] -
+ * has nothing to add to the cart, but the promo code itself is still very
+ * much worth restoring) - `items` is simply `[]` in that case, callers
+ * branch on that themselves. A quote saved from the cart-fallback tier of
+ * the save/share widget (lib/share.ts) can carry *several* product
+ * positions - this used to pick only the first one via .find() and
+ * silently drop the rest, the real cause of "my cart didn't come back"
+ * reports; now maps every real position, not just one. */
+export function mapQuoteToResumeState(quote: RawResumeQuote): ResumeState {
+  const positions = Array.isArray(quote.payload?.positions) ? quote.payload!.positions! : [];
+  const productPositions = positions.filter((p) => {
+    const slug = String(p.product_slug || "");
+    return slug !== "rabat" && slug !== "rabat-ratunek";
+  });
+
+  const items: CartLineItem[] = productPositions.map((productPosition, index) => {
+    const quantity = Number(productPosition.quantity) || 1;
+    const totalAmount = Number(productPosition.total_amount) || 0;
+    const specs = extractSpecsFromSummaryRows(
+      Array.isArray(productPosition.summary_rows) ? (productPosition.summary_rows as SummaryRow[]) : [],
+    );
+
+    return {
+      id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+      productSlug: String(productPosition.product_slug || "produkt"),
+      productLabel: String(productPosition.product_label || "Produkt"),
+      hardwareLabel: specs.hardwareLabel,
+      meshLabel: specs.meshLabel,
+      widthMm: specs.widthMm,
+      heightMm: specs.heightMm,
+      qty: quantity,
+      price: quantity > 0 ? totalAmount / quantity : totalAmount,
+      total: totalAmount,
+      createdAt: new Date().toISOString(),
+    };
+  });
+
+  return {
+    items,
+    quoteCode: String(quote.quote_code || ""),
+    productSlug: String(quote.product_slug || ""),
+    rescueDiscountPercent: Number(quote.rescue_discount_percent) || 0,
+    promoCode: String(quote.payload?.promo_code || ""),
+    promoDeadlineAtMs: typeof quote.promo_deadline_at_ms === "number" ? quote.promo_deadline_at_ms : null,
+  };
+}
+
+/** Resolves a resume link (?resume_token=...) the same way mapQuoteToResumeState()
+ * describes - see that function's own doc comment. Returns null only on a
+ * genuine fetch/lookup failure (bad/expired token), never merely for an
+ * empty cart. */
+export async function resolveResumeToken(resumeToken: string): Promise<ResumeState | null> {
   try {
     const response = await fetch(`${QUOTE_FETCH_URL}?resume_token=${encodeURIComponent(resumeToken)}`);
     const json = await response.json();
     if (!json.ok || !json.quote) return null;
-    const quote = json.quote as {
-      quote_code: string;
-      rescue_discount_percent?: number;
-      payload?: { positions?: Array<Record<string, unknown>>; promo_code?: string };
-    };
-    const positions = Array.isArray(quote.payload?.positions) ? quote.payload!.positions! : [];
-    const productPositions = positions.filter((p) => {
-      const slug = String(p.product_slug || "");
-      return slug !== "rabat" && slug !== "rabat-ratunek";
-    });
-    if (productPositions.length === 0) return null;
-
-    const items: CartLineItem[] = productPositions.map((productPosition, index) => {
-      const quantity = Number(productPosition.quantity) || 1;
-      const totalAmount = Number(productPosition.total_amount) || 0;
-      const specs = extractSpecsFromSummaryRows(
-        Array.isArray(productPosition.summary_rows) ? (productPosition.summary_rows as SummaryRow[]) : [],
-      );
-
-      return {
-        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
-        productSlug: String(productPosition.product_slug || "produkt"),
-        productLabel: String(productPosition.product_label || "Produkt"),
-        hardwareLabel: specs.hardwareLabel,
-        meshLabel: specs.meshLabel,
-        widthMm: specs.widthMm,
-        heightMm: specs.heightMm,
-        qty: quantity,
-        price: quantity > 0 ? totalAmount / quantity : totalAmount,
-        total: totalAmount,
-        createdAt: new Date().toISOString(),
-      };
-    });
-
-    return {
-      items,
-      quoteCode: String(quote.quote_code || ""),
-      rescueDiscountPercent: Number(quote.rescue_discount_percent) || 0,
-      promoCode: String(quote.payload?.promo_code || ""),
-    };
+    return mapQuoteToResumeState(json.quote as RawResumeQuote);
   } catch {
     return null;
   }

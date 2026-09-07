@@ -108,6 +108,31 @@ export function writeCartItems(items: CartLineItem[]) {
   window.dispatchEvent(new Event("keika-cart-updated"));
 }
 
+/** True when `items` already contains a line functionally identical to
+ * `candidate` (same product/specs/qty/price, ignoring the random `id`) -
+ * used by the resume flows (?resume_token= on the homepage, /wizyta/<code>)
+ * to avoid duplicating a cart line that's already there. Real bug found
+ * live 2026-09-06: reopening a saved link on the *same* device/tab that
+ * never lost its cart re-added every restored item on top of what was
+ * already there, silently doubling the cart. Deliberately NOT used by the
+ * real "Dodaj do koszyka" button - two genuinely separate clicks with
+ * identical specs are two real order lines (e.g. two matching windows), not
+ * a duplicate to collapse. */
+export function findEquivalentCartItem(items: CartLineItem[], candidate: CartLineItem): CartLineItem | undefined {
+  return items.find(
+    (item) =>
+      item.productSlug === candidate.productSlug &&
+      item.hardwareLabel === candidate.hardwareLabel &&
+      item.meshLabel === candidate.meshLabel &&
+      item.widthMm === candidate.widthMm &&
+      item.heightMm === candidate.heightMm &&
+      item.qty === candidate.qty &&
+      Math.abs(item.total - candidate.total) < 0.01 &&
+      (item.modelLabel || "") === (candidate.modelLabel || "") &&
+      (item.mountLabel || "") === (candidate.mountLabel || ""),
+  );
+}
+
 export function addCartItem(item: CartLineItem): CartLineItem[] {
   const items = [...readCartItems(), item];
   writeCartItems(items);

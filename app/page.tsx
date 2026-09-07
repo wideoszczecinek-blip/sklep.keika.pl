@@ -17,8 +17,10 @@ import {
   applyPromoToPrice,
   fetchPromoPreview,
   isPromoActive,
+  syncPromoDeadlineFromServer,
   type PromoPreview,
 } from "@/lib/promo";
+import { ensurePromoQuoteCode } from "@/lib/promo-save";
 import PromoCountdownBanner from "./components/promo-countdown-banner";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 import {
@@ -26,6 +28,7 @@ import {
   type CartSummary,
   addCartItem,
   calcCartOversizeSurcharge,
+  findEquivalentCartItem,
   formatPln,
   readCartItems,
   summarizeCartItems,
@@ -2193,35 +2196,51 @@ export default function Home() {
     resumeHandledRef.current = true;
     void resolveResumeToken(resumeToken).then((resolved) => {
       history.replaceState(null, "", window.location.pathname + window.location.search.replace(/[?&]resume_token=[^&]*/, "").replace(/^&/, "?"));
-      if (!resolved || resolved.items.length === 0) return;
-      // Every position the quote carried, not just the first - a saved
-      // cart with several items used to silently lose all but one here.
-      // addCartItem() re-reads storage itself on every call, so chaining
-      // it in a loop (rather than seeding from this component's own
-      // cartItems state, which this mount-only effect could otherwise see
-      // stale) stays correct regardless of init timing.
-      let items: CartLineItem[] = [];
-      for (const item of resolved.items) {
-        items = addCartItem(item);
-      }
-      setCartItems(items);
-      setCartSummary(cartSummaryWithSurcharge(items));
-      if (resolved.rescueDiscountPercent > 0) {
-        setRescueGrant({ quoteCode: resolved.quoteCode, percent: resolved.rescueDiscountPercent });
+      if (!resolved) return;
+      if (resolved.items.length > 0) {
+        // Every position the quote carried, not just the first - a saved
+        // cart with several items used to silently lose all but one here.
+        // addCartItem() re-reads storage itself on every call, so chaining
+        // it in a loop (rather than seeding from this component's own
+        // cartItems state, which this mount-only effect could otherwise see
+        // stale) stays correct regardless of init timing.
+        let items: CartLineItem[] = readCartItems();
+        let addedCount = 0;
+        for (const item of resolved.items) {
+          if (findEquivalentCartItem(items, item)) continue;
+          items = addCartItem(item);
+          addedCount += 1;
+        }
+        setCartItems(items);
+        setCartSummary(cartSummaryWithSurcharge(items));
+        if (resolved.rescueDiscountPercent > 0) {
+          setRescueGrant({ quoteCode: resolved.quoteCode, percent: resolved.rescueDiscountPercent });
+        }
+        // Only claim what was actually newly restored - reopening a link
+        // whose items are already in this device's cart (see
+        // findEquivalentCartItem() above) has nothing new to announce.
+        if (addedCount > 0) {
+          setRescueResumeToast({
+            productLabel: resolved.items[0].productLabel,
+            itemCount: addedCount,
+            discountPercent: resolved.rescueDiscountPercent,
+          });
+          window.setTimeout(() => setRescueResumeToast(null), 6000);
+        }
       }
       // Re-activate whatever site-wide promo (SEZON20 etc.) was active on
-      // the device that saved this quote - without this, the cart/config
-      // comes back but a discount the customer had already activated
-      // silently doesn't, even though everything else did.
+      // the device that saved this quote - independent of whether there was
+      // a cart to restore (a promo-only link has nothing else to resume),
+      // without this the discount the customer had already activated
+      // silently doesn't carry over even though everything else did.
+      // syncPromoDeadlineFromServer() carries the *real* remaining time
+      // rather than starting a fresh 24h window on this device.
       if (resolved.promoCode) {
         activatePromoCode(resolved.promoCode);
+        if (typeof resolved.promoDeadlineAtMs === "number") {
+          syncPromoDeadlineFromServer(resolved.promoDeadlineAtMs);
+        }
       }
-      setRescueResumeToast({
-        productLabel: resolved.items[0].productLabel,
-        itemCount: resolved.items.length,
-        discountPercent: resolved.rescueDiscountPercent,
-      });
-      window.setTimeout(() => setRescueResumeToast(null), 6000);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2555,34 +2574,47 @@ export default function Home() {
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                           <div className="pl-landing">
                             {topPromoPreview || topPromoActive ? (
-                              <div className={`pl-sezon-banner ${topPromoActive ? "is-active" : ""}`}>
-                                <div className="pl-sezon-banner-top">
-                                  <span className="pl-sezon-banner-badge" aria-hidden="true">
-                                    {topPromoActive ? "✓" : "-20%"}
-                                  </span>
-                                  <div className="pl-sezon-banner-copy">
-                                    <strong className="pl-sezon-banner-text">
-                                      {topPromoActive ? (
-                                        <>Kod SEZON20 aktywny</>
-                                      ) : (
-                                        <>Tylko dzisiaj: kod SEZON20</>
-                                      )}
-                                    </strong>
-                                    <span className="pl-sezon-banner-sub">
-                                      {topPromoActive
-                                        ? "Widzisz ceny z rabatem"
-                                        : "Aktywuj i zobacz niższą cenę od razu"}
-                                    </span>
+                              <PromoCountdownBanner code={PROMO_CODE} productSlug="moskitiery-ramkowe">
+                                {(promo) => (
+                                  <div className={`pl-sezon-banner ${topPromoActive ? "is-active" : ""}`}>
+                                    <div className="pl-sezon-banner-top">
+                                      <span className="pl-sezon-banner-badge" aria-hidden="true">
+                                        {topPromoActive ? "✓" : "-20%"}
+                                      </span>
+                                      <div className="pl-sezon-banner-copy">
+                                        <strong className="pl-sezon-banner-text">
+                                          {topPromoActive ? (
+                                            <>Kod SEZON20 aktywny</>
+                                          ) : (
+                                            <>Tylko dzisiaj: kod SEZON20</>
+                                          )}
+                                        </strong>
+                                        <span className="pl-sezon-banner-sub">
+                                          {topPromoActive
+                                            ? promo
+                                              ? (
+                                                <>
+                                                  Rabat ważny jeszcze <strong>{promo.remainingText}</strong>
+                                                </>
+                                              )
+                                              : "Widzisz ceny z rabatem"
+                                            : "Aktywuj i zobacz niższą cenę od razu"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {!topPromoActive ? (
+                                      <button type="button" className="pl-sezon-banner-cta" onClick={activateTopPromo}>
+                                        Aktywuj rabat -20%
+                                      </button>
+                                    ) : promo ? (
+                                      <button type="button" className="pl-sezon-banner-cta" onClick={promo.openModal}>
+                                        Zapisz / wyślij link
+                                      </button>
+                                    ) : null}
                                   </div>
-                                </div>
-                                {!topPromoActive ? (
-                                  <button type="button" className="pl-sezon-banner-cta" onClick={activateTopPromo}>
-                                    Aktywuj rabat -20%
-                                  </button>
-                                ) : null}
-                              </div>
+                                )}
+                              </PromoCountdownBanner>
                             ) : null}
-                            <PromoCountdownBanner code={PROMO_CODE} />
                             <div className="pl-trust-row">
                               <span className="pl-price">
                                 {topPromoActive && topPromoPreview ? (
@@ -3473,6 +3505,14 @@ export default function Home() {
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
                         setAddToCartToast({ productSlug: "moskitiery-ramkowe", productLabel: displayedProduct.label });
+                        // Keeps an already-saved SEZON20 link "live" - real
+                        // feedback 2026-09-06: a customer who saved/sent the
+                        // link, then added another item, expected reopening
+                        // that *same* link to reflect it. Silent no-op when
+                        // there's no active promo/tracked quote yet.
+                        if (isPromoActive()) {
+                          void ensurePromoQuoteCode("moskitiery-ramkowe");
+                        }
                       }}
                     />
                   )

@@ -102,6 +102,17 @@ export function getPromoRemainingMs(): number {
   return Math.max(0, deadline - Date.now());
 }
 
+/** "23 godz. 58 min" / "12 min" - shared by the countdown banner (its own
+ * inline text) and the save modal (its own urgency chip), so the two never
+ * drift into showing a differently-rounded number for the same deadline. */
+export function formatPromoRemaining(ms: number): string {
+  const totalMinutes = Math.max(0, Math.ceil(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) return `${hours} godz. ${minutes} min`;
+  return `${minutes} min`;
+}
+
 /** false (not expired) when there's no deadline tracked at all - this is
  * "not applicable", never "definitely still fine", so callers gating the
  * *discount itself* must still go through the real check

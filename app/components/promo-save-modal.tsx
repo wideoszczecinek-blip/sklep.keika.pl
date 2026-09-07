@@ -9,6 +9,7 @@
 // explicit, specific choice about what the contact info is for).
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { formatPromoRemaining } from "@/lib/promo";
 import { savePromoContact, type PromoConsent } from "@/lib/promo-save";
 
 type Channel = "sms" | "email";
@@ -24,6 +25,8 @@ function looksLikePhone(value: string): boolean {
 export default function PromoSaveModal({
   quoteCode,
   shareUrl,
+  remainingMs,
+  variant = "reminder",
   onClose,
 }: {
   /** Empty while ensurePromoQuoteCode() (called by the banner right when it
@@ -31,8 +34,21 @@ export default function PromoSaveModal({
    * it's real, "Udostępnij"/"Kopiuj link" still work off shareUrl alone. */
   quoteCode: string;
   shareUrl: string;
+  /** Undefined/0 hides the urgency chip entirely - callers that don't track
+   * a live countdown (or whose deadline already lapsed) just get the plain
+   * save/share copy below it, never a broken "0 min" chip. */
+  remainingMs?: number;
+  /** "reminder" (default): the code was already active, customer just never
+   * saved/shared it - straight into the save/share options.
+   * "activated": the exit-intent modal turned SEZON20 on FOR the customer
+   * (they'd never activated it at all) - shows one extra intro screen
+   * framing that ("włączyliśmy go za Ciebie") before the same options, with
+   * a "Zostań na stronie" way out for someone who doesn't want to save/
+   * share right now but still keeps the just-activated discount. */
+  variant?: "reminder" | "activated";
   onClose: () => void;
 }) {
+  const [introDismissed, setIntroDismissed] = useState(variant !== "activated");
   const [channel, setChannel] = useState<Channel | null>(null);
   const [value, setValue] = useState("");
   const [consent, setConsent] = useState<PromoConsent | null>(null);
@@ -109,19 +125,47 @@ export default function PromoSaveModal({
           ✕
         </button>
 
-        {status === "sent" ? (
+        {introDismissed && typeof remainingMs === "number" && remainingMs > 0 ? (
+          <div className="promo-save-modal-urgency">
+            <span aria-hidden="true">⏳</span> Rabat wygasa za <strong>{formatPromoRemaining(remainingMs)}</strong>
+          </div>
+        ) : null}
+
+        {!introDismissed ? (
+          <>
+            <h3>Zaczekaj - nie skorzystałeś jeszcze z rabatu</h3>
+            <p className="promo-save-modal-lead">
+              Włączyliśmy go za Ciebie - wszystkie ceny w sklepie są teraz niższe o 20%.
+              {typeof remainingMs === "number" && remainingMs > 0
+                ? ` Skorzystaj z rabatu w ciągu ${formatPromoRemaining(remainingMs)}.`
+                : " Skorzystaj z rabatu, zanim wygaśnie."}
+            </p>
+            <div className="promo-save-modal-options">
+              <button type="button" className="promo-save-option is-primary" onClick={onClose}>
+                <span aria-hidden="true">👍</span>
+                Zostań na stronie
+              </button>
+              <button type="button" className="promo-save-option" onClick={() => setIntroDismissed(true)}>
+                <span aria-hidden="true">🔗</span>
+                Zapisz / udostępnij
+              </button>
+            </div>
+          </>
+        ) : status === "sent" ? (
           <div className="promo-save-modal-done">
             <span className="promo-save-modal-done-check" aria-hidden="true">✓</span>
             <h3>Wysłaliśmy link!</h3>
-            <p>Sprawdź {channel === "email" ? "skrzynkę e-mail" : "SMS-y"} - link zaprowadzi Cię z powrotem tutaj.</p>
+            <p>Sprawdź {channel === "email" ? "skrzynkę e-mail" : "SMS-y"} - link zaprowadzi Cię z powrotem tutaj, z rabatem wciąż naliczonym.</p>
             <button type="button" className="promo-save-modal-done-cta" onClick={onClose}>
               Zamknij
             </button>
           </div>
         ) : channel === null ? (
           <>
-            <h3>Zapisz swój rabat</h3>
-            <p className="promo-save-modal-lead">Wybierz, jak chcesz zabrać link ze sobą:</p>
+            <h3>Zabierz swój rabat -20% ze sobą</h3>
+            <p className="promo-save-modal-lead">
+              Zapisz link i wróć do zakupów kiedy zechcesz - rabat będzie na Ciebie czekał.
+            </p>
             <div className="promo-save-modal-options">
               {canNativeShare ? (
                 <button type="button" className="promo-save-option is-primary" onClick={handleNativeShare}>

@@ -195,6 +195,10 @@ export type QuotePayload = {
   analytics?: QuoteAnalytics;
   draft?: QuoteDraft | null;
   positions?: QuotePosition[];
+  /** Set when this quote was created by activating a site-wide promo code
+   * (lib/promo-save.ts's ensurePromoQuoteCode()) - see SavedQuote's own
+   * promo_deadline_at_ms for the matching deadline. */
+  promo_code?: string;
 };
 
 export type SavedQuote = {
@@ -216,6 +220,12 @@ export type SavedQuote = {
   created_at: string;
   updated_at: string;
   last_seen_at: string;
+  /** Only present while a tracked promo deadline is still in the future -
+   * see shop_www_quotes_public_row() (CRM side). */
+  promo_deadline_at_ms?: number;
+  /** The one-time +5% "wracaj i dokończ" rescue discount, only present
+   * while it's still unused on this quote - see shop_www_quotes_public_row(). */
+  rescue_discount_percent?: number;
 };
 
 export type StoredQuoteLink = {

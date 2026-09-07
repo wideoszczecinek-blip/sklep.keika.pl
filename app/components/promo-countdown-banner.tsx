@@ -1,34 +1,70 @@
 "use client";
 
-// "Kup w ciągu 24h albo rabat SEZON20 przepada" - shown wherever the promo
-// is already displayed as active (see call sites: app/page.tsx's top
-// banner, features/moskitiery-ramkowe/ConfiguratorPanel.tsx's own promo
-// banner, app/koszyk/page.tsx's applied-discount row). Self-contained by
-// design (own isPromoActive()/event listening) so it can be dropped in at
-// each of those spots without threading extra props through - matches how
-// SaveShareWidget stays self-contained too.
-import { useEffect, useState } from "react";
+// "Kup w ciągu 24h albo rabat SEZON20 przepada" - the countdown text + CTA
+// live INSIDE each call site's own "aktywny" banner now (app/page.tsx's
+// .pl-sezon-banner, features/moskitiery-ramkowe/ConfiguratorPanel.tsx's own
+// .hero-product-promo-banner), not as a separate boxed banner underneath -
+// live feedback 2026-09-06: two stacked green/blue banners read as
+// redundant and buried the actual countdown. This component owns the state
+// (countdown tick, quote_code, the modal) and hands it to the caller via a
+// render-prop so each caller can slot the text/CTA into its own markup -
+// same reasoning SaveShareWidget stays self-contained for, just without
+// owning its own box anymore. Passing `null` to children while there's no
+// deadline lets each caller fall back to its own default copy.
+import { useEffect, useRef, useState } from "react";
 import {
   PROMO_ACTIVATED_EVENT,
+  formatPromoRemaining,
+  getPromoActivatedAt,
   getPromoDeadlineAtMs,
   isPromoActive,
 } from "@/lib/promo";
-import { ensurePromoQuoteCode } from "@/lib/promo-save";
+import { ensurePromoQuoteCode, hasSavedPromoLink } from "@/lib/promo-save";
 import PromoSaveModal from "./promo-save-modal";
 
-function formatRemaining(ms: number): string {
-  const totalMinutes = Math.max(0, Math.ceil(ms / 60000));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours > 0) return `${hours} godz. ${minutes} min`;
-  return `${minutes} min`;
-}
+// Priorytet: konwersje - klient widzi opcje zapisania linku od razu po
+// aktywacji, zanim zdąży się rozproszyć, zamiast czekać aż zauważy mały
+// przycisk CTA. Tylko raz na aktywację (keika_shop_promo_auto_modal_at
+// poniżej), nigdy gdy link już zapisany.
+const AUTO_OPEN_DELAY_MS = 1200;
+const AUTO_OPEN_TRACK_KEY = "keika_shop_promo_auto_modal_at";
 
-export default function PromoCountdownBanner({ code }: { code: string }) {
+export type PromoCountdownState = {
+  remainingMs: number;
+  remainingText: string;
+  openModal: () => void;
+};
+
+export default function PromoCountdownBanner({
+  code,
+  productSlug,
+  children,
+}: {
+  code: string;
+  /** Which product page /wycena/<code> should send the customer back to -
+   * see ensurePromoQuoteCode()'s own doc comment (lib/promo-save.ts). */
+  productSlug: string;
+  /** null while there's no active/tracked deadline - render your own
+   * fallback copy (e.g. the plain "Widzisz ceny z rabatem" line) then. */
+  children: (state: PromoCountdownState | null) => React.ReactNode;
+}) {
   const [deadlineAtMs, setDeadlineAtMs] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [quoteCode, setQuoteCode] = useState("");
+  const autoOpenArmedRef = useRef(false);
+
+  // Re-touches the quote (fresh cart snapshot - see ensurePromoQuoteCode()'s
+  // own doc comment) right as the save modal is actually about to be shown,
+  // not just relying on whatever the mount-time ensure-call above caught -
+  // a customer who adds items to cart *between* the banner mounting and
+  // clicking "Zapisz link" should still get them back via the saved link.
+  function openModal() {
+    void ensurePromoQuoteCode(productSlug).then((state) => {
+      if (state?.quoteCode) setQuoteCode(state.quoteCode);
+    });
+    setModalOpen(true);
+  }
 
   useEffect(() => {
     function sync() {
@@ -39,20 +75,18 @@ export default function PromoCountdownBanner({ code }: { code: string }) {
     return () => window.removeEventListener(PROMO_ACTIVATED_EVENT, sync);
   }, [code]);
 
-  // Ensure a real, short quote_code exists for this activation the moment
-  // this banner is actually shown - not gated on the customer clicking
-  // anything or having configured a product yet (explicit requirement:
-  // every customer who activates the code gets one).
+  // Ensure a real, short quote_code exists for this activation - not gated
+  // on the customer configuring a product yet (every activation gets one).
   useEffect(() => {
     if (deadlineAtMs === null) return;
     let cancelled = false;
-    void ensurePromoQuoteCode().then((state) => {
+    void ensurePromoQuoteCode(productSlug).then((state) => {
       if (!cancelled && state?.quoteCode) setQuoteCode(state.quoteCode);
     });
     return () => {
       cancelled = true;
     };
-  }, [deadlineAtMs]);
+  }, [deadlineAtMs, productSlug]);
 
   useEffect(() => {
     if (deadlineAtMs === null) {
@@ -63,29 +97,51 @@ export default function PromoCountdownBanner({ code }: { code: string }) {
       setRemainingMs(Math.max(0, (deadlineAtMs as number) - Date.now()));
     }
     tick();
-    // Once-a-minute is plenty for a minute-granularity display and keeps
-    // this from being the one thing on the page re-rendering every second.
     const interval = window.setInterval(tick, 30000);
     return () => window.clearInterval(interval);
   }, [deadlineAtMs]);
 
-  if (deadlineAtMs === null || remainingMs <= 0) return null;
+  useEffect(() => {
+    if (deadlineAtMs === null || autoOpenArmedRef.current) return;
+    if (hasSavedPromoLink()) return;
+    const activatedAt = getPromoActivatedAt();
+    if (activatedAt === null) return;
+    let alreadyShownFor = "";
+    try {
+      alreadyShownFor = window.localStorage.getItem(AUTO_OPEN_TRACK_KEY) || "";
+    } catch {
+      // localStorage niedostępny - auto-otwarcie po prostu może się powtórzyć, nic więcej się nie stanie.
+    }
+    if (alreadyShownFor === String(activatedAt)) return;
+    autoOpenArmedRef.current = true;
+    const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(AUTO_OPEN_TRACK_KEY, String(activatedAt));
+      } catch {
+        // jak wyżej
+      }
+      openModal();
+    }, AUTO_OPEN_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [deadlineAtMs]);
 
-  const shareUrl = quoteCode ? `https://sklep.keika.pl/wycena/${encodeURIComponent(quoteCode)}` : "https://sklep.keika.pl/";
+  if (deadlineAtMs === null || remainingMs <= 0) return <>{children(null)}</>;
+
+  // /wizyta/ (not /wycena/) - resumes the whole visit (cart, discounts,
+  // right product page) on whichever device opens it, see that route's own
+  // top comment for why it's a separate concept from the quote summary.
+  const shareUrl = quoteCode ? `https://sklep.keika.pl/wizyta/${encodeURIComponent(quoteCode)}` : "https://sklep.keika.pl/";
 
   return (
     <>
-      <div className="promo-countdown-banner" role="status">
-        <span className="promo-countdown-banner-text">
-          Twój rabat <strong>{code}</strong> ważny jeszcze <strong>{formatRemaining(remainingMs)}</strong>. Zapisz lub
-          udostępnij tę stronę, aby wrócić do niej na dowolnym urządzeniu i skorzystać z promocji zanim przepadnie.
-        </span>
-        <button type="button" className="promo-countdown-banner-cta" onClick={() => setModalOpen(true)}>
-          Zapisz / wyślij link
-        </button>
-      </div>
+      {children({ remainingMs, remainingText: formatPromoRemaining(remainingMs), openModal })}
       {modalOpen ? (
-        <PromoSaveModal quoteCode={quoteCode} shareUrl={shareUrl} onClose={() => setModalOpen(false)} />
+        <PromoSaveModal
+          quoteCode={quoteCode}
+          shareUrl={shareUrl}
+          remainingMs={remainingMs}
+          onClose={() => setModalOpen(false)}
+        />
       ) : null}
     </>
   );

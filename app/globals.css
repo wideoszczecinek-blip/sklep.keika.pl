@@ -3802,60 +3802,6 @@ html[data-theme="light"] .mhelp-cta-primary {
   transform: translateY(-1px);
 }
 
-/* "Kup w ciagu 24h albo rabat przepada" - own visual identity, distinct
-   from both the orange "activate me" and green "aktywny" states of
-   pl-sezon-banner/hero-product-promo-banner above (which this always
-   renders right after) - blue reads as "informational/urgent" without
-   competing with either of those two colors, and stays legible sitting
-   directly under either one. Dark-first hardcoded like its neighbors in
-   this file, with an explicit light-theme override below, not the
-   CSS-custom-property token system the rescue-modal and save-share-modal
-   classes use - this lives inside those already-dark-hardcoded panels, so
-   matching their convention keeps it visually consistent with what it is
-   nested in, same reasoning as hero-product-promo-banner-text itself. */
-.promo-countdown-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.7rem;
-  margin: 0.5rem 0 0.7rem;
-  padding: 0.55rem 0.8rem;
-  border-radius: 12px;
-  border: 1px solid rgba(94, 158, 255, 0.4);
-  background: rgba(94, 158, 255, 0.1);
-}
-
-.promo-countdown-banner-text {
-  flex: 1 1 14rem;
-  font-size: 0.8rem;
-  line-height: 1.4;
-  color: #eaf2ff;
-}
-
-.promo-countdown-banner-text strong {
-  color: #8fb3ff;
-}
-
-.promo-countdown-banner-cta {
-  flex: none;
-  border: 1px solid rgba(94, 158, 255, 0.55);
-  border-radius: 999px;
-  padding: 0.4rem 0.8rem;
-  font-weight: 700;
-  font-size: 0.78rem;
-  color: #eaf2ff;
-  background: rgba(94, 158, 255, 0.16);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: transform 0.18s ease, background-color 0.18s ease;
-}
-
-.promo-countdown-banner-cta:hover {
-  transform: translateY(-1px);
-  background: rgba(94, 158, 255, 0.26);
-}
-
 .hero-product-add-to-cart {
   width: 100%;
   border: none;
@@ -9275,29 +9221,6 @@ html[data-theme="light"] .hero-product-promo-banner-text {
   color: #16314e;
 }
 
-html[data-theme="light"] .promo-countdown-banner {
-  border-color: rgba(37, 99, 235, 0.35);
-  background: rgba(37, 99, 235, 0.08);
-}
-
-html[data-theme="light"] .promo-countdown-banner-text {
-  color: #16314e;
-}
-
-html[data-theme="light"] .promo-countdown-banner-text strong {
-  color: #2563eb;
-}
-
-html[data-theme="light"] .promo-countdown-banner-cta {
-  border-color: rgba(37, 99, 235, 0.4);
-  color: #16314e;
-  background: rgba(37, 99, 235, 0.12);
-}
-
-html[data-theme="light"] .promo-countdown-banner-cta:hover {
-  background: rgba(37, 99, 235, 0.2);
-}
-
 html[data-theme="light"] .hero-product-added-toast p {
   color: #16314e;
 }
@@ -10119,8 +10042,45 @@ html[data-theme="light"] .header-save-share-hint {
   padding: 1.8rem 1.6rem 1.6rem;
   border-radius: var(--radius-xl);
   background: var(--bg);
-  box-shadow: var(--shadow);
+  /* A touch more lift than the plain --shadow token, plus a faint brand-teal
+     glow underneath - this modal is the one moment we're actively asking for
+     a conversion (link saved/sent), so it earns slightly more visual weight
+     than a purely informational dialog. */
+  box-shadow: var(--shadow), 0 22px 44px -18px rgba(0, 168, 163, 0.35);
   animation: saveShareModalRise 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.promo-save-modal-shell::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 1.6rem;
+  right: 1.6rem;
+  height: 4px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-deep));
+}
+
+.promo-save-modal-urgency {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.5rem 1.6rem 0.8rem 0;
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 138, 26, 0.14);
+  color: #b45309;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+html[data-theme="dark"] .promo-save-modal-urgency {
+  background: rgba(255, 159, 10, 0.16);
+  color: #ffb454;
+}
+
+.promo-save-modal-urgency strong {
+  font-weight: 800;
 }
 
 @media (prefers-reduced-motion: reduce) {

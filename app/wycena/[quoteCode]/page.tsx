@@ -3,6 +3,15 @@ import QuoteCheckout from "./quote-checkout";
 import { fetchPublicQuote } from "@/lib/shop-public";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
 
+// Reserved for real, placed quotes/orders (a customer who actually
+// configured a product) - the static "Moja wycena" summary below. A link
+// meant to send someone back into live shopping (cart restored, product
+// page reopened, promo re-activated) is a different concept entirely - see
+// app/wizyta/[quoteCode]/page.tsx, which the SEZON20 countdown banner's
+// "Zapisz link" and the exit-intent modal both use instead. Live feedback
+// 2026-09-06: this route used to be overloaded for that too (a promo-only
+// quote has nothing to show here - position_count is always 0), which is
+// exactly the confusion /wizyta/ now exists to avoid.
 type QuotePageProps = {
   params: Promise<{ quoteCode: string }>;
 };

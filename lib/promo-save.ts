@@ -9,6 +9,8 @@
  * the discount they already activated before it expires.
  */
 import { PROMO_CODE, getPromoActivatedAt } from "@/lib/promo";
+import { readCartItems } from "@/lib/cart";
+import { buildRescuePosition } from "@/lib/rescue";
 
 const QUOTE_SAVE_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop-public/quote_save.php";
 
@@ -18,6 +20,16 @@ const QUOTE_SAVE_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop-public/q
 // they ever open the cart, so it's sessionStorage-backed instead.
 const PROMO_QUOTE_CODE_KEY = "keika_shop_promo_quote_code";
 const PROMO_RESUME_TOKEN_KEY = "keika_shop_promo_resume_token";
+// Tracked alongside the quote_code/resume_token so every later touch on this
+// same row (savePromoContact() below) keeps re-sending it - live bug found
+// 2026-09-06: without this, the FIRST touch (ensurePromoQuoteCode) correctly
+// stamps the real product_slug, but the SECOND touch (savePromoContact, sent
+// with no product_slug at all) silently reset it back to the generic
+// "produkt" placeholder, because quote_save.php's "don't blank out product
+// data on a touch-only save" guard only protects rows that already carry
+// real positions - these promo-only rows never do. /wizyta/<code> then had
+// no real product to send the customer back to.
+const PROMO_PRODUCT_SLUG_KEY = "keika_shop_promo_product_slug";
 
 function getSessionToken(): string {
   try {
@@ -27,24 +39,47 @@ function getSessionToken(): string {
   }
 }
 
-function getTracked(): { quoteCode: string; resumeToken: string } {
+function getTracked(): { quoteCode: string; resumeToken: string; productSlug: string } {
   try {
     return {
       quoteCode: window.sessionStorage.getItem(PROMO_QUOTE_CODE_KEY) || "",
       resumeToken: window.sessionStorage.getItem(PROMO_RESUME_TOKEN_KEY) || "",
+      productSlug: window.sessionStorage.getItem(PROMO_PRODUCT_SLUG_KEY) || "",
     };
   } catch {
-    return { quoteCode: "", resumeToken: "" };
+    return { quoteCode: "", resumeToken: "", productSlug: "" };
   }
 }
 
-function setTracked(quoteCode: string, resumeToken: string): void {
+function setTracked(quoteCode: string, resumeToken: string, productSlug: string): void {
   try {
     window.sessionStorage.setItem(PROMO_QUOTE_CODE_KEY, quoteCode);
     window.sessionStorage.setItem(PROMO_RESUME_TOKEN_KEY, resumeToken);
+    if (productSlug) window.sessionStorage.setItem(PROMO_PRODUCT_SLUG_KEY, productSlug);
   } catch {
     // sessionStorage niedostępny - kod i tak trafia do wywołującego, po prostu nie przetrwa odświeżenia.
   }
+}
+
+/** Exported for app/wizyta/[quoteCode]/visit-resume.tsx: makes THIS device
+ * continue saving onto the exact same quote_code a resumed link came from,
+ * instead of silently starting a second, unrelated row the moment the
+ * countdown banner remounts and calls ensurePromoQuoteCode() again on the
+ * destination page. Real bug found live 2026-09-06: "wysłałem sobie link,
+ * dodałem coś do koszyka i wszedłem drugi raz - 404 / stara zawartość" -
+ * without this, the original saved link's row was never touched again, so
+ * it silently stopped reflecting the cart (a customer could reasonably read
+ * that as "the link doesn't update", even on the rare cases it didn't
+ * outright 404 from unrelated causes).
+ *
+ * `resumeToken` is deliberately NOT required - quote_save.php's own "known
+ * quote_code always finds/reuses the same row, rotating a fresh resume_token
+ * into the response either way" behavior (see shop_www_quotes_save_public(),
+ * CRM side) means the raw resume_token from the ORIGINAL device is neither
+ * recoverable here (only its hash is ever stored) nor actually needed - the
+ * very next touch gets and stores a real one. */
+export function trackPromoQuote(quoteCode: string, productSlug: string): void {
+  setTracked(quoteCode, "", productSlug);
 }
 
 export type PromoQuoteState = {
@@ -56,15 +91,32 @@ export type PromoQuoteState = {
  * quote_code attached to it - called the moment the countdown banner first
  * mounts with an active promo, NOT gated on having configured a product yet
  * (explicit business requirement: every customer who activates the code
- * gets a code, not just the ones who've picked colors/dimensions).
- * Reuses the same row on every call via the tracked resume_token/quote_code
- * (quote_save.php's own "touch"-only handling - see its header comment -
- * means this never wipes a real configuration the customer adds later, and
- * never mints a second row for the same activation). Never throws. */
-export async function ensurePromoQuoteCode(): Promise<PromoQuoteState | null> {
+ * gets a code, not just the ones who've picked colors/dimensions). Also
+ * called again right as the save modal opens (CTA click, auto-open timer,
+ * exit-intent) to snapshot the *current* cart into the same row - "co miał
+ * w koszyku" (what was in the cart) is exactly what /wizyta/<code>
+ * (app/wizyta/[quoteCode]/page.tsx) restores from whatever this call last
+ * saved, so a customer who adds items between the banner mounting and
+ * actually saving the link still gets them back. Reuses the same row on
+ * every call via the tracked resume_token/quote_code (quote_save.php's own
+ * "touch"-only handling - see its header comment - means this never wipes a
+ * real configuration with an *empty* cart snapshot; a genuinely empty local
+ * cart here just omits `positions` entirely rather than sending `[]`, for
+ * that same reason). Never mints a second row for the same activation.
+ * Never throws.
+ *
+ * `productSlug` is what /wizyta/<code> sends the customer back to when they
+ * open the saved link - pass whichever product page the banner is actually
+ * showing on (every current call site is moskitiery-ramkowe). Threaded
+ * through every call so a later savePromoContact() touch on the same row
+ * doesn't reset it - see PROMO_PRODUCT_SLUG_KEY above. */
+export async function ensurePromoQuoteCode(productSlug?: string): Promise<PromoQuoteState | null> {
   const activatedAt = getPromoActivatedAt();
   if (activatedAt === null) return null;
   const tracked = getTracked();
+  const effectiveSlug = productSlug || tracked.productSlug;
+  const cartItems = readCartItems();
+  const positions = cartItems.length > 0 ? cartItems.map((item) => buildRescuePosition(item)) : null;
   try {
     const response = await fetch(QUOTE_SAVE_URL, {
       method: "POST",
@@ -75,6 +127,8 @@ export async function ensurePromoQuoteCode(): Promise<PromoQuoteState | null> {
         session_token: getSessionToken(),
         promo_code: PROMO_CODE,
         promo_activated_at_ms: activatedAt,
+        ...(effectiveSlug ? { product_slug: effectiveSlug } : {}),
+        ...(positions ? { positions } : {}),
       }),
     });
     const json = (await response.json()) as {
@@ -84,7 +138,7 @@ export async function ensurePromoQuoteCode(): Promise<PromoQuoteState | null> {
     if (!json.ok || !json.quote?.quote_code) return null;
     const quoteCode = String(json.quote.quote_code);
     const resumeToken = String(json.quote.resume_token || "");
-    setTracked(quoteCode, resumeToken);
+    setTracked(quoteCode, resumeToken, effectiveSlug);
     return {
       quoteCode,
       deadlineAtMs: typeof json.quote.promo_deadline_at_ms === "number" ? json.quote.promo_deadline_at_ms : null,
@@ -113,7 +167,13 @@ export function hasSavedPromoLink(): boolean {
   }
 }
 
-function markPromoLinkSaved(): void {
+/** Exported for app/wizyta/[quoteCode]/visit-resume.tsx: a device that just
+ * resumed a visit *from* a saved link obviously already has a way back to
+ * it - marking this here suppresses both the auto-open save modal
+ * (promo-countdown-banner.tsx) and the exit-intent "zaraz stracisz rabat"
+ * variant (ConfiguratorPanel.tsx) from immediately nagging the same
+ * customer again on this device. */
+export function markPromoLinkSaved(): void {
   try {
     window.localStorage.setItem(PROMO_LINK_SAVED_KEY, "1");
   } catch {
@@ -144,6 +204,9 @@ export async function savePromoContact(input: {
         session_token: getSessionToken(),
         promo_code: PROMO_CODE,
         promo_activated_at_ms: getPromoActivatedAt() ?? undefined,
+        // Re-send on every touch, not just the first (ensurePromoQuoteCode)
+        // - see PROMO_PRODUCT_SLUG_KEY's comment above for the live bug this fixes.
+        ...(tracked.productSlug ? { product_slug: tracked.productSlug } : {}),
         promo_save_contact: {
           email: input.email || "",
           phone: input.phone || "",
