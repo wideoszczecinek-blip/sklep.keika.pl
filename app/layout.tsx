@@ -36,6 +36,14 @@ export default function RootLayout({
   return (
     <html lang="pl" suppressHydrationWarning>
       <head>
+        {/* The CRM (crm-keika.groovemedia.pl) is a separate origin that the
+            homepage/product views hit on mount for the config, product
+            landing content, shipping banner, Allegro rating and the image
+            optimizer's source images. Warming the TLS connection here saves
+            the DNS + handshake round-trips (~200-400 ms on mobile) off the
+            first of those requests, which currently gates the boot overlay. */}
+        <link rel="preconnect" href="https://crm-keika.groovemedia.pl" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://crm-keika.groovemedia.pl" />
         {/* Belt-and-suspenders against a phone's own "force dark for web
             content" browser feature (Android Chrome/Samsung Internet) -
             that repaints pages algorithmically based on the OS dark setting,
