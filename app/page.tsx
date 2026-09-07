@@ -1129,13 +1129,13 @@ export default function Home() {
     return () => window.removeEventListener(PROMO_ACTIVATED_EVENT, handleActivated);
   }, []);
   useEffect(() => {
-    // Percent discounts scale the same regardless of subtotal, so any
-    // positive number here works as a probe - the per-mb starting price is
-    // as good as any (and already at hand for moskitiery-ramkowe).
-    if (productSlugFromSelected(displayedProduct) !== "moskitiery-ramkowe") {
-      setTopPromoPreview(null);
-      return;
-    }
+    // The SEZON20 definition (type/value) is the same on every view and the
+    // header cart is present on every view, so this has to load regardless
+    // of which product (if any) is currently displayed. Gating it on
+    // "moskitiery-ramkowe only" meant the header cart total silently dropped
+    // the discount on the homepage (no displayedProduct) while showing it on
+    // the product view. Percent discounts scale the same regardless of
+    // subtotal, so the constant per-mb starting price works as the probe.
     let cancelled = false;
     fetchPromoPreview(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO).then((preview) => {
       if (!cancelled) setTopPromoPreview(preview);
@@ -1143,7 +1143,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [displayedProduct]);
+  }, []);
   function activateTopPromo() {
     if (!topPromoPreview) return;
     setTopPromoActive(true);
