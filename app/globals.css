@@ -2287,6 +2287,45 @@ html[data-theme="light"] .hero-product-gradient-bg {
   color: rgba(240, 248, 255, 0.7);
 }
 
+/* The "na wymiar i pod kolor" card carries the "jak mierzyć" CTA, so it
+   spans the full grid width to give the button room. */
+.pl-spec-item--wide {
+  grid-column: 1 / -1;
+}
+
+.pl-measure-cta {
+  align-self: flex-start;
+  margin-top: 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.42rem 0.85rem;
+  border: 1px solid rgba(255, 159, 10, 0.4);
+  border-radius: 999px;
+  background: rgba(255, 159, 10, 0.14);
+  color: #ffb648;
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pl-measure-cta:hover {
+  background: rgba(255, 159, 10, 0.22);
+}
+
+html[data-theme="light"] .pl-measure-cta {
+  border-color: #ff9f0a;
+  background: #ffffff;
+  color: #b45309;
+}
+
+html[data-theme="light"] .pl-measure-cta:hover {
+  background: #fff7ed;
+}
+
 @media (max-width: 720px) {
   .pl-spec-grid {
     grid-template-columns: 1fr;
@@ -2903,13 +2942,127 @@ html[data-theme="light"] .pl-description-photo {
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.36s ease;
+  transition: opacity 0.3s ease, transform 0.36s ease, box-shadow 0.34s ease;
 }
 
 .hero-product-config-panel.is-visible {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
+}
+
+/* Desktop-only "Powiększ" overlay mode - plisy only (see the productSlug
+   check around this class in app/page.tsx; other products' panels never
+   receive this class). The panel breaks out of the grid to a fixed overlay
+   covering a moderate share of the actual viewport width, anchored to the
+   same right edge it already occupies (grid-column: 2), rather than
+   pushing the rest of the page - a pure position/size change on the SAME
+   node (no remount, no scroll reset, nothing reloaded), so every step
+   selection and scroll position inside it survives untouched. Anchoring
+   right and growing left is why the collapse handle (below) sits on the
+   panel's newly-exposed left edge with a rightward arrow - that's the
+   direction it shrinks back to.
+   The width/right/top/height JUMP set here happens instantly (CSS can't
+   transition width/right from their normal "auto" grid-derived values to a
+   concrete size - there's nothing to interpolate from) - the actual smooth,
+   slow grow/shrink animation is done in JS via a FLIP technique (see
+   setConfigExpanded in app/page.tsx), which measures the real before/after
+   pixel rects and tweens between them with inline styles, then hands
+   geometry back to these rules once the animation finishes. max-width is a
+   hard safety clamp so a wide `100vw`-vs-scrollbar discrepancy can never
+   push the panel past the visible edge. */
+@media (min-width: 1101px) {
+  .hero-product-config-panel.is-expanded {
+    position: fixed;
+    top: 5.6rem;
+    height: calc(100vh - 5.6rem - 1.5rem);
+    bottom: auto;
+    right: 1.5rem;
+    left: auto;
+    /* A moderate grow, not a near-full takeover - the page (product photos,
+       description) stays genuinely visible to the left of it rather than
+       being reduced to a sliver. */
+    width: 62vw;
+    max-width: calc(100vw - 3rem);
+    min-height: 0;
+    max-height: none;
+    z-index: 65;
+    box-shadow: 0 32px 80px rgba(2, 6, 14, 0.55);
+    /* More breathing room now that there's real width to spend it on -
+       the collapsed panel's tight 1.1rem/1.2rem padding read as cramped
+       once the box itself got bigger. */
+    padding: 1.9rem 2.3rem;
+  }
+
+  /* Option grids (mount cards, hardware-color swatches, fabric-color
+     swatches) are fixed 2-3 column grids - at the panel's normal width
+     that's a sensible size, but stretched across the wider expanded panel
+     each cell was ballooning ~50%+. Reflowing into MORE columns instead of
+     bigger cells keeps individual swatches close to their normal size
+     (minmax's floor) while using the extra width productively. Doesn't
+     touch the fabric-GROUP step's grid - that one is intentionally forced
+     to a single full-width column via an inline style, which always wins
+     over this anyway. */
+  .hero-product-config-panel.is-expanded .hardware-grid,
+  .hero-product-config-panel.is-expanded .hero-product-mesh-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+.hero-config-expand-toggle,
+.hero-config-collapse-toggle {
+  position: absolute;
+  z-index: 4;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(229, 241, 255, 0.24);
+  background: rgba(10, 22, 38, 0.78);
+  color: #dbe8fb;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.hero-config-expand-toggle:hover,
+.hero-config-collapse-toggle:hover {
+  background: rgba(22, 42, 66, 0.92);
+  border-color: rgba(240, 184, 86, 0.55);
+}
+
+.hero-config-expand-toggle {
+  top: 0.65rem;
+  right: 0.65rem;
+  padding: 0.34rem 0.68rem 0.34rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.hero-config-expand-toggle span {
+  font-size: 0.92rem;
+}
+
+.hero-config-collapse-toggle {
+  top: 50%;
+  left: -1.15rem;
+  transform: translateY(-50%);
+  width: 2.3rem;
+  height: 2.3rem;
+  font-size: 1.05rem;
+  box-shadow: 0 10px 24px rgba(2, 6, 14, 0.4);
+}
+
+/* Only meaningful once the panel can actually become a fixed 80vw overlay -
+   see the @media (min-width: 1101px) block above. Below that width the
+   panel is position:static (mobile layout) and "enlarging" it makes no
+   sense, so the toggles stay hidden entirely rather than doing nothing. */
+@media (min-width: 1101px) {
+  .hero-config-expand-toggle,
+  .hero-config-collapse-toggle {
+    display: inline-flex;
+  }
 }
 
 .hero-product-config-panel > header {
@@ -3825,6 +3978,86 @@ html[data-theme="light"] .mhelp-cta-primary {
   opacity: 0.5;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+/* "Dodaj podobną" (features/plisy/ConfiguratorPanel.tsx) - a secondary
+   shortcut sitting above the main CTA, deliberately styled as a quiet
+   outline pill so it never competes with .hero-product-add-to-cart's orange
+   for attention. */
+.plisy-variant-block {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.plisy-variant-toggle {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px dashed rgba(197, 222, 247, 0.4);
+  background: transparent;
+  color: rgba(237, 246, 255, 0.86);
+  font-weight: 700;
+  font-size: 0.86rem;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.plisy-variant-toggle:hover {
+  border-color: rgba(240, 184, 86, 0.65);
+  background: rgba(240, 184, 86, 0.08);
+}
+
+.plisy-variant-form {
+  display: grid;
+  gap: 0.55rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(197, 222, 247, 0.22);
+  background: rgba(11, 24, 40, 0.4);
+  padding: 0.85rem 0.9rem;
+  animation: moskToastIn 0.22s ease;
+}
+
+.plisy-variant-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.plisy-variant-price {
+  font-weight: 800;
+  font-size: 1rem;
+  color: #f2f7ff;
+}
+
+.plisy-variant-add {
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: #22150a;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.plisy-variant-add:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.plisy-variant-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.plisy-variant-added-msg {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #6be6b8;
 }
 
 .hero-product-added-toast {
@@ -8325,6 +8558,54 @@ html[data-theme="light"] .cart-field-check {
   font-size: 0.84rem;
 }
 
+/* "Dalej" - manual, explicit section-advance button (invoice card -> address
+   card -> payment card), replacing an earlier auto-scroll-on-field-complete
+   attempt - see the comment above shippingAddressSectionRef in the component
+   for why that was a real bug (fired after just the first keystroke into
+   whichever field happened to be last-empty). Live feedback 2026-09-07:
+   the first version deliberately used a lighter teal outline to stay
+   visually distinct from .cart-page-checkout-cta ("Zamawiam") - explicitly
+   asked to match that CTA's own orange styling instead, same gradient/
+   shadow/radius, just full-width like the rest of this page's buttons. */
+/* A round arrow "next section" affordance, right-aligned under each
+   checkout section - replaces an earlier full-width bar per explicit
+   feedback: a small icon reads as a natural next-step nudge, not another
+   big CTA competing with the real "Zamawiam" button below. */
+.cart-section-next-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.3rem;
+}
+
+.cart-section-next-button {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #22150a;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
+  box-shadow: 0 10px 22px rgba(255, 125, 19, 0.36);
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+
+.cart-section-next-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.cart-section-next-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .cart-page-checkout-cta {
   width: 100%;
   border: none;
@@ -9102,6 +9383,19 @@ html[data-theme="light"] .hero-product-config-panel {
   box-shadow: 0 24px 48px rgba(19, 40, 67, 0.041);
 }
 
+html[data-theme="light"] .hero-config-expand-toggle,
+html[data-theme="light"] .hero-config-collapse-toggle {
+  border-color: rgba(19, 40, 67, 0.22);
+  background: rgba(255, 255, 255, 0.88);
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-config-expand-toggle:hover,
+html[data-theme="light"] .hero-config-collapse-toggle:hover {
+  background: #ffffff;
+  border-color: rgba(240, 122, 32, 0.55);
+}
+
 html[data-theme="light"] .hero-product-config-panel > header strong {
   color: #16314e;
 }
@@ -9177,6 +9471,29 @@ html[data-theme="light"] .hero-product-dimensions-grid input {
 html[data-theme="light"] .hero-product-mini-summary {
   border: 1px solid rgba(19, 40, 67, 0.2);
   background: rgba(19, 40, 67, 0.060);
+}
+
+html[data-theme="light"] .plisy-variant-toggle {
+  border-color: rgba(19, 40, 67, 0.3);
+  color: rgba(19, 40, 67, 0.86);
+}
+
+html[data-theme="light"] .plisy-variant-toggle:hover {
+  border-color: rgba(240, 122, 32, 0.6);
+  background: rgba(240, 122, 32, 0.08);
+}
+
+html[data-theme="light"] .plisy-variant-form {
+  border: 1px solid rgba(19, 40, 67, 0.16);
+  background: rgba(19, 40, 67, 0.04);
+}
+
+html[data-theme="light"] .plisy-variant-price {
+  color: #16314e;
+}
+
+html[data-theme="light"] .plisy-variant-added-msg {
+  color: #1a8a5f;
 }
 
 html[data-theme="light"] .hero-product-mini-summary h3 {

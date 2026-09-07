@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 // Header "Produkty" pill/switcher - same "only one product really live"
@@ -941,6 +941,15 @@ export default function Home() {
   // is fetched live from the CRM instead of hardcoded like the two above.
   const [plisyConfigKey, setPlisyConfigKey] = useState(0);
   const [plisyLastResult, setPlisyLastResult] = useState<PlisyConfiguratorResult | null>(null);
+  // Desktop-only "Powiększ" toggle on .hero-product-config-panel (shared by
+  // every product's configurator, applied once here instead of per-product).
+  // Pure CSS state - no scroll position or config selection is touched by
+  // toggling it, see the .is-expanded rules in globals.css. Actual smooth
+  // animation between the two sizes is handled by setConfigExpanded() below
+  // (a FLIP tween), not by a CSS transition - see that function's comment.
+  const [isConfigExpanded, setIsConfigExpanded] = useState(false);
+  const configPanelRef = useRef<HTMLElement | null>(null);
+  const configAnimCleanupTimerRef = useRef<number | null>(null);
   const cartCountUpFrameRef = useRef<number | null>(null);
   const [activeHeadline, setActiveHeadline] = useState(0);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
@@ -1325,6 +1334,22 @@ export default function Home() {
     window.addEventListener("hashchange", applyHash);
     return () => window.removeEventListener("hashchange", applyHash);
   }, [activeInstructionSteps]);
+
+  // "Jak mierzyć?" from the landing (spec block) - opens the exact same
+  // single-step measurement popup the configurator's dimensions step uses,
+  // so there is one source of truth for the pomiar instruction.
+  const openMeasurementInstructions = useCallback(() => {
+    const measurementIndex = activeInstructionSteps.findIndex((step) =>
+      normalizeMenuLabel(step.title).includes("pomiar"),
+    );
+    setInstructionModalSingleStep(true);
+    setInstructionModalIndex(measurementIndex >= 0 ? measurementIndex : 0);
+    trackShopStep("open_modal", "measurement_instructions", {
+      product_slug: displayedProduct ? productSlugFromSelected(displayedProduct) : "",
+      source: "landing_spec",
+    });
+  }, [activeInstructionSteps, displayedProduct]);
+
   const [dimensionWidth, setDimensionWidth] = useState("");
   const [dimensionHeight, setDimensionHeight] = useState("");
   const [dimensionQuantity, setDimensionQuantity] = useState("1");
@@ -1939,6 +1964,82 @@ export default function Home() {
     return withRequiredSections;
   }, [config, endpointOrigin]);
 
+  /** Toggles the "Powiększ" overlay (plisy only) with a real tween instead
+   * of a plain class-swap. A CSS transition can't animate width/right/
+   * top/height directly here: the collapsed state's width/right come from
+   * grid/sticky layout ("auto" as far as those properties are concerned),
+   * and CSS cannot interpolate to/from "auto" - a plain class toggle just
+   * SNAPS instantly between the two sizes.
+   * Fix is the standard FLIP technique: measure the real pixel rect right
+   * before the class flips, let React+CSS apply the target class, measure
+   * the real pixel rect right after, then play a Web Animations API tween
+   * between those two concrete rects (real numbers on both ends, so
+   * width/top/left genuinely reflow and interpolate frame by frame - an
+   * earlier transform:scale() version looked smooth on paper but visibly
+   * stretched the panel's own content while resizing, wrong for a slow,
+   * deliberate open). WAAPI instead of a hand-rolled double-rAF + inline
+   * transition: the browser's own animation timeline drives it once
+   * started, and `.finished` gives an exact, no-magic-number cleanup point
+   * instead of a guessed setTimeout duration. Once it finishes, the inline
+   * overrides are cleared so the stylesheet (vw/rem-based, so still
+   * responsive to a later window resize) owns the geometry again. */
+  function setConfigExpanded(next: boolean) {
+    const el = configPanelRef.current;
+    if (!el || typeof window === "undefined") {
+      setIsConfigExpanded(next);
+      return;
+    }
+    // Cancel any still-running tween from a PREVIOUS toggle first - without
+    // this, clicking the button again mid-animation lets the old tween's
+    // completion handler wipe the inline styles THIS one is relying on.
+    if (configAnimCleanupTimerRef.current !== null) {
+      const prev = (el as HTMLElement & { __configAnim?: Animation }).__configAnim;
+      prev?.cancel();
+      configAnimCleanupTimerRef.current = null;
+    }
+
+    const firstRect = el.getBoundingClientRect();
+    setIsConfigExpanded(next);
+
+    requestAnimationFrame(() => {
+      const target = configPanelRef.current;
+      if (!target) return;
+      const lastRect = target.getBoundingClientRect();
+      if (lastRect.width === 0 || lastRect.height === 0) return;
+
+      target.style.position = "fixed";
+      target.style.right = "auto";
+      target.style.bottom = "auto";
+      target.style.margin = "0";
+
+      const easing = "cubic-bezier(0.45, 0, 0.2, 1)";
+      const anim = target.animate(
+        [
+          { top: `${firstRect.top}px`, left: `${firstRect.left}px`, width: `${firstRect.width}px`, height: `${firstRect.height}px` },
+          { top: `${lastRect.top}px`, left: `${lastRect.left}px`, width: `${lastRect.width}px`, height: `${lastRect.height}px` },
+        ],
+        { duration: 680, easing, fill: "forwards" },
+      );
+      (target as HTMLElement & { __configAnim?: Animation }).__configAnim = anim;
+      configAnimCleanupTimerRef.current = 1; // marks "an animation is in flight" - value itself is unused
+
+      anim.finished
+        .then(() => {
+          configAnimCleanupTimerRef.current = null;
+          const cleanupEl = configPanelRef.current;
+          if (!cleanupEl) return;
+          anim.cancel();
+          cleanupEl.style.position = "";
+          cleanupEl.style.right = "";
+          cleanupEl.style.bottom = "";
+          cleanupEl.style.margin = "";
+        })
+        .catch(() => {
+          // Cancelled by a newer toggle - that call owns cleanup instead.
+        });
+    });
+  }
+
   function activateProductView(
     group: HeroMenuGroup,
     groupIndex: number,
@@ -2003,6 +2104,7 @@ export default function Home() {
 
   useEffect(() => {
     setActiveProductGallerySlide(0);
+    setIsConfigExpanded(false);
   }, [displayedProduct?.label]);
 
   useEffect(() => {
@@ -2712,16 +2814,37 @@ export default function Home() {
 
                             <div className="pl-spec-grid">
                               {(productLanding?.specItems?.length ? productLanding.specItems : MOSKITIERY_RAMKOWE_SPEC_ITEMS).map(
-                                (item) => {
+                                (item, index, arr) => {
                                   const icon = moskitieryRamkoweSpecIcon(item.label);
+                                  // CTA "jak mierzyć" lives in the "na wymiar i pod kolor"
+                                  // block; if the CRM ever renames that item, fall back to
+                                  // the first one so the CTA never disappears entirely.
+                                  const measureItemIndex = Math.max(
+                                    0,
+                                    arr.findIndex((it) => /wymiar/i.test(it.label)),
+                                  );
+                                  const withMeasureCta = index === measureItemIndex;
                                   return (
-                                    <div className="pl-spec-item" key={item.label}>
+                                    <div
+                                      className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`}
+                                      key={item.label}
+                                    >
                                       {icon ? (
                                         <span className="pl-spec-icon">{icon}</span>
                                       ) : null}
                                       <div className="pl-spec-item-text">
                                         <span className="pl-spec-label">{item.label}</span>
                                         <span className="pl-spec-value">{item.value}</span>
+                                        {withMeasureCta ? (
+                                          <button
+                                            type="button"
+                                            className="pl-measure-cta"
+                                            onClick={openMeasurementInstructions}
+                                          >
+                                            <span aria-hidden="true">📐</span>
+                                            Jak mierzyć? Zobacz instrukcję pomiaru
+                                          </button>
+                                        ) : null}
                                       </div>
                                     </div>
                                   );
@@ -3422,9 +3545,40 @@ export default function Home() {
             </aside>
             {displayedProduct ? (
               <aside
-                className={`hero-product-config-panel ${isProductView ? "is-visible" : ""}`}
+                ref={configPanelRef}
+                className={`hero-product-config-panel ${isProductView ? "is-visible" : ""} ${
+                  isConfigExpanded && productSlugFromSelected(displayedProduct) === "plisy" ? "is-expanded" : ""
+                }`}
                 aria-label="Konfigurator produktu"
               >
+                {/* "Powiększ" is plisy-only for now (that's the product this
+                    was built and asked for against) - gating on the slug
+                    here, not just at the button, means the .is-expanded
+                    class itself can never apply to another product's panel
+                    even if state was somehow left over from switching. */}
+                {productSlugFromSelected(displayedProduct) === "plisy" ? (
+                  isConfigExpanded ? (
+                    <button
+                      type="button"
+                      className="hero-config-collapse-toggle"
+                      onClick={() => setConfigExpanded(false)}
+                      aria-label="Zwiń konfigurator"
+                      title="Zwiń konfigurator"
+                    >
+                      →
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="hero-config-expand-toggle"
+                      onClick={() => setConfigExpanded(true)}
+                      aria-label="Powiększ konfigurator"
+                      title="Powiększ konfigurator"
+                    >
+                      <span aria-hidden="true">⤢</span> Powiększ
+                    </button>
+                  )
+                ) : null}
                 {productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                   addToCartToast ? (
                     <MobileOverlayPortal>
@@ -3669,6 +3823,30 @@ export default function Home() {
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
                         setAddToCartToast({ productSlug: "plisy", productLabel: displayedProduct.label });
+                      }}
+                      onAddVariant={(result) => {
+                        // "Dodaj podobną" - adds quietly, no toast takeover,
+                        // no config remount - the customer stays on the same
+                        // panel to add the next size right after this one.
+                        const item: CartLineItem = {
+                          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                          productSlug: "plisy",
+                          productLabel: displayedProduct.label,
+                          hardwareLabel: result.hardwareLabel,
+                          meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
+                          mountLabel: result.mountLabel || undefined,
+                          widthMm: result.widthMm,
+                          heightMm: result.heightMm,
+                          qty: result.qty,
+                          price: result.unitPrice,
+                          total: result.totalPrice,
+                          createdAt: new Date().toISOString(),
+                        };
+                        const items = addCartItem(item);
+                        setCartItems(items);
+                        setCartSummary(cartSummaryWithSurcharge(items));
+                        setCartIsBumping(true);
+                        window.setTimeout(() => setCartIsBumping(false), 500);
                       }}
                     />
                   )
