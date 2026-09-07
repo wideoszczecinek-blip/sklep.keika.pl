@@ -31,11 +31,19 @@ export default function ConfiguratorPanel({
   initialValues,
   submitLabel,
   onSubmit,
+  onAddVariant,
   onZoom,
 }: {
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
   onSubmit: (result: ConfiguratorResult) => void;
+  // Optional "Dodaj podobną" shortcut: same mount/hardware/fabric selection
+  // as the item about to be added, just a different width/height/qty - for
+  // customers ordering several same-style plisy in different window sizes.
+  // Kept fully separate from onSubmit so it never triggers the parent's
+  // "Dodano do koszyka!" takeover screen - it adds quietly and stays on the
+  // same configurator so the next size can go straight in after it.
+  onAddVariant?: (result: ConfiguratorResult) => void;
   onZoom?: (preview: ZoomPreview) => void;
 }) {
   const [profile, setProfile] = useState<PlisyProfile | null>(null);
@@ -76,6 +84,17 @@ export default function ConfiguratorPanel({
   const [height, setHeight] = useState(initialValues?.heightMm ? String(initialValues.heightMm) : "");
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
+
+  // "Dodaj podobną" - a second, independent width/height/qty triplet for
+  // the SAME mount/hardware/fabric already chosen above, so several sizes
+  // of the same style can be added one after another without redoing the
+  // whole step flow each time.
+  const [showVariantForm, setShowVariantForm] = useState(false);
+  const [variantWidth, setVariantWidth] = useState("");
+  const [variantHeight, setVariantHeight] = useState("");
+  const [variantQuantity, setVariantQuantity] = useState("1");
+  const [variantAddedMessage, setVariantAddedMessage] = useState<string | null>(null);
+  const variantMessageTimerRef = useRef<number | null>(null);
 
   const stepOneRef = useRef<HTMLButtonElement | null>(null);
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
@@ -184,6 +203,58 @@ export default function ConfiguratorPanel({
   const unitPrice =
     matrixUnitPrice !== null ? applyPriceDeltas(matrixUnitPrice, [selectedMount, selectedHardware, selectedFabric]) : null;
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
+
+  const variantWidthNum = Number(variantWidth) || 0;
+  const variantHeightNum = Number(variantHeight) || 0;
+  const variantDimensionsValid = profile
+    ? variantWidthNum >= profile.widthMinMm &&
+      variantWidthNum <= profile.widthMaxMm &&
+      variantHeightNum >= profile.heightMinMm &&
+      variantHeightNum <= profile.heightMaxMm
+    : false;
+  const variantQuantityNum = Math.max(1, Number(variantQuantity) || 1);
+  const variantMatrixUnitPrice =
+    profile && variantDimensionsValid && selectedHardwareId && selectedFabricGroupId
+      ? calcPlisyPrice(profile, variantWidthNum, variantHeightNum, selectedHardwareId, selectedFabricGroupId)
+      : null;
+  const variantUnitPrice =
+    variantMatrixUnitPrice !== null
+      ? applyPriceDeltas(variantMatrixUnitPrice, [selectedMount, selectedHardware, selectedFabric])
+      : null;
+  const variantTotalPrice = variantUnitPrice !== null ? Math.round(variantUnitPrice * variantQuantityNum * 100) / 100 : null;
+
+  useEffect(() => {
+    return () => {
+      if (variantMessageTimerRef.current) window.clearTimeout(variantMessageTimerRef.current);
+    };
+  }, []);
+
+  function handleAddVariant() {
+    if (!onAddVariant || !variantDimensionsValid || variantUnitPrice === null || variantTotalPrice === null) return;
+    onAddVariant({
+      mountId: selectedMount?.id || "",
+      mountLabel: selectedMount?.label || "",
+      hardwareId: selectedHardware?.id || "",
+      hardwareLabel: selectedHardware?.label || "",
+      fabricGroupId: selectedFabricGroup?.id || "",
+      fabricGroupLabel: selectedFabricGroup?.label || "",
+      fabricId: selectedFabric?.id || "",
+      fabricLabel: selectedFabric?.label || "",
+      widthMm: variantWidthNum,
+      heightMm: variantHeightNum,
+      qty: variantQuantityNum,
+      unitPrice: variantUnitPrice,
+      totalPrice: variantTotalPrice,
+    });
+    setVariantAddedMessage(
+      `Dodano ${variantQuantityNum} szt. (${variantWidthNum} × ${variantHeightNum} mm) - ${variantTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`,
+    );
+    setVariantWidth("");
+    setVariantHeight("");
+    setVariantQuantity("1");
+    if (variantMessageTimerRef.current) window.clearTimeout(variantMessageTimerRef.current);
+    variantMessageTimerRef.current = window.setTimeout(() => setVariantAddedMessage(null), 3200);
+  }
 
   function handleSubmit() {
     if (!dimensionsValid || unitPrice === null || totalPrice === null) return;
@@ -680,6 +751,84 @@ export default function ConfiguratorPanel({
                       </strong>
                     </div>
                   </div>
+                  {onAddVariant ? (
+                    <div className="plisy-variant-block">
+                      <button
+                        type="button"
+                        className="plisy-variant-toggle"
+                        onClick={() => setShowVariantForm((prev) => !prev)}
+                        aria-expanded={showVariantForm ? "true" : "false"}
+                      >
+                        {showVariantForm ? "− Anuluj dodawanie podobnej" : "+ Dodaj podobną (inny wymiar)"}
+                      </button>
+                      {showVariantForm ? (
+                        <div className="plisy-variant-form">
+                          <p className="hero-product-config-hint">
+                            Ten sam montaż, mechanizm i tkanina - podaj tylko nowy wymiar i ilość.
+                          </p>
+                          <div className="hero-product-dimensions-grid">
+                            <label>
+                              Szerokość (mm)
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min={profile.widthMinMm}
+                                max={profile.widthMaxMm}
+                                placeholder={`np. ${profile.widthDefaultMm}`}
+                                value={variantWidth}
+                                onChange={(event) => setVariantWidth(event.target.value)}
+                              />
+                            </label>
+                            <label>
+                              Wysokość (mm)
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min={profile.heightMinMm}
+                                max={profile.heightMaxMm}
+                                placeholder={`np. ${profile.heightDefaultMm}`}
+                                value={variantHeight}
+                                onChange={(event) => setVariantHeight(event.target.value)}
+                              />
+                            </label>
+                            <label>
+                              Ilość
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                max={20}
+                                value={variantQuantity}
+                                onChange={(event) => setVariantQuantity(event.target.value)}
+                              />
+                            </label>
+                          </div>
+                          {(variantWidth || variantHeight) && !variantDimensionsValid ? (
+                            <p className="hero-product-dimensions-error">
+                              Wymiar musi mieścić się w zakresie {profile.widthMinMm}–{profile.widthMaxMm} mm.
+                            </p>
+                          ) : null}
+                          <div className="plisy-variant-form-footer">
+                            <span className="plisy-variant-price">
+                              {variantTotalPrice !== null
+                                ? `${variantTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
+                                : "--"}
+                            </span>
+                            <button
+                              type="button"
+                              className="plisy-variant-add"
+                              onClick={handleAddVariant}
+                              disabled={variantTotalPrice === null}
+                            >
+                              Dodaj do koszyka
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                      {variantAddedMessage ? <p className="plisy-variant-added-msg">✓ {variantAddedMessage}</p> : null}
+                    </div>
+                  ) : null}
+
                   <button type="button" className="hero-product-add-to-cart" onClick={handleSubmit} disabled={totalPrice === null}>
                     {submitLabel}
                   </button>

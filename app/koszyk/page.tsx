@@ -613,6 +613,25 @@ export default function CartPage() {
   // starting over. It only locks once the order is genuinely final: paid
   // online, or cash-on-delivery (which has no further payment step at all).
   const dataLocked = paymentConfirmed || (orderState !== null && orderState.paymentProvider === "cod");
+
+  // Mobile checkout "Dalej" (Next) buttons - real feedback: "Dużo osób nam
+  // nie wybiera metody płatności" (lots of people never pick a payment
+  // method), because on a phone it's stacked below everything else and easy
+  // to just never scroll to. First attempt auto-scrolled reactively the
+  // instant each section's fields read as "valid" - live feedback 2026-09-07:
+  // that fired after typing just the *first character* into whichever field
+  // happened to be the last empty one, because several of these validity
+  // checks are deliberately lenient ("non-empty", not "correctly formatted" -
+  // e.g. phoneFieldValid) for the inline checkmark UI, never meant to gate an
+  // irreversible page jolt. A manual "Dalej" button - enabled once the
+  // section really is complete, advancing only on an explicit tap - has none
+  // of that footgun and gives the customer control over the timing.
+  const shippingAddressSectionRef = useRef<HTMLElement | null>(null);
+  const paymentSectionRef = useRef<HTMLElement | null>(null);
+
+  function scrollToSection(ref: React.RefObject<HTMLElement | null>) {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   // The moment the order is genuinely final (COD - nothing further to pay,
   // or online payment confirmed) - swap the whole cart/checkout layout for a
   // dedicated thank-you view instead of leaving the (now pointless) delivery
@@ -1272,88 +1291,16 @@ export default function CartPage() {
                   </div>
                 </section>
 
-                <section className="cart-checkout-form-card">
-                  <h2>Adres wysyłki</h2>
+                {/* Moved here (was inside "Adres wysyłki" below) - real
+                    feedback 2026-09-07: showing it right under the delivery
+                    method, before the address fields, matches how customers
+                    actually decide ("chcę fakturę" is a yes/no up front, not
+                    something they think about mid-address-form) and gives
+                    the NIP auto-fill (see lookupNip()) a completion moment
+                    of its own to trigger the address-section auto-scroll
+                    below. */}
+                <section className="cart-checkout-form-card cart-invoice-card">
                   <fieldset className="cart-checkout-form" disabled={dataLocked}>
-                    <div className="cart-checkout-form-grid">
-                      <label>
-                        Imię
-                        <CartFieldStatus valid={firstNameFieldValid}>
-                          <input
-                            value={form.firstName}
-                            onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      <label>
-                        Nazwisko
-                        <CartFieldStatus valid={lastNameFieldValid}>
-                          <input
-                            value={form.lastName}
-                            onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      <label>
-                        Telefon
-                        <CartFieldStatus valid={phoneFieldValid}>
-                          <input
-                            value={form.phone}
-                            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      <label>
-                        E-mail
-                        <CartFieldStatus valid={emailValid}>
-                          <input
-                            type="email"
-                            value={form.email}
-                            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      {requiresAddress ? (
-                        <>
-                          <label>
-                            Miasto
-                            <CartFieldStatus valid={cityFieldValid}>
-                              <input
-                                value={form.city}
-                                onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
-                              />
-                            </CartFieldStatus>
-                          </label>
-                          <label>
-                            Kod pocztowy
-                            <CartFieldStatus valid={postcodeFieldValid}>
-                              <input
-                                value={form.postcode}
-                                onChange={(event) =>
-                                  setForm((current) => ({ ...current, postcode: event.target.value }))
-                                }
-                              />
-                            </CartFieldStatus>
-                          </label>
-                          <label>
-                            Ulica i numer
-                            <CartFieldStatus valid={address1FieldValid}>
-                              <input
-                                value={form.address1}
-                                onChange={(event) =>
-                                  setForm((current) => ({ ...current, address1: event.target.value }))
-                                }
-                              />
-                            </CartFieldStatus>
-                          </label>
-                        </>
-                      ) : null}
-                    </div>
-
                     <label className="cart-invoice-checkbox">
                       <input
                         type="checkbox"
@@ -1443,6 +1390,103 @@ export default function CartPage() {
                       </div>
                     ) : null}
 
+                    <div className="cart-section-next-wrap">
+                      <button
+                        type="button"
+                        className="cart-section-next-button"
+                        disabled={!invoiceReady}
+                        onClick={() => scrollToSection(shippingAddressSectionRef)}
+                        aria-label="Dalej"
+                        title="Dalej"
+                      >
+                        <span aria-hidden="true">→</span>
+                      </button>
+                    </div>
+                  </fieldset>
+                </section>
+
+                <section className="cart-checkout-form-card" ref={shippingAddressSectionRef}>
+                  <h2>Adres wysyłki</h2>
+                  <fieldset className="cart-checkout-form" disabled={dataLocked}>
+                    <div className="cart-checkout-form-grid">
+                      <label>
+                        Imię
+                        <CartFieldStatus valid={firstNameFieldValid}>
+                          <input
+                            value={form.firstName}
+                            onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
+                      </label>
+                      <label>
+                        Nazwisko
+                        <CartFieldStatus valid={lastNameFieldValid}>
+                          <input
+                            value={form.lastName}
+                            onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
+                      </label>
+                      <label>
+                        Telefon
+                        <CartFieldStatus valid={phoneFieldValid}>
+                          <input
+                            value={form.phone}
+                            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
+                      </label>
+                      <label>
+                        E-mail
+                        <CartFieldStatus valid={emailValid}>
+                          <input
+                            type="email"
+                            value={form.email}
+                            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
+                      </label>
+                      {requiresAddress ? (
+                        <>
+                          <label>
+                            Miasto
+                            <CartFieldStatus valid={cityFieldValid}>
+                              <input
+                                value={form.city}
+                                onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
+                              />
+                            </CartFieldStatus>
+                          </label>
+                          <label>
+                            Kod pocztowy
+                            <CartFieldStatus valid={postcodeFieldValid}>
+                              <input
+                                value={form.postcode}
+                                onChange={(event) =>
+                                  setForm((current) => ({ ...current, postcode: event.target.value }))
+                                }
+                              />
+                            </CartFieldStatus>
+                          </label>
+                          <label>
+                            Ulica i numer
+                            <CartFieldStatus valid={address1FieldValid}>
+                              <input
+                                value={form.address1}
+                                onChange={(event) =>
+                                  setForm((current) => ({ ...current, address1: event.target.value }))
+                                }
+                              />
+                            </CartFieldStatus>
+                          </label>
+                        </>
+                      ) : null}
+                    </div>
+
                     <label className="cart-checkout-note-field">
                       Dodatkowe informacje
                       <textarea
@@ -1450,12 +1494,25 @@ export default function CartPage() {
                         onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
                       />
                     </label>
+
+                    <div className="cart-section-next-wrap">
+                      <button
+                        type="button"
+                        className="cart-section-next-button"
+                        disabled={!(contactReady && addressReady && paczkomatReady)}
+                        onClick={() => scrollToSection(paymentSectionRef)}
+                        aria-label="Dalej"
+                        title="Dalej"
+                      >
+                        <span aria-hidden="true">→</span>
+                      </button>
+                    </div>
                   </fieldset>
                 </section>
               </div>
 
               <aside className="cart-checkout-right">
-                <section className="cart-payment-card">
+                <section className="cart-payment-card" ref={paymentSectionRef}>
                   <h2>Płatność</h2>
                   {items.length > 0 ? (
                     <>
