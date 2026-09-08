@@ -3953,6 +3953,12 @@ html[data-theme="light"] .mhelp-cta-primary {
    zaoszczędź X zł"), not just a passive note - live feedback 2026-09-08.
    Still its own quiet teal accent, not the orange promo CTA right below
    it, so the two never compete for attention. */
+/* Solid (not translucent) background + the site's own light-theme --ink
+   token for text - live feedback 2026-09-08: the original translucent-tint
+   + near-white-text combo (matching the surrounding dark-theme-styled
+   .hero-product-mini-summary) came out illegible wherever that card's
+   ambient backdrop wasn't actually dark. Self-contained now, guaranteed
+   contrast regardless of what's behind it. */
 .leftover-savings-banner {
   display: flex;
   align-items: center;
@@ -3960,8 +3966,8 @@ html[data-theme="light"] .mhelp-cta-primary {
   margin: 0.55rem 0 0;
   padding: 0.6rem 0.7rem;
   border-radius: 10px;
-  border: 1px solid rgba(94, 209, 179, 0.4);
-  background: rgba(94, 209, 179, 0.1);
+  border: 1px solid rgba(0, 127, 123, 0.35);
+  background: #eafaf6;
 }
 
 .leftover-savings-banner-icon {
@@ -3972,13 +3978,13 @@ html[data-theme="light"] .mhelp-cta-primary {
 .leftover-savings-banner-text {
   flex: 1 1 auto;
   margin: 0;
-  color: rgba(240, 248, 255, 0.92);
+  color: var(--ink);
   font-size: 0.86rem;
   line-height: 1.4;
 }
 
 .leftover-savings-banner-text strong {
-  color: #a6ecd8;
+  color: var(--accent-deep);
   font-weight: 700;
 }
 
@@ -3993,9 +3999,9 @@ html[data-theme="light"] .mhelp-cta-primary {
   width: 1.4rem;
   height: 1.4rem;
   border-radius: 999px;
-  border: 1px solid rgba(166, 236, 216, 0.6);
-  background: rgba(166, 236, 216, 0.14);
-  color: #a6ecd8;
+  border: 1px solid rgba(0, 127, 123, 0.45);
+  background: #fff;
+  color: var(--accent-deep);
   font-size: 0.78rem;
   font-weight: 800;
   font-style: italic;
@@ -4005,7 +4011,7 @@ html[data-theme="light"] .mhelp-cta-primary {
 }
 
 .leftover-savings-info-button:hover {
-  background: rgba(166, 236, 216, 0.24);
+  background: rgba(0, 127, 123, 0.12);
 }
 
 .leftover-savings-info-modal {
@@ -4085,7 +4091,11 @@ html[data-theme="light"] .mhelp-cta-primary {
 /* SEZON20 seasonal discount banner, shown right under the total price - see
    ConfiguratorPanel's promoPreview/promoActive state. Same orange accent as
    .hero-product-add-to-cart below it so the two read as one promo moment,
-   not two competing CTAs. */
+   not two competing CTAs. Solid backgrounds + the site's own light-theme
+   --ink token for text - live feedback 2026-09-08: the original
+   translucent-tint + near-white-text combo (matching the surrounding
+   dark-theme-styled .hero-product-mini-summary) came out illegible
+   wherever that card's ambient backdrop wasn't actually dark. */
 .hero-product-promo-banner {
   display: flex;
   align-items: center;
@@ -4094,29 +4104,29 @@ html[data-theme="light"] .mhelp-cta-primary {
   margin: 0.7rem 0;
   padding: 0.6rem 0.85rem;
   border-radius: 12px;
-  border: 1px dashed rgba(255, 125, 19, 0.55);
-  background: rgba(255, 125, 19, 0.1);
+  border: 1px dashed rgba(217, 119, 6, 0.55);
+  background: #fff3e0;
 }
 
 .hero-product-promo-banner.is-active {
   border-style: solid;
-  border-color: rgba(111, 227, 191, 0.5);
-  background: rgba(111, 227, 191, 0.1);
+  border-color: rgba(0, 127, 123, 0.4);
+  background: #eafaf6;
 }
 
 .hero-product-promo-banner-text {
   font-size: 1rem;
   font-weight: 600;
-  color: #f2f7ff;
+  color: var(--ink);
   line-height: 1.4;
 }
 
 .hero-product-promo-banner-text strong {
-  color: #ff9f0a;
+  color: #b35900;
 }
 
 .hero-product-promo-banner.is-active .hero-product-promo-banner-text strong {
-  color: #6fe3bf;
+  color: var(--accent-deep);
 }
 
 .hero-product-promo-banner-cta {

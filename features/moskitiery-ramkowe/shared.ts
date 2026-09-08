@@ -222,15 +222,26 @@ export function moskBilledMeters(perimeterMeters: number): number {
   return Math.max(1, Math.ceil(perimeterMeters));
 }
 
+// Below this, the leftover's zł value is too small to bother the customer
+// with - not a "does a whole extra frame fit" gate (any leftover reduces
+// what a second frame would cost, even a partial one - see
+// lib/cart.ts's calcMoskitieryCombinedSavings(), which applies regardless
+// of size), just "is this worth mentioning". Owner's call 2026-09-08: the
+// original gate (leftover >= the smallest orderable frame's own perimeter)
+// was arbitrary and hid genuinely useful, if smaller, savings.
+export const MIN_WORTHWHILE_LEFTOVER_SAVINGS_ZL = 2;
+
 /** Same "zapas" mechanism as the Allegro configurator's own savings
  * messaging (mosquito-configurator-variants.ts' usesSavingsMessaging flag,
  * product-configurator-shell.tsx's summarizeCombinedPricing()): billing
  * rounds perimeter UP to each started meter, so a 2,4 m frame is billed for
  * a full 3 m - the unused 0,6 m within that started meter is already paid
- * for. This is purely informational (an upsell nudge, "wykorzystaj zapas na
- * kolejną moskitierę") - it does NOT change what the current item is
- * charged, and on its own does not make a second item in the cart cheaper;
- * see ConfiguratorPanel.tsx's own call site for where this is shown. */
+ * for. This is an upsell nudge ("wykorzystaj zapas na kolejną moskitierę")
+ * shown here (ConfiguratorPanel.tsx) purely for display - the real discount
+ * this leftover translates into once a second item is actually added is
+ * computed independently by lib/cart.ts's calcMoskitieryCombinedSavings()
+ * (client preview) and the CRM's own authoritative recompute
+ * (quote_save.php's shop_moskitiery_combined_perimeter_reapply_to_quote_input()). */
 export function moskLeftoverCapacity(
   perimeterMeters: number,
   billedMeters: number,

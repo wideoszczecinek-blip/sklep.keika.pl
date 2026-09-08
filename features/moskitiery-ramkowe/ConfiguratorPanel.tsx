@@ -35,6 +35,7 @@ import { ensurePromoQuoteCode, hasSavedPromoLink } from "@/lib/promo-save";
 import {
   ALLEGRO_MOSKITIERY_HARDWARE,
   MESH_OPTIONS,
+  MIN_WORTHWHILE_LEFTOVER_SAVINGS_ZL,
   MOSKITIERY_MESH_LAYER_URL,
   MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
   MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
@@ -359,13 +360,12 @@ export default function ConfiguratorPanel({
   // savings messaging (see moskLeftoverCapacity()'s doc comment). Uses
   // whatever per-mb rate is actually in effect right now (SEZON20-adjusted
   // when active) so the zł figure shown matches what a second item would
-  // really cost. MIN_ORDERABLE_PERIMETER_METERS: below this, the leftover
-  // can't fit even the smallest orderable frame, so the hint would just be
-  // noise - skip it.
-  const MIN_ORDERABLE_PERIMETER_METERS = moskPerimeterMeters(
-    MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
-    MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
-  );
+  // really cost. Gated on MIN_WORTHWHILE_LEFTOVER_SAVINGS_ZL, not "does a
+  // whole extra frame fit" - owner's call 2026-09-08: billing is per
+  // started meter regardless of size (a 501 cm perimeter still bills 6 m),
+  // so even a partial leftover genuinely reduces what a second, smaller
+  // frame would cost - the only real question is whether the zł figure is
+  // big enough to be worth mentioning.
   const effectivePricePerMb =
     promoActive && promoPreview
       ? applyPromoToPrice(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, promoPreview) ?? MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO
@@ -375,7 +375,7 @@ export default function ConfiguratorPanel({
       ? moskLeftoverCapacity(perimeterMeters, billedMeters, effectivePricePerMb)
       : null;
   const showLeftoverHint =
-    leftoverCapacity !== null && leftoverCapacity.leftoverMeters >= MIN_ORDERABLE_PERIMETER_METERS;
+    leftoverCapacity !== null && leftoverCapacity.leftoverValue >= MIN_WORTHWHILE_LEFTOVER_SAVINGS_ZL;
 
   useEffect(() => {
     if (!hasValidDimensions) {

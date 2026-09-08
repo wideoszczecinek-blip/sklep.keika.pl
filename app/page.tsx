@@ -54,9 +54,9 @@ function cartSummaryWithSurcharge(items: CartLineItem[]): CartSummary {
 import {
   ALLEGRO_MOSKITIERY_HARDWARE,
   MESH_OPTIONS,
+  MIN_WORTHWHILE_LEFTOVER_SAVINGS_ZL,
   MOSKITIERY_MESH_LAYER_URL,
   MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
-  MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
   MOSKITIERY_RAMKOWE_PRICE_ON_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
@@ -3812,15 +3812,11 @@ export default function Home() {
                               MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO)
                             : MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO;
                         const leftover = moskLeftoverCapacity(perimeterMeters, billedMeters, effectivePricePerMbForToast);
-                        const minOrderablePerimeterMeters = moskPerimeterMeters(
-                          MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
-                          MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
-                        );
                         setAddToCartToast({
                           productSlug: "moskitiery-ramkowe",
                           productLabel: displayedProduct.label,
                           leftover:
-                            leftover.leftoverMeters >= minOrderablePerimeterMeters
+                            leftover.leftoverValue >= MIN_WORTHWHILE_LEFTOVER_SAVINGS_ZL
                               ? { meters: leftover.leftoverMeters, value: leftover.leftoverValue }
                               : undefined,
                         });
