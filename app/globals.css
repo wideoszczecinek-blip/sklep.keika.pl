@@ -3802,27 +3802,47 @@ html[data-theme="light"] .mhelp-cta-primary {
   mix-blend-mode: multiply;
 }
 
-/* Plisy's own summary preview (features/plisy/PlisaPreview.tsx): a vector
-   room/window render tinted live from the chosen fabric + rail colours,
-   rather than .mosk-preview-stage's photo-layer stack. Kept as its own class
-   so changing one product's preview can never quietly reshape the other's -
+/* Plisy's own summary preview (features/plisy/PlisaPreview.tsx +
+   PLISA_ROOM_SCENE_URL in shared.ts): a real photo of a room/window as the
+   stage, with the plisa (tinted live from the chosen fabric + rail colours)
+   positioned over that photo's actual glass opening - not
+   .mosk-preview-stage's photo-layer-mask stack. Kept as its own class so
+   changing one product's preview can never quietly reshape the other's -
    .mosk-preview-* is shared with moskitiery-ramkowe's real production
-   preview. */
+   preview. Aspect-ratio matches the room photo's own crop (1000x850)
+   exactly, so it's never letterboxed/cropped differently than the
+   .plisa-preview-window percentages below were measured against. */
 .plisa-preview-stage {
   position: relative;
   width: 100%;
+  aspect-ratio: 1000 / 850;
   border-radius: 0.9rem;
   border: 1px solid rgba(15, 23, 42, 0.1);
   overflow: hidden;
-  background: #ffffff;
+  background-color: #ffffff;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   box-shadow: 0 8px 20px rgba(8, 20, 35, 0.18);
-  line-height: 0;
+}
+
+/* The room photo's real glass opening, as a percentage of the stage box -
+   measured by hand against PLISA_ROOM_SCENE_URL's exact crop. Change one,
+   check the other. */
+.plisa-preview-window {
+  position: absolute;
+  left: 35.5%;
+  top: 25.2%;
+  width: 26%;
+  height: 34.2%;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .plisa-preview-svg {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
 }
 
 .hero-product-mini-summary dl {

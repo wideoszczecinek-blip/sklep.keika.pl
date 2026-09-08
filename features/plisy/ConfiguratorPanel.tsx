@@ -15,6 +15,7 @@ import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackShopStep } from "@/lib/track-step";
 import PlisaPreview from "./PlisaPreview";
 import {
+  PLISA_ROOM_SCENE_URL,
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
   calcPlisyPrice,
@@ -674,16 +675,25 @@ export default function ConfiguratorPanel({
                 <div className="hero-product-mini-summary is-revealed">
                   <h3>Plisa</h3>
                   <div className="hero-product-mini-summary-body">
-                    {/* Layered room/window render tinted from the real
-                        selections, not a flat crop of the fabric photo - see
-                        PlisaPreview.tsx for why it's vector. */}
-                    <div className="plisa-preview-stage">
-                      <PlisaPreview
-                        fabricColor={selectedFabric?.color || ""}
-                        hardwareColor={selectedHardware?.color || ""}
-                        fabricLabel={selectedFabric?.label}
-                        hardwareLabel={selectedHardware?.label}
-                      />
+                    {/* Real photo of a room + window as the stage (a stock
+                        photo, licensed for this - see PLISA_ROOM_SCENE_URL),
+                        with the plisa itself (tinted live from the chosen
+                        colours) positioned over its actual glass opening.
+                        The window's position within that specific photo was
+                        measured by hand, hence the hardcoded percentages -
+                        this is one fixed photo, not a general mockup engine. */}
+                    <div
+                      className="plisa-preview-stage"
+                      style={{ backgroundImage: `url(${optimizeImageUrl(PLISA_ROOM_SCENE_URL, 700, 80)})` }}
+                    >
+                      <div className="plisa-preview-window">
+                        <PlisaPreview
+                          fabricColor={selectedFabric?.color || ""}
+                          hardwareColor={selectedHardware?.color || ""}
+                          fabricLabel={selectedFabric?.label}
+                          hardwareLabel={selectedHardware?.label}
+                        />
+                      </div>
                     </div>
                     <dl>
                       {selectedMount ? (

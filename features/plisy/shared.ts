@@ -12,6 +12,18 @@ import { optimizeImageUrl } from "@/lib/image-optim";
 const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 const PLISY_PRODUCT_SLUG = "plisy";
 
+// Real photo (empty bedroom, single centred window) for the configurator's
+// summary preview - re-hosted on our own storage rather than hot-linking
+// Unsplash so it can't disappear out from under a live product page. Source:
+// Unsplash photo 1722859179261-dd72877cb7c3 (Unsplash License - free for
+// commercial use, no attribution required), cropped 1000x850 by hand around
+// the window. See PlisaPreview.tsx + .plisa-preview-window in
+// ConfiguratorPanel.tsx for how the plisa itself is positioned over the
+// glass - those percentages are measured against THIS exact crop, so this
+// URL and that positioning are not independent of each other.
+export const PLISA_ROOM_SCENE_URL =
+  "https://crm-keika.groovemedia.pl/storage/shop/media/plisy_room_scene_fe2b6d3e.jpg";
+
 // Every "Dopłata / rabat" field on a swatch/option in the CRM can be entered
 // either as a flat zł amount or as a percent - sign still carries the
 // dopłata (positive) vs rabat (negative) meaning either way, only the unit
