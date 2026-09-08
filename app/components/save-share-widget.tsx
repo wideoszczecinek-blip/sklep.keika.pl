@@ -28,6 +28,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { ATTRACT_SAVE_SHARE_EVENT } from "@/app/components/promo-countdown-banner";
 import { readCartItems } from "@/lib/cart";
 import { PROMO_CODE, isPromoActive } from "@/lib/promo";
 import { buildRescuePosition, type RescueSavePosition } from "@/lib/rescue";
@@ -36,6 +37,12 @@ import { buildResumeUrl, saveQuoteForSharing, sendShareLink, type ShareLink } fr
 const TEASER_DELAY_MS = 5000;
 const TEASER_VISIBLE_MS = 5000;
 const TEASER_DISMISSED_KEY = "keika_save_share_teaser_dismissed";
+// How long the CSS enlarge-shake-settle animation runs (globals.css'
+// .header-save-share-button.is-attract) - the class is removed after this
+// via onAnimationEnd, but this timeout is a safety net for browsers that
+// never fire it (animation interrupted, reduced-motion swaps in a
+// non-animating rule that still needs the class cleared eventually).
+const ATTRACT_ANIMATION_MS = 1800;
 
 function looksLikeEmail(value: string): boolean {
   return /.+@.+\..+/.test(value);
@@ -72,6 +79,7 @@ export default function SaveShareWidget({
 }) {
   const [slotEl, setSlotEl] = useState<Element | null>(null);
   const [teaserVisible, setTeaserVisible] = useState(false);
+  const [isAttracting, setIsAttracting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [link, setLink] = useState<ShareLink | null>(null);
   const [configLabel, setConfigLabel] = useState("");
@@ -112,6 +120,24 @@ export default function SaveShareWidget({
       // nic do zrobienia
     }
   }
+
+  // First-visit promo announcement (promo-countdown-banner.tsx) closes with
+  // "korzystając z przycisku u góry" - this is that button reacting: an
+  // enlarge-shake-settle animation (globals.css) so it's unmistakable which
+  // button that was. Also collapses the plain hover teaser above so the two
+  // attention-getters never show at once - the shake IS the attention-
+  // getter for this activation, a stacked teaser bubble on top would just
+  // be noise.
+  useEffect(() => {
+    function handleAttract() {
+      collapseTeaser();
+      setIsAttracting(true);
+      window.setTimeout(() => setIsAttracting(false), ATTRACT_ANIMATION_MS);
+    }
+    window.addEventListener(ATTRACT_SAVE_SHARE_EVENT, handleAttract);
+    return () => window.removeEventListener(ATTRACT_SAVE_SHARE_EVENT, handleAttract);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openModal() {
     collapseTeaser();
@@ -260,8 +286,9 @@ export default function SaveShareWidget({
     <div className="header-save-share-wrap">
       <button
         type="button"
-        className="header-save-share-button"
+        className={`header-save-share-button${isAttracting ? " is-attract" : ""}`}
         onClick={openModal}
+        onAnimationEnd={() => setIsAttracting(false)}
         aria-label="Zapisz / udostępnij stronę"
       >
         {/* Proper "share" glyph (box + outward arrow) - same one used on the

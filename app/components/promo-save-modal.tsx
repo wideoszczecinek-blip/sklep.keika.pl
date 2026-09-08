@@ -44,8 +44,16 @@ export default function PromoSaveModal({
    * (they'd never activated it at all) - shows one extra intro screen
    * framing that ("włączyliśmy go za Ciebie") before the same options, with
    * a "Zostań na stronie" way out for someone who doesn't want to save/
-   * share right now but still keeps the just-activated discount. */
-  variant?: "reminder" | "activated";
+   * share right now but still keeps the just-activated discount.
+   * "announcement": promo-countdown-banner.tsx's own first-visit
+   * auto-activation (every new visitor gets the code turned on
+   * automatically, not just exit-intent) - a single self-contained screen,
+   * no share options inside the modal at all. It deliberately points at the
+   * header save/share button instead ("korzystając z przycisku u góry") -
+   * that button itself shakes right as this modal closes (see
+   * ATTRACT_SAVE_SHARE_EVENT below) so there's exactly one, unambiguous
+   * place to go save/share from, never two competing flows. */
+  variant?: "reminder" | "activated" | "announcement";
   onClose: () => void;
 }) {
   const [introDismissed, setIntroDismissed] = useState(variant !== "activated");
@@ -125,13 +133,33 @@ export default function PromoSaveModal({
           ✕
         </button>
 
-        {introDismissed && typeof remainingMs === "number" && remainingMs > 0 ? (
+        {variant !== "announcement" && introDismissed && typeof remainingMs === "number" && remainingMs > 0 ? (
           <div className="promo-save-modal-urgency">
             <span aria-hidden="true">⏳</span> Rabat wygasa za <strong>{formatPromoRemaining(remainingMs)}</strong>
           </div>
         ) : null}
 
-        {!introDismissed ? (
+        {variant === "announcement" ? (
+          <div className="promo-announce">
+            <span className="promo-announce-badge" aria-hidden="true">🎉</span>
+            <h3>Promocja SEZON20 właśnie się aktywowała!</h3>
+            <p className="promo-save-modal-lead">
+              Włączyliśmy dla Ciebie rabat <strong>-20%</strong> na wszystko - ceny na stronie są już niższe.
+              {typeof remainingMs === "number" && remainingMs > 0 ? (
+                <>
+                  {" "}
+                  Masz na niego <strong>{formatPromoRemaining(remainingMs)}</strong> - licznik zobaczysz u góry
+                  strony.
+                </>
+              ) : null}{" "}
+              W każdej chwili możesz zapisać lub udostępnić tę stronę przyciskiem <span aria-hidden="true">🔗</span> u
+              góry ekranu, żeby rabat na Ciebie poczekał.
+            </p>
+            <button type="button" className="promo-save-option is-primary promo-announce-cta" onClick={onClose}>
+              Super, dziękuję!
+            </button>
+          </div>
+        ) : !introDismissed ? (
           <>
             <h3>Zaczekaj - nie skorzystałeś jeszcze z rabatu</h3>
             <p className="promo-save-modal-lead">

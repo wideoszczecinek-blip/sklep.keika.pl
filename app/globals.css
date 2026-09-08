@@ -10272,6 +10272,53 @@ html[data-theme="light"] .allegro-review-tag-cons {
   height: 1.85rem;
 }
 
+/* Enlarge -> shake several times -> settle, fired once right as the
+   first-visit promo announcement modal closes (promo-countdown-banner.tsx
+   dispatches ATTRACT_SAVE_SHARE_EVENT, save-share-widget.tsx applies this
+   class) - directs the eye to exactly the button that modal just told the
+   customer about. */
+@keyframes keika-save-share-attract {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  12% {
+    transform: scale(1.32) rotate(0deg);
+  }
+  24% {
+    transform: scale(1.28) rotate(-14deg);
+  }
+  36% {
+    transform: scale(1.28) rotate(12deg);
+  }
+  48% {
+    transform: scale(1.26) rotate(-10deg);
+  }
+  60% {
+    transform: scale(1.22) rotate(8deg);
+  }
+  72% {
+    transform: scale(1.16) rotate(-5deg);
+  }
+  84% {
+    transform: scale(1.08) rotate(2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.header-save-share-button.is-attract {
+  animation: keika-save-share-attract 1.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  box-shadow: 0 0 0 6px rgba(46, 125, 209, 0.3), 0 8px 18px rgba(19, 40, 67, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-save-share-button.is-attract {
+    animation: none;
+    box-shadow: 0 0 0 6px rgba(46, 125, 209, 0.38), 0 8px 18px rgba(19, 40, 67, 0.28);
+  }
+}
+
 .hero-header.is-compact .header-save-share-button svg {
   width: 0.92rem;
   height: 0.92rem;
@@ -10539,6 +10586,39 @@ html[data-theme="dark"] .promo-save-modal-urgency {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
   color: #fff;
   border-color: transparent;
+}
+
+/* variant="announcement" (first-visit auto-activation) - a single
+   self-contained screen, centered, no share-options grid: that flow lives
+   at the header button now (see .header-save-share-button.is-attract
+   above), so this only ever needs one dismiss action. */
+.promo-announce {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 0.2rem;
+}
+
+.promo-announce-badge {
+  font-size: 2.1rem;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.promo-announce h3 {
+  margin: 0 0 0.6rem;
+}
+
+.promo-announce .promo-save-modal-lead {
+  margin-bottom: 1.1rem;
+}
+
+.promo-announce-cta {
+  flex-direction: row;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-size: 0.92rem;
 }
 
 .promo-save-modal-linkbox {
