@@ -45,6 +45,7 @@ import {
   OVERSIZE_TECHNICAL_LIMIT_MM,
   buildMoskLayerSurfaceStyle,
   moskBilledMeters,
+  moskLeftoverCapacity,
   moskOversizeSurchargeForDimension,
   moskPerimeterMeters,
   type ConfiguratorInitialValues,
@@ -350,6 +351,28 @@ export default function ConfiguratorPanel({
 
   const promoDiscountedTotal =
     promoActive && dimensionTotalPrice !== null ? applyPromoToPrice(dimensionTotalPrice, promoPreview) : null;
+
+  // "Zapas" upsell nudge - same mechanism as the Allegro configurator's own
+  // savings messaging (see moskLeftoverCapacity()'s doc comment). Uses
+  // whatever per-mb rate is actually in effect right now (SEZON20-adjusted
+  // when active) so the zł figure shown matches what a second item would
+  // really cost. MIN_ORDERABLE_PERIMETER_METERS: below this, the leftover
+  // can't fit even the smallest orderable frame, so the hint would just be
+  // noise - skip it.
+  const MIN_ORDERABLE_PERIMETER_METERS = moskPerimeterMeters(
+    MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
+    MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
+  );
+  const effectivePricePerMb =
+    promoActive && promoPreview
+      ? applyPromoToPrice(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, promoPreview) ?? MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO
+      : MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO;
+  const leftoverCapacity =
+    perimeterMeters !== null && billedMeters !== null
+      ? moskLeftoverCapacity(perimeterMeters, billedMeters, effectivePricePerMb)
+      : null;
+  const showLeftoverHint =
+    leftoverCapacity !== null && leftoverCapacity.leftoverMeters >= MIN_ORDERABLE_PERIMETER_METERS;
 
   useEffect(() => {
     if (!hasValidDimensions) {
@@ -807,6 +830,27 @@ export default function ConfiguratorPanel({
                   </strong>
                 </div>
               </div>
+              {showLeftoverHint ? (
+                <p className="hero-product-leftover-hint">
+                  🧵 Przy tym wymiarze płacisz za pełne <strong>{billedMeters} mb</strong> - zostaje Ci jeszcze{" "}
+                  <strong>
+                    {leftoverCapacity!.leftoverMeters.toLocaleString("pl-PL", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    m
+                  </strong>{" "}
+                  obwodu, już opłacone (warte ok.{" "}
+                  <strong>
+                    {leftoverCapacity!.leftoverValue.toLocaleString("pl-PL", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    zł
+                  </strong>
+                  ). Wykorzystaj je na kolejną, mniejszą moskitierę w tym samym zamówieniu.
+                </p>
+              ) : null}
               {promoPreview ? (
                 <PromoCountdownBanner code={PROMO_CODE} productSlug="moskitiery-ramkowe">
                   {(promo) => (

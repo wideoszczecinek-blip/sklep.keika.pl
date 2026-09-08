@@ -3956,6 +3956,27 @@ html[data-theme="light"] .mhelp-cta-primary {
   margin-bottom: 0.1rem;
 }
 
+/* "Zapas" upsell nudge (moskLeftoverCapacity() in shared.ts) - same
+   perimeter-rounding mechanism as the Allegro configurator's own savings
+   messaging. Purely informational, so it reads as a small aside next to the
+   price, not a promo/CTA moment of its own (that's the orange banner right
+   below it). */
+.hero-product-leftover-hint {
+  margin: 0.55rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(94, 209, 179, 0.35);
+  background: rgba(94, 209, 179, 0.09);
+  color: rgba(240, 248, 255, 0.82);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.hero-product-leftover-hint strong {
+  color: #a6ecd8;
+  font-weight: 700;
+}
+
 /* SEZON20 seasonal discount banner, shown right under the total price - see
    ConfiguratorPanel's promoPreview/promoActive state. Same orange accent as
    .hero-product-add-to-cart below it so the two read as one promo moment,

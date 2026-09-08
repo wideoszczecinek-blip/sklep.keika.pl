@@ -212,6 +212,24 @@ export function moskBilledMeters(perimeterMeters: number): number {
   return Math.max(1, Math.ceil(perimeterMeters));
 }
 
+/** Same "zapas" mechanism as the Allegro configurator's own savings
+ * messaging (mosquito-configurator-variants.ts' usesSavingsMessaging flag,
+ * product-configurator-shell.tsx's summarizeCombinedPricing()): billing
+ * rounds perimeter UP to each started meter, so a 2,4 m frame is billed for
+ * a full 3 m - the unused 0,6 m within that started meter is already paid
+ * for. This is purely informational (an upsell nudge, "wykorzystaj zapas na
+ * kolejną moskitierę") - it does NOT change what the current item is
+ * charged, and on its own does not make a second item in the cart cheaper;
+ * see ConfiguratorPanel.tsx's own call site for where this is shown. */
+export function moskLeftoverCapacity(
+  perimeterMeters: number,
+  billedMeters: number,
+  pricePerMb: number,
+): { leftoverMeters: number; leftoverValue: number } {
+  const leftoverMeters = Math.max(0, billedMeters - perimeterMeters);
+  return { leftoverMeters, leftoverValue: leftoverMeters * pricePerMb };
+}
+
 // Smallest orderable moskitiera-ramkowa - below this on either side it's not
 // a manufacturable frame.
 export const MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM = 150;
