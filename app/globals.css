@@ -2050,17 +2050,18 @@ html[data-theme="light"] .hero-product-gradient-bg {
 }
 
 .pl-sezon-banner-text {
-  font-size: 1.02rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: #fff6ea;
-  line-height: 1.2;
+  line-height: 1.25;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .pl-sezon-banner-sub {
-  font-size: 0.78rem;
+  font-size: 0.98rem;
   font-weight: 600;
-  color: rgba(255, 245, 232, 0.82);
+  color: rgba(255, 247, 237, 0.94);
+  line-height: 1.3;
 }
 
 .pl-sezon-banner-cta {
@@ -3990,9 +3991,10 @@ html[data-theme="light"] .mhelp-cta-primary {
 }
 
 .hero-product-promo-banner-text {
-  font-size: 0.86rem;
+  font-size: 1rem;
+  font-weight: 600;
   color: #f2f7ff;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .hero-product-promo-banner-text strong {
@@ -4157,6 +4159,25 @@ html[data-theme="light"] .mhelp-cta-primary {
   margin: 0;
   color: #f2f7ff;
   font-size: 0.92rem;
+}
+
+/* "Zapas obwodu" nudge repeated right in the success moment - real feedback
+   2026-09-08: the live in-configurator hint (.hero-product-leftover-hint)
+   went unnoticed, this is the second, higher-visibility chance to catch it
+   right as the customer is deciding what to do next. */
+.hero-product-added-toast-leftover {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px dashed rgba(166, 236, 216, 0.45);
+  color: rgba(242, 247, 255, 0.92);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.hero-product-added-toast-leftover strong {
+  color: #a6ecd8;
 }
 
 .hero-product-added-toast-actions {
@@ -9608,6 +9629,16 @@ html[data-theme="light"] .hero-product-added-toast p {
   color: #16314e;
 }
 
+html[data-theme="light"] .hero-product-added-toast-leftover {
+  background: rgba(31, 174, 106, 0.08);
+  border-color: rgba(31, 157, 110, 0.4);
+  color: #16314e;
+}
+
+html[data-theme="light"] .hero-product-added-toast-leftover strong {
+  color: #147a52;
+}
+
 html[data-theme="light"] .hero-product-added-toast-actions button {
   border: 1px solid rgba(19, 40, 67, 0.28);
   background: rgba(19, 40, 67, 0.060);
@@ -10621,8 +10652,40 @@ html[data-theme="dark"] .promo-save-modal-urgency {
   margin: 0 0 0.6rem;
 }
 
-.promo-announce .promo-save-modal-lead {
-  margin-bottom: 1.1rem;
+/* Two short icon+line points instead of a paragraph - live feedback
+   2026-09-08: the original single-paragraph version read as a wall of
+   text. */
+.promo-announce-points {
+  width: 100%;
+  margin: 0 0 1.1rem;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: left;
+}
+
+.promo-announce-points li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.promo-announce-points li span {
+  flex: none;
+  font-size: 1.25rem;
+}
+
+.promo-announce-points strong {
+  color: var(--ink);
 }
 
 .promo-announce-cta {

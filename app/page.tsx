@@ -56,6 +56,7 @@ import {
   MESH_OPTIONS,
   MOSKITIERY_MESH_LAYER_URL,
   MOSKITIERY_PROFILE_DEFAULT_LAYER_URL,
+  MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
   MOSKITIERY_RAMKOWE_PRICE_ON_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
@@ -63,6 +64,7 @@ import {
   OVERSIZE_TECHNICAL_LIMIT_MM,
   buildMoskLayerSurfaceStyle,
   moskBilledMeters,
+  moskLeftoverCapacity,
   moskOversizeSurchargeForDimension,
   moskPerimeterMeters,
   type ConfiguratorResult,
@@ -974,7 +976,17 @@ export default function Home() {
   const [cartIsBumping, setCartIsBumping] = useState(false);
   const [cartIsFlashing, setCartIsFlashing] = useState(false);
   const [cartTooltipOpen, setCartTooltipOpen] = useState(false);
-  const [addToCartToast, setAddToCartToast] = useState<{ productSlug: string; productLabel: string } | null>(null);
+  const [addToCartToast, setAddToCartToast] = useState<{
+    productSlug: string;
+    productLabel: string;
+    /** moskitiery-ramkowe only - "zapas obwodu" upsell, same mechanism as
+     * the live "Przy tym wymiarze płacisz za pełne..." hint shown during
+     * configuration (see moskLeftoverCapacity()'s own doc comment), just
+     * surfaced again here per live feedback: a customer who already closed
+     * that hint never saw it, so it needs a second chance right in the
+     * "Dodano do koszyka!" success moment too. */
+    leftover?: { meters: number; value: number };
+  } | null>(null);
   // Label of whichever locked product the visitor just tried to open via a
   // real navigation attempt (menu/flyout click) - see activateProductView()
   // below and lib/product-availability.ts. null hides the notice.
@@ -3695,6 +3707,27 @@ export default function Home() {
                           <p>
                             <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
                           </p>
+                          {addToCartToast.leftover ? (
+                            <p className="hero-product-added-toast-leftover">
+                              <span aria-hidden="true">🧵</span> Zostało Ci jeszcze{" "}
+                              <strong>
+                                {addToCartToast.leftover.meters.toLocaleString("pl-PL", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}{" "}
+                                m
+                              </strong>{" "}
+                              obwodu, już opłacone (warte ok.{" "}
+                              <strong>
+                                {addToCartToast.leftover.value.toLocaleString("pl-PL", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}{" "}
+                                zł
+                              </strong>
+                              ) - wyceń kolejną moskitierę poniżej i wykorzystaj je za darmo.
+                            </p>
+                          ) : null}
                           <div className="hero-product-added-toast-actions">
                             <button
                               type="button"
@@ -3764,7 +3797,33 @@ export default function Home() {
                         setCartSummary(cartSummaryWithSurcharge(items));
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
-                        setAddToCartToast({ productSlug: "moskitiery-ramkowe", productLabel: displayedProduct.label });
+                        const perimeterMeters = moskPerimeterMeters(result.widthMm, result.heightMm);
+                        const billedMeters = moskBilledMeters(perimeterMeters);
+                        // Same effective rate as the live in-configurator hint
+                        // (.hero-product-leftover-hint, ConfiguratorPanel.tsx) -
+                        // SEZON20-adjusted when active, not result.unitPrice
+                        // (which is always the STANDARD rate; SEZON20 is applied
+                        // as a separate order-level deduction in /koszyk, never
+                        // baked into a cart item's own price) - so the two don't
+                        // show two different zł figures for the same leftover.
+                        const effectivePricePerMbForToast =
+                          topPromoActive && topPromoPreview
+                            ? (applyPromoToPrice(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, topPromoPreview) ??
+                              MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO)
+                            : MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO;
+                        const leftover = moskLeftoverCapacity(perimeterMeters, billedMeters, effectivePricePerMbForToast);
+                        const minOrderablePerimeterMeters = moskPerimeterMeters(
+                          MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
+                          MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
+                        );
+                        setAddToCartToast({
+                          productSlug: "moskitiery-ramkowe",
+                          productLabel: displayedProduct.label,
+                          leftover:
+                            leftover.leftoverMeters >= minOrderablePerimeterMeters
+                              ? { meters: leftover.leftoverMeters, value: leftover.leftoverValue }
+                              : undefined,
+                        });
                         // Keeps an already-saved SEZON20 link "live" - real
                         // feedback 2026-09-06: a customer who saved/sent the
                         // link, then added another item, expected reopening

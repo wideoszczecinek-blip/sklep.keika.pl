@@ -142,21 +142,25 @@ export default function PromoSaveModal({
         {variant === "announcement" ? (
           <div className="promo-announce">
             <span className="promo-announce-badge" aria-hidden="true">🎉</span>
-            <h3>Promocja SEZON20 właśnie się aktywowała!</h3>
-            <p className="promo-save-modal-lead">
-              Włączyliśmy dla Ciebie rabat <strong>-20%</strong> na wszystko - ceny na stronie są już niższe.
-              {typeof remainingMs === "number" && remainingMs > 0 ? (
-                <>
-                  {" "}
-                  Masz na niego <strong>{formatPromoRemaining(remainingMs)}</strong> - licznik zobaczysz u góry
-                  strony.
-                </>
-              ) : null}{" "}
-              W każdej chwili możesz zapisać lub udostępnić tę stronę przyciskiem <span aria-hidden="true">🔗</span> u
-              góry ekranu, żeby rabat na Ciebie poczekał.
-            </p>
+            <h3>Rabat -20% aktywny!</h3>
+            <ul className="promo-announce-points">
+              <li>
+                <span aria-hidden="true">⏱️</span>
+                {typeof remainingMs === "number" && remainingMs > 0 ? (
+                  <>
+                    Ważny jeszcze <strong>{formatPromoRemaining(remainingMs)}</strong> - nie przegap!
+                  </>
+                ) : (
+                  <>Nie przegap!</>
+                )}
+              </li>
+              <li>
+                <span aria-hidden="true">🔗</span>
+                Udostępnij ofertę przyciskiem obok koszyka, u góry strony.
+              </li>
+            </ul>
             <button type="button" className="promo-save-option is-primary promo-announce-cta" onClick={onClose}>
-              Super, dziękuję!
+              Rozumiem
             </button>
           </div>
         ) : !introDismissed ? (
