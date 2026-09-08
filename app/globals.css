@@ -8086,11 +8086,16 @@ html[data-theme="light"] .cart-page-gradient-bg {
    background is a near-transparent tint meant to float over the page's own
    background - fine in-page, but left floating over this modal's dark
    blurred scrim it read as murky rather than a clean bright card (real
-   feedback 2026-09-09: "daj mu jasne tło"). Two classes, equal specificity,
-   so this needs the compound selector to reliably win regardless of
-   stylesheet order. Solid white, same treatment as .legal-modal-shell/
-   .cod-sms-modal-shell - unconditional, not tied to any theme toggle. */
-.edit-item-modal-panel.hero-product-config-panel {
+   feedback 2026-09-09: "daj mu jasne tło"). FIRST FIX ATTEMPT WAS WRONG:
+   `.edit-item-modal-panel.hero-product-config-panel` (two classes, (0,2,0))
+   still LOST to `html[data-theme="light"] .hero-product-config-panel`
+   below ((0,2,1) - the `html` type selector breaks the class-count tie) -
+   verified live via getComputedStyle, the panel was still rendering the
+   7%-opacity tint despite this rule. Prefixing with the same
+   `html[data-theme="light"]` here makes ours (0,3,1), which now strictly
+   outranks it regardless of source order. Solid white, same treatment as
+   .legal-modal-shell/.cod-sms-modal-shell. */
+html[data-theme="light"] .edit-item-modal-panel.hero-product-config-panel {
   border-color: rgba(19, 40, 67, 0.16);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 30px 60px rgba(19, 40, 67, 0.18);

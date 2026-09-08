@@ -900,7 +900,7 @@ export default function ConfiguratorPanel({
                       już opłaconego obwodu.
                     </p>
                     <p>
-                      Skonfiguruj kolejną, mniejszą moskitierę mieszczącą się w tym zapasie - koszyk automatycznie
+                      Skonfiguruj kolejną moskitierę i wykorzystaj niewykorzystany obwód - koszyk automatycznie
                       policzy wspólne rozliczenie obwodu wszystkich moskitier w zamówieniu i naliczy realną zniżkę
                       przy podsumowaniu.
                     </p>
