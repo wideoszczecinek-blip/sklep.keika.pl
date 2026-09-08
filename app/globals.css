@@ -3802,54 +3802,37 @@ html[data-theme="light"] .mhelp-cta-primary {
   mix-blend-mode: multiply;
 }
 
-/* Plisy's own summary preview (features/plisy/PlisaPreview.tsx +
-   PLISA_ROOM_SCENE_URL in shared.ts): a real photo of a room/window as the
-   stage, with the plisa (tinted live from the chosen fabric + rail colours)
-   positioned over that photo's actual glass opening - not
-   .mosk-preview-stage's photo-layer-mask stack. Kept as its own class so
-   changing one product's preview can never quietly reshape the other's -
+/* Plisy's own summary preview (features/plisy/PlisaPreview.tsx): just the
+   plisa itself (tinted live from the chosen fabric + rail colours) on a
+   plain soft gradient backdrop - not .mosk-preview-stage's photo-layer-mask
+   stack, and (2026-09-09 v3) no longer a room/window stock photo either.
+   Two rounds of "the photo doesn't look right" feedback (wrong angle, then
+   window too far/close) settled it: a plain gradient never goes stale or
+   wrong, and reads clearly on its own. Kept as its own class so changing
+   one product's preview can never quietly reshape the other's -
    .mosk-preview-* is shared with moskitiery-ramkowe's real production
-   preview. Aspect-ratio matches the room photo's own crop (2200x1900,
-   resized to 1600x1382 on upload - same ratio) exactly, so it's never
-   letterboxed/cropped differently than the .plisa-preview-window
-   percentages below were measured against. 2026-09-09 v2: swapped again for
-   a plain, straight-on, centred single window (floor-to-ceiling, plain wall
-   on both sides) - the previous close-up was shot from a side angle in a
-   window nook, which the business owner didn't want ("jedno zdjęcie okna na
-   środku, nawprost"). */
+   preview. */
 .plisa-preview-stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 2200 / 1900;
+  aspect-ratio: 4 / 5;
   border-radius: 0.9rem;
   border: 1px solid rgba(15, 23, 42, 0.1);
   overflow: hidden;
-  background-color: #ffffff;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: linear-gradient(160deg, #eef2f6 0%, #dde4ea 55%, #cfd8e0 100%);
   box-shadow: 0 8px 20px rgba(8, 20, 35, 0.18);
-}
-
-/* The room photo's real glass opening, as a percentage of the stage box -
-   measured by hand against PLISA_ROOM_SCENE_URL's exact crop. The window is
-   centred left-right with a plain wall strip on each side, and runs from
-   just under the ceiling down to the floor line. Change one, check the
-   other. */
-.plisa-preview-window {
-  position: absolute;
-  left: 23%;
-  top: 22.5%;
-  width: 56%;
-  height: 64.5%;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7%;
 }
 
 .plisa-preview-svg {
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: 0.35rem;
+  box-shadow: 0 6px 16px rgba(8, 20, 35, 0.22);
 }
 
 .hero-product-mini-summary dl {

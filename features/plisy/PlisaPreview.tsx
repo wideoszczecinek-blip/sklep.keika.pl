@@ -2,12 +2,13 @@
 
 // The plisa itself (pleated fabric + top/bottom aluminium rail), tinted live
 // from the chosen fabric/hardware colours. Deliberately just the product,
-// not a room - it's meant to be dropped into a real photo of a window (see
-// .plisa-preview-window in ConfiguratorPanel.tsx), which is what the
-// business owner actually asked for after the first version drew an
-// illustrated window+room around it. No side guide rails: this mounting
-// system doesn't have them (confirmed by the business owner 2026-09-09),
-// unlike moskitiery-ramkowe's frame, which does.
+// not a room - sits on a plain gradient backdrop (.plisa-preview-stage in
+// globals.css), not a room/window photo. That went through two rounds of
+// real-photo attempts (illustrated scene -> side-angle close-up -> centred
+// frontal window) before the business owner asked to drop the photo
+// entirely 2026-09-09 and keep it simple. No side guide rails: this
+// mounting system doesn't have them (confirmed by the business owner
+// 2026-09-09), unlike moskitiery-ramkowe's frame, which does.
 import { plNormalizeHexColor, plShiftHex } from "./shared";
 
 export default function PlisaPreview({
