@@ -3505,6 +3505,18 @@ html[data-theme="light"] .mhelp-cta-primary {
   overflow-x: hidden;
 }
 
+/* Same reasoning as --hardware-color above, for the fabric-color step - the
+   admin can add colors to a group (or whole new series, like the 31-swatch
+   "Klasyczne" group added 2026-09-08) with no upper bound, and the shared
+   560px cap only ever fit a handful of rows. Generous cap + internal
+   scrollbar so a group with many colors degrades to "scroll a bit" instead
+   of the tail of the list silently vanishing with no visible cue. */
+.hero-product-step-accordion--fabric-color .hero-product-step-body {
+  max-height: 640px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .hero-product-hardware-grid .hardware-card small {
   display: none;
 }

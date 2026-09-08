@@ -562,7 +562,7 @@ export default function ConfiguratorPanel({
 
           {fabricGroupChosen ? (
             <>
-              <section className={`hero-product-step-accordion ${stepThreeCollapsed ? "is-collapsed" : ""}`}>
+              <section className={`hero-product-step-accordion hero-product-step-accordion--fabric-color ${stepThreeCollapsed ? "is-collapsed" : ""}`}>
                 <button
                   type="button"
                   ref={stepThreeRef}
