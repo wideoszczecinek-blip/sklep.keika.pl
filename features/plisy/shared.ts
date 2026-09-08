@@ -417,4 +417,10 @@ export type ConfiguratorResult = {
   qty: number;
   unitPrice: number;
   totalPrice: number;
+  /** Real hex colours of the chosen fabric/hardware - carried through to the
+   * cart (see lib/cart.ts's CartLineItem) so /koszyk can render the same
+   * tinted PlisaPreview thumbnail as the configurator, instead of a plain/
+   * blank icon. */
+  fabricColor: string;
+  hardwareColor: string;
 };

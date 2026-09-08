@@ -37,6 +37,13 @@ export type CartLineItem = {
    * (mount_options may also be empty on the CRM profile, skipping the step
    * entirely). Additive/optional, same convention as modelLabel above. */
   mountLabel?: string;
+  /** plisy only: real hex colours of the chosen fabric/hardware, so
+   * /koszyk can render the same tinted PlisaPreview thumbnail as the
+   * configurator instead of a plain/blank icon. Undefined for other
+   * products and for plisy items added before this field existed (falls
+   * back to the plain thumb, same convention as imageUrl/mountLabel). */
+  fabricColor?: string;
+  hardwareColor?: string;
 };
 
 export type CartSummary = {
@@ -95,6 +102,8 @@ export function readCartItems(): CartLineItem[] {
         oversizeSurchargeAmount: Number(row.oversizeSurchargeAmount ?? 0) || 0,
         modelLabel: row.modelLabel ? String(row.modelLabel) : undefined,
         mountLabel: row.mountLabel ? String(row.mountLabel) : undefined,
+        fabricColor: row.fabricColor ? String(row.fabricColor) : undefined,
+        hardwareColor: row.hardwareColor ? String(row.hardwareColor) : undefined,
       } satisfies CartLineItem;
     });
 }

@@ -279,6 +279,8 @@ export default function ConfiguratorPanel({
       fabricGroupLabel: selectedFabricGroup?.label || "",
       fabricId: selectedFabric?.id || "",
       fabricLabel: selectedFabric?.label || "",
+      fabricColor: selectedFabric?.color || "",
+      hardwareColor: selectedHardware?.color || "",
     };
 
     // Every earlier position goes in quietly (onAddVariant); only the last

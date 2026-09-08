@@ -3975,6 +3975,8 @@ export default function Home() {
                           hardwareLabel: result.hardwareLabel,
                           meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
                           mountLabel: result.mountLabel || undefined,
+                          fabricColor: result.fabricColor || undefined,
+                          hardwareColor: result.hardwareColor || undefined,
                           widthMm: result.widthMm,
                           heightMm: result.heightMm,
                           qty: result.qty,
@@ -3990,9 +3992,10 @@ export default function Home() {
                         setAddToCartToast({ productSlug: "plisy", productLabel: displayedProduct.label });
                       }}
                       onAddVariant={(result) => {
-                        // "Dodaj podobną" - adds quietly, no toast takeover,
-                        // no config remount - the customer stays on the same
-                        // panel to add the next size right after this one.
+                        // Every earlier position of a multi-size set (see
+                        // ConfiguratorPanel.tsx's handleFinalSubmit) - adds
+                        // quietly, no toast takeover, no config remount; only
+                        // the set's last position goes through onSubmit above.
                         const item: CartLineItem = {
                           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                           productSlug: "plisy",
@@ -4000,6 +4003,8 @@ export default function Home() {
                           hardwareLabel: result.hardwareLabel,
                           meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
                           mountLabel: result.mountLabel || undefined,
+                          fabricColor: result.fabricColor || undefined,
+                          hardwareColor: result.hardwareColor || undefined,
                           widthMm: result.widthMm,
                           heightMm: result.heightMm,
                           qty: result.qty,

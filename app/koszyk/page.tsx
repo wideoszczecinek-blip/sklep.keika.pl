@@ -24,6 +24,7 @@ import {
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import { ROLETY_DACHOWE_FABRIC, ROLETY_DACHOWE_HARDWARE } from "@/features/rolety-dachowe/shared";
 import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
+import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
 import PaczkomatPicker from "../components/paczkomat-picker";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
@@ -103,7 +104,20 @@ type DeliveryMethod = {
 
 // Paczkomat InPost only fits parcels where neither dimension exceeds this -
 // otherwise it's not offered at all (mirrors app/page.tsx's own limit).
+// Generic default for moskitiery-ramkowe/rolety-dachowe; plisy has its own,
+// tighter, width-only rule below (2026-09-09, business owner) - a pleated
+// blind packs down flat regardless of the window's height, so only its
+// folded width has to fit the locker.
 const PACZKOMAT_MAX_DIMENSION_MM = 640;
+const PLISY_PACZKOMAT_MAX_WIDTH_MM = 600;
+
+// One shipment for the whole order - if ANY item anywhere in the cart can't
+// go by paczkomat, the method is dropped for the whole order, not just that
+// item (see getAvailableDeliveryMethods' items.every() below).
+function itemFitsPaczkomat(item: CartLineItem): boolean {
+  if (item.productSlug === "plisy") return item.widthMm <= PLISY_PACZKOMAT_MAX_WIDTH_MM;
+  return item.widthMm <= PACZKOMAT_MAX_DIMENSION_MM && item.heightMm <= PACZKOMAT_MAX_DIMENSION_MM;
+}
 
 // Cash-on-delivery is a flat one-time surcharge on top of the order, not a
 // per-item fee - the courier collects it once for the whole parcel. It's a
@@ -149,9 +163,7 @@ const COD_DELIVERY_METHOD: DeliveryMethod = {
 };
 
 function getAvailableDeliveryMethods(items: CartLineItem[], subtotal: number): DeliveryMethod[] {
-  const fitsPaczkomat =
-    items.length > 0 &&
-    items.every((item) => item.widthMm <= PACZKOMAT_MAX_DIMENSION_MM && item.heightMm <= PACZKOMAT_MAX_DIMENSION_MM);
+  const fitsPaczkomat = items.length > 0 && items.every(itemFitsPaczkomat);
   const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? undefined : SHIPPING_FEE_AMOUNT;
   const courier: DeliveryMethod = { ...COURIER_METHOD, extraFee: shippingFee };
   const paczkomat: DeliveryMethod = { ...PACZKOMAT_METHOD, extraFee: shippingFee };
@@ -418,8 +430,9 @@ export default function CartPage() {
   const [codModalOpen, setCodModalOpen] = useState(false);
 
   // "Edytuj pozycję" - the same <ConfiguratorPanel> the product page uses,
-  // seeded with this item's current config; only moskitiery-ramkowe items
-  // have one (it's the only product wired to that configurator so far).
+  // seeded with this item's current config. moskitiery-ramkowe and plisy
+  // items get the button (see item.productSlug check below); rolety-dachowe
+  // has a ready modal branch too but isn't exposed yet.
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   // Required consent checkbox - gates every "Zamawiam" CTA regardless of
@@ -1190,10 +1203,20 @@ export default function CartPage() {
               <ul className="cart-page-items">
                 {items.map((item) => (
                   <li key={item.id} className="cart-page-item">
-                    <div
-                      className="cart-page-item-thumb"
-                      style={item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined}
-                    />
+                    {item.productSlug === "plisy" && item.fabricColor ? (
+                      // Same tinted graphic as the configurator's own
+                      // preview (features/plisy/PlisaPreview.tsx), just
+                      // shrunk to thumbnail size - real fabric/hardware
+                      // colours, not a generic icon.
+                      <div className="cart-page-item-thumb cart-page-item-thumb--plisa">
+                        <PlisaPreview fabricColor={item.fabricColor} hardwareColor={item.hardwareColor || ""} />
+                      </div>
+                    ) : (
+                      <div
+                        className="cart-page-item-thumb"
+                        style={item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined}
+                      />
+                    )}
                     <div className="cart-page-item-info">
                       <strong>{item.productLabel}</strong>
                       <span className="cart-page-item-specs">
@@ -1267,7 +1290,7 @@ export default function CartPage() {
                     >
                       Usuń
                     </button>
-                    {item.productSlug === "moskitiery-ramkowe" ? (
+                    {item.productSlug === "moskitiery-ramkowe" || item.productSlug === "plisy" ? (
                       <button
                         type="button"
                         className="cart-page-item-edit"
@@ -2005,6 +2028,8 @@ export default function CartPage() {
                     hardwareLabel: result.hardwareLabel,
                     meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
                     mountLabel: result.mountLabel || undefined,
+                    fabricColor: result.fabricColor || undefined,
+                    hardwareColor: result.hardwareColor || undefined,
                     widthMm: result.widthMm,
                     heightMm: result.heightMm,
                     qty: result.qty,
