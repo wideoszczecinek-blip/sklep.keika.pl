@@ -3809,17 +3809,18 @@ html[data-theme="light"] .mhelp-cta-primary {
    .mosk-preview-stage's photo-layer-mask stack. Kept as its own class so
    changing one product's preview can never quietly reshape the other's -
    .mosk-preview-* is shared with moskitiery-ramkowe's real production
-   preview. Aspect-ratio matches the room photo's own crop (1820x1650,
-   resized to 1600x1451 on upload - same ratio) exactly, so it's never
+   preview. Aspect-ratio matches the room photo's own crop (2200x1900,
+   resized to 1600x1382 on upload - same ratio) exactly, so it's never
    letterboxed/cropped differently than the .plisa-preview-window
-   percentages below were measured against. 2026-09-09: swapped for a
-   genuine close-up (wood frame fills most of the shot, small strip of wall,
-   flower vase on the sill) after feedback that the first photo's window
-   read as too small/distant. */
+   percentages below were measured against. 2026-09-09 v2: swapped again for
+   a plain, straight-on, centred single window (floor-to-ceiling, plain wall
+   on both sides) - the previous close-up was shot from a side angle in a
+   window nook, which the business owner didn't want ("jedno zdjęcie okna na
+   środku, nawprost"). */
 .plisa-preview-stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 1600 / 1451;
+  aspect-ratio: 2200 / 1900;
   border-radius: 0.9rem;
   border: 1px solid rgba(15, 23, 42, 0.1);
   overflow: hidden;
@@ -3831,17 +3832,16 @@ html[data-theme="light"] .mhelp-cta-primary {
 }
 
 /* The room photo's real glass opening, as a percentage of the stage box -
-   measured by hand against PLISA_ROOM_SCENE_URL's exact crop. This crop is a
-   true close-up: the window's own outer frame runs to the photo's right/top
-   edges (cropped tight on purpose), so the box touches 100% width and 0%
-   top - only the left (wall) and bottom (sill, kept clear of the flower
-   vase) have real margins. Change one, check the other. */
+   measured by hand against PLISA_ROOM_SCENE_URL's exact crop. The window is
+   centred left-right with a plain wall strip on each side, and runs from
+   just under the ceiling down to the floor line. Change one, check the
+   other. */
 .plisa-preview-window {
   position: absolute;
-  left: 40%;
-  top: 0%;
-  width: 60%;
-  height: 64%;
+  left: 23%;
+  top: 22.5%;
+  width: 56%;
+  height: 64.5%;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
