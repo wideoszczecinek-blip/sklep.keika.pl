@@ -4,8 +4,11 @@
  * Meta Pixel + Conversions API (CAPI) - jedno miejsce dla całego trackingu sklepu.
  *
  * Zasady:
- *  - NIC się nie ładuje ani nie wysyła dopóki użytkownik nie wyrazi zgody na
- *    analitykę (baner keika-consent, patrz app/components/consent-banner.tsx).
+ *  - Pixel + CAPI ładują się BEZ WARUNKOWO na każdym wejściu (baner zgody
+ *    usunięty - patrz initTracking(); decyzja właściciela, by nie tracić
+ *    ~połowy ruchu z przeglądarki w aplikacji FB, która nigdy nie klikała
+ *    "Akceptuję"). _fbp/_fbc mintowane po naszej stronie (ensureFbp/ensureFbc),
+ *    żeby każdy odwiedzający był kwalifikowalny do audiencji remarketingowej.
  *  - Każde zdarzenie ma wspólny `eventId` używany zarówno przez fbq (przeglądarka)
  *    jak i relay do CAPI (serwer CRM) -> Meta deduplikuje Browser + Server.
  *  - `pixel_id` i URL relaya pobierane raz z CRM (/shop-public/tracking_config) -
@@ -178,11 +181,50 @@ function getCookie(name: string): string {
   return match ? decodeURIComponent(match[1]) : "";
 }
 
+// Written on .keika.pl (eTLD+1, same scope Meta's fbevents.js uses) so the
+// pixel picks up the SAME id we mint rather than creating a second one.
+function setCookie(name: string, value: string, days: number): void {
+  if (typeof document === "undefined") return;
+  const maxAge = days * 24 * 60 * 60;
+  const host = window.location.hostname;
+  const domain = host.endsWith("keika.pl") ? "; domain=.keika.pl" : "";
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}${domain}; SameSite=Lax`;
+}
+
+/**
+ * Guarantee a persistent _fbp browser id. Meta's pixel normally creates it,
+ * but on the Facebook in-app browser (the bulk of this shop's traffic)
+ * fbevents.js frequently fails to load or run, so ~half of the pixel/CAPI
+ * hits used to reach Meta with no _fbp - and Meta will NOT build a website
+ * custom audience from those (fbc alone is a click id, not a person). We
+ * mint one first, in the exact fb.1.<ts>.<rand> format; if fbevents.js does
+ * load later it reads and keeps this cookie rather than replacing it.
+ */
+function ensureFbp(): string {
+  const existing = getCookie("_fbp");
+  if (existing) return existing;
+  const val = `fb.1.${Date.now()}.${Math.floor(1e12 + Math.random() * 9e12)}`;
+  setCookie("_fbp", val, 90);
+  return val;
+}
+
+/** Persist _fbc from an fbclid (URL or stored first-touch) so later events
+ * and the pixel share one value instead of each recomputing its own. */
+function ensureFbc(attr: Attribution): string {
+  const existing = getCookie("_fbc");
+  if (existing) return existing;
+  let fbclid = attr.fbclid || "";
+  if (!fbclid && typeof window !== "undefined") {
+    fbclid = new URLSearchParams(window.location.search).get("fbclid") || "";
+  }
+  if (!fbclid) return "";
+  const val = `fb.1.${Date.now()}.${fbclid}`;
+  setCookie("_fbc", val, 90);
+  return val;
+}
+
 function resolveFbc(attr: Attribution): string {
-  const cookie = getCookie("_fbc");
-  if (cookie) return cookie;
-  if (attr.fbclid) return `fb.1.${Date.now()}.${attr.fbclid}`;
-  return "";
+  return getCookie("_fbc") || ensureFbc(attr);
 }
 
 /**
@@ -279,7 +321,13 @@ function injectPixelScript(pixelId: string): void {
 export async function initTracking(): Promise<void> {
   if (typeof window === "undefined") return;
   captureAttribution();
-  if (!hasAnalyticsConsent()) return;
+  // Runs unconditionally now - the cookie-consent gate was removed to stop
+  // losing the ~half of visitors (Facebook in-app browser) who never tapped
+  // "Akceptuję" and so generated no Meta signal at all, starving the
+  // remarketing audiences. _fbp/_fbc are minted here so every visitor is
+  // audience-eligible even when fbevents.js itself never runs.
+  ensureFbp();
+  ensureFbc(readAttribution());
 
   const cfg = await loadConfig();
   if (!cfg) return;
@@ -317,7 +365,7 @@ async function relayToCapi(
       event_id: eventId,
       event_time: Math.floor(Date.now() / 1000),
       event_source_url: window.location.href,
-      fbp: getCookie("_fbp"),
+      fbp: ensureFbp(),
       fbc: resolveFbc(attr),
       fbclid: attr.fbclid || "",
       custom_data: params,
@@ -339,7 +387,7 @@ async function relayToCapi(
  */
 export function track(eventName: string, params: TrackParams = {}, opts: TrackOptions = {}): string {
   const eventId = opts.eventId || newEventId();
-  if (typeof window === "undefined" || !hasAnalyticsConsent()) return eventId;
+  if (typeof window === "undefined") return eventId;
 
   void (async () => {
     const cfg = await loadConfig();

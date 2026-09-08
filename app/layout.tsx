@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import LastPageTracker from "./components/last-page-tracker";
-import ConsentBanner from "./components/consent-banner";
+import TrackingBoot from "./components/tracking-boot";
 import SiteAnalytics from "./components/site-analytics";
 import ChatBubble from "./components/chat-bubble";
 
@@ -60,8 +60,8 @@ export default function RootLayout({
       <body>
         <LastPageTracker />
         <SiteAnalytics />
+        <TrackingBoot />
         {children}
-        <ConsentBanner />
         <ChatBubble />
       </body>
     </html>
