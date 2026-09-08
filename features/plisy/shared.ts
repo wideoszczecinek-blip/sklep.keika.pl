@@ -401,6 +401,17 @@ export type ConfiguratorInitialValues = {
   widthMm?: number;
   heightMm?: number;
   qty?: number;
+  /** /koszyk's "Edytuj pozycję" fallback for when the caller only has the
+   * cart item's stored LABELS, not ids (plisy's option data is fetched live
+   * from the CRM - unlike moskitiery-ramkowe/rolety-dachowe there's no
+   * static label->id lookup table to resolve ids before mount). Matched
+   * against the live profile once it loads - see the label-resolution
+   * effect in ConfiguratorPanel.tsx. Ignored once the matching *Id above is
+   * already given. */
+  mountLabel?: string;
+  hardwareLabel?: string;
+  fabricGroupLabel?: string;
+  fabricLabel?: string;
 };
 
 export type ConfiguratorResult = {

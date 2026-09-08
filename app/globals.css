@@ -3518,6 +3518,15 @@ html[data-theme="light"] .mhelp-cta-primary {
   overflow-x: hidden;
 }
 
+/* Plisy's "Wymiary i ilość" accordion (features/plisy/ConfiguratorPanel.tsx)
+   holds its own bordered .plisy-position-form card - same scoped-override
+   pattern as --fabric-color above, never touch the shared rule directly. */
+.hero-product-step-accordion--dimensions .hero-product-step-body {
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .hero-product-hardware-grid .hardware-card small {
   display: none;
 }
@@ -8070,6 +8079,21 @@ html[data-theme="light"] .cart-page-gradient-bg {
   max-height: min(88vh, 780px);
   overflow-y: auto;
   margin: auto;
+}
+
+/* .edit-item-modal-panel reuses .hero-product-config-panel wholesale (same
+   accordions/inputs/buttons as the live product page), but that class's own
+   background is a near-transparent tint meant to float over the page's own
+   background - fine in-page, but left floating over this modal's dark
+   blurred scrim it read as murky rather than a clean bright card (real
+   feedback 2026-09-09: "daj mu jasne tło"). Two classes, equal specificity,
+   so this needs the compound selector to reliably win regardless of
+   stylesheet order. Solid white, same treatment as .legal-modal-shell/
+   .cod-sms-modal-shell - unconditional, not tied to any theme toggle. */
+.edit-item-modal-panel.hero-product-config-panel {
+  border-color: rgba(19, 40, 67, 0.16);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 30px 60px rgba(19, 40, 67, 0.18);
 }
 
 .edit-item-modal-close {

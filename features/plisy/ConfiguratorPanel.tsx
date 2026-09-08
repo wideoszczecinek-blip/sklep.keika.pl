@@ -103,6 +103,15 @@ export default function ConfiguratorPanel({
   const [width, setWidth] = useState(initialValues?.widthMm ? String(initialValues.widthMm) : "");
   const [height, setHeight] = useState(initialValues?.heightMm ? String(initialValues.heightMm) : "");
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
+  // Wymiary/ilość is its own accordion too (2026-09-09, /koszyk's edit
+  // modal) - same "collapsed if already known" rule as every step above,
+  // so an existing cart item opens with EVERY choice tucked behind a
+  // "Zmień" and the customer clicks whichever one they actually want to
+  // change. A fresh configuration (no initialValues) still opens this
+  // expanded, unaffected - there's nothing yet to collapse it around.
+  const [stepFiveCollapsed, setStepFiveCollapsed] = useState(
+    Boolean(initialValues?.widthMm && initialValues?.heightMm),
+  );
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
 
   // The customer's whole set, built up one size at a time via "+ Dodaj
@@ -163,6 +172,40 @@ export default function ConfiguratorPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
+  // /koszyk's "Edytuj pozycję" fallback: resolve mount/hardware/fabricGroup
+  // ids from the stored LABELS once the live profile loads (see
+  // ConfiguratorInitialValues' own doc comment for why plisy needs this and
+  // the other two products don't). Collapses each step it resolves, same as
+  // if the id had been known from the start. No-ops entirely for a fresh
+  // configuration (no *Label given) or once the real id is already known.
+  useEffect(() => {
+    if (!profile) return;
+    if (!selectedMountId && initialValues?.mountLabel) {
+      const match = profile.mountOptions.find((option) => option.label === initialValues.mountLabel);
+      if (match) {
+        setSelectedMountId(match.id);
+        setStepZeroChosen(true);
+        setStepZeroCollapsed(true);
+      }
+    }
+    if (!selectedHardwareId && initialValues?.hardwareLabel) {
+      const match = profile.hardware.find((option) => option.label === initialValues.hardwareLabel);
+      if (match) {
+        setSelectedHardwareId(match.id);
+        setStepOneChosen(true);
+        setStepOneCollapsed(true);
+      }
+    }
+    if (!selectedFabricGroupId && initialValues?.fabricGroupLabel) {
+      const match = profile.fabricGroups.find((group) => group.label === initialValues.fabricGroupLabel);
+      if (match) {
+        setSelectedFabricGroupId(match.id);
+        setStepTwoCollapsed(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
+
   const selectedMount = useMemo(
     () => profile?.mountOptions.find((option) => option.id === selectedMountId) || null,
     [profile, selectedMountId],
@@ -183,6 +226,21 @@ export default function ConfiguratorPanel({
     [swatchesForGroup, selectedFabricId],
   );
   const fabricChosen = Boolean(selectedFabricId);
+
+  // Second pass of the /koszyk label-resolution above: the fabric (swatch)
+  // id lives inside whichever group that effect resolved, so it can only be
+  // looked up once swatchesForGroup itself reflects that group - one render
+  // later than the effect above.
+  useEffect(() => {
+    if (!selectedFabricId && initialValues?.fabricLabel && swatchesForGroup.length > 0) {
+      const match = swatchesForGroup.find((swatch) => swatch.label === initialValues.fabricLabel);
+      if (match) {
+        setSelectedFabricId(match.id);
+        setStepThreeCollapsed(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swatchesForGroup]);
 
   // Switching collection invalidates whatever color was picked under the
   // previous one - same rule as rolety-dachowe's material-type/fabric pair.
@@ -699,65 +757,103 @@ export default function ConfiguratorPanel({
                       "+ Dodaj kolejną" odkłada bieżący wpis na listę poniżej
                       i czyści pola pod następny rozmiar. Nic nie trafia do
                       koszyka, dopóki nie padnie jedno finalne CTA na samym
-                      dole (patrz handleFinalSubmit). */}
-                  <div className="plisy-position-form">
-                    <p className="hero-product-config-hint">
-                      Zmierz szerokość i wysokość otworu okiennego (mm) i podaj ilość sztuk w tym rozmiarze.
-                    </p>
-                    <div className="hero-product-dimensions-grid">
-                      <label>
-                        Szerokość (mm)
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={profile.widthMinMm}
-                          max={profile.widthMaxMm}
-                          placeholder={`np. ${profile.widthDefaultMm}`}
-                          value={width}
-                          onChange={(event) => setWidth(event.target.value)}
-                        />
-                      </label>
-                      <label>
-                        Wysokość (mm)
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={profile.heightMinMm}
-                          max={profile.heightMaxMm}
-                          placeholder={`np. ${profile.heightDefaultMm}`}
-                          value={height}
-                          onChange={(event) => setHeight(event.target.value)}
-                        />
-                      </label>
-                      <label>
-                        Ilość
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={1}
-                          max={20}
-                          value={quantity}
-                          onChange={(event) => setQuantity(event.target.value)}
-                        />
-                      </label>
+                      dole (patrz handleFinalSubmit). Własny akordeon (jak
+                      kroki 1-4 powyżej) - w /koszyk "Edytuj pozycję" startuje
+                      zwinięty, pokazując bieżący wymiar/ilość jako
+                      podsumowanie; przy świeżej konfiguracji (brak
+                      initialValues) zostaje rozwinięty jak dotychczas. */}
+                  <section
+                    className={`hero-product-step-accordion hero-product-step-accordion--dimensions ${stepFiveCollapsed ? "is-collapsed" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className="hero-product-step-head"
+                      onClick={() => {
+                        trackShopStep("configurator_step_toggle", "dimensions", { collapsed_after: !stepFiveCollapsed });
+                        setStepFiveCollapsed((prev) => !prev);
+                      }}
+                      aria-expanded={stepFiveCollapsed ? "false" : "true"}
+                    >
+                      <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+                        <span className={`hero-product-step-check ${dimensionsValid ? "" : "is-muted"}`} aria-hidden="true">
+                          {dimensionsValid ? "✓" : "5"}
+                        </span>
+                        Wymiary i ilość
+                      </span>
+                      <span className="hero-product-step-head-meta">
+                        {dimensionsValid ? (
+                          <strong>
+                            {widthNum} × {heightNum} mm · {quantityNum} szt.
+                          </strong>
+                        ) : null}
+                        {stepFiveCollapsed ? (
+                          <span className="hero-product-step-head-change">Zmień</span>
+                        ) : (
+                          <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+                        )}
+                      </span>
+                    </button>
+                    <div className="hero-product-step-body">
+                      <div className="plisy-position-form">
+                        <p className="hero-product-config-hint">
+                          Zmierz szerokość i wysokość otworu okiennego (mm) i podaj ilość sztuk w tym rozmiarze.
+                        </p>
+                        <div className="hero-product-dimensions-grid">
+                          <label>
+                            Szerokość (mm)
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={profile.widthMinMm}
+                              max={profile.widthMaxMm}
+                              placeholder={`np. ${profile.widthDefaultMm}`}
+                              value={width}
+                              onChange={(event) => setWidth(event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            Wysokość (mm)
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={profile.heightMinMm}
+                              max={profile.heightMaxMm}
+                              placeholder={`np. ${profile.heightDefaultMm}`}
+                              value={height}
+                              onChange={(event) => setHeight(event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            Ilość
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={20}
+                              value={quantity}
+                              onChange={(event) => setQuantity(event.target.value)}
+                            />
+                          </label>
+                        </div>
+                        {(width || height) && !dimensionsValid ? (
+                          <p className="hero-product-dimensions-error">
+                            Wymiar musi mieścić się w zakresie {profile.widthMinMm}–{profile.widthMaxMm} mm.
+                          </p>
+                        ) : null}
+                        <div className="plisy-position-form-footer">
+                          <span className="plisy-position-price">{totalPrice !== null ? formatZl(totalPrice) : "--"}</span>
+                          <button
+                            type="button"
+                            className="plisy-position-add"
+                            onClick={handleAddPosition}
+                            disabled={!dimensionsValid || totalPrice === null}
+                          >
+                            + Dodaj kolejną
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    {(width || height) && !dimensionsValid ? (
-                      <p className="hero-product-dimensions-error">
-                        Wymiar musi mieścić się w zakresie {profile.widthMinMm}–{profile.widthMaxMm} mm.
-                      </p>
-                    ) : null}
-                    <div className="plisy-position-form-footer">
-                      <span className="plisy-position-price">{totalPrice !== null ? formatZl(totalPrice) : "--"}</span>
-                      <button
-                        type="button"
-                        className="plisy-position-add"
-                        onClick={handleAddPosition}
-                        disabled={!dimensionsValid || totalPrice === null}
-                      >
-                        + Dodaj kolejną
-                      </button>
-                    </div>
-                  </div>
+                  </section>
 
                   {positions.length > 0 ? (
                     <div className="plisy-positions-list">

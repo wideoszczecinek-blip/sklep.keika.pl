@@ -2014,10 +2014,17 @@ export default function CartPage() {
                   // Plisy's option data is fetched live from the CRM inside
                   // the panel itself (see features/plisy/shared.ts), not a
                   // static local constant like the other two products above
-                  // - so there's no label->id lookup table available here to
-                  // pre-select mount/hardware/fabric. Width/height/qty still
-                  // carry over since those are stored as plain values, not
-                  // ids; the user just re-picks the visual options.
+                  // - so there's no label->id lookup table available here.
+                  // The *Label fields below are ConfiguratorPanel's own
+                  // fallback: it resolves them against the live profile once
+                  // it loads (see its label-resolution effects), collapsing
+                  // each step it manages to match - meshLabel is stored as
+                  // "<fabricGroupLabel> — <fabricLabel>" (see app/page.tsx's
+                  // addCartItem calls), split back apart here.
+                  mountLabel: editingItem.mountLabel,
+                  hardwareLabel: editingItem.hardwareLabel,
+                  fabricGroupLabel: editingItem.meshLabel.split(" — ")[0],
+                  fabricLabel: editingItem.meshLabel.split(" — ")[1],
                   widthMm: editingItem.widthMm,
                   heightMm: editingItem.heightMm,
                   qty: editingItem.qty,
