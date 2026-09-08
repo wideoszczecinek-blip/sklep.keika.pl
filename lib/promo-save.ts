@@ -110,7 +110,27 @@ export type PromoQuoteState = {
  * showing on (every current call site is moskitiery-ramkowe). Threaded
  * through every call so a later savePromoContact() touch on the same row
  * doesn't reset it - see PROMO_PRODUCT_SLUG_KEY above. */
-export async function ensurePromoQuoteCode(productSlug?: string): Promise<PromoQuoteState | null> {
+// Shared in-flight promise. The countdown banner, the configurator panel
+// AND app/page.tsx each call this on mount, so on a product page with an
+// active promo 2-3 of them fire within the same tick - each reading an
+// empty sessionStorage quote_code and so each POSTing quote_code:"" and
+// getting its own brand-new row back. Live evidence 2026-09-06..08:
+// ~2 empty shop_www_quotes rows per activation (139 sessions x2, 6 x3),
+// ~350 junk rows/day, which also crushed every "wycena -> zamowienie"
+// funnel ratio (denominator ~90% empty stubs). Collapsing concurrent
+// callers into one request is what actually makes the "never mints a
+// second row for the same activation" guarantee below hold.
+let ensurePromoQuoteCodeInFlight: Promise<PromoQuoteState | null> | null = null;
+
+export function ensurePromoQuoteCode(productSlug?: string): Promise<PromoQuoteState | null> {
+  if (ensurePromoQuoteCodeInFlight) return ensurePromoQuoteCodeInFlight;
+  ensurePromoQuoteCodeInFlight = ensurePromoQuoteCodeInner(productSlug).finally(() => {
+    ensurePromoQuoteCodeInFlight = null;
+  });
+  return ensurePromoQuoteCodeInFlight;
+}
+
+async function ensurePromoQuoteCodeInner(productSlug?: string): Promise<PromoQuoteState | null> {
   const activatedAt = getPromoActivatedAt();
   if (activatedAt === null) return null;
   const tracked = getTracked();
