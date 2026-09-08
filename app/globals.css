@@ -3802,6 +3802,29 @@ html[data-theme="light"] .mhelp-cta-primary {
   mix-blend-mode: multiply;
 }
 
+/* Plisy's own summary preview (features/plisy/PlisaPreview.tsx): a vector
+   room/window render tinted live from the chosen fabric + rail colours,
+   rather than .mosk-preview-stage's photo-layer stack. Kept as its own class
+   so changing one product's preview can never quietly reshape the other's -
+   .mosk-preview-* is shared with moskitiery-ramkowe's real production
+   preview. */
+.plisa-preview-stage {
+  position: relative;
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(8, 20, 35, 0.18);
+  line-height: 0;
+}
+
+.plisa-preview-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .hero-product-mini-summary dl {
   margin: 0;
   display: grid;

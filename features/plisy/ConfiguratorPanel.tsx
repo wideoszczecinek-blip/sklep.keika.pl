@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackShopStep } from "@/lib/track-step";
+import PlisaPreview from "./PlisaPreview";
 import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
@@ -673,20 +674,16 @@ export default function ConfiguratorPanel({
                 <div className="hero-product-mini-summary is-revealed">
                   <h3>Plisa</h3>
                   <div className="hero-product-mini-summary-body">
-                    <div
-                      className="mosk-preview-stage"
-                      role="img"
-                      aria-label={`Podgląd: mechanizm ${selectedHardware?.label || "--"}, tkanina ${selectedFabric?.label || "--"}`}
-                    >
-                      {selectedFabric?.thumbnailUrl ? (
-                        <div
-                          className="mosk-preview-overlay"
-                          style={{
-                            backgroundImage: `url(${optimizeImageUrl(selectedFabric.thumbnailUrl, 500)})`,
-                            opacity: 0.85,
-                          }}
-                        />
-                      ) : null}
+                    {/* Layered room/window render tinted from the real
+                        selections, not a flat crop of the fabric photo - see
+                        PlisaPreview.tsx for why it's vector. */}
+                    <div className="plisa-preview-stage">
+                      <PlisaPreview
+                        fabricColor={selectedFabric?.color || ""}
+                        hardwareColor={selectedHardware?.color || ""}
+                        fabricLabel={selectedFabric?.label}
+                        hardwareLabel={selectedHardware?.label}
+                      />
                     </div>
                     <dl>
                       {selectedMount ? (

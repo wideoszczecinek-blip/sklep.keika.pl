@@ -252,7 +252,7 @@ export async function fetchPlisyProfile(): Promise<PlisyProfile | null> {
 // configurator in this shop (moskitiery-ramkowe/shared.ts,
 // rolety-dachowe/shared.ts) - ported here rather than imported so this
 // feature stays self-contained and safe to delete/replace independently.
-function plNormalizeHexColor(value: string, fallback = "#1F2937"): string {
+export function plNormalizeHexColor(value: string, fallback = "#1F2937"): string {
   const normalized = String(value || "").trim().toUpperCase();
   return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : fallback;
 }
@@ -266,7 +266,7 @@ function plHexToRgb(hex: string) {
   };
 }
 
-function plShiftHex(hex: string, amount: number): string {
+export function plShiftHex(hex: string, amount: number): string {
   const rgb = plHexToRgb(hex);
   const clamp = (value: number) => Math.max(0, Math.min(255, Math.round(value + amount)));
   return `#${[clamp(rgb.r), clamp(rgb.g), clamp(rgb.b)]
