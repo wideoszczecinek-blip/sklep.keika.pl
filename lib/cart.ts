@@ -245,6 +245,62 @@ export function readCartSummary(): CartSummary {
   return summarizeCartItems(readCartItems());
 }
 
+/** Real "wspólne rozliczenie obwodu" savings across ALL moskitiery-ramkowe
+ * items in the cart - same mechanism as the Allegro configurator's own
+ * order pricing (product-configurator-shell.tsx's summarizeCombinedPricing):
+ * perimeter billing rounds UP to each started meter, so combining multiple
+ * frames' perimeters BEFORE rounding (instead of rounding each standalone)
+ * can only ever need the same or fewer whole meters - never more
+ * (ceil(a+b) <= ceil(a)+ceil(b) for any non-negative a, b), so this can
+ * never increase what a customer pays.
+ *
+ * This is the CLIENT'S preview of a deduction the CRM computes
+ * authoritatively and independently at every quote_save.php call
+ * (shop_moskitiery_combined_perimeter_reapply_to_quote_input() - see its
+ * own doc comment for why it derives the effective per-mb rate from what
+ * was actually sent rather than a hardcoded duplicate of
+ * MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO). Deliberately non-compounding with
+ * the SEZON20/rescue discounts (same "stack additively off the raw
+ * subtotal" treatment those two already give each other) - keeps this
+ * fully independent of promo state, so it never needs to know about them.
+ *
+ * Returns 0 for 0-1 items (nothing to combine) or when nothing was
+ * actually saved (e.g. two frames that already fit their own whole meters
+ * exactly). widthMm/heightMm intentionally not re-imported from
+ * features/moskitiery-ramkowe/shared.ts here - koszyk/page.tsx already
+ * inlines other per-product specifics (see cartItemFieldLabels()) rather
+ * than importing from feature folders, so this mirrors that precedent. */
+export function calcMoskitieryCombinedSavings(items: CartLineItem[]): number {
+  const moskItems = items.filter((item) => item.productSlug === "moskitiery-ramkowe");
+  // No length<2 gate here on purpose - a SINGLE line with qty>=2 identical
+  // frames pools the same way (three 150x150mm frames in one line combine
+  // to 2 billed meters, not 3) - the "was anything actually saved" check
+  // below (groupedUnits >= standaloneUnits) already correctly returns 0 for
+  // a genuine single unit, no separate early exit needed.
+  if (moskItems.length === 0) return 0;
+
+  let totalPerimeterMeters = 0;
+  let standaloneUnits = 0;
+  let standaloneAmount = 0;
+
+  for (const item of moskItems) {
+    if (!item.widthMm || !item.heightMm) continue;
+    const perimeterMeters = (2 * (item.widthMm + item.heightMm)) / 1000;
+    const billedMeters = Math.max(1, Math.ceil(perimeterMeters));
+    totalPerimeterMeters += perimeterMeters * item.qty;
+    standaloneUnits += billedMeters * item.qty;
+    standaloneAmount += item.total;
+  }
+
+  if (standaloneUnits <= 0 || standaloneAmount <= 0) return 0;
+
+  const groupedUnits = Math.max(1, Math.ceil(totalPerimeterMeters));
+  if (groupedUnits >= standaloneUnits) return 0;
+
+  const impliedPricePerMb = standaloneAmount / standaloneUnits;
+  return Math.max(0, standaloneAmount - groupedUnits * impliedPricePerMb);
+}
+
 export function formatPln(value: number): string {
   return new Intl.NumberFormat("pl-PL", {
     style: "currency",

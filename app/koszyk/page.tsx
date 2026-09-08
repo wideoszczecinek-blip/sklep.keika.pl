@@ -6,6 +6,7 @@ import { saveShopQuote } from "@/features/moskitiery/api";
 import {
   type CartLineItem,
   calcCartOversizeSurcharge,
+  calcMoskitieryCombinedSavings,
   clearCart,
   formatPln,
   readCartItems,
@@ -282,6 +283,29 @@ function buildQuotePayloadFromCart(
     });
   }
 
+  // Real "wspólne rozliczenie obwodu" savings (see calcMoskitieryCombinedSavings()'s
+  // own doc comment, lib/cart.ts) - deliberately its own position, same
+  // trust model as the discount/rescue positions below: this amount is
+  // just for immediate client-side display, quote_save.php's own
+  // shop_moskitiery_combined_perimeter_reapply_to_quote_input() always
+  // recomputes the real amount straight from each moskitiery-ramkowe
+  // position's own declared size/quantity before persisting anything (a
+  // tampered/stale amount here can't reduce what's actually charged).
+  const combinedSavings = calcMoskitieryCombinedSavings(items);
+  if (combinedSavings > 0) {
+    positions.push({
+      id: "position-moskitiery-combined-savings",
+      product_slug: "oszczednosc-obwod-moskitiery",
+      product_label: "Wspólne rozliczenie obwodu",
+      quantity: 1,
+      purchase_units: null,
+      total_amount: (-combinedSavings).toFixed(2),
+      currency: "PLN",
+      summary: `Wspólne rozliczenie obwodu moskitier (-${combinedSavings.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł)`,
+      summary_rows: [],
+    });
+  }
+
   // Discount code position (see core/lib/shop_discount_codes.php on the CRM
   // side): deliberately NOT going through the extraCharges loop above, which
   // only ever adds positive amounts. Its own total_amount here is just for
@@ -327,7 +351,7 @@ function buildQuotePayloadFromCart(
 
   const extraTotal = extraCharges.reduce((sum, extra) => sum + (extra.amount > 0 ? extra.amount : 0), 0);
   const discountTotal = discount && discount.amount > 0 ? discount.amount : 0;
-  const totalAmount = itemsSubtotal + extraTotal - discountTotal - rescueAmount;
+  const totalAmount = itemsSubtotal - combinedSavings + extraTotal - discountTotal - rescueAmount;
 
   return {
     quote_code: "",
@@ -511,6 +535,11 @@ export default function CartPage() {
 
   const summary = summarizeCartItems(items);
   const rescueAmount = rescueGrant ? Math.max(0, summary.total * (rescueGrant.percent / 100)) : 0;
+  // Real "wspólne rozliczenie obwodu" savings (see calcMoskitieryCombinedSavings()'s
+  // own doc comment) - a preview of what quote_save.php recomputes and
+  // enforces authoritatively server-side; non-compounding with the SEZON20/
+  // rescue discounts, same as those two already are with each other.
+  const combinedSavings = calcMoskitieryCombinedSavings(items);
   const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
   // Odbiór osobisty nigdy nie ma kosztu wysyłki - nic nie jest wysyłane.
@@ -732,7 +761,13 @@ export default function CartPage() {
       // they're committing to accept on delivery, not just the code.
       const codTotal = Math.max(
         0,
-        summary.total - (appliedDiscount?.amount || 0) - rescueAmount + shippingFee + orderSurcharge + COD_SURCHARGE_AMOUNT,
+        summary.total -
+          combinedSavings -
+          (appliedDiscount?.amount || 0) -
+          rescueAmount +
+          shippingFee +
+          orderSurcharge +
+          COD_SURCHARGE_AMOUNT,
       );
       const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/cod_sms_start.php", {
         method: "POST",
@@ -1566,6 +1601,12 @@ export default function CartPage() {
                         </span>
                         <span>{formatPln(summary.total)}</span>
                       </div>
+                      {combinedSavings > 0 ? (
+                        <div className="cart-page-summary-row is-muted">
+                          <span>Wspólne rozliczenie obwodu moskitier</span>
+                          <span>-{formatPln(combinedSavings)}</span>
+                        </div>
+                      ) : null}
                       {appliedDiscount ? (
                         <div className="cart-page-summary-row is-muted">
                           <span>Kod rabatowy {appliedDiscount.code}</span>
@@ -1603,6 +1644,7 @@ export default function CartPage() {
                             Math.max(
                               0,
                               summary.total -
+                                combinedSavings -
                                 (appliedDiscount?.amount || 0) -
                                 rescueAmount +
                                 shippingFee +
@@ -1635,6 +1677,7 @@ export default function CartPage() {
                               Math.max(
                                 0,
                                 summary.total -
+                                  combinedSavings -
                                   sezon20Promo.amount +
                                   shippingFee +
                                   orderSurcharge +
