@@ -12,17 +12,19 @@ import { optimizeImageUrl } from "@/lib/image-optim";
 const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 const PLISY_PRODUCT_SLUG = "plisy";
 
-// Real photo (empty bedroom, single centred window) for the configurator's
-// summary preview - re-hosted on our own storage rather than hot-linking
-// Unsplash so it can't disappear out from under a live product page. Source:
-// Unsplash photo 1722859179261-dd72877cb7c3 (Unsplash License - free for
-// commercial use, no attribution required), cropped 1000x850 by hand around
-// the window. See PlisaPreview.tsx + .plisa-preview-window in
-// ConfiguratorPanel.tsx for how the plisa itself is positioned over the
-// glass - those percentages are measured against THIS exact crop, so this
-// URL and that positioning are not independent of each other.
+// Real photo (close-up wood-framed window, a strip of plaster wall, flower
+// vase on the sill) for the configurator's summary preview - re-hosted on
+// our own storage rather than hot-linking Unsplash so it can't disappear out
+// from under a live product page. Source: Unsplash photo
+// 1675970211114-1229ffc3478c (Unsplash License - free for commercial use, no
+// attribution required), cropped 1820x1650 by hand so the window fills the
+// frame (feedback 2026-09-09: the first room photo read as "too far away").
+// See PlisaPreview.tsx + .plisa-preview-window in ConfiguratorPanel.tsx for
+// how the plisa itself is positioned over the glass - those percentages are
+// measured against THIS exact crop, so this URL and that positioning are
+// not independent of each other.
 export const PLISA_ROOM_SCENE_URL =
-  "https://crm-keika.groovemedia.pl/storage/shop/media/plisy_room_scene_fe2b6d3e.jpg";
+  "https://crm-keika.groovemedia.pl/storage/shop/media/plisy_window_scene_0641ce7a.jpg";
 
 // Every "Dopłata / rabat" field on a swatch/option in the CRM can be entered
 // either as a flat zł amount or as a percent - sign still carries the
