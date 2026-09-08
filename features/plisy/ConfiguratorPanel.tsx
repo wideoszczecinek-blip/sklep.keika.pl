@@ -1,11 +1,15 @@
 "use client";
 
 // The plisy (pleated blind) configurator: kolor mechanizmu -> kolekcja
-// tkaniny -> kolor tkaniny -> wymiary -> dynamic price -> submit. Mirrors
-// features/rolety-dachowe/ConfiguratorPanel.tsx's structure (same accordion
-// steps, same scroll-into-view handling, same add-to-cart contract) with
-// two differences: no window-model-library step (plisy are sized directly
-// to the actual opening, not looked up by window producer/model), and its
+// tkaniny -> kolor tkaniny, then (2026-09-09) a live preview + a repeatable
+// wymiary/ilość entry building up a whole SET of positions (same mount/
+// hardware/fabric, different window sizes) with a running per-position and
+// grand total, flushed to the cart by one final add-to-cart button - see
+// handleFinalSubmit. Mirrors features/rolety-dachowe/ConfiguratorPanel.tsx's
+// structure for the swatch steps (same accordion steps, same
+// scroll-into-view handling, same add-to-cart contract) with two
+// differences: no window-model-library step (plisy are sized directly to
+// the actual opening, not looked up by window producer/model), and its
 // option/price data is fetched live from the CRM (see shared.ts) rather
 // than hardcoded - the business owner is expected to keep editing it
 // directly in the CRM admin panel, and a live fetch means those edits show
@@ -27,6 +31,23 @@ import {
 
 type ZoomPreview = { title: string; urls: string[]; index: number };
 
+// One line of the customer's set: same mount/hardware/fabric (chosen once,
+// shared by the whole set) but its own width/height/qty - see the
+// "positions" state below for how these get built up before a single final
+// add-to-cart flushes all of them at once.
+type PlisyPosition = {
+  id: string;
+  widthMm: number;
+  heightMm: number;
+  qty: number;
+  unitPrice: number;
+  totalPrice: number;
+};
+
+function formatZl(value: number): string {
+  return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+}
+
 export default function ConfiguratorPanel({
   initialValues,
   submitLabel,
@@ -37,12 +58,11 @@ export default function ConfiguratorPanel({
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
   onSubmit: (result: ConfiguratorResult) => void;
-  // Optional "Dodaj podobną" shortcut: same mount/hardware/fabric selection
-  // as the item about to be added, just a different width/height/qty - for
-  // customers ordering several same-style plisy in different window sizes.
-  // Kept fully separate from onSubmit so it never triggers the parent's
-  // "Dodano do koszyka!" takeover screen - it adds quietly and stays on the
-  // same configurator so the next size can go straight in after it.
+  // Used by handleFinalSubmit for every position in the customer's set
+  // except the last one - same mount/hardware/fabric selection, just a
+  // different width/height/qty per position. Kept fully separate from
+  // onSubmit so only the very last position triggers the parent's "Dodano
+  // do koszyka!" takeover screen; the earlier ones add quietly.
   onAddVariant?: (result: ConfiguratorResult) => void;
   onZoom?: (preview: ZoomPreview) => void;
 }) {
@@ -85,21 +105,16 @@ export default function ConfiguratorPanel({
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
 
-  // "Dodaj podobną" - a second, independent width/height/qty triplet for
-  // the SAME mount/hardware/fabric already chosen above, so several sizes
-  // of the same style can be added one after another without redoing the
-  // whole step flow each time.
-  const [showVariantForm, setShowVariantForm] = useState(false);
-  const [variantWidth, setVariantWidth] = useState("");
-  const [variantHeight, setVariantHeight] = useState("");
-  const [variantQuantity, setVariantQuantity] = useState("1");
-  const [variantAddedMessage, setVariantAddedMessage] = useState<string | null>(null);
-  const variantMessageTimerRef = useRef<number | null>(null);
+  // The customer's whole set, built up one size at a time via "+ Dodaj
+  // kolejną" below - same mount/hardware/fabric for every position, only
+  // width/height/qty differ. Nothing here reaches the cart until the single
+  // final add-to-cart button flushes the whole set (see handleFinalSubmit).
+  const [positions, setPositions] = useState<PlisyPosition[]>([]);
 
   const stepOneRef = useRef<HTMLButtonElement | null>(null);
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
   const stepThreeRef = useRef<HTMLButtonElement | null>(null);
-  const stepFourRef = useRef<HTMLParagraphElement | null>(null);
+  const stepFourRef = useRef<HTMLDivElement | null>(null);
 
   // Identical containment logic to every other configurator in this shop -
   // see rolety-dachowe/ConfiguratorPanel.tsx's twin function for the full
@@ -204,61 +219,58 @@ export default function ConfiguratorPanel({
     matrixUnitPrice !== null ? applyPriceDeltas(matrixUnitPrice, [selectedMount, selectedHardware, selectedFabric]) : null;
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
 
-  const variantWidthNum = Number(variantWidth) || 0;
-  const variantHeightNum = Number(variantHeight) || 0;
-  const variantDimensionsValid = profile
-    ? variantWidthNum >= profile.widthMinMm &&
-      variantWidthNum <= profile.widthMaxMm &&
-      variantHeightNum >= profile.heightMinMm &&
-      variantHeightNum <= profile.heightMaxMm
-    : false;
-  const variantQuantityNum = Math.max(1, Number(variantQuantity) || 1);
-  const variantMatrixUnitPrice =
-    profile && variantDimensionsValid && selectedHardwareId && selectedFabricGroupId
-      ? calcPlisyPrice(profile, variantWidthNum, variantHeightNum, selectedHardwareId, selectedFabricGroupId)
-      : null;
-  const variantUnitPrice =
-    variantMatrixUnitPrice !== null
-      ? applyPriceDeltas(variantMatrixUnitPrice, [selectedMount, selectedHardware, selectedFabric])
-      : null;
-  const variantTotalPrice = variantUnitPrice !== null ? Math.round(variantUnitPrice * variantQuantityNum * 100) / 100 : null;
-
-  useEffect(() => {
-    return () => {
-      if (variantMessageTimerRef.current) window.clearTimeout(variantMessageTimerRef.current);
-    };
-  }, []);
-
-  function handleAddVariant() {
-    if (!onAddVariant || !variantDimensionsValid || variantUnitPrice === null || variantTotalPrice === null) return;
-    onAddVariant({
-      mountId: selectedMount?.id || "",
-      mountLabel: selectedMount?.label || "",
-      hardwareId: selectedHardware?.id || "",
-      hardwareLabel: selectedHardware?.label || "",
-      fabricGroupId: selectedFabricGroup?.id || "",
-      fabricGroupLabel: selectedFabricGroup?.label || "",
-      fabricId: selectedFabric?.id || "",
-      fabricLabel: selectedFabric?.label || "",
-      widthMm: variantWidthNum,
-      heightMm: variantHeightNum,
-      qty: variantQuantityNum,
-      unitPrice: variantUnitPrice,
-      totalPrice: variantTotalPrice,
-    });
-    setVariantAddedMessage(
-      `Dodano ${variantQuantityNum} szt. (${variantWidthNum} × ${variantHeightNum} mm) - ${variantTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`,
-    );
-    setVariantWidth("");
-    setVariantHeight("");
-    setVariantQuantity("1");
-    if (variantMessageTimerRef.current) window.clearTimeout(variantMessageTimerRef.current);
-    variantMessageTimerRef.current = window.setTimeout(() => setVariantAddedMessage(null), 3200);
+  // Adds the currently-filled-in width/height/qty as one more position on
+  // the set, then clears the fields so the next size can go straight in.
+  // Nothing is sent to the parent/cart yet - see handleFinalSubmit.
+  function handleAddPosition() {
+    if (!dimensionsValid || unitPrice === null || totalPrice === null) return;
+    setPositions((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        widthMm: widthNum,
+        heightMm: heightNum,
+        qty: quantityNum,
+        unitPrice,
+        totalPrice,
+      },
+    ]);
+    setWidth("");
+    setHeight("");
+    setQuantity("1");
   }
 
-  function handleSubmit() {
-    if (!dimensionsValid || unitPrice === null || totalPrice === null) return;
-    onSubmit({
+  function handleRemovePosition(id: string) {
+    setPositions((prev) => prev.filter((position) => position.id !== id));
+  }
+
+  const positionsGrandTotal = useMemo(
+    () => positions.reduce((sum, position) => sum + position.totalPrice, 0),
+    [positions],
+  );
+
+  // A customer who only ever wants one size never has to touch "+ Dodaj
+  // kolejną" at all - the button is enabled off the currently-filled-in
+  // form too, and a valid one still sitting in the fields gets folded into
+  // the set right before it's sent, so nothing typed-but-not-yet-added is
+  // silently dropped.
+  const canFinalSubmit = positions.length > 0 || (dimensionsValid && totalPrice !== null);
+
+  function handleFinalSubmit() {
+    const finalPositions = [...positions];
+    if (dimensionsValid && unitPrice !== null && totalPrice !== null) {
+      finalPositions.push({
+        id: "current",
+        widthMm: widthNum,
+        heightMm: heightNum,
+        qty: quantityNum,
+        unitPrice,
+        totalPrice,
+      });
+    }
+    if (finalPositions.length === 0) return;
+
+    const base = {
       mountId: selectedMount?.id || "",
       mountLabel: selectedMount?.label || "",
       hardwareId: selectedHardware?.id || "",
@@ -267,11 +279,25 @@ export default function ConfiguratorPanel({
       fabricGroupLabel: selectedFabricGroup?.label || "",
       fabricId: selectedFabric?.id || "",
       fabricLabel: selectedFabric?.label || "",
-      widthMm: widthNum,
-      heightMm: heightNum,
-      qty: quantityNum,
-      unitPrice,
-      totalPrice,
+    };
+
+    // Every earlier position goes in quietly (onAddVariant); only the last
+    // one goes through onSubmit, so the parent's "Dodano do koszyka!"
+    // takeover fires exactly once, after the whole set is in the cart.
+    finalPositions.forEach((position, index) => {
+      const result: ConfiguratorResult = {
+        ...base,
+        widthMm: position.widthMm,
+        heightMm: position.heightMm,
+        qty: position.qty,
+        unitPrice: position.unitPrice,
+        totalPrice: position.totalPrice,
+      };
+      if (index < finalPositions.length - 1 && onAddVariant) {
+        onAddVariant(result);
+      } else {
+        onSubmit(result);
+      }
     });
   }
 
@@ -628,50 +654,7 @@ export default function ConfiguratorPanel({
               </section>
 
               {fabricChosen ? (
-                <>
-                  <p ref={stepFourRef} className="hero-product-config-step-title hero-product-config-step-title--muted">
-                    <span className={`hero-product-step-check ${dimensionsValid ? "" : "is-muted"}`} aria-hidden="true">
-                      {dimensionsValid ? "✓" : "5"}
-                    </span>
-                    Podaj wymiary
-                  </p>
-                  <p className="hero-product-config-hint">Zmierz szerokość i wysokość otworu okiennego w milimetrach.</p>
-                  <div className="hero-product-dimensions-grid">
-                    <label>
-                      Szerokość (mm)
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={profile.widthMinMm}
-                        max={profile.widthMaxMm}
-                        placeholder={`np. ${profile.widthDefaultMm}`}
-                        value={width}
-                        onChange={(event) => setWidth(event.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Wysokość (mm)
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={profile.heightMinMm}
-                        max={profile.heightMaxMm}
-                        placeholder={`np. ${profile.heightDefaultMm}`}
-                        value={height}
-                        onChange={(event) => setHeight(event.target.value)}
-                      />
-                    </label>
-                  </div>
-                  {(width || height) && !dimensionsValid ? (
-                    <p className="hero-product-dimensions-error">
-                      Wymiar musi mieścić się w zakresie {profile.widthMinMm}–{profile.widthMaxMm} mm.
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
-
-              {dimensionsValid ? (
-                <div className="hero-product-mini-summary is-revealed">
+                <div ref={stepFourRef} className="hero-product-mini-summary is-revealed">
                   <h3>Plisa</h3>
                   <div className="hero-product-mini-summary-body">
                     {/* Just the plisa itself (tinted live from the chosen
@@ -706,128 +689,106 @@ export default function ConfiguratorPanel({
                         <dt>Kolor tkaniny</dt>
                         <dd>{selectedFabric?.label || "--"}</dd>
                       </div>
-                      <div>
-                        <dt>Wymiary</dt>
-                        <dd>{widthNum} × {heightNum} mm</dd>
-                      </div>
-                      <div>
-                        <dt>Ilość</dt>
-                        <dd>{quantityNum} szt.</dd>
-                      </div>
                     </dl>
                   </div>
-                  <div className="hero-product-mini-summary-price">
-                    <div className="hero-product-mini-summary-price-details">
-                      <div>
-                        <dt>Ilość</dt>
-                        <dd>
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            min={1}
-                            max={20}
-                            value={quantity}
-                            onChange={(event) => setQuantity(event.target.value)}
-                            className="rd-qty-input"
-                          />
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Cena za 1 szt.</dt>
-                        <dd>
-                          {unitPrice !== null
-                            ? `${unitPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
-                            : "--"}
-                        </dd>
-                      </div>
+
+                  {/* Wymiary + ilość budują tu KOLEJNE POZYCJE zestawu (ten
+                      sam montaż/mechanizm/tkanina, inny rozmiar okna) -
+                      "+ Dodaj kolejną" odkłada bieżący wpis na listę poniżej
+                      i czyści pola pod następny rozmiar. Nic nie trafia do
+                      koszyka, dopóki nie padnie jedno finalne CTA na samym
+                      dole (patrz handleFinalSubmit). */}
+                  <div className="plisy-position-form">
+                    <p className="hero-product-config-hint">
+                      Zmierz szerokość i wysokość otworu okiennego (mm) i podaj ilość sztuk w tym rozmiarze.
+                    </p>
+                    <div className="hero-product-dimensions-grid">
+                      <label>
+                        Szerokość (mm)
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={profile.widthMinMm}
+                          max={profile.widthMaxMm}
+                          placeholder={`np. ${profile.widthDefaultMm}`}
+                          value={width}
+                          onChange={(event) => setWidth(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Wysokość (mm)
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={profile.heightMinMm}
+                          max={profile.heightMaxMm}
+                          placeholder={`np. ${profile.heightDefaultMm}`}
+                          value={height}
+                          onChange={(event) => setHeight(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Ilość
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={20}
+                          value={quantity}
+                          onChange={(event) => setQuantity(event.target.value)}
+                        />
+                      </label>
                     </div>
-                    <div className="hero-product-mini-summary-price-final">
-                      <strong>
-                        {totalPrice !== null
-                          ? `${totalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
-                          : "Cena niedostępna dla tej kombinacji"}
-                      </strong>
-                    </div>
-                  </div>
-                  {onAddVariant ? (
-                    <div className="plisy-variant-block">
+                    {(width || height) && !dimensionsValid ? (
+                      <p className="hero-product-dimensions-error">
+                        Wymiar musi mieścić się w zakresie {profile.widthMinMm}–{profile.widthMaxMm} mm.
+                      </p>
+                    ) : null}
+                    <div className="plisy-position-form-footer">
+                      <span className="plisy-position-price">{totalPrice !== null ? formatZl(totalPrice) : "--"}</span>
                       <button
                         type="button"
-                        className="plisy-variant-toggle"
-                        onClick={() => setShowVariantForm((prev) => !prev)}
-                        aria-expanded={showVariantForm ? "true" : "false"}
+                        className="plisy-position-add"
+                        onClick={handleAddPosition}
+                        disabled={!dimensionsValid || totalPrice === null}
                       >
-                        {showVariantForm ? "− Anuluj dodawanie podobnej" : "+ Dodaj podobną (inny wymiar)"}
+                        + Dodaj kolejną
                       </button>
-                      {showVariantForm ? (
-                        <div className="plisy-variant-form">
-                          <p className="hero-product-config-hint">
-                            Ten sam montaż, mechanizm i tkanina - podaj tylko nowy wymiar i ilość.
-                          </p>
-                          <div className="hero-product-dimensions-grid">
-                            <label>
-                              Szerokość (mm)
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                min={profile.widthMinMm}
-                                max={profile.widthMaxMm}
-                                placeholder={`np. ${profile.widthDefaultMm}`}
-                                value={variantWidth}
-                                onChange={(event) => setVariantWidth(event.target.value)}
-                              />
-                            </label>
-                            <label>
-                              Wysokość (mm)
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                min={profile.heightMinMm}
-                                max={profile.heightMaxMm}
-                                placeholder={`np. ${profile.heightDefaultMm}`}
-                                value={variantHeight}
-                                onChange={(event) => setVariantHeight(event.target.value)}
-                              />
-                            </label>
-                            <label>
-                              Ilość
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                min={1}
-                                max={20}
-                                value={variantQuantity}
-                                onChange={(event) => setVariantQuantity(event.target.value)}
-                              />
-                            </label>
-                          </div>
-                          {(variantWidth || variantHeight) && !variantDimensionsValid ? (
-                            <p className="hero-product-dimensions-error">
-                              Wymiar musi mieścić się w zakresie {profile.widthMinMm}–{profile.widthMaxMm} mm.
-                            </p>
-                          ) : null}
-                          <div className="plisy-variant-form-footer">
-                            <span className="plisy-variant-price">
-                              {variantTotalPrice !== null
-                                ? `${variantTotalPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`
-                                : "--"}
-                            </span>
-                            <button
-                              type="button"
-                              className="plisy-variant-add"
-                              onClick={handleAddVariant}
-                              disabled={variantTotalPrice === null}
-                            >
-                              Dodaj do koszyka
-                            </button>
-                          </div>
+                    </div>
+                  </div>
+
+                  {positions.length > 0 ? (
+                    <div className="plisy-positions-list">
+                      <h4>Twój zestaw</h4>
+                      {positions.map((position, index) => (
+                        <div key={position.id} className="plisy-positions-row">
+                          <span className="plisy-positions-row-label">
+                            {index + 1}. {position.widthMm} × {position.heightMm} mm, {position.qty} szt.
+                          </span>
+                          <span className="plisy-positions-row-price">{formatZl(position.totalPrice)}</span>
+                          <button
+                            type="button"
+                            className="plisy-positions-row-remove"
+                            onClick={() => handleRemovePosition(position.id)}
+                            aria-label={`Usuń pozycję ${index + 1}`}
+                          >
+                            ×
+                          </button>
                         </div>
-                      ) : null}
-                      {variantAddedMessage ? <p className="plisy-variant-added-msg">✓ {variantAddedMessage}</p> : null}
+                      ))}
+                      <div className="plisy-positions-total">
+                        <span>Razem za cały zestaw</span>
+                        <strong>{formatZl(positionsGrandTotal)}</strong>
+                      </div>
                     </div>
                   ) : null}
 
-                  <button type="button" className="hero-product-add-to-cart" onClick={handleSubmit} disabled={totalPrice === null}>
+                  <button
+                    type="button"
+                    className="hero-product-add-to-cart"
+                    onClick={handleFinalSubmit}
+                    disabled={!canFinalSubmit}
+                  >
                     {submitLabel}
                   </button>
                 </div>
