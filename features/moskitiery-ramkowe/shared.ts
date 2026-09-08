@@ -205,7 +205,17 @@ export const MOSKITIERY_RAMKOWE_PRICE_ON_PROMO =
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO < MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD;
 
 export function moskPerimeterMeters(widthMm: number, heightMm: number): number {
-  return (2 * (widthMm + heightMm)) / 1000;
+  const raw = (2 * (widthMm + heightMm)) / 1000;
+  // Rounded to 6 decimals - width/height only ever come in whole mm, so the
+  // true value never needs more than 3; this just discards IEEE-754
+  // division noise (e.g. for 900x1300mm, 2*(900+1300)/1000 lands on
+  // 4.4000000000000003..., so billedMeters(5) - perimeterMeters evaluates
+  // to 0.5999999999999996 instead of exactly 0.6) that was silently
+  // failing moskLeftoverCapacity()'s ">= minimum orderable" threshold
+  // check on otherwise-exact boundary cases - real bug found live
+  // 2026-09-08 (the leftover-savings banner wasn't showing for some real
+  // dimension pairs it should have).
+  return Math.round(raw * 1e6) / 1e6;
 }
 
 export function moskBilledMeters(perimeterMeters: number): number {
@@ -226,7 +236,14 @@ export function moskLeftoverCapacity(
   billedMeters: number,
   pricePerMb: number,
 ): { leftoverMeters: number; leftoverValue: number } {
-  const leftoverMeters = Math.max(0, billedMeters - perimeterMeters);
+  // Rounded to 6 decimals for the same reason moskPerimeterMeters() is -
+  // this specific subtraction is where the IEEE-754 noise actually shows
+  // up (billedMeters is a clean integer, perimeterMeters isn't always
+  // exactly representable, e.g. 5 - 4.4 evaluates to 0.5999999999999996,
+  // not exactly 0.6), which was silently failing the ">= minimum
+  // orderable" threshold check in ConfiguratorPanel.tsx/page.tsx for
+  // otherwise-exact boundary cases - real bug found live 2026-09-08.
+  const leftoverMeters = Math.max(0, Math.round((billedMeters - perimeterMeters) * 1e6) / 1e6);
   return { leftoverMeters, leftoverValue: leftoverMeters * pricePerMb };
 }
 
