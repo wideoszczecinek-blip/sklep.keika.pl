@@ -104,6 +104,9 @@ export default function ConfiguratorPanel({
     null,
   );
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
+  // "i" tooltip next to the leftover-savings banner - see its own render
+  // site below for what it explains.
+  const [leftoverInfoOpen, setLeftoverInfoOpen] = useState(false);
 
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
@@ -831,25 +834,85 @@ export default function ConfiguratorPanel({
                 </div>
               </div>
               {showLeftoverHint ? (
-                <p className="hero-product-leftover-hint">
-                  🧵 Przy tym wymiarze płacisz za pełne <strong>{billedMeters} mb</strong> - zostaje Ci jeszcze{" "}
-                  <strong>
+                <div className="leftover-savings-banner">
+                  <span className="leftover-savings-banner-icon" aria-hidden="true">
+                    🧵
+                  </span>
+                  <p className="leftover-savings-banner-text">
+                    Skonfiguruj kolejną moskitierę i zaoszczędź{" "}
+                    <strong>
+                      {leftoverCapacity!.leftoverValue.toLocaleString("pl-PL", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      zł
+                    </strong>
+                    , wykorzystując pozostały obwód (
                     {leftoverCapacity!.leftoverMeters.toLocaleString("pl-PL", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}{" "}
-                    m
-                  </strong>{" "}
-                  obwodu, już opłacone (warte ok.{" "}
-                  <strong>
-                    {leftoverCapacity!.leftoverValue.toLocaleString("pl-PL", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    zł
-                  </strong>
-                  ). Wykorzystaj je na kolejną, mniejszą moskitierę w tym samym zamówieniu.
-                </p>
+                    m).
+                  </p>
+                  <button
+                    type="button"
+                    className="leftover-savings-info-button"
+                    onClick={() => {
+                      trackShopStep("open_modal", "leftover_savings_info", { product_slug: "moskitiery-ramkowe" });
+                      setLeftoverInfoOpen(true);
+                    }}
+                    aria-label="Zobacz, jak liczymy oszczędność"
+                    title="Zobacz, jak liczymy oszczędność"
+                  >
+                    i
+                  </button>
+                </div>
+              ) : null}
+              {leftoverInfoOpen && leftoverCapacity ? (
+                <div
+                  className="leftover-savings-info-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Jak liczymy oszczędność"
+                  onClick={() => setLeftoverInfoOpen(false)}
+                >
+                  <div className="leftover-savings-info-modal-shell" onClick={(event) => event.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="leftover-savings-info-modal-close"
+                      onClick={() => setLeftoverInfoOpen(false)}
+                      aria-label="Zamknij"
+                    >
+                      ✕
+                    </button>
+                    <h3>Skąd bierze się oszczędność?</h3>
+                    <p>
+                      Moskitiery rozliczamy za każdy <strong>rozpoczęty metr bieżący</strong> obwodu. Przy obwodzie{" "}
+                      {(perimeterMeters ?? 0).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                      m płacisz za pełne <strong>{billedMeters} m</strong> - zostaje Ci{" "}
+                      <strong>
+                        {leftoverCapacity.leftoverMeters.toLocaleString("pl-PL", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        m
+                      </strong>{" "}
+                      już opłaconego obwodu.
+                    </p>
+                    <p>
+                      Skonfiguruj kolejną, mniejszą moskitierę mieszczącą się w tym zapasie - koszyk automatycznie
+                      policzy wspólne rozliczenie obwodu wszystkich moskitier w zamówieniu i naliczy realną zniżkę
+                      przy podsumowaniu.
+                    </p>
+                    <button
+                      type="button"
+                      className="leftover-savings-info-modal-cta"
+                      onClick={() => setLeftoverInfoOpen(false)}
+                    >
+                      Rozumiem
+                    </button>
+                  </div>
+                </div>
               ) : null}
               {promoPreview ? (
                 <PromoCountdownBanner code={PROMO_CODE} productSlug="moskitiery-ramkowe">

@@ -3947,25 +3947,139 @@ html[data-theme="light"] .mhelp-cta-primary {
   margin-bottom: 0.1rem;
 }
 
-/* "Zapas" upsell nudge (moskLeftoverCapacity() in shared.ts) - same
+/* "Zapas" upsell banner (moskLeftoverCapacity() in shared.ts) - same
    perimeter-rounding mechanism as the Allegro configurator's own savings
-   messaging. Purely informational, so it reads as a small aside next to the
-   price, not a promo/CTA moment of its own (that's the orange banner right
-   below it). */
-.hero-product-leftover-hint {
+   messaging. Framed as an actionable nudge ("skonfiguruj kolejną i
+   zaoszczędź X zł"), not just a passive note - live feedback 2026-09-08.
+   Still its own quiet teal accent, not the orange promo CTA right below
+   it, so the two never compete for attention. */
+.leftover-savings-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   margin: 0.55rem 0 0;
-  padding: 0.55rem 0.75rem;
+  padding: 0.6rem 0.7rem;
   border-radius: 10px;
-  border: 1px solid rgba(94, 209, 179, 0.35);
-  background: rgba(94, 209, 179, 0.09);
-  color: rgba(240, 248, 255, 0.82);
-  font-size: 0.78rem;
-  line-height: 1.45;
+  border: 1px solid rgba(94, 209, 179, 0.4);
+  background: rgba(94, 209, 179, 0.1);
 }
 
-.hero-product-leftover-hint strong {
+.leftover-savings-banner-icon {
+  flex: none;
+  font-size: 1.15rem;
+}
+
+.leftover-savings-banner-text {
+  flex: 1 1 auto;
+  margin: 0;
+  color: rgba(240, 248, 255, 0.92);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.leftover-savings-banner-text strong {
   color: #a6ecd8;
   font-weight: 700;
+}
+
+/* Small "i" tooltip/button - opens .leftover-savings-info-modal explaining
+   the mechanism, rather than cramming the explanation into the banner
+   itself (kept short on purpose). */
+.leftover-savings-info-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(166, 236, 216, 0.6);
+  background: rgba(166, 236, 216, 0.14);
+  color: #a6ecd8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.leftover-savings-info-button:hover {
+  background: rgba(166, 236, 216, 0.24);
+}
+
+.leftover-savings-info-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(6, 14, 24, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.leftover-savings-info-modal-shell {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  border-radius: 1rem;
+  padding: 1.4rem 1.3rem 1.3rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.leftover-savings-info-modal-close {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.leftover-savings-info-modal-close:hover {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
+
+.leftover-savings-info-modal-shell h3 {
+  margin: 0 1.6rem 0.7rem 0;
+  font-size: 1.1rem;
+  color: var(--ink);
+  font-family: var(--font-heading), sans-serif;
+}
+
+.leftover-savings-info-modal-shell p {
+  margin: 0 0 0.8rem;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.leftover-savings-info-modal-shell p strong {
+  color: var(--ink);
+}
+
+.leftover-savings-info-modal-cta {
+  width: 100%;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+  cursor: pointer;
 }
 
 /* SEZON20 seasonal discount banner, shown right under the total price - see
@@ -4048,58 +4162,35 @@ html[data-theme="light"] .mhelp-cta-primary {
   box-shadow: none;
 }
 
-/* "Dodaj podobną" (features/plisy/ConfiguratorPanel.tsx) - a secondary
-   shortcut sitting above the main CTA, deliberately styled as a quiet
-   outline pill so it never competes with .hero-product-add-to-cart's orange
-   for attention. */
-.plisy-variant-block {
-  display: grid;
-  gap: 0.55rem;
-  margin-top: 0.15rem;
-}
-
-.plisy-variant-toggle {
-  width: 100%;
-  border-radius: 999px;
-  border: 1px dashed rgba(197, 222, 247, 0.4);
-  background: transparent;
-  color: rgba(237, 246, 255, 0.86);
-  font-weight: 700;
-  font-size: 0.86rem;
-  padding: 0.6rem 1rem;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.plisy-variant-toggle:hover {
-  border-color: rgba(240, 184, 86, 0.65);
-  background: rgba(240, 184, 86, 0.08);
-}
-
-.plisy-variant-form {
+/* Plisy's wymiary/ilość entry (features/plisy/ConfiguratorPanel.tsx) - one
+   position of the customer's set at a time. Always visible once a fabric
+   colour is chosen (not a toggled secondary form any more - 2026-09-09
+   replaced the old one-shot "Dodaj podobną" shortcut with a proper
+   build-a-set flow: this form's "+ Dodaj kolejną" can be pressed any number
+   of times, each press appending a row to .plisy-positions-list below). */
+.plisy-position-form {
   display: grid;
   gap: 0.55rem;
   border-radius: 0.9rem;
   border: 1px solid rgba(197, 222, 247, 0.22);
   background: rgba(11, 24, 40, 0.4);
   padding: 0.85rem 0.9rem;
-  animation: moskToastIn 0.22s ease;
 }
 
-.plisy-variant-form-footer {
+.plisy-position-form-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.7rem;
 }
 
-.plisy-variant-price {
+.plisy-position-price {
   font-weight: 800;
   font-size: 1rem;
   color: #f2f7ff;
 }
 
-.plisy-variant-add {
+.plisy-position-add {
   border: none;
   border-radius: 999px;
   padding: 0.6rem 1.1rem;
@@ -4112,20 +4203,94 @@ html[data-theme="light"] .mhelp-cta-primary {
   white-space: nowrap;
 }
 
-.plisy-variant-add:hover:not(:disabled) {
+.plisy-position-add:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
-.plisy-variant-add:disabled {
+.plisy-position-add:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.plisy-variant-added-msg {
-  margin: 0;
+/* The set built up so far - each row is one position already committed via
+   "+ Dodaj kolejną" (own subtotal + a remove button to fix a mistake),
+   .plisy-positions-total is the combined sum across the whole set. The
+   single .hero-product-add-to-cart button right after this sends everything
+   at once - see handleFinalSubmit. */
+.plisy-positions-list {
+  display: grid;
+  gap: 0.4rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(197, 222, 247, 0.22);
+  background: rgba(11, 24, 40, 0.28);
+  padding: 0.75rem 0.9rem;
+  animation: moskToastIn 0.22s ease;
+}
+
+.plisy-positions-list h4 {
+  margin: 0 0 0.15rem;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #6be6b8;
+  color: rgba(237, 246, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.plisy-positions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0;
+  border-top: 1px solid rgba(197, 222, 247, 0.14);
+}
+
+.plisy-positions-row:first-of-type {
+  border-top: none;
+}
+
+.plisy-positions-row-label {
+  flex: 1;
+  font-size: 0.86rem;
+  color: #edf6ff;
+}
+
+.plisy-positions-row-price {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #f2f7ff;
+  white-space: nowrap;
+}
+
+.plisy-positions-row-remove {
+  border: none;
+  background: transparent;
+  color: rgba(237, 246, 255, 0.5);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  transition: color 0.15s ease;
+}
+
+.plisy-positions-row-remove:hover {
+  color: #ff9f6a;
+}
+
+.plisy-positions-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(197, 222, 247, 0.28);
+  font-size: 0.92rem;
+  color: #edf6ff;
+}
+
+.plisy-positions-total strong {
+  font-size: 1.05rem;
+  color: #f2f7ff;
 }
 
 .hero-product-added-toast {
@@ -9560,27 +9725,44 @@ html[data-theme="light"] .hero-product-mini-summary {
   background: rgba(19, 40, 67, 0.060);
 }
 
-html[data-theme="light"] .plisy-variant-toggle {
-  border-color: rgba(19, 40, 67, 0.3);
-  color: rgba(19, 40, 67, 0.86);
-}
-
-html[data-theme="light"] .plisy-variant-toggle:hover {
-  border-color: rgba(240, 122, 32, 0.6);
-  background: rgba(240, 122, 32, 0.08);
-}
-
-html[data-theme="light"] .plisy-variant-form {
+html[data-theme="light"] .plisy-position-form {
   border: 1px solid rgba(19, 40, 67, 0.16);
   background: rgba(19, 40, 67, 0.04);
 }
 
-html[data-theme="light"] .plisy-variant-price {
+html[data-theme="light"] .plisy-position-price {
   color: #16314e;
 }
 
-html[data-theme="light"] .plisy-variant-added-msg {
-  color: #1a8a5f;
+html[data-theme="light"] .plisy-positions-list {
+  border: 1px solid rgba(19, 40, 67, 0.16);
+  background: rgba(19, 40, 67, 0.03);
+}
+
+html[data-theme="light"] .plisy-positions-list h4 {
+  color: rgba(19, 40, 67, 0.6);
+}
+
+html[data-theme="light"] .plisy-positions-row {
+  border-top-color: rgba(19, 40, 67, 0.12);
+}
+
+html[data-theme="light"] .plisy-positions-row-label,
+html[data-theme="light"] .plisy-positions-row-price,
+html[data-theme="light"] .plisy-positions-total {
+  color: #16314e;
+}
+
+html[data-theme="light"] .plisy-positions-total {
+  border-top-color: rgba(19, 40, 67, 0.22);
+}
+
+html[data-theme="light"] .plisy-positions-row-remove {
+  color: rgba(19, 40, 67, 0.45);
+}
+
+html[data-theme="light"] .plisy-positions-row-remove:hover {
+  color: #e0631a;
 }
 
 html[data-theme="light"] .hero-product-mini-summary h3 {
