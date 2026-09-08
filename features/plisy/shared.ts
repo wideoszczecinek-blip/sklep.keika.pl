@@ -275,32 +275,19 @@ function plShiftHex(hex: string, amount: number): string {
     .toUpperCase()}`;
 }
 
-export function buildPlisySurfaceStyle(imageUrl: string, accentColor: string) {
-  const normalizedColor = plNormalizeHexColor(accentColor, "#D8DEE3");
-  const gradient = `linear-gradient(135deg, ${normalizedColor} 0%, ${plShiftHex(normalizedColor, -22)} 100%)`;
-  if (!imageUrl) {
-    return { backgroundImage: gradient } as const;
-  }
-  const optimizedUrl = optimizeImageUrl(imageUrl, 500);
-  return {
-    backgroundImage: gradient,
-    maskImage: `url(${optimizedUrl})`,
-    maskRepeat: "no-repeat",
-    maskPosition: "center",
-    maskSize: "contain",
-    WebkitMaskImage: `url(${optimizedUrl})`,
-    WebkitMaskRepeat: "no-repeat",
-    WebkitMaskPosition: "center",
-    WebkitMaskSize: "contain",
-  } as const;
-}
-
 /**
- * Hardware finishes are product photos, rather than texture masks. Rendering
- * them through CSS `mask-image` made the tile disappear in some browsers,
- * while the very same image still opened correctly in the zoom modal. Keep
- * this separate from `buildPlisySurfaceStyle()`, which is still appropriate
- * for fabric textures in the live preview.
+ * Every swatch here (hardware color AND fabric color alike) is a real
+ * photo of that specific option, not a generic tileable texture - so this
+ * shows the photo directly as a background-image, gradient-only fallback
+ * when there's no image yet. An earlier version rendered these through a
+ * CSS `mask-image` (the photo used as a shape mask over a color gradient)
+ * for a "die-cut swatch icon" look, which made real photographic swatches
+ * render as an almost-flat, luminance-tinted gradient instead of the
+ * actual fabric/texture in the photo (confirmed live 2026-09-08, right
+ * after the first batch of real Classic fabric photos went in) - and even
+ * disappeared entirely in some browsers for the hardware swatches this
+ * function originally covered. Direct background-image has neither
+ * problem.
  */
 export function buildPlisyHardwareSwatchStyle(imageUrl: string, accentColor: string) {
   const normalizedColor = plNormalizeHexColor(accentColor, "#D8DEE3");

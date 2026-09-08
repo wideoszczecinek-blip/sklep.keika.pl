@@ -16,7 +16,6 @@ import { trackShopStep } from "@/lib/track-step";
 import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
-  buildPlisySurfaceStyle,
   calcPlisyPrice,
   fetchPlisyProfile,
   formatPriceDeltaBadge,
@@ -584,7 +583,7 @@ export default function ConfiguratorPanel({
                     {selectedFabric && stepThreeCollapsed ? (
                       <span
                         className="hero-product-step-head-swatch"
-                        style={buildPlisySurfaceStyle(selectedFabric.thumbnailUrl, selectedFabric.color)}
+                        style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl, selectedFabric.color)}
                         aria-hidden="true"
                       />
                     ) : null}
@@ -617,7 +616,7 @@ export default function ConfiguratorPanel({
                         >
                           <span
                             className="hero-product-mesh-option-image"
-                            style={buildPlisySurfaceStyle(swatch.thumbnailUrl, swatch.color)}
+                            style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)}
                           />
                           <strong>{swatch.label}</strong>
                         </button>
