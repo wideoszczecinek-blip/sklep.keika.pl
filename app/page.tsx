@@ -75,6 +75,7 @@ import {
 } from "@/features/rolety-dachowe/shared";
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
 import { isProductSlugLive, PRODUCT_LOCKED_MESSAGE } from "@/lib/product-availability";
+import { ALLEGRO_RATING_SNAPSHOTS, HOMEPAGE_CONFIG_SNAPSHOT } from "@/lib/landing-snapshot";
 
 // The three product configurators are the heaviest part of this page's
 // bundle (each pulls in its own step UI, pricing, rescue/save modals,
@@ -265,11 +266,32 @@ const MOSKITIERY_RAMKOWE_FEATURE_BULLETS: ProductFeatureBullet[] = [
   },
 ];
 
+// Faithful copy of the CRM's current shop-public/product spec_items
+// (verbatim) - this renders for the split second before the live
+// productLanding fetch lands, so wording drift here would show as a
+// flicker on the product view. Re-sync if the owner edits them in the CRM.
+// (labels intentionally match the CRM's - moskitieryRamkoweSpecIcon has no
+// icon for them, exactly like the live render.)
 const MOSKITIERY_RAMKOWE_SPEC_ITEMS: ProductSpecItem[] = [
-  { label: "Rama", value: "Aluminium, 7 kolorów" },
-  { label: "Siatka", value: "Wzmocniona, 2 kolory" },
-  { label: "Montaż", value: "Bez wiercenia, zaczepy sprężynowe" },
-  { label: "Złożenie", value: "Samodzielne, kilka–kilkanaście minut" },
+  {
+    label: "Na wymiar i pod kolor",
+    value: "Moskitiera przygotowana dokładnie pod Twoje okno - szczelna i estetyczna",
+  },
+  {
+    label: "Bez wiercenia",
+    value:
+      "Ramka zaczepiana jest o profil okna za pomocą bezinwazyjnych zaczepów sprężynowych - zakładasz i ściągasz kiedy chcesz.",
+  },
+  {
+    label: "Na wiele lat",
+    value:
+      "Sztywny i wytrzymały profil aluminiowy oraz wzmocniona siatka z włókna szklanego, dodatkowo powlekana warstwą PCV to połączenie, które posłuży niezawodnie nawet kilkanaście lat.",
+  },
+  {
+    label: "Gwarancja satysfakcji",
+    value:
+      "Jeżeli produkt nie spełni Twoich oczekiwań - możesz go zwrócić, a my oddamy Ci pieniądze! Bez zbędnych pytań!",
+  },
 ];
 
 // Small suggestive icons for moskitiery-ramkowe's own 4 spec labels only
@@ -922,21 +944,27 @@ function MobileOverlayPortal({ children }: { children: React.ReactNode }) {
 }
 
 export default function Home() {
-  const [config, setConfig] = useState<HomepageConfig | null>(null);
-  const [configReady, setConfigReady] = useState(false);
+  // Seed from the build-time snapshot so first paint has real branding, hero
+  // media and menu instead of nothing / stock-photo fallbacks. The live
+  // homepage_public fetch below still runs and swaps in anything that
+  // differs (applyConfig hash-compares). This also removed the separate
+  // configReady gate on the boot overlay - config is no longer awaited.
+  const [config, setConfig] = useState<HomepageConfig | null>(
+    HOMEPAGE_CONFIG_SNAPSHOT as unknown as HomepageConfig,
+  );
   const [bootPhase, setBootPhase] = useState<"loading" | "reveal" | "ready">("loading");
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
   const menuCardRefs = useRef<Array<HTMLElement | null>>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [heroSlidesReady, setHeroSlidesReady] = useState(false);
-  // Gates the boot overlay together with configReady/heroSlidesReady: on a
-  // direct /?produkt=... entry the overlay must not lift until the code for
-  // that product's (now dynamically imported) configurator panel has
-  // arrived, otherwise the sticky config sidebar would flash in empty. On
-  // the plain homepage there is no configurator to wait for, so it starts
-  // satisfied. The boot hard-timeout below is still the backstop if the
-  // chunk request itself stalls.
+  // Gates the boot overlay alongside heroSlidesReady: on a direct
+  // /?produkt=... entry the overlay must not lift until the code for that
+  // product's (now dynamically imported) configurator panel has arrived,
+  // otherwise the sticky config sidebar would flash in empty. On the plain
+  // homepage there is no configurator to wait for, so it starts satisfied.
+  // The boot hard-timeout below is still the backstop if the chunk request
+  // itself stalls.
   const [configuratorChunkReady, setConfiguratorChunkReady] = useState(
     () => typeof window === "undefined" || !new URLSearchParams(window.location.search).has("produkt"),
   );
@@ -1551,6 +1579,13 @@ export default function Home() {
       setAllegroRating(null);
       return;
     }
+    // Seed the rating chip from the build-time snapshot the instant the
+    // product view activates (still masked by the boot overlay) so it does
+    // not pop in - and wrap the chip row - a second later. The live fetch
+    // confirms/updates it; a failed or empty response keeps the snapshot
+    // rather than blanking a chip we can show.
+    const snapshot = ALLEGRO_RATING_SNAPSHOTS[slug];
+    if (snapshot) setAllegroRating(snapshot);
     let cancelled = false;
     setAllegroRatingLoading(true);
     fetch(
@@ -1571,12 +1606,12 @@ export default function Home() {
                 }))
               : [],
           });
-        } else {
+        } else if (!snapshot) {
           setAllegroRating(null);
         }
       })
       .catch(() => {
-        if (!cancelled) setAllegroRating(null);
+        if (!cancelled && !snapshot) setAllegroRating(null);
       })
       .finally(() => {
         if (!cancelled) setAllegroRatingLoading(false);
@@ -1596,9 +1631,6 @@ export default function Home() {
   useEffect(() => {
     let mounted = true;
     let intervalId: number | null = null;
-    const readyFallbackTimer = window.setTimeout(() => {
-      if (mounted) setConfigReady(true);
-    }, 2200);
     const fetchConfig = (endpoint: string) =>
       fetch(`${endpoint}?_ts=${Date.now()}`, { cache: "no-store" }).then((res) => res.json());
 
@@ -1608,7 +1640,6 @@ export default function Home() {
       configHashRef.current = nextHash;
       if (!mounted) return;
       setConfig(nextConfig);
-      setConfigReady(true);
     };
 
     const pullConfig = () =>
@@ -1624,9 +1655,7 @@ export default function Home() {
               if (!json?.ok || typeof json.config !== "object") return;
               applyConfig(json.config as HomepageConfig);
             })
-            .catch(() => {
-              if (mounted) setConfigReady(true);
-            });
+            .catch(() => {});
         });
 
     void pullConfig();
@@ -1641,7 +1670,6 @@ export default function Home() {
 
     return () => {
       mounted = false;
-      window.clearTimeout(readyFallbackTimer);
       if (intervalId !== null) window.clearInterval(intervalId);
       window.removeEventListener("focus", handleFocus);
     };
@@ -1946,9 +1974,14 @@ export default function Home() {
 
   useEffect(() => {
     if (bootPhase !== "loading") return;
-    if (!configReady || !heroSlidesReady || !configuratorChunkReady) return;
+    // Config comes from the build-time snapshot now, so it no longer holds
+    // the boot. heroSlidesReady only matters for the homepage hero carousel
+    // - on a product view that carousel is .is-hidden, so don't wait on its
+    // image there.
+    if (!displayedProduct && !heroSlidesReady) return;
+    if (!configuratorChunkReady) return;
     setBootPhase("reveal");
-  }, [bootPhase, configReady, heroSlidesReady, configuratorChunkReady]);
+  }, [bootPhase, heroSlidesReady, configuratorChunkReady, displayedProduct]);
 
   useEffect(() => {
     if (bootPhase !== "loading") return;
@@ -2842,7 +2875,8 @@ export default function Home() {
                             </div>
 
                             <p className="pl-subtitle">
-                              {productLanding?.subtitle || "Na wymiar, bez wiercenia, mocna rama aluminiowa i wzmocniona siatka."}
+                              {productLanding?.subtitle ||
+                                "Moskitiera okienna na aluminiowej ramie. Produkowana na wymiar - idealnie pod Twoje okno. Cena za 1 metr bieżący obwodu."}
                             </p>
 
                             {shippingBanner ? (

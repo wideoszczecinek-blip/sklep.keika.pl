@@ -1,0 +1,26 @@
+{
+  "averageScore": 4.77,
+  "totalResponses": 355,
+  "scoreDistribution": [
+    {
+      "stars": 5,
+      "count": 314
+    },
+    {
+      "stars": 4,
+      "count": 19
+    },
+    {
+      "stars": 3,
+      "count": 8
+    },
+    {
+      "stars": 2,
+      "count": 9
+    },
+    {
+      "stars": 1,
+      "count": 5
+    }
+  ]
+}

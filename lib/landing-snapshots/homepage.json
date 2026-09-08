@@ -1,0 +1,196 @@
+{
+  "branding": {
+    "site_title": "KEIKA",
+    "header_cta_text": "Darmowa wysyła",
+    "home_title": "DOPASUJ ROLETY DO SWOICH POTRZEB",
+    "home_subtitle": "nie odwrotnie...",
+    "contact_phone": "+48 790 215 251",
+    "contact_email": "biuro@keika.pl",
+    "logo_url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260227_234547_1abf0858_LOGO_PNG.png"
+  },
+  "hero_carousel": [
+    {
+      "eyebrow": "Twoje wnętrze zasługuje na więcej...",
+      "title": "DOPASUJ ROLETY DO SWOICH POTRZEB",
+      "subtitle": "nie odwrotnie..."
+    },
+    {
+      "eyebrow": "Skonfiguruj rolety, żaluzje czy moskitiery",
+      "title": "ZAMÓW ONLINE",
+      "subtitle": "I ciesz się produktami z 5-cio letnią gwarancją"
+    }
+  ],
+  "hero_titles": [
+    "DOPASUJ ROLETY DO SWOICH POTRZEB",
+    "ZAMÓW ONLINE"
+  ],
+  "hero_media": [
+    {
+      "type": "image",
+      "url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_151605_1181cb67_tlo-1.png",
+      "label": "tlo-1.png"
+    },
+    {
+      "type": "image",
+      "url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_151615_7bee58e5_tlo-2.png",
+      "label": "tlo-2.png"
+    },
+    {
+      "type": "image",
+      "url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_152621_7135bde8_28f49551-926c-47fc-9efd-6513e8aa1bec.png",
+      "label": "28f49551-926c-47fc-9efd-6513e8aa1bec.png"
+    },
+    {
+      "type": "image",
+      "url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_152655_c38facad_openart-image_1772043216247_fff6634e_1772043216287_8c85fd42.png",
+      "label": "openart-image_1772043216247_fff6634e_1772043216287_8c85fd42.png"
+    },
+    {
+      "type": "image",
+      "url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_152448_912afc3c_tlo-3.png",
+      "label": "tlo-3.png"
+    },
+    {
+      "type": "image",
+      "url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_153744_b6a5181e_20240625_115723.jpg",
+      "label": "20240625_115723.jpg"
+    }
+  ],
+  "top_links": [
+    {
+      "label": "O nas",
+      "url": "/o-nas"
+    },
+    {
+      "label": "Kontakt",
+      "url": "/kontakt"
+    },
+    {
+      "label": "Bezpieczeństwo",
+      "url": "/bezpieczenstwo"
+    },
+    {
+      "label": "Regulamin",
+      "url": "/regulamin"
+    }
+  ],
+  "menu_groups": [
+    {
+      "title": "Osłony wewnętrzne",
+      "slug": "oslony-wewnetrzne",
+      "image_url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_153840_1b8641cc_menu-wewnetrzne.png",
+      "icon_url": "",
+      "items": [
+        {
+          "label": "Rolety tradycyjne",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Rolety dzień noc",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Plisy",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Żaluzje",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Rolety rzymskie",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Rolety do okien dachowych",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        }
+      ]
+    },
+    {
+      "title": "Osłony zewnętrzne",
+      "slug": "oslony-zewnetrzne",
+      "image_url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_154654_7c2d9d5f_menu-zew.png",
+      "icon_url": "",
+      "items": [
+        {
+          "label": "Rolety zewnętrzne",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Żaluzje fasadowe",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Screeny",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        }
+      ]
+    },
+    {
+      "title": "Taras",
+      "slug": "taras",
+      "image_url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_155800_9732e47a_menu-taras.png",
+      "icon_url": "",
+      "items": [
+        {
+          "label": "Markizy",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Zadaszenia",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Shuttersy",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        }
+      ]
+    },
+    {
+      "title": "Moskitiery",
+      "slug": "moskitiery",
+      "image_url": "https://crm-keika.groovemedia.pl/storage/shop/media/20260228_161311_1672bdce_menu-mosk.png",
+      "icon_url": "",
+      "items": [
+        {
+          "label": "Moskitiery ramkowe",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Moskitiery do okien dachowych",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Moskitiery drzwiowe",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Przesuwne",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        },
+        {
+          "label": "Plisowane",
+          "icon_url": "",
+          "link_url": "#kolekcje"
+        }
+      ]
+    }
+  ]
+}
