@@ -67,7 +67,16 @@ export default function ConfiguratorPanel({
 }: {
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
-  onSubmit: (result: ConfiguratorResult) => void;
+  /** `meta.quoteAnother` is true only when this came from "Wyceń kolejną
+   * sztukę" (see enableQuoteAnotherCta below) - the host page MUST NOT show
+   * its normal full-screen "Dodano do koszyka!" takeover for that call (it
+   * would replace this very panel before the customer can enter the next
+   * piece's dimensions - the real bug reported live 2026-09-12: clicking
+   * "Podobną" looked like it "automatically added to cart" because that's
+   * exactly what the customer saw instead of a fresh form). The item still
+   * genuinely needs to go in the cart (same pricing/combined-perimeter math,
+   * silently) - only the interrupting confirmation screen is skipped. */
+  onSubmit: (result: ConfiguratorResult, meta?: { quoteAnother?: boolean }) => void;
   /** Omit to use a small built-in lightbox; pass this when the host page
    * already has its own shared zoom modal (the homepage does, for the
    * gallery tab too) to funnel clicks into that instead of stacking two. */
@@ -94,11 +103,16 @@ export default function ConfiguratorPanel({
    * anything ("dodaj do koszyka" already reads like a purchase decision -
    * user feedback 2026-09-12). Adds the CURRENT piece to the cart (the
    * exact same onSubmit() the main CTA uses - pricing/combined-perimeter
-   * math is untouched) and then resets this panel's own local state for the
-   * next one, so the running total the customer sees is simply the existing
-   * cart total - no separate "draft" total to keep in sync. Default off,
-   * same reasoning as the two flags above (the cart's "Edytuj pozycję"
-   * modal is editing one already-committed item, not pricing a new one). */
+   * math is untouched) via the `{ quoteAnother: true }` meta flag, so the
+   * host page adds it WITHOUT its normal full-screen "Dodano do koszyka!"
+   * takeover, then resets this panel's own local state for the next one -
+   * this panel itself stays on screen and ready for the next piece's
+   * dimensions, with a small inline confirmation (see
+   * quoteAnotherConfirmation below) instead of the interrupting overlay.
+   * The running total the customer sees is simply the existing cart total -
+   * no separate "draft" total to keep in sync. Default off, same reasoning
+   * as the two flags above (the cart's "Edytuj pozycję" modal is editing one
+   * already-committed item, not pricing a new one). */
   enableQuoteAnotherCta?: boolean;
 }) {
   const hardwareOptions = ALLEGRO_MOSKITIERY_HARDWARE;
@@ -123,6 +137,18 @@ export default function ConfiguratorPanel({
   // "Wyceń kolejną sztukę" - the Podobną/Inną choice popover, see
   // enableQuoteAnotherCta's doc comment above and handleQuoteAnother() below.
   const [quoteAnotherOpen, setQuoteAnotherOpen] = useState(false);
+  // Small inline "✓ dodano" line shown instead of the host page's full-screen
+  // takeover (see onSubmit's `meta.quoteAnother` doc comment) - self-clears,
+  // doesn't block continuing to configure the next piece.
+  const [quoteAnotherConfirmation, setQuoteAnotherConfirmation] = useState<string | null>(null);
+  const quoteAnotherConfirmationTimeoutRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (quoteAnotherConfirmationTimeoutRef.current !== null) {
+        window.clearTimeout(quoteAnotherConfirmationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
@@ -479,7 +505,15 @@ export default function ConfiguratorPanel({
   // "Wyceń kolejną sztukę" -> Podobną/Inną (see enableQuoteAnotherCta's doc
   // comment). Adds the CURRENT piece exactly like handleSubmit() above (same
   // onSubmit(), same cart/perimeter math - nothing about pricing changes),
-  // then resets this panel's own local state for the next one:
+  // but flagged `{ quoteAnother: true }` so the host page skips its normal
+  // full-screen "Dodano do koszyka!" takeover - real bug reported live
+  // 2026-09-12: without that flag the host swapped this whole panel for that
+  // overlay on every click, so "Podobną"/"Inną" looked and felt like it
+  // "automatically added to cart" instead of handing the customer a form for
+  // the next piece. This CTA is only ever meant to unlock configuring a
+  // second position, never to itself feel like a completed purchase step -
+  // hence the small self-clearing inline confirmation below instead. Then
+  // resets this panel's own local state for the next one:
   //   - "similar": keeps the color choices (selectedHardwareId/selectedMeshId
   //     stay put, steps 1/2 stay collapsed/answered), clears only the
   //     dimensions/quantity/surcharge-modal so the customer can size the
@@ -491,12 +525,20 @@ export default function ConfiguratorPanel({
     const result = buildCurrentResult();
     if (!result) return;
     trackShopStep("quote_another_position", mode, { width_mm: widthNum, height_mm: heightNum, qty: quantityNum });
-    onSubmit(result);
+    onSubmit(result, { quoteAnother: true });
     setQuoteAnotherOpen(false);
     setDimensionWidth("");
     setDimensionHeight("");
     setDimensionQuantity("1");
     setSurchargeModal(null);
+    if (quoteAnotherConfirmationTimeoutRef.current !== null) {
+      window.clearTimeout(quoteAnotherConfirmationTimeoutRef.current);
+    }
+    setQuoteAnotherConfirmation("Dodano do koszyka. Skonfiguruj kolejną sztukę poniżej.");
+    quoteAnotherConfirmationTimeoutRef.current = window.setTimeout(() => {
+      setQuoteAnotherConfirmation(null);
+      quoteAnotherConfirmationTimeoutRef.current = null;
+    }, 5000);
     if (mode === "different") {
       setSelectedHardwareId("");
       setStepOneChosen(false);
@@ -515,6 +557,15 @@ export default function ConfiguratorPanel({
       <header>
         <strong>Wyceń swoją moskitierę</strong>
       </header>
+      {quoteAnotherConfirmation ? (
+        // Rendered right under the header (not inside any step-gated block)
+        // so it survives BOTH "Podobną" (steps stay open) and "Inną" (steps
+        // 1-2 collapse back to blank) - see handleQuoteAnother()/onSubmit's
+        // `meta.quoteAnother` doc comment for why this exists at all.
+        <p className="hero-product-quote-another-confirmation" role="status">
+          ✓ {quoteAnotherConfirmation}
+        </p>
+      ) : null}
       <section className={`hero-product-step-accordion ${stepOneCollapsed ? "is-collapsed" : ""}`}>
         <button
           type="button"

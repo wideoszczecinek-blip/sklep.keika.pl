@@ -3776,7 +3776,7 @@ export default function Home() {
                         setInstructionModalSingleStep(true);
                         setInstructionModalIndex(measurementIndex >= 0 ? measurementIndex : 0);
                       }}
-                      onSubmit={(result) => {
+                      onSubmit={(result, meta) => {
                         setRamkoweLastResult(result);
                         const item: CartLineItem = {
                           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -3798,6 +3798,22 @@ export default function Home() {
                         setCartSummary(cartSummaryWithSurcharge(items));
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
+                        // "Wyceń kolejną sztukę" (ConfiguratorPanel.tsx) adds
+                        // this same item but must NOT get the full-screen
+                        // takeover below - it would replace the very panel
+                        // the customer needs to enter the next piece's
+                        // dimensions, which is exactly the "automatically
+                        // added to cart" bug reported live 2026-09-12. The
+                        // item is still genuinely in the cart above; only
+                        // this interrupting confirmation is skipped (the
+                        // panel shows its own small inline "✓ dodano" line
+                        // instead - see quoteAnotherConfirmation there).
+                        if (meta?.quoteAnother) {
+                          if (isPromoActive()) {
+                            void ensurePromoQuoteCode("moskitiery-ramkowe");
+                          }
+                          return;
+                        }
                         const perimeterMeters = moskPerimeterMeters(result.widthMm, result.heightMm);
                         const billedMeters = moskBilledMeters(perimeterMeters);
                         // Same effective rate as the live in-configurator hint

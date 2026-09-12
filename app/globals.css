@@ -4256,6 +4256,21 @@ html[data-theme="light"] .mhelp-cta-primary {
   color: #7a5a3a;
 }
 
+/* Small self-clearing "✓ dodano" line shown after Podobną/Inną instead of
+   the host page's full-screen "Dodano do koszyka!" takeover (see
+   ConfiguratorPanel.tsx's onSubmit `meta.quoteAnother` doc comment) - this
+   panel stays visible/interactive underneath it, ready for the next piece. */
+.hero-product-quote-another-confirmation {
+  margin: 0.4rem 0 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  background: #eaf7ec;
+  border: 1px solid #bfe6c4;
+  color: #2c6b34;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 /* Plisy's wymiary/ilość entry (features/plisy/ConfiguratorPanel.tsx) - one
    position of the customer's set at a time. Always visible once a fabric
    colour is chosen (not a toggled secondary form any more - 2026-09-09
