@@ -4181,6 +4181,81 @@ html[data-theme="light"] .mhelp-cta-primary {
   box-shadow: none;
 }
 
+/* "Wyceń kolejną sztukę" (ConfiguratorPanel.tsx, enableQuoteAnotherCta) -
+   a lighter, secondary CTA above .hero-product-add-to-cart, deliberately
+   not competing visually with the solid-orange primary button (that phrase
+   already reads as a purchase decision - user feedback 2026-09-12). */
+.hero-product-quote-another {
+  position: relative;
+}
+
+.hero-product-quote-another-cta {
+  width: 100%;
+  border: 1px solid rgba(255, 125, 19, 0.45);
+  border-radius: 999px;
+  padding: 0.6rem 1rem;
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: #ff7b00;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.hero-product-quote-another-cta:hover:not(:disabled) {
+  background: rgba(255, 125, 19, 0.08);
+}
+
+.hero-product-quote-another-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hero-product-quote-another-choices {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 125, 19, 0.3);
+  background: #fff;
+  box-shadow: 0 14px 28px rgba(34, 21, 10, 0.16);
+  animation: moskToastIn 0.16s ease;
+}
+
+.hero-product-quote-another-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border: 1px solid rgba(255, 125, 19, 0.28);
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.6rem;
+  background: #fff7ed;
+  color: #22150a;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease;
+}
+
+.hero-product-quote-another-choice:hover {
+  background: #ffe8d1;
+  transform: translateY(-1px);
+}
+
+.hero-product-quote-another-choice strong {
+  font-size: 0.86rem;
+}
+
+.hero-product-quote-another-choice span {
+  font-size: 0.72rem;
+  color: #7a5a3a;
+}
+
 /* Plisy's wymiary/ilość entry (features/plisy/ConfiguratorPanel.tsx) - one
    position of the customer's set at a time. Always visible once a fabric
    colour is chosen (not a toggled secondary form any more - 2026-09-09

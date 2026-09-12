@@ -3767,6 +3767,7 @@ export default function Home() {
                       submitLabel="Dodaj do koszyka"
                       enableRescueModal
                       enableSaveShareBanner
+                      enableQuoteAnotherCta
                       onZoom={(preview) => setZoomPreview(preview)}
                       onOpenInstructions={() => {
                         const measurementIndex = activeInstructionSteps.findIndex((step) =>

@@ -63,6 +63,7 @@ export default function ConfiguratorPanel({
   onOpenInstructions,
   enableRescueModal,
   enableSaveShareBanner,
+  enableQuoteAnotherCta,
 }: {
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
@@ -88,6 +89,17 @@ export default function ConfiguratorPanel({
    * modal above (voluntary, no discount of its own, can show every visit),
    * same default-off reasoning for the cart's edit modal. */
   enableSaveShareBanner?: boolean;
+  /** "Wyceń kolejną sztukę" - a second, lighter CTA above "Dodaj do koszyka"
+   * for a customer who wants to price several pieces before committing to
+   * anything ("dodaj do koszyka" already reads like a purchase decision -
+   * user feedback 2026-09-12). Adds the CURRENT piece to the cart (the
+   * exact same onSubmit() the main CTA uses - pricing/combined-perimeter
+   * math is untouched) and then resets this panel's own local state for the
+   * next one, so the running total the customer sees is simply the existing
+   * cart total - no separate "draft" total to keep in sync. Default off,
+   * same reasoning as the two flags above (the cart's "Edytuj pozycję"
+   * modal is editing one already-committed item, not pricing a new one). */
+  enableQuoteAnotherCta?: boolean;
 }) {
   const hardwareOptions = ALLEGRO_MOSKITIERY_HARDWARE;
 
@@ -108,6 +120,9 @@ export default function ConfiguratorPanel({
   // "i" tooltip next to the leftover-savings banner - see its own render
   // site below for what it explains.
   const [leftoverInfoOpen, setLeftoverInfoOpen] = useState(false);
+  // "Wyceń kolejną sztukę" - the Podobną/Inną choice popover, see
+  // enableQuoteAnotherCta's doc comment above and handleQuoteAnother() below.
+  const [quoteAnotherOpen, setQuoteAnotherOpen] = useState(false);
 
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
   const stepThreeRef = useRef<HTMLParagraphElement | null>(null);
@@ -437,10 +452,10 @@ export default function ConfiguratorPanel({
     setSurchargeModal(null);
   }
 
-  function handleSubmit() {
-    if (dimensionUnitPrice === null || dimensionTotalPrice === null) return;
-    if (dimensionsBlocked) return;
-    onSubmit({
+  function buildCurrentResult(): ConfiguratorResult | null {
+    if (dimensionUnitPrice === null || dimensionTotalPrice === null) return null;
+    if (dimensionsBlocked) return null;
+    return {
       hardwareId: selectedHardwareOption?.id || "",
       hardwareLabel: selectedHardwareOption?.label || "",
       hardwareImageUrl: selectedHardwareOption?.imageUrl || "",
@@ -452,7 +467,47 @@ export default function ConfiguratorPanel({
       unitPrice: dimensionUnitPrice,
       totalPrice: dimensionTotalPrice,
       oversizeSurchargeAmount: activeSurchargeAmount,
-    });
+    };
+  }
+
+  function handleSubmit() {
+    const result = buildCurrentResult();
+    if (!result) return;
+    onSubmit(result);
+  }
+
+  // "Wyceń kolejną sztukę" -> Podobną/Inną (see enableQuoteAnotherCta's doc
+  // comment). Adds the CURRENT piece exactly like handleSubmit() above (same
+  // onSubmit(), same cart/perimeter math - nothing about pricing changes),
+  // then resets this panel's own local state for the next one:
+  //   - "similar": keeps the color choices (selectedHardwareId/selectedMeshId
+  //     stay put, steps 1/2 stay collapsed/answered), clears only the
+  //     dimensions/quantity/surcharge-modal so the customer can size the
+  //     next piece straight away.
+  //   - "different": full reset back to the exact same blank state this
+  //     panel starts in with no initialValues, for a piece with different
+  //     colors too.
+  function handleQuoteAnother(mode: "similar" | "different") {
+    const result = buildCurrentResult();
+    if (!result) return;
+    trackShopStep("quote_another_position", mode, { width_mm: widthNum, height_mm: heightNum, qty: quantityNum });
+    onSubmit(result);
+    setQuoteAnotherOpen(false);
+    setDimensionWidth("");
+    setDimensionHeight("");
+    setDimensionQuantity("1");
+    setSurchargeModal(null);
+    if (mode === "different") {
+      setSelectedHardwareId("");
+      setStepOneChosen(false);
+      setStepOneCollapsed(false);
+      setSelectedMeshId("");
+      setStepTwoCollapsed(false);
+    } else {
+      window.setTimeout(() => {
+        scrollStepIntoView(stepThreeRef.current);
+      }, 80);
+    }
   }
 
   return (
@@ -950,6 +1005,39 @@ export default function ConfiguratorPanel({
                     </div>
                   )}
                 </PromoCountdownBanner>
+              ) : null}
+              {enableQuoteAnotherCta ? (
+                <div className="hero-product-quote-another">
+                  <button
+                    type="button"
+                    className="hero-product-quote-another-cta"
+                    onClick={() => setQuoteAnotherOpen((prev) => !prev)}
+                    disabled={isCalculatingPrice || dimensionTotalPrice === null || dimensionsBlocked}
+                    aria-expanded={quoteAnotherOpen}
+                  >
+                    Wyceń kolejną sztukę
+                  </button>
+                  {quoteAnotherOpen ? (
+                    <div className="hero-product-quote-another-choices" role="menu">
+                      <button
+                        type="button"
+                        className="hero-product-quote-another-choice"
+                        onClick={() => handleQuoteAnother("similar")}
+                      >
+                        <strong>Podobną</strong>
+                        <span>te same kolory, inne wymiary</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="hero-product-quote-another-choice"
+                        onClick={() => handleQuoteAnother("different")}
+                      >
+                        <strong>Inną</strong>
+                        <span>konfiguruj od nowa</span>
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
               <button
                 type="button"
