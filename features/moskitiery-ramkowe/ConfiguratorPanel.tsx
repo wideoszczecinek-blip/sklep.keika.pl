@@ -8,6 +8,7 @@
 // only the state ownership and the post-submit step (now the caller's job
 // via onSubmit) changed.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import PromoCountdownBanner, { AUTO_OPEN_TRACK_KEY } from "@/app/components/promo-countdown-banner";
 import PromoSaveModal from "@/app/components/promo-save-modal";
 import SaveShareWidget from "@/app/components/save-share-widget";
@@ -42,9 +43,13 @@ import {
   MOSKITIERY_RAMKOWE_PRICE_ON_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
+  OVERSIZE_MAX_WIDTH_MM,
   OVERSIZE_SURCHARGE_THRESHOLD_MM,
+  OVERSIZE_SURCHARGE_TIER_2_MAX_MM,
   OVERSIZE_TECHNICAL_LIMIT_MM,
   buildMoskLayerSurfaceStyle,
+  hasAcceptedOversizeSurchargeThisSession,
+  markOversizeSurchargeAcceptedThisSession,
   moskBilledMeters,
   moskLeftoverCapacity,
   moskOversizeSurchargeForDimension,
@@ -101,9 +106,9 @@ export default function ConfiguratorPanel({
   const [dimensionQuantity, setDimensionQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
   const [surchargeModal, setSurchargeModal] = useState<{ amount: number } | null>(null);
-  const [acceptedSurcharge, setAcceptedSurcharge] = useState<{ width: number; height: number; amount: number } | null>(
-    null,
-  );
+  // Session-wide, not per exact width/height - see
+  // hasAcceptedOversizeSurchargeThisSession()'s own comment in shared.ts.
+  const [surchargeAccepted, setSurchargeAccepted] = useState(() => hasAcceptedOversizeSurchargeThisSession());
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
   // "i" tooltip next to the leftover-savings banner - see its own render
   // site below for what it explains.
@@ -389,13 +394,18 @@ export default function ConfiguratorPanel({
 
   const bothDimensionsOverTechnicalLimit =
     widthNum > OVERSIZE_TECHNICAL_LIMIT_MM && heightNum > OVERSIZE_TECHNICAL_LIMIT_MM;
+  // Width's own hard ceiling (250 cm, same as height's - see
+  // OVERSIZE_SURCHARGE_TIER_2_MAX_MM's doc comment in shared.ts) - checked
+  // independently of height's since moskOversizeSurchargeForDimension()
+  // below only ever sees Math.max(width, height) and can't tell which one
+  // hit the wall.
+  const widthOverAbsoluteMax = widthNum > OVERSIZE_MAX_WIDTH_MM;
   const requiredSurchargeForCurrentDims = hasValidDimensions
     ? moskOversizeSurchargeForDimension(Math.max(widthNum, heightNum))
     : 0;
-  const surchargeSatisfied =
-    requiredSurchargeForCurrentDims <= 0 ||
-    (acceptedSurcharge !== null && acceptedSurcharge.width === widthNum && acceptedSurcharge.height === heightNum);
-  const dimensionsBlocked = bothDimensionsOverTechnicalLimit || requiredSurchargeForCurrentDims < 0 || !surchargeSatisfied;
+  const surchargeSatisfied = requiredSurchargeForCurrentDims <= 0 || surchargeAccepted;
+  const dimensionsBlocked =
+    bothDimensionsOverTechnicalLimit || widthOverAbsoluteMax || requiredSurchargeForCurrentDims < 0 || !surchargeSatisfied;
   const activeSurchargeAmount = surchargeSatisfied && requiredSurchargeForCurrentDims > 0 ? requiredSurchargeForCurrentDims : 0;
 
   function handleDimensionBlur() {
@@ -407,23 +417,26 @@ export default function ConfiguratorPanel({
     }
     const maxDim = Math.max(widthNum, heightNum);
     const required = moskOversizeSurchargeForDimension(maxDim);
-    if (required <= 0) {
-      if (acceptedSurcharge) setAcceptedSurcharge(null);
+    if (required <= 0 || required < 0 || surchargeAccepted) {
+      // required<0 -> the inline "za duży wymiar" message handles it;
+      // already accepted this session -> silently qualifies, per the
+      // modal's own "dotyczy całego zamówienia" promise.
       return;
     }
-    if (acceptedSurcharge && acceptedSurcharge.width === widthNum && acceptedSurcharge.height === heightNum) {
-      return;
-    }
-    if (required < 0) {
-      return; // inline "za duży wymiar" message handles this case
-    }
+    // Force the on-screen keyboard closed before the modal renders. Left
+    // alone, focus after a blur here often lands on the very next field in
+    // the same grid ("Ilość" - still a text input), so the keyboard stayed
+    // up and the modal read as popping up "underneath" it (user feedback
+    // 2026-09-09).
+    (document.activeElement as HTMLElement | null)?.blur();
     setSurchargeModal({ amount: required });
   }
 
   function handleAcceptSurcharge() {
     if (!surchargeModal) return;
     trackShopStep("surcharge_accepted", "moskitiery-ramkowe", { amount: surchargeModal.amount, width_mm: widthNum, height_mm: heightNum });
-    setAcceptedSurcharge({ width: widthNum, height: heightNum, amount: surchargeModal.amount });
+    setSurchargeAccepted(true);
+    markOversizeSurchargeAcceptedThisSession();
     setSurchargeModal(null);
   }
 
@@ -657,7 +670,7 @@ export default function ConfiguratorPanel({
                     type="number"
                     inputMode="numeric"
                     min={MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}
-                    max={2300}
+                    max={OVERSIZE_MAX_WIDTH_MM}
                     placeholder="np. 1000"
                     value={dimensionWidth}
                     onChange={(event) => setDimensionWidth(event.target.value)}
@@ -670,7 +683,7 @@ export default function ConfiguratorPanel({
                     type="number"
                     inputMode="numeric"
                     min={MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}
-                    max={2300}
+                    max={OVERSIZE_SURCHARGE_TIER_2_MAX_MM}
                     placeholder="np. 1200"
                     value={dimensionHeight}
                     onChange={(event) => setDimensionHeight(event.target.value)}
@@ -698,8 +711,10 @@ export default function ConfiguratorPanel({
                   Ten rozmiar przekracza możliwości techniczne produkcji - szerokość i wysokość nie mogą jednocześnie
                   przekraczać 160 cm. Zmniejsz jeden z wymiarów.
                 </p>
+              ) : widthOverAbsoluteMax ? (
+                <p className="hero-product-dimensions-error">Maksymalna obsługiwana szerokość to 250 cm.</p>
               ) : requiredSurchargeForCurrentDims < 0 ? (
-                <p className="hero-product-dimensions-error">Maksymalny obsługiwany wymiar to 230 cm.</p>
+                <p className="hero-product-dimensions-error">Maksymalna obsługiwana wysokość to 250 cm.</p>
               ) : activeSurchargeAmount > 0 ? (
                 <p className="hero-product-dimensions-surcharge-note">
                   Ten rozmiar wiąże się z jednorazową dopłatą{" "}
@@ -966,28 +981,42 @@ export default function ConfiguratorPanel({
         <p className="hero-product-config-hint">Wybierz kolor profilu, aby przejść do kolejnego kroku.</p>
       )}
 
-      {surchargeModal ? (
-        <div className="surcharge-modal" role="dialog" aria-modal="true" aria-label="Dopłata za przesyłkę dłużycową">
-          <div className="surcharge-modal-shell">
-            <h3>Przesyłka dłużycowa</h3>
-            <p>
-              Przy tym rozmiarze zamówienie wymaga jednorazowej dopłaty logistycznej{" "}
-              <strong>
-                {surchargeModal.amount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
-              </strong>{" "}
-              za przesyłkę dłużycową (dopłata dotyczy całego zamówienia, nie każdej pozycji osobno).
-            </p>
-            <div className="surcharge-modal-actions">
-              <button type="button" className="surcharge-modal-decline" onClick={handleDeclineSurcharge}>
-                Zmień wymiar
-              </button>
-              <button type="button" className="surcharge-modal-accept" onClick={handleAcceptSurcharge}>
-                Akceptuję dopłatę
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {surchargeModal && typeof document !== "undefined"
+        ? createPortal(
+            // Portaled straight to <body> - .hero-product-config-panel (this
+            // component's usual ancestor) carries a permanent `transform`
+            // from its own fade-in animation, which makes IT the containing
+            // block for any position:fixed descendant instead of the real
+            // viewport. Rendered inline, this modal was positioning/sizing
+            // itself against that panel's own (scrolled, cramped-on-mobile)
+            // box - "wyskakuje poza ekranem, trzeba przeskrolować" (user
+            // feedback 2026-09-09). Same root cause MobileOverlayPortal in
+            // app/page.tsx works around for the "Dodano do koszyka!" toast;
+            // a real dialog belongs on <body> unconditionally, not just on
+            // mobile.
+            <div className="surcharge-modal" role="dialog" aria-modal="true" aria-label="Dopłata za przesyłkę dłużycową">
+              <div className="surcharge-modal-shell">
+                <h3>Przesyłka dłużycowa</h3>
+                <p>
+                  Przy tym rozmiarze zamówienie wymaga jednorazowej dopłaty logistycznej{" "}
+                  <strong>
+                    {surchargeModal.amount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                  </strong>{" "}
+                  za przesyłkę dłużycową (dopłata dotyczy całego zamówienia, nie każdej pozycji osobno).
+                </p>
+                <div className="surcharge-modal-actions">
+                  <button type="button" className="surcharge-modal-decline" onClick={handleDeclineSurcharge}>
+                    Zmień wymiar
+                  </button>
+                  <button type="button" className="surcharge-modal-accept" onClick={handleAcceptSurcharge}>
+                    Akceptuję dopłatę
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {!onZoom && internalZoomPreview ? (
         <div

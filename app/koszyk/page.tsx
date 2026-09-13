@@ -32,6 +32,7 @@ import PaymentStep, { type CheckoutContact } from "../components/stripe-payment-
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import { isPromoActive, PROMO_CODE } from "@/lib/promo";
 import { getRescueGrant, type RescueGrant } from "@/lib/rescue";
+import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
 // every validation error, failed discount code, and failed order/payment
@@ -272,7 +273,7 @@ function buildQuotePayloadFromCart(
           ? { label: "Rozmiar", value: `${item.widthMm} × ${item.heightMm} mm`, note: "" }
           : null,
         { label: "Ilość", value: `${item.qty} szt.`, note: "" },
-      ].filter(Boolean),
+      ].filter((row): row is { label: string; value: string; note: string } => row !== null),
     };
   });
 
@@ -346,7 +347,13 @@ function buildQuotePayloadFromCart(
   // discount above - quote_save.php re-validates the source quote_code and
   // recomputes the real amount server-side before persisting anything.
   const itemsSubtotal = items.reduce((sum, item) => sum + item.total, 0);
-  const rescueAmount = rescueGrant ? Math.max(0, itemsSubtotal * (rescueGrant.percent / 100)) : 0;
+  // Net of combinedSavings - same "% computed off what's left after the
+  // real wspólne-rozliczenie-obwodu correction, not the higher
+  // pre-correction subtotal" fix as the discount code above (real live bug
+  // 2026-09-11).
+  const rescueAmount = rescueGrant
+    ? Math.max(0, (itemsSubtotal - combinedSavings) * (rescueGrant.percent / 100))
+    : 0;
   if (rescueGrant && rescueAmount > 0) {
     positions.push({
       id: `rabat-ratunek-${rescueGrant.quoteCode}`,
@@ -406,6 +413,17 @@ export default function CartPage() {
     address1: "",
     note: "",
   });
+  // Real live bug 2026-09-11 + a regression of the same class 2026-09-13
+  // (see address1FieldValid's and the resync effect's own comments below) -
+  // a debounce alone can't fully tell "the customer paused typing" apart
+  // from "the customer is done with this field", and guessing wrong twice
+  // already shipped incomplete addresses on real paid orders. Tracking
+  // whether the cursor is literally still in the street field is a much
+  // more direct signal than any timeout: while it's focused, the customer
+  // is - by definition - not done with it yet, so neither the first
+  // auto-submit nor the resync effect may fire, no matter how long they
+  // pause mid-edit.
+  const [address1Focused, setAddress1Focused] = useState(false);
   const [wantsInvoice, setWantsInvoice] = useState(false);
   const [invoice, setInvoice] = useState({
     nip: "",
@@ -459,6 +477,23 @@ export default function CartPage() {
     (appliedDiscount?.type === "percent" ? appliedDiscount.value : 0) + (rescueGrant?.percent || 0);
   const [discountChecking, setDiscountChecking] = useState(false);
   const [discountError, setDiscountError] = useState("");
+
+  // "Zapisz/udostępnij wycenę" banners (below the item list, below the
+  // financial summary) - real feedback 2026-09-09: the cart is exactly the
+  // moment a customer might want to come back to this later, and there was
+  // no CTA for that here at all (the existing save/share icon only lives in
+  // the homepage's own header). One shared modal/state for both banners -
+  // whichever is clicked opens the same link. Reuses buildQuotePayloadFromCart
+  // (below) for the actual snapshot, so the shared link carries the exact
+  // same discounts/surcharges the customer is looking at right now, not a
+  // simplified re-derivation of them.
+  const [cartShareLink, setCartShareLink] = useState<ShareLink | null>(null);
+  const [cartShareModalOpen, setCartShareModalOpen] = useState(false);
+  const [cartShareSaving, setCartShareSaving] = useState(false);
+  const [cartShareCopyState, setCartShareCopyState] = useState<"idle" | "copied">("idle");
+  const [cartShareSendOpen, setCartShareSendOpen] = useState(false);
+  const [cartShareSendValue, setCartShareSendValue] = useState("");
+  const [cartShareSendStatus, setCartShareSendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   // Standing "SEZON20" promo preview shown under the total to nudge people
   // who haven't typed a code in yet - fetched read-only (same endpoint the
@@ -547,12 +582,17 @@ export default function CartPage() {
   }, [sync]);
 
   const summary = summarizeCartItems(items);
-  const rescueAmount = rescueGrant ? Math.max(0, summary.total * (rescueGrant.percent / 100)) : 0;
   // Real "wspólne rozliczenie obwodu" savings (see calcMoskitieryCombinedSavings()'s
   // own doc comment) - a preview of what quote_save.php recomputes and
-  // enforces authoritatively server-side; non-compounding with the SEZON20/
-  // rescue discounts, same as those two already are with each other.
+  // enforces authoritatively server-side: a real price correction (not a
+  // marketing discount) subtracted from the item subtotal BEFORE SEZON20/
+  // the rescue discount, so those two must compute their own % off what's
+  // left net of this, not the higher pre-correction subtotal (real live bug
+  // 2026-09-11).
   const combinedSavings = calcMoskitieryCombinedSavings(items);
+  const rescueAmount = rescueGrant
+    ? Math.max(0, (summary.total - combinedSavings) * (rescueGrant.percent / 100))
+    : 0;
   const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
   // Odbiór osobisty nigdy nie ma kosztu wysyłki - nic nie jest wysyłane.
@@ -634,13 +674,25 @@ export default function CartPage() {
   const phoneFieldValid = form.phone.trim() !== "";
   const cityFieldValid = form.city.trim() !== "";
   const postcodeFieldValid = /^\d{2}-?\d{3}$/.test(form.postcode.trim());
-  const address1FieldValid = form.address1.trim() !== "";
+  // Real live bug 2026-09-11: multiple paid orders shipped with a truncated
+  // street address ("Krz", "Pl", "S", "Plac", "Zucha", "Reja", ...) - a
+  // single non-blank character already satisfied this before, so the
+  // auto-submit effect below could fire (after its debounce) with whatever
+  // partial text sat in the field the moment the customer paused typing
+  // mid-address, and nothing ever re-sends the finished address afterward
+  // (see the resync effect further down, added to close that second half of
+  // the gap). Requiring a plausible length AND a digit (a Polish street
+  // address essentially always has a house/building number) makes a
+  // genuinely unfinished fragment fail this check instead of quietly
+  // "validating".
+  const address1FieldValid = form.address1.trim().length >= 5 && /\d/.test(form.address1);
   const nipFieldValid = invoice.nip.trim().length === 10;
   const companyNameFieldValid = invoice.companyName.trim() !== "";
   const invoiceStreetFieldValid = invoice.street.trim() !== "";
   const invoicePostcodeFieldValid = /^\d{2}-?\d{3}$/.test(invoice.postcode.trim());
   const invoiceCityFieldValid = invoice.city.trim() !== "";
-  const addressReady = !requiresAddress || (cityFieldValid && address1FieldValid && postcodeFieldValid);
+  const addressReady =
+    !requiresAddress || (cityFieldValid && address1FieldValid && postcodeFieldValid && !address1Focused);
   const paczkomatReady = deliveryMethod !== PACZKOMAT_METHOD.id || selectedPaczkomat !== null;
   const invoiceReady =
     !wantsInvoice ||
@@ -832,7 +884,13 @@ export default function CartPage() {
       const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/discount_code_check.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, subtotal: summary.total }),
+        // Net of the real "wspólne rozliczenie obwodu" price correction
+        // (combinedSavings) - that correction isn't a marketing discount,
+        // but SEZON20's own % must be computed off what's actually left to
+        // discount, not the higher pre-correction subtotal (real live bug
+        // 2026-09-11 - see quote_save.php's own fix for the authoritative
+        // half of this).
+        body: JSON.stringify({ code, subtotal: Math.max(0, summary.total - combinedSavings) }),
       });
       const json = (await response.json()) as DiscountCheckResponse;
       if (!json.ok || !json.discount) {
@@ -860,10 +918,13 @@ export default function CartPage() {
       return;
     }
     let cancelled = false;
+    // Net of combinedSavings - same "SEZON20's % is computed off what's left
+    // after the real wspólne-rozliczenie-obwodu correction" fix as
+    // checkDiscountCode above.
     fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/discount_code_check.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: "SEZON20", subtotal: summary.total }),
+      body: JSON.stringify({ code: "SEZON20", subtotal: Math.max(0, summary.total - combinedSavings) }),
     })
       .then((response) => response.json())
       .then((json: DiscountCheckResponse) => {
@@ -876,7 +937,7 @@ export default function CartPage() {
     return () => {
       cancelled = true;
     };
-  }, [appliedDiscount, summary.total]);
+  }, [appliedDiscount, summary.total, combinedSavings]);
 
   function applySezon20Promo() {
     setDiscountCodeInput("SEZON20");
@@ -888,6 +949,135 @@ export default function CartPage() {
     setDiscountCodeInput("");
     setDiscountError("");
   }
+
+  /** Same three surcharge positions submitOrder() below builds, just read
+   * here too - kept as its own small builder rather than hoisting
+   * submitOrder's own array out, since that one is deliberately built fresh
+   * at actual-submit time (this only needs a snapshot for the share link,
+   * never anything that has to match to the cent at the exact instant of
+   * payment). */
+  function buildCurrentExtraCharges(): ExtraCharge[] {
+    return [
+      {
+        id: "position-oversize-surcharge",
+        slug: "doplata-przesylka-dlugosciowa",
+        label: "Dopłata za przesyłkę dłużycową",
+        amount: orderSurcharge,
+        summary: "Dopłata za przesyłkę dłużycową (jednorazowo dla całego zamówienia)",
+      },
+      {
+        id: "position-shipping-fee",
+        slug: "koszt-dostawy",
+        label: "Koszt dostawy",
+        amount: shippingFee,
+        summary: `Koszt dostawy (poniżej progu darmowej dostawy ${FREE_SHIPPING_THRESHOLD} zł)`,
+      },
+      {
+        id: "position-cod-fee",
+        slug: "doplata-platnosc-za-pobraniem",
+        label: "Dopłata za płatność za pobraniem",
+        amount: paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0,
+        summary: "Dopłata za płatność za pobraniem",
+      },
+    ];
+  }
+
+  /** Always resolves to something shareable - mirrors
+   * save-share-widget.tsx's own ensureLink(), just without that component's
+   * "in-progress configurator draft" tier (there's no configurator open on
+   * this page, only a real cart) - the cart snapshot IS the draft here. */
+  async function ensureCartShareLink(): Promise<ShareLink> {
+    if (cartShareLink) return cartShareLink;
+    if (items.length === 0) {
+      const fallback: ShareLink = { quoteCode: "", resumeToken: "", url: window.location.href };
+      setCartShareLink(fallback);
+      return fallback;
+    }
+
+    let sessionToken = "";
+    try {
+      sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+    } catch {
+      // sessionStorage niedostępny - link i tak się utworzy.
+    }
+
+    setCartShareSaving(true);
+    const payload = buildQuotePayloadFromCart(items, buildCurrentExtraCharges(), appliedDiscount, rescueGrant);
+    const result = await saveQuoteForSharing({
+      positions: payload.positions,
+      sessionToken,
+      productSlug: payload.product_slug,
+      promoCode: isPromoActive() ? PROMO_CODE : undefined,
+    });
+    setCartShareSaving(false);
+
+    const resolved: ShareLink = result || { quoteCode: "", resumeToken: "", url: window.location.href };
+    setCartShareLink(resolved);
+    return resolved;
+  }
+
+  function openCartShareModal() {
+    setCartShareModalOpen(true);
+    setCartShareSendOpen(false);
+    setCartShareSendValue("");
+    setCartShareSendStatus("idle");
+    void ensureCartShareLink();
+  }
+
+  async function handleCartShareCopyLink() {
+    const result = await ensureCartShareLink();
+    try {
+      await navigator.clipboard.writeText(result.url);
+      setCartShareCopyState("copied");
+      window.setTimeout(() => setCartShareCopyState("idle"), 2200);
+    } catch {
+      // Schowek niedostępny - link jest już widoczny w modalu do ręcznego skopiowania.
+    }
+  }
+
+  async function handleCartShareNativeShare() {
+    const result = await ensureCartShareLink();
+    try {
+      await navigator.share({
+        title: "KEIKA",
+        text: "Mój koszyk KEIKA - link do wznowienia:",
+        url: result.url,
+      });
+    } catch {
+      // Użytkownik zamknął arkusz udostępniania albo API nie jest wsparte -
+      // link jest już widoczny w modalu jako fallback.
+    }
+  }
+
+  function looksLikeShareEmail(value: string): boolean {
+    return /.+@.+\..+/.test(value);
+  }
+  function looksLikeSharePhone(value: string): boolean {
+    return value.replace(/\D/g, "").length >= 9;
+  }
+
+  async function handleCartShareSendSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const value = cartShareSendValue.trim();
+    const isEmail = looksLikeShareEmail(value);
+    const isPhone = !isEmail && looksLikeSharePhone(value);
+    if (!isEmail && !isPhone) return;
+    const result = await ensureCartShareLink();
+    if (!result.quoteCode) {
+      setCartShareSendStatus("error");
+      return;
+    }
+    setCartShareSendStatus("sending");
+    const sendResult = await sendShareLink({
+      quoteCode: result.quoteCode,
+      resumeToken: result.resumeToken,
+      email: isEmail ? value : undefined,
+      phone: isPhone ? value : undefined,
+    });
+    setCartShareSendStatus(sendResult.ok ? "sent" : "error");
+  }
+
+  const canNativeShareCart = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
   // A promo code activated from the configurator's own SEZON20 banner (see
   // ConfiguratorPanel.tsx's ACTIVE_PROMO_STORAGE_KEY) shows up here already
@@ -1097,12 +1287,50 @@ export default function CartPage() {
       void submitOrder();
       return;
     }
+    // 900ms -> 1800ms (real live bug 2026-09-11, see address1FieldValid's own
+    // comment above): a short pause mid-typing (recalling the house number,
+    // a phone autocomplete popup, glancing at the delivery options) easily
+    // exceeded 900ms, and this timer resets on every keystroke via
+    // submitOrder's own `form` dependency - so it only actually needs to
+    // outlast a genuine pause, not the whole time spent typing the address.
     const timer = window.setTimeout(() => {
       void submitOrder();
-    }, 900);
+    }, 1800);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkoutReady, orderState, paymentMethod, submitOrder]);
+
+  // REMOVED 2026-09-13 - a "resync post-creation edits to the server" effect
+  // briefly lived here (added 2026-09-11, tightened with a deliveryDataReady
+  // gate later that same day). It called submitOrder() again whenever
+  // form/invoice/delivery data changed after the draft order already
+  // existed, relying on shop_public_orders_create()'s "reuse a recent
+  // still-unpaid draft" path (views/biuro/api/shop-public/_orders.php).
+  // That reuse path WIPES payment_intent_id/payment_client_secret and mints
+  // a brand new Stripe PaymentIntent on every call - it was built for "the
+  // customer abandoned this attempt and is starting a fresh one", not for
+  // "still on the same payment page, just fixing a typo in the note field".
+  // Real live incident 2026-09-13: two customers reached the Stripe payment
+  // step, then edited something else (e.g. a delivery note) while still
+  // unpaid - this effect fired, minted a *second* PaymentIntent server-side,
+  // but the customer's already-rendered Stripe Elements form paid the
+  // *original* one (still perfectly valid on Stripe's side - nothing
+  // cancels it). Stripe took real money (confirmed via the Stripe API:
+  // pi_3UFAJJJvei1KgDgN0X1Y4ko2 / pi_3UFGOiJvei1KgDgN15twb0H5, both
+  // succeeded) that the CRM had no record of at all - shop_www_orders still
+  // pointed at the newer, unpaid intent, so payment_stripe_webhook.php's
+  // exact-match lookup (`WHERE payment_intent_id = ?`) found nothing, and
+  // neither order ever got marked paid, promoted into `orders`, or sent its
+  // confirmation e-mail. An incomplete address is a phone call to fix; a
+  // successful payment the CRM doesn't know happened is a much worse
+  // failure mode - so this whole mechanism is removed rather than patched
+  // again. A customer who edits the note/address after reaching the payment
+  // step goes back to the pre-2026-09-11 behaviour: the edit stays local
+  // until the order is genuinely resubmitted (e.g. the "Spróbuj ponownie"
+  // button after a failure) - see [[moskitiery-checkout-orphaned-payment-incident]]
+  // before reintroducing anything like this; it needs a way to refresh
+  // shipping/customer data WITHOUT ever touching an already-active
+  // PaymentIntent, which this endpoint does not offer today.
 
   // Meta Purchase leci WYŁĄCZNIE serwerowo z CRM (Conversions API, event_id =
   // order_code, z wartością + zahaszowanym e-mailem/telefonem + fbc/fbp).
@@ -1306,6 +1534,26 @@ export default function CartPage() {
             ) : (
               <p className="cart-page-order-note">Koszyk opróżniony po złożeniu zamówienia poniżej.</p>
             )}
+
+            {items.length > 0 ? (
+              <button type="button" className="cart-save-share-banner" onClick={openCartShareModal}>
+                <span className="cart-save-share-banner-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M14 3h7v7M21 3 10 14M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span className="cart-save-share-banner-copy">
+                  <strong>Zapisz / udostępnij link do wyceny z rabatami na później</strong>
+                  <small>Nic nie tracisz - wrócisz do tego koszyka w każdej chwili, na dowolnym urządzeniu.</small>
+                </span>
+              </button>
+            ) : null}
 
             <div className="cart-checkout-layout">
               <div className="cart-checkout-left">
@@ -1538,6 +1786,8 @@ export default function CartPage() {
                                 onChange={(event) =>
                                   setForm((current) => ({ ...current, address1: event.target.value }))
                                 }
+                                onFocus={() => setAddress1Focused(true)}
+                                onBlur={() => setAddress1Focused(false)}
                               />
                             </CartFieldStatus>
                           </label>
@@ -1711,6 +1961,26 @@ export default function CartPage() {
                         </button>
                       ) : null}
                     </>
+                  ) : null}
+
+                  {items.length > 0 ? (
+                    <button type="button" className="cart-save-share-banner cart-save-share-banner--summary" onClick={openCartShareModal}>
+                      <span className="cart-save-share-banner-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M14 3h7v7M21 3 10 14M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <span className="cart-save-share-banner-copy">
+                        <strong>Zapisz / udostępnij link do wyceny z rabatami na później</strong>
+                        <small>Nic nie tracisz - wrócisz do tego koszyka w każdej chwili, na dowolnym urządzeniu.</small>
+                      </span>
+                    </button>
                   ) : null}
 
                   {/* The payment method itself is no longer a choice made
@@ -1964,6 +2234,94 @@ export default function CartPage() {
                 </>
               ) : null}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {cartShareModalOpen ? (
+        <div className="save-share-modal-overlay" role="presentation" onClick={() => setCartShareModalOpen(false)}>
+          <div
+            className="save-share-modal-shell"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Zapisz lub udostępnij koszyk"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="save-share-modal-close"
+              onClick={() => setCartShareModalOpen(false)}
+              aria-label="Zamknij"
+            >
+              ✕
+            </button>
+            <h3>Zapisz lub udostępnij</h3>
+            <p className="save-share-modal-lead">
+              Zapisujemy Twój koszyk razem z aktywnymi rabatami i dopłatami - wróć do niego w każdej chwili, na
+              dowolnym urządzeniu, bez wypełniania niczego od nowa.
+            </p>
+
+            {cartShareSaving && !cartShareLink ? (
+              <div className="save-share-modal-loading">Zapisuję…</div>
+            ) : (
+              <>
+                <div className="save-share-modal-options">
+                  {canNativeShareCart ? (
+                    <button type="button" className="save-share-option is-primary" onClick={handleCartShareNativeShare}>
+                      <span aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M14 3h7v7M21 3 10 14M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      Udostępnij
+                    </button>
+                  ) : null}
+                  <button type="button" className="save-share-option" onClick={handleCartShareCopyLink}>
+                    <span aria-hidden="true">🔗</span>
+                    {cartShareCopyState === "copied" ? "Skopiowano!" : "Kopiuj link"}
+                  </button>
+                  {cartShareLink?.quoteCode ? (
+                    <button type="button" className="save-share-option" onClick={() => setCartShareSendOpen((v) => !v)}>
+                      <span aria-hidden="true">✉️</span>
+                      Wyślij
+                    </button>
+                  ) : null}
+                </div>
+                {cartShareLink?.quoteCode && cartShareSendOpen ? (
+                  <form className="save-share-send-form" onSubmit={handleCartShareSendSubmit}>
+                    <input
+                      type="text"
+                      inputMode="email"
+                      placeholder="E-mail albo numer telefonu"
+                      value={cartShareSendValue}
+                      onChange={(event) => {
+                        setCartShareSendValue(event.target.value);
+                        if (cartShareSendStatus !== "sending") setCartShareSendStatus("idle");
+                      }}
+                      autoFocus
+                    />
+                    <button type="submit" disabled={cartShareSendStatus === "sending" || !cartShareSendValue.trim()}>
+                      {cartShareSendStatus === "sending" ? "Wysyłam…" : "Wyślij"}
+                    </button>
+                    {cartShareSendStatus === "sent" ? <p className="save-share-send-status is-ok">Wysłano!</p> : null}
+                    {cartShareSendStatus === "error" ? (
+                      <p className="save-share-send-status is-error">Nie udało się wysłać. Spróbuj ponownie.</p>
+                    ) : null}
+                  </form>
+                ) : null}
+                {cartShareLink ? (
+                  <div className="save-share-modal-linkbox">
+                    <code>{cartShareLink.url}</code>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
       ) : null}

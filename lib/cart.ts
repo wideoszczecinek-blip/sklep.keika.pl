@@ -10,6 +10,27 @@
  * a real multi-item order endpoint exists.
  */
 
+/** product_slug values app/koszyk/page.tsx's buildQuotePayloadFromCart()
+ * adds alongside the real product positions when it saves a quote (a
+ * discount code, the oversized-parcel surcharge, cash-on-delivery fee, the
+ * combined-perimeter savings line) - not real products. Anything that turns
+ * saved quote positions back into real CartLineItems (the resume-link flow,
+ * lib/rescue.ts's mapQuoteToResumeState()) must skip every one of these:
+ * the cart page already recomputes each of them live from its own current
+ * state (discount code, delivery method, actual cart contents) rather than
+ * trusting a stored snapshot amount, so re-adding them as literal cart
+ * items doubles them up as fake "products" - real bug report 2026-09-09,
+ * only "rabat"/"rabat-ratunek" were being skipped, not the other four.
+ * Keep this in sync with buildQuotePayloadFromCart()'s own position ids. */
+export const NON_PRODUCT_POSITION_SLUGS: ReadonlySet<string> = new Set([
+  "rabat",
+  "rabat-ratunek",
+  "doplata-przesylka-dlugosciowa",
+  "koszt-dostawy",
+  "doplata-platnosc-za-pobraniem",
+  "oszczednosc-obwod-moskitiery",
+]);
+
 export type CartLineItem = {
   id: string;
   productSlug: string;
@@ -268,10 +289,15 @@ export function readCartSummary(): CartSummary {
  * (shop_moskitiery_combined_perimeter_reapply_to_quote_input() - see its
  * own doc comment for why it derives the effective per-mb rate from what
  * was actually sent rather than a hardcoded duplicate of
- * MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO). Deliberately non-compounding with
- * the SEZON20/rescue discounts (same "stack additively off the raw
- * subtotal" treatment those two already give each other) - keeps this
- * fully independent of promo state, so it never needs to know about them.
+ * MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO). A real price correction, not a
+ * marketing discount - subtracted from the item subtotal BEFORE SEZON20/
+ * the rescue discount (owner-specified order), so both of those must
+ * compute their own % off what's left net of this value, not the raw item
+ * subtotal (see checkDiscountCode/the rescueAmount calcs in
+ * app/koszyk/page.tsx, and the server-side mirror of this in
+ * shop_discount_code_reapply_to_quote_input()/shop_rescue_discount_reapply_
+ * to_quote_input() - real live bug 2026-09-11 fixed by netting this out of
+ * their subtotal instead of merely excluding the position from it).
  *
  * Returns 0 for 0-1 items (nothing to combine) or when nothing was
  * actually saved (e.g. two frames that already fit their own whole meters

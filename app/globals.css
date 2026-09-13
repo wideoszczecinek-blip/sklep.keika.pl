@@ -8538,6 +8538,69 @@ html[data-theme="light"] .edit-item-modal-panel.hero-product-config-panel {
   color: #c2410c;
 }
 
+/* "Zapisz / udostępnij wycenę" - deliberately a calm teal (var(--accent)),
+   not orange like .cart-promo-banner above: that one is a discount upsell,
+   this is a quiet utility action, and using the same color would read as
+   "another special offer" rather than "come back to this later". Two
+   instances on the page (below the item list, below the financial summary)
+   share one class/look - same trigger, same modal, just easier to reach
+   from either scroll position. */
+.cart-save-share-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.7rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(0, 168, 163, 0.06);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.cart-save-share-banner:hover {
+  border-color: var(--accent);
+  background: rgba(0, 168, 163, 0.11);
+  transform: translateY(-1px);
+}
+
+.cart-save-share-banner-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  background: rgba(0, 168, 163, 0.14);
+  color: var(--accent-deep);
+}
+
+.cart-save-share-banner-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.cart-save-share-banner-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.cart-save-share-banner-copy strong {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cart-save-share-banner-copy small {
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+}
+
 .cart-payment-method-badge {
   margin: 0;
   display: inline-flex;

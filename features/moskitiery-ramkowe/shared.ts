@@ -268,12 +268,21 @@ export const MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM = 150;
 // - Above OVERSIZE_SURCHARGE_THRESHOLD_MM on either dimension, the shipment
 //   becomes an oversized ("dłużycowa") parcel and needs a one-time
 //   surcharge for the whole order, tiered by the largest dimension involved.
-// - OVERSIZE_SURCHARGE_TIER_2_MAX_MM doubles as the hard per-side maximum -
-//   moskOversizeSurchargeForDimension() returns -1 past it (see below).
+// - OVERSIZE_SURCHARGE_TIER_2_MAX_MM/OVERSIZE_MAX_WIDTH_MM are each
+//   dimension's own hard ceiling (250 cm, business decision 2026-09-09 -
+//   raised from 230 cm, height first, then width to match) -
+//   moskOversizeSurchargeForDimension() returns -1 past
+//   OVERSIZE_SURCHARGE_TIER_2_MAX_MM (see below); OVERSIZE_MAX_WIDTH_MM is
+//   checked separately in ConfiguratorPanel.tsx since that function only
+//   ever sees the larger of the two dimensions and can't otherwise tell
+//   which one it was. Kept as two separate constants (not one shared value)
+//   even though they're equal right now, so either can move independently
+//   again without restructuring anything.
 export const OVERSIZE_TECHNICAL_LIMIT_MM = 1600;
 export const OVERSIZE_SURCHARGE_THRESHOLD_MM = 1500;
 export const OVERSIZE_SURCHARGE_TIER_1_MAX_MM = 2000;
-export const OVERSIZE_SURCHARGE_TIER_2_MAX_MM = 2300;
+export const OVERSIZE_SURCHARGE_TIER_2_MAX_MM = 2500;
+export const OVERSIZE_MAX_WIDTH_MM = 2500;
 export const OVERSIZE_SURCHARGE_TIER_1_AMOUNT = 19.9;
 export const OVERSIZE_SURCHARGE_TIER_2_AMOUNT = 29;
 
@@ -284,6 +293,39 @@ export function moskOversizeSurchargeForDimension(maxDimMm: number): number {
   if (maxDimMm <= OVERSIZE_SURCHARGE_TIER_1_MAX_MM) return OVERSIZE_SURCHARGE_TIER_1_AMOUNT;
   if (maxDimMm <= OVERSIZE_SURCHARGE_TIER_2_MAX_MM) return OVERSIZE_SURCHARGE_TIER_2_AMOUNT;
   return -1;
+}
+
+// The surcharge modal's own copy already says "dotyczy całego zamówienia,
+// nie każdej pozycji osobno" (once for the whole order, not per item) -
+// calcCartOversizeSurcharge()/lib/cart.ts (max across items, not sum) and
+// the CRM's own quote_save.php backstop both already charge it that way.
+// But ConfiguratorPanel used to track acceptance as local component state
+// keyed to one exact width/height pair, so a SECOND oversized item (a new
+// configurator instance, or the same one after "Dodaj kolejną") reset that
+// state and re-asked - reads as "you're being charged again" even though
+// the total genuinely wasn't, and is the real complaint behind it (user
+// feedback 2026-09-09). Session-scoped (not per item, not permanent): once
+// accepted for this order/tab, every later oversized item in the same cart
+// just silently qualifies - matches the modal's own promise.
+const OVERSIZE_SURCHARGE_ACCEPTED_KEY = "keika_oversize_surcharge_accepted_v1";
+
+export function hasAcceptedOversizeSurchargeThisSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(OVERSIZE_SURCHARGE_ACCEPTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markOversizeSurchargeAcceptedThisSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(OVERSIZE_SURCHARGE_ACCEPTED_KEY, "1");
+  } catch {
+    // sessionStorage unavailable (private mode etc.) - modal will just ask
+    // again next time, no worse than before this fix.
+  }
 }
 
 export type ConfiguratorInitialValues = {

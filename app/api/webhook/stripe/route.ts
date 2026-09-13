@@ -40,6 +40,18 @@ export async function POST(request: Request) {
   }
 
   if (paymentStatus) {
+    // order_code_hint: real live incident 2026-09-13 - a since-removed
+    // frontend bug (see koszyk/page.tsx's own comment on the removed resync
+    // effect) minted a second PaymentIntent for an order that already had
+    // one active and paid, so the CRM's stored payment_intent_id no longer
+    // matched what actually succeeded - the CRM's exact-match lookup found
+    // nothing, and 2 real paid orders went completely unrecorded until a
+    // manual Stripe-vs-CRM diff caught it. shop_public_orders_create()
+    // always stamps order_code/quote_code into the PaymentIntent's own
+    // metadata (see _orders.php), so it survives independently of whatever
+    // the CRM's own row currently says - passing it through here lets the
+    // CRM self-heal via a fallback lookup instead of silently dropping the
+    // payment, no matter what future bug causes a similar ID mismatch.
     await fetch(`${crmBaseUrl}/biuro/api/shop-public/payment_stripe_webhook`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -47,6 +59,7 @@ export async function POST(request: Request) {
         payment_intent_id: paymentIntentId,
         payment_status: paymentStatus,
         event_name: event.type,
+        order_code_hint: typeof intent.metadata?.order_code === "string" ? intent.metadata.order_code : "",
       }),
       cache: "no-store",
     });

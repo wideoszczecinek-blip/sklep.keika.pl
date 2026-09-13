@@ -10,7 +10,7 @@
  * SEZON20 promo code.
  */
 
-import type { CartLineItem } from "@/lib/cart";
+import { NON_PRODUCT_POSITION_SLUGS, type CartLineItem } from "@/lib/cart";
 
 const QUOTE_SAVE_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop-public/quote_save.php";
 const QUOTE_FETCH_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop-public/quote.php";
@@ -280,10 +280,7 @@ export type ResumeState = {
  * reports; now maps every real position, not just one. */
 export function mapQuoteToResumeState(quote: RawResumeQuote): ResumeState {
   const positions = Array.isArray(quote.payload?.positions) ? quote.payload!.positions! : [];
-  const productPositions = positions.filter((p) => {
-    const slug = String(p.product_slug || "");
-    return slug !== "rabat" && slug !== "rabat-ratunek";
-  });
+  const productPositions = positions.filter((p) => !NON_PRODUCT_POSITION_SLUGS.has(String(p.product_slug || "")));
 
   const items: CartLineItem[] = productPositions.map((productPosition, index) => {
     const quantity = Number(productPosition.quantity) || 1;

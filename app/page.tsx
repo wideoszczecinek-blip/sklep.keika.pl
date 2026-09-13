@@ -60,7 +60,9 @@ import {
   MOSKITIERY_RAMKOWE_PRICE_ON_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
   MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
+  OVERSIZE_MAX_WIDTH_MM,
   OVERSIZE_SURCHARGE_THRESHOLD_MM,
+  OVERSIZE_SURCHARGE_TIER_2_MAX_MM,
   OVERSIZE_TECHNICAL_LIMIT_MM,
   buildMoskLayerSurfaceStyle,
   moskBilledMeters,
@@ -2317,13 +2319,18 @@ export default function Home() {
 
   const bothDimensionsOverTechnicalLimit =
     widthNum > OVERSIZE_TECHNICAL_LIMIT_MM && heightNum > OVERSIZE_TECHNICAL_LIMIT_MM;
+  // Width's own hard ceiling (250 cm, same as height's) - checked
+  // independently of height's - see the matching comment in
+  // features/moskitiery-ramkowe/shared.ts on OVERSIZE_SURCHARGE_TIER_2_MAX_MM.
+  const widthOverAbsoluteMax = widthNum > OVERSIZE_MAX_WIDTH_MM;
   const requiredSurchargeForCurrentDims = hasValidDimensions
     ? moskOversizeSurchargeForDimension(Math.max(widthNum, heightNum))
     : 0;
   const surchargeSatisfied =
     requiredSurchargeForCurrentDims <= 0 ||
     (acceptedSurcharge !== null && acceptedSurcharge.width === widthNum && acceptedSurcharge.height === heightNum);
-  const dimensionsBlocked = bothDimensionsOverTechnicalLimit || requiredSurchargeForCurrentDims < 0 || !surchargeSatisfied;
+  const dimensionsBlocked =
+    bothDimensionsOverTechnicalLimit || widthOverAbsoluteMax || requiredSurchargeForCurrentDims < 0 || !surchargeSatisfied;
   const activeSurchargeAmount = surchargeSatisfied && requiredSurchargeForCurrentDims > 0 ? requiredSurchargeForCurrentDims : 0;
 
   function handleDimensionBlur() {
@@ -4189,7 +4196,7 @@ export default function Home() {
                               type="number"
                               inputMode="numeric"
                               min={300}
-                              max={2300}
+                              max={OVERSIZE_MAX_WIDTH_MM}
                               placeholder="np. 1000"
                               value={dimensionWidth}
                               onChange={(event) => setDimensionWidth(event.target.value)}
@@ -4202,7 +4209,7 @@ export default function Home() {
                               type="number"
                               inputMode="numeric"
                               min={300}
-                              max={2300}
+                              max={OVERSIZE_SURCHARGE_TIER_2_MAX_MM}
                               placeholder="np. 1200"
                               value={dimensionHeight}
                               onChange={(event) => setDimensionHeight(event.target.value)}
@@ -4226,9 +4233,13 @@ export default function Home() {
                             Ten rozmiar przekracza możliwości techniczne produkcji - szerokość i wysokość nie mogą
                             jednocześnie przekraczać 160 cm. Zmniejsz jeden z wymiarów.
                           </p>
+                        ) : widthOverAbsoluteMax ? (
+                          <p className="hero-product-dimensions-error">
+                            Maksymalna obsługiwana szerokość to 250 cm.
+                          </p>
                         ) : requiredSurchargeForCurrentDims < 0 ? (
                           <p className="hero-product-dimensions-error">
-                            Maksymalny obsługiwany wymiar to 230 cm.
+                            Maksymalna obsługiwana wysokość to 250 cm.
                           </p>
                         ) : activeSurchargeAmount > 0 ? (
                           <p className="hero-product-dimensions-surcharge-note">
