@@ -23,7 +23,7 @@ const TEASER_DISMISSED_KEY = "keika_chat_teaser_dismissed";
 
 export default function ChatBubble() {
   const pathname = usePathname();
-  const isProductPage = pathname === "/";
+  const isProductPage = pathname === "/" || pathname === "/moskitiery-ramkowe";
   const isCartPage = pathname === "/koszyk";
   const [isMobile, setIsMobile] = useState(false);
   const [teaserVisible, setTeaserVisible] = useState(false);

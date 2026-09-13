@@ -26,7 +26,20 @@ export default function PromoTopStrip({
   return (
     <PromoCountdownBanner code={PROMO_CODE} productSlug={productSlug}>
       {(promo) =>
-        promo ? (
+        !promo && variant === "fixed" ? (
+          // Same height, always there on the fixed variant - the header/hero
+          // offsets in globals.css depend on it, so mounting it late shifted
+          // the whole page (CLS 0.23 measured 2026-09-14). Neutral, true
+          // copy until a countdown exists (returning visitor after 24 h).
+          <div className="promo-top-strip is-neutral" role="status">
+            <span className="promo-top-strip-badge" aria-hidden="true">
+              5 lat
+            </span>
+            <span className="promo-top-strip-text">
+              5 lat gwarancji · darmowa dostawa od 79 zł · produkcja w Szczecinku
+            </span>
+          </div>
+        ) : promo ? (
           <div className={`promo-top-strip ${variant === "static" ? "is-static" : ""}`} role="status">
             <span className="promo-top-strip-badge" aria-hidden="true">
               -20%

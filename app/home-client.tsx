@@ -1370,6 +1370,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     cutoffHour: number;
     cutoffMinute: number;
   } | null>(null);
+  // true until shipping_banner.php answers - a same-height placeholder
+  // holds the banner's row so the video/description below don't jump.
+  const [shippingBannerPending, setShippingBannerPending] = useState(true);
   // "Ekspres" toggle (lib/express.ts) - the choice made here carries into
   // /koszyk's "Termin realizacji" via localStorage.
   const [expressSelected, setExpressSelectedState] = useState(false);
@@ -1383,8 +1386,10 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     const slug = productSlugFromSelected(displayedProduct);
     if (!slug) {
       setShippingBanner(null);
+      setShippingBannerPending(false);
       return;
     }
+    setShippingBannerPending(true);
     let cancelled = false;
     fetch(`https://crm-keika.groovemedia.pl/biuro/api/shop-public/shipping_banner.php?product=${encodeURIComponent(slug)}`)
       .then((response) => response.json())
@@ -1411,10 +1416,13 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                 }
               : null,
           );
+          setShippingBannerPending(false);
         },
       )
       .catch(() => {
-        if (!cancelled) setShippingBanner(null);
+        if (cancelled) return;
+        setShippingBanner(null);
+        setShippingBannerPending(false);
       });
     return () => {
       cancelled = true;
@@ -1590,7 +1598,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const [stepTwoCollapsed, setStepTwoCollapsed] = useState(false);
   const [selectedMeshId, setSelectedMeshId] = useState("");
   const [zoomPreview, setZoomPreview] = useState<{ title: string; urls: string[]; index: number } | null>(null);
-  const [allegroRating, setAllegroRating] = useState<AllegroOfferRating | null>(null);
+  const [allegroRating, setAllegroRating] = useState<AllegroOfferRating | null>(() =>
+    initialProductView ? ALLEGRO_RATING_SNAPSHOTS[productSlugFromSelected(initialProductView)] ?? null : null,
+  );
   const [allegroRatingLoading, setAllegroRatingLoading] = useState(false);
   // Average/total recomputed from the full, unfiltered Allegro distribution
   // (adjustedReviewCount is an identity now - see its comment) so the
@@ -2681,6 +2691,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
             <button
               type="button"
               className="top-links-toggle"
+              aria-label="Menu"
               aria-expanded={topMenuOpen ? "true" : "false"}
               aria-controls="top-links-dropdown"
               onClick={() => setTopMenuOpen((prev) => !prev)}
@@ -3142,6 +3153,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                   Sprawdź cenę swojej moskitiery
                                 </button>
                               </div>
+                            ) : shippingBannerPending ? (
+                              <div className="pl-shipping-banner pl-shipping-banner--placeholder" aria-hidden="true" />
                             ) : null}
 
                             <video

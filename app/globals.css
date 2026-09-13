@@ -11897,3 +11897,52 @@ html[data-theme="dark"] .promo-save-modal-urgency {
   transform: translate(-50%, 28px);
   pointer-events: none;
 }
+
+/* ==== audit-2026-09-13: P4 (CLS + a11y) ==== */
+
+.promo-top-strip.is-neutral {
+  background: linear-gradient(90deg, #12324f, #16314e);
+}
+
+.promo-top-strip.is-neutral .promo-top-strip-badge {
+  background: #7cece7;
+}
+
+/* Hero video: intrinsic ratio reserved before metadata arrives. */
+.pl-hero-banner {
+  width: 100%;
+  aspect-ratio: 32 / 9;
+  object-fit: cover;
+  display: block;
+}
+
+/* Shipping banner placeholder: same row height as the real banner. */
+.pl-shipping-banner--placeholder {
+  min-height: 7.4rem;
+  background: rgba(10, 143, 138, 0.06);
+  border-color: rgba(10, 143, 138, 0.12);
+}
+
+@media (max-width: 760px) {
+  .pl-shipping-banner--placeholder {
+    min-height: 9.6rem;
+  }
+}
+
+/* Contrast (Lighthouse 2026-09-14): struck-out list price, "/ mb", banner headline. */
+.pl-price-original {
+  color: #5c6b7a;
+}
+
+.pl-price-unit {
+  color: #4f5f70;
+}
+
+.pl-shipping-banner-headline strong {
+  color: #0b5e59;
+}
+
+.consent-bar-text a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
