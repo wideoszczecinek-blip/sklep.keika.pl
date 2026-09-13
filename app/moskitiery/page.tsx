@@ -13,7 +13,9 @@ export async function generateMetadata(): Promise<Metadata> {
       title: landing.seo_title || `${site.site_title} | Moskitiery`,
       description: landing.seo_description,
       alternates: {
-        canonical: `${site.primary_domain || "https://sklep.keika.pl"}/moskitiery`,
+        // The older copied landing duplicates the real product page - point
+        // search engines at the canonical one (audit 2026-09-13).
+        canonical: "https://sklep.keika.pl/moskitiery-ramkowe",
       },
     };
   } catch {

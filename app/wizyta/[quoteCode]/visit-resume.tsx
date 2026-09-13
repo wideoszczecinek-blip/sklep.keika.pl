@@ -57,7 +57,7 @@ export default function VisitResume({ quote }: { quote: SavedQuote }) {
       markPromoLinkSaved();
     }
 
-    router.replace(`/?produkt=${encodeURIComponent(slug)}`);
+    router.replace(slug === "moskitiery-ramkowe" ? "/moskitiery-ramkowe" : `/?produkt=${encodeURIComponent(slug)}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

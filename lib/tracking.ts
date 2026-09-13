@@ -4,11 +4,13 @@
  * Meta Pixel + Conversions API (CAPI) - jedno miejsce dla całego trackingu sklepu.
  *
  * Zasady:
- *  - Pixel + CAPI ładują się BEZ WARUNKOWO na każdym wejściu (baner zgody
- *    usunięty - patrz initTracking(); decyzja właściciela, by nie tracić
- *    ~połowy ruchu z przeglądarki w aplikacji FB, która nigdy nie klikała
- *    "Akceptuję"). _fbp/_fbc mintowane po naszej stronie (ensureFbp/ensureFbc),
- *    żeby każdy odwiedzający był kwalifikowalny do audiencji remarketingowej.
+ *  - Zgoda (audyt 2026-09-13, app/components/consent-bar.tsx): Pixel w
+ *    przeglądarce i cookies _fbp/_fbc dopiero po "Akceptuję". Zdarzenia
+ *    serwerowe (CAPI przez CRM) lecą zawsze - bez zgody bez fbp/fbc, Meta
+ *    dopasowuje je po IP/UA po stronie serwera - więc sygnał dla audiencji
+ *    i optymalizacji nie znika, tylko ma niższą jakość u odmawiających.
+ *    Po zgodzie ensureFbp/ensureFbc mintują identyfikatory po naszej
+ *    stronie, żeby każdy zgadzający się był kwalifikowalny do audiencji.
  *  - Każde zdarzenie ma wspólny `eventId` używany zarówno przez fbq (przeglądarka)
  *    jak i relay do CAPI (serwer CRM) -> Meta deduplikuje Browser + Server.
  *  - `pixel_id` i URL relaya pobierane raz z CRM (/shop-public/tracking_config) -
@@ -236,7 +238,7 @@ export function getAttributionPayload(): Record<string, string> {
   const attr = readAttribution();
   const out: Record<string, string> = {};
   const fbp = getCookie("_fbp");
-  const fbc = resolveFbc(attr);
+  const fbc = hasAnalyticsConsent() ? resolveFbc(attr) : getCookie("_fbc");
   if (fbp) out.fbp = fbp;
   if (fbc) out.fbc = fbc;
   if (attr.fbclid) out.fbclid = attr.fbclid;
@@ -321,23 +323,21 @@ function injectPixelScript(pixelId: string): void {
 export async function initTracking(): Promise<void> {
   if (typeof window === "undefined") return;
   captureAttribution();
-  // Runs unconditionally now - the cookie-consent gate was removed to stop
-  // losing the ~half of visitors (Facebook in-app browser) who never tapped
-  // "Akceptuję" and so generated no Meta signal at all, starving the
-  // remarketing audiences. _fbp/_fbc are minted here so every visitor is
-  // audience-eligible even when fbevents.js itself never runs.
-  ensureFbp();
-  ensureFbc(readAttribution());
+  const consented = hasAnalyticsConsent();
+  if (consented) {
+    ensureFbp();
+    ensureFbc(readAttribution());
+  }
 
   const cfg = await loadConfig();
   if (!cfg) return;
 
-  injectPixelScript(cfg.pixelId);
+  if (consented) injectPixelScript(cfg.pixelId);
 
   if (!pageViewSent) {
     pageViewSent = true;
     const eventId = newEventId();
-    window.fbq?.("track", "PageView", {}, { eventID: eventId });
+    if (consented) window.fbq?.("track", "PageView", {}, { eventID: eventId });
     void relayToCapi("PageView", {}, eventId, cfg);
   }
 }
@@ -365,8 +365,9 @@ async function relayToCapi(
       event_id: eventId,
       event_time: Math.floor(Date.now() / 1000),
       event_source_url: window.location.href,
-      fbp: ensureFbp(),
-      fbc: resolveFbc(attr),
+      // Without consent: only whatever already exists (never minted here).
+      fbp: hasAnalyticsConsent() ? ensureFbp() : getCookie("_fbp"),
+      fbc: hasAnalyticsConsent() ? resolveFbc(attr) : getCookie("_fbc"),
       fbclid: attr.fbclid || "",
       custom_data: params,
     };
@@ -392,11 +393,13 @@ export function track(eventName: string, params: TrackParams = {}, opts: TrackOp
   void (async () => {
     const cfg = await loadConfig();
     if (!cfg) return;
-    injectPixelScript(cfg.pixelId);
-    try {
-      window.fbq?.("track", eventName, params, { eventID: eventId });
-    } catch {
-      /* ignore */
+    if (hasAnalyticsConsent()) {
+      injectPixelScript(cfg.pixelId);
+      try {
+        window.fbq?.("track", eventName, params, { eventID: eventId });
+      } catch {
+        /* ignore */
+      }
     }
     if (!opts.skipCapi) {
       await relayToCapi(eventName, params, eventId, cfg);

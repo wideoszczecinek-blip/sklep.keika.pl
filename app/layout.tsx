@@ -4,6 +4,7 @@ import LastPageTracker from "./components/last-page-tracker";
 import TrackingBoot from "./components/tracking-boot";
 import SiteAnalytics from "./components/site-analytics";
 import ChatBubble from "./components/chat-bubble";
+import ConsentBar from "./components/consent-bar";
 
 export const metadata: Metadata = {
   title: "KEIKA | Rolety i Markizy na Wymiar",
@@ -63,6 +64,7 @@ export default function RootLayout({
         <TrackingBoot />
         {children}
         <ChatBubble />
+        <ConsentBar />
       </body>
     </html>
   );

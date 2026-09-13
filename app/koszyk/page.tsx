@@ -713,6 +713,18 @@ export default function CartPage() {
   // below). "Zmień dane zamówienia" in the payment panel drops the draft
   // (unmounting its Stripe form first) and unlocks everything again.
   const dataLocked = paymentConfirmed || orderState !== null;
+  // What the customer will actually pay right now - the "Razem" row and the
+  // mobile sticky bar both read this one value.
+  const payableTotal = Math.max(
+    0,
+    summary.total -
+      combinedSavings -
+      (appliedDiscount?.amount || 0) -
+      rescueAmount +
+      shippingFee +
+      orderSurcharge +
+      (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
+  );
 
   // Mobile checkout "Dalej" (Next) buttons - real feedback: "Dużo osób nam
   // nie wybiera metody płatności" (lots of people never pick a payment
@@ -1426,7 +1438,7 @@ export default function CartPage() {
         ) : items.length === 0 && !orderState ? (
           <div className="cart-page-empty">
             <p>Twój koszyk jest jeszcze pusty.</p>
-            <Link href="/?produkt=moskitiery-ramkowe" className="cart-page-empty-cta">
+            <Link href="/moskitiery-ramkowe" className="cart-page-empty-cta">
               Skonfiguruj moskitierę
             </Link>
           </div>
@@ -1719,11 +1731,44 @@ export default function CartPage() {
                 <section className="cart-checkout-form-card" ref={shippingAddressSectionRef}>
                   <h2>Adres wysyłki</h2>
                   <fieldset className="cart-checkout-form" disabled={dataLocked}>
+                    {/* Order + autocomplete (audit 2026-09-13): contact first
+                        (the phone's keyboard/autofill can fill e-mail and
+                        number in one tap), then name, then street -> post
+                        code -> city, which is the order browser autofill
+                        profiles are stored in. autoComplete tokens let the
+                        whole block fill from one saved address. */}
                     <div className="cart-checkout-form-grid">
+                      <label>
+                        E-mail
+                        <CartFieldStatus valid={emailValid}>
+                          <input
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            value={form.email}
+                            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
+                      </label>
+                      <label>
+                        Telefon
+                        <CartFieldStatus valid={phoneFieldValid}>
+                          <input
+                            type="tel"
+                            inputMode="tel"
+                            autoComplete="tel"
+                            value={form.phone}
+                            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                            required
+                          />
+                        </CartFieldStatus>
+                      </label>
                       <label>
                         Imię
                         <CartFieldStatus valid={firstNameFieldValid}>
                           <input
+                            autoComplete="given-name"
                             value={form.firstName}
                             onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
                             required
@@ -1734,29 +1779,9 @@ export default function CartPage() {
                         Nazwisko
                         <CartFieldStatus valid={lastNameFieldValid}>
                           <input
+                            autoComplete="family-name"
                             value={form.lastName}
                             onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      <label>
-                        Telefon
-                        <CartFieldStatus valid={phoneFieldValid}>
-                          <input
-                            value={form.phone}
-                            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      <label>
-                        E-mail
-                        <CartFieldStatus valid={emailValid}>
-                          <input
-                            type="email"
-                            value={form.email}
-                            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
                             required
                           />
                         </CartFieldStatus>
@@ -1764,11 +1789,16 @@ export default function CartPage() {
                       {requiresAddress ? (
                         <>
                           <label>
-                            Miasto
-                            <CartFieldStatus valid={cityFieldValid}>
+                            Ulica i numer
+                            <CartFieldStatus valid={address1FieldValid}>
                               <input
-                                value={form.city}
-                                onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
+                                autoComplete="street-address"
+                                value={form.address1}
+                                onChange={(event) =>
+                                  setForm((current) => ({ ...current, address1: event.target.value }))
+                                }
+                                onFocus={() => setAddress1Focused(true)}
+                                onBlur={() => setAddress1Focused(false)}
                               />
                             </CartFieldStatus>
                           </label>
@@ -1776,6 +1806,9 @@ export default function CartPage() {
                             Kod pocztowy
                             <CartFieldStatus valid={postcodeFieldValid}>
                               <input
+                                autoComplete="postal-code"
+                                inputMode="numeric"
+                                placeholder="00-000"
                                 value={form.postcode}
                                 onChange={(event) =>
                                   setForm((current) => ({ ...current, postcode: event.target.value }))
@@ -1784,15 +1817,12 @@ export default function CartPage() {
                             </CartFieldStatus>
                           </label>
                           <label>
-                            Ulica i numer
-                            <CartFieldStatus valid={address1FieldValid}>
+                            Miasto
+                            <CartFieldStatus valid={cityFieldValid}>
                               <input
-                                value={form.address1}
-                                onChange={(event) =>
-                                  setForm((current) => ({ ...current, address1: event.target.value }))
-                                }
-                                onFocus={() => setAddress1Focused(true)}
-                                onBlur={() => setAddress1Focused(false)}
+                                autoComplete="address-level2"
+                                value={form.city}
+                                onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
                               />
                             </CartFieldStatus>
                           </label>
@@ -1918,18 +1948,7 @@ export default function CartPage() {
                       <div className="cart-page-summary-row">
                         <span>Razem</span>
                         <strong>
-                          {formatPln(
-                            Math.max(
-                              0,
-                              summary.total -
-                                combinedSavings -
-                                (appliedDiscount?.amount || 0) -
-                                rescueAmount +
-                                shippingFee +
-                                orderSurcharge +
-                                (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
-                            ),
-                          )}
+                          {formatPln(payableTotal)}
                         </strong>
                       </div>
 
@@ -2005,9 +2024,20 @@ export default function CartPage() {
                         Przeliczamy zamówienie z rabatem…
                       </p>
                     ) : (
-                      <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
-                        {paymentMethod === "cod" ? "Płatność za pobraniem" : "Płatność online"}
-                      </p>
+                      <>
+                        <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
+                          {paymentMethod === "cod" ? "Płatność za pobraniem" : "Płatność online"}
+                        </p>
+                        {paymentMethod === "online" ? (
+                          <ul className="cart-payment-badges" aria-label="Dostępne metody płatności">
+                            <li>BLIK</li>
+                            <li>Visa</li>
+                            <li>Mastercard</li>
+                            <li>Przelewy24</li>
+                            <li>Revolut Pay</li>
+                          </ul>
+                        ) : null}
+                      </>
                     )
                   ) : null}
 
@@ -2174,6 +2204,43 @@ export default function CartPage() {
           </>
         )}
       </main>
+
+      {/* Mobile-only sticky total + next step (audit 2026-09-13): on a phone
+          the summary sat below eight form fields, so the total and the way
+          forward were both off-screen for most of the checkout. */}
+      {hydrated && items.length > 0 && !orderConfirmed ? (
+        <div className="cart-sticky-bar" role="region" aria-label="Podsumowanie zamówienia">
+          <div className="cart-sticky-bar-total">
+            <span>Razem</span>
+            <strong>{formatPln(payableTotal)}</strong>
+          </div>
+          {orderState ? (
+            <button type="button" className="cart-sticky-bar-cta" onClick={() => scrollToSection(paymentSectionRef)}>
+              Do płatności ↓
+            </button>
+          ) : checkoutReady && paymentMethod === "online" ? (
+            <button
+              type="button"
+              className="cart-sticky-bar-cta"
+              onClick={() => {
+                setError("");
+                submittedRef.current = false;
+                void submitOrder();
+              }}
+            >
+              Zapisz dane i zapłać
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="cart-sticky-bar-cta is-secondary"
+              onClick={() => scrollToSection(deliveryDataReady ? paymentSectionRef : shippingAddressSectionRef)}
+            >
+              {deliveryDataReady ? "Do płatności ↓" : "Uzupełnij dane ↓"}
+            </button>
+          )}
+        </div>
+      ) : null}
 
       {codModalOpen && !orderState ? (
         <div className="cod-sms-modal-overlay" role="dialog" aria-modal="true" aria-label="Potwierdzenie kodem SMS">

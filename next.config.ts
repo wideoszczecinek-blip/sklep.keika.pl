@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // /?produkt=moskitiery-ramkowe -> /moskitiery-ramkowe lives in proxy.ts
+  // (needs to drop just that one query param, which a static redirect
+  // rule can't express).
   images: {
     remotePatterns: [
       {
