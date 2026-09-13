@@ -11359,3 +11359,169 @@ html[data-theme="dark"] .promo-save-modal-urgency {
     animation: none;
   }
 }
+
+/* ==== audit-2026-09-13: P0 ==== */
+
+/* Always-visible SEZON20 countdown strip (app/components/promo-top-strip.tsx)
+   - replaces the first-visit modal. Fixed above the fixed .hero-header; the
+   :has() rules below push the header and the content offset down by exactly
+   the strip's height, so nothing is covered. Only rendered while a deadline
+   is running, so the offsets only apply then. */
+.promo-top-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 61;
+  height: var(--promo-strip-h, 34px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0 0.75rem;
+  background: linear-gradient(90deg, #0b3d3a, #0f5c57);
+  color: #eafff9;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+.promo-top-strip.is-static {
+  position: static;
+  border-radius: 12px;
+  margin: 0 0 1rem;
+}
+
+.promo-top-strip-badge {
+  flex-shrink: 0;
+  background: #ffb547;
+  color: #22150a;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.01em;
+}
+
+.promo-top-strip-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.promo-top-strip-text strong {
+  color: #fff;
+  font-weight: 800;
+}
+
+.promo-top-strip-cta {
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.22rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.promo-top-strip-cta:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.home-root:has(> .promo-top-strip) {
+  --promo-strip-h: 34px;
+}
+
+.home-root:has(> .promo-top-strip) .hero-header {
+  top: var(--promo-strip-h);
+}
+
+.home-root:has(> .promo-top-strip) .hero-inner {
+  padding-top: calc(6.2rem + var(--promo-strip-h));
+}
+
+@media (max-width: 1100px) {
+  .home-root:has(> .promo-top-strip) .hero-inner {
+    padding-top: calc(5.8rem + var(--promo-strip-h));
+  }
+}
+
+@media (max-width: 760px) {
+  .promo-top-strip {
+    font-size: 0.76rem;
+    gap: 0.45rem;
+    padding: 0 0.55rem;
+  }
+
+  .promo-top-strip-sep {
+    display: none;
+  }
+
+  .promo-top-strip-text {
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .home-root:has(> .promo-top-strip) .hero-inner {
+    padding-top: calc(5.3rem + var(--promo-strip-h));
+  }
+}
+
+/* Real-rating source line under the Allegro score (page.tsx "opinie"). */
+.allegro-rating-source {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  opacity: 0.72;
+}
+
+/* /koszyk: explicit "Zapisz dane i przejdź do płatności" step. */
+.cart-checkout-cta-hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  opacity: 0.72;
+}
+
+.cart-change-data-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.cart-change-data-link:hover {
+  opacity: 1;
+}
+
+/* Mobile "Dalej" section buttons: a labelled pill instead of a bare arrow. */
+.cart-section-next-button {
+  width: auto;
+  height: 2.7rem;
+  border-radius: 999px;
+  padding: 0 1.1rem 0 1.25rem;
+  gap: 0.45rem;
+  font-size: 0.95rem;
+}
+
+/* Sticky configurator panel sits under the fixed header - shift with the strip too. */
+.home-root:has(> .promo-top-strip) .hero-product-config-panel {
+  top: calc(6.3rem + var(--promo-strip-h));
+  max-height: calc(100svh - 7.4rem - var(--promo-strip-h));
+}

@@ -27,6 +27,7 @@ import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
 import PaczkomatPicker from "../components/paczkomat-picker";
+import PromoTopStrip from "../components/promo-top-strip";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import PaymentStep, { type CheckoutContact } from "../components/stripe-payment-step";
 import { trackStorefrontEvent } from "@/lib/shop-public";
@@ -706,7 +707,12 @@ export default function CartPage() {
   // Stripe payment form) already exists - a typo fix shouldn't require
   // starting over. It only locks once the order is genuinely final: paid
   // online, or cash-on-delivery (which has no further payment step at all).
-  const dataLocked = paymentConfirmed || (orderState !== null && orderState.paymentProvider === "cod");
+  // Audit 2026-09-13: locked the moment a draft order exists, online too -
+  // the PaymentIntent's amount and the order's address are fixed to what
+  // the draft was created with (see the removed resync effect's post-mortem
+  // below). "Zmień dane zamówienia" in the payment panel drops the draft
+  // (unmounting its Stripe form first) and unlocks everything again.
+  const dataLocked = paymentConfirmed || orderState !== null;
 
   // Mobile checkout "Dalej" (Next) buttons - real feedback: "Dużo osób nam
   // nie wybiera metody płatności" (lots of people never pick a payment
@@ -1281,22 +1287,20 @@ export default function CartPage() {
   // guard against a genuinely concurrent call; it just shouldn't itself
   // trigger a new attempt. A failed attempt now stops and waits for an
   // actual new action (edited data, or the manual "Spróbuj ponownie").
+  // Audit 2026-09-13: online payment no longer auto-submits on a typing
+  // pause - the draft order + PaymentIntent are created only by the
+  // explicit "Zapisz dane i przejdź do płatności" button in the payment
+  // panel. Cash-on-delivery keeps firing the instant the SMS code is
+  // verified (that verification IS the explicit confirmation there).
+  //
+  // Deliberately NOT watching isSubmitting here: a failed submitOrder() call
+  // flips isSubmitting true->false, and if it were a dependency that alone
+  // would re-run this effect and immediately retry forever (real bug once).
   useEffect(() => {
     if (orderState || isSubmitting || !checkoutReady) return;
     if (paymentMethod === "cod") {
       void submitOrder();
-      return;
     }
-    // 900ms -> 1800ms (real live bug 2026-09-11, see address1FieldValid's own
-    // comment above): a short pause mid-typing (recalling the house number,
-    // a phone autocomplete popup, glancing at the delivery options) easily
-    // exceeded 900ms, and this timer resets on every keystroke via
-    // submitOrder's own `form` dependency - so it only actually needs to
-    // outlast a genuine pause, not the whole time spent typing the address.
-    const timer = window.setTimeout(() => {
-      void submitOrder();
-    }, 1800);
-    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkoutReady, orderState, paymentMethod, submitOrder]);
 
@@ -1344,6 +1348,7 @@ export default function CartPage() {
   return (
     <div className="cart-page">
       <div className="cart-page-gradient-bg" aria-hidden="true" />
+      <PromoTopStrip productSlug="moskitiery-ramkowe" variant="static" />
       <header className="cart-page-header">
         <Link href="/" className="cart-page-brand">
           keika
@@ -1705,7 +1710,7 @@ export default function CartPage() {
                         aria-label="Dalej"
                         title="Dalej"
                       >
-                        <span aria-hidden="true">→</span>
+                        Dalej <span aria-hidden="true">→</span>
                       </button>
                     </div>
                   </fieldset>
@@ -1812,7 +1817,7 @@ export default function CartPage() {
                         aria-label="Dalej"
                         title="Dalej"
                       >
-                        <span aria-hidden="true">→</span>
+                        Dalej <span aria-hidden="true">→</span>
                       </button>
                     </div>
                   </fieldset>
@@ -2032,6 +2037,27 @@ export default function CartPage() {
                           -progress online payment states reach here. */}
                       {orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
                         <>
+                          <button
+                            type="button"
+                            className="cart-change-data-link"
+                            onClick={() => {
+                              // Drops the draft and unmounts the Stripe form
+                              // for its PaymentIntent BEFORE any field can be
+                              // edited - the old intent stays unpaid in Stripe
+                              // and can never be paid from here again, so an
+                              // edited address can't end up on a payment the
+                              // CRM doesn't recognise (2026-09-13 incident,
+                              // see the removed resync effect's notes above).
+                              // The same "Zapisz dane" button re-creates a
+                              // fresh, matching draft.
+                              setOrderState(null);
+                              setError("");
+                              submittedRef.current = false;
+                              trackCheckoutIssue("checkout_edit_after_draft", "zmien_dane", { payment_method: paymentMethod });
+                            }}
+                          >
+                            ← Zmień dane zamówienia
+                          </button>
                           <PaymentStep
                             clientSecret={orderState.clientSecret}
                             publishableKey={orderState.publishableKey}
@@ -2101,7 +2127,29 @@ export default function CartPage() {
                           Przygotowujemy płatność…
                         </div>
                       ) : (
-                        <p className="cart-checkout-intro">Płatność otworzy się za chwilę…</p>
+                        <>
+                          {/* Explicit step (audit 2026-09-13) instead of the
+                              old "auto-submit 1,8 s after the last keystroke"
+                              - that guessed wrong twice on real paid orders
+                              (truncated street names) and, combined with the
+                              since-removed resync effect, orphaned two real
+                              Stripe payments on 2026-09-13. */}
+                          <button
+                            type="button"
+                            className="cart-page-checkout-cta"
+                            onClick={() => {
+                              setError("");
+                              submittedRef.current = false;
+                              void submitOrder();
+                            }}
+                          >
+                            Zapisz dane i przejdź do płatności
+                          </button>
+                          <p className="cart-checkout-cta-hint">
+                            Otworzy się bezpieczna płatność online: BLIK, karta, Przelewy24 lub Revolut Pay. Dane
+                            zamówienia możesz jeszcze poprawić przed zapłatą.
+                          </p>
+                        </>
                       )}
                     </>
                   ) : (

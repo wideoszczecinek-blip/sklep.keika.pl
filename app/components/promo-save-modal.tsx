@@ -7,7 +7,7 @@
 // latter two require picking one of two consent tiers before they'll send
 // anything, per explicit business requirement (never send without an
 // explicit, specific choice about what the contact info is for).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { formatPromoRemaining } from "@/lib/promo";
 import { savePromoContact, type PromoConsent } from "@/lib/promo-save";
@@ -63,6 +63,16 @@ export default function PromoSaveModal({
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState("");
   const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+
+  // Escape closes (audit 2026-09-13) - the overlay click already did, the
+  // keyboard didn't.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   const canNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 

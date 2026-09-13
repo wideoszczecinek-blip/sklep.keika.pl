@@ -9,7 +9,7 @@
 // via onSubmit) changed.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import PromoCountdownBanner, { AUTO_OPEN_TRACK_KEY } from "@/app/components/promo-countdown-banner";
+import PromoCountdownBanner from "@/app/components/promo-countdown-banner";
 import PromoSaveModal from "@/app/components/promo-save-modal";
 import SaveShareWidget from "@/app/components/save-share-widget";
 import { optimizeImageUrl } from "@/lib/image-optim";
@@ -27,7 +27,6 @@ import {
   activatePromoCode,
   applyPromoToPrice,
   fetchPromoPreview,
-  getPromoActivatedAt,
   getPromoRemainingMs,
   isPromoActive,
   type PromoPreview,
@@ -223,6 +222,11 @@ export default function ConfiguratorPanel({
   const [promoExitRemainingMs, setPromoExitRemainingMs] = useState(0);
 
   function openRescueModalOnce() {
+    // Audit 2026-09-13: only ever for a visitor who actually has something
+    // to come back to (a configured size) - a reader who hasn't touched the
+    // configurator has nothing to "rescue", and interrupting them was the
+    // single most-complained-about part of the page.
+    if (!hasValidDimensions) return;
     if (hasSeenRescueModal() || isRescueDismissedForGood()) return;
 
     const wasPromoActive = isPromoActive();
@@ -237,19 +241,6 @@ export default function ConfiguratorPanel({
       // Case 3: turn it on for them now - the modal below frames this as
       // "we did it for you" instead of "you're about to lose it".
       activatePromoCode();
-      // PromoCountdownBanner listens for this same activation and auto-opens
-      // its OWN save/share modal ~1.2s later (see AUTO_OPEN_TRACK_KEY there)
-      // - without marking it done here too, that fires right on top of the
-      // modal this effect is about to open, stacking two save/share prompts
-      // for the exact same activation.
-      const activatedAt = getPromoActivatedAt();
-      if (activatedAt !== null) {
-        try {
-          window.localStorage.setItem(AUTO_OPEN_TRACK_KEY, String(activatedAt));
-        } catch {
-          // localStorage niedostępny - baner i tak nie ma jak wtedy nic zapisać ani otworzyć drugi raz.
-        }
-      }
     }
     setPromoExitAutoActivated(!wasPromoActive);
     // Snapshot at the moment the exit-intent fires - this modal is a brief
@@ -280,43 +271,29 @@ export default function ConfiguratorPanel({
   // `blur` is a second, independent signal for everything mouseleave can't
   // see (closing via taskbar/Alt+F4, switching windows without the cursor
   // visibly leaving first).
+  // Audit 2026-09-13: mouseleave only. The window "blur" trigger fired on
+  // every tab switch, address-bar click and OS notification - a random
+  // interruption, not an exit intent - and is gone.
   useEffect(() => {
-    if (!enableRescueModal) return;
+    if (!enableRescueModal || !hasValidDimensions) return;
     function handleLeaveSignal() {
       openRescueModalOnce();
     }
     document.documentElement.addEventListener("mouseleave", handleLeaveSignal);
-    window.addEventListener("blur", handleLeaveSignal);
     return () => {
       document.documentElement.removeEventListener("mouseleave", handleLeaveSignal);
-      window.removeEventListener("blur", handleLeaveSignal);
     };
-  }, [enableRescueModal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enableRescueModal, hasValidDimensions]);
 
-  // Mobile: intercept the first back-button press instead of navigating
-  // away - a dummy history entry is pushed unconditionally (see the block
-  // comment above openRescueModalOnce() for why this no longer needs real
-  // configuration progress), so the very next "back" lands on it (popstate)
-  // rather than leaving the site.
-  useEffect(() => {
-    if (!enableRescueModal || hasSeenRescueModal() || isRescueDismissedForGood()) return;
-    window.history.pushState({ rescueGuard: true }, "");
-    function handlePopState() {
-      openRescueModalOnce();
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [enableRescueModal]);
-
-  // Universal fallback: catches tab-close/app-switch on mobile, which
-  // neither of the above can see - ~25s of no further interaction at all.
-  // Still reset by configuration changes (deps below) so it never fires
-  // mid-interaction, purely to avoid an awkwardly-timed popup.
-  useEffect(() => {
-    if (!enableRescueModal) return;
-    const timer = window.setTimeout(() => openRescueModalOnce(), 25000);
-    return () => window.clearTimeout(timer);
-  }, [enableRescueModal, widthNum, heightNum, selectedHardwareId, selectedMeshId, quantityNum]);
+  // Removed 2026-09-13 (audit): the mobile back-button intercept (a dummy
+  // history.pushState entry so the first "wstecz" opened the modal instead
+  // of leaving) and the 25 s inactivity timer. The first is a dark pattern
+  // Chrome's history-manipulation intervention already works around; the
+  // second fired at a random moment for anyone simply reading the page -
+  // live data showed both stacked on top of the first-visit modal, and zero
+  // saved links came out of any of it. Desktop exit-intent (above) is the
+  // only trigger left, and only for a configured size.
 
   // Seasonal SEZON20 banner near the price - real discount math still comes
   // from the code, not a hardcoded "20%" here (see lib/promo.ts). Activating
@@ -388,7 +365,10 @@ export default function ConfiguratorPanel({
       return;
     }
     setIsCalculatingPrice(true);
-    const timer = window.setTimeout(() => setIsCalculatingPrice(false), 700);
+    // 700 -> 150 ms (audit 2026-09-13): the price is computed synchronously,
+    // this only exists so the number visibly "settles" - on mobile the old
+    // 0,7 s read as the page being slow, not as a calculation.
+    const timer = window.setTimeout(() => setIsCalculatingPrice(false), 150);
     return () => window.clearTimeout(timer);
   }, [hasValidDimensions, widthNum, heightNum, quantityNum]);
 
@@ -799,6 +779,15 @@ export default function ConfiguratorPanel({
                         ? `${perimeterMeters.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`
                         : "--"}
                     </dd>
+                  </div>
+                  <div>
+                    {/* Audit 2026-09-13: the total never matched "obwód x
+                        cena za mb" (4,40 m x 23,92 zł = 105 zł, charged
+                        119,60 zł for 5 mb) and nothing on screen said why
+                        until the "i" tooltip. Spelling out the billed
+                        whole-meter figure here is what makes the sum add up. */}
+                    <dt>Rozliczamy</dt>
+                    <dd>{billedMeters !== null ? `${billedMeters} mb (każdy rozpoczęty metr)` : "--"}</dd>
                   </div>
                   <div>
                     <dt>Cena za 1 mb</dt>

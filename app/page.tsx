@@ -23,6 +23,7 @@ import {
 } from "@/lib/promo";
 import { ensurePromoQuoteCode } from "@/lib/promo-save";
 import PromoCountdownBanner from "./components/promo-countdown-banner";
+import PromoTopStrip from "./components/promo-top-strip";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 import {
   type CartLineItem,
@@ -608,10 +609,13 @@ const PACZKOMAT_MAX_DIMENSION_MM = 640;
 // (zeroed), and the 3/4-star counts are trimmed by a fixed amount, before
 // anything is shown or averaged - see displayRating above and the
 // distribution bars render below, both of which call this.
-function adjustedReviewCount(stars: number, count: number): number {
-  if (stars <= 2) return 0;
-  if (stars === 4) return Math.max(0, count - 5);
-  if (stars === 3) return Math.max(0, count - 2);
+// Shows the real Allegro distribution 1:1 (audit 2026-09-13). This used to
+// zero out the 1-2 star rows and trim the 3/4-star counts, which turned a
+// real 4,77 / 371 into a displayed 4,92 / 349 and claimed "0" one-star
+// reviews - a misleading-reviews exposure (Omnibus / UOKiK) with no real
+// sales upside, since both numbers read as "almost all fives". Kept as a
+// function so neither render site needs touching if the policy changes.
+function adjustedReviewCount(_stars: number, count: number): number {
   return count;
 }
 
@@ -1338,16 +1342,13 @@ export default function Home() {
   const [zoomPreview, setZoomPreview] = useState<{ title: string; urls: string[]; index: number } | null>(null);
   const [allegroRating, setAllegroRating] = useState<AllegroOfferRating | null>(null);
   const [allegroRatingLoading, setAllegroRatingLoading] = useState(false);
-  // Average/total shown to customers exclude 1-2 star ratings by design (the
-  // distribution rows for 1-2 stars are still shown, but zeroed out - see
-  // the "opinie" tab render below), and the 3/4-star counts are trimmed by a
-  // fixed amount too (business decision). Recomputed from the real
-  // distribution, not just re-labeled - see adjustedReviewCount below, used
-  // identically here and in the distribution bars render.
+  // Average/total recomputed from the full, unfiltered Allegro distribution
+  // (adjustedReviewCount is an identity now - see its comment) so the
+  // headline number, the bars and the "N opinii" count always agree with
+  // the source listing.
   const displayRating = useMemo(() => {
     if (!allegroRating) return null;
     const kept = allegroRating.scoreDistribution
-      .filter((entry) => entry.stars >= 3)
       .map((entry) => ({ stars: entry.stars, count: adjustedReviewCount(entry.stars, entry.count) }));
     const total = kept.reduce((sum, entry) => sum + entry.count, 0);
     const weightedSum = kept.reduce((sum, entry) => sum + entry.stars * entry.count, 0);
@@ -1673,19 +1674,20 @@ export default function Home() {
         });
 
     void pullConfig();
+    // 10 s -> 10 min (audit 2026-09-13): the config changes a few times a
+    // month, but every open tab was pulling the full ~157 KB homepage_public
+    // payload 360x/hour (plus once per window focus) - ~58 MB/h per visitor
+    // against the shared-host PHP CRM that also serves quote_save and the
+    // Stripe webhook. The build-time snapshot already covers first paint and
+    // the mount-time pull above still picks up any admin edit within seconds
+    // of a fresh visit.
     intervalId = window.setInterval(() => {
       void pullConfig();
-    }, 10000);
-
-    const handleFocus = () => {
-      void pullConfig();
-    };
-    window.addEventListener("focus", handleFocus);
+    }, 10 * 60 * 1000);
 
     return () => {
       mounted = false;
       if (intervalId !== null) window.clearInterval(intervalId);
-      window.removeEventListener("focus", handleFocus);
     };
   }, [configEndpoint, defaultConfigEndpoint]);
 
@@ -2481,6 +2483,11 @@ export default function Home() {
           <p>Wczytujemy najlepsze rozwiązania</p>
         </div>
       </div>
+      {/* Always-visible SEZON20 countdown (replaces the first-visit modal -
+          see promo-top-strip.tsx). Must stay a direct child of .home-root:
+          globals.css offsets .hero-header/.hero-inner via
+          .home-root:has(> .promo-top-strip). */}
+      <PromoTopStrip productSlug="moskitiery-ramkowe" />
       <header className={`hero-header${isHeaderCompact ? " is-compact" : ""}`}>
         <div className="header-left">
           <a className="brand" href="/" aria-label="KEIKA strona główna">
@@ -3351,13 +3358,13 @@ export default function Home() {
                                   <span className="allegro-rating-count">
                                     {displayRating.totalResponses.toLocaleString("pl-PL")} ocen klientów
                                   </span>
+                                  <span className="allegro-rating-source">
+                                    Oceny zweryfikowane zakupem - z naszej oferty na Allegro
+                                  </span>
                                 </div>
                                 <div className="allegro-rating-distribution">
                                   {allegroRating.scoreDistribution.map((entry) => {
-                                    // 1-2 star rows are shown zeroed out, and 3/4-star counts
-                                    // trimmed, on purpose (business decision, not a data bug) -
-                                    // see adjustedReviewCount. The average/total above are
-                                    // recomputed from these same adjusted counts, not the raw ones.
+                                    // Real counts - see adjustedReviewCount (identity).
                                     const displayCount = adjustedReviewCount(entry.stars, entry.count);
                                     const pct = displayRating.totalResponses > 0
                                       ? Math.round((displayCount / displayRating.totalResponses) * 100)

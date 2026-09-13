@@ -75,6 +75,18 @@ export default function SiteAnalytics() {
     }
 
     function onError(event: ErrorEvent) {
+      // Facebook/Instagram's in-app browser injects its own logger
+      // (iabjs://navigation_performance_logger_android) whose "Java object
+      // is gone" failures were ~90% of everything recorded here (613 of the
+      // 615 sessions with a js_error, audit 2026-09-13) - not our code, and
+      // they burned the per-session cap before a real error could land.
+      // "Script error." is the browser's cross-origin placeholder for a
+      // third-party script failure - equally unactionable.
+      const filename = event.filename || "";
+      const message = event.message || "";
+      if (filename.startsWith("iabjs://") || /Error invoking postMessage/i.test(message) || message === "Script error.") {
+        return;
+      }
       reportError(event.message || "unknown error", "window.onerror", {
         filename: event.filename || "",
         line: String(event.lineno || ""),
