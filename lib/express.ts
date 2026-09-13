@@ -16,6 +16,14 @@
 // the order note. Stored client-side so the landing-page toggle carries
 // into the cart.
 
+// Master switch. OFF until the CRM side is live: quote_save.php, _orders.php
+// and shop_discount_codes.php must list "doplata-ekspres" among the
+// non-discountable positions (patched locally in the CRM repo 2026-09-13,
+// awaiting upload) - otherwise SEZON20 would be computed on the fee too and
+// the CRM's total (= what Stripe / the COD courier collects) would be
+// 3,98 zł below what the cart shows. Flip to true + deploy once uploaded.
+export const EXPRESS_ENABLED = false;
+
 export const EXPRESS_FEE_AMOUNT = 19.9;
 export const EXPRESS_POSITION_SLUG = "doplata-ekspres";
 export const EXPRESS_LABEL = "Ekspres - priorytet produkcji";

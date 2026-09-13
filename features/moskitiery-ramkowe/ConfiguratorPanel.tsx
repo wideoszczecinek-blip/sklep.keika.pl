@@ -59,6 +59,17 @@ import {
 
 type ZoomPreview = { title: string; urls: string[]; index: number };
 
+// cm/mm switch (P2, 2026-09-13): 10% of all sizes typed live were below
+// 300 mm - people entering centimetres into a millimetre field (a
+// "100 x 120" frame priced at 29,90 zł, then a return). The unit is per
+// device; everything downstream (pricing, cart, CRM) stays in mm.
+const DIMENSION_UNIT_STORAGE_KEY = "keika_dimension_unit_v1";
+type DimensionUnit = "mm" | "cm";
+
+function formatCm(mm: number): string {
+  return (mm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+}
+
 export default function ConfiguratorPanel({
   initialValues,
   submitLabel,
@@ -103,6 +114,36 @@ export default function ConfiguratorPanel({
   const [dimensionWidth, setDimensionWidth] = useState(initialValues?.widthMm ? String(initialValues.widthMm) : "");
   const [dimensionHeight, setDimensionHeight] = useState(initialValues?.heightMm ? String(initialValues.heightMm) : "");
   const [dimensionQuantity, setDimensionQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
+  // The typed width/height strings are always in dimensionUnit; widthNum /
+  // heightNum below are always mm.
+  const [dimensionUnit, setDimensionUnit] = useState<DimensionUnit>("mm");
+  function switchDimensionUnit(next: DimensionUnit) {
+    if (next === dimensionUnit) return;
+    const convert = (raw: string) => {
+      const n = Number(String(raw).replace(",", "."));
+      if (!raw || !Number.isFinite(n)) return raw;
+      return next === "cm" ? String(Math.round(n) / 10) : String(Math.round(n * 10));
+    };
+    setDimensionWidth((value) => convert(value));
+    setDimensionHeight((value) => convert(value));
+    setDimensionUnit(next);
+    try {
+      window.localStorage.setItem(DIMENSION_UNIT_STORAGE_KEY, next);
+    } catch {
+      // localStorage niedostępny - jednostka po prostu nie zapamięta się między wizytami.
+    }
+    trackShopStep("dimension_unit", next, { product_slug: "moskitiery-ramkowe" });
+  }
+  useEffect(() => {
+    let stored: DimensionUnit = "mm";
+    try {
+      stored = window.localStorage.getItem(DIMENSION_UNIT_STORAGE_KEY) === "cm" ? "cm" : "mm";
+    } catch {
+      // jak wyżej
+    }
+    if (stored === "cm") switchDimensionUnit("cm");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
   const [surchargeModal, setSurchargeModal] = useState<{ amount: number } | null>(null);
   // Session-wide, not per exact width/height - see
@@ -180,8 +221,13 @@ export default function ConfiguratorPanel({
     [selectedMeshId],
   );
   const meshChosen = Boolean(selectedMeshId);
-  const widthNum = Number(dimensionWidth) || 0;
-  const heightNum = Number(dimensionHeight) || 0;
+  const toMm = (raw: string) => {
+    const n = Number(String(raw).replace(",", "."));
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return dimensionUnit === "cm" ? Math.round(n * 10) : Math.round(n);
+  };
+  const widthNum = toMm(dimensionWidth);
+  const heightNum = toMm(dimensionHeight);
   const quantityNum = Math.max(1, Number(dimensionQuantity) || 1);
   // Below MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM isn't a manufacturable frame -
   // flagged separately from "not filled in yet" so there's a clear inline
@@ -390,7 +436,12 @@ export default function ConfiguratorPanel({
 
   function handleDimensionBlur() {
     if (!hasValidDimensions) return;
-    trackShopStep("enter_dimensions", "moskitiery-ramkowe", { width_mm: widthNum, height_mm: heightNum, qty: quantityNum });
+    trackShopStep("enter_dimensions", "moskitiery-ramkowe", {
+      width_mm: widthNum,
+      height_mm: heightNum,
+      qty: quantityNum,
+      unit: dimensionUnit,
+    });
     if (widthNum > OVERSIZE_TECHNICAL_LIMIT_MM && heightNum > OVERSIZE_TECHNICAL_LIMIT_MM) {
       trackShopStep("dimensions_over_limit", "moskitiery-ramkowe", { width_mm: widthNum, height_mm: heightNum });
       return; // shown inline near the inputs, nothing to revert here
@@ -622,6 +673,25 @@ export default function ConfiguratorPanel({
                 </span>
                 Podaj wymiary
               </p>
+              <div className="hero-product-unit-toggle" role="group" aria-label="Jednostka wymiarów">
+                <span>Podaję w:</span>
+                <button
+                  type="button"
+                  className={dimensionUnit === "mm" ? "is-active" : ""}
+                  aria-pressed={dimensionUnit === "mm"}
+                  onClick={() => switchDimensionUnit("mm")}
+                >
+                  mm
+                </button>
+                <button
+                  type="button"
+                  className={dimensionUnit === "cm" ? "is-active" : ""}
+                  aria-pressed={dimensionUnit === "cm"}
+                  onClick={() => switchDimensionUnit("cm")}
+                >
+                  cm
+                </button>
+              </div>
               {onOpenInstructions ? (
                 <button
                   type="button"
@@ -645,26 +715,28 @@ export default function ConfiguratorPanel({
               ) : null}
               <div className="hero-product-dimensions-grid">
                 <label>
-                  Szerokość (mm)
+                  Szerokość ({dimensionUnit})
                   <input
                     type="number"
-                    inputMode="numeric"
-                    min={MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}
-                    max={OVERSIZE_MAX_WIDTH_MM}
-                    placeholder="np. 1000"
+                    inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                    step={dimensionUnit === "cm" ? 0.1 : 1}
+                    min={dimensionUnit === "cm" ? MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM / 10 : MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}
+                    max={dimensionUnit === "cm" ? OVERSIZE_MAX_WIDTH_MM / 10 : OVERSIZE_MAX_WIDTH_MM}
+                    placeholder={dimensionUnit === "cm" ? "np. 100" : "np. 1000"}
                     value={dimensionWidth}
                     onChange={(event) => setDimensionWidth(event.target.value)}
                     onBlur={handleDimensionBlur}
                   />
                 </label>
                 <label>
-                  Wysokość (mm)
+                  Wysokość ({dimensionUnit})
                   <input
                     type="number"
-                    inputMode="numeric"
-                    min={MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}
-                    max={OVERSIZE_SURCHARGE_TIER_2_MAX_MM}
-                    placeholder="np. 1200"
+                    inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                    step={dimensionUnit === "cm" ? 0.1 : 1}
+                    min={dimensionUnit === "cm" ? MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM / 10 : MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}
+                    max={dimensionUnit === "cm" ? OVERSIZE_SURCHARGE_TIER_2_MAX_MM / 10 : OVERSIZE_SURCHARGE_TIER_2_MAX_MM}
+                    placeholder={dimensionUnit === "cm" ? "np. 120" : "np. 1200"}
                     value={dimensionHeight}
                     onChange={(event) => setDimensionHeight(event.target.value)}
                     onBlur={handleDimensionBlur}
@@ -682,6 +754,14 @@ export default function ConfiguratorPanel({
                   />
                 </label>
               </div>
+              {hasValidDimensions ? (
+                <p className="hero-product-dimensions-echo">
+                  {dimensionUnit === "mm"
+                    ? `= ${formatCm(widthNum)} × ${formatCm(heightNum)} cm`
+                    : `= ${widthNum} × ${heightNum} mm`}{" "}
+                  <span>(szerokość × wysokość)</span>
+                </p>
+              ) : null}
               {belowMinimumDimension ? (
                 <p className="hero-product-dimensions-error">
                   Minimalny wymiar to {MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM} mm (15 cm) na każdym boku.

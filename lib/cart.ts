@@ -29,6 +29,7 @@ export const NON_PRODUCT_POSITION_SLUGS: ReadonlySet<string> = new Set([
   "koszt-dostawy",
   "doplata-platnosc-za-pobraniem",
   "oszczednosc-obwod-moskitiery",
+  "doplata-ekspres",
 ]);
 
 export type CartLineItem = {

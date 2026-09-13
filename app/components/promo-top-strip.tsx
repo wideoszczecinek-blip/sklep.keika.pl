@@ -32,8 +32,10 @@ export default function PromoTopStrip({
               -20%
             </span>
             <span className="promo-top-strip-text">
-              Kod <strong>{PROMO_CODE}</strong> naliczony w koszyku
-              <span className="promo-top-strip-sep"> · </span>
+              <span className="promo-top-strip-long">
+                Kod <strong>{PROMO_CODE}</strong> naliczony w koszyku
+                <span className="promo-top-strip-sep"> · </span>
+              </span>
               ważny jeszcze <strong>{promo.remainingText}</strong>
             </span>
             <button type="button" className="promo-top-strip-cta" onClick={promo.openModal}>

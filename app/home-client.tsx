@@ -12,6 +12,15 @@ import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import { trackShopStep } from "@/lib/track-step";
 import {
+  EXPRESS_CHANGED_EVENT,
+  EXPRESS_ENABLED,
+  EXPRESS_FEE_AMOUNT,
+  computeExpressDispatch,
+  formatCutoff,
+  isExpressSelected,
+  setExpressSelected,
+} from "@/lib/express";
+import {
   PROMO_ACTIVATED_EVENT,
   PROMO_CODE,
   activatePromoCode,
@@ -1207,6 +1216,31 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // (a FLIP tween), not by a CSS transition - see that function's comment.
   const [isConfigExpanded, setIsConfigExpanded] = useState(false);
   const configPanelRef = useRef<HTMLElement | null>(null);
+  // Mobile only: while the configurator panel takes up most of the screen,
+  // the floating bottom tab bar steps out of the way (it covered "Dodaj do
+  // koszyka" whenever that button sat at the bottom edge - smoke test 2026-09-13).
+  const [configPanelFillsScreen, setConfigPanelFillsScreen] = useState(false);
+  useEffect(() => {
+    const el = configPanelRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setConfigPanelFillsScreen(false);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const coversViewport = entry.intersectionRect.height >= window.innerHeight * 0.55;
+          setConfigPanelFillsScreen(window.innerWidth <= 1100 && entry.isIntersecting && coversViewport);
+        }
+      },
+      { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+    // Panel element exists from the first render on the product route (SSR)
+    // - product switching is locked, so no re-observe needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const configAnimCleanupTimerRef = useRef<number | null>(null);
   const cartCountUpFrameRef = useRef<number | null>(null);
   const [activeHeadline, setActiveHeadline] = useState(0);
@@ -1330,7 +1364,21 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // proxies allegro_configurator_public_offer_shipping_banner() directly),
   // not a separate/fake promise - one shared production queue regardless of
   // which storefront the order came in through.
-  const [shippingBanner, setShippingBanner] = useState<{ headline: string; cta_text: string } | null>(null);
+  const [shippingBanner, setShippingBanner] = useState<{
+    headline: string;
+    cta_text: string;
+    cutoffHour: number;
+    cutoffMinute: number;
+  } | null>(null);
+  // "Ekspres" toggle (lib/express.ts) - the choice made here carries into
+  // /koszyk's "Termin realizacji" via localStorage.
+  const [expressSelected, setExpressSelectedState] = useState(false);
+  useEffect(() => {
+    setExpressSelectedState(isExpressSelected());
+    const sync = () => setExpressSelectedState(isExpressSelected());
+    window.addEventListener(EXPRESS_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(EXPRESS_CHANGED_EVENT, sync);
+  }, []);
   useEffect(() => {
     const slug = productSlugFromSelected(displayedProduct);
     if (!slug) {
@@ -1340,15 +1388,31 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     let cancelled = false;
     fetch(`https://crm-keika.groovemedia.pl/biuro/api/shop-public/shipping_banner.php?product=${encodeURIComponent(slug)}`)
       .then((response) => response.json())
-      .then((json: { ok: boolean; banner?: { available?: boolean; headline?: string; cta_text?: string } }) => {
-        if (cancelled) return;
-        const banner = json.ok ? json.banner : null;
-        setShippingBanner(
-          banner && banner.available && banner.headline
-            ? { headline: banner.headline, cta_text: banner.cta_text || "" }
-            : null,
-        );
-      })
+      .then(
+        (json: {
+          ok: boolean;
+          banner?: {
+            available?: boolean;
+            headline?: string;
+            cta_text?: string;
+            cutoff_hour?: number;
+            cutoff_minute?: number;
+          };
+        }) => {
+          if (cancelled) return;
+          const banner = json.ok ? json.banner : null;
+          setShippingBanner(
+            banner && banner.available && banner.headline
+              ? {
+                  headline: banner.headline,
+                  cta_text: banner.cta_text || "",
+                  cutoffHour: Number.isFinite(banner.cutoff_hour) ? Number(banner.cutoff_hour) : 15,
+                  cutoffMinute: Number.isFinite(banner.cutoff_minute) ? Number(banner.cutoff_minute) : 0,
+                }
+              : null,
+          );
+        },
+      )
       .catch(() => {
         if (!cancelled) setShippingBanner(null);
       });
@@ -3041,6 +3105,35 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 {shippingBanner.cta_text ? (
                                   <small className="pl-shipping-banner-subtext">{shippingBanner.cta_text}</small>
                                 ) : null}
+                                {/* "Ekspres" (P2, 2026-09-13): the standard
+                                    line above is the real production plan;
+                                    this jumps the queue for a flat fee. */}
+                                {EXPRESS_ENABLED ? (
+                                <label className={`pl-express-toggle ${expressSelected ? "is-on" : ""}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={expressSelected}
+                                    onChange={(event) => {
+                                      const on = event.target.checked;
+                                      setExpressSelected(on);
+                                      setExpressSelectedState(on);
+                                      trackShopStep("express_toggled", on ? "on" : "off", { place: "landing" });
+                                    }}
+                                  />
+                                  <span className="pl-express-toggle-copy">
+                                    <strong>
+                                      ⚡ Potrzebujesz szybciej? Ekspres +
+                                      {EXPRESS_FEE_AMOUNT.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                    </strong>
+                                    <small>
+                                      Priorytet produkcji, wysyłka{" "}
+                                      {computeExpressDispatch(new Date(), shippingBanner.cutoffHour, shippingBanner.cutoffMinute).label}{" "}
+                                      (zamówienie do {formatCutoff(shippingBanner.cutoffHour, shippingBanner.cutoffMinute)} w dzień roboczy).
+                                      Wybór potwierdzisz w koszyku.
+                                    </small>
+                                  </span>
+                                </label>
+                                ) : null}
                                 <button
                                   type="button"
                                   className="pl-inline-cta-button pl-shipping-banner-cta"
@@ -4570,7 +4663,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           </div>
           {displayedProduct ? (
             <nav
-              className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""}`}
+              className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""} ${configPanelFillsScreen ? "is-suppressed" : ""}`}
               aria-label="Sekcje produktu"
               style={
                 inAppBrowserBottomInset > 0

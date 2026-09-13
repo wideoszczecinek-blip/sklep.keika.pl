@@ -32,6 +32,19 @@ import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import PaymentStep, { type CheckoutContact } from "../components/stripe-payment-step";
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import { isPromoActive, PROMO_CODE } from "@/lib/promo";
+import {
+  EXPRESS_CHANGED_EVENT,
+  EXPRESS_ENABLED,
+  EXPRESS_FEE_AMOUNT,
+  EXPRESS_LABEL,
+  EXPRESS_NOTE_LINE,
+  EXPRESS_POSITION_SLUG,
+  EXPRESS_SUMMARY,
+  fetchDispatchInfo,
+  isExpressSelected,
+  setExpressSelected,
+  type DispatchInfo,
+} from "@/lib/express";
 import { getRescueGrant, type RescueGrant } from "@/lib/rescue";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 
@@ -403,6 +416,29 @@ export default function CartPage() {
   // step + query string) - "/" until we know better, filled in on mount.
   const [backHref, setBackHref] = useState("/");
   const [deliveryMethod, setDeliveryMethod] = useState(COURIER_METHOD.id);
+  // "Ekspres" production priority (see lib/express.ts) - carried over from
+  // the landing-page toggle via localStorage, switchable here too.
+  const [expressSelected, setExpressSelectedState] = useState(false);
+  const [dispatchInfo, setDispatchInfo] = useState<DispatchInfo | null>(null);
+  useEffect(() => {
+    setExpressSelectedState(isExpressSelected());
+    const sync = () => setExpressSelectedState(isExpressSelected());
+    window.addEventListener(EXPRESS_CHANGED_EVENT, sync);
+    let cancelled = false;
+    void fetchDispatchInfo("moskitiery-ramkowe").then((info) => {
+      if (!cancelled) setDispatchInfo(info);
+    });
+    return () => {
+      cancelled = true;
+      window.removeEventListener(EXPRESS_CHANGED_EVENT, sync);
+    };
+  }, []);
+  function chooseExpress(on: boolean) {
+    setExpressSelected(on);
+    setExpressSelectedState(on);
+    trackCheckoutIssue("express_toggled", on ? "on" : "off", { place: "koszyk" });
+  }
+  const expressFee = EXPRESS_ENABLED && expressSelected ? EXPRESS_FEE_AMOUNT : 0;
   const [selectedPaczkomat, setSelectedPaczkomat] = useState<PaczkomatPoint | null>(null);
   const [form, setForm] = useState({
     firstName: "",
@@ -723,6 +759,7 @@ export default function CartPage() {
       rescueAmount +
       shippingFee +
       orderSurcharge +
+      expressFee +
       (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
   );
 
@@ -820,7 +857,7 @@ export default function CartPage() {
   // fix shouldn't require starting over") - this brings the code in line
   // with it instead of contradicting it.
   useEffect(() => {
-    const snapshot = JSON.stringify({ items, deliveryMethod, appliedDiscount });
+    const snapshot = JSON.stringify({ items, deliveryMethod, appliedDiscount, expressSelected });
     const current = orderStateRef.current;
     if (
       current &&
@@ -834,7 +871,7 @@ export default function CartPage() {
       submittedRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, deliveryMethod, appliedDiscount, paymentConfirmed]);
+  }, [items, deliveryMethod, appliedDiscount, expressSelected, paymentConfirmed]);
 
   async function sendCodSms() {
     setCodSms({ status: "sending", token: "", code: "", error: "" });
@@ -850,6 +887,7 @@ export default function CartPage() {
           rescueAmount +
           shippingFee +
           orderSurcharge +
+          expressFee +
           COD_SURCHARGE_AMOUNT,
       );
       const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/cod_sms_start.php", {
@@ -997,6 +1035,13 @@ export default function CartPage() {
         amount: paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0,
         summary: "Dopłata za płatność za pobraniem",
       },
+      {
+        id: "position-express-fee",
+        slug: EXPRESS_POSITION_SLUG,
+        label: EXPRESS_LABEL,
+        amount: expressFee,
+        summary: EXPRESS_SUMMARY,
+      },
     ];
   }
 
@@ -1121,7 +1166,7 @@ export default function CartPage() {
   const submitOrder = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
-    draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod, appliedDiscount });
+    draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod, appliedDiscount, expressSelected });
     setError("");
     setIsSubmitting(true);
     try {
@@ -1146,6 +1191,13 @@ export default function CartPage() {
           label: "Dopłata za płatność za pobraniem",
           amount: paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0,
           summary: "Dopłata za płatność za pobraniem",
+        },
+        {
+          id: "position-express-fee",
+          slug: EXPRESS_POSITION_SLUG,
+          label: EXPRESS_LABEL,
+          amount: expressFee,
+          summary: EXPRESS_SUMMARY,
         },
       ];
       let quoteSessionToken = "";
@@ -1177,6 +1229,8 @@ export default function CartPage() {
           : "";
       const paymentLabel = paymentMethod === "cod" ? "Za pobraniem" : "Online (Stripe)";
       const noteWithDelivery = [
+        // First line on purpose - production reads the note top-down.
+        EXPRESS_ENABLED && expressSelected ? EXPRESS_NOTE_LINE : "",
         `Metoda dostawy: ${deliveryLabel}`,
         paczkomatLine,
         `Metoda płatności: ${paymentLabel}`,
@@ -1283,6 +1337,8 @@ export default function CartPage() {
     orderSurcharge,
     shippingFee,
     appliedDiscount,
+    expressSelected,
+    expressFee,
   ]);
 
   // No "przejdź do płatności" button - for online payment, the payment panel
@@ -1574,6 +1630,51 @@ export default function CartPage() {
 
             <div className="cart-checkout-layout">
               <div className="cart-checkout-left">
+                {EXPRESS_ENABLED && items.some((item) => item.productSlug === "moskitiery-ramkowe") ? (
+                  <section className="cart-delivery-card cart-dispatch-card">
+                    <h2>Termin realizacji</h2>
+                    <div className="cart-delivery-options">
+                      <label className={`cart-delivery-option ${!expressSelected ? "is-active" : ""}`}>
+                        <input
+                          type="radio"
+                          name="dispatch-speed"
+                          value="standard"
+                          checked={!expressSelected}
+                          onChange={() => chooseExpress(false)}
+                          disabled={dataLocked}
+                        />
+                        <span className="cart-delivery-option-copy">
+                          <strong>Standard</strong>
+                          <small>
+                            {dispatchInfo
+                              ? `Wysyłka ${dispatchInfo.standardLabel} - zgodnie z planem produkcji`
+                              : "Wysyłka zgodnie z planem produkcji (zwykle 3 dni robocze)"}
+                          </small>
+                        </span>
+                        <span className="cart-delivery-option-price">Gratis</span>
+                      </label>
+                      <label className={`cart-delivery-option cart-delivery-option--express ${expressSelected ? "is-active" : ""}`}>
+                        <input
+                          type="radio"
+                          name="dispatch-speed"
+                          value="express"
+                          checked={expressSelected}
+                          onChange={() => chooseExpress(true)}
+                          disabled={dataLocked}
+                        />
+                        <span className="cart-delivery-option-copy">
+                          <strong>⚡ Ekspres - priorytet produkcji</strong>
+                          <small>
+                            Wysyłka {dispatchInfo ? dispatchInfo.expressLabel : "następnego dnia roboczego"} (zamówienie
+                            do {dispatchInfo?.cutoffLabel || "15:00"} w dzień roboczy)
+                          </small>
+                        </span>
+                        <span className="cart-delivery-option-price">+{formatPln(EXPRESS_FEE_AMOUNT)}</span>
+                      </label>
+                    </div>
+                  </section>
+                ) : null}
+
                 <section className="cart-delivery-card">
                   <h2>Metody dostawy</h2>
                   <div className="cart-delivery-options">
@@ -1931,6 +2032,12 @@ export default function CartPage() {
                         <div className="cart-page-summary-row is-muted">
                           <span>Koszt dostawy</span>
                           <span>{shippingFee > 0 ? formatPln(shippingFee) : "Gratis"}</span>
+                        </div>
+                      ) : null}
+                      {expressFee > 0 ? (
+                        <div className="cart-page-summary-row is-muted">
+                          <span>Ekspres - priorytet produkcji</span>
+                          <span>{formatPln(expressFee)}</span>
                         </div>
                       ) : null}
                       {orderSurcharge > 0 ? (

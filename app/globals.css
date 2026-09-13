@@ -11766,3 +11766,134 @@ html[data-theme="dark"] .promo-save-modal-urgency {
     bottom: 5.4rem;
   }
 }
+
+/* ==== audit-2026-09-13: P2 ==== */
+
+/* Promo strip: static variant grows with its content; on phones the long
+   prefix is dropped so the countdown always fits one line. */
+.promo-top-strip.is-static {
+  height: auto;
+  min-height: 34px;
+  padding: 0.4rem 0.7rem;
+}
+
+@media (max-width: 760px) {
+  .promo-top-strip-long {
+    display: none;
+  }
+
+  .promo-top-strip-text {
+    white-space: nowrap;
+  }
+}
+
+/* Configurator: cm/mm switch + echo line. */
+.hero-product-unit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: -0.2rem 0 0.55rem;
+  font-size: 0.8rem;
+  color: rgba(22, 49, 78, 0.72);
+}
+
+.hero-product-unit-toggle button {
+  border: 1px solid rgba(22, 49, 78, 0.22);
+  background: #fff;
+  color: #16314e;
+  border-radius: 999px;
+  padding: 0.18rem 0.7rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hero-product-unit-toggle button.is-active {
+  background: #16314e;
+  color: #fff;
+  border-color: #16314e;
+}
+
+.hero-product-dimensions-echo {
+  margin: -0.2rem 0 0.4rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #16314e;
+}
+
+.hero-product-dimensions-echo span {
+  font-weight: 500;
+  opacity: 0.65;
+}
+
+/* Landing: Ekspres toggle inside the shipping banner. */
+.pl-express-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0.6rem 0 0.7rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(217, 96, 10, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 159, 10, 0.08);
+  cursor: pointer;
+}
+
+.pl-express-toggle.is-on {
+  border-color: #d9600a;
+  background: rgba(255, 159, 10, 0.16);
+}
+
+.pl-express-toggle input {
+  margin-top: 0.2rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #d9600a;
+  flex-shrink: 0;
+}
+
+.pl-express-toggle-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.35;
+}
+
+.pl-express-toggle-copy strong {
+  font-size: 0.9rem;
+}
+
+.pl-express-toggle-copy small {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+/* Cart: "Termin realizacji" card reuses the delivery option look. */
+.cart-delivery-option--express.is-active {
+  border-color: #d9600a;
+  background: rgba(255, 159, 10, 0.1);
+}
+
+/* Consent bar must never sit on top of a primary CTA: narrower on desktop
+   (the sticky configurator lives on the right), lifted above the product
+   page bottom tab bar on phones. */
+@media (min-width: 761px) {
+  .consent-bar {
+    right: auto;
+    max-width: 640px;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-root.product-focus-active ~ .consent-bar {
+    bottom: 4.9rem;
+  }
+}
+
+/* Bottom tab bar steps aside while the configurator fills a phone screen
+   (home-client.tsx configPanelFillsScreen). */
+.hero-product-bottom-tabs.is-visible.is-suppressed {
+  opacity: 0;
+  transform: translate(-50%, 28px);
+  pointer-events: none;
+}
