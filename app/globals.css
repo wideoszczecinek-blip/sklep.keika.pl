@@ -11946,3 +11946,29 @@ html[data-theme="dark"] .promo-save-modal-urgency {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ==== audit-2026-09-13: P5 ==== */
+
+/* SEZON20 banner row reserved until the client knows the promo state
+   (measured: 122 px desktop, 140 px phone). */
+.pl-sezon-banner--placeholder {
+  min-height: 122px;
+  background: linear-gradient(135deg, #0b3d3a, #0f5c57);
+}
+
+@media (max-width: 760px) {
+  .pl-sezon-banner--placeholder {
+    min-height: 140px;
+  }
+}
+
+/* Remaining contrast failures (Lighthouse 2026-09-14). */
+.pl-trust-row .pl-price .pl-price-unit {
+  color: #3e4f61;
+  opacity: 1;
+}
+
+.pl-shipping-banner .pl-shipping-banner-subtext {
+  color: #2f5f5c;
+  opacity: 1;
+}

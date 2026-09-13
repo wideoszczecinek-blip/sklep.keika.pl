@@ -26,6 +26,7 @@ import {
   activatePromoCode,
   applyPromoToPrice,
   fetchPromoPreview,
+  getPromoActivatedAt,
   isPromoActive,
   syncPromoDeadlineFromServer,
   type PromoPreview,
@@ -1436,6 +1437,10 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // in sync the instant either one is activated, not just after a remount.
   const [topPromoActive, setTopPromoActive] = useState(false);
   const [topPromoPreview, setTopPromoPreview] = useState<PromoPreview | null>(null);
+  // false until the first client-side read of the promo state - the banner
+  // row below is held by a same-height placeholder in the meantime so the
+  // price/CTA block never jumps down after hydration (CLS 2026-09-14).
+  const [topPromoResolved, setTopPromoResolved] = useState(false);
   // The header cart icon (badge, tooltip, animated total) showed the raw
   // pre-discount sum even with the promo active - it read cartSummary.total
   // directly instead of going through this. Percent-type discounts scale
@@ -1453,6 +1458,12 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       ? Math.max(0, cartSummary.total * (1 - headerCartDiscountPercent / 100))
       : cartSummary.total;
   useEffect(() => {
+    // First-time visitor auto-activation happens HERE, before the first
+    // client render of the banner - otherwise the banner painted its
+    // shorter "Aktywuj rabat" variant for one effect cycle and then grew
+    // (two layout shifts measured 2026-09-14). Same never-restamp guard as
+    // promo-countdown-banner.tsx, which stays as a no-op backstop.
+    if (getPromoActivatedAt() === null) activatePromoCode();
     setTopPromoActive(isPromoActive());
     const handleActivated = () => setTopPromoActive(isPromoActive());
     window.addEventListener(PROMO_ACTIVATED_EVENT, handleActivated);
@@ -1468,7 +1479,13 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     // subtotal, so the constant per-mb starting price works as the probe.
     let cancelled = false;
     fetchPromoPreview(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO).then((preview) => {
-      if (!cancelled) setTopPromoPreview(preview);
+      if (cancelled) return;
+      setTopPromoPreview(preview);
+      // Only now can the banner row be released: the banner itself mounts
+      // (and auto-activates SEZON20 for a first-time visitor) once this
+      // preview exists - releasing on the earlier isPromoActive() read
+      // collapsed the row for a moment and then re-expanded it (2 shifts).
+      setTopPromoResolved(true);
     });
     return () => {
       cancelled = true;
@@ -3042,6 +3059,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                   </div>
                                 )}
                               </PromoCountdownBanner>
+                            ) : !topPromoResolved ? (
+                              <div className="pl-sezon-banner pl-sezon-banner--placeholder" aria-hidden="true" />
                             ) : null}
                             <div className="pl-trust-row">
                               <span className="pl-price">
@@ -3097,7 +3116,10 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
 
                             <p className="pl-subtitle">
                               {productLanding?.subtitle ||
-                                "Producent ze Szczecinka: aluminiowa rama i wzmocniona siatka, na wymiar pod Twoje okno, montaż bez wiercenia. 5 lat gwarancji, darmowa dostawa od 79 zł. Cena za 1 metr bieżący obwodu."}
+                                // Must equal the CRM product subtitle byte for byte: the CRM value
+                                // replaces this after mount, and a different length shifted the
+                                // whole block below (CLS 2026-09-14). Edit the copy in the CRM.
+                                "Moskitiera okienna na aluminiowej ramie. Produkowana na wymiar - idealnie pod Twoje okno. Cena za 1 metr bieżący obwodu."}
                             </p>
                             {/* Mobile-only primary CTA (audit 2026-09-13): on a
                                 phone the configurator sits below the whole
