@@ -11972,3 +11972,104 @@ html[data-theme="dark"] .promo-save-modal-urgency {
   color: #2f5f5c;
   opacity: 1;
 }
+
+/* ==== audit-2026-09-14: pasek promo na telefonie ==== */
+
+/* Desktop: one line. The two .promo-top-strip-line chunks flow as a single
+   sentence (flex row + gap supplies the space JSX strips between them). */
+.promo-top-strip .promo-top-strip-text {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.3rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.promo-top-strip .promo-top-strip-line {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.promo-top-strip .promo-top-strip-narrow {
+  display: none;
+}
+
+.promo-top-strip .promo-top-strip-clock {
+  color: #ffd28a;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phone: two stacked lines in a 44 px bar. The whole point is that the code
+   name AND the running countdown are both readable down to 320 px - a single
+   line clipped both (owner report 2026-09-14). */
+@media (max-width: 760px) {
+  .home-root:has(> .promo-top-strip) {
+    --promo-strip-h: 44px;
+  }
+
+  .promo-top-strip {
+    gap: 0.4rem;
+    padding: 0 0.55rem;
+    font-size: 0.74rem;
+  }
+
+  .promo-top-strip .promo-top-strip-text {
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.06rem;
+    line-height: 1.25;
+    overflow: visible;
+  }
+
+  .promo-top-strip .promo-top-strip-line {
+    max-width: 100%;
+  }
+
+  .promo-top-strip .promo-top-strip-wide {
+    display: none;
+  }
+
+  .promo-top-strip .promo-top-strip-narrow {
+    display: inline;
+  }
+
+  .promo-top-strip .promo-top-strip-badge {
+    padding: 0.1rem 0.4rem;
+    font-size: 0.72rem;
+  }
+
+  .promo-top-strip .promo-top-strip-cta {
+    padding: 0.26rem 0.6rem;
+    font-size: 0.74rem;
+  }
+
+  /* The neutral (no-countdown) variant has no badge and no button, so both
+     of its lines get the full width. */
+  .promo-top-strip.is-neutral {
+    justify-content: flex-start;
+  }
+
+  .promo-top-strip.is-static {
+    min-height: 44px;
+  }
+}
+
+/* ==== audit-2026-09-14: bardzo waskie ekrany ==== */
+
+/* Below ~340 px (iPhone SE 1st gen and similar) with a large system font
+   the countdown was the thing getting ellipsised. The -20% badge is the
+   most expendable element there: the line right under it still names the
+   code, and the green banner a few pixels below states the discount. */
+@media (max-width: 340px) {
+  .promo-top-strip .promo-top-strip-badge {
+    display: none;
+  }
+}

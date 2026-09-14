@@ -8,6 +8,10 @@ export default defineConfig({
   testDir: "./tests",
   timeout: 60_000,
   retries: 1,
+  // One worker: the suite takes ~15 s and two browsers hammering a single
+  // local  produced a flaky click timeout (2026-09-14). A red
+  // run has to mean something.
+  workers: 1,
   reporter: [["list"]],
   use: {
     baseURL: process.env.SMOKE_BASE_URL || "https://sklep.keika.pl",
