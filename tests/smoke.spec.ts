@@ -66,7 +66,15 @@ test.describe("moskitiery-ramkowe", () => {
     await expect(priceBox).toContainText(PRICE_1000x1200);
     await expect(page.locator(".hero-product-mini-summary-price-details")).toContainText("5 mb");
 
-    await page.getByRole("button", { name: "Dodaj do koszyka" }).click();
+    // Regression guard (owner report 2026-09-14): with the CTA sitting at the
+    // very bottom edge of the screen, the floating bottom tab bar used to
+    // cover it and swallow the tap - the frame could not be added to the cart
+    // at all on a phone. Scroll it exactly there before clicking; Playwright
+    // fails the click if anything else would receive it.
+    const addToCart = page.getByRole("button", { name: "Dodaj do koszyka" });
+    await addToCart.evaluate((el) => el.scrollIntoView({ block: "end" }));
+    await page.waitForTimeout(900);
+    await addToCart.click({ timeout: 10_000 });
     await expect(page.getByText("Dodano do koszyka!")).toBeVisible();
 
     await page.goto("/koszyk");

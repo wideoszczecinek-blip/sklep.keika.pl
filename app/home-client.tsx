@@ -1218,31 +1218,65 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // (a FLIP tween), not by a CSS transition - see that function's comment.
   const [isConfigExpanded, setIsConfigExpanded] = useState(false);
   const configPanelRef = useRef<HTMLElement | null>(null);
-  // Mobile only: while the configurator panel takes up most of the screen,
-  // the floating bottom tab bar steps out of the way (it covered "Dodaj do
-  // koszyka" whenever that button sat at the bottom edge - smoke test 2026-09-13).
-  const [configPanelFillsScreen, setConfigPanelFillsScreen] = useState(false);
+  // Mobile only: the floating bottom tab bar steps out of the way while the
+  // configurator's "Dodaj do koszyka" button is in the strip of screen the
+  // bar floats over. Owner report 2026-09-14, urgent: the bar sat on top of
+  // that button after configuring, so on a phone the frame could not be
+  // added to the cart at all.
+  //
+  // This asks the only question that matters - do the two rectangles overlap
+  // right now - instead of the previous IntersectionObserver on the whole
+  // panel: intersectionRatio is relative to the TARGET, and that panel is
+  // several viewports tall, so its ratio never crossed any of the configured
+  // thresholds and the callback stopped firing. Reading two rects inside a
+  // rAF, only on the product view and only below the desktop breakpoint, is
+  // cheap and cannot go stale.
+  const [inAppBrowserBottomInset, setInAppBrowserBottomInset] = useState(0);
+  const [ctaUnderTabs, setCtaUnderTabs] = useState(false);
+  // No displayedProduct dependency: it is declared further down, and the
+  // DOM answers the same question anyway - the button only exists while a
+  // configurator is mounted.
   useEffect(() => {
-    const el = configPanelRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setConfigPanelFillsScreen(false);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const coversViewport = entry.intersectionRect.height >= window.innerHeight * 0.55;
-          setConfigPanelFillsScreen(window.innerWidth <= 1100 && entry.isIntersecting && coversViewport);
-        }
-      },
-      { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-    // Panel element exists from the first render on the product route (SSR)
-    // - product switching is locked, so no re-observe needed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      if (window.innerWidth > 1100) {
+        setCtaUnderTabs(false);
+        return;
+      }
+      const cta = document.querySelector<HTMLElement>(".hero-product-add-to-cart");
+      if (!cta) {
+        setCtaUnderTabs(false);
+        return;
+      }
+      const rect = cta.getBoundingClientRect();
+      const onScreen = rect.bottom > 0 && rect.top < window.innerHeight;
+      // The bar is fixed at bottom:1.1rem and is ~46 px tall; the extra
+      // margin covers its shadow, the safe-area inset and the taller
+      // in-app-browser variant (see inAppBrowserBottomInset below).
+      const barZoneTop = window.innerHeight - 92 - inAppBrowserBottomInset;
+      setCtaUnderTabs(onScreen && rect.bottom > barZoneTop);
+    };
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(check);
+    };
+    check();
+    // capture:true - scroll events do not bubble, and on mobile the real
+    // scroll container is .hero-full, not the window.
+    window.addEventListener("scroll", schedule, { passive: true, capture: true });
+    window.addEventListener("resize", schedule);
+    // Layout can change with no scroll at all: a step folding shut, the
+    // price block appearing the moment the last dimension is typed, the
+    // on-screen keyboard closing. That is exactly the moment the button
+    // lands under the bar, so poll as a backstop.
+    const interval = window.setInterval(check, 400);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.clearInterval(interval);
+      window.removeEventListener("scroll", schedule, { capture: true } as EventListenerOptions);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [inAppBrowserBottomInset]);
   const configAnimCleanupTimerRef = useRef<number | null>(null);
   const cartCountUpFrameRef = useRef<number | null>(null);
   const [activeHeadline, setActiveHeadline] = useState(0);
@@ -1274,7 +1308,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // the true visible height; the gap vs innerHeight becomes extra bottom
   // offset. Stays 0 in a normal mobile browser (Safari/Chrome), so nothing
   // changes there.
-  const [inAppBrowserBottomInset, setInAppBrowserBottomInset] = useState(0);
   useEffect(() => {
     if (typeof window === "undefined" || !window.visualViewport) {
       return;
@@ -4699,7 +4732,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           </div>
           {displayedProduct ? (
             <nav
-              className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""} ${configPanelFillsScreen ? "is-suppressed" : ""}`}
+              className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""} ${ctaUnderTabs ? "is-suppressed" : ""}`}
               aria-label="Sekcje produktu"
               style={
                 inAppBrowserBottomInset > 0

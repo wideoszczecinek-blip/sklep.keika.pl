@@ -11973,103 +11973,107 @@ html[data-theme="dark"] .promo-save-modal-urgency {
   opacity: 1;
 }
 
-/* ==== audit-2026-09-14: pasek promo na telefonie ==== */
 
-/* Desktop: one line. The two .promo-top-strip-line chunks flow as a single
-   sentence (flex row + gap supplies the space JSX strips between them). */
-.promo-top-strip .promo-top-strip-text {
+/* ==== 2026-09-14: pasek promo jako karuzela ==== */
+
+/* One short sentence at a time, rolling upward. The bar is a fixed-height
+   viewport; every slide is absolutely positioned inside it, so the row
+   height never depends on which message is showing and the header offset
+   (--promo-strip-h) stays constant. See app/components/promo-top-strip.tsx. */
+.promo-top-strip {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  contain: paint;
+}
+
+.promo-top-strip.is-static {
+  height: var(--promo-strip-h, 34px);
+  min-height: 0;
+  padding: 0;
+}
+
+.promo-strip-viewport {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.promo-strip-slide {
+  position: absolute;
+  inset: 0;
   display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 0.3rem;
-  flex: 0 1 auto;
-  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0 0.75rem;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(105%);
+  transition: opacity 0.42s ease, transform 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
 }
 
-.promo-top-strip .promo-top-strip-line {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.promo-strip-slide.is-active {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-.promo-top-strip .promo-top-strip-narrow {
+/* The message being replaced keeps rendering for one transition and rolls
+   out through the top edge - that is what makes it read as a carousel
+   rather than a blink. */
+.promo-strip-slide.is-leaving {
+  opacity: 0;
+  transform: translateY(-105%);
+}
+
+.promo-strip-slide-icon {
+  flex-shrink: 0;
+  font-size: 0.95em;
+  line-height: 1;
+}
+
+.promo-strip-slide-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.promo-strip-narrow {
   display: none;
 }
 
-.promo-top-strip .promo-top-strip-clock {
-  color: #ffd28a;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Phone: two stacked lines in a 44 px bar. The whole point is that the code
-   name AND the running countdown are both readable down to 320 px - a single
-   line clipped both (owner report 2026-09-14). */
 @media (max-width: 760px) {
-  .home-root:has(> .promo-top-strip) {
-    --promo-strip-h: 44px;
-  }
-
-  .promo-top-strip {
-    gap: 0.4rem;
-    padding: 0 0.55rem;
-    font-size: 0.74rem;
-  }
-
-  .promo-top-strip .promo-top-strip-text {
-    flex: 1 1 auto;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 0.06rem;
-    line-height: 1.25;
-    overflow: visible;
-  }
-
-  .promo-top-strip .promo-top-strip-line {
-    max-width: 100%;
-  }
-
-  .promo-top-strip .promo-top-strip-wide {
+  .promo-strip-wide {
     display: none;
   }
 
-  .promo-top-strip .promo-top-strip-narrow {
+  .promo-strip-narrow {
     display: inline;
   }
 
-  .promo-top-strip .promo-top-strip-badge {
+  .promo-strip-slide {
+    gap: 0.32rem;
+    padding: 0 0.5rem;
+  }
+
+  .promo-strip-slide .promo-top-strip-badge {
     padding: 0.1rem 0.4rem;
-    font-size: 0.72rem;
-  }
-
-  .promo-top-strip .promo-top-strip-cta {
-    padding: 0.26rem 0.6rem;
-    font-size: 0.74rem;
-  }
-
-  /* The neutral (no-countdown) variant has no badge and no button, so both
-     of its lines get the full width. */
-  .promo-top-strip.is-neutral {
-    justify-content: flex-start;
-  }
-
-  .promo-top-strip.is-static {
-    min-height: 44px;
+    font-size: 0.7rem;
   }
 }
 
-/* ==== audit-2026-09-14: bardzo waskie ekrany ==== */
+/* Nobody should have content sliding past them against their wishes. */
+@media (prefers-reduced-motion: reduce) {
+  .promo-strip-slide {
+    transition: opacity 0.2s linear;
+    transform: none;
+  }
 
-/* Below ~340 px (iPhone SE 1st gen and similar) with a large system font
-   the countdown was the thing getting ellipsised. The -20% badge is the
-   most expendable element there: the line right under it still names the
-   code, and the green banner a few pixels below states the discount. */
-@media (max-width: 340px) {
-  .promo-top-strip .promo-top-strip-badge {
-    display: none;
+  .promo-strip-slide.is-leaving {
+    transform: none;
   }
 }
