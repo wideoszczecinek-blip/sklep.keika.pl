@@ -22,7 +22,7 @@
 // awaiting upload) - otherwise SEZON20 would be computed on the fee too and
 // the CRM's total (= what Stripe / the COD courier collects) would be
 // 3,98 zł below what the cart shows. Flip to true + deploy once uploaded.
-export const EXPRESS_ENABLED = false;
+export const EXPRESS_ENABLED = true;
 
 export const EXPRESS_FEE_AMOUNT = 19.9;
 export const EXPRESS_POSITION_SLUG = "doplata-ekspres";
