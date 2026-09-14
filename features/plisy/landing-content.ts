@@ -54,7 +54,7 @@ export const PLISY_SUBTITLE =
 export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
   {
     label: "Na wymiar co do milimetra",
-    value: "Wpisujesz szerokość i wysokość, my szyjemy plisę dokładnie pod Twoje okno. Bez prześwitów po bokach, bez docinania w domu.",
+    value: "Wpisujesz szerokość i wysokość, my wykonujemy plisę dokładnie pod Twoje okno. Bez prześwitów po bokach, bez docinania w domu.",
   },
   {
     label: "Od góry i od dołu",
@@ -137,9 +137,9 @@ export const PLISY_COLLECTIONS: PlisyCollectionRow[] = [
 ];
 
 export const PLISY_CALLOUT = {
-  title: `Szyjemy w Szczecinku, realizacja ${PLISY_LEAD_TIME_LABEL}`,
+  title: `Produkujemy w Szczecinku, realizacja ${PLISY_LEAD_TIME_LABEL}`,
   body:
-    "Każda plisa powstaje na Twój wymiar w naszej produkcji. Po uszyciu wysyłamy kurierem w 24 h, darmowa dostawa od 79 zł. Kilka okien? W konfiguratorze dodasz kolejne wymiary do jednego zamówienia.",
+    "Każda plisa powstaje na Twój wymiar w naszej produkcji. Po wyprodukowaniu wysyłamy kurierem w 24 h, darmowa dostawa od 79 zł. Kilka okien? W konfiguratorze dodasz kolejne wymiary do jednego zamówienia.",
 };
 
 export const PLISY_FAQ: PlisyFaqEntry[] = [
@@ -184,7 +184,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   },
   {
     question: "Jak długo czekam na plisę?",
-    answer: `Każda plisa jest szyta na Twój wymiar w naszej produkcji w Szczecinku. Czas realizacji to ${PLISY_LEAD_TIME_LABEL}, potem kurier dostarcza paczkę w 24 h. Darmowa dostawa od 79 zł.`,
+    answer: `Każda plisa jest produkowana na Twój wymiar w naszym zakładzie w Szczecinku. Czas realizacji to ${PLISY_LEAD_TIME_LABEL}, potem kurier dostarcza paczkę w 24 h. Darmowa dostawa od 79 zł.`,
   },
   {
     question: "Czy mogę zamówić próbki tkanin?",

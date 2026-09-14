@@ -12235,11 +12235,6 @@ html[data-theme="dark"] .promo-save-modal-urgency {
    app/home-client.tsx. Dark palette matches .pl-spec-item / .pl-feature-list,
    the light overrides below follow the same html[data-theme="light"] pattern
    the rest of the .pl-* blocks use. */
-.pl-plisy-hero-photo {
-  max-height: 420px;
-  margin: 0.2rem 0 0;
-}
-
 .pl-collections {
   display: grid;
   gap: 0.55rem;
@@ -12343,4 +12338,90 @@ html[data-theme="light"] .pl-collections-note {
 
 html[data-theme="light"] .pl-collections-price {
   color: #c2570a;
+}
+
+/* ---------------------------------------------------------------------------
+   Plisy: animowany hero (features/plisy/PlisyHero.tsx)
+
+   Zastępuje statyczne /plisy-okienne-hero.webp. Plisa opada i podnosi się,
+   pokazując to, czego nie pokaże żadne zdjęcie: że tkanina zatrzymuje się w
+   dowolnym miejscu skrzydła, a oba skrzydła ustawia się niezależnie.
+
+   Mechanika: tkanina to prostokąt skalowany w pionie od górnej krawędzi, więc
+   deseń plis zagęszcza się razem z nią - tak jak w prawdziwej plisie. Dolna
+   listwa jedzie osobno, na tę samą wysokość co krawędź tkaniny; gdyby siedziała
+   w skalowanej grupie, spłaszczałaby się razem z deseniem.
+
+   Wysokość światła skrzydła w układzie SVG: 576 - 12,672 (listwa) = 563,328.
+   Przesunięcie listwy = 563,328 * drop - 12,672 - stąd te wartości w px.
+--------------------------------------------------------------------------- */
+.plisy-hero {
+  margin: 0.2rem 0 0;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  background: linear-gradient(160deg, #eef2f6 0%, #dde4ea 55%, #cfd8e0 100%);
+  box-shadow: 0 8px 20px rgba(8, 20, 35, 0.18);
+}
+
+.plisy-hero-svg {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  aspect-ratio: 5 / 4;
+}
+
+.plisy-hero-fabric {
+  transform-box: fill-box;
+  transform-origin: center top;
+}
+
+.plisy-hero-bottomrail {
+  transform-box: view-box;
+}
+
+.plisy-hero-blind--a .plisy-hero-fabric {
+  animation: plisyHeroFabricA 14s ease-in-out infinite;
+}
+.plisy-hero-blind--a .plisy-hero-bottomrail {
+  animation: plisyHeroRailA 14s ease-in-out infinite;
+}
+.plisy-hero-blind--b .plisy-hero-fabric {
+  animation: plisyHeroFabricB 14s ease-in-out infinite;
+}
+.plisy-hero-blind--b .plisy-hero-bottomrail {
+  animation: plisyHeroRailB 14s ease-in-out infinite;
+}
+
+@keyframes plisyHeroFabricA {
+  0%, 8%    { transform: scaleY(0.62); }
+  38%, 58%  { transform: scaleY(0.86); }
+  92%, 100% { transform: scaleY(0.62); }
+}
+@keyframes plisyHeroRailA {
+  0%, 8%    { transform: translateY(336.59px); }
+  38%, 58%  { transform: translateY(471.79px); }
+  92%, 100% { transform: translateY(336.59px); }
+}
+
+@keyframes plisyHeroFabricB {
+  0%, 30%   { transform: scaleY(0.38); }
+  60%, 84%  { transform: scaleY(0.66); }
+  100%      { transform: scaleY(0.38); }
+}
+@keyframes plisyHeroRailB {
+  0%, 30%   { transform: translateY(201.39px); }
+  60%, 84%  { transform: translateY(359.13px); }
+  100%      { transform: translateY(201.39px); }
+}
+
+/* Bez ruchu: plisy stoją na wysokościach spoczynkowych z komponentu. */
+@media (prefers-reduced-motion: reduce) {
+  .plisy-hero-fabric,
+  .plisy-hero-bottomrail {
+    animation: none !important;
+  }
+  .plisy-hero-blind--a .plisy-hero-fabric { transform: scaleY(0.62); }
+  .plisy-hero-blind--a .plisy-hero-bottomrail { transform: translateY(336.59px); }
+  .plisy-hero-blind--b .plisy-hero-fabric { transform: scaleY(0.38); }
+  .plisy-hero-blind--b .plisy-hero-bottomrail { transform: translateY(201.39px); }
 }

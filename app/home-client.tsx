@@ -126,6 +126,10 @@ const RoletyDachoweConfiguratorPanel = dynamic(() => import("@/features/rolety-d
   ssr: false,
 });
 const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/ConfiguratorPanel"), { ssr: false });
+// Statycznie, nie przez dynamic(): to jest hero, więc ma się pojawić od razu
+// razem z resztą sekcji, a nie doładować po hydratacji (LCP).
+import PlisyHero from "@/features/plisy/PlisyHero";
+import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -451,15 +455,6 @@ const MOSKITIERY_RAMKOWE_GALLERY_PHOTOS: string[] = MOSKITIERY_RAMKOWE_GALLERY_C
   (category) => category.photos,
 );
 
-/** Which category a photo belongs to - lets the caption name the group even
- * in the "Wszystkie" reel, where the customer is scrolling across all of
- * them. */
-const GALLERY_CATEGORY_BY_PHOTO: Record<string, GalleryCategory> = Object.fromEntries(
-  MOSKITIERY_RAMKOWE_GALLERY_CATEGORIES.flatMap((category) =>
-    category.photos.map((photo) => [photo, category] as const),
-  ),
-);
-
 // rolety-dachowe (roof window blinds) - real content pulled from the same
 // live CRM product record features/rolety-dachowe/shared.ts's options come
 // from (configurator_public?slug=rolety-dachowe, fetched 2026-08-30), not
@@ -591,7 +586,7 @@ function productDescription(label: string): string {
     return "Nowoczesne żaluzje dopasowane do wnętrza, z naciskiem na precyzję wykonania i wygodną codzienną regulację światła.";
   }
   if (normalized.includes("plis")) {
-    return "Plisy szyte pod Twoje okno, z płynnym sterowaniem i bardzo elastycznym dopasowaniem do różnych typów okien.";
+    return "Plisy produkowane pod Twoje okno, z płynnym sterowaniem i bardzo elastycznym dopasowaniem do różnych typów okien.";
   }
   if (normalized.includes("rolet")) {
     return "Rolety wykonywane na wymiar z czytelnym procesem zamówienia: wybór wariantu, pomiar i szybka wycena.";
@@ -3580,14 +3575,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               Wyceń swoją plisę w 10 sekund
                             </button>
 
-                            <img
-                              className="pl-description-photo pl-plisy-hero-photo"
-                              src="/plisy-okienne-hero.webp"
-                              alt="Plisa okienna KEIKA na białym oknie, zasłonięta dolna część szyby"
-                              width={1200}
-                              height={1200}
-                              fetchPriority="high"
-                            />
+                            <PlisyHero />
 
                             <div className="pl-spec-grid">
                               {(productLanding?.specItems?.length ? productLanding.specItems : PLISY_SPEC_ITEMS).map((item) => {
@@ -3815,12 +3803,21 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         // purposes, before this field was editable here) is
                         // treated as "not yet caught up" rather than swapping
                         // the live gallery down to fewer real photos.
+                        // Plisy's categories are built per render because their
+                        // fabric/hardware/mount photos come off the live CRM
+                        // profile, not a hardcoded list (features/plisy/gallery.ts).
+                        const plisyCategories =
+                          productSlugFromSelected(displayedProduct) === "plisy"
+                            ? buildPlisyGalleryCategories(plisyProfile)
+                            : [];
                         const builtinGallery =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                             ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
                             : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
                               ? ROLETY_DACHOWE_GALLERY_PHOTOS
-                              : displayedProduct.gallery;
+                              : plisyCategories.length
+                                ? plisyCategories.flatMap((category) => category.photos)
+                                : displayedProduct.gallery;
                         const usingCrmGallery = Boolean(
                           productLanding?.gallery?.length && productLanding.gallery.length >= builtinGallery.length,
                         );
@@ -3829,9 +3826,19 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         // curated gallery is shown as one plain reel - the
                         // admin has no per-photo category field to fill in.
                         const galleryCategories =
-                          !usingCrmGallery && productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
-                            ? MOSKITIERY_RAMKOWE_GALLERY_CATEGORIES
-                            : [];
+                          usingCrmGallery
+                            ? []
+                            : productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
+                              ? MOSKITIERY_RAMKOWE_GALLERY_CATEGORIES
+                              : plisyCategories;
+                        // Which group the photo on screen belongs to. Built from
+                        // whichever category set is live, so plisy's dynamic
+                        // categories get captions too.
+                        const categoryByPhoto: Record<string, GalleryCategory> = Object.fromEntries(
+                          galleryCategories.flatMap((category) =>
+                            category.photos.map((photo) => [photo, category] as const),
+                          ),
+                        );
                         const activeCategory =
                           galleryCategories.find((category) => category.id === galleryCategoryId) || null;
                         const galleryPhotos = activeCategory ? activeCategory.photos : allPhotos;
@@ -3906,7 +3913,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         // in the full reel it changes as you scroll, and for
                         // the customer group it is the disclaimer.
                         const shownCategory =
-                          activeCategory || GALLERY_CATEGORY_BY_PHOTO[galleryPhotos[activeProductGallerySlide]] || null;
+                          activeCategory || categoryByPhoto[galleryPhotos[activeProductGallerySlide]] || null;
                         const isCustomerPhoto = shownCategory?.id === "klienci";
                         return (
                           <div className="hero-product-gallery">
@@ -3983,13 +3990,13 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                       <img
                                         src={optimizeImageUrl(galleryPhotos[index], 500)}
                                         alt={
-                                          GALLERY_CATEGORY_BY_PHOTO[galleryPhotos[index]]?.id === "klienci"
+                                          categoryByPhoto[galleryPhotos[index]]?.id === "klienci"
                                             ? `${displayedProduct.label} - zdjęcie od klienta`
                                             : displayedProduct.label
                                         }
                                         loading={isActive ? "eager" : "lazy"}
                                       />
-                                      {GALLERY_CATEGORY_BY_PHOTO[galleryPhotos[index]]?.id === "klienci" ? (
+                                      {categoryByPhoto[galleryPhotos[index]]?.id === "klienci" ? (
                                         <span className="gallery-customer-badge">Zdjęcie klienta</span>
                                       ) : null}
                                     </button>
