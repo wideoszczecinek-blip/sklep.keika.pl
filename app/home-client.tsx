@@ -90,6 +90,19 @@ import {
   type ConfiguratorResult as RoletyDachoweConfiguratorResult,
 } from "@/features/rolety-dachowe/shared";
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
+import { calcPlisyPrice, fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
+import {
+  isPlisyPlaceholderCopy,
+  PLISY_CALLOUT,
+  PLISY_COLLECTIONS,
+  PLISY_EXAMPLE_HEIGHT_MM,
+  PLISY_EXAMPLE_WIDTH_MM,
+  PLISY_FAQ,
+  PLISY_FEATURE_BULLETS,
+  PLISY_SPEC_ITEMS,
+  PLISY_STARTING_PRICE_FALLBACK,
+  PLISY_SUBTITLE,
+} from "@/features/plisy/landing-content";
 import { isProductSlugLive, PRODUCT_LOCKED_MESSAGE } from "@/lib/product-availability";
 import { ALLEGRO_RATING_SNAPSHOTS, HOMEPAGE_CONFIG_SNAPSHOT } from "@/lib/landing-snapshot";
 
@@ -741,7 +754,49 @@ function productSectionCtaLabel(product: SelectedProductView | null): string {
   const slug = productSlugFromSelected(product);
   if (slug === "moskitiery-ramkowe") return "Wyceń swoją moskitierę";
   if (slug === "rolety-dachowe") return "Wyceń swoją roletę";
+  if (slug === "plisy") return "Wyceń swoją plisę";
   return "Skonfiguruj i zobacz cenę";
+}
+
+// Small suggestive icons for plisy's 4 built-in spec labels (see
+// features/plisy/landing-content.ts) - keyed by exact label like
+// moskitieryRamkoweSpecIcon above, so a CRM-renamed item simply has none.
+function plisySpecIcon(label: string): React.ReactNode | null {
+  const common = { viewBox: "0 0 24 24", fill: "none", "aria-hidden": true } as const;
+  const stroke = { stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+  switch (label) {
+    case "Na wymiar co do milimetra":
+      return (
+        <svg {...common}>
+          <rect x="3" y="8" width="18" height="8" rx="1.5" {...stroke} />
+          <path d="M7 8v3M11 8v4M15 8v3M19 8v4" {...stroke} />
+        </svg>
+      );
+    case "Od góry i od dołu":
+      return (
+        <svg {...common}>
+          <rect x="5" y="3" width="14" height="18" rx="1.5" {...stroke} />
+          <path d="M8 9h8M8 12h8M8 15h8" {...stroke} />
+          <path d="M12 3v3M12 18v3" {...stroke} />
+        </svg>
+      );
+    case "Z wierceniem lub bez":
+      return (
+        <svg {...common}>
+          <path d="M4 12h9l3-3 3 3-3 3-3-3" {...stroke} />
+          <path d="M4 9v6" {...stroke} />
+        </svg>
+      );
+    case "Gwarancja satysfakcji":
+      return (
+        <svg {...common}>
+          <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" {...stroke} />
+          <path d="M9 12l2 2 4-4" {...stroke} />
+        </svg>
+      );
+    default:
+      return null;
+  }
 }
 
 function hardwareOptionsForProduct(
@@ -1278,6 +1333,12 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // is fetched live from the CRM instead of hardcoded like the two above.
   const [plisyConfigKey, setPlisyConfigKey] = useState(0);
   const [plisyLastResult, setPlisyLastResult] = useState<PlisyConfiguratorResult | null>(null);
+  // Plisy landing copy prices itself from the live CRM matrix ("od 77 zł",
+  // the per-collection examples) instead of the hand-typed CRM price_from,
+  // which read "od 219 zł" against a 77 zł matrix minimum (audit
+  // 2026-09-14). Same public profile the configurator fetches - cached by
+  // fetchPlisyProfile, so it costs nothing extra once the panel mounts.
+  const [plisyProfile, setPlisyProfile] = useState<PlisyProfile | null>(null);
   // Desktop-only "Powiększ" toggle on .hero-product-config-panel (shared by
   // every product's configurator, applied once here instead of per-product).
   // Pure CSS state - no scroll position or config selection is touched by
@@ -1499,6 +1560,32 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // true until shipping_banner.php answers - a same-height placeholder
   // holds the banner's row so the video/description below don't jump.
   const [shippingBannerPending, setShippingBannerPending] = useState(true);
+  const displayedProductSlugForPlisy = productSlugFromSelected(displayedProduct);
+  useEffect(() => {
+    if (displayedProductSlugForPlisy !== "plisy" || plisyProfile) return;
+    let cancelled = false;
+    void fetchPlisyProfile().then((profile) => {
+      if (!cancelled && profile) setPlisyProfile(profile);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayedProductSlugForPlisy, plisyProfile]);
+  // Lowest price in the whole matrix (any table, STANDARD mount has no
+  // surcharge) - the honest "od X zł" for the trust row.
+  const plisyStartingPrice = useMemo(() => {
+    if (!plisyProfile) return PLISY_STARTING_PRICE_FALLBACK;
+    let min = Number.POSITIVE_INFINITY;
+    for (const table of plisyProfile.tables) {
+      for (const row of table.prices) {
+        for (const cell of row) {
+          if (typeof cell === "number" && Number.isFinite(cell) && cell > 0 && cell < min) min = cell;
+        }
+      }
+    }
+    if (!Number.isFinite(min)) return PLISY_STARTING_PRICE_FALLBACK;
+    return Math.max(0, min * (1 + plisyProfile.priceAdjustmentPercent / 100) + plisyProfile.priceAdjustmentAmount);
+  }, [plisyProfile]);
   // "Ekspres" toggle (lib/express.ts) - the choice made here carries into
   // /koszyk's "Termin realizacji" via localStorage.
   const [expressSelected, setExpressSelectedState] = useState(false);
@@ -2822,7 +2909,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           see promo-top-strip.tsx). Must stay a direct child of .home-root:
           globals.css offsets .hero-header/.hero-inner via
           .home-root:has(> .promo-top-strip). */}
-      <PromoTopStrip productSlug="moskitiery-ramkowe" />
+      <PromoTopStrip productSlug={productSlugFromSelected(displayedProduct) || "moskitiery-ramkowe"} />
       <header className={`hero-header${isHeaderCompact ? " is-compact" : ""}`}>
         <div className="header-left">
           <a className="brand" href="/" aria-label="KEIKA strona główna">
@@ -3425,6 +3512,179 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               </button>
                             </div>
                           </div>
+                        ) : productSlugFromSelected(displayedProduct) === "plisy" ? (
+                          <div className="pl-landing">
+                            {/* Plisy landing (audit 2026-09-14) - built-in copy from
+                                features/plisy/landing-content.ts, CRM fields take
+                                over one by one once the owner fills them. SEZON20
+                                applies to plisy (owner, 2026-09-14) but the plisy
+                                configurator prices without the code, so the banner
+                                says the discount lands in the cart. No Ekspres, no
+                                dispatch counter here: plisy take 5-10 business days. */}
+                            {topPromoPreview || topPromoActive ? (
+                              <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
+                                {(promo) => (
+                                  <div className={`pl-sezon-banner ${topPromoActive ? "is-active" : ""}`}>
+                                    <div className="pl-sezon-banner-top">
+                                      <span className="pl-sezon-banner-badge" aria-hidden="true">
+                                        {topPromoActive ? "✓" : "-20%"}
+                                      </span>
+                                      <div className="pl-sezon-banner-copy">
+                                        <strong className="pl-sezon-banner-text">
+                                          {topPromoActive ? <>Kod SEZON20 aktywny</> : <>Tylko dzisiaj: kod SEZON20</>}
+                                        </strong>
+                                        <span className="pl-sezon-banner-sub">
+                                          {topPromoActive ? (
+                                            promo ? (
+                                              <>
+                                                Rabat -20% naliczy się w koszyku, ważny jeszcze <strong>{promo.remainingText}</strong>
+                                              </>
+                                            ) : (
+                                              "Rabat -20% naliczy się w koszyku"
+                                            )
+                                          ) : (
+                                            "Aktywuj, a rabat -20% naliczy się w koszyku"
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {!topPromoActive ? (
+                                      <button type="button" className="pl-sezon-banner-cta" onClick={activateTopPromo}>
+                                        Aktywuj rabat -20%
+                                      </button>
+                                    ) : promo ? (
+                                      <button type="button" className="pl-sezon-banner-cta" onClick={promo.openModal}>
+                                        Zapisz / wyślij link
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                )}
+                              </PromoCountdownBanner>
+                            ) : !topPromoResolved ? (
+                              <div className="pl-sezon-banner pl-sezon-banner--placeholder" aria-hidden="true" />
+                            ) : null}
+                            <div className="pl-trust-row">
+                              <span className="pl-price">
+                                od {plisyStartingPrice.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} zł
+                                <span className="pl-price-unit"> / szt.</span>
+                              </span>
+                              <span className="pl-chip">5 lat gwarancji</span>
+                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
+                              <span className="pl-chip">30 dni na zwrot</span>
+                            </div>
+
+                            <p className="pl-subtitle">
+                              {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
+                            </p>
+                            <button type="button" className="pl-mobile-price-cta" onClick={scrollToConfigPanel}>
+                              Wyceń swoją plisę w 10 sekund
+                            </button>
+
+                            <img
+                              className="pl-description-photo pl-plisy-hero-photo"
+                              src="/plisy-okienne-hero.webp"
+                              alt="Plisa okienna KEIKA na białym oknie, zasłonięta dolna część szyby"
+                              width={1200}
+                              height={1200}
+                              fetchPriority="high"
+                            />
+
+                            <div className="pl-spec-grid">
+                              {(productLanding?.specItems?.length ? productLanding.specItems : PLISY_SPEC_ITEMS).map((item) => {
+                                const icon = plisySpecIcon(item.label);
+                                return (
+                                  <div className="pl-spec-item" key={item.label}>
+                                    {icon ? <span className="pl-spec-icon">{icon}</span> : null}
+                                    <div className="pl-spec-item-text">
+                                      <span className="pl-spec-label">{item.label}</span>
+                                      <span className="pl-spec-value">{item.value}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <h2 className="hero-product-section-title">Opis produktu</h2>
+                            {productLanding?.description && !isPlisyPlaceholderCopy(productLanding.description) ? (
+                              <div
+                                className="pl-description"
+                                dangerouslySetInnerHTML={{ __html: demoteHeadings(productLanding.description) }}
+                              />
+                            ) : null}
+
+                            <ul className="pl-feature-list">
+                              {(productLanding?.featureBullets?.length ? productLanding.featureBullets : PLISY_FEATURE_BULLETS).map(
+                                (bullet) => (
+                                  <li key={bullet.lead}>
+                                    <strong>{bullet.lead}</strong>
+                                    {bullet.detail ? <span> — {bullet.detail}</span> : null}
+                                  </li>
+                                ),
+                              )}
+                            </ul>
+
+                            <div className="pl-collections">
+                              <h3 className="pl-collections-title">Którą kolekcję tkanin wybrać?</h3>
+                              <div className="pl-collections-table-wrap">
+                                <table className="pl-collections-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Kolekcja</th>
+                                      <th>Co daje</th>
+                                      <th>Gdzie pasuje</th>
+                                      <th className="pl-collections-price">
+                                        {PLISY_EXAMPLE_WIDTH_MM / 10} × {PLISY_EXAMPLE_HEIGHT_MM / 10} cm
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {PLISY_COLLECTIONS.map((row) => {
+                                      const group = plisyProfile?.fabricGroups.find((entry) => entry.id === row.groupId);
+                                      const price =
+                                        plisyProfile && group
+                                          ? calcPlisyPrice(
+                                              plisyProfile,
+                                              PLISY_EXAMPLE_WIDTH_MM,
+                                              PLISY_EXAMPLE_HEIGHT_MM,
+                                              plisyProfile.hardware[0]?.id || "",
+                                              row.groupId,
+                                            )
+                                          : null;
+                                      return (
+                                        <tr key={row.groupId}>
+                                          <td>
+                                            <strong>{row.name}</strong>
+                                            {group?.swatches.length ? (
+                                              <span className="pl-collections-count">{group.swatches.length} kolorów</span>
+                                            ) : null}
+                                          </td>
+                                          <td>{row.what}</td>
+                                          <td>{row.where}</td>
+                                          <td className="pl-collections-price">
+                                            {price !== null
+                                              ? `${price.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} zł`
+                                              : "—"}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <p className="pl-collections-note">
+                                Ceny przykładowe dla plisy {PLISY_EXAMPLE_WIDTH_MM / 10} × {PLISY_EXAMPLE_HEIGHT_MM / 10} cm z montażem STANDARD, przed
+                                rabatem SEZON20. Dokładną cenę Twojego okna policzy konfigurator.
+                              </p>
+                            </div>
+
+                            <div className="pl-callout">
+                              <strong>{productLanding?.callout?.title || PLISY_CALLOUT.title}</strong>
+                              <p>{productLanding?.callout?.body || PLISY_CALLOUT.body}</p>
+                              <button type="button" className="pl-inline-cta-button pl-callout-cta" onClick={scrollToConfigPanel}>
+                                Wyceń swoją plisę
+                              </button>
+                            </div>
+                          </div>
                         ) : productSlugFromSelected(displayedProduct) === "rolety-dachowe" ? (
                           <div className="pl-landing">
                             <div className="pl-trust-row">
@@ -3966,9 +4226,14 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                       </section>
                       <section id="product-section-faq" ref={faqSectionRef} className="hero-product-section">
                         <h2 className="hero-product-section-title">FAQ - Pytania i Odpowiedzi</h2>
-                        {productLanding?.faq?.length ? (
+                        {(productLanding?.faq?.length
+                          ? productLanding.faq
+                          : productSlugFromSelected(displayedProduct) === "plisy"
+                            ? PLISY_FAQ
+                            : []
+                        ).length ? (
                           <div className="hero-product-faq">
-                            {productLanding.faq.map((entry, index) => (
+                            {(productLanding?.faq?.length ? productLanding.faq : PLISY_FAQ).map((entry, index) => (
                               <details key={`${entry.question}-${index}`} className="hero-product-faq-item">
                                 <summary>{entry.question}</summary>
                                 <p>{entry.answer}</p>

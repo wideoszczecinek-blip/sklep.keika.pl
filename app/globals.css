@@ -12229,3 +12229,118 @@ html[data-theme="dark"] .promo-save-modal-urgency {
     font-size: 0.8rem;
   }
 }
+
+/* Plisy landing (audit 2026-09-14): "Którą kolekcję tkanin wybrać?" guide
+   between the feature list and the callout - see the plisy branch in
+   app/home-client.tsx. Dark palette matches .pl-spec-item / .pl-feature-list,
+   the light overrides below follow the same html[data-theme="light"] pattern
+   the rest of the .pl-* blocks use. */
+.pl-plisy-hero-photo {
+  max-height: 420px;
+  margin: 0.2rem 0 0;
+}
+
+.pl-collections {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.pl-collections-title {
+  margin: 0.4rem 0 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f2f7ff;
+}
+
+.pl-collections-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(240, 248, 255, 0.12);
+  background: rgba(240, 248, 255, 0.04);
+}
+
+.pl-collections-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: rgba(240, 248, 255, 0.86);
+  font-variant-numeric: tabular-nums;
+}
+
+.pl-collections-table th,
+.pl-collections-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid rgba(240, 248, 255, 0.1);
+}
+
+.pl-collections-table th {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(240, 248, 255, 0.6);
+}
+
+.pl-collections-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.pl-collections-table td strong {
+  display: block;
+  color: #f2f7ff;
+}
+
+.pl-collections-count {
+  display: block;
+  font-size: 0.74rem;
+  color: rgba(240, 248, 255, 0.55);
+}
+
+.pl-collections-price {
+  text-align: right !important;
+  white-space: nowrap;
+  font-weight: 700;
+  color: #ffb066;
+}
+
+.pl-collections-note {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(240, 248, 255, 0.6);
+}
+
+html[data-theme="light"] .pl-collections-title,
+html[data-theme="light"] .pl-collections-table td strong {
+  color: #16314e;
+}
+
+html[data-theme="light"] .pl-collections-table-wrap {
+  border-color: #e7e9ee;
+  background: #f6f7f9;
+}
+
+html[data-theme="light"] .pl-collections-table {
+  color: rgba(19, 40, 67, 0.86);
+}
+
+html[data-theme="light"] .pl-collections-table th,
+html[data-theme="light"] .pl-collections-table td {
+  border-bottom-color: #e7e9ee;
+}
+
+html[data-theme="light"] .pl-collections-table th,
+html[data-theme="light"] .pl-collections-count,
+html[data-theme="light"] .pl-collections-note {
+  color: rgba(19, 40, 67, 0.6);
+}
+
+html[data-theme="light"] .pl-collections-price {
+  color: #c2570a;
+}

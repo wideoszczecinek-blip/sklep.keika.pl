@@ -43,7 +43,12 @@ const TRANSITION_MS = 520;
  * picked out as the one that catches the eye, so every slide now has one. */
 type Slide = { key: string; icon: string; badge: string; content: ReactNode };
 
-const BENEFIT_SLIDES: Slide[] = [
+// Ekspres exists for moskitiery-ramkowe only (owner, 2026-09-14: plisy take
+// 5-10 business days, no Ekspres), so the slide and the "na moskitiery"
+// wording follow the product the strip is shown for.
+function benefitSlides(productSlug: string): Slide[] {
+  const isMoskitiery = productSlug === "moskitiery-ramkowe";
+  return [
   { key: "dostawa", icon: "🚚", badge: "GRATIS", content: <>Darmowa dostawa od 79 zł</> },
   // 30 days is a voluntary offer term, not the statutory 14-day withdrawal:
   // these frames are made to measure, so art. 38 pkt 3 excludes that right
@@ -52,8 +57,8 @@ const BENEFIT_SLIDES: Slide[] = [
   // binding - which is exactly what this slide does, so the promise has to
   // be honoured and the "Reklamacje i zwroty" page should describe it.
   { key: "zwrot", icon: "🔄", badge: "30 dni", content: <>na zwrot bez podania przyczyny</> },
-  { key: "gwarancja", icon: "🏅", badge: "5 lat", content: <>gwarancji na moskitiery</> },
-  ...(EXPRESS_ENABLED
+  { key: "gwarancja", icon: "🏅", badge: "5 lat", content: isMoskitiery ? <>gwarancji na moskitiery</> : <>gwarancji</> },
+  ...(EXPRESS_ENABLED && isMoskitiery
     ? [
         {
           key: "ekspres",
@@ -68,14 +73,16 @@ const BENEFIT_SLIDES: Slide[] = [
         },
       ]
     : []),
-];
+  ];
+}
 
 /** [promo, benefit, promo, benefit, ...] - the countdown gets every other
  * slot instead of one slot in six, so a customer who looks up at any moment
  * has a ~50% chance of seeing how long the discount still runs. */
-function buildSlides(promoSlide: Slide | null): Slide[] {
-  if (!promoSlide) return BENEFIT_SLIDES;
-  return BENEFIT_SLIDES.flatMap((benefit, index) => [
+function buildSlides(promoSlide: Slide | null, productSlug: string): Slide[] {
+  const benefits = benefitSlides(productSlug);
+  if (!promoSlide) return benefits;
+  return benefits.flatMap((benefit, index) => [
     { ...promoSlide, key: `${promoSlide.key}-${index}` },
     benefit,
   ]);
@@ -174,7 +181,7 @@ export default function PromoTopStrip({
             }
           : null;
         if (!promoSlide && variant === "static") return null;
-        return <StripCarousel slides={buildSlides(promoSlide)} variant={variant} />;
+        return <StripCarousel slides={buildSlides(promoSlide, productSlug)} variant={variant} />;
       }}
     </PromoCountdownBanner>
   );
