@@ -362,22 +362,90 @@ function moskitieryRamkoweSpecIcon(label: string): React.ReactNode | null {
   }
 }
 
-// Real product photos, hosted on the CRM media store. Used for the
-// moskitiery-ramkowe "Galeria zdjęć" tab instead of the generic
-// hero-carousel fallback gallery. Order matches what a buyer expects to see
-// first: the real Allegro listing thumbnail, then the one real "installed
-// on an actual window" shot we have, then the own-photoshoot studio set.
-const MOSKITIERY_RAMKOWE_GALLERY_PHOTOS: string[] = [
-  "https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/moskitiera-okienna-allegro-miniaturka.jpg",
-  "https://crm-keika.groovemedia.pl/storage/shop/media/20260327_214156_d5ad04b7_moskitiera-okienna.jpg",
-  ...Array.from(
-    { length: 57 },
-    (_, index) =>
-      `https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/moskitiera-okienna-${String(
-        index + 1,
-      ).padStart(2, "0")}.jpg`,
-  ),
+// Real product photos, hosted on the CRM media store, grouped into labelled
+// categories (owner call 2026-09-14: "uporządkować galerię ... najpierw te
+// najbardziej prezencyjne i techniczne ... wyraźnie zaznaczyć kategorię").
+//
+// Order of the categories IS the order of the "Wszystkie" reel: the finished
+// product first, then the colour range, then the close-ups, then how it
+// mounts, and only then the customer photos. The last group is real, taken
+// by buyers, and deliberately labelled - those shots sell trust precisely
+// because they are not studio-lit, but the customer has to know which is
+// which. The 57 studio frames below were sorted by looking at the actual
+// images, not by filename.
+type GalleryCategory = {
+  id: string;
+  label: string;
+  /** One line under the photo explaining what this group is. */
+  note: string;
+  photos: string[];
+};
+
+const GALLERY_BASE = "https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/";
+
+/** Studio frames are numbered moskitiera-okienna-01..57 on the media store. */
+function studioPhotos(...numbers: number[]): string[] {
+  return numbers.map((n) => `${GALLERY_BASE}moskitiera-okienna-${String(n).padStart(2, "0")}.jpg`);
+}
+
+/** 18 photos pulled from this product's Allegro reviews, re-encoded to
+ * 1600 px / progressive JPEG and uploaded 2026-09-14. Listed best-first by
+ * eye (well-lit, product clearly visible), not by file name. */
+function customerPhotos(...numbers: number[]): string[] {
+  return numbers.map((n) => `${GALLERY_BASE}klienci/moskitiera-klient-${String(n).padStart(2, "0")}.jpg`);
+}
+
+const MOSKITIERY_RAMKOWE_GALLERY_CATEGORIES: GalleryCategory[] = [
+  {
+    id: "produkt",
+    label: "Produkt",
+    note: "Zdjęcia studyjne gotowej moskitiery",
+    photos: [
+      `${GALLERY_BASE}moskitiera-okienna-allegro-miniaturka.jpg`,
+      "https://crm-keika.groovemedia.pl/storage/shop/media/20260327_214156_d5ad04b7_moskitiera-okienna.jpg",
+      ...studioPhotos(5, 6, 7, 8, 9, 13, 14, 16, 17, 20, 21, 22),
+    ],
+  },
+  {
+    id: "kolory",
+    label: "Kolory profili",
+    note: "7 kolorów ramy - od bieli i antracytu po drewnopodobne",
+    photos: studioPhotos(1, 2, 3, 50, 51, 52, 53, 54, 55, 56),
+  },
+  {
+    id: "detale",
+    label: "Detale i siatka",
+    note: "Zbliżenia narożników, profilu i wzmocnionej siatki",
+    photos: studioPhotos(4, 10, 11, 12, 15, 18, 19, 41, 48, 49, 57),
+  },
+  {
+    id: "montaz",
+    label: "Montaż i mocowanie",
+    note: "Zaczepy sprężynowe i przekroje okna - jak moskitiera trzyma się ramy",
+    photos: studioPhotos(23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 47),
+  },
+  {
+    id: "klienci",
+    label: "Zdjęcia od klientów",
+    note: "Prawdziwe zdjęcia z opinii na Allegro - robione telefonem, bez studia i retuszu",
+    photos: customerPhotos(4, 5, 8, 18, 12, 7, 6, 15, 1, 3, 11, 9, 2, 17, 14, 10, 13, 16),
+  },
 ];
+
+/** Flat "Wszystkie" reel, in category order. Also what the CRM-override
+ * comparison and the "zdjęcie główne" lookup below use. */
+const MOSKITIERY_RAMKOWE_GALLERY_PHOTOS: string[] = MOSKITIERY_RAMKOWE_GALLERY_CATEGORIES.flatMap(
+  (category) => category.photos,
+);
+
+/** Which category a photo belongs to - lets the caption name the group even
+ * in the "Wszystkie" reel, where the customer is scrolling across all of
+ * them. */
+const GALLERY_CATEGORY_BY_PHOTO: Record<string, GalleryCategory> = Object.fromEntries(
+  MOSKITIERY_RAMKOWE_GALLERY_CATEGORIES.flatMap((category) =>
+    category.photos.map((photo) => [photo, category] as const),
+  ),
+);
 
 // rolety-dachowe (roof window blinds) - real content pulled from the same
 // live CRM product record features/rolety-dachowe/shared.ts's options come
@@ -1656,6 +1724,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // Light theme is now applied unconditionally in app/layout.tsx's blocking
   // head script (before first paint, no flash) - no longer needed here.
   const [activeProductGallerySlide, setActiveProductGallerySlide] = useState(0);
+  // "" = the full reel; otherwise a GalleryCategory id (see
+  // MOSKITIERY_RAMKOWE_GALLERY_CATEGORIES).
+  const [galleryCategoryId, setGalleryCategoryId] = useState("");
   // Swipe-to-navigate for the gallery coverflow (see galleryCircularOffset/
   // galleryVisibleIndices below) - it's no longer a native horizontal
   // scroller (that's what made the true circular loop possible: a scroll
@@ -3490,11 +3561,25 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
                               ? ROLETY_DACHOWE_GALLERY_PHOTOS
                               : displayedProduct.gallery;
-                        const galleryPhotos =
-                          productLanding?.gallery?.length && productLanding.gallery.length >= builtinGallery.length
-                            ? productLanding.gallery
-                            : builtinGallery;
+                        const usingCrmGallery = Boolean(
+                          productLanding?.gallery?.length && productLanding.gallery.length >= builtinGallery.length,
+                        );
+                        const allPhotos = usingCrmGallery ? productLanding!.gallery : builtinGallery;
+                        // Categories only exist for the built-in set. A CRM-
+                        // curated gallery is shown as one plain reel - the
+                        // admin has no per-photo category field to fill in.
+                        const galleryCategories =
+                          !usingCrmGallery && productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
+                            ? MOSKITIERY_RAMKOWE_GALLERY_CATEGORIES
+                            : [];
+                        const activeCategory =
+                          galleryCategories.find((category) => category.id === galleryCategoryId) || null;
+                        const galleryPhotos = activeCategory ? activeCategory.photos : allPhotos;
                         const total = galleryPhotos.length;
+                        const pickCategory = (id: string) => {
+                          setGalleryCategoryId(id);
+                          setActiveProductGallerySlide(0);
+                        };
                         const goToSlide = (index: number) => {
                           setActiveProductGallerySlide(((index % total) + total) % total);
                         };
@@ -3557,8 +3642,44 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           distance === 0 ? 1 : distance === 1 ? 0.72 : distance === 2 ? 0.55 : 0.42;
                         const mainIndices = galleryVisibleIndices(activeProductGallerySlide, total, 3);
                         const thumbIndices = galleryVisibleIndices(activeProductGallerySlide, total, 5);
+                        // Names the group the photo on screen belongs to -
+                        // in the full reel it changes as you scroll, and for
+                        // the customer group it is the disclaimer.
+                        const shownCategory =
+                          activeCategory || GALLERY_CATEGORY_BY_PHOTO[galleryPhotos[activeProductGallerySlide]] || null;
+                        const isCustomerPhoto = shownCategory?.id === "klienci";
                         return (
                           <div className="hero-product-gallery">
+                            {galleryCategories.length ? (
+                              <div className="gallery-cats" role="group" aria-label="Kategorie zdjęć">
+                                <button
+                                  type="button"
+                                  className={`gallery-cat ${galleryCategoryId === "" ? "is-active" : ""}`}
+                                  aria-pressed={galleryCategoryId === ""}
+                                  onClick={() => pickCategory("")}
+                                >
+                                  Wszystkie <span>{allPhotos.length}</span>
+                                </button>
+                                {galleryCategories.map((category) => (
+                                  <button
+                                    key={category.id}
+                                    type="button"
+                                    className={`gallery-cat ${category.id === "klienci" ? "is-customer" : ""} ${
+                                      galleryCategoryId === category.id ? "is-active" : ""
+                                    }`}
+                                    aria-pressed={galleryCategoryId === category.id}
+                                    onClick={() => {
+                                      pickCategory(category.id);
+                                      trackShopStep("gallery_category", category.id, {
+                                        product_slug: "moskitiery-ramkowe",
+                                      });
+                                    }}
+                                  >
+                                    {category.label} <span>{category.photos.length}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
                             <div className="hero-product-gallery-row-wrap">
                               <button
                                 type="button"
@@ -3601,9 +3722,16 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                     >
                                       <img
                                         src={optimizeImageUrl(galleryPhotos[index], 500)}
-                                        alt={displayedProduct.label}
+                                        alt={
+                                          GALLERY_CATEGORY_BY_PHOTO[galleryPhotos[index]]?.id === "klienci"
+                                            ? `${displayedProduct.label} - zdjęcie od klienta`
+                                            : displayedProduct.label
+                                        }
                                         loading={isActive ? "eager" : "lazy"}
                                       />
+                                      {GALLERY_CATEGORY_BY_PHOTO[galleryPhotos[index]]?.id === "klienci" ? (
+                                        <span className="gallery-customer-badge">Zdjęcie klienta</span>
+                                      ) : null}
                                     </button>
                                   );
                                 })}
@@ -3617,6 +3745,15 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 ›
                               </button>
                             </div>
+                            {shownCategory ? (
+                              <p className={`gallery-caption ${isCustomerPhoto ? "is-customer" : ""}`}>
+                                <strong>{shownCategory.label}</strong>
+                                <span>{shownCategory.note}</span>
+                                <small>
+                                  {activeProductGallerySlide + 1} / {total}
+                                </small>
+                              </p>
+                            ) : null}
                             <div className="hero-product-gallery-thumbs-wrap">
                               <button
                                 type="button"

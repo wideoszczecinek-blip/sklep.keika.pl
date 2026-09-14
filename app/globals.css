@@ -12101,3 +12101,131 @@ html[data-theme="dark"] .promo-save-modal-urgency {
     font-size: 0.85em;
   }
 }
+
+/* ==== 2026-09-14: kategorie w galerii ==== */
+
+/* Category chips above the reel. The customer group is deliberately styled
+   apart - those photos are real and unretouched, and the buyer should know
+   that before judging them. */
+.gallery-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem;
+}
+
+.gallery-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line, rgba(22, 49, 78, 0.18));
+  background: #fff;
+  color: #16314e;
+  border-radius: 999px;
+  padding: 0.38rem 0.8rem;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.gallery-cat span {
+  font-weight: 600;
+  font-size: 0.76rem;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+
+.gallery-cat:hover {
+  border-color: #16314e;
+}
+
+.gallery-cat.is-active {
+  background: #16314e;
+  border-color: #16314e;
+  color: #fff;
+}
+
+.gallery-cat.is-active span {
+  opacity: 0.75;
+}
+
+.gallery-cat.is-customer {
+  border-style: dashed;
+  border-color: rgba(217, 96, 10, 0.5);
+  color: #b0530c;
+}
+
+.gallery-cat.is-customer.is-active {
+  background: #d9600a;
+  border-color: #d9600a;
+  border-style: solid;
+  color: #fff;
+}
+
+/* Caption between the reel and the thumbnails - names the group the photo
+   on screen belongs to, which in the full reel changes as you scroll. */
+.gallery-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.5rem;
+  margin: 0.7rem 0 0.2rem;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.gallery-caption strong {
+  font-weight: 800;
+}
+
+.gallery-caption span {
+  opacity: 0.72;
+}
+
+.gallery-caption small {
+  margin-left: auto;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+
+.gallery-caption.is-customer strong {
+  color: #b0530c;
+}
+
+/* Corner badge on the slide itself, so a customer photo is never mistaken
+   for a studio one even mid-swipe. The slide is already position:absolute
+   (see .hero-product-gallery-row-item above) - do NOT add position:relative
+   here, it overrides that and drops every tile back into normal flow, which
+   scrambles the whole reel. */
+.gallery-customer-badge {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 2;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(17, 32, 48, 0.82);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .gallery-cats {
+    gap: 0.32rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .gallery-cat {
+    padding: 0.32rem 0.62rem;
+    font-size: 0.78rem;
+  }
+
+  .gallery-caption {
+    font-size: 0.8rem;
+  }
+}
