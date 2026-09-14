@@ -3808,7 +3808,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         // profile, not a hardcoded list (features/plisy/gallery.ts).
                         const plisyCategories =
                           productSlugFromSelected(displayedProduct) === "plisy"
-                            ? buildPlisyGalleryCategories(plisyProfile)
+                            ? buildPlisyGalleryCategories()
                             : [];
                         const builtinGallery =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
@@ -3830,7 +3830,13 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             ? []
                             : productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                               ? MOSKITIERY_RAMKOWE_GALLERY_CATEGORIES
-                              : plisyCategories;
+                              // One category is not a filter - it would render
+                              // "Wszystkie 3 / Realizacje 3", two buttons for
+                              // the same three photos. Tabs appear once plisy
+                              // has more than one group worth splitting.
+                              : plisyCategories.length > 1
+                                ? plisyCategories
+                                : [];
                         // Which group the photo on screen belongs to. Built from
                         // whichever category set is live, so plisy's dynamic
                         // categories get captions too.

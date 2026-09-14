@@ -12348,21 +12348,17 @@ html[data-theme="light"] .pl-collections-price {
 }
 
 /* ---------------------------------------------------------------------------
-   Plisy: animowany hero (features/plisy/PlisyHero.tsx)
+   Plisy: interaktywny hero (features/plisy/PlisyHero.tsx)
 
-   Zastępuje statyczne /plisy-okienne-hero.webp. Plisa opada i podnosi się,
-   pokazując to, czego nie pokaże żadne zdjęcie: że tkanina zatrzymuje się w
-   dowolnym miejscu skrzydła, a oba skrzydła ustawia się niezależnie.
+   Obie listwy są chwytalne. Pozycje liczy JS (requestAnimationFrame dla
+   autodema, pointer events dla przeciągania), więc tutaj nie ma keyframes -
+   został sam wygląd, kursory i obszar dotyku.
 
-   Mechanika: tkanina to prostokąt skalowany w pionie od górnej krawędzi, więc
-   deseń plis zagęszcza się razem z nią - tak jak w prawdziwej plisie. Dolna
-   listwa jedzie osobno, na tę samą wysokość co krawędź tkaniny; gdyby siedziała
-   w skalowanej grupie, spłaszczałaby się razem z deseniem.
-
-   Wysokość światła skrzydła w układzie SVG: 576 - 12,672 (listwa) = 563,328.
-   Przesunięcie listwy = 563,328 * drop - 12,672 - stąd te wartości w px.
+   aspect-ratio MUSI odpowiadać viewBox SVG (1000x800 = 5/4). Przeliczanie
+   pozycji kursora na współrzędne SVG zakłada brak letterboxingu.
 --------------------------------------------------------------------------- */
 .plisy-hero {
+  position: relative;
   margin: 0.2rem 0 0;
   border-radius: 0.9rem;
   overflow: hidden;
@@ -12373,62 +12369,58 @@ html[data-theme="light"] .pl-collections-price {
 .plisy-hero-svg {
   display: block;
   width: 100%;
-  max-height: 420px;
   aspect-ratio: 5 / 4;
+  /* Przeciąganie listew na telefonie nie może przewijać strony. */
+  touch-action: none;
 }
 
-.plisy-hero-fabric {
-  transform-box: fill-box;
-  transform-origin: center top;
+.plisy-hero-rail {
+  cursor: grab;
+  outline: none;
 }
 
-.plisy-hero-bottomrail {
-  transform-box: view-box;
+.plisy-hero-rail:active {
+  cursor: grabbing;
 }
 
-.plisy-hero-blind--a .plisy-hero-fabric {
-  animation: plisyHeroFabricA 14s ease-in-out infinite;
-}
-.plisy-hero-blind--a .plisy-hero-bottomrail {
-  animation: plisyHeroRailA 14s ease-in-out infinite;
-}
-.plisy-hero-blind--b .plisy-hero-fabric {
-  animation: plisyHeroFabricB 14s ease-in-out infinite;
-}
-.plisy-hero-blind--b .plisy-hero-bottomrail {
-  animation: plisyHeroRailB 14s ease-in-out infinite;
+.plisy-hero-rail:focus-visible rect:nth-of-type(2) {
+  stroke: #f59e0b;
+  stroke-width: 2.5;
 }
 
-@keyframes plisyHeroFabricA {
-  0%, 8%    { transform: scaleY(0.62); }
-  38%, 58%  { transform: scaleY(0.86); }
-  92%, 100% { transform: scaleY(0.62); }
-}
-@keyframes plisyHeroRailA {
-  0%, 8%    { transform: translateY(336.59px); }
-  38%, 58%  { transform: translateY(471.79px); }
-  92%, 100% { transform: translateY(336.59px); }
-}
-
-@keyframes plisyHeroFabricB {
-  0%, 30%   { transform: scaleY(0.38); }
-  60%, 84%  { transform: scaleY(0.66); }
-  100%      { transform: scaleY(0.38); }
-}
-@keyframes plisyHeroRailB {
-  0%, 30%   { transform: translateY(201.39px); }
-  60%, 84%  { transform: translateY(359.13px); }
-  100%      { transform: translateY(201.39px); }
+.plisy-hero .plisy-hero-hint {
+  position: absolute;
+  left: 50%;
+  top: 0.6rem;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(12, 26, 44, 0.78);
+  color: #f2f7ff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: plisyHintIn 0.5s ease-out 1.1s both;
 }
 
-/* Bez ruchu: plisy stoją na wysokościach spoczynkowych z komponentu. */
-@media (prefers-reduced-motion: reduce) {
-  .plisy-hero-fabric,
-  .plisy-hero-bottomrail {
-    animation: none !important;
+@keyframes plisyHintIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@media (max-width: 420px) {
+  .plisy-hero .plisy-hero-hint {
+    font-size: 0.72rem;
+    padding: 0.26rem 0.62rem;
   }
-  .plisy-hero-blind--a .plisy-hero-fabric { transform: scaleY(0.62); }
-  .plisy-hero-blind--a .plisy-hero-bottomrail { transform: translateY(336.59px); }
-  .plisy-hero-blind--b .plisy-hero-fabric { transform: scaleY(0.38); }
-  .plisy-hero-blind--b .plisy-hero-bottomrail { transform: translateY(201.39px); }
+}
+
+/* Motyw jasny koloruje akapity w opisie produktu i wygrywa z regułą wyżej -
+   bez tego pigułka jest granatowa na granatowym. Sprawdzone na buildzie
+   produkcyjnym: dev server potrafi serwować zapieczony arkusz i pokazać
+   fałszywy wynik. */
+html[data-theme="light"] .plisy-hero .plisy-hero-hint {
+  color: #f2f7ff;
 }
