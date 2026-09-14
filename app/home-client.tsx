@@ -90,13 +90,10 @@ import {
   type ConfiguratorResult as RoletyDachoweConfiguratorResult,
 } from "@/features/rolety-dachowe/shared";
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
-import { calcPlisyPrice, fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
+import { fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
 import {
   isPlisyPlaceholderCopy,
   PLISY_CALLOUT,
-  PLISY_COLLECTIONS,
-  PLISY_EXAMPLE_HEIGHT_MM,
-  PLISY_EXAMPLE_WIDTH_MM,
   PLISY_FAQ,
   PLISY_FEATURE_BULLETS,
   PLISY_SPEC_ITEMS,
@@ -130,6 +127,7 @@ const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/Configurat
 // razem z resztą sekcji, a nie doładować po hydratacji (LCP).
 import PlisyHero from "@/features/plisy/PlisyHero";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
+import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -3611,59 +3609,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               )}
                             </ul>
 
-                            <div className="pl-collections">
-                              <h3 className="pl-collections-title">Którą kolekcję tkanin wybrać?</h3>
-                              <div className="pl-collections-table-wrap">
-                                <table className="pl-collections-table">
-                                  <thead>
-                                    <tr>
-                                      <th>Kolekcja</th>
-                                      <th>Co daje</th>
-                                      <th>Gdzie pasuje</th>
-                                      <th className="pl-collections-price">
-                                        {PLISY_EXAMPLE_WIDTH_MM / 10} × {PLISY_EXAMPLE_HEIGHT_MM / 10} cm
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {PLISY_COLLECTIONS.map((row) => {
-                                      const group = plisyProfile?.fabricGroups.find((entry) => entry.id === row.groupId);
-                                      const price =
-                                        plisyProfile && group
-                                          ? calcPlisyPrice(
-                                              plisyProfile,
-                                              PLISY_EXAMPLE_WIDTH_MM,
-                                              PLISY_EXAMPLE_HEIGHT_MM,
-                                              plisyProfile.hardware[0]?.id || "",
-                                              row.groupId,
-                                            )
-                                          : null;
-                                      return (
-                                        <tr key={row.groupId}>
-                                          <td>
-                                            <strong>{row.name}</strong>
-                                            {group?.swatches.length ? (
-                                              <span className="pl-collections-count">{group.swatches.length} kolorów</span>
-                                            ) : null}
-                                          </td>
-                                          <td>{row.what}</td>
-                                          <td>{row.where}</td>
-                                          <td className="pl-collections-price">
-                                            {price !== null
-                                              ? `${price.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} zł`
-                                              : "—"}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                              <p className="pl-collections-note">
-                                Ceny przykładowe dla plisy {PLISY_EXAMPLE_WIDTH_MM / 10} × {PLISY_EXAMPLE_HEIGHT_MM / 10} cm z montażem STANDARD, przed
-                                rabatem SEZON20. Dokładną cenę Twojego okna policzy konfigurator.
-                              </p>
-                            </div>
+                            <PlisyCollectionsPicker profile={plisyProfile} promo={topPromoPreview} onQuote={scrollToConfigPanel} />
 
                             <div className="pl-callout">
                               <strong>{productLanding?.callout?.title || PLISY_CALLOUT.title}</strong>

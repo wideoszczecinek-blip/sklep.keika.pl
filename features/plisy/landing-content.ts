@@ -29,8 +29,11 @@ export const PLISY_STARTING_PRICE_FALLBACK = 77;
 
 /** Example size the collections guide prices - a typical living-room
  * casement, matches the configurator's own placeholders (900 x 1200). */
-export const PLISY_EXAMPLE_WIDTH_MM = 900;
-export const PLISY_EXAMPLE_HEIGHT_MM = 1200;
+// 55 x 105 cm - owner's pick 2026-09-15 (was 90 x 120), a typical single
+// sash rather than a whole window, so the example price lands closer to
+// what most customers will actually see.
+export const PLISY_EXAMPLE_WIDTH_MM = 550;
+export const PLISY_EXAMPLE_HEIGHT_MM = 1050;
 
 export const PLISY_LEAD_TIME_LABEL = "5–10 dni roboczych";
 

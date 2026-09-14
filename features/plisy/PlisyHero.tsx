@@ -21,6 +21,7 @@
 //   - a fixed number of pleats, so they compress as the span shortens
 //   - anthracite honeycomb fabric, slim anodised rails
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { HERO_ROOMS, HERO_VIEWS } from "./hero-scenes";
 
 const VB_W = 1000;
 const VB_H = 800;
@@ -31,9 +32,21 @@ const MIN_SPAN = RAIL_H * 2 + 18;
  * cropped: pleat pitch = span / PLEATS. */
 const PLEATS = 44;
 
-const FABRIC = "#3b4147";
-const FABRIC_LIT = "#4e565d";
-const FABRIC_SHADE = "#20252a";
+/** A handful of fabric tones for the picker. Anthracite first: it is what the
+ * owner's own installations use and what the hero opened with. The rest are
+ * the tones customers actually order, not a full swatch book - that lives in
+ * the configurator. Each is a base plus a lit and a shaded stop for the
+ * pleat gradient; plShiftHex would do, but hand-picked stops keep the light
+ * fabrics from washing out. */
+const FABRICS = [
+  { id: "antracyt", label: "Antracyt", base: "#3b4147", lit: "#4e565d", shade: "#20252a", edge: "#2b3035" },
+  { id: "grafit", label: "Grafit", base: "#5b6168", lit: "#737a82", shade: "#3d4248", edge: "#4a5057" },
+  { id: "bez", label: "Beż", base: "#d5c6ad", lit: "#e8dcc6", shade: "#b6a58a", edge: "#c8b89c" },
+  { id: "biel", label: "Biel", base: "#eef0f1", lit: "#fbfcfc", shade: "#cfd4d8", edge: "#e2e5e8" },
+  { id: "granat", label: "Granat", base: "#2e3d5c", lit: "#42547a", shade: "#1c2740", edge: "#26334e" },
+  { id: "oliwka", label: "Oliwka", base: "#7c8460", lit: "#98a07a", shade: "#5c6345", edge: "#6e7554" },
+] as const;
+
 const RAIL = "#c3c8cc";
 const RAIL_LIT = "#eef1f2";
 const RAIL_DARK = "#868c91";
@@ -41,8 +54,8 @@ const RAIL_DARK = "#868c91";
 type Sash = { id: string; x: number; y: number; w: number; h: number };
 
 const SASHES: Sash[] = [
-  { id: "left", x: 108, y: 112, w: 372, h: 576 },
-  { id: "right", x: 520, y: 112, w: 372, h: 576 },
+  { id: "left", x: 178, y: 96, w: 312, h: 470 },
+  { id: "right", x: 510, y: 96, w: 312, h: 470 },
 ];
 
 /** Rail positions as a fraction of sash height: `t` is the top rail's top
@@ -89,6 +102,12 @@ export default function PlisyHero() {
   });
   /** Stops the demo for good on the first real interaction. */
   const [touched, setTouched] = useState(false);
+  const [roomId, setRoomId] = useState(HERO_ROOMS[0].id);
+  const [viewId, setViewId] = useState(HERO_VIEWS[0].id);
+  const [fabricId, setFabricId] = useState<(typeof FABRICS)[number]["id"]>(FABRICS[0].id);
+  const room = HERO_ROOMS.find((r) => r.id === roomId) || HERO_ROOMS[0];
+  const view = HERO_VIEWS.find((v) => v.id === viewId) || HERO_VIEWS[0];
+  const fabric = FABRICS.find((f) => f.id === fabricId) || FABRICS[0];
   // useSyncExternalStore rather than useState+useEffect: setting state
   // synchronously inside an effect triggers a cascading render (and the lint
   // rule that flags it). Server snapshot is false - the demo simply does not
@@ -206,6 +225,9 @@ export default function PlisyHero() {
     round: `plRound${uid}`,
     castTop: `plCastTop${uid}`,
     castBottom: `plCastBottom${uid}`,
+    opening: `plOpening${uid}`,
+    wallGrad: `plWall${uid}`,
+    floorGrad: `plFloor${uid}`,
   };
 
   return (
@@ -225,14 +247,21 @@ export default function PlisyHero() {
           {/* One pleat. The hard edge at 52% is the crease - without it the
               fabric reads as a flat dark block instead of stacked folds. */}
           <linearGradient id={ids.fold} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2b3035" />
-            <stop offset="22%" stopColor={FABRIC} />
-            <stop offset="46%" stopColor={FABRIC_LIT} />
-            <stop offset="51%" stopColor={FABRIC} />
-            <stop offset="52%" stopColor={FABRIC_SHADE} />
-            <stop offset="78%" stopColor="#343940" />
-            <stop offset="100%" stopColor="#2b3035" />
+            <stop offset="0%" stopColor={fabric.edge} />
+            <stop offset="22%" stopColor={fabric.base} />
+            <stop offset="46%" stopColor={fabric.lit} />
+            <stop offset="51%" stopColor={fabric.base} />
+            <stop offset="52%" stopColor={fabric.shade} />
+            <stop offset="78%" stopColor={fabric.edge} />
+            <stop offset="100%" stopColor={fabric.shade} />
           </linearGradient>
+
+          {/* The view photo fills the whole window opening once; each sash
+              clips its own piece of it, so the two panes line up like one
+              scene seen through one window. */}
+          <clipPath id={ids.opening}>
+            <rect x={SASHES[0].x} y={SASHES[0].y} width={SASHES[1].x + SASHES[1].w - SASHES[0].x} height={SASHES[0].h} />
+          </clipPath>
 
           {/* Cross-fabric roundness: pleats bow slightly, so the edges sit in
               shadow and the centre catches the light. */}
@@ -280,12 +309,26 @@ export default function PlisyHero() {
           </filter>
         </defs>
 
-        {/* Reveal / wall */}
-        <rect x="40" y="46" width="920" height="708" rx="12" fill="#e9eef3" />
+        {/* Room: wall, floor under the sill, then the room's own furniture. */}
+        <linearGradient id={ids.wallGrad} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={room.wall} />
+          <stop offset="100%" stopColor={room.wallDark} />
+        </linearGradient>
+        <linearGradient id={ids.floorGrad} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={room.floorDark} />
+          <stop offset="100%" stopColor={room.floor} />
+        </linearGradient>
+        <rect x="0" y="0" width={VB_W} height={VB_H} fill={`url(#${ids.wallGrad})`} />
+        <rect x="0" y="640" width={VB_W} height={VB_H - 640} fill={`url(#${ids.floorGrad})`} />
+        {room.paint(uid)}
+        {/* Reveal: a bevel around the frame, so the wall reads as having depth */}
+        <rect x="130" y="52" width="740" height="540" rx="8" fill="#000" opacity="0.08" />
+        <rect x="140" y="60" width="720" height="526" rx="8" fill="#fbfcfd" />
         {/* Frame */}
-        <rect x="60" y="64" width="880" height="672" rx="10" fill="#f6f9fb" stroke="#ccd5dd" strokeWidth="2" />
+        <rect x="150" y="68" width="700" height="512" rx="10" fill="#f6f9fb" stroke="#ccd5dd" strokeWidth="2" />
         {/* Sill */}
-        <rect x="48" y="736" width="904" height="20" rx="6" fill="#eef3f7" stroke="#ccd5dd" strokeWidth="1.5" />
+        <rect x="126" y="580" width="748" height="22" rx="5" fill="#eef3f7" stroke="#ccd5dd" strokeWidth="1.5" />
+        <rect x="126" y="602" width="748" height="6" fill="#000" opacity="0.12" />
 
         {SASHES.map((sash) => {
           const p = pos[sash.id];
@@ -329,13 +372,18 @@ export default function PlisyHero() {
               />
 
               <g clipPath={`url(#${clipId})`}>
-                {/* Daylight */}
+                {/* The view. Sky gradient underneath covers the photo's load time. */}
                 <rect x={sash.x} y={sash.y} width={sash.w} height={sash.h} fill={`url(#${ids.glass})`} />
-                <g filter={`url(#${ids.blur})`} opacity="0.4">
-                  <ellipse cx={sash.x + sash.w * 0.24} cy={sash.y + sash.h * 0.88} rx={sash.w * 0.42} ry={sash.h * 0.13} fill="#7ea165" />
-                  <ellipse cx={sash.x + sash.w * 0.76} cy={sash.y + sash.h * 0.84} rx={sash.w * 0.36} ry={sash.h * 0.14} fill="#6d9257" />
-                  <ellipse cx={sash.x + sash.w * 0.5} cy={sash.y + sash.h * 0.99} rx={sash.w * 0.62} ry={sash.h * 0.1} fill="#5f8550" />
-                </g>
+                <image
+                  key={view.id}
+                  href={view.src}
+                  x={SASHES[0].x}
+                  y={SASHES[0].y}
+                  width={SASHES[1].x + SASHES[1].w - SASHES[0].x}
+                  height={SASHES[0].h}
+                  preserveAspectRatio="xMidYMid slice"
+                  clipPath={`url(#${ids.opening})`}
+                />
                 <rect x={sash.x} y={sash.y} width={sash.w} height={sash.h} fill={`url(#${ids.sheen})`} />
 
                 {/* Shadow cast onto the glass beyond each rail */}
@@ -410,7 +458,7 @@ export default function PlisyHero() {
         })}
 
         {/* Handle on the right sash, as in the real photos */}
-        <rect x="498" y="386" width="14" height="58" rx="7" fill="#e6ebef" stroke="#c3ccd3" strokeWidth="1.5" />
+        <rect x="492" y="302" width="14" height="58" rx="7" fill="#e6ebef" stroke="#c3ccd3" strokeWidth="1.5" />
       </svg>
 
       {!touched ? (
@@ -418,6 +466,60 @@ export default function PlisyHero() {
           ↕ Przeciągnij listwy
         </p>
       ) : null}
+
+      <div className="plisy-hero-picks">
+        <div className="plisy-hero-pick" role="group" aria-label="Pomieszczenie">
+          <span className="plisy-hero-pick-label">Pomieszczenie</span>
+          <div className="plisy-hero-pick-row">
+            {HERO_ROOMS.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className={`plisy-hero-pill ${r.id === roomId ? "is-active" : ""}`}
+                aria-pressed={r.id === roomId}
+                onClick={() => setRoomId(r.id)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="plisy-hero-pick" role="group" aria-label="Widok za oknem">
+          <span className="plisy-hero-pick-label">Za oknem</span>
+          <div className="plisy-hero-pick-row">
+            {HERO_VIEWS.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                className={`plisy-hero-pill ${v.id === viewId ? "is-active" : ""}`}
+                aria-pressed={v.id === viewId}
+                onClick={() => setViewId(v.id)}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="plisy-hero-pick" role="group" aria-label="Kolor tkaniny">
+          <span className="plisy-hero-pick-label">Tkanina</span>
+          <div className="plisy-hero-pick-row">
+            {FABRICS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={`plisy-hero-swatch ${f.id === fabricId ? "is-active" : ""}`}
+                aria-pressed={f.id === fabricId}
+                aria-label={f.label}
+                title={f.label}
+                style={{ background: `linear-gradient(180deg, ${f.lit} 0%, ${f.base} 50%, ${f.shade} 100%)` }}
+                onClick={() => setFabricId(f.id)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
