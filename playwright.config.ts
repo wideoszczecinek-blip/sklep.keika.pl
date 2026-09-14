@@ -9,7 +9,7 @@ export default defineConfig({
   timeout: 60_000,
   retries: 1,
   // One worker: the suite takes ~15 s and two browsers hammering a single
-  // local  produced a flaky click timeout (2026-09-14). A red
+  // local dev server produced a flaky click timeout (2026-09-14). A red
   // run has to mean something.
   workers: 1,
   reporter: [["list"]],
