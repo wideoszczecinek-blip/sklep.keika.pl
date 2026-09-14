@@ -13,6 +13,7 @@ import { trackStorefrontEvent } from "@/lib/shop-public";
 import { trackShopStep } from "@/lib/track-step";
 import {
   EXPRESS_CHANGED_EVENT,
+  EXPRESS_CUTOFF,
   EXPRESS_ENABLED,
   EXPRESS_FEE_AMOUNT,
   computeExpressDispatch,
@@ -3160,9 +3161,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                     </strong>
                                     <small>
                                       Priorytet produkcji, wysyłka{" "}
-                                      {computeExpressDispatch(new Date(), shippingBanner.cutoffHour, shippingBanner.cutoffMinute).label}{" "}
-                                      (zamówienie do {formatCutoff(shippingBanner.cutoffHour, shippingBanner.cutoffMinute)} w dzień roboczy).
-                                      Wybór potwierdzisz w koszyku.
+                                      {computeExpressDispatch(new Date(), EXPRESS_CUTOFF.hour, EXPRESS_CUTOFF.minute).label}{" "}
+                                      (zamówienie do {formatCutoff(EXPRESS_CUTOFF.hour, EXPRESS_CUTOFF.minute)} w dzień roboczy = wysyłka tego
+                                      samego dnia). Wybór potwierdzisz w koszyku.
                                     </small>
                                   </span>
                                 </label>

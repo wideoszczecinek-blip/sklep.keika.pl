@@ -1665,8 +1665,8 @@ export default function CartPage() {
                         <span className="cart-delivery-option-copy">
                           <strong>⚡ Ekspres - priorytet produkcji</strong>
                           <small>
-                            Wysyłka {dispatchInfo ? dispatchInfo.expressLabel : "następnego dnia roboczego"} (zamówienie
-                            do {dispatchInfo?.cutoffLabel || "15:00"} w dzień roboczy)
+                            Wysyłka {dispatchInfo ? dispatchInfo.expressLabel : "tego samego dnia roboczego"} (zamówienie do{" "}
+                            {dispatchInfo?.cutoffLabel || "12:00"} w dzień roboczy = wysyłka tego samego dnia)
                           </small>
                         </span>
                         <span className="cart-delivery-option-price">+{formatPln(EXPRESS_FEE_AMOUNT)}</span>

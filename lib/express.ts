@@ -2,11 +2,12 @@
 //
 // Standard orders go into the daily production bucket the CRM's
 // shipping_banner.php publishes ("wyślemy w środę · zostało N miejsc",
-// handling_days, cutoff 15:00, Europe/Warsaw). Ekspres jumps that queue:
-// accepted the same business day when placed before the cutoff (otherwise
-// the next business day), dispatched the business day after acceptance.
-// It never touches the bucket counter, so the standard promise the banner
-// makes stays exactly what production planned.
+// handling_days, cutoff 15:00, Europe/Warsaw). Ekspres jumps that queue
+// with its own, earlier cutoff (owner decision 2026-09-14, trial): placed
+// before 12:00 on a business day -> dispatched THE SAME DAY; after 12:00 or
+// on a weekend -> the next business day. It never touches the bucket
+// counter, so the standard promise the banner makes stays exactly what
+// production planned.
 //
 // The choice is a one-time flat fee position ("doplata-ekspres", same
 // mechanism as the oversize-parcel surcharge): the cart adds it to the
@@ -28,10 +29,14 @@ export const EXPRESS_FEE_AMOUNT = 19.9;
 export const EXPRESS_POSITION_SLUG = "doplata-ekspres";
 export const EXPRESS_LABEL = "Ekspres - priorytet produkcji";
 export const EXPRESS_SUMMARY =
-  "Ekspres: priorytet produkcji, wysyłka następnego dnia roboczego po przyjęciu (zamówienia do 15:00 w dni robocze)";
-export const EXPRESS_NOTE_LINE = "⚡ EKSPRES: priorytet produkcji, wysyłka następnego dnia roboczego po przyjęciu zamówienia";
+  "Ekspres: priorytet produkcji, wysyłka tego samego dnia przy zamówieniu do 12:00 w dzień roboczy (po 12:00 lub w weekend - następnego dnia roboczego)";
+export const EXPRESS_NOTE_LINE =
+  "⚡ EKSPRES: priorytet produkcji - wysyłka TEGO SAMEGO DNIA (zamówienie do 12:00), po 12:00 lub w weekend następnego dnia roboczego";
 export const EXPRESS_CHANGED_EVENT = "keika:express-changed";
-export const EXPRESS_DEFAULT_CUTOFF = { hour: 15, minute: 0 };
+// Ekspres cutoff - deliberately its own constant, NOT the standard banner's
+// 15:00 (that one is the daily bucket close for the regular queue).
+export const EXPRESS_CUTOFF = { hour: 12, minute: 0 };
+export const EXPRESS_DEFAULT_CUTOFF = EXPRESS_CUTOFF;
 
 const STORAGE_KEY = "keika_shop_express_v1";
 
@@ -84,11 +89,11 @@ function nextBusinessDay(from: Date): Date {
   return next;
 }
 
-/** "dzisiaj" / "jutro" / "pojutrze" / "w czwartek" - same vocabulary the
- * CRM's shipping banner uses for the standard date. */
+/** "jeszcze dzisiaj" / "jutro" / "pojutrze" / "w czwartek" - same vocabulary
+ * the CRM's shipping banner uses for the standard date. */
 export function relativeDayLabel(target: Date, now: Date = new Date()): string {
   const diff = Math.round((startOfDay(target).getTime() - startOfDay(now).getTime()) / 86400000);
-  if (diff === 0) return "dzisiaj";
+  if (diff === 0) return "jeszcze dzisiaj";
   if (diff === 1) return "jutro";
   if (diff === 2) return "pojutrze";
   return DAY_LABELS[target.getDay()];
@@ -101,8 +106,9 @@ export function computeExpressDispatch(
 ): { date: Date; label: string } {
   const beforeCutoff =
     now.getHours() < cutoffHour || (now.getHours() === cutoffHour && now.getMinutes() < cutoffMinute);
-  const accepted = isBusinessDay(now) && beforeCutoff ? startOfDay(now) : nextBusinessDay(now);
-  const dispatch = nextBusinessDay(accepted);
+  // Same-day dispatch when placed before the cutoff on a business day,
+  // otherwise the next business day (trial rule, 2026-09-14).
+  const dispatch = isBusinessDay(now) && beforeCutoff ? startOfDay(now) : nextBusinessDay(now);
   return { date: dispatch, label: relativeDayLabel(dispatch, now) };
 }
 
@@ -138,12 +144,12 @@ export async function fetchDispatchInfo(productSlug: string): Promise<DispatchIn
     };
     const banner = json.ok ? json.banner : null;
     if (!banner || !banner.available) return null;
-    const cutoffHour = Number.isFinite(banner.cutoff_hour) ? Number(banner.cutoff_hour) : EXPRESS_DEFAULT_CUTOFF.hour;
-    const cutoffMinute = Number.isFinite(banner.cutoff_minute) ? Number(banner.cutoff_minute) : EXPRESS_DEFAULT_CUTOFF.minute;
+    // The banner's own cutoff (15:00) only governs the standard bucket - the
+    // Ekspres cutoff is the fixed EXPRESS_CUTOFF.
     return {
       standardLabel: String(banner.day_label || "").trim() || "w 3 dni robocze",
-      expressLabel: computeExpressDispatch(new Date(), cutoffHour, cutoffMinute).label,
-      cutoffLabel: formatCutoff(cutoffHour, cutoffMinute),
+      expressLabel: computeExpressDispatch(new Date(), EXPRESS_CUTOFF.hour, EXPRESS_CUTOFF.minute).label,
+      cutoffLabel: formatCutoff(EXPRESS_CUTOFF.hour, EXPRESS_CUTOFF.minute),
       remainingOrders: Number.isFinite(banner.remaining_orders) ? Number(banner.remaining_orders) : null,
     };
   } catch {
