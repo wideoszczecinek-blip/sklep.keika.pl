@@ -12077,3 +12077,27 @@ html[data-theme="dark"] .promo-save-modal-urgency {
     transform: none;
   }
 }
+
+/* ==== 2026-09-14: plakietki w karuzeli ==== */
+
+/* Every slide carries the same amber pill the -20% badge introduced, so the
+   number is the thing the eye lands on. Never shrinks below the text. */
+.promo-strip-slide .promo-top-strip-badge {
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 760px) {
+  .promo-strip-slide {
+    gap: 0.28rem;
+  }
+
+  .promo-strip-slide .promo-top-strip-badge {
+    padding: 0.1rem 0.36rem;
+    font-size: 0.68rem;
+  }
+
+  .promo-strip-slide-icon {
+    font-size: 0.85em;
+  }
+}

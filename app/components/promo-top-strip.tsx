@@ -30,7 +30,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import PromoCountdownBanner from "./promo-countdown-banner";
 import { PROMO_CODE } from "@/lib/promo";
-import { EXPRESS_CUTOFF, EXPRESS_ENABLED, formatCutoff } from "@/lib/express";
+import { EXPRESS_CUTOFF, EXPRESS_ENABLED, EXPRESS_FEE_AMOUNT, formatCutoff } from "@/lib/express";
 
 /** How long each message stays. Long enough to read a short sentence twice
  * without feeling stuck (measured against the 5-6 slide rotation below). */
@@ -38,26 +38,36 @@ const ROTATE_MS = 4500;
 /** Must match the transition duration in globals.css (.promo-strip-slide). */
 const TRANSITION_MS = 520;
 
-type Slide = { key: string; icon: string; content: ReactNode };
+/** icon + amber pill + one sentence. The pill carries the number, the
+ * sentence says what it means - the "-20%" badge is the pattern the owner
+ * picked out as the one that catches the eye, so every slide now has one. */
+type Slide = { key: string; icon: string; badge: string; content: ReactNode };
 
 const BENEFIT_SLIDES: Slide[] = [
-  { key: "dostawa", icon: "🚚", content: <>Darmowa dostawa od 79 zł</> },
+  { key: "dostawa", icon: "🚚", badge: "GRATIS", content: <>Darmowa dostawa od 79 zł</> },
+  // 30 days is a voluntary offer term, not the statutory 14-day withdrawal:
+  // these frames are made to measure, so art. 38 pkt 3 excludes that right
+  // and §6 of the shop's own regulamin says so. That same §6 explicitly lets
+  // the seller grant a return window in the offer description and makes it
+  // binding - which is exactly what this slide does, so the promise has to
+  // be honoured and the "Reklamacje i zwroty" page should describe it.
+  { key: "zwrot", icon: "🔄", badge: "30 dni", content: <>na zwrot bez podania przyczyny</> },
+  { key: "gwarancja", icon: "🏅", badge: "5 lat", content: <>gwarancji na moskitiery</> },
   ...(EXPRESS_ENABLED
     ? [
         {
           key: "ekspres",
           icon: "⚡",
+          badge: "DZIŚ",
           content: (
             <>
-              Ekspres: zamów do {formatCutoff(EXPRESS_CUTOFF.hour, EXPRESS_CUTOFF.minute)}, wyślemy dziś
+              Ekspres: zamów do {formatCutoff(EXPRESS_CUTOFF.hour, EXPRESS_CUTOFF.minute)} (+
+              {EXPRESS_FEE_AMOUNT.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł)
             </>
           ),
         },
       ]
     : []),
-  { key: "gwarancja", icon: "🛡️", content: <>5 lat gwarancji</> },
-  { key: "producent", icon: "🏭", content: <>Producent ze Szczecinka</> },
-  { key: "montaz", icon: "🔧", content: <>Montaż bez wiercenia w oknie</> },
 ];
 
 /** [promo, benefit, promo, benefit, ...] - the countdown gets every other
@@ -120,6 +130,7 @@ function StripCarousel({ slides, variant }: { slides: Slide[]; variant: "fixed" 
               <span className="promo-strip-slide-icon" aria-hidden="true">
                 {slide.icon}
               </span>
+              <span className="promo-top-strip-badge">{slide.badge}</span>
               <span className="promo-strip-slide-text">{slide.content}</span>
             </span>
           );
@@ -148,9 +159,9 @@ export default function PromoTopStrip({
           ? {
               key: "promo",
               icon: "🔥",
+              badge: "-20%",
               content: (
                 <>
-                  <span className="promo-top-strip-badge">-20%</span>
                   <span className="promo-strip-wide">
                     Kod <strong>{PROMO_CODE}</strong> naliczony w koszyku · ważny jeszcze{" "}
                   </span>

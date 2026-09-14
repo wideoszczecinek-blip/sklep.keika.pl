@@ -1232,30 +1232,53 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // rAF, only on the product view and only below the desktop breakpoint, is
   // cheap and cannot go stale.
   const [inAppBrowserBottomInset, setInAppBrowserBottomInset] = useState(0);
-  const [ctaUnderTabs, setCtaUnderTabs] = useState(false);
+  const [hideBottomTabs, setHideBottomTabs] = useState(false);
   // No displayedProduct dependency: it is declared further down, and the
-  // DOM answers the same question anyway - the button only exists while a
-  // configurator is mounted.
+  // DOM answers the same question anyway - neither the panel nor the button
+  // exists unless a configurator is mounted.
   useEffect(() => {
     let frame = 0;
     const check = () => {
       frame = 0;
       if (window.innerWidth > 1100) {
-        setCtaUnderTabs(false);
+        setHideBottomTabs(false);
         return;
       }
-      const cta = document.querySelector<HTMLElement>(".hero-product-add-to-cart");
-      if (!cta) {
-        setCtaUnderTabs(false);
-        return;
-      }
-      const rect = cta.getBoundingClientRect();
-      const onScreen = rect.bottom > 0 && rect.top < window.innerHeight;
+      const viewportHeight = window.innerHeight;
       // The bar is fixed at bottom:1.1rem and is ~46 px tall; the extra
       // margin covers its shadow, the safe-area inset and the taller
       // in-app-browser variant (see inAppBrowserBottomInset below).
-      const barZoneTop = window.innerHeight - 92 - inAppBrowserBottomInset;
-      setCtaUnderTabs(onScreen && rect.bottom > barZoneTop);
+      const barZoneTop = viewportHeight - 92 - inAppBrowserBottomInset;
+
+      // Owner call 2026-09-14: the bar goes away for the whole time the
+      // customer is working in the configurator, not just when the CTA
+      // happens to slide under it - picking colours and typing dimensions
+      // needs the full screen, and the section links stay one scroll away.
+      const panel =
+        configPanelRef.current || document.querySelector<HTMLElement>(".hero-product-config-panel");
+      if (panel) {
+        const rect = panel.getBoundingClientRect();
+        const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+        // Enough of it on screen to count as "in the configurator" - a few
+        // pixels peeking above the bottom edge must not kill the navigation.
+        const reallyInView = visibleHeight >= Math.min(180, viewportHeight * 0.25);
+        if (reallyInView && rect.top < viewportHeight && rect.bottom > barZoneTop) {
+          setHideBottomTabs(true);
+          return;
+        }
+      }
+
+      // Belt and braces: even if the panel element is missing, the button
+      // itself must never end up under the bar (that is the bug this whole
+      // guard exists for - see the tests/smoke.spec.ts regression case).
+      const cta = document.querySelector<HTMLElement>(".hero-product-add-to-cart");
+      if (!cta) {
+        setHideBottomTabs(false);
+        return;
+      }
+      const ctaRect = cta.getBoundingClientRect();
+      const ctaOnScreen = ctaRect.bottom > 0 && ctaRect.top < viewportHeight;
+      setHideBottomTabs(ctaOnScreen && ctaRect.bottom > barZoneTop);
     };
     const schedule = () => {
       if (!frame) frame = window.requestAnimationFrame(check);
@@ -1267,8 +1290,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     window.addEventListener("resize", schedule);
     // Layout can change with no scroll at all: a step folding shut, the
     // price block appearing the moment the last dimension is typed, the
-    // on-screen keyboard closing. That is exactly the moment the button
-    // lands under the bar, so poll as a backstop.
+    // on-screen keyboard closing. That is exactly when the panel grows past
+    // the bar, so poll as a backstop.
     const interval = window.setInterval(check, 400);
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
@@ -4732,7 +4755,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           </div>
           {displayedProduct ? (
             <nav
-              className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""} ${ctaUnderTabs ? "is-suppressed" : ""}`}
+              className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""} ${hideBottomTabs ? "is-suppressed" : ""}`}
               aria-label="Sekcje produktu"
               style={
                 inAppBrowserBottomInset > 0
