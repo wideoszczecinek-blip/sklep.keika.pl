@@ -5,14 +5,15 @@
 // any reviews of its own ("na ten moment aby zobaczyć jak to wygląda, ja je
 // pouzupełniam ... na moją odpowiedzialność, chodzi o dokończenie landingu").
 //
-// Because the shop is live, every entry generated here is rendered with a
-// visible "Przykładowa opinia" badge and the section carries a banner saying
-// the reviews are examples - a visitor must not be able to mistake them for
-// verified purchases. Contrast app/moskitiery-ramkowe-reviews-data.ts, which
-// is 100% real Allegro reviews and must stay that way.
+// Because the shop is live, the section carries a banner saying the reviews
+// are examples (per-entry badges were removed 2026-09-16 at the owner's
+// request) - a visitor must not be able to mistake them for verified
+// purchases, so the banner is not optional while this flag is true.
+// Contrast app/moskitiery-ramkowe-reviews-data.ts, which is 100% real
+// Allegro reviews and must stay that way.
 //
 // To replace with real ones: set PLISY_REVIEWS_ARE_PLACEHOLDERS to false and
-// put the real entries in PLISY_REVIEWS (same shape). The badge and banner
+// put the real entries in PLISY_REVIEWS (same shape). The banner and note
 // disappear with the flag; nothing else in the UI changes.
 //
 // The generator is deterministic (seeded), so the list is identical on the

@@ -4,8 +4,10 @@
 // layout (summary with star distribution as filters, paged list, load more)
 // so the two products read the same, with one hard difference: while
 // PLISY_REVIEWS_ARE_PLACEHOLDERS is true, the whole section is labelled as
-// examples - a banner on top, a badge on every entry, no "zweryfikowane
-// zakupem" claim anywhere. See reviews-data.ts for why.
+// examples - a banner on top and a note under the average, no "zweryfikowane
+// zakupem" claim anywhere. The per-entry badge was dropped on 2026-09-16 at
+// the owner's request; the banner is the disclosure and stays until the
+// flag flips. See reviews-data.ts for why.
 import { useMemo, useState } from "react";
 import { PLISY_REVIEWS, PLISY_REVIEWS_ARE_PLACEHOLDERS, type PlisyReview } from "./reviews-data";
 
@@ -114,7 +116,6 @@ export default function PlisyReviews() {
                 {"☆".repeat(5 - review.stars)}
               </span>
               <span className="plisy-review-collection">{review.collection}</span>
-              {PLISY_REVIEWS_ARE_PLACEHOLDERS ? <span className="plisy-review-placeholder-badge">Przykładowa opinia</span> : null}
             </div>
             <p>{review.body}</p>
             {review.pros || review.cons ? (
