@@ -13145,7 +13145,7 @@ html[data-theme="light"] .plisy-measure-link {
 .plmg-svg {
   display: block;
   width: 100%;
-  aspect-ratio: 5 / 4;
+  aspect-ratio: 860 / 756;
   font-family: inherit;
 }
 .plmg-replay {
@@ -13247,10 +13247,22 @@ html[data-theme="light"] .plisy-measure-link {
 
 @media (max-width: 480px) {
   .plmg-modes {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+  }
+  .plmg-mode {
+    padding: 0.45rem 0.6rem;
+  }
+  .plmg-mode strong {
+    font-size: 0.8rem;
+  }
+  .plmg-mode span {
+    font-size: 0.68rem;
   }
   .plmg-steps-list {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .plmg-steps .plmg-caption {
+    font-size: 0.98rem;
   }
 }
 

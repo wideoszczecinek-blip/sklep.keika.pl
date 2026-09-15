@@ -152,7 +152,7 @@ function Tape({
           x={i}
           y={BLADE_T / 2 - 3}
           textAnchor="middle"
-          fontSize="8.5"
+          fontSize="10.5"
           fontWeight="700"
           fill="#111827"
           transform={vertical ? `rotate(-90 ${i} ${BLADE_T / 2 - 3})` : undefined}
@@ -177,8 +177,8 @@ function Tape({
         <rect x={6} y={CASE_H / 2 - 9} width={22} height={5} rx="2.5" fill="#a16207" opacity="0.6" />
         {reading !== null ? (
           <g transform={vertical ? `translate(${CASE_W / 2} ${-CASE_H / 2 - 34}) rotate(-90)` : `translate(${CASE_W / 2} ${-CASE_H / 2 - 34})`}>
-            <rect x={-50} y={-17} width={100} height={34} rx="8" fill="#0e1a2a" />
-            <text x={0} y={6} textAnchor="middle" fill="#ffc45c" fontSize="19" fontWeight="900" style={{ fontVariantNumeric: "tabular-nums" }}>
+            <rect x={-58} y={-19} width={116} height={38} rx="8" fill="#0e1a2a" />
+            <text x={0} y={7} textAnchor="middle" fill="#ffc45c" fontSize="22" fontWeight="900" style={{ fontVariantNumeric: "tabular-nums" }}>
               {reading} mm
             </text>
           </g>
@@ -191,12 +191,12 @@ function Tape({
 /* Short "od ... / do ..." tag at one end of the tape. */
 function EndLabel({ x, y, text, anchor, opacity }: { x: number; y: number; text: string; anchor: "start" | "end"; opacity: number }) {
   if (opacity <= 0.01) return null;
-  const w = Math.round(text.length * 7.6) + 22;
+  const w = Math.round(text.length * 9.4) + 26;
   const rx = anchor === "start" ? x : x - w;
   return (
     <g opacity={opacity}>
-      <rect x={rx} y={y - 13} width={w} height={26} rx="7" fill="#ef4444" />
-      <text x={rx + w / 2} y={y + 5} textAnchor="middle" fill="#fff" fontSize="13" fontWeight="800">
+      <rect x={rx} y={y - 16} width={w} height={32} rx="8" fill="#ef4444" />
+      <text x={rx + w / 2} y={y + 6} textAnchor="middle" fill="#fff" fontSize="16.5" fontWeight="800">
         {text}
       </text>
     </g>
@@ -211,7 +211,7 @@ const HAND = '"Segoe Print", "Bradley Hand", "Comic Sans MS", "Chalkboard", curs
 
 function Notepad({ opacity, wWrite, hWrite, wmm, hmm, clipId }: { opacity: number; wWrite: number; hWrite: number; wmm: number; hmm: number; clipId: string }) {
   if (opacity <= 0.01) return null;
-  const textW = 160;
+  const textW = 184;
   const w1 = textW * wWrite;
   const w2 = textW * hWrite;
   const writing = (wWrite > 0 && wWrite < 1) || (hWrite > 0 && hWrite < 1);
@@ -230,19 +230,19 @@ function Notepad({ opacity, wWrite, hWrite, wmm, hmm, clipId }: { opacity: numbe
       {[62, 96, 130, 164].map((dy) => (
         <line key={dy} x1={PAD.x + 14} y1={PAD.y + dy} x2={PAD.x + PAD.w - 14} y2={PAD.y + dy} stroke="#e5d9b6" strokeWidth="1" />
       ))}
-      <text x={PAD.x + 20} y={PAD.y + 44} fill="#374151" fontSize="17" fontWeight="700" style={{ fontFamily: HAND }}>
+      <text x={PAD.x + 20} y={PAD.y + 44} fill="#374151" fontSize="19" fontWeight="700" style={{ fontFamily: HAND }}>
         Okno — salon
       </text>
       <clipPath id={`${clipId}w`}>
-        <rect x={PAD.x + 16} y={PAD.y + 66} width={w1} height={34} />
+        <rect x={PAD.x + 16} y={PAD.y + 64} width={w1} height={36} />
       </clipPath>
       <clipPath id={`${clipId}h`}>
-        <rect x={PAD.x + 16} y={PAD.y + 100} width={w2} height={34} />
+        <rect x={PAD.x + 16} y={PAD.y + 98} width={w2} height={36} />
       </clipPath>
-      <text x={PAD.x + 22} y={PAD.y + 90} fill="#1f2937" fontSize="20" fontWeight="700" style={{ fontFamily: HAND }} clipPath={`url(#${clipId}w)`}>
+      <text x={PAD.x + 22} y={PAD.y + 90} fill="#1f2937" fontSize="23" fontWeight="700" style={{ fontFamily: HAND }} clipPath={`url(#${clipId}w)`}>
         szer. {wmm} mm
       </text>
-      <text x={PAD.x + 22} y={PAD.y + 124} fill="#1f2937" fontSize="20" fontWeight="700" style={{ fontFamily: HAND }} clipPath={`url(#${clipId}h)`}>
+      <text x={PAD.x + 22} y={PAD.y + 124} fill="#1f2937" fontSize="23" fontWeight="700" style={{ fontFamily: HAND }} clipPath={`url(#${clipId}h)`}>
         wys. {hmm} mm
       </text>
       {writing ? (
@@ -354,7 +354,7 @@ export default function PlisyMeasureGuide() {
       </div>
 
       <div className="plmg-stage">
-        <svg viewBox="0 0 1000 800" className="plmg-svg" role="img" aria-label={`Pomiar plisy, montaż ${m.label}: szerokość ${m.width.how}, wysokość ${m.height.how}`}>
+        <svg viewBox="70 20 860 756" className="plmg-svg" role="img" aria-label={`Pomiar plisy, montaż ${m.label}: szerokość ${m.width.how}, wysokość ${m.height.how}`}>
           <defs>
             <clipPath id={ID.clip}>
               <circle cx={LUPA.cx} cy={LUPA.cy} r={LUPA.r} />
@@ -377,7 +377,7 @@ export default function PlisyMeasureGuide() {
           {/* sash */}
           <g opacity={sashO}>
             <rect x={SASH.x} y={SASH.y} width={SASH.w} height={SASH.h} rx="8" fill="#f7f9fb" stroke="#c9d2db" strokeWidth="2" />
-            <rect x={K.x0} y={K.y0} width={K.x1 - K.x0} height={K.y1 - K.y0} fill="#e6ebf0" stroke="#7f8b96" strokeWidth="2.2" />
+            <rect x={K.x0} y={K.y0} width={K.x1 - K.x0} height={K.y1 - K.y0} fill="#f7f9fb" stroke="#8a95a0" strokeWidth="2.2" />
             <rect x={B.x0} y={B.y0} width={B.x1 - B.x0} height={B.y1 - B.y0} fill="#2b3138" />
             <rect x={G.x0} y={G.y0} width={G.x1 - G.x0} height={G.y1 - G.y0} fill="#cfe4f5" />
             <rect x={G.x0} y={G.y0} width={G.x1 - G.x0} height={G.y1 - G.y0} fill={`url(#${ID.sheen})`} opacity="0.6" />
@@ -404,8 +404,8 @@ export default function PlisyMeasureGuide() {
           {/* "od ... / do ..." at both ends of the current tape */}
           {showW ? (
             <>
-              <EndLabel x={m.width.from} y={TAPE_W_Y + 34} text={m.width.a} anchor="start" opacity={wO} />
-              <EndLabel x={m.width.to} y={TAPE_W_Y + 34} text={m.width.b} anchor="end" opacity={wO * easeOut(seg(wP, [0.85, 1] as const))} />
+              <EndLabel x={m.width.from} y={TAPE_W_Y + 38} text={m.width.a} anchor="start" opacity={wO} />
+              <EndLabel x={m.width.to} y={TAPE_W_Y + 38} text={m.width.b} anchor="end" opacity={wO * easeOut(seg(wP, [0.85, 1] as const))} />
             </>
           ) : null}
           {showH ? (
@@ -430,19 +430,19 @@ export default function PlisyMeasureGuide() {
               <circle cx={LUPA.cx} cy={LUPA.cy} r={LUPA.r + 6} fill="#0e1a2a" filter={`url(#${ID.shadow})`} />
               <g clipPath={`url(#${ID.clip})`}>
                 <rect x={lx(SASH.x - 400)} y={ly(SASH.y - 400)} width={2000} height={2000} fill="#f7f9fb" />
-                <rect x={lx(K.x0)} y={ly(K.y0)} width={2000} height={2000} fill="#e6ebf0" stroke="#7f8b96" strokeWidth={2.2 * z} />
+                <rect x={lx(K.x0)} y={ly(K.y0)} width={2000} height={2000} fill="#f7f9fb" stroke="#8a95a0" strokeWidth={2.2 * z} />
                 <rect x={lx(B.x0)} y={ly(B.y0)} width={2000} height={2000} fill="#2b3138" />
                 <rect x={lx(G.x0)} y={ly(G.y0)} width={2000} height={2000} fill="#cfe4f5" />
-                <text x={lx(SASH.x + FRAME / 2)} y={LUPA.cy + 40} textAnchor="middle" fill="#334155" fontSize="13" fontWeight="700" transform={`rotate(-90 ${lx(SASH.x + FRAME / 2)} ${LUPA.cy + 40})`}>
+                <text x={lx(SASH.x + FRAME / 2)} y={LUPA.cy + 40} textAnchor="middle" fill="#334155" fontSize="15" fontWeight="700" transform={`rotate(-90 ${lx(SASH.x + FRAME / 2)} ${LUPA.cy + 40})`}>
                   RAMA
                 </text>
-                <text x={lx(K.x0 + BEAD / 2)} y={LUPA.cy + 46} textAnchor="middle" fill="#334155" fontSize="12" fontWeight="700" transform={`rotate(-90 ${lx(K.x0 + BEAD / 2)} ${LUPA.cy + 46})`}>
+                <text x={lx(K.x0 + BEAD / 2)} y={LUPA.cy + 46} textAnchor="middle" fill="#334155" fontSize="14" fontWeight="700" transform={`rotate(-90 ${lx(K.x0 + BEAD / 2)} ${LUPA.cy + 46})`}>
                   LISTWA
                 </text>
-                <text x={lx(B.x0 + SEAL / 2)} y={LUPA.cy + 40} textAnchor="middle" fill="#f8fafc" fontSize="11" fontWeight="700" transform={`rotate(-90 ${lx(B.x0 + SEAL / 2)} ${LUPA.cy + 40})`}>
+                <text x={lx(B.x0 + SEAL / 2)} y={LUPA.cy + 40} textAnchor="middle" fill="#f8fafc" fontSize="13" fontWeight="700" transform={`rotate(-90 ${lx(B.x0 + SEAL / 2)} ${LUPA.cy + 40})`}>
                   USZCZELKA
                 </text>
-                <text x={lx(G.x0) + 28} y={LUPA.cy + 100} textAnchor="middle" fill="#1e3a5f" fontSize="13" fontWeight="800">
+                <text x={lx(G.x0) + 32} y={LUPA.cy + 100} textAnchor="middle" fill="#1e3a5f" fontSize="15" fontWeight="800">
                   SZYBA
                 </text>
                 <circle cx={TX} cy={TY} r={18 + 8 * Math.abs(Math.sin(t / 260))} fill="none" stroke="#ef4444" strokeWidth="3" opacity="0.8" />
@@ -454,8 +454,8 @@ export default function PlisyMeasureGuide() {
                 )}
               </g>
               <circle cx={LUPA.cx} cy={LUPA.cy} r={LUPA.r} fill="none" stroke="#0e1a2a" strokeWidth="6" />
-              <rect x={LUPA.cx - 118} y={LUPA.cy + LUPA.r - 6} width="236" height="34" rx="8" fill="#ef4444" />
-              <text x={LUPA.cx} y={LUPA.cy + LUPA.r + 17} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="800">
+              <rect x={LUPA.cx - 140} y={LUPA.cy + LUPA.r - 6} width="280" height="38" rx="9" fill="#ef4444" />
+              <text x={LUPA.cx} y={LUPA.cy + LUPA.r + 20} textAnchor="middle" fill="#fff" fontSize="17" fontWeight="800">
                 MIERZ TU: {m.targetName.toUpperCase()}
               </text>
             </g>
