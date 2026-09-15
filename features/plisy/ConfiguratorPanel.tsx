@@ -15,10 +15,12 @@
 // directly in the CRM admin panel, and a live fetch means those edits show
 // up without a frontend redeploy.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackShopStep } from "@/lib/track-step";
 import PlisaPreview from "./PlisaPreview";
 import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
+import PlisyFabricGallery from "./FabricGallery";
 import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
@@ -88,10 +90,29 @@ export default function ConfiguratorPanel({
   }, []);
 
   const [selectedMountId, setSelectedMountId] = useState(initialValues?.mountId || "");
-  // "Jak mierzyć?" inline above the dimension inputs. Locked to the mounting
-  // system chosen in step 1, so the customer sees only the measurement that
-  // applies to them (owner, 2026-09-16). Closes when the mount changes.
+  // "Jak mierzyć?" as a full modal on top of everything (owner, 2026-09-16:
+  // "w modalu zupełnie na wierzchu - duży, żeby nie rozjeżdżał
+  // konfiguratora"). Locked to the mounting system chosen in step 1, so the
+  // customer sees only the measurement that applies to them. Portaled to
+  // <body>: .hero-product-config-panel gets a transform on mobile, which
+  // would otherwise trap a position:fixed modal inside it.
   const [measureGuideOpen, setMeasureGuideOpen] = useState(false);
+  // Fabric carousel (big photos + "Wybierz tę tkaninę"); null = closed,
+  // otherwise the index into the current collection swatches.
+  const [fabricGalleryIndex, setFabricGalleryIndex] = useState<number | null>(null);
+  useEffect(() => {
+    if (!measureGuideOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMeasureGuideOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [measureGuideOpen]);
   const [stepZeroChosen, setStepZeroChosen] = useState(Boolean(initialValues?.mountId));
   const [stepZeroCollapsed, setStepZeroCollapsed] = useState(Boolean(initialValues?.mountId));
 
@@ -688,33 +709,81 @@ export default function ConfiguratorPanel({
                   </span>
                 </button>
                 <div className="hero-product-step-body">
+                  {swatchesForGroup.length ? (
+                    <div className="plisy-fabric-tools">
+                      <button
+                        type="button"
+                        className="plisy-fabric-gallery-cta"
+                        onClick={() => {
+                          const at = Math.max(0, swatchesForGroup.findIndex((swatch) => swatch.id === selectedFabricId));
+                          setFabricGalleryIndex(at);
+                          trackShopStep("fabric_gallery_open", selectedFabricGroup?.label || "", { source: "cta" });
+                        }}
+                      >
+                        🔍 Zobacz duże zdjęcia tkanin
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
-                    {swatchesForGroup.map((swatch) => {
+                    {swatchesForGroup.map((swatch, swatchIndex) => {
                       const isActive = swatch.id === selectedFabricId;
                       return (
-                        <button
-                          key={swatch.id}
-                          type="button"
-                          className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
-                          title={swatch.label}
-                          onClick={() => {
-                            trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id });
-                            setSelectedFabricId(swatch.id);
-                            setStepThreeCollapsed(true);
-                            window.setTimeout(() => {
-                              scrollStepIntoView(stepFourRef.current);
-                            }, 380);
-                          }}
-                        >
-                          <span
-                            className="hero-product-mesh-option-image"
-                            style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)}
-                          />
-                          <strong>{swatch.label}</strong>
-                        </button>
+                        <div key={swatch.id} className="plisy-swatch-cell">
+                          <button
+                            type="button"
+                            className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
+                            title={swatch.label}
+                            onClick={() => {
+                              trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id });
+                              setSelectedFabricId(swatch.id);
+                              setStepThreeCollapsed(true);
+                              window.setTimeout(() => {
+                                scrollStepIntoView(stepFourRef.current);
+                              }, 380);
+                            }}
+                          >
+                            <span
+                              className="hero-product-mesh-option-image"
+                              style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)}
+                            />
+                            <strong>{swatch.label}</strong>
+                          </button>
+                          <button
+                            type="button"
+                            className="plisy-swatch-zoom"
+                            aria-label={`Powiększ ${swatch.label}`}
+                            title="Powiększ"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setFabricGalleryIndex(swatchIndex);
+                              trackShopStep("fabric_gallery_open", swatch.label, { source: "swatch", option_id: swatch.id });
+                            }}
+                          >
+                            🔍
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
+                  {fabricGalleryIndex !== null && swatchesForGroup.length ? (
+                    <PlisyFabricGallery
+                      swatches={swatchesForGroup}
+                      index={Math.min(fabricGalleryIndex, swatchesForGroup.length - 1)}
+                      collectionLabel={selectedFabricGroup?.label || "Tkaniny"}
+                      selectedId={selectedFabricId}
+                      onIndexChange={setFabricGalleryIndex}
+                      onClose={() => setFabricGalleryIndex(null)}
+                      onPick={(swatch) => {
+                        trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id, source: "gallery" });
+                        setSelectedFabricId(swatch.id);
+                        setFabricGalleryIndex(null);
+                        setStepThreeCollapsed(true);
+                        window.setTimeout(() => {
+                          scrollStepIntoView(stepFourRef.current);
+                        }, 380);
+                      }}
+                    />
+                  ) : null}
                 </div>
               </section>
 
@@ -807,26 +876,35 @@ export default function ConfiguratorPanel({
                           Podaj w milimetrach i ilość sztuk w tym rozmiarze.{" "}
                           <button
                             type="button"
-                            className={`plisy-measure-link ${measureGuideOpen ? "is-open" : ""}`}
-                            aria-expanded={measureGuideOpen}
+                            className="plisy-measure-link"
                             onClick={() => {
-                              setMeasureGuideOpen((open) => !open);
-                              trackShopStep("configurator_measure_guide", measureGuideOpen ? "close" : "open", {
-                                mount: measureModeForMount(selectedMountId),
-                              });
+                              setMeasureGuideOpen(true);
+                              trackShopStep("configurator_measure_guide", "open", { mount: measureModeForMount(selectedMountId) });
                             }}
                           >
-                            📐 {measureGuideOpen ? "Zwiń instrukcję" : "Jak mierzyć?"}
+                            📐 Jak mierzyć?
                           </button>
                         </p>
-                        {measureGuideOpen ? (
-                          <div className="plisy-measure-mini" role="region" aria-label="Jak mierzyć">
-                            <button type="button" className="plisy-measure-mini-close" aria-label="Zamknij instrukcję" onClick={() => setMeasureGuideOpen(false)}>
-                              ×
-                            </button>
-                            <PlisyMeasureGuide fixedMode={measureModeForMount(selectedMountId)} startDelayMs={700} />
-                          </div>
-                        ) : null}
+                        {measureGuideOpen && typeof document !== "undefined"
+                          ? createPortal(
+                              <div
+                                className="instruction-modal instruction-modal--measure"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-label="Jak mierzyć plisę"
+                                onClick={() => setMeasureGuideOpen(false)}
+                              >
+                                <div className="instruction-modal-shell instruction-modal-shell--measure" onClick={(event) => event.stopPropagation()}>
+                                  <button type="button" className="instruction-modal-close" aria-label="Zamknij instrukcję" onClick={() => setMeasureGuideOpen(false)}>
+                                    ×
+                                  </button>
+                                  <h3>Jak zmierzyć okno pod plisę</h3>
+                                  <PlisyMeasureGuide fixedMode={measureModeForMount(selectedMountId)} startDelayMs={700} />
+                                </div>
+                              </div>,
+                              document.body,
+                            )
+                          : null}
                         <div className="hero-product-dimensions-grid">
                           <label>
                             Szerokość (mm)

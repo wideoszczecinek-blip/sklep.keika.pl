@@ -13305,34 +13305,15 @@ html[data-theme="light"] .plmg > .plmg-note {
   color: rgba(19, 40, 67, 0.92);
 }
 
-/* Przewodnik pomiaru w konfiguratorze (mini-modal nad wymiarami) i nagłówek
-   zablokowanego trybu. */
-.plisy-measure-link.is-open {
-  background: rgba(245, 158, 11, 0.28);
+/* Przewodnik pomiaru w konfiguratorze otwiera się w .instruction-modal
+   (portal do body); tu tylko szersza muszla i nagłówek zablokowanego trybu. */
+.instruction-modal-shell--measure {
+  width: min(96vw, 820px);
+  max-height: 94vh;
+  padding: 1.1rem 1.1rem 1rem;
 }
-.plisy-measure-mini {
-  position: relative;
-  margin: 0.4rem 0 0.9rem;
-  padding: 0.8rem 0.85rem 0.85rem;
-  border-radius: 0.9rem;
-  border: 1px solid rgba(245, 158, 11, 0.5);
-  background: rgba(240, 248, 255, 0.05);
-  box-shadow: 0 10px 26px rgba(8, 20, 35, 0.22);
-}
-.plisy-measure-mini-close {
-  position: absolute;
-  right: 0.5rem;
-  top: 0.4rem;
-  width: 1.8rem;
-  height: 1.8rem;
-  border-radius: 999px;
-  border: 1px solid rgba(226, 236, 248, 0.25);
-  background: rgba(240, 248, 255, 0.08);
-  color: #f2f7ff;
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-  z-index: 1;
+.instruction-modal-shell--measure h3 {
+  margin-bottom: 0.7rem;
 }
 .plmg > .plmg-fixed {
   margin: 0 2.2rem 0 0;
@@ -13342,19 +13323,271 @@ html[data-theme="light"] .plmg > .plmg-note {
 }
 .plmg > .plmg-fixed strong {
   color: #ffc45c;
-}
-html[data-theme="light"] .plisy-measure-mini {
-  background: rgba(19, 40, 67, 0.04);
-  border-color: rgba(232, 137, 12, 0.55);
-}
-html[data-theme="light"] .plisy-measure-mini-close {
-  border-color: rgba(19, 40, 67, 0.2);
-  background: #fff;
-  color: #16314e;
-}
-html[data-theme="light"] .plmg > .plmg-fixed {
+}html[data-theme="light"] .plmg > .plmg-fixed {
   color: rgba(19, 40, 67, 0.7);
 }
 html[data-theme="light"] .plmg > .plmg-fixed strong {
   color: #c2570a;
+}
+
+/* ---------------------------------------------------------------------------
+   Plisy: galeria tkanin w konfiguratorze (features/plisy/FabricGallery.tsx)
+   + lupka na próbce i CTA nad siatką.
+--------------------------------------------------------------------------- */
+.plisy-fabric-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 0.5rem;
+}
+.plisy-fabric-gallery-cta {
+  padding: 0.38rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  background: rgba(245, 158, 11, 0.14);
+  color: #ffc45c;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.plisy-fabric-gallery-cta:hover {
+  background: rgba(245, 158, 11, 0.24);
+}
+
+.plisy-swatch-cell {
+  position: relative;
+  min-width: 0;
+}
+.plisy-swatch-cell > .hero-product-mesh-option {
+  width: 100%;
+}
+.plisy-swatch-zoom {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(8, 20, 35, 0.25);
+}
+.plisy-swatch-zoom:hover {
+  background: #fff;
+}
+
+/* modal karuzeli */
+.plisy-fg-shell {
+  position: relative;
+  width: min(96vw, 860px);
+  max-height: 94vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  gap: 0.55rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(194, 228, 255, 0.42);
+  background: rgba(9, 22, 38, 0.96);
+  padding: 0.9rem 1rem 0.9rem;
+}
+.plisy-fg-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-right: 2.2rem;
+  color: rgba(226, 236, 248, 0.75);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.plisy-fg-collection {
+  color: #ffc45c;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.plisy-fg-stage {
+  position: relative;
+  min-height: 0;
+  height: min(58vh, 520px);
+  max-height: min(58vh, 520px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+  background: rgba(240, 248, 255, 0.04);
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.plisy-fg-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 0.6rem;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.plisy-fg-img.is-loaded {
+  opacity: 1;
+}
+.plisy-fg-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(9, 22, 38, 0.72);
+  color: #fff;
+  font-size: 1.7rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+}
+.plisy-fg-arrow--prev { left: 0.5rem; }
+.plisy-fg-arrow--next { right: 0.5rem; }
+.plisy-fg-arrow:hover { background: rgba(9, 22, 38, 0.92); }
+
+.plisy-fg-caption {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  color: #f2f7ff;
+}
+.plisy-fg-caption strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.plisy-fg-caption span {
+  font-size: 0.82rem;
+  color: rgba(226, 236, 248, 0.6);
+}
+.plisy-fg-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+/* own button, not .pl-inline-cta-button - that one is display:none on desktop */
+.plisy-fg-pick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.62rem 1.3rem;
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: #22150a;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(255, 123, 0, 0.28);
+}
+.plisy-fg-pick:hover {
+  filter: brightness(1.05);
+}
+.plisy-fg-pick.is-selected {
+  background: linear-gradient(120deg, #34d399, #10b981);
+  color: #062a1c;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.28);
+}
+
+.plisy-fg-strip {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding: 0.2rem 0.1rem 0.3rem;
+}
+.plisy-fg-thumb {
+  flex: 0 0 auto;
+  width: 3.4rem;
+  height: 3.4rem;
+  padding: 0;
+  border-radius: 0.5rem;
+  border: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(226, 236, 248, 0.2);
+}
+.plisy-fg-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.plisy-fg-thumb.is-active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #d97706;
+}
+.plisy-fg-thumb.is-selected:not(.is-active) {
+  box-shadow: 0 0 0 2px #7ae9e2;
+}
+
+@media (max-width: 520px) {
+  .plisy-fg.instruction-modal {
+    padding: 0;
+  }
+  .plisy-fg-shell {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+    border: none;
+    padding: 0.8rem 0.7rem 0.8rem;
+    grid-template-rows: auto auto auto auto 1fr;
+    gap: 0.7rem;
+  }
+  /* swatch photos are landscape - size the stage to the photo, not to a
+     fixed 52vh box with grey above and below it */
+  .plisy-fg-stage {
+    height: auto;
+    max-height: 48vh;
+    aspect-ratio: 4 / 3;
+  }
+  .plisy-fg-strip {
+    align-self: end;
+  }
+  .plisy-fabric-tools {
+    justify-content: stretch;
+  }
+  .plisy-fabric-gallery-cta {
+    width: 100%;
+    text-align: center;
+  }
+  .plisy-fg-pick {
+    width: 100%;
+  }
+}
+
+html[data-theme="light"] .plisy-fabric-gallery-cta {
+  color: #c2570a;
+  border-color: rgba(232, 137, 12, 0.6);
+}
+html[data-theme="light"] .plisy-fg-shell {
+  background: #f6f9fc;
+  border-color: rgba(19, 40, 67, 0.16);
+}
+html[data-theme="light"] .plisy-fg-head {
+  color: rgba(19, 40, 67, 0.7);
+}
+html[data-theme="light"] .plisy-fg-collection {
+  color: #c2570a;
+}
+html[data-theme="light"] .plisy-fg-stage {
+  background: rgba(19, 40, 67, 0.05);
+}
+html[data-theme="light"] .plisy-fg-caption {
+  color: #16314e;
+}
+html[data-theme="light"] .plisy-fg-caption span {
+  color: rgba(19, 40, 67, 0.6);
+}
+html[data-theme="light"] .plisy-fg-arrow {
+  background: rgba(255, 255, 255, 0.85);
+  color: #16314e;
+  border-color: rgba(19, 40, 67, 0.2);
 }
