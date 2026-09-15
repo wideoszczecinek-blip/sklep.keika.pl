@@ -61,46 +61,66 @@ export function isPlisyPlaceholderCopy(text: string | null | undefined): boolean
   return !normalized || normalized === PLISY_CRM_PLACEHOLDER.toLowerCase();
 }
 
+/** Landing H1. The nav label stays the short "Plisy"; the page itself says
+ * what it sells - cold Meta traffic lands here without context (copy
+ * rewrite 2026-09-16, competitor audit: Karnix, Rolmajster, Sunroll,
+ * mojaplisa). The CRM "title" field overrides this when the owner changes
+ * it from the default "Plisy". */
+export const PLISY_H1 = "Plisy okienne na wymiar";
+
 export const PLISY_SUBTITLE =
-  "Zasłaniasz tylko tyle okna, ile chcesz: od góry, od dołu albo sam środek. 150 tkanin w 5 kolekcjach, 10 kolorów profili do wyboru, montaż z wierceniem lub bez.";
+  "Zasłaniasz tyle okna, ile chcesz — od góry, od dołu albo sam środek. Produkujemy na Twój wymiar w Szczecinku, zakładasz w 15 minut, także bez wiercenia. Cena dla Twojego okna w 10 sekund, bez maila i telefonu.";
+
+/** Primary CTA wording, repeated on the landing (mobile hero button, callout,
+ * end-of-section nudges). One promise everywhere: the price, for your
+ * window, now. */
+export const PLISY_PRIMARY_CTA = "Sprawdź cenę dla swojego okna";
+
+/** Fallback for the CRM "description" field (HTML). */
+export const PLISY_DESCRIPTION_HTML =
+  "<p><strong>Plisa to najbardziej elastyczna osłona okienna.</strong> Zamiast jednej rolety, która zasłania tylko od góry, masz dwie ruchome belki: opuszczasz górną i patrzysz w niebo, podnosisz dolną i nikt nie zagląda Ci do salonu. Tkanina złożona w harmonijkę chowa się w skrzydle okna — bez rury, bez łańcuszka — a przy uchylaniu i otwieraniu jedzie razem z oknem.</p>" +
+  "<p><strong>Jesteśmy producentem, nie pośrednikiem.</strong> Każdą plisę robimy na wymiar w naszym zakładzie w Szczecinku. Wpisujesz szerokość i wysokość w milimetrach, wybierasz tkaninę ze 150 wzorów, kolor profili i sposób montażu — z wierceniem albo na uchwytach bez wiercenia. Cenę widzisz od razu. Po 5–10 dniach roboczych plisa jest u Ciebie, a montaż zajmuje kwadrans z wkrętakiem.</p>" +
+  "<p>Najmniejsza plisa kosztuje 77 zł, a z kodem SEZON20 o 20% mniej. Masz 30 dni na zwrot i 5 lat gwarancji — jeśli coś Ci nie pasuje, odsyłasz i dostajesz pieniądze.</p>";
 
 export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
   {
     label: "Na wymiar co do milimetra",
-    value: "Wpisujesz szerokość i wysokość, my wykonujemy plisę dokładnie pod Twoje okno. Bez prześwitów po bokach, bez docinania w domu.",
-  },
-  {
-    label: "Od góry i od dołu",
     value:
-      "Dwa uchwyty: przesuwasz tkaninę w górę, w dół albo zostawiasz ją w środku okna. Prywatność bez rezygnacji ze światła.",
+      "Wpisujesz szerokość i wysokość, resztą zajmujemy się my. Plisa wchodzi między listwy przyszybowe jak część okna — bez prześwitów po bokach, bez docinania w domu.",
   },
   {
-    label: "Z wierceniem lub bez",
+    label: "Od góry, od dołu albo sam środek",
     value:
-      "Standardowo uchwyty przykręcane przy szybie. Wolisz nie wiercić? Uchwyty bezinwazyjne na skrzydło od +4,90 zł: zakładasz i zdejmujesz bez śladu.",
+      "Dwie belki, zero sznurków z boku. Rano opuszczasz górną i wpuszczasz światło, wieczorem zasłaniasz całość. Sąsiad z naprzeciwka przestaje być tematem.",
   },
   {
-    label: "Gwarancja satysfakcji",
-    value: "Jeżeli plisa nie spełni Twoich oczekiwań, możesz ją zwrócić w 30 dni, a my oddamy pieniądze. Bez zbędnych pytań.",
+    label: "Montaż w 15 minut — z wierceniem lub bez",
+    value:
+      "STANDARD: cztery wkręty w listwie przyszybowej, nic nie odstaje. Bezinwazyjny (od +4,90 zł): uchwyty na skrzydło, bez śladu — do mieszkania na wynajem i okien na gwarancji.",
+  },
+  {
+    label: "Zero ryzyka: 30 dni na zwrot, 5 lat gwarancji",
+    value:
+      "Jeżeli plisa nie spełni oczekiwań, odsyłasz ją w 30 dni i oddajemy pieniądze. Źle zmierzysz? Napisz zaraz po zamówieniu — przed produkcją poprawiamy wymiar bezpłatnie.",
   },
 ];
 
 export const PLISY_FEATURE_BULLETS: PlisyFeatureBullet[] = [
   {
     lead: "150 tkanin w 5 kolekcjach",
-    detail: "od lekkich, rozpraszających światło, po pełny blackout i termoizolacyjny plaster miodu",
+    detail: "od lekkich, rozpraszających światło, po pełny blackout i termoizolacyjny plaster miodu — każda z kodem producenta, więc dokupisz identyczną",
   },
   {
-    lead: "10 kolorów profili do wyboru",
-    detail: "biel, brąz, anoda, antracyt, oliwka, czarny mat, sosna, winchester, złoty dąb, orzech: dobierzesz do każdej stolarki",
+    lead: "10 kolorów profili",
+    detail: "biel, brąz, anoda, antracyt, oliwka, czarny mat i cztery drewnopodobne — dopasujesz do każdej stolarki",
   },
   {
     lead: "Sterowanie od góry i od dołu",
-    detail: "tkanina zatrzymuje się w dowolnym miejscu okna, bez sznurków i łańcuszków zwisających z boku",
+    detail: "tkanina zatrzymuje się w dowolnym miejscu okna; żadnych sznurków ani łańcuszków zwisających z boku",
   },
   {
     lead: "Trzy sposoby montażu",
-    detail: "standardowy przykręcany przy szybie, bezinwazyjny PCV lub bezinwazyjny metalowy na skrzydło okna",
+    detail: "STANDARD wkręcany przy szybie, bezinwazyjny PCV lub METAL na skrzydło — te dwa bez wiercenia i bez śladu",
   },
   {
     lead: "Nie blokuje uchylania ani otwierania",
@@ -108,11 +128,11 @@ export const PLISY_FEATURE_BULLETS: PlisyFeatureBullet[] = [
   },
   {
     lead: "Okna od 40 do 210 cm szerokości i do 230 cm wysokości",
-    detail: "pokoje, kuchnie, łazienki, drzwi balkonowe",
+    detail: "pokoje, kuchnie, łazienki, drzwi balkonowe — każdy wymiar w tym zakresie robimy na zamówienie",
   },
   {
-    lead: "Uchwyty i elementy montażowe w komplecie",
-    detail: "montaż zajmuje kilka minut, wystarczy wkrętak",
+    lead: "Wszystko w komplecie",
+    detail: "uchwyty, wkręty i instrukcja w paczce; potrzebujesz tylko wkrętaka i kwadransa",
   },
 ];
 
@@ -170,9 +190,9 @@ export const PLISY_COLLECTIONS: PlisyCollectionRow[] = [
 ];
 
 export const PLISY_CALLOUT = {
-  title: `Produkujemy w Szczecinku, realizacja ${PLISY_LEAD_TIME_LABEL}`,
+  title: `Producent ze Szczecinka: realizacja ${PLISY_LEAD_TIME_LABEL}, kurier w 24 h`,
   body:
-    "Każda plisa powstaje na Twój wymiar w naszej produkcji. Po wyprodukowaniu wysyłamy kurierem w 24 h, darmowa dostawa od 79 zł. Kilka okien? W konfiguratorze dodasz kolejne wymiary do jednego zamówienia.",
+    "Plisę robimy u siebie, na Twój wymiar — bez pośredników i bez czekania na wycenę mailem. Po wyprodukowaniu paczka wychodzi kurierem w 24 h; od 79 zł dostawa jest darmowa. Kilka okien? Dodasz kolejne wymiary do jednego zamówienia i zapłacisz za jedną przesyłkę.",
 };
 
 // FAQ, rewritten 2026-09-16 against what the market answers (Karnix,
@@ -183,6 +203,11 @@ export const PLISY_CALLOUT = {
 // not theirs; where a competitor's caveat applies to us too (flush sashes,
 // wooden frames, measuring each window) it is included in our own words.
 export const PLISY_FAQ: PlisyFaqEntry[] = [
+  {
+    question: "Ile kosztuje plisa na wymiar?",
+    answer:
+      "Najmniejsza plisa (40 × 60 cm, kolekcja Klasyczne, montaż STANDARD) kosztuje 77 zł. Cena rośnie z wymiarem i zależy od kolekcji tkaniny — dokładną kwotę dla swojego okna zobaczysz w konfiguratorze po wpisaniu szerokości i wysokości, bez rejestracji i bez podawania telefonu. Kod SEZON20 obniża ją o 20 %. Orientacyjne ceny dla wybranego wymiaru pokazuje też sekcja „Którą kolekcję tkanin wybrać?”.",
+  },
   {
     question: "Czym plisa różni się od rolety?",
     answer:
@@ -260,7 +285,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Co jeśli źle zmierzę?",
     answer:
-      "Napisz do nas od razu po złożeniu zamówienia — jeśli plisa nie weszła jeszcze do produkcji, poprawimy wymiar bez kosztów. Plisa produkowana na wymiar nie podlega wymianie z powodu pomyłki w pomiarze, dlatego przed zamówieniem zmierz dwa razy, a przy wątpliwości wyślij nam zdjęcie okna na czacie.",
+      "Najszybciej: napisz do nas od razu po złożeniu zamówienia — jeśli plisa nie weszła jeszcze do produkcji, poprawimy wymiar bez żadnych kosztów. A gdyby pomyłka wyszła dopiero po montażu, chroni Cię 30-dniowy zwrot. Żeby do tego nie doszło, zmierz dwa razy, a przy wątpliwości wyślij nam zdjęcie okna na czacie — odpowiemy, który montaż i jaki wymiar wybrać.",
   },
   {
     question: "Czy mogę zamówić plisy do kilku okien w jednym zamówieniu?",
@@ -285,6 +310,6 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Jaka jest gwarancja i czy mogę zwrócić plisę?",
     answer:
-      "5 lat gwarancji na plisę, tak jak na wszystkie produkty KEIKA. Do tego 30 dni na zwrot bez podania przyczyny — jeśli plisa nie spełni oczekiwań, odsyłasz ją, a my oddajemy pieniądze.",
+      "5 lat gwarancji na plisę, tak jak na wszystkie produkty KEIKA — profile są aluminiowe, mechanizm nie ma elementów, które się wycierają. Do tego 30 dni na zwrot bez podania przyczyny: jeśli plisa nie spełni oczekiwań, odsyłasz ją, a my oddajemy pieniądze.",
   },
 ];

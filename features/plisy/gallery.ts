@@ -30,6 +30,11 @@ export const PLISY_REAL_PHOTOS: string[] = [
   "/plisy/realizacja-03.jpg",
 ];
 
+/** Detail crops cut from the 4000 px originals of the same three installs
+ * (2026-09-16): honeycomb structure + top rail with handle, both blinds on
+ * the balcony door, pleat edge from the side. Real product, 1:1. */
+export const PLISY_DETAIL_PHOTOS: string[] = ["/plisy/detal-01.jpg", "/plisy/detal-02.jpg", "/plisy/detal-03.jpg"];
+
 export function buildPlisyGalleryCategories(): PlisyGalleryCategory[] {
   return [
     {
@@ -37,6 +42,12 @@ export function buildPlisyGalleryCategories(): PlisyGalleryCategory[] {
       label: "Realizacje",
       note: "Nasze plisy u klientów — zdjęcia z montażu, bez studia i retuszu",
       photos: PLISY_REAL_PHOTOS,
+    },
+    {
+      id: "detale",
+      label: "Z bliska",
+      note: "Struktura plastra miodu, belka z uchwytem, krawędź fałd — zbliżenia z tych samych montaży",
+      photos: PLISY_DETAIL_PHOTOS,
     },
   ];
 }

@@ -391,7 +391,7 @@ export default function ConfiguratorPanel({
     return (
       <>
         <header>
-          <strong>Stwórz swoją plisę</strong>
+          <strong>Wyceń plisę do swojego okna</strong>
         </header>
         <p className="hero-product-config-hint">Wczytuję konfigurator…</p>
       </>
@@ -402,7 +402,7 @@ export default function ConfiguratorPanel({
     return (
       <>
         <header>
-          <strong>Stwórz swoją plisę</strong>
+          <strong>Wyceń plisę do swojego okna</strong>
         </header>
         <p className="hero-product-config-hint">
           Nie udało się wczytać konfiguratora. Odśwież stronę lub spróbuj ponownie za chwilę.
@@ -414,7 +414,8 @@ export default function ConfiguratorPanel({
   return (
     <>
       <header>
-        <strong>Stwórz swoją plisę</strong>
+        <strong>Wyceń plisę do swojego okna</strong>
+        <p>4 kroki, cena od razu — bez maila i telefonu.</p>
       </header>
 
       {profile.mountOptions.length > 0 ? (

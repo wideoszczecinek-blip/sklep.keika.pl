@@ -20,6 +20,12 @@
 // server and the client and does not change between builds.
 
 export const PLISY_REVIEWS_ARE_PLACEHOLDERS = true;
+// Whether the placeholder list is rendered at all. Off since the sales
+// launch (2026-09-16): a review tab headed "Przykładowe opinie" on cold ad
+// traffic reads as fake reviews. Until real plisy reviews land in the CRM,
+// the tab shows KEIKA's real Allegro seller proof instead (Reviews.tsx).
+// Flip to true to preview the placeholder layout again.
+export const PLISY_SHOW_PLACEHOLDER_REVIEWS = false;
 
 export type PlisyReview = {
   date: string;

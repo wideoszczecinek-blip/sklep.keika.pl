@@ -8,8 +8,84 @@
 // zakupem" claim anywhere. The per-entry badge was dropped on 2026-09-16 at
 // the owner's request; the banner is the disclosure and stays until the
 // flag flips. See reviews-data.ts for why.
-import { useMemo, useState } from "react";
-import { PLISY_REVIEWS, PLISY_REVIEWS_ARE_PLACEHOLDERS, type PlisyReview } from "./reviews-data";
+import { useEffect, useMemo, useState } from "react";
+import { PLISY_REVIEWS, PLISY_REVIEWS_ARE_PLACEHOLDERS, PLISY_SHOW_PLACEHOLDER_REVIEWS, type PlisyReview } from "./reviews-data";
+import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "@/app/moskitiery-ramkowe-reviews-data";
+
+// KEIKA's real Allegro rating (the moskitiery ramkowe listing, keika_pl) -
+// the only verified customer proof the business has online. Shown on the
+// plisy tab, clearly labelled as the seller's rating for another product,
+// until plisy get reviews of their own in the CRM.
+const BRAND_RATING_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/allegro_offer_rating_public.php?slug=moskitiery-ramkowe";
+type BrandRating = { average: number; total: number; distribution: { stars: number; count: number }[] };
+
+function BrandProof() {
+  const [rating, setRating] = useState<BrandRating | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch(BRAND_RATING_URL)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!alive || !j?.ok || !j.rating) return;
+        setRating({
+          average: Number(j.rating.average_score) || 0,
+          total: Number(j.rating.total_responses) || 0,
+          distribution: Array.isArray(j.rating.score_distribution) ? j.rating.score_distribution : [],
+        });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const latest = MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS.filter((r) => r.estimatedStars === 5).slice(0, 4);
+
+  return (
+    <div className="hero-product-allegro-reviews plisy-brand-proof">
+      <p className="plisy-reviews-placeholder-banner plisy-brand-proof-note" role="note">
+        <strong>Plisy to nowy produkt w naszym sklepie</strong> — pierwsze opinie o plisach pojawią się tu po pierwszych
+        realizacjach. Poniżej prawdziwa ocena KEIKA jako sprzedawcy na Allegro (oferta moskitier ramkowych, konto keika_pl) —
+        te same osoby produkują i pakują Twoją plisę.
+      </p>
+      {rating ? (
+        <div className="allegro-rating-summary">
+          <div className="allegro-rating-score">
+            <strong>{rating.average.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+            <Stars n={Math.round(rating.average)} />
+            <span className="allegro-rating-count">{rating.total.toLocaleString("pl-PL")} opinii</span>
+            <span className="allegro-rating-source">Ocena z Allegro · sprzedawca keika_pl · moskitiery ramkowe</span>
+          </div>
+          <div className="allegro-rating-distribution">
+            {rating.distribution.map((entry) => {
+              const pct = rating.total ? Math.round((entry.count / rating.total) * 100) : 0;
+              return (
+                <div key={entry.stars} className="allegro-rating-bar-row">
+                  <span>{entry.stars}★</span>
+                  <span className="allegro-rating-bar-track">
+                    <span className="allegro-rating-bar-fill" style={{ width: `${pct}%` }} />
+                  </span>
+                  <span className="allegro-rating-bar-count">{entry.count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      <ul className="hero-product-reviews">
+        {latest.map((review, index) => (
+          <li key={`${review.date}-${index}`}>
+            <div className="allegro-review-meta">
+              <strong>{review.maskedLogin}</strong>
+              <span>{review.date}</span>
+              <span className="plisy-review-collection">Allegro · moskitiery ramkowe</span>
+            </div>
+            <p>{review.body}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const PAGE = 8;
 
@@ -43,7 +119,7 @@ export default function PlisyReviews({ crmReviews }: { crmReviews?: CrmReview[] 
   }));
   const usingCrm = fromCrm.length > 0;
   const placeholders = PLISY_REVIEWS_ARE_PLACEHOLDERS && !usingCrm;
-  const all = usingCrm ? fromCrm : PLISY_REVIEWS;
+  const all = usingCrm ? fromCrm : PLISY_SHOW_PLACEHOLDER_REVIEWS ? PLISY_REVIEWS : [];
   const total = all.length;
   const average = useMemo(() => (total ? all.reduce((s, r) => s + r.stars, 0) / total : 0), [all, total]);
   const distribution = useMemo(
@@ -56,7 +132,7 @@ export default function PlisyReviews({ crmReviews }: { crmReviews?: CrmReview[] 
   const hasMore = shown.length < filtered.length;
 
   if (!total) {
-    return <p className="hero-product-faq-empty">Wkrótce dodamy tu opinie klientów.</p>;
+    return <BrandProof />;
   }
 
   return (

@@ -93,6 +93,9 @@ import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/p
 import { fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
 import {
   isPlisyPlaceholderCopy,
+  PLISY_H1,
+  PLISY_PRIMARY_CTA,
+  PLISY_DESCRIPTION_HTML,
   PLISY_CALLOUT,
   PLISY_FAQ,
   PLISY_FEATURE_BULLETS,
@@ -539,6 +542,7 @@ type ProductReview = {
 };
 
 type ProductLandingContent = {
+  title: string;
   subtitle: string;
   description: string;
   priceFrom: string;
@@ -756,7 +760,7 @@ function productSectionCtaLabel(product: SelectedProductView | null): string {
   const slug = productSlugFromSelected(product);
   if (slug === "moskitiery-ramkowe") return "Wyceń swoją moskitierę";
   if (slug === "rolety-dachowe") return "Wyceń swoją roletę";
-  if (slug === "plisy") return "Wyceń swoją plisę";
+  if (slug === "plisy") return PLISY_PRIMARY_CTA;
   return "Skonfiguruj i zobacz cenę";
 }
 
@@ -2069,6 +2073,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
               .filter((entry: ProductFaqEntry) => entry.question && entry.answer)
           : [];
         setProductLanding({
+          title: String(product.title || product.name || "").trim(),
           subtitle: String(product.subtitle || "").trim(),
           description: String(product.description || "").trim(),
           priceFrom: String(product.price_from || "").trim(),
@@ -3241,7 +3246,15 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                   aria-hidden={!displayedProduct || !isProductView ? "true" : "false"}
                 >
                   <p className="hero-product-group">{displayedProduct?.groupTitle || ""}</p>
-                  {displayedProduct ? <h1>{displayedProduct.label}</h1> : null}
+                  {displayedProduct ? (
+                    <h1>
+                      {productSlugFromSelected(displayedProduct) === "plisy"
+                        ? productLanding?.title && productLanding.title.toLowerCase() !== "plisy"
+                          ? productLanding.title
+                          : PLISY_H1
+                        : displayedProduct.label}
+                    </h1>
+                  ) : null}
                     <div className="hero-product-content">
                       <section id="product-section-opis" ref={opisSectionRef} className="hero-product-section">
                       {displayedProduct ? (
@@ -3582,16 +3595,17 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 od {plisyStartingPrice.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} zł
                                 <span className="pl-price-unit"> / szt.</span>
                               </span>
+                              <span className="pl-chip">Polski producent</span>
                               <span className="pl-chip">5 lat gwarancji</span>
-                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                               <span className="pl-chip">30 dni na zwrot</span>
+                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
 
                             <p className="pl-subtitle">
                               {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
                             </p>
                             <button type="button" className="pl-mobile-price-cta" onClick={scrollToConfigPanel}>
-                              Wyceń swoją plisę w 10 sekund
+                              {PLISY_PRIMARY_CTA} — 10 sekund
                             </button>
 
                             <PlisyHeroPhotos />
@@ -3622,12 +3636,16 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             </div>
 
                             <h2 className="hero-product-section-title">Opis produktu</h2>
-                            {productLanding?.description && !isPlisyPlaceholderCopy(productLanding.description) ? (
-                              <div
-                                className="pl-description"
-                                dangerouslySetInnerHTML={{ __html: demoteHeadings(productLanding.description) }}
-                              />
-                            ) : null}
+                            <div
+                              className="pl-description"
+                              dangerouslySetInnerHTML={{
+                                __html: demoteHeadings(
+                                  productLanding?.description && !isPlisyPlaceholderCopy(productLanding.description)
+                                    ? productLanding.description
+                                    : PLISY_DESCRIPTION_HTML,
+                                ),
+                              }}
+                            />
 
                             <ul className="pl-feature-list">
                               {(productLanding?.featureBullets?.length ? productLanding.featureBullets : PLISY_FEATURE_BULLETS).map(
@@ -3651,7 +3669,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               <strong>{productLanding?.callout?.title || PLISY_CALLOUT.title}</strong>
                               <p>{productLanding?.callout?.body || PLISY_CALLOUT.body}</p>
                               <button type="button" className="pl-inline-cta-button pl-callout-cta" onClick={scrollToConfigPanel}>
-                                Wyceń swoją plisę
+                                {PLISY_PRIMARY_CTA}
                               </button>
                             </div>
                           </div>
