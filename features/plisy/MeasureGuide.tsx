@@ -140,6 +140,7 @@ function Tape({
   vertical,
   reading,
   opacity,
+  k = 1,
 }: {
   x: number;
   y: number;
@@ -147,6 +148,7 @@ function Tape({
   vertical: boolean;
   reading: number | null;
   opacity: number;
+  k?: number;
 }) {
   const ticks: React.ReactNode[] = [];
   for (let i = 10; i < len; i += 10) {
@@ -183,7 +185,7 @@ function Tape({
         <rect x={CASE_W * 0.5} y={-6} width={22} height={12} rx="6" fill="#ef4444" stroke="#7f1d1d" strokeWidth="1" />
         <rect x={6} y={CASE_H / 2 - 9} width={22} height={5} rx="2.5" fill="#a16207" opacity="0.6" />
         {reading !== null ? (
-          <g transform={vertical ? `translate(${CASE_W / 2} ${-CASE_H / 2 - 34}) rotate(-90)` : `translate(${CASE_W / 2} ${-CASE_H / 2 - 34})`}>
+          <g transform={vertical ? `translate(${CASE_W / 2} ${-CASE_H / 2 - 34 * k}) rotate(-90) scale(${k})` : `translate(${CASE_W / 2} ${-CASE_H / 2 - 34 * k}) scale(${k})`}>
             <rect x={-58} y={-19} width={116} height={38} rx="8" fill="#0e1a2a" />
             <text x={0} y={7} textAnchor="middle" fill="#ffc45c" fontSize="22" fontWeight="900" style={{ fontVariantNumeric: "tabular-nums" }}>
               {reading} mm
@@ -196,14 +198,15 @@ function Tape({
 }
 
 /* Short "od ... / do ..." tag at one end of the tape. */
-function EndLabel({ x, y, text, anchor, opacity }: { x: number; y: number; text: string; anchor: "start" | "end"; opacity: number }) {
+function EndLabel({ x, y, text, anchor, opacity, k = 1 }: { x: number; y: number; text: string; anchor: "start" | "end"; opacity: number; k?: number }) {
   if (opacity <= 0.01) return null;
-  const w = Math.round(text.length * 9.4) + 26;
+  const w = Math.round((text.length * 9.4 + 26) * k);
+  const h = 32 * k;
   const rx = anchor === "start" ? x : x - w;
   return (
     <g opacity={opacity}>
-      <rect x={rx} y={y - 16} width={w} height={32} rx="8" fill="#ef4444" />
-      <text x={rx + w / 2} y={y + 6} textAnchor="middle" fill="#fff" fontSize="16.5" fontWeight="800">
+      <rect x={rx} y={y - h / 2} width={w} height={h} rx={8 * k} fill="#ef4444" />
+      <text x={rx + w / 2} y={y + 6 * k} textAnchor="middle" fill="#fff" fontSize={16.5 * k} fontWeight="800">
         {text}
       </text>
     </g>
@@ -216,7 +219,7 @@ function EndLabel({ x, y, text, anchor, opacity }: { x: number; y: number; text:
 const PAD = { x: 662, y: 462, w: 226, h: 176 };
 const HAND = '"Segoe Print", "Bradley Hand", "Comic Sans MS", "Chalkboard", cursive';
 
-function Notepad({ opacity, wWrite, hWrite, wmm, hmm, clipId }: { opacity: number; wWrite: number; hWrite: number; wmm: number; hmm: number; clipId: string }) {
+function Notepad({ opacity, wWrite, hWrite, wmm, hmm, clipId, k = 1 }: { opacity: number; wWrite: number; hWrite: number; wmm: number; hmm: number; clipId: string; k?: number }) {
   if (opacity <= 0.01) return null;
   const textW = 184;
   const w1 = textW * wWrite;
@@ -225,7 +228,7 @@ function Notepad({ opacity, wWrite, hWrite, wmm, hmm, clipId }: { opacity: numbe
   const penX = PAD.x + 24 + (hWrite > 0 ? w2 : w1);
   const penY = PAD.y + (hWrite > 0 ? 122 : 88);
   return (
-    <g opacity={opacity} transform={`rotate(-4 ${PAD.x + PAD.w / 2} ${PAD.y + PAD.h / 2})`}>
+    <g opacity={opacity} transform={`translate(${PAD.x + PAD.w} ${PAD.y + PAD.h}) scale(${k}) translate(${-(PAD.x + PAD.w)} ${-(PAD.y + PAD.h)}) rotate(-4 ${PAD.x + PAD.w / 2} ${PAD.y + PAD.h / 2})`}>
       <rect x={PAD.x + 4} y={PAD.y + 6} width={PAD.w} height={PAD.h} rx="6" fill="#000" opacity="0.18" />
       <rect x={PAD.x} y={PAD.y} width={PAD.w} height={PAD.h} rx="6" fill="#fff8dc" stroke="#d9c58a" strokeWidth="1.5" />
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
@@ -289,6 +292,26 @@ export default function PlisyMeasureGuide({
   // opens the step to find the tape already parked at the end.
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [armed, setArmed] = useState(false);
+
+  // Phone-sized stage: the SVG lands at ~45% of its viewBox, so labels drawn
+  // for desktop shrink to ~7 px. Below 560 px everything the eye has to read
+  // (end labels, reading, notepad, magnifier) is drawn 1.5x bigger, and the
+  // two width labels are staggered above/below the tape so they fit.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width || 0;
+      setNarrow(w > 0 && w < 560);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const k = narrow ? 1.5 : 1;
+  // On a phone the height tape runs down the right half of the glass and its
+  // labels sit to the LEFT of it - the notepad owns the bottom-right corner.
+  const hx = narrow ? 560 : TAPE_H_X;
   useEffect(() => {
     const el = stageRef.current;
     if (!el || typeof IntersectionObserver === "undefined") {
@@ -454,8 +477,8 @@ export default function PlisyMeasureGuide({
                 </>
               ) : (
                 <>
-                  <line x1={TAPE_H_X - 30} y1={m.height.from} x2={TAPE_H_X + 30} y2={m.height.from} stroke="#ef4444" strokeWidth="2.5" strokeDasharray="5 4" />
-                  <line x1={TAPE_H_X - 30} y1={m.height.to} x2={TAPE_H_X + 30} y2={m.height.to} stroke="#ef4444" strokeWidth="2.5" strokeDasharray="5 4" />
+                  <line x1={hx - 30} y1={m.height.from} x2={hx + 30} y2={m.height.from} stroke="#ef4444" strokeWidth="2.5" strokeDasharray="5 4" />
+                  <line x1={hx - 30} y1={m.height.to} x2={hx + 30} y2={m.height.to} stroke="#ef4444" strokeWidth="2.5" strokeDasharray="5 4" />
                 </>
               )}
             </g>
@@ -464,27 +487,27 @@ export default function PlisyMeasureGuide({
           {/* "od ... / do ..." at both ends of the current tape */}
           {showW ? (
             <>
-              <EndLabel x={m.width.from} y={TAPE_W_Y + 38} text={m.width.a} anchor="start" opacity={wO} />
-              <EndLabel x={m.width.to} y={TAPE_W_Y + 38} text={m.width.b} anchor="end" opacity={wO * easeOut(seg(wP, [0.85, 1] as const))} />
+              <EndLabel x={m.width.from} y={narrow ? TAPE_W_Y - 46 : TAPE_W_Y + 38} text={m.width.a} anchor="start" opacity={wO} k={k} />
+              <EndLabel x={m.width.to} y={narrow ? TAPE_W_Y + 46 : TAPE_W_Y + 38} text={m.width.b} anchor="end" opacity={wO * easeOut(seg(wP, [0.85, 1] as const))} k={k} />
             </>
           ) : null}
           {showH ? (
             <>
-              <EndLabel x={TAPE_H_X + 40} y={m.height.from + 4} text={m.height.a} anchor="start" opacity={hO} />
-              <EndLabel x={TAPE_H_X + 40} y={m.height.to - 4} text={m.height.b} anchor="start" opacity={hO * easeOut(seg(hP, [0.85, 1] as const))} />
+              <EndLabel x={narrow ? hx - 40 : hx + 40} y={m.height.from + 4} text={m.height.a} anchor={narrow ? "end" : "start"} opacity={hO} k={k} />
+              <EndLabel x={narrow ? hx - 40 : hx + 40} y={m.height.to - 4} text={m.height.b} anchor={narrow ? "end" : "start"} opacity={hO * easeOut(seg(hP, [0.85, 1] as const))} k={k} />
             </>
           ) : null}
 
           {/* notepad takes the corner the magnifier leaves */}
-          <Notepad opacity={padO} wWrite={wWrite} hWrite={hWrite} wmm={m.width.mm} hmm={m.height.mm} clipId={ID.pad} />
+          <Notepad opacity={padO} wWrite={wWrite} hWrite={hWrite} wmm={m.width.mm} hmm={m.height.mm} clipId={ID.pad} k={narrow ? 1.3 : 1} />
 
           {/* the tape: width, then height */}
-          {showW ? <Tape x={m.width.from} y={TAPE_W_Y} len={wBlade} vertical={false} reading={wReading} opacity={wO} /> : null}
-          {showH ? <Tape x={TAPE_H_X} y={m.height.from} len={hBlade} vertical reading={hReading} opacity={hO} /> : null}
+          {showW ? <Tape x={m.width.from} y={TAPE_W_Y} len={wBlade} vertical={false} reading={wReading} opacity={wO} k={k} /> : null}
+          {showH ? <Tape x={hx} y={m.height.from} len={hBlade} vertical reading={hReading} opacity={hO} k={k} /> : null}
 
           {/* magnifier - step 1 only, then it leaves */}
           {lupaS > 0.01 ? (
-            <g opacity={lupaS} transform={`translate(${LUPA.cx} ${LUPA.cy}) scale(${0.6 + 0.4 * lupaS}) translate(${-LUPA.cx} ${-LUPA.cy})`}>
+            <g opacity={lupaS} transform={`translate(${LUPA.cx} ${LUPA.cy}) scale(${(0.6 + 0.4 * lupaS) * (narrow ? 1.25 : 1)}) translate(${-LUPA.cx} ${-LUPA.cy})`}>
               <line x1={m.target.x} y1={m.target.y} x2={LUPA.cx - LUPA.r * 0.72} y2={LUPA.cy - LUPA.r * 0.72} stroke="#0e1a2a" strokeWidth="2.5" strokeDasharray="6 5" />
               <circle cx={m.target.x} cy={m.target.y} r="9" fill="none" stroke="#ef4444" strokeWidth="3" />
               <circle cx={LUPA.cx} cy={LUPA.cy} r={LUPA.r + 6} fill="#0e1a2a" filter={`url(#${ID.shadow})`} />
