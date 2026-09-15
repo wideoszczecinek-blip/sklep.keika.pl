@@ -17,7 +17,7 @@
 // visible without scrolling. Reduced motion: docked from the start.
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { PLISY_REAL_PHOTOS } from "./gallery";
+import { PLISY_HERO_PHOTOS } from "./gallery";
 import PlisyHeroScene from "./PlisyHeroScene";
 
 const INTRO_MS = 7000; // full-size presentation before docking
@@ -28,13 +28,13 @@ const REOPEN_MS = 9000; // how long a click keeps it full-size again
 const tileSrc = (src: string) => `/_next/image?url=${encodeURIComponent(src)}&w=700&q=75`;
 
 const PHOTO_ALT = [
+  "Biała plisa okienna KEIKA zamontowana w oknie, tkanina opuszczona od góry",
+  "Plisy okienne KEIKA w sali konferencyjnej - szare tkaniny, regulacja od góry",
   "Plisa okienna KEIKA w antracytowej tkaninie na oknie dwuskrzydłowym - zdjęcie z montażu u klienta",
-  "Plisy KEIKA na drzwiach balkonowych, tkanina antracytowa - zdjęcie z montażu u klienta",
-  "Plisa KEIKA na drzwiach balkonowych w pokoju młodzieżowym - zdjęcie z montażu u klienta",
 ];
 
 export default function PlisyHeroPhotos() {
-  const photos = PLISY_REAL_PHOTOS;
+  const photos = PLISY_HERO_PHOTOS;
   const [docked, setDocked] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
 
@@ -138,12 +138,12 @@ export default function PlisyHeroPhotos() {
           ) : null}
         </div>
 
-        {/* desktop mosaic: portrait on the right, two under the presentation */}
+        {/* desktop mosaic: product shot on the right, room + window under the presentation */}
         <div className="plisy-hero-tiles" aria-hidden={!isDocked}>
-          {photos[1] ? tile(1, "plisy-hero-tile--right") : null}
-          {photos[0] ? tile(0, "plisy-hero-tile--bottom-wide") : null}
+          {photos[0] ? tile(0, "plisy-hero-tile--right") : null}
+          {photos[1] ? tile(1, "plisy-hero-tile--bottom-wide") : null}
           {photos[2] ? tile(2, "plisy-hero-tile--bottom-square") : null}
-          <span className="plisy-hero-tiles-badge">📷 Zdjęcia z montaży u klientów</span>
+          <span className="plisy-hero-tiles-badge">📷 Zdjęcia z montaży</span>
         </div>
       </div>
 
