@@ -1,29 +1,27 @@
 "use client";
 
-// Top-of-landing hero for plisy. Slide 0 is the AI-generated studio clip
-// (owner, 2026-09-16: "okno delikatnie się obraca, dwie plisy poruszają się
-// różnie góra/dół i zmieniają kolor" - generated with Veo 3.1 from a
-// Gemini-drawn reference frame based on the real installation photo,
-// ping-pong looped with ffmpeg so it never jumps; /public/plisy/hero). The
-// owner's three real installation photos follow as further slides.
+// Top-of-landing hero for plisy. Slide 0 is the rendered studio
+// presentation (PlisyHeroScene: photoreal empty window plate + pleated
+// fabric drawn with real concertina physics, gentle 3D turn, colour
+// changes). The owner's three real installation photos follow as further
+// slides.
 //
-// The clip is the product's main image, so the slideshow rests on it: it
-// only auto-advances while the visitor is looking at the photos, and comes
-// back to the clip after the last one. Photos are a mix of portrait and
-// landscape; each is shown whole over a blurred, darkened copy of itself.
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+// The presentation is the product's main image, so the slideshow rests on
+// it: it only auto-advances while the visitor is looking at the photos, and
+// comes back to the presentation after the last one. Photos are a mix of
+// portrait and landscape; each is shown whole over a blurred, darkened copy
+// of itself.
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { PLISY_REAL_PHOTOS } from "./gallery";
+import PlisyHeroScene from "./PlisyHeroScene";
 
 const INTERVAL_MS = 4200;
-export const PLISY_HERO_VIDEO_SRC = "/plisy/hero/plisy-hero.mp4";
-export const PLISY_HERO_VIDEO_POSTER = "/plisy/hero/plisy-hero-poster.jpg";
 
 export default function PlisyHeroPhotos() {
   const photos = PLISY_REAL_PHOTOS;
-  // 0 = video, 1..n = photos
+  // 0 = presentation, 1..n = photos
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const slideCount = photos.length + 1;
 
   const reduced = useSyncExternalStore(
@@ -35,24 +33,6 @@ export default function PlisyHeroPhotos() {
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     () => false,
   );
-
-  // React doesn't reliably emit the `muted` attribute in server HTML, and
-  // browsers refuse to autoplay unmuted video - set it on the element.
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    el.muted = true;
-    el.defaultMuted = true;
-    if (reduced) {
-      el.pause();
-      return;
-    }
-    if (index === 0) {
-      el.play().catch(() => {});
-    } else {
-      el.pause();
-    }
-  }, [index, reduced]);
 
   useEffect(() => {
     if (paused || reduced || index === 0) return;
@@ -71,20 +51,8 @@ export default function PlisyHeroPhotos() {
       aria-roledescription="pokaz"
       aria-label="Plisy KEIKA - prezentacja i zdjęcia z montaży"
     >
-      <div className={`plisy-hero-slide plisy-hero-slide--video ${index === 0 ? "is-active" : ""}`} aria-hidden={index !== 0}>
-        <video
-          ref={videoRef}
-          className="plisy-hero-video"
-          src={PLISY_HERO_VIDEO_SRC}
-          poster={PLISY_HERO_VIDEO_POSTER}
-          autoPlay={!reduced}
-          muted
-          loop
-          playsInline
-          preload="auto"
-          disablePictureInPicture
-          aria-label="Animacja: plisa okienna KEIKA - dwie niezależne belki, dowolne ustawienie od góry i od dołu, różne kolory tkanin"
-        />
+      <div className={`plisy-hero-slide plisy-hero-slide--scene ${index === 0 ? "is-active" : ""}`} aria-hidden={index !== 0}>
+        <PlisyHeroScene active={index === 0} />
       </div>
 
       {photos.map((src, i) => {
@@ -110,7 +78,7 @@ export default function PlisyHeroPhotos() {
             role="tab"
             aria-selected={i === index}
             aria-label={i === 0 ? "Animacja produktu" : `Zdjęcie z montażu ${i}`}
-            className={`plisy-hero-dot ${i === 0 ? "plisy-hero-dot--video" : ""} ${i === index ? "is-active" : ""}`}
+            className={`plisy-hero-dot ${i === 0 ? "plisy-hero-dot--scene" : ""} ${i === index ? "is-active" : ""}`}
             onClick={() => {
               setIndex(i);
               setPaused(true);

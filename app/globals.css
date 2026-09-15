@@ -12267,15 +12267,39 @@ html[data-theme="dark"] .promo-save-modal-urgency {
     aspect-ratio: 4 / 3;
   }
 }
-.plisy-hero-video {
-  display: block;
+/* Rendered presentation (features/plisy/PlisyHeroScene.tsx): photoreal
+   base plate + canvas overlay, both inside one 3D-rotated plate. The plate
+   is scaled up a little so the receding edge never shows the box behind. */
+.plisy-hero-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #e4e7ea;
+  perspective: 1500px;
+  perspective-origin: 50% 50%;
+}
+.plisy-hero-scene-plate {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.plisy-hero-scene-base {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: 50% 50%;
-  background: #e9ecef;
+  display: block;
 }
-.plisy-hero-dot--video {
+.plisy-hero-scene-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.plisy-hero-dot--scene {
   width: auto;
   min-width: 1.15rem;
   height: 0.9rem;
@@ -12285,7 +12309,7 @@ html[data-theme="dark"] .promo-save-modal-urgency {
   color: #0e1a2a;
   background: rgba(255, 255, 255, 0.75);
 }
-.plisy-hero-dot--video.is-active {
+.plisy-hero-dot--scene.is-active {
   background: #f59e0b;
 }
 
