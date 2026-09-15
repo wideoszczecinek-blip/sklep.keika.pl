@@ -12350,7 +12350,7 @@ html[data-theme="dark"] .promo-save-modal-urgency {
   margin: 0.3rem 0 0;
   border-radius: 0.9rem;
   overflow: hidden;
-  background: #0e1a2a;
+  background: linear-gradient(160deg, #eef2f6 0%, #dde4ea 55%, #cfd8e0 100%);
   box-shadow: 0 8px 20px rgba(8, 20, 35, 0.18);
 }
 
@@ -12853,4 +12853,18 @@ html[data-theme="light"] .pl-coll-badge--thermo {
 }
 html[data-theme="light"] .pl-coll-swatch img {
   border-color: rgba(19, 40, 67, 0.18);
+}
+
+.plisy-viz-picks .plisy-viz-disclaimer {
+  margin: 0.15rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  background: rgba(245, 158, 11, 0.12);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #3b2a06;
+}
+.plisy-viz-picks .plisy-viz-disclaimer strong {
+  color: #1a1206;
 }

@@ -3620,7 +3620,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             <div className="plisy-viz-section">
                               <h3 className="plisy-viz-title">Zobacz plisę w swoim wnętrzu</h3>
                               <p className="plisy-viz-lead">
-                                Wybierz pomieszczenie, widok za oknem i kolor tkaniny. Listwy przeciągniesz — górną i dolną.
+                                Przeciągnij górną i dolną listwę — plisa zasłoni dowolny fragment okna. Odcień zmienisz poniżej.
                               </p>
                               <PlisyVisualizer />
                             </div>
