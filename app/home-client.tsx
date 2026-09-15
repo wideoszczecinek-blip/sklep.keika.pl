@@ -125,7 +125,8 @@ const RoletyDachoweConfiguratorPanel = dynamic(() => import("@/features/rolety-d
 const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/ConfiguratorPanel"), { ssr: false });
 // Statycznie, nie przez dynamic(): to jest hero, więc ma się pojawić od razu
 // razem z resztą sekcji, a nie doładować po hydratacji (LCP).
-import PlisyHero from "@/features/plisy/PlisyHero";
+import PlisyHeroPhotos from "@/features/plisy/PlisyHeroPhotos";
+import PlisyVisualizer from "@/features/plisy/PlisyVisualizer";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 
@@ -3573,7 +3574,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               Wyceń swoją plisę w 10 sekund
                             </button>
 
-                            <PlisyHero />
+                            <PlisyHeroPhotos />
 
                             <div className="pl-spec-grid">
                               {(productLanding?.specItems?.length ? productLanding.specItems : PLISY_SPEC_ITEMS).map((item) => {
@@ -3610,6 +3611,14 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             </ul>
 
                             <PlisyCollectionsPicker profile={plisyProfile} promo={topPromoPreview} onQuote={scrollToConfigPanel} />
+
+                            <div className="plisy-viz-section">
+                              <h3 className="plisy-viz-title">Zobacz plisę w swoim wnętrzu</h3>
+                              <p className="plisy-viz-lead">
+                                Wybierz pomieszczenie, widok za oknem i kolor tkaniny. Listwy przeciągniesz — górną i dolną.
+                              </p>
+                              <PlisyVisualizer />
+                            </div>
 
                             <div className="pl-callout">
                               <strong>{productLanding?.callout?.title || PLISY_CALLOUT.title}</strong>
