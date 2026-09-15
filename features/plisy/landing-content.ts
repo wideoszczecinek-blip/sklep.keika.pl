@@ -20,6 +20,14 @@ export type PlisyCollectionRow = {
   name: string;
   what: string;
   where: string;
+  /** Blocks light (blackout core / thermal coating) - the ☾ badge. */
+  blackout: boolean;
+  /** Reduces heat gain or loss - the thermometer badge. */
+  thermal: boolean;
+  /** Spec sheet lines. Only what we actually know about the fabric - no
+   * grammage or fire class here because the CRM does not hold them. */
+  lightNote: string;
+  thermalNote: string;
 };
 
 /** Lowest cell of the Classic price table (400 x 600 mm, STANDARD mount).
@@ -29,11 +37,12 @@ export const PLISY_STARTING_PRICE_FALLBACK = 77;
 
 /** Example size the collections guide prices - a typical living-room
  * casement, matches the configurator's own placeholders (900 x 1200). */
-// 55 x 105 cm - owner's pick 2026-09-15 (was 90 x 120), a typical single
-// sash rather than a whole window, so the example price lands closer to
-// what most customers will actually see.
-export const PLISY_EXAMPLE_WIDTH_MM = 550;
-export const PLISY_EXAMPLE_HEIGHT_MM = 1050;
+// Where the "Którą kolekcję wybrać" size sliders start. 40 x 60 cm - the
+// owner's pick 2026-09-15 evening (the block went 90x120 -> 55x105 -> sliders
+// starting at the smallest sensible sash the same day). Also the sliders'
+// minimum: the matrix prices smaller, but nobody orders a 20 cm plisa.
+export const PLISY_EXAMPLE_WIDTH_MM = 400;
+export const PLISY_EXAMPLE_HEIGHT_MM = 600;
 
 export const PLISY_LEAD_TIME_LABEL = "5–10 dni roboczych";
 
@@ -112,30 +121,50 @@ export const PLISY_COLLECTIONS: PlisyCollectionRow[] = [
     name: "Klasyczne",
     what: "Półprzepuszczalna: rozprasza światło i chroni prywatność w dzień",
     where: "Salon, kuchnia, biuro, pokój dziecięcy",
+    blackout: false,
+    thermal: false,
+    lightNote: "Półprzepuszczalna — rozprasza światło, nie zaciemnia",
+    thermalNote: "Bez powłoki termicznej",
   },
   {
     groupId: "reflex",
     name: "Reflex",
     what: "Jak Klasyczne, plus zewnętrzna powłoka refleksyjna odbijająca słońce: mniej nagrzewania latem",
     where: "Okna południowe i zachodnie, poddasza",
+    blackout: false,
+    thermal: true,
+    lightNote: "Półprzepuszczalna — rozprasza światło, nie zaciemnia",
+    thermalNote: "Powłoka refleksyjna od strony szyby — odbija słońce, mniej nagrzewania",
   },
   {
     groupId: "blackout",
     name: "Podgumowane (Blackout)",
     what: "Zaciemniająca tkanina z podgumowanym rdzeniem: blokuje światło",
     where: "Sypialnia, pokój dziecka, pokój z telewizorem",
+    blackout: true,
+    thermal: false,
+    lightNote: "Zaciemniająca — podgumowany rdzeń blokuje światło",
+    thermalNote: "Bez powłoki termicznej",
   },
   {
     groupId: "duo",
     name: "DUO plaster miodu",
     what: "Podwójna tkanina o strukturze plastra miodu, bez otworów pod sznurki: żadnych punktów światła, izolacja termiczna",
     where: "Sypialnia, gabinet, okna z przeciągiem",
+    blackout: false,
+    thermal: true,
+    lightNote: "Półprzepuszczalna — bez otworów pod sznurki, żadnych punktów światła",
+    thermalNote: "Komora powietrzna plastra miodu — izoluje zimą i latem",
   },
   {
     groupId: "duo-blackout",
     name: "DUO TERMO",
     what: "Plaster miodu z wewnętrzną powłoką termiczną: całkowite zaciemnienie i najlepsza termoizolacja",
     where: "Sypialnia od słonecznej strony, poddasze",
+    blackout: true,
+    thermal: true,
+    lightNote: "Zaciemniająca — całkowite zaciemnienie",
+    thermalNote: "Plaster miodu + wewnętrzna powłoka termiczna — najlepsza termoizolacja w ofercie",
   },
 ];
 

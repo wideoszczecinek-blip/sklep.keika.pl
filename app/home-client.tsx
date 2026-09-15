@@ -3610,7 +3610,12 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               )}
                             </ul>
 
-                            <PlisyCollectionsPicker profile={plisyProfile} promo={topPromoPreview} onQuote={scrollToConfigPanel} />
+                            <PlisyCollectionsPicker
+                              profile={plisyProfile}
+                              promo={topPromoPreview}
+                              onQuote={scrollToConfigPanel}
+                              onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
+                            />
 
                             <div className="plisy-viz-section">
                               <h3 className="plisy-viz-title">Zobacz plisę w swoim wnętrzu</h3>

@@ -12242,236 +12242,6 @@ html[data-theme="dark"] .promo-save-modal-urgency {
    app/home-client.tsx. Dark palette matches .pl-spec-item / .pl-feature-list,
    the light overrides below follow the same html[data-theme="light"] pattern
    the rest of the .pl-* blocks use. */
-/* ---------------------------------------------------------------------------
-   Plisy: "Którą kolekcję wybrać?" (features/plisy/CollectionsPicker.tsx)
-
-   Chipy z ceną promocyjną + jeden panel szczegółów. Zastąpiło 4-kolumnową
-   tabelę, która na telefonie ściskała się do nieczytelności. Rząd chipów
-   przewija się poziomo, nie zawija - pięć cen zawsze obok siebie.
---------------------------------------------------------------------------- */
-.pl-collections {
-  display: grid;
-  gap: 0.7rem;
-}
-
-.pl-collections-title {
-  margin: 0.4rem 0 0;
-  font-size: 1.02rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: #f2f7ff;
-}
-
-.pl-collections .pl-collections-lead,
-.pl-collections .pl-collections-note {
-  margin: 0;
-  font-size: 0.84rem;
-  line-height: 1.5;
-  color: rgba(226, 236, 248, 0.68);
-}
-
-.pl-coll-chips {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 0.15rem 0.15rem 0.35rem;
-  margin: 0 -0.15rem;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
-}
-.pl-coll-chips::-webkit-scrollbar {
-  display: none;
-}
-
-.pl-coll-chip {
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  display: grid;
-  gap: 0.12rem;
-  min-width: 7.4rem;
-  padding: 0.55rem 0.8rem;
-  border-radius: 0.8rem;
-  border: 1px solid rgba(226, 236, 248, 0.2);
-  background: rgba(240, 248, 255, 0.05);
-  color: #f2f7ff;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
-}
-.pl-coll-chip:hover {
-  background: rgba(240, 248, 255, 0.1);
-}
-.pl-coll-chip.is-active {
-  border-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.14);
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.55);
-}
-.pl-coll-chip:focus-visible {
-  outline: 2px solid #7ae9e2;
-  outline-offset: 2px;
-}
-
-.pl-coll-chip-name {
-  font-size: 0.86rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.pl-coll-chip-price {
-  font-size: 0.98rem;
-  font-weight: 800;
-  color: #ffc45c;
-  line-height: 1.15;
-}
-.pl-coll-chip-price small {
-  font-size: 0.66rem;
-  font-weight: 600;
-  color: rgba(226, 236, 248, 0.6);
-}
-
-.pl-coll-panel {
-  display: grid;
-  gap: 0.75rem;
-  padding: 0.95rem 1rem 1rem;
-  border-radius: 0.9rem;
-  border: 1px solid rgba(226, 236, 248, 0.16);
-  background: rgba(240, 248, 255, 0.045);
-}
-
-.pl-coll-panel-head {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-.pl-coll-panel-head strong {
-  font-size: 1.08rem;
-  font-weight: 800;
-  color: #f2f7ff;
-}
-
-.pl-collections-count {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: rgba(226, 236, 248, 0.62);
-}
-
-.pl-coll-facts {
-  display: grid;
-  gap: 0.55rem;
-  margin: 0;
-}
-.pl-coll-facts dt {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(226, 236, 248, 0.55);
-  margin: 0 0 0.12rem;
-}
-.pl-coll-facts dd {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: rgba(242, 247, 255, 0.92);
-}
-
-.pl-coll-prices {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.55rem;
-}
-
-.pl-coll-price {
-  display: grid;
-  gap: 0.1rem;
-  padding: 0.65rem 0.8rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(226, 236, 248, 0.14);
-}
-.pl-coll-price > span {
-  font-size: 0.74rem;
-  font-weight: 600;
-  color: rgba(226, 236, 248, 0.62);
-}
-.pl-coll-price--regular s {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: rgba(226, 236, 248, 0.6);
-}
-.pl-coll-price--promo {
-  border-color: rgba(245, 158, 11, 0.55);
-  background: rgba(245, 158, 11, 0.1);
-}
-.pl-coll-price--promo strong {
-  font-size: 1.45rem;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  color: #ffc45c;
-  line-height: 1.1;
-}
-.pl-coll-price--promo em {
-  font-style: normal;
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: #7ae9e2;
-}
-
-.pl-coll-cta {
-  justify-self: start;
-}
-
-/* Motyw jasny */
-html[data-theme="light"] .pl-collections-title,
-html[data-theme="light"] .pl-coll-panel-head strong,
-html[data-theme="light"] .pl-coll-chip {
-  color: #16314e;
-}
-html[data-theme="light"] .pl-collections-lead,
-html[data-theme="light"] .pl-collections-note,
-html[data-theme="light"] .pl-collections-count,
-html[data-theme="light"] .pl-coll-chip-price small,
-html[data-theme="light"] .pl-coll-facts dt,
-html[data-theme="light"] .pl-coll-price > span {
-  color: rgba(19, 40, 67, 0.62);
-}
-html[data-theme="light"] .pl-coll-facts dd {
-  color: rgba(19, 40, 67, 0.92);
-}
-html[data-theme="light"] .pl-coll-chip {
-  border-color: rgba(19, 40, 67, 0.18);
-  background: rgba(19, 40, 67, 0.04);
-}
-html[data-theme="light"] .pl-coll-chip:hover {
-  background: rgba(19, 40, 67, 0.08);
-}
-html[data-theme="light"] .pl-coll-chip.is-active {
-  border-color: #e8890c;
-  background: rgba(245, 158, 11, 0.13);
-  box-shadow: 0 0 0 1px rgba(232, 137, 12, 0.5);
-}
-html[data-theme="light"] .pl-coll-chip-price,
-html[data-theme="light"] .pl-coll-price--promo strong {
-  color: #c2570a;
-}
-html[data-theme="light"] .pl-coll-panel {
-  border-color: rgba(19, 40, 67, 0.14);
-  background: rgba(19, 40, 67, 0.035);
-}
-html[data-theme="light"] .pl-coll-price {
-  border-color: rgba(19, 40, 67, 0.14);
-}
-html[data-theme="light"] .pl-coll-price--regular s {
-  color: rgba(19, 40, 67, 0.55);
-}
-html[data-theme="light"] .pl-coll-price--promo {
-  border-color: rgba(232, 137, 12, 0.5);
-  background: rgba(245, 158, 11, 0.1);
-}
-html[data-theme="light"] .pl-coll-price--promo em {
-  color: #0e7c74;
-}
 
 /* ---------------------------------------------------------------------------
    Plisy: pokaz zdjęć na górze landingu (features/plisy/PlisyHeroPhotos.tsx)
@@ -12723,4 +12493,364 @@ html[data-theme="light"] .plisy-viz-section .plisy-viz-lead {
   .plisy-viz-pick-label {
     font-size: 0.66rem;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Plisy: "Którą kolekcję wybrać?" (features/plisy/CollectionsPicker.tsx)
+
+   Suwaki wymiaru + akordeon per kolekcja. Ceny na belkach liczą się dla
+   wymiaru z suwaków - klient widzi, czego cena dotyczy, zanim ją przeczyta.
+--------------------------------------------------------------------------- */
+.pl-coll {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.pl-coll-title {
+  margin: 0.4rem 0 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f2f7ff;
+}
+
+.pl-coll .pl-coll-lead {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: rgba(226, 236, 248, 0.7);
+}
+
+/* --- suwaki --- */
+.pl-coll-size {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 1rem;
+  padding: 0.85rem 0.95rem 0.8rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.pl-coll-slider {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.pl-coll-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(226, 236, 248, 0.7);
+}
+.pl-coll-slider-head output {
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #ffc45c;
+}
+
+.pl-coll-slider input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: #f59e0b;
+  cursor: pointer;
+}
+
+.pl-coll .pl-coll-size-note {
+  grid-column: 1 / -1;
+  margin: 0.1rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(226, 236, 248, 0.72);
+}
+.pl-coll-size-note strong {
+  color: #f2f7ff;
+}
+
+/* --- akordeony --- */
+.pl-coll-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.pl-coll-acc {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(226, 236, 248, 0.16);
+  background: rgba(240, 248, 255, 0.045);
+  overflow: hidden;
+}
+.pl-coll-acc[open] {
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.pl-coll-bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1.2rem;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  list-style: none;
+}
+.pl-coll-bar::-webkit-details-marker {
+  display: none;
+}
+.pl-coll-bar:focus-visible {
+  outline: 2px solid #7ae9e2;
+  outline-offset: -2px;
+}
+
+.pl-coll-bar-main {
+  display: grid;
+  gap: 0.22rem;
+  min-width: 0;
+}
+.pl-coll-bar-name {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #f2f7ff;
+}
+.pl-coll-bar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pl-coll-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.pl-coll-badge--dark {
+  background: rgba(99, 102, 241, 0.2);
+  color: #c7c9ff;
+}
+.pl-coll-badge--thermo {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ffb4b4;
+}
+
+.pl-coll-count {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: rgba(226, 236, 248, 0.6);
+}
+
+.pl-coll-bar-price {
+  display: grid;
+  justify-items: end;
+  text-align: right;
+  line-height: 1.15;
+}
+.pl-coll-bar-price s {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(226, 236, 248, 0.55);
+}
+.pl-coll-bar-price strong {
+  font-size: 1.22rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #ffc45c;
+}
+.pl-coll-bar-price small {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: rgba(226, 236, 248, 0.6);
+}
+.pl-coll-bar-na {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: rgba(226, 236, 248, 0.6);
+}
+
+.pl-coll-chev {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-right: 2px solid rgba(226, 236, 248, 0.6);
+  border-bottom: 2px solid rgba(226, 236, 248, 0.6);
+  transform: rotate(45deg);
+  transition: transform 0.18s ease;
+  justify-self: center;
+  margin-top: -0.2rem;
+}
+.pl-coll-acc[open] .pl-coll-chev {
+  transform: rotate(225deg);
+  margin-top: 0.2rem;
+}
+
+.pl-coll-body {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.2rem 0.85rem 0.95rem;
+  border-top: 1px solid rgba(226, 236, 248, 0.1);
+}
+.pl-coll-body > p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(242, 247, 255, 0.92);
+}
+.pl-coll-body .pl-coll-what {
+  padding-top: 0.6rem;
+}
+
+.pl-coll-spec {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.45rem 0.9rem;
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.7rem;
+  background: rgba(240, 248, 255, 0.05);
+}
+.pl-coll-spec dt {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(226, 236, 248, 0.55);
+  margin: 0 0 0.1rem;
+}
+.pl-coll-spec dd {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: rgba(242, 247, 255, 0.92);
+}
+
+.pl-coll-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.4rem, 1fr));
+  gap: 0.4rem;
+}
+.pl-coll-swatch {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  color: rgba(226, 236, 248, 0.7);
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-align: center;
+}
+.pl-coll-swatch img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(226, 236, 248, 0.2);
+}
+.pl-coll-swatch:hover img {
+  border-color: #f59e0b;
+}
+.pl-coll-swatch:focus-visible {
+  outline: 2px solid #7ae9e2;
+  outline-offset: 2px;
+  border-radius: 0.45rem;
+}
+.pl-coll-swatch span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pl-coll-cta {
+  justify-self: start;
+}
+
+/* --- telefon: cena pod nazwą, nie obok --- */
+@media (max-width: 520px) {
+  .pl-coll-size {
+    grid-template-columns: 1fr;
+  }
+  .pl-coll-bar {
+    grid-template-columns: 1fr 1.2rem;
+    grid-template-areas: "main chev" "price chev";
+  }
+  .pl-coll-bar-main { grid-area: main; }
+  .pl-coll-bar-price {
+    grid-area: price;
+    grid-auto-flow: column;
+    justify-content: start;
+    justify-items: start;
+    align-items: baseline;
+    gap: 0.45rem;
+    text-align: left;
+  }
+  .pl-coll-chev { grid-area: chev; }
+}
+
+/* --- motyw jasny --- */
+html[data-theme="light"] .pl-coll-title,
+html[data-theme="light"] .pl-coll-bar-name,
+html[data-theme="light"] .pl-coll-size-note strong {
+  color: #16314e;
+}
+html[data-theme="light"] .pl-coll .pl-coll-lead,
+html[data-theme="light"] .pl-coll .pl-coll-size-note,
+html[data-theme="light"] .pl-coll-slider-head,
+html[data-theme="light"] .pl-coll-count,
+html[data-theme="light"] .pl-coll-bar-price small,
+html[data-theme="light"] .pl-coll-bar-na,
+html[data-theme="light"] .pl-coll-spec dt,
+html[data-theme="light"] .pl-coll-swatch {
+  color: rgba(19, 40, 67, 0.62);
+}
+html[data-theme="light"] .pl-coll-slider-head output,
+html[data-theme="light"] .pl-coll-bar-price strong {
+  color: #c2570a;
+}
+html[data-theme="light"] .pl-coll-size {
+  border-color: rgba(232, 137, 12, 0.5);
+  background: rgba(245, 158, 11, 0.1);
+}
+html[data-theme="light"] .pl-coll-acc {
+  border-color: rgba(19, 40, 67, 0.14);
+  background: rgba(19, 40, 67, 0.035);
+}
+html[data-theme="light"] .pl-coll-acc[open] {
+  border-color: rgba(232, 137, 12, 0.55);
+}
+html[data-theme="light"] .pl-coll-bar-price s {
+  color: rgba(19, 40, 67, 0.5);
+}
+html[data-theme="light"] .pl-coll-chev {
+  border-color: rgba(19, 40, 67, 0.55);
+}
+html[data-theme="light"] .pl-coll-body {
+  border-top-color: rgba(19, 40, 67, 0.1);
+}
+html[data-theme="light"] .pl-coll-body > p,
+html[data-theme="light"] .pl-coll-spec dd {
+  color: rgba(19, 40, 67, 0.92);
+}
+html[data-theme="light"] .pl-coll-spec {
+  background: rgba(19, 40, 67, 0.045);
+}
+html[data-theme="light"] .pl-coll-badge--dark {
+  background: rgba(79, 70, 229, 0.12);
+  color: #3730a3;
+}
+html[data-theme="light"] .pl-coll-badge--thermo {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+html[data-theme="light"] .pl-coll-swatch img {
+  border-color: rgba(19, 40, 67, 0.18);
 }
