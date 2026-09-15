@@ -1,28 +1,42 @@
 "use client";
 
-// Top-of-landing hero for plisy. Slide 0 is the rendered studio
-// presentation (PlisyHeroScene: photoreal empty window plate + pleated
-// fabric drawn with real concertina physics, gentle 3D turn, colour
-// changes). The owner's three real installation photos follow as further
-// slides.
+// Top-of-landing hero for plisy: the rendered studio presentation
+// (PlisyHeroScene) plus the owner's real installation photos.
 //
-// The presentation is the product's main image, so the slideshow rests on
-// it: it only auto-advances while the visitor is looking at the photos, and
-// comes back to the presentation after the last one. Photos are a mix of
-// portrait and landscape; each is shown whole over a blurred, darkened copy
-// of itself.
+// Owner (2026-09-16): "na desktopie po chwili tej animacji pomniejsz ją
+// trochę i przesuń w lewy górny róg, a w prawym dolnym pokaż kilka zdjęć
+// produktowych" - and the worry behind it: too much animation that isn't
+// the physical product 1:1 can hurt conversion. So the presentation plays
+// full-size for a few seconds, then docks into the top-left corner (still
+// animating) and three real photos slide into the remaining L-shape.
+// Clicking a photo opens it large; clicking the docked presentation brings
+// it back to full size for a while.
+//
+// Phones have no room for a mosaic inside the hero box: the presentation
+// stays full-size and the same three photos sit in a strip right under it,
+// visible without scrolling. Reduced motion: docked from the start.
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { PLISY_REAL_PHOTOS } from "./gallery";
 import PlisyHeroScene from "./PlisyHeroScene";
 
-const INTERVAL_MS = 4200;
+const INTRO_MS = 7000; // full-size presentation before docking
+const REOPEN_MS = 9000; // how long a click keeps it full-size again
+
+// Tiles are ~250 px wide; the originals are 1600 px. Local paths go through
+// Next's optimizer as-is (no host allow-list needed); 700 is an allow-listed width.
+const tileSrc = (src: string) => `/_next/image?url=${encodeURIComponent(src)}&w=700&q=75`;
+
+const PHOTO_ALT = [
+  "Plisa okienna KEIKA w antracytowej tkaninie na oknie dwuskrzydłowym - zdjęcie z montażu u klienta",
+  "Plisy KEIKA na drzwiach balkonowych, tkanina antracytowa - zdjęcie z montażu u klienta",
+  "Plisa KEIKA na drzwiach balkonowych w pokoju młodzieżowym - zdjęcie z montażu u klienta",
+];
 
 export default function PlisyHeroPhotos() {
   const photos = PLISY_REAL_PHOTOS;
-  // 0 = presentation, 1..n = photos
-  const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const slideCount = photos.length + 1;
+  const [docked, setDocked] = useState(false);
+  const [lightbox, setLightbox] = useState<number | null>(null);
 
   const reduced = useSyncExternalStore(
     (onChange) => {
@@ -33,61 +47,133 @@ export default function PlisyHeroPhotos() {
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     () => false,
   );
+  const desktop = useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia("(min-width: 761px)");
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia("(min-width: 761px)").matches,
+    () => true,
+  );
+
+  // Intro, then dock (desktop only - phones keep the presentation full).
+  // Runs once; a re-opened presentation is re-docked by the effect below.
+  useEffect(() => {
+    if (!desktop) return;
+    const id = window.setTimeout(() => setDocked(true), reduced ? 0 : INTRO_MS);
+    return () => window.clearTimeout(id);
+  }, [desktop, reduced]);
+
+  // A click on the docked presentation re-opens it; it docks again on its own.
+  const [reopenedAt, setReopenedAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (reopenedAt === null) return;
+    const id = window.setTimeout(() => {
+      setDocked(true);
+      setReopenedAt(null);
+    }, REOPEN_MS);
+    return () => window.clearTimeout(id);
+  }, [reopenedAt]);
 
   useEffect(() => {
-    if (paused || reduced || index === 0) return;
-    const id = window.setInterval(() => setIndex((i) => (i + 1) % slideCount), INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [paused, reduced, index, slideCount]);
+    if (lightbox === null) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightbox(null);
+      if (event.key === "ArrowRight") setLightbox((i) => (i === null ? null : (i + 1) % photos.length));
+      if (event.key === "ArrowLeft") setLightbox((i) => (i === null ? null : (i - 1 + photos.length) % photos.length));
+    };
+    window.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [lightbox, photos.length]);
+
+  const isDocked = desktop && docked;
+
+  const tile = (i: number, extraClass: string) => (
+    <button
+      key={photos[i]}
+      type="button"
+      className={`plisy-hero-tile ${extraClass}`}
+      onClick={() => setLightbox(i)}
+      aria-label={`Powiększ: ${PHOTO_ALT[i] || "zdjęcie z montażu"}`}
+    >
+      <img src={tileSrc(photos[i])} alt={PHOTO_ALT[i] || ""} loading={i === 0 ? "eager" : "lazy"} decoding="async" />
+      <span className="plisy-hero-tile-zoom" aria-hidden="true">
+        🔍
+      </span>
+    </button>
+  );
 
   return (
-    <div
-      className="plisy-hero-photos"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onTouchStart={() => setPaused(true)}
-      onTouchEnd={() => setPaused(false)}
-      role="region"
-      aria-roledescription="pokaz"
-      aria-label="Plisy KEIKA - prezentacja i zdjęcia z montaży"
-    >
-      <div className={`plisy-hero-slide plisy-hero-slide--scene ${index === 0 ? "is-active" : ""}`} aria-hidden={index !== 0}>
-        <PlisyHeroScene active={index === 0} />
+    <>
+      <div className={`plisy-hero-photos ${isDocked ? "is-docked" : ""} ${reduced ? "is-instant" : ""}`} role="region" aria-label="Plisy KEIKA - prezentacja i zdjęcia z montaży">
+        <div
+          className="plisy-hero-stage"
+          onClick={() => {
+            if (!isDocked) return;
+            setDocked(false);
+            setReopenedAt(Date.now());
+          }}
+          role={isDocked ? "button" : undefined}
+          tabIndex={isDocked ? 0 : undefined}
+          title={isDocked ? "Powiększ prezentację" : undefined}
+          onKeyDown={(event) => {
+            if (isDocked && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault();
+              setDocked(false);
+              setReopenedAt(Date.now());
+            }
+          }}
+        >
+          <PlisyHeroScene active />
+          {isDocked ? (
+            <span className="plisy-hero-stage-hint" aria-hidden="true">
+              ⤢
+            </span>
+          ) : null}
+        </div>
+
+        {/* desktop mosaic: portrait on the right, two under the presentation */}
+        <div className="plisy-hero-tiles" aria-hidden={!isDocked}>
+          {photos[1] ? tile(1, "plisy-hero-tile--right") : null}
+          {photos[0] ? tile(0, "plisy-hero-tile--bottom-wide") : null}
+          {photos[2] ? tile(2, "plisy-hero-tile--bottom-square") : null}
+          <span className="plisy-hero-tiles-badge">📷 Zdjęcia z montaży u klientów</span>
+        </div>
       </div>
 
-      {photos.map((src, i) => {
-        const slide = i + 1;
-        return (
-          <div key={src} className={`plisy-hero-slide ${slide === index ? "is-active" : ""}`} aria-hidden={slide !== index}>
-            <img className="plisy-hero-slide-bg" src={src} alt="" aria-hidden="true" loading="lazy" />
-            <img
-              className="plisy-hero-slide-img"
-              src={src}
-              alt={`Plisa okienna KEIKA w antracytowej tkaninie, zdjęcie z montażu ${i + 1} z ${photos.length}`}
-              loading="lazy"
-            />
-          </div>
-        );
-      })}
-
-      <div className="plisy-hero-dots" role="tablist" aria-label="Wybierz slajd">
-        {Array.from({ length: slideCount }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            role="tab"
-            aria-selected={i === index}
-            aria-label={i === 0 ? "Animacja produktu" : `Zdjęcie z montażu ${i}`}
-            className={`plisy-hero-dot ${i === 0 ? "plisy-hero-dot--scene" : ""} ${i === index ? "is-active" : ""}`}
-            onClick={() => {
-              setIndex(i);
-              setPaused(true);
-            }}
-          >
-            {i === 0 ? "▶" : null}
-          </button>
-        ))}
+      {/* phones: the same photos in a strip under the presentation */}
+      <div className="plisy-hero-strip" aria-label="Zdjęcia z montaży u klientów">
+        {photos.map((_, i) => tile(i, "plisy-hero-tile--strip"))}
       </div>
-    </div>
+
+      {lightbox !== null && typeof document !== "undefined"
+        ? createPortal(
+            <div className="instruction-modal plisy-hero-lightbox" role="dialog" aria-modal="true" aria-label="Zdjęcie z montażu" onClick={() => setLightbox(null)}>
+              <div className="plisy-hero-lightbox-shell" onClick={(event) => event.stopPropagation()}>
+                <button type="button" className="instruction-modal-close" aria-label="Zamknij" onClick={() => setLightbox(null)}>
+                  ×
+                </button>
+                <button type="button" className="plisy-fg-arrow plisy-fg-arrow--prev" aria-label="Poprzednie zdjęcie" onClick={() => setLightbox((lightbox - 1 + photos.length) % photos.length)}>
+                  ‹
+                </button>
+                <img src={photos[lightbox]} alt={PHOTO_ALT[lightbox] || ""} />
+                <button type="button" className="plisy-fg-arrow plisy-fg-arrow--next" aria-label="Następne zdjęcie" onClick={() => setLightbox((lightbox + 1) % photos.length)}>
+                  ›
+                </button>
+                <p className="plisy-hero-lightbox-caption">
+                  Zdjęcie z montażu u klienta · {lightbox + 1} / {photos.length}
+                </p>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }

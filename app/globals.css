@@ -12244,29 +12244,65 @@ html[data-theme="dark"] .promo-save-modal-urgency {
    the rest of the .pl-* blocks use. */
 
 /* ---------------------------------------------------------------------------
-   Plisy: pokaz zdjęć na górze landingu (features/plisy/PlisyHeroPhotos.tsx)
+   Plisy: hero (features/plisy/PlisyHeroPhotos.tsx + PlisyHeroScene.tsx)
 
-   Zdjęcia są mieszane pionowe/poziome. Każde pokazane w całości na rozmytej,
-   przyciemnionej kopii samego siebie - bez pasów i bez kadrowania.
+   Desktop: prezentacja na pełnym polu 16:9, po chwili dokuje w lewym górnym
+   rogu (62% x 62%), a w kształt L wjeżdżają trzy prawdziwe zdjęcia z montaży
+   (pionowe po prawej, dwa pod prezentacją). Mobile: prezentacja w 4:3 na
+   pełnej szerokości, zdjęcia w pasku pod spodem.
 --------------------------------------------------------------------------- */
 .plisy-hero-photos {
   position: relative;
   margin: 0.2rem 0 0;
-  /* 16:9 = the studio clip exactly, no bars; photos sit inside over blur */
   aspect-ratio: 16 / 9;
   border-radius: 0.9rem;
   overflow: hidden;
-  background: #e9ecef;
+  background: #e4e7ea;
   box-shadow: 0 8px 20px rgba(8, 20, 35, 0.18);
 }
-/* Phones: a 16:9 box is only ~200 px tall and the window would be tiny.
-   4:3 with the clip cropped to its centre - the studio backdrop is plain,
-   the window itself stays fully in frame. */
 @media (max-width: 760px) {
   .plisy-hero-photos {
     aspect-ratio: 4 / 3;
   }
 }
+
+.plisy-hero-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  background: #e4e7ea;
+  transition:
+    right 1.1s cubic-bezier(0.2, 0.75, 0.2, 1),
+    bottom 1.1s cubic-bezier(0.2, 0.75, 0.2, 1),
+    box-shadow 0.6s ease;
+  z-index: 2;
+}
+.plisy-hero-photos.is-docked .plisy-hero-stage {
+  right: calc(38% + 0.3rem);
+  bottom: calc(38% + 0.3rem);
+  border-radius: 0.7rem;
+  box-shadow: 0 6px 16px rgba(8, 20, 35, 0.22);
+  cursor: zoom-in;
+}
+.plisy-hero-photos.is-instant .plisy-hero-stage {
+  transition: none;
+}
+.plisy-hero-stage-hint {
+  position: absolute;
+  right: 0.45rem;
+  top: 0.4rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: rgba(12, 26, 44, 0.55);
+  color: #fff;
+  font-size: 0.85rem;
+  line-height: 1.5rem;
+  text-align: center;
+  pointer-events: none;
+}
+
 /* Rendered presentation (features/plisy/PlisyHeroScene.tsx): photoreal
    base plate + canvas overlay, both inside one 3D-rotated plate. The plate
    is scaled up a little so the receding edge never shows the box behind. */
@@ -12299,73 +12335,164 @@ html[data-theme="dark"] .promo-save-modal-urgency {
   inset: 0;
   display: block;
 }
-.plisy-hero-dot--scene {
-  width: auto;
-  min-width: 1.15rem;
-  height: 0.9rem;
-  padding: 0 0.3rem;
-  font-size: 0.5rem;
-  line-height: 0.9rem;
-  color: #0e1a2a;
-  background: rgba(255, 255, 255, 0.75);
-}
-.plisy-hero-dot--scene.is-active {
-  background: #f59e0b;
-}
 
-.plisy-hero-slide {
+/* mosaic tiles (desktop) */
+.plisy-hero-tiles {
   position: absolute;
   inset: 0;
-  opacity: 0;
-  transition: opacity 0.7s ease;
+  pointer-events: none;
 }
-.plisy-hero-slide.is-active {
+.plisy-hero-tile {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: #d9dee3;
+  cursor: zoom-in;
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s cubic-bezier(0.2, 0.75, 0.2, 1);
+  pointer-events: none;
+}
+.plisy-hero-tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  transition: transform 0.5s ease;
+}
+.plisy-hero-tile:hover img {
+  transform: scale(1.04);
+}
+.plisy-hero-tile-zoom {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.4rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  line-height: 1.5rem;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(8, 20, 35, 0.25);
+}
+.plisy-hero-tile--right {
+  left: calc(62% + 0.3rem);
+  top: 0;
+  right: 0;
+  bottom: 0;
+}
+.plisy-hero-tile--bottom-wide {
+  left: 0;
+  top: calc(62% + 0.3rem);
+  width: calc(40% - 0.15rem);
+  bottom: 0;
+  transition-delay: 0.15s;
+}
+.plisy-hero-tile--bottom-square {
+  left: calc(40% + 0.15rem);
+  top: calc(62% + 0.3rem);
+  width: calc(22% - 0.15rem);
+  bottom: 0;
+  transition-delay: 0.3s;
+}
+.plisy-hero-photos.is-docked .plisy-hero-tile {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.plisy-hero-photos.is-instant .plisy-hero-tile {
+  transition: none;
+}
+.plisy-hero-tiles-badge {
+  position: absolute;
+  left: calc(62% + 0.75rem);
+  top: 0.55rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(12, 26, 44, 0.62);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  opacity: 0;
+  transition: opacity 0.6s ease 0.5s;
+}
+.plisy-hero-photos.is-docked .plisy-hero-tiles-badge {
   opacity: 1;
 }
 
-.plisy-hero-slide-bg {
-  position: absolute;
-  inset: -6%;
-  width: 112%;
-  height: 112%;
-  object-fit: cover;
-  filter: blur(18px) brightness(0.55) saturate(1.1);
+/* phones: strip under the presentation */
+.plisy-hero-strip {
+  display: none;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
 }
-
-.plisy-hero-slide-img {
+.plisy-hero-tile--strip {
   position: relative;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  flex: 1 1 0;
+  aspect-ratio: 1 / 1;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  border-radius: 0.6rem;
+}
+@media (max-width: 760px) {
+  .plisy-hero-tiles,
+  .plisy-hero-stage-hint {
+    display: none;
+  }
+  .plisy-hero-photos.is-docked .plisy-hero-stage {
+    right: 0;
+    bottom: 0;
+    border-radius: 0.9rem;
+    box-shadow: none;
+    cursor: default;
+  }
+  .plisy-hero-strip {
+    display: flex;
+  }
 }
 
-.plisy-hero-dots {
-  position: absolute;
-  left: 50%;
-  bottom: 0.6rem;
-  transform: translateX(-50%);
+/* lightbox for the real photos */
+.plisy-hero-lightbox-shell {
+  position: relative;
+  max-width: min(96vw, 1100px);
+  max-height: 94vh;
   display: flex;
-  gap: 0.4rem;
-  padding: 0.3rem 0.5rem;
-  border-radius: 999px;
-  background: rgba(12, 26, 44, 0.55);
+  flex-direction: column;
+  align-items: center;
 }
-
-.plisy-hero-dot {
-  width: 0.62rem;
-  height: 0.62rem;
-  padding: 0;
-  border-radius: 999px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.45);
-  cursor: pointer;
+.plisy-hero-lightbox-shell img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(94vh - 3rem);
+  object-fit: contain;
+  border-radius: 0.8rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
 }
-.plisy-hero-dot.is-active {
-  background: #f59e0b;
+.plisy-hero-lightbox-shell .instruction-modal-close {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  z-index: 2;
 }
-.plisy-hero-dot:focus-visible {
-  outline: 2px solid #7ae9e2;
-  outline-offset: 2px;
+.plisy-hero-lightbox-shell .plisy-fg-arrow--prev {
+  left: -0.2rem;
+}
+.plisy-hero-lightbox-shell .plisy-fg-arrow--next {
+  right: -0.2rem;
+}
+.plisy-hero-lightbox-caption {
+  margin: 0.6rem 0 0;
+  color: rgba(226, 236, 248, 0.85);
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 /* ---------------------------------------------------------------------------
