@@ -401,8 +401,11 @@ export default function PlisyMeasureGuide({
 
   // Magnifier maths.
   const z = LUPA.zoom;
-  const TX = LUPA.cx + LUPA.off;
-  const TY = LUPA.cy + LUPA.off;
+  // Narrow: the target sits further up-left inside the circle so the whole
+  // frame -> bead -> seal -> glass run fits (the lens is 1.25x there).
+  const off = narrow ? -62 : LUPA.off;
+  const TX = LUPA.cx + off;
+  const TY = LUPA.cy + off;
   const lx = (x: number) => TX + (x - m.target.x) * z;
   const ly = (y: number) => TY + (y - m.target.y) * z;
 
@@ -507,9 +510,21 @@ export default function PlisyMeasureGuide({
 
           {/* magnifier - step 1 only, then it leaves */}
           {lupaS > 0.01 ? (
-            <g opacity={lupaS} transform={`translate(${LUPA.cx} ${LUPA.cy}) scale(${(0.6 + 0.4 * lupaS) * (narrow ? 1.25 : 1)}) translate(${-LUPA.cx} ${-LUPA.cy})`}>
-              <line x1={m.target.x} y1={m.target.y} x2={LUPA.cx - LUPA.r * 0.72} y2={LUPA.cy - LUPA.r * 0.72} stroke="#0e1a2a" strokeWidth="2.5" strokeDasharray="6 5" />
-              <circle cx={m.target.x} cy={m.target.y} r="9" fill="none" stroke="#ef4444" strokeWidth="3" />
+            <g opacity={lupaS}>
+              {/* Corner marker + leader stay in scene coordinates - only the
+                  magnifier itself scales (on narrow screens 1.25x), otherwise
+                  the marker gets pushed off the sash. */}
+              {(() => {
+                const sc = (0.6 + 0.4 * lupaS) * (narrow ? 1.25 : 1);
+                const edge = LUPA.r * sc * 0.72;
+                return (
+                  <>
+                    <line x1={m.target.x} y1={m.target.y} x2={LUPA.cx - edge} y2={LUPA.cy - edge} stroke="#0e1a2a" strokeWidth={narrow ? 3.5 : 2.5} strokeDasharray="6 5" />
+                    <circle cx={m.target.x} cy={m.target.y} r={narrow ? 13 : 9} fill="none" stroke="#ef4444" strokeWidth={narrow ? 4 : 3} />
+                  </>
+                );
+              })()}
+            <g transform={`translate(${LUPA.cx} ${LUPA.cy}) scale(${(0.6 + 0.4 * lupaS) * (narrow ? 1.25 : 1)}) translate(${-LUPA.cx} ${-LUPA.cy})`}>
               <circle cx={LUPA.cx} cy={LUPA.cy} r={LUPA.r + 6} fill="#0e1a2a" filter={`url(#${ID.shadow})`} />
               <g clipPath={`url(#${ID.clip})`}>
                 <rect x={lx(SASH.x - 400)} y={ly(SASH.y - 400)} width={2000} height={2000} fill="#f7f9fb" />
@@ -541,6 +556,7 @@ export default function PlisyMeasureGuide({
               <text x={LUPA.cx} y={LUPA.cy + LUPA.r + 20} textAnchor="middle" fill="#fff" fontSize="17" fontWeight="800">
                 MIERZ TU: {m.targetName.toUpperCase()}
               </text>
+            </g>
             </g>
           ) : null}
 
