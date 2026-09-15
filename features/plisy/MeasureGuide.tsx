@@ -29,7 +29,14 @@
 //   the whole sash.
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 
-type Mode = "standard" | "bezinwazyjny";
+export type MeasureMode = "standard" | "bezinwazyjny";
+type Mode = MeasureMode;
+
+/** Maps a CRM mount option id/label to the guide's mode. The CRM ids are
+ * "przyszybowy-inwazyjny", "Bezinwazyjny PCV", "bezinwazyjny Sztywny". */
+export function measureModeForMount(mountIdOrLabel: string | null | undefined): MeasureMode {
+  return /bezinwazyjn/i.test(String(mountIdOrLabel || "")) ? "bezinwazyjny" : "standard";
+}
 
 /* Front-view geometry, viewBox 1000 x 800. */
 const SASH = { x: 110, y: 40, w: 780, h: 640 };
@@ -257,14 +264,49 @@ function Notepad({ opacity, wWrite, hWrite, wmm, hmm, clipId }: { opacity: numbe
   );
 }
 
-export default function PlisyMeasureGuide() {
+export default function PlisyMeasureGuide({
+  fixedMode,
+  startDelayMs = 900,
+}: {
+  /** Lock to one mounting system (the configurator already knows which one
+   * the customer picked) - hides the mode switch. */
+  fixedMode?: MeasureMode;
+  /** Pause after the guide scrolls/opens into view before the tape moves,
+   * so the eye finds the window first (owner, 2026-09-16). */
+  startDelayMs?: number;
+}) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ID = { clip: `plmgClip${uid}`, shadow: `plmgShadow${uid}`, sheen: `plmgSheen${uid}`, pad: `plmgPad${uid}` };
 
-  const [mode, setMode] = useState<Mode>("standard");
+  const [pickedMode, setPickedMode] = useState<Mode>("standard");
+  const mode: Mode = fixedMode ?? pickedMode;
   const [run, setRun] = useState(0);
   const [t, setT] = useState(0);
   const m = MODES[mode];
+
+  // The timeline waits until the stage is actually on screen: inside a
+  // closed <details> or below the fold nothing plays, so the visitor never
+  // opens the step to find the tape already parked at the end.
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      const id = window.setTimeout(() => setArmed(true), 0);
+      return () => window.clearTimeout(id);
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.4)) {
+          setArmed(true);
+          io.disconnect();
+        }
+      },
+      { threshold: [0.4] },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const reduced = useSyncExternalStore(
     (cb) => {
@@ -278,21 +320,33 @@ export default function PlisyMeasureGuide() {
 
   const rafRef = useRef<number | null>(null);
   useEffect(() => {
+    if (!armed) return;
+    if (reduced) {
+      const id = window.setTimeout(() => setT(TOTAL), 0);
+      return () => window.clearTimeout(id);
+    }
     let start: number | null = null;
     const tick = (now: number) => {
       if (start === null) start = now;
       const e = Math.min(TOTAL, now - start);
-      setT(reduced ? TOTAL : e);
-      if (e < TOTAL && !reduced) rafRef.current = requestAnimationFrame(tick);
+      setT(e);
+      if (e < TOTAL) rafRef.current = requestAnimationFrame(tick);
     };
-    rafRef.current = requestAnimationFrame(tick);
+    // A replay is deliberate, so it starts almost at once; the first play
+    // after opening waits for the eye.
+    const reset = window.setTimeout(() => setT(0), 0);
+    const delay = window.setTimeout(() => {
+      rafRef.current = requestAnimationFrame(tick);
+    }, run > 0 ? 250 : startDelayMs);
     return () => {
+      window.clearTimeout(reset);
+      window.clearTimeout(delay);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [mode, run, reduced]);
+  }, [armed, mode, run, reduced, startDelayMs]);
 
   /* ---- derive the frame from t ---- */
-  const sashO = easeOut(seg(t, T.sash));
+  const sashO = armed ? easeOut(seg(t, T.sash)) : 1;
   const lupaS = easeOut(seg(t, T.lupaIn)) * (1 - easeInOut(seg(t, T.lupaOut)));
 
   const wLen = m.width.to - m.width.from;
@@ -334,26 +388,32 @@ export default function PlisyMeasureGuide() {
 
   return (
     <div className="plmg">
-      <div className="plmg-modes" role="tablist" aria-label="Sposób montażu">
-        {(Object.keys(MODES) as Mode[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={mode === key}
-            className={`plmg-mode ${mode === key ? "is-active" : ""}`}
-            onClick={() => {
-              setMode(key);
-              setRun((r) => r + 1);
-            }}
-          >
-            <strong>{MODES[key].label}</strong>
-            <span>{MODES[key].sub}</span>
-          </button>
-        ))}
-      </div>
+      {fixedMode ? (
+        <p className="plmg-fixed">
+          Montaż <strong>{m.label}</strong> — {m.sub}
+        </p>
+      ) : (
+        <div className="plmg-modes" role="tablist" aria-label="Sposób montażu">
+          {(Object.keys(MODES) as Mode[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={mode === key}
+              className={`plmg-mode ${mode === key ? "is-active" : ""}`}
+              onClick={() => {
+                setPickedMode(key);
+                setRun((r) => r + 1);
+              }}
+            >
+              <strong>{MODES[key].label}</strong>
+              <span>{MODES[key].sub}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
-      <div className="plmg-stage">
+      <div className="plmg-stage" ref={stageRef}>
         <svg viewBox="70 20 860 756" className="plmg-svg" role="img" aria-label={`Pomiar plisy, montaż ${m.label}: szerokość ${m.width.how}, wysokość ${m.height.how}`}>
           <defs>
             <clipPath id={ID.clip}>

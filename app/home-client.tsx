@@ -1877,7 +1877,16 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const instructionVideoRefs = useRef<Record<number, HTMLVideoElement | null>>({});
   const instructionModalVideoRef = useRef<HTMLVideoElement | null>(null);
   const activeInstructionSteps = useMemo<ProductInstructionStep[]>(() => {
-    if (productLanding?.instructionSteps?.length) return productLanding.instructionSteps;
+    if (productLanding?.instructionSteps?.length) {
+      // CRM-edited steps for plisy keep the animated measuring guide on the
+      // "pomiar" step (a CRM text field cannot carry a React component).
+      if (displayedProduct && productSlugFromSelected(displayedProduct) === "plisy") {
+        return productLanding.instructionSteps.map((step) =>
+          /pomiar/i.test(step.title) && !step.mediaUrl ? { ...step, customMedia: "plisy-measure" as const } : step,
+        );
+      }
+      return productLanding.instructionSteps;
+    }
     if (!displayedProduct) return [];
     return productInstructionSteps(displayedProduct.label);
   }, [productLanding, displayedProduct]);
@@ -4209,7 +4218,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           </div>
                           );
                         })() : productSlugFromSelected(displayedProduct) === "plisy" ? (
-                          <PlisyReviews />
+                          <PlisyReviews crmReviews={productLanding?.reviews?.length ? productLanding.reviews : undefined} />
                         ) : (
                           <ul className="hero-product-reviews">
                             {displayedProduct.reviews.map((review) => (
@@ -4697,7 +4706,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                   ) : (
                     <PlisyConfiguratorPanel
                       key={plisyConfigKey}
-                      onOpenMeasureGuide={openMeasurementInstructions}
                       initialValues={
                         plisyLastResult
                           ? {

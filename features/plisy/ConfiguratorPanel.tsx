@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackShopStep } from "@/lib/track-step";
 import PlisaPreview from "./PlisaPreview";
+import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
 import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
@@ -54,13 +55,9 @@ export default function ConfiguratorPanel({
   onSubmit,
   onAddVariant,
   onZoom,
-  onOpenMeasureGuide,
 }: {
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
-  /** Opens the landing's animated measuring guide (the "Pomiar" instruction
-   * step in a single-step modal). Optional: /koszyk's edit modal has no landing. */
-  onOpenMeasureGuide?: () => void;
   onSubmit: (result: ConfiguratorResult) => void;
   // Used by handleFinalSubmit for every position in the customer's set
   // except the last one - same mount/hardware/fabric selection, just a
@@ -91,6 +88,10 @@ export default function ConfiguratorPanel({
   }, []);
 
   const [selectedMountId, setSelectedMountId] = useState(initialValues?.mountId || "");
+  // "Jak mierzyć?" inline above the dimension inputs. Locked to the mounting
+  // system chosen in step 1, so the customer sees only the measurement that
+  // applies to them (owner, 2026-09-16). Closes when the mount changes.
+  const [measureGuideOpen, setMeasureGuideOpen] = useState(false);
   const [stepZeroChosen, setStepZeroChosen] = useState(Boolean(initialValues?.mountId));
   const [stepZeroCollapsed, setStepZeroCollapsed] = useState(Boolean(initialValues?.mountId));
 
@@ -800,17 +801,32 @@ export default function ConfiguratorPanel({
                     <div className="hero-product-step-body">
                       <div className="plisy-position-form">
                         <p className="hero-product-config-hint">
-                          Wymiar zależy od montażu: STANDARD — od połowy uszczelki do połowy uszczelki; bezinwazyjny — od kreseczki do
-                          kreseczki i całe skrzydło. Podaj w milimetrach i ilość sztuk w tym rozmiarze.
-                          {onOpenMeasureGuide ? (
-                            <>
-                              {" "}
-                              <button type="button" className="plisy-measure-link" onClick={onOpenMeasureGuide}>
-                                📐 Jak mierzyć?
-                              </button>
-                            </>
-                          ) : null}
+                          {measureModeForMount(selectedMountId) === "bezinwazyjny"
+                            ? "Montaż bezinwazyjny: szerokość od kreseczki do kreseczki (szyba razem z listwami), wysokość całego skrzydła."
+                            : "Montaż STANDARD: szerokość i wysokość od połowy uszczelki do połowy uszczelki, nic nie odejmuj."}{" "}
+                          Podaj w milimetrach i ilość sztuk w tym rozmiarze.{" "}
+                          <button
+                            type="button"
+                            className={`plisy-measure-link ${measureGuideOpen ? "is-open" : ""}`}
+                            aria-expanded={measureGuideOpen}
+                            onClick={() => {
+                              setMeasureGuideOpen((open) => !open);
+                              trackShopStep("configurator_measure_guide", measureGuideOpen ? "close" : "open", {
+                                mount: measureModeForMount(selectedMountId),
+                              });
+                            }}
+                          >
+                            📐 {measureGuideOpen ? "Zwiń instrukcję" : "Jak mierzyć?"}
+                          </button>
                         </p>
+                        {measureGuideOpen ? (
+                          <div className="plisy-measure-mini" role="region" aria-label="Jak mierzyć">
+                            <button type="button" className="plisy-measure-mini-close" aria-label="Zamknij instrukcję" onClick={() => setMeasureGuideOpen(false)}>
+                              ×
+                            </button>
+                            <PlisyMeasureGuide fixedMode={measureModeForMount(selectedMountId)} startDelayMs={700} />
+                          </div>
+                        ) : null}
                         <div className="hero-product-dimensions-grid">
                           <label>
                             Szerokość (mm)

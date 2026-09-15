@@ -25,11 +25,25 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-export default function PlisyReviews() {
+type CrmReview = { author: string; stars: number; text: string; date: string };
+
+export default function PlisyReviews({ crmReviews }: { crmReviews?: CrmReview[] }) {
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [visible, setVisible] = useState(PAGE);
 
-  const all = PLISY_REVIEWS;
+  // Reviews entered in the CRM (Sklep WWW -> Produkty i konfiguratory ->
+  // plisy -> Opinie) replace the generated placeholders outright - and with
+  // them the "przykładowe" banner, because these are the owner's own.
+  const fromCrm: PlisyReview[] = (crmReviews || []).map((r) => ({
+    date: r.date,
+    maskedLogin: r.author,
+    body: r.text,
+    stars: (Math.min(5, Math.max(3, Math.round(r.stars))) as 3 | 4 | 5),
+    collection: "Klasyczne",
+  }));
+  const usingCrm = fromCrm.length > 0;
+  const placeholders = PLISY_REVIEWS_ARE_PLACEHOLDERS && !usingCrm;
+  const all = usingCrm ? fromCrm : PLISY_REVIEWS;
   const total = all.length;
   const average = useMemo(() => (total ? all.reduce((s, r) => s + r.stars, 0) / total : 0), [all, total]);
   const distribution = useMemo(
@@ -47,7 +61,7 @@ export default function PlisyReviews() {
 
   return (
     <div className="hero-product-allegro-reviews">
-      {PLISY_REVIEWS_ARE_PLACEHOLDERS ? (
+      {placeholders ? (
         <p className="plisy-reviews-placeholder-banner" role="note">
           <strong>Przykładowe opinie.</strong> Plisy to nowy produkt w naszym sklepie — poniższe wpisy pokazują, jak będzie
           wyglądać ta sekcja. Prawdziwe opinie pojawią się tu po pierwszych realizacjach.
@@ -59,7 +73,7 @@ export default function PlisyReviews() {
           <strong>{average.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
           <Stars n={Math.round(average)} />
           <span className="allegro-rating-count">{total.toLocaleString("pl-PL")} opinii</span>
-          {PLISY_REVIEWS_ARE_PLACEHOLDERS ? (
+          {placeholders ? (
             <span className="allegro-rating-source">Dane przykładowe — nie są zweryfikowanymi ocenami</span>
           ) : null}
         </div>
@@ -115,7 +129,7 @@ export default function PlisyReviews() {
                 {"★".repeat(review.stars)}
                 {"☆".repeat(5 - review.stars)}
               </span>
-              <span className="plisy-review-collection">{review.collection}</span>
+              {usingCrm ? null : <span className="plisy-review-collection">{review.collection}</span>}
             </div>
             <p>{review.body}</p>
             {review.pros || review.cons ? (
