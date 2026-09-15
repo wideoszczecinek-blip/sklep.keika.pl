@@ -1352,6 +1352,10 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // animation between the two sizes is handled by setConfigExpanded() below
   // (a FLIP tween), not by a CSS transition - see that function's comment.
   const [isConfigExpanded, setIsConfigExpanded] = useState(false);
+  // Owner (2026-09-16): "wyłącz opcję powiększenia konfiguratora". The
+  // toggle, the FLIP tween and the .is-expanded CSS stay in place behind
+  // this flag so it can come back with one edit.
+  const CONFIG_EXPAND_ENABLED = false;
   const configPanelRef = useRef<HTMLElement | null>(null);
   // Mobile only: the floating bottom tab bar steps out of the way while the
   // configurator's "Dodaj do koszyka" button is in the strip of screen the
@@ -4439,7 +4443,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
               <aside
                 ref={configPanelRef}
                 className={`hero-product-config-panel ${isProductView ? "is-visible" : ""} ${
-                  isConfigExpanded && productSlugFromSelected(displayedProduct) === "plisy" ? "is-expanded" : ""
+                  CONFIG_EXPAND_ENABLED && isConfigExpanded && productSlugFromSelected(displayedProduct) === "plisy" ? "is-expanded" : ""
                 }`}
                 aria-label="Konfigurator produktu"
               >
@@ -4448,7 +4452,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                     here, not just at the button, means the .is-expanded
                     class itself can never apply to another product's panel
                     even if state was somehow left over from switching. */}
-                {productSlugFromSelected(displayedProduct) === "plisy" ? (
+                {CONFIG_EXPAND_ENABLED && productSlugFromSelected(displayedProduct) === "plisy" ? (
                   isConfigExpanded ? (
                     <button
                       type="button"
