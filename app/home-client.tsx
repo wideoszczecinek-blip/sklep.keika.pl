@@ -127,6 +127,7 @@ const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/Configurat
 // razem z resztą sekcji, a nie doładować po hydratacji (LCP).
 import PlisyHeroPhotos from "@/features/plisy/PlisyHeroPhotos";
 import PlisyVisualizer from "@/features/plisy/PlisyVisualizer";
+import PlisyReviews from "@/features/plisy/Reviews";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 
@@ -235,7 +236,7 @@ function resolveInfoSlug(url: string): string | null {
   return legalMatch ? legalMatch[1] : null;
 }
 
-type ProductTabKey = "opis" | "galeria" | "opinie" | "instrukcje" | "faq";
+type ProductTabKey = "opis" | "wizualizacja" | "galeria" | "opinie" | "instrukcje" | "faq";
 
 type ProductInstructionStep = {
   title: string;
@@ -1705,6 +1706,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   }
 
   const opisSectionRef = useRef<HTMLElement | null>(null);
+  const wizualizacjaSectionRef = useRef<HTMLElement | null>(null);
   const galeriaSectionRef = useRef<HTMLElement | null>(null);
   const opinieSectionRef = useRef<HTMLElement | null>(null);
   const instrukcjeSectionRef = useRef<HTMLElement | null>(null);
@@ -1712,6 +1714,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const productSectionRefs = useMemo<Record<ProductTabKey, React.RefObject<HTMLElement | null>>>(
     () => ({
       opis: opisSectionRef,
+      wizualizacja: wizualizacjaSectionRef,
       galeria: galeriaSectionRef,
       opinie: opinieSectionRef,
       faq: faqSectionRef,
@@ -1772,6 +1775,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     const container = opisSectionRef.current?.closest<HTMLElement>(".hero-full");
     const sections: Array<[ProductTabKey, HTMLElement | null]> = [
       ["opis", opisSectionRef.current],
+      ["wizualizacja", wizualizacjaSectionRef.current],
       ["galeria", galeriaSectionRef.current],
       ["opinie", opinieSectionRef.current],
       ["faq", faqSectionRef.current],
@@ -3617,14 +3621,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
                             />
 
-                            <div className="plisy-viz-section">
-                              <h3 className="plisy-viz-title">Zobacz plisę w swoim wnętrzu</h3>
-                              <p className="plisy-viz-lead">
-                                Przeciągnij górną i dolną listwę — plisa zasłoni dowolny fragment okna. Odcień zmienisz poniżej.
-                              </p>
-                              <PlisyVisualizer />
-                            </div>
-
                             <div className="pl-callout">
                               <strong>{productLanding?.callout?.title || PLISY_CALLOUT.title}</strong>
                               <p>{productLanding?.callout?.body || PLISY_CALLOUT.body}</p>
@@ -3752,6 +3748,18 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         )
                       ) : null}
                       </section>
+                      {displayedProduct && productSlugFromSelected(displayedProduct) === "plisy" ? (
+                        <section id="product-section-wizualizacja" ref={wizualizacjaSectionRef} className="hero-product-section">
+                          <h2 className="hero-product-section-title">Wizualizacja</h2>
+                          <div className="plisy-viz-section">
+                            <h3 className="plisy-viz-title">Zobacz, jak działa plisa</h3>
+                            <p className="plisy-viz-lead">
+                              Przeciągnij górną i dolną listwę — plisa zasłoni dowolny fragment okna, resztę zostawi odsłoniętą.
+                            </p>
+                            <PlisyVisualizer />
+                          </div>
+                        </section>
+                      ) : null}
                       <section id="product-section-galeria" ref={galeriaSectionRef} className="hero-product-section">
                       <h2 className="hero-product-section-title">Galeria zdjęć</h2>
                       {displayedProduct ? (() => {
@@ -4183,7 +4191,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             ) : null}
                           </div>
                           );
-                        })() : (
+                        })() : productSlugFromSelected(displayedProduct) === "plisy" ? (
+                          <PlisyReviews />
+                        ) : (
                           <ul className="hero-product-reviews">
                             {displayedProduct.reviews.map((review) => (
                               <li key={review}>{review}</li>
@@ -5153,6 +5163,15 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                 >
                   Opis produktu
                 </button>
+                {displayedProduct && productSlugFromSelected(displayedProduct) === "plisy" ? (
+                  <button
+                    type="button"
+                    className={activeProductTab === "wizualizacja" ? "is-active" : ""}
+                    onClick={() => scrollToProductSection("wizualizacja")}
+                  >
+                    Wizualizacja
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className={activeProductTab === "galeria" ? "is-active" : ""}

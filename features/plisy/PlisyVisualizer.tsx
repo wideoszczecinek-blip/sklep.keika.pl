@@ -496,9 +496,12 @@ export default function PlisyVisualizer() {
       </div>
 
       <div className="plisy-viz-picks">
-        <div className="plisy-viz-pick" role="group" aria-label="Widok za oknem">
-          <span className="plisy-viz-pick-label">Za oknem</span>
-          <div className="plisy-viz-thumbs">
+        <details className="pl-mini-acc plisy-viz-acc">
+          <summary>
+            <span>Zmień widok za oknem</span>
+            <span className="pl-mini-acc-hint">{view.label}</span>
+          </summary>
+          <div className="plisy-viz-thumbs" role="group" aria-label="Widok za oknem">
             {VIEWS.map((v) => (
               <button
                 key={v.id}
@@ -514,29 +517,34 @@ export default function PlisyVisualizer() {
               </button>
             ))}
           </div>
-        </div>
+        </details>
 
-        <div className="plisy-viz-pick" role="group" aria-label="Odcień tkaniny w wizualizacji">
-          <span className="plisy-viz-pick-label">Odcień</span>
-          <div className="plisy-viz-pick-row">
-            {FABRICS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={`plisy-viz-swatch ${f.id === fabricId ? "is-active" : ""}`}
-                aria-pressed={f.id === fabricId}
-                aria-label={f.label}
-                title={f.label}
-                style={{ background: `linear-gradient(180deg, ${f.lit} 0%, ${f.base} 50%, ${f.shade} 100%)` }}
-                onClick={() => setFabricId(f.id)}
-              />
-            ))}
+        <details className="pl-mini-acc plisy-viz-acc">
+          <summary>
+            <span>Zmień odcień materiału</span>
+            <span className="pl-mini-acc-hint">{fabric.label}</span>
+          </summary>
+          <div className="plisy-viz-acc-body">
+            <div className="plisy-viz-pick-row" role="group" aria-label="Odcień tkaniny w wizualizacji">
+              {FABRICS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`plisy-viz-swatch ${f.id === fabricId ? "is-active" : ""}`}
+                  aria-pressed={f.id === fabricId}
+                  aria-label={f.label}
+                  title={f.label}
+                  style={{ background: `linear-gradient(180deg, ${f.lit} 0%, ${f.base} 50%, ${f.shade} 100%)` }}
+                  onClick={() => setFabricId(f.id)}
+                />
+              ))}
+            </div>
+            <p className="plisy-viz-disclaimer">
+              <strong>To tylko wizualizacja.</strong> Odcienie są przybliżone i nie odpowiadają konkretnym wzorom z
+              kolekcji — wzór tkaniny wybierzesz w konfiguratorze.
+            </p>
           </div>
-        </div>
-        <p className="plisy-viz-disclaimer">
-          <strong>To tylko wizualizacja.</strong> Odcienie są przybliżone i nie odpowiadają konkretnym wzorom z kolekcji —
-          wzór tkaniny wybierzesz w konfiguratorze.
-        </p>
+        </details>
       </div>
     </div>
   );

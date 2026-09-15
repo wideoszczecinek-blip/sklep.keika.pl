@@ -1,27 +1,24 @@
 "use client";
 
-// "Którą kolekcję tkanin wybrać?" - size sliders over one accordion per
-// fabric collection.
+// "Którą kolekcję tkanin wybrać?" - one card per fabric collection, priced
+// for a size the visitor can change.
 //
-// Third design in one day. The 4-column table (2026-09-14) squashed on
-// phones; the chips+panel that replaced it on 2026-09-15 got the owner's
-// "te rodzaje tkanin i ich ceny też są nieczytelne - klient musi mieć jasną
-// informację czego ta cena dotyczy". So now the size the prices refer to is
-// not a footnote but a control the visitor sets themselves:
+// Fourth design of this block in two days; the owner's notes on the third
+// (2026-09-15 night): the size sliders were "za duże i zbyt krzyczące", the
+// accordions "brzydkie" on phones, and "ceny powinny być po prawej np obok
+// nazwy, poniżej właściwości i przycisk pokaż więcej - musi być spójne i
+// zachęcające". So:
 //
-//   - width/height sliders, starting at 40 x 60 cm (owner's numbers), that
-//     reprice every collection live off the CRM matrix (calcPlisyPrice -
-//     the same function the configurator uses, so the two never disagree)
-//   - one <details> accordion per collection, CLOSED by default; the bar
-//     carries the name, ☾/thermometer badges, colour count, and both
-//     prices (regular struck through, SEZON20 price) for the slider size
-//   - inside: what it is and where it fits, a spec sheet built only from
-//     facts we hold (no invented grammage), the colour swatches from the
-//     CRM, and a CTA into the configurator
+//   - the size lives in ONE quiet line: "Ceny dla plisy 40 × 60 cm · Zmień
+//     wymiar". Opening it reveals two compact sliders with number inputs.
+//     Closed by default - most visitors just want to compare collections.
+//   - each collection is a card, not a bar: name + badges on the left,
+//     regular (struck) and promo price on the right, one line of what it
+//     is underneath, then "Pokaż więcej" for where it fits, the spec sheet,
+//     every swatch in the collection, and the configurator CTA.
 //
-// Owner's framing (same message): "zrobić jako poglądowe i i tak skierować
-// klienta do konfiguratora" - so every price is labelled with the size and
-// mounting it assumes, and every accordion ends in the configurator.
+// Prices come off the live CRM matrix (calcPlisyPrice, the configurator's
+// own function) and SEZON20 through applyPromoToPrice - nothing hardcoded.
 import { useMemo, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { optimizeImageUrl } from "@/lib/image-optim";
@@ -37,9 +34,8 @@ function zl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} zł`;
 }
 
-/** Slider ceiling = the largest breakpoint the price matrix knows. Past it
- * calcPlisyPrice returns null and the bar would read "—", so do not let the
- * slider go there. Falls back to a sane range while the profile loads. */
+/** Slider ceiling = the largest breakpoint the price matrix knows; past it
+ * calcPlisyPrice returns null. Sane fallback while the profile loads. */
 function matrixMax(profile: PlisyProfile | null, axis: "width" | "height"): number {
   if (!profile) return axis === "width" ? 1500 : 2200;
   const all = profile.tables.flatMap((t) => (axis === "width" ? t.widthBreakpointsMm : t.heightBreakpointsMm));
@@ -47,9 +43,14 @@ function matrixMax(profile: PlisyProfile | null, axis: "width" | "height"): numb
   return max > 0 ? max : axis === "width" ? 1500 : 2200;
 }
 
+function clampInt(v: number, lo: number, hi: number): number {
+  if (!Number.isFinite(v)) return lo;
+  return Math.min(hi, Math.max(lo, Math.round(v)));
+}
+
 function MoonIcon() {
   return (
-    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+    <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
       <path d="M10.5 1.5a6.5 6.5 0 1 0 4 11.7A5.5 5.5 0 0 1 10.5 1.5z" fill="currentColor" />
     </svg>
   );
@@ -57,10 +58,43 @@ function MoonIcon() {
 
 function ThermoIcon() {
   return (
-    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+    <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
       <path d="M6.5 2.5a1.5 1.5 0 0 1 3 0v6.3a3 3 0 1 1-3 0z" fill="none" stroke="currentColor" strokeWidth="1.5" />
       <circle cx="8" cy="11.5" r="1.4" fill="currentColor" />
     </svg>
+  );
+}
+
+function SizeField({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="pl-coll-size-field">
+      <span>{label}</span>
+      <input type="range" min={min} max={max} step={1} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-label={`${label} w centymetrach`} />
+      <span className="pl-coll-size-num">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(clampInt(Number(e.target.value), min, max))}
+          aria-label={`${label}, wpisz w centymetrach`}
+        />
+        cm
+      </span>
+    </label>
   );
 }
 
@@ -94,72 +128,50 @@ export default function PlisyCollectionsPicker({
             : null;
         const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
         const swatches = (group?.swatches || []).filter((s) => s.thumbnailUrl || s.imageUrl);
-        return { ...row, group, regular, withPromo, swatches };
+        return { ...row, regular, withPromo, swatches };
       }),
     [profile, promo, widthCm, heightCm],
   );
 
   const sizeLabel = `${widthCm} × ${heightCm} cm`;
-  const rangeLabel = `${minW}–${maxW} cm × ${minH}–${maxH} cm`;
 
   return (
     <div className="pl-coll">
       <h3 className="pl-coll-title">Którą kolekcję tkanin wybrać?</h3>
       <p className="pl-coll-lead">
-        Ustaw wymiar swojego okna, a ceny poniżej przeliczą się dla tego wymiaru. To wycena poglądowa — dokładną cenę,
-        z montażem, kolorem mechanizmu i kilkoma sztukami, policzy konfigurator.
+        Pięć kolekcji, od lekkich po zaciemniające. Ceny poglądowe — dokładną cenę z montażem, kolorem profilu i kilkoma
+        sztukami policzy konfigurator.
       </p>
 
-      <div className="pl-coll-size" role="group" aria-label="Wymiar do wyceny poglądowej">
-        <label className="pl-coll-slider">
-          <span className="pl-coll-slider-head">
-            <span>Szerokość</span>
-            <output>{widthCm} cm</output>
+      <details className="pl-mini-acc pl-coll-sizeacc">
+        <summary>
+          <span>
+            Ceny dla plisy <strong>{sizeLabel}</strong>, montaż STANDARD
+            {promo ? (
+              <>
+                {" "}
+                · z kodem <strong>{PROMO_CODE}</strong>
+              </>
+            ) : null}
           </span>
-          <input
-            type="range"
-            min={minW}
-            max={maxW}
-            step={1}
-            value={widthCm}
-            onChange={(e) => setWidthCm(Number(e.target.value))}
-            aria-valuetext={`${widthCm} centymetrów`}
-          />
-        </label>
-        <label className="pl-coll-slider">
-          <span className="pl-coll-slider-head">
-            <span>Wysokość</span>
-            <output>{heightCm} cm</output>
-          </span>
-          <input
-            type="range"
-            min={minH}
-            max={maxH}
-            step={1}
-            value={heightCm}
-            onChange={(e) => setHeightCm(Number(e.target.value))}
-            aria-valuetext={`${heightCm} centymetrów`}
-          />
-        </label>
-        <p className="pl-coll-size-note">
-          Ceny dla plisy <strong>{sizeLabel}</strong>, montaż STANDARD, 1 sztuka
-          {promo ? (
-            <>
-              {" "}
-              — obok cena z kodem <strong>{PROMO_CODE}</strong>
-            </>
-          ) : null}
-          .
-        </p>
-      </div>
+          <span className="pl-mini-acc-action">Zmień wymiar</span>
+        </summary>
+        <div className="pl-coll-size">
+          <SizeField label="Szerokość" value={widthCm} min={minW} max={maxW} onChange={setWidthCm} />
+          <SizeField label="Wysokość" value={heightCm} min={minH} max={maxH} onChange={setHeightCm} />
+          <p className="pl-coll-size-note">
+            Zakres {minW}–{maxW} × {minH}–{maxH} cm. Wymiar poglądowy — w konfiguratorze wpiszesz dokładny.
+          </p>
+        </div>
+      </details>
 
       <div className="pl-coll-list">
         {rows.map((row) => (
-          <details key={row.groupId} className="pl-coll-acc">
-            <summary className="pl-coll-bar">
-              <span className="pl-coll-bar-main">
-                <span className="pl-coll-bar-name">{row.name}</span>
-                <span className="pl-coll-bar-meta">
+          <article key={row.groupId} className="pl-coll-card">
+            <div className="pl-coll-card-head">
+              <div className="pl-coll-card-title">
+                <strong>{row.name}</strong>
+                <span className="pl-coll-card-meta">
                   {row.blackout ? (
                     <span className="pl-coll-badge pl-coll-badge--dark" title="Tkanina zaciemniająca">
                       <MoonIcon /> Zaciemnia
@@ -172,87 +184,92 @@ export default function PlisyCollectionsPicker({
                   ) : null}
                   {row.swatches.length ? <span className="pl-coll-count">{row.swatches.length} kolorów</span> : null}
                 </span>
-              </span>
+              </div>
 
-              <span className="pl-coll-bar-price" aria-label={`Cena dla ${sizeLabel}`}>
+              <div className="pl-coll-card-price" aria-label={`Cena dla ${sizeLabel}`}>
                 {row.regular === null ? (
-                  <span className="pl-coll-bar-na">wyceń w konfiguratorze</span>
+                  <span className="pl-coll-card-na">wyceń w konfiguratorze</span>
                 ) : row.withPromo !== null ? (
                   <>
-                    <s>{zl(row.regular)}</s>
-                    <strong>{zl(row.withPromo)}</strong>
+                    <span className="pl-coll-card-amounts">
+                      <s>{zl(row.regular)}</s>
+                      <strong>{zl(row.withPromo)}</strong>
+                    </span>
                     <small>z kodem {PROMO_CODE}</small>
                   </>
                 ) : (
-                  <strong>{zl(row.regular)}</strong>
+                  <span className="pl-coll-card-amounts">
+                    <strong>{zl(row.regular)}</strong>
+                  </span>
                 )}
-              </span>
-
-              <span className="pl-coll-chev" aria-hidden="true" />
-            </summary>
-
-            <div className="pl-coll-body">
-              <p className="pl-coll-what">{row.what}</p>
-              <p className="pl-coll-where">
-                <strong>Gdzie pasuje:</strong> {row.where}
-              </p>
-
-              <dl className="pl-coll-spec">
-                <div>
-                  <dt>Światło</dt>
-                  <dd>{row.lightNote}</dd>
-                </div>
-                <div>
-                  <dt>Termika</dt>
-                  <dd>{row.thermalNote}</dd>
-                </div>
-                <div>
-                  <dt>Kolory</dt>
-                  <dd>{row.swatches.length ? `${row.swatches.length} w kolekcji` : "—"}</dd>
-                </div>
-                <div>
-                  <dt>Wymiary</dt>
-                  <dd>{rangeLabel}</dd>
-                </div>
-                <div>
-                  <dt>Realizacja</dt>
-                  <dd>{PLISY_LEAD_TIME_LABEL} + kurier 24 h</dd>
-                </div>
-              </dl>
-
-              {row.swatches.length ? (
-                <div className="pl-coll-swatches" role="list" aria-label={`Kolory kolekcji ${row.name}`}>
-                  {row.swatches.map((swatch, index) => {
-                    const label = swatch.label ? `${swatch.label}${swatch.code ? ` (${swatch.code})` : ""}` : swatch.code;
-                    return (
-                      <button
-                        key={swatch.id}
-                        type="button"
-                        role="listitem"
-                        className="pl-coll-swatch"
-                        title={label}
-                        aria-label={`Powiększ ${label}`}
-                        onClick={() =>
-                          onZoom?.(
-                            `${row.name} — ${label}`,
-                            row.swatches.map((s) => s.imageUrl || s.thumbnailUrl),
-                            index,
-                          )
-                        }
-                      >
-                        <img src={optimizeImageUrl(swatch.thumbnailUrl || swatch.imageUrl, 160)} alt="" loading="lazy" />
-                        <span>{swatch.code || swatch.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-
-              <button type="button" className="pl-inline-cta-button pl-coll-cta" onClick={onQuote}>
-                Wyceń plisę {row.name} w konfiguratorze
-              </button>
+              </div>
             </div>
-          </details>
+
+            <p className="pl-coll-card-what">{row.what}</p>
+
+            <details className="pl-mini-acc pl-coll-more">
+              <summary>
+                <span className="pl-coll-more-open">Pokaż więcej</span>
+                <span className="pl-coll-more-close">Zwiń</span>
+              </summary>
+              <div className="pl-coll-body">
+                <p className="pl-coll-where">
+                  <strong>Gdzie pasuje:</strong> {row.where}
+                </p>
+
+                <dl className="pl-coll-spec">
+                  <div>
+                    <dt>Światło</dt>
+                    <dd>{row.lightNote}</dd>
+                  </div>
+                  <div>
+                    <dt>Termika</dt>
+                    <dd>{row.thermalNote}</dd>
+                  </div>
+                  <div>
+                    <dt>Kolory</dt>
+                    <dd>{row.swatches.length ? `${row.swatches.length} w kolekcji` : "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Realizacja</dt>
+                    <dd>{PLISY_LEAD_TIME_LABEL} + kurier 24 h</dd>
+                  </div>
+                </dl>
+
+                {row.swatches.length ? (
+                  <div className="pl-coll-swatches" role="list" aria-label={`Kolory kolekcji ${row.name}`}>
+                    {row.swatches.map((swatch, index) => {
+                      const label = swatch.label ? `${swatch.label}${swatch.code ? ` (${swatch.code})` : ""}` : swatch.code;
+                      return (
+                        <button
+                          key={swatch.id}
+                          type="button"
+                          role="listitem"
+                          className="pl-coll-swatch"
+                          title={label}
+                          aria-label={`Powiększ ${label}`}
+                          onClick={() =>
+                            onZoom?.(
+                              `${row.name} — ${label}`,
+                              row.swatches.map((s) => s.imageUrl || s.thumbnailUrl),
+                              index,
+                            )
+                          }
+                        >
+                          <img src={optimizeImageUrl(swatch.thumbnailUrl || swatch.imageUrl, 160)} alt="" loading="lazy" />
+                          <span>{swatch.code || swatch.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                <button type="button" className="pl-inline-cta-button pl-coll-cta" onClick={onQuote}>
+                  Wyceń plisę {row.name} w konfiguratorze
+                </button>
+              </div>
+            </details>
+          </article>
         ))}
       </div>
     </div>
