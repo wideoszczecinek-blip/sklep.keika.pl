@@ -13061,12 +13061,38 @@ html[data-theme="light"] .plisy-review-collection {
   color: #0e7c74;
 }
 
-/* ---------------------------------------------------------------------------
-   Plisy: animowany przewodnik pomiaru (features/plisy/MeasureGuide.tsx)
 
-   Oś czasu (s): 0 skrzydło · 0,5 lupa · 0,9 etykieta celu · 1,1 markery
-   szerokości · 1,4-2,6 taśma szerokości · 2,7 etykieta · 3,2 markery
-   wysokości · 3,4-4,6 taśma wysokości · 4,7 etykieta. Restart = remount SVG.
+/* Przewodnik pomiaru w miejscu wideo/zdjęcia kroku instrukcji. */
+.hero-product-instruction-media--guide {
+  aspect-ratio: auto;
+  background: transparent;
+  padding: 0.2rem 0 0.4rem;
+}
+
+/* "Jak mierzyć?" w kroku wymiarów konfiguratora plis. */
+.plisy-measure-link {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  background: rgba(245, 158, 11, 0.14);
+  color: #ffc45c;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+html[data-theme="light"] .plisy-measure-link {
+  color: #c2570a;
+  border-color: rgba(232, 137, 12, 0.6);
+}
+
+/* ---------------------------------------------------------------------------
+   Plisy: animowany tutorial pomiaru (features/plisy/MeasureGuide.tsx)
+
+   Oś czasu liczy JS (requestAnimationFrame); tu jest tylko wygląd: tryby,
+   scena, pasek kroków z podpisem, notka. Bez keyframes.
 --------------------------------------------------------------------------- */
 .plmg {
   display: grid;
@@ -13139,105 +13165,77 @@ html[data-theme="light"] .plisy-review-collection {
   background: #fff;
 }
 
-/* --- animacja --- */
-.plmg-sash {
-  animation: plmgFade 0.45s ease-out both;
-}
-.plmg-lupa {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: plmgPop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.5s both;
-}
-.plmg-target-label {
-  animation: plmgFade 0.35s ease-out 0.95s both;
-}
-.plmg-target .plmg-marker-ring {
-  animation: plmgRing 1.6s ease-out 1s infinite;
-}
-.plmg-marker {
-  animation: plmgFade 0.3s ease-out both; /* delay inline */
-}
-.plmg-marker .plmg-marker-ring {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: plmgRing 1.6s ease-out infinite; /* delay inline */
-}
-.plmg-tape-body {
-  transform-box: fill-box;
-  transform-origin: left center;
-}
-.plmg-anim-w .plmg-tape-body {
-  animation: plmgExtend 1.2s cubic-bezier(0.3, 0.8, 0.3, 1) 1.4s both;
-}
-.plmg-anim-h .plmg-tape-body {
-  animation: plmgExtend 1.2s cubic-bezier(0.3, 0.8, 0.3, 1) 3.4s both;
-}
-.plmg-label {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-.plmg-label-w {
-  animation: plmgPop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) 2.7s both;
-}
-.plmg-label-h {
-  animation: plmgPop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) 4.7s both;
-}
-
-@keyframes plmgFade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes plmgPop {
-  from { opacity: 0; transform: scale(0.6); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes plmgExtend {
-  from { transform: scaleX(0.02); }
-  to   { transform: scaleX(1); }
-}
-@keyframes plmgRing {
-  0%   { transform: scale(0.6); opacity: 1; }
-  100% { transform: scale(1.9); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .plmg-sash, .plmg-lupa, .plmg-target-label, .plmg-marker, .plmg-label-w, .plmg-label-h,
-  .plmg-anim-w .plmg-tape-body, .plmg-anim-h .plmg-tape-body {
-    animation: none !important;
-    opacity: 1;
-    transform: none;
-  }
-  .plmg-marker-ring {
-    animation: none !important;
-    opacity: 0.6;
-  }
-}
-
-/* --- podsumowanie pod sceną --- */
-.plmg-summary {
+/* --- pasek kroków --- */
+.plmg-steps {
   display: grid;
   gap: 0.45rem;
 }
-.plmg-summary-row {
+.plmg-steps-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plmg-steps-list li {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  font-size: 0.88rem;
-  color: rgba(242, 247, 255, 0.92);
+  gap: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(226, 236, 248, 0.14);
+  background: rgba(240, 248, 255, 0.04);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: rgba(226, 236, 248, 0.6);
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
-.plmg-chip {
+.plmg-step-num {
   flex: 0 0 auto;
-  padding: 0.14rem 0.55rem;
+  width: 1.35rem;
+  height: 1.35rem;
   border-radius: 999px;
+  display: grid;
+  place-items: center;
   font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: #fbbf24;
+  font-weight: 900;
+  background: rgba(226, 236, 248, 0.14);
+  color: rgba(226, 236, 248, 0.75);
+}
+.plmg-steps-list li.is-active {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.14);
+  color: #f2f7ff;
+}
+.plmg-steps-list li.is-active .plmg-step-num {
+  background: #f59e0b;
   color: #1a1206;
 }
-.plmg-summary .plmg-note {
-  margin: 0.15rem 0 0;
+.plmg-steps-list li.is-done .plmg-step-num {
+  background: #7ae9e2;
+  color: #06302d;
+}
+.plmg-steps-list li.is-done {
+  color: rgba(226, 236, 248, 0.82);
+}
+.plmg-step-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plmg-steps .plmg-caption {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #f2f7ff;
+}
+
+.plmg > .plmg-note {
+  margin: 0;
   padding: 0.55rem 0.75rem;
   border-radius: 0.65rem;
   border: 1px solid rgba(245, 158, 11, 0.5);
@@ -13246,31 +13244,13 @@ html[data-theme="light"] .plisy-review-collection {
   line-height: 1.5;
   color: rgba(242, 247, 255, 0.92);
 }
-.plmg-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1rem;
-  margin: 0.2rem 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.74rem;
-  color: rgba(226, 236, 248, 0.68);
-}
-.plmg-legend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.plmg-legend i {
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 0.2rem;
-  border: 1px solid;
-}
 
 @media (max-width: 480px) {
   .plmg-modes {
     grid-template-columns: 1fr;
+  }
+  .plmg-steps-list {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -13280,41 +13260,35 @@ html[data-theme="light"] .plmg-mode {
   background: rgba(19, 40, 67, 0.04);
   color: #16314e;
 }
-html[data-theme="light"] .plmg-mode span,
-html[data-theme="light"] .plmg-legend {
+html[data-theme="light"] .plmg-mode span {
   color: rgba(19, 40, 67, 0.62);
 }
 html[data-theme="light"] .plmg-mode.is-active {
   border-color: #e8890c;
   background: rgba(245, 158, 11, 0.13);
 }
-html[data-theme="light"] .plmg-summary-row,
-html[data-theme="light"] .plmg-summary .plmg-note {
+html[data-theme="light"] .plmg-steps-list li {
+  border-color: rgba(19, 40, 67, 0.14);
+  background: rgba(19, 40, 67, 0.035);
+  color: rgba(19, 40, 67, 0.6);
+}
+html[data-theme="light"] .plmg-step-num {
+  background: rgba(19, 40, 67, 0.12);
+  color: rgba(19, 40, 67, 0.7);
+}
+html[data-theme="light"] .plmg-steps-list li.is-active {
+  border-color: #e8890c;
+  background: rgba(245, 158, 11, 0.13);
+  color: #16314e;
+}
+html[data-theme="light"] .plmg-steps-list li.is-done {
+  color: rgba(19, 40, 67, 0.85);
+}
+html[data-theme="light"] .plmg-steps-list li.is-done .plmg-step-num {
+  background: #0e7c74;
+  color: #fff;
+}
+html[data-theme="light"] .plmg-steps .plmg-caption,
+html[data-theme="light"] .plmg > .plmg-note {
   color: rgba(19, 40, 67, 0.92);
-}
-
-/* Przewodnik pomiaru w miejscu wideo/zdjęcia kroku instrukcji. */
-.hero-product-instruction-media--guide {
-  aspect-ratio: auto;
-  background: transparent;
-  padding: 0.2rem 0 0.4rem;
-}
-
-/* "Jak mierzyć?" w kroku wymiarów konfiguratora plis. */
-.plisy-measure-link {
-  display: inline-block;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  border: 1px solid rgba(245, 158, 11, 0.6);
-  background: rgba(245, 158, 11, 0.14);
-  color: #ffc45c;
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  vertical-align: baseline;
-}
-html[data-theme="light"] .plisy-measure-link {
-  color: #c2570a;
-  border-color: rgba(232, 137, 12, 0.6);
 }
