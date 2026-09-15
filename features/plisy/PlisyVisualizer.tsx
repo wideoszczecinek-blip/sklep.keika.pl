@@ -5,12 +5,11 @@
 // can drag. Sits below the description as an extra; the top of the landing
 // is the real-photo slideshow (PlisyHeroPhotos.tsx).
 //
-// Trimmed hard on 2026-09-15 evening, owner's words: "odpuść wnętrze, daj
-// tylko jeden randomowy widok za oknem, bez opcji zmiany, wybierz tylko
-// opcję tkaniny ale z wyraźnym podkreśleniem że to tylko wizualizacja a nie
-// wybrany wzór". So: no room, no view picker, one random view, and the
-// fabric row carries a disclaimer that these are approximate tones, not
-// collection patterns - the pattern is chosen in the configurator.
+// Trimmed hard on 2026-09-15 evening ("odpuść wnętrze"): no room photo,
+// the window sits on a plain backdrop. Five views to pick from as thumbnails
+// (random one on load), and a fabric-tone row that carries a disclaimer:
+// these are approximate tones, not collection patterns - the pattern is
+// chosen in the configurator.
 //
 // Fidelity rules from the owner's own installation photos and confirmed
 // product facts:
@@ -54,27 +53,42 @@ const SASHES: Sash[] = [
 
 type Pos = { t: number; b: number };
 
-/** Auto-demo, played once until the visitor touches a rail. Opens with a
- * top-down move, because that is what nobody expects from a blind. */
-const DEMO: Record<string, Pos[]> = {
-  left: [
-    { t: 0, b: 0.58 },
-    { t: 0, b: 0.92 },
-    { t: 0.34, b: 0.92 },
-    { t: 0.34, b: 0.66 },
-    { t: 0, b: 0.58 },
-  ],
-  right: [
-    { t: 0, b: 0.36 },
-    { t: 0.22, b: 0.78 },
-    { t: 0.5, b: 1 },
-    { t: 0.08, b: 0.52 },
-    { t: 0, b: 0.36 },
-  ],
+/** Where the rails rest before the demo and after the visitor lets go. */
+const REST: Record<string, Pos> = {
+  left: { t: 0, b: 0.58 },
+  right: { t: 0, b: 0.36 },
 };
 
-const STEP_MS = 2200;
-const HOLD_MS = 900;
+/** The demo: a hand cursor that visibly grabs a rail and drags it, then
+ * does the same with the other rail on the other sash. Owner (2026-09-15):
+ * "pokaż animację jak kursor łapka łapie za belkę i przesuwa ją - raz jedną
+ * belkę raz drugą, aby klientowi pokazać że może to zrobić". The rails
+ * moving on their own (v2-v4) did not read as "you can do this"; a hand
+ * doing it does. Starts when the visualizer scrolls into view, plays once.
+ *
+ * `rail` segments move a rail and keep the hand on it; `move` segments fly
+ * the hand between rails; `hold` segments pause with the hand where it is. */
+type DemoSeg =
+  | { kind: "move"; ms: number; from: { sash: string; rail: "t" | "b" } | null; to: { sash: string; rail: "t" | "b" } }
+  | { kind: "hold"; ms: number; grab: boolean }
+  | { kind: "rail"; ms: number; sash: string; rail: "t" | "b"; from: number; to: number };
+
+const DEMO: DemoSeg[] = [
+  { kind: "move", ms: 900, from: null, to: { sash: "right", rail: "b" } },
+  { kind: "hold", ms: 350, grab: true },
+  { kind: "rail", ms: 1500, sash: "right", rail: "b", from: 0.36, to: 0.82 },
+  { kind: "hold", ms: 400, grab: false },
+  { kind: "move", ms: 900, from: { sash: "right", rail: "b" }, to: { sash: "left", rail: "t" } },
+  { kind: "hold", ms: 350, grab: true },
+  { kind: "rail", ms: 1500, sash: "left", rail: "t", from: 0, to: 0.3 },
+  { kind: "hold", ms: 450, grab: false },
+];
+
+/** Hand state for one demo frame: where the fingertip is (viewBox units),
+ * whether it is closed on a rail, and how opaque (fades in/out). */
+type Hand = { x: number; y: number; grab: boolean; opacity: number };
+
+const HAND_HIDDEN: Hand = { x: 0, y: 0, grab: false, opacity: 0 };
 
 function easeInOut(x: number): number {
   return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
@@ -95,13 +109,14 @@ export default function PlisyVisualizer() {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const viewIndex = useSyncExternalStore(noop, () => CLIENT_VIEW_INDEX, () => 0);
-  const view = VIEWS[viewIndex] || VIEWS[0];
+  const randomIndex = useSyncExternalStore(noop, () => CLIENT_VIEW_INDEX, () => 0);
+  const [pickedViewId, setPickedViewId] = useState<string | null>(null);
+  const view = VIEWS.find((v) => v.id === pickedViewId) || VIEWS[randomIndex] || VIEWS[0];
 
   const [fabricId, setFabricId] = useState<(typeof FABRICS)[number]["id"]>(FABRICS[0].id);
   const fabric = FABRICS.find((f) => f.id === fabricId) || FABRICS[0];
 
-  const [pos, setPos] = useState<Record<string, Pos>>({ left: DEMO.left[0], right: DEMO.right[0] });
+  const [pos, setPos] = useState<Record<string, Pos>>({ left: { ...REST.left }, right: { ...REST.right } });
   /** First real interaction with a rail ends the demo for good. */
   const [touched, setTouched] = useState(false);
 
@@ -115,46 +130,116 @@ export default function PlisyVisualizer() {
     () => false,
   );
 
+  const [hand, setHand] = useState<Hand>(HAND_HIDDEN);
+  /** Set once the block has been on screen - the demo waits for that. */
+  const [inView, setInView] = useState(false);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.55)) {
+          setInView(true);
+          io.disconnect();
+        }
+      },
+      { threshold: [0.55] },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  /** Fingertip position for a rail's grip tab. */
+  const railPoint = useCallback(
+    (sashId: string, rail: "t" | "b", p: Pos) => {
+      const sash = SASHES.find((s) => s.id === sashId) || SASHES[0];
+      const y = rail === "t" ? sash.y + p.t * sash.h - 1 : sash.y + p.b * sash.h + 1;
+      return { x: sash.x + sash.w / 2, y };
+    },
+    [],
+  );
+
   const rafRef = useRef<number | null>(null);
   useEffect(() => {
-    if (touched || reduced) return;
+    if (!inView || touched || reduced) return;
+    const total = DEMO.reduce((sum, s) => sum + s.ms, 0);
     let start: number | null = null;
+    // Positions evolve across segments; keep the running copy here so a
+    // "move" segment knows where the previous "rail" segment left things.
+    const live: Record<string, Pos> = { left: { ...REST.left }, right: { ...REST.right } };
 
     const tick = (now: number) => {
       if (start === null) start = now;
       const elapsed = now - start;
-      const cycle = STEP_MS + HOLD_MS;
-      const next: Record<string, Pos> = {};
-      let done = true;
 
-      for (const sash of SASHES) {
-        const frames = DEMO[sash.id];
-        const total = (frames.length - 1) * cycle;
-        if (elapsed >= total) {
-          next[sash.id] = frames[frames.length - 1];
-          continue;
-        }
-        done = false;
-        const leg = Math.floor(elapsed / cycle);
-        const within = elapsed - leg * cycle;
-        const p = easeInOut(clamp(within / STEP_MS, 0, 1));
-        const from = frames[leg];
-        const to = frames[leg + 1];
-        next[sash.id] = { t: from.t + (to.t - from.t) * p, b: from.b + (to.b - from.b) * p };
+      if (elapsed >= total) {
+        setHand(HAND_HIDDEN);
+        return;
       }
 
-      setPos(next);
-      if (!done) rafRef.current = requestAnimationFrame(tick);
+      let acc = 0;
+      let grab = false;
+      let point = { x: 0, y: 0 };
+      let opacity = 1;
+
+      for (const seg of DEMO) {
+        if (elapsed >= acc + seg.ms) {
+          // Segment finished - commit its end state and carry on.
+          if (seg.kind === "rail") live[seg.sash] = { ...live[seg.sash], [seg.rail]: seg.to };
+          acc += seg.ms;
+          continue;
+        }
+        const p = easeInOut(clamp((elapsed - acc) / seg.ms, 0, 1));
+        if (seg.kind === "move") {
+          const to = railPoint(seg.to.sash, seg.to.rail, live[seg.to.sash]);
+          const from = seg.from ? railPoint(seg.from.sash, seg.from.rail, live[seg.from.sash]) : { x: to.x + 140, y: to.y + 150 };
+          point = { x: from.x + (to.x - from.x) * p, y: from.y + (to.y - from.y) * p };
+          if (!seg.from) opacity = clamp((elapsed - acc) / 300, 0, 1);
+          grab = false;
+        } else if (seg.kind === "hold") {
+          const last = lastRailBefore(seg);
+          point = last ? railPoint(last.sash, last.rail, live[last.sash]) : point;
+          grab = seg.grab;
+        } else {
+          const value = seg.from + (seg.to - seg.from) * p;
+          live[seg.sash] = { ...live[seg.sash], [seg.rail]: value };
+          point = railPoint(seg.sash, seg.rail, live[seg.sash]);
+          grab = true;
+        }
+        break;
+      }
+
+      // Fade out over the final hold.
+      const tail = DEMO[DEMO.length - 1];
+      if (elapsed > total - tail.ms) opacity = Math.min(opacity, clamp((total - elapsed) / tail.ms, 0, 1));
+
+      setPos({ left: { ...live.left }, right: { ...live.right } });
+      setHand({ x: point.x, y: point.y, grab, opacity });
+      rafRef.current = requestAnimationFrame(tick);
     };
+
+    /** The rail a hold segment refers to = the nearest rail/move segment before it. */
+    function lastRailBefore(seg: DemoSeg): { sash: string; rail: "t" | "b" } | null {
+      const idx = DEMO.indexOf(seg);
+      for (let i = idx - 1; i >= 0; i--) {
+        const s = DEMO[i];
+        if (s.kind === "rail") return { sash: s.sash, rail: s.rail };
+        if (s.kind === "move") return s.to;
+      }
+      return null;
+    }
 
     const delay = window.setTimeout(() => {
       rafRef.current = requestAnimationFrame(tick);
-    }, 600);
+    }, 500);
     return () => {
       window.clearTimeout(delay);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      setHand(HAND_HIDDEN);
     };
-  }, [touched, reduced]);
+  }, [inView, touched, reduced, railPoint]);
 
   /** Pointer y -> fraction of the sash. The SVG's CSS aspect-ratio matches
    * its viewBox, so there is no letterboxing and the mapping is a ratio. */
@@ -218,7 +303,7 @@ export default function PlisyVisualizer() {
 
   return (
     <div className="plisy-viz">
-      <div className="plisy-viz-stage">
+      <div className="plisy-viz-stage" ref={stageRef}>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VB_W} ${VB_H}`}
@@ -375,6 +460,32 @@ export default function PlisyVisualizer() {
 
           {/* Handle on the right sash, as in the real photos */}
           <rect x="498" y="386" width="14" height="58" rx="7" fill="#e6ebef" stroke="#c3ccd3" strokeWidth="1.5" />
+
+          {/* Demo hand. Drawn last so it sits over everything. The path is a
+              pointing hand with its fingertip at (0,0); "grab" curls it by
+              scaling down and tilting, which reads as a squeeze at this size. */}
+          {hand.opacity > 0 ? (
+            <g
+              className="plisy-viz-hand"
+              transform={`translate(${hand.x} ${hand.y}) ${hand.grab ? "scale(0.86) rotate(-8)" : "scale(1)"}`}
+              opacity={hand.opacity}
+              aria-hidden="true"
+              pointerEvents="none"
+            >
+              <g transform="translate(-12 -2)">
+                <path
+                  d="M12 2c0-1.1-.9-2-2-2S8 .9 8 2v16.6l-3.3-4.4c-.7-.9-2-1.1-2.8-.4-.9.7-1.1 1.9-.4 2.8l6.2 8.3C9 27.1 11.1 28.2 13.4 28.2h5.9c3.3 0 6-2.7 6-6v-9.7c0-1.1-.9-2-2-2s-2 .9-2 2v.5c0-1.1-.9-2-2-2s-2 .9-2 2V12c0-1.1-.9-2-2-2s-2 .9-2 2v-1.7z"
+                  transform="scale(1.9)"
+                  fill="#ffffff"
+                  stroke="#2b3440"
+                  strokeWidth="1.1"
+                  strokeLinejoin="round"
+                  style={{ filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.35))" }}
+                />
+              </g>
+              {hand.grab ? <circle cx="0" cy="0" r="16" fill="#f59e0b" opacity="0.28" /> : null}
+            </g>
+          ) : null}
         </svg>
 
         {!touched ? (
@@ -385,6 +496,26 @@ export default function PlisyVisualizer() {
       </div>
 
       <div className="plisy-viz-picks">
+        <div className="plisy-viz-pick" role="group" aria-label="Widok za oknem">
+          <span className="plisy-viz-pick-label">Za oknem</span>
+          <div className="plisy-viz-thumbs">
+            {VIEWS.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                className={`plisy-viz-thumb ${v.id === view.id ? "is-active" : ""}`}
+                aria-pressed={v.id === view.id}
+                aria-label={v.label}
+                title={v.label}
+                onClick={() => setPickedViewId(v.id)}
+              >
+                <img src={v.thumb} alt="" loading="lazy" width="320" height="235" />
+                <span>{v.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="plisy-viz-pick" role="group" aria-label="Odcień tkaniny w wizualizacji">
           <span className="plisy-viz-pick-label">Odcień</span>
           <div className="plisy-viz-pick-row">

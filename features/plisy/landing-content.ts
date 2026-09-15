@@ -5,7 +5,8 @@
 // Produkty i konfiguratory -> plisy), which then take over field by field.
 //
 // Every fact here is grounded in the CRM configurator profile (5 fabric
-// collections with 150 swatches, 10 hardware colours at no surcharge, 3
+// collections with 150 swatches, 10 hardware colours (NOT all the same
+// price - owner, 2026-09-15 - so never write "bez dopłaty" about them), 3
 // mount types with their surcharges, the 400-2100 x 600-2300 mm price
 // matrix) plus the owner's decisions from 2026-09-14: production 5-10
 // business days, no fabric samples, SEZON20 applies, Ekspres does not.
@@ -61,7 +62,7 @@ export function isPlisyPlaceholderCopy(text: string | null | undefined): boolean
 }
 
 export const PLISY_SUBTITLE =
-  "Zasłaniasz tylko tyle okna, ile chcesz: od góry, od dołu albo sam środek. 150 tkanin w 5 kolekcjach, 10 kolorów mechanizmu bez dopłaty, montaż z wierceniem lub bez.";
+  "Zasłaniasz tylko tyle okna, ile chcesz: od góry, od dołu albo sam środek. 150 tkanin w 5 kolekcjach, 10 kolorów profili do wyboru, montaż z wierceniem lub bez.";
 
 export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
   {
@@ -90,7 +91,7 @@ export const PLISY_FEATURE_BULLETS: PlisyFeatureBullet[] = [
     detail: "od lekkich, rozpraszających światło, po pełny blackout i termoizolacyjny plaster miodu",
   },
   {
-    lead: "10 kolorów mechanizmu w tej samej cenie",
+    lead: "10 kolorów profili do wyboru",
     detail: "biel, brąz, anoda, antracyt, oliwka, czarny mat, sosna, winchester, złoty dąb, orzech: dobierzesz do każdej stolarki",
   },
   {

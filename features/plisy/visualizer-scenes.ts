@@ -1,23 +1,22 @@
 // Views behind the window in the plisy visualizer (PlisyVisualizer.tsx).
 //
-// Real photos, Pixabay Content License (commercial use, no attribution).
-// Picked for perspective FROM a home - a back garden, the neighbours'
-// houses, rooftops from an upper floor - after the owner rejected "a road
-// through a forest" and "a street in a city" (2026-09-15): "to musi być
-// perspektywa jak z domu lub mieszkania". One is picked at random per page
-// load; there is deliberately no picker - the owner cut it the same evening
-// ("daj tylko jeden randomowy widok za oknem, bez opcji zmiany").
+// Five, picked to one brief from the owner (2026-09-15): "ładnych,
+// konwertujących - takich że klient chciałby mieć taki widok - ale też nie
+// przesadzony". So: a lawn with a fence, a lake jetty, a meadow with a
+// track, old-town rooftops, a snowed-in garden. No sea terraces, no alpine
+// panoramas - those read as a holiday, not a home. All seen FROM a home
+// (earlier "road through a forest" / "city street" picks were rejected for
+// perspective).
 //
-// The room photos that briefly sat behind the window (v4, a few hours) are
-// gone too: "odpuść wnętrze". The window is drawn on a plain backdrop again.
+// Real photos, Pixabay Content License (commercial use, no attribution).
+// Full size 1200x882 = the window opening's 784:576; thumbs 320x235.
 
-export type View = { id: string; src: string };
+export type View = { id: string; label: string; src: string; thumb: string };
 
 export const VIEWS: View[] = [
-  { id: "ogrod", src: "/plisy/widoki/ogrod.jpg" },
-  { id: "podworko", src: "/plisy/widoki/podworko.jpg" },
-  { id: "osiedle", src: "/plisy/widoki/osiedle.jpg" },
-  { id: "miasto", src: "/plisy/widoki/miasto.jpg" },
-  { id: "bloki", src: "/plisy/widoki/bloki.jpg" },
-  { id: "zima", src: "/plisy/widoki/zima.jpg" },
+  { id: "ogrod", label: "Ogród", src: "/plisy/widoki/ogrod.jpg", thumb: "/plisy/widoki/ogrod-thumb.jpg" },
+  { id: "jezioro", label: "Jezioro", src: "/plisy/widoki/jezioro.jpg", thumb: "/plisy/widoki/jezioro-thumb.jpg" },
+  { id: "laka", label: "Łąka", src: "/plisy/widoki/laka.jpg", thumb: "/plisy/widoki/laka-thumb.jpg" },
+  { id: "miasto", label: "Stare miasto", src: "/plisy/widoki/miasto.jpg", thumb: "/plisy/widoki/miasto-thumb.jpg" },
+  { id: "zima", label: "Zima", src: "/plisy/widoki/zima.jpg", thumb: "/plisy/widoki/zima-thumb.jpg" },
 ];
