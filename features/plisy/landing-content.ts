@@ -69,7 +69,7 @@ export function isPlisyPlaceholderCopy(text: string | null | undefined): boolean
 export const PLISY_H1 = "Plisy okienne na wymiar";
 
 export const PLISY_SUBTITLE =
-  "Zasłaniasz tyle okna, ile chcesz — od góry, od dołu albo sam środek. Produkujemy na Twój wymiar w Szczecinku, zakładasz w 15 minut, także bez wiercenia. Cena dla Twojego okna w 10 sekund, bez maila i telefonu.";
+  "Plisy okienne na wymiar od polskiego producenta. Regulacja z góry i z dołu, montaż bez wiercenia lub z wierceniem, 150 tkanin i 10 kolorów profili do wyboru. Cenę dla swojego okna sprawdzisz od razu w konfiguratorze.";
 
 /** Primary CTA wording, repeated on the landing (mobile hero button, callout,
  * end-of-section nudges). One promise everywhere: the price, for your
@@ -78,61 +78,61 @@ export const PLISY_PRIMARY_CTA = "Sprawdź cenę dla swojego okna";
 
 /** Fallback for the CRM "description" field (HTML). */
 export const PLISY_DESCRIPTION_HTML =
-  "<p><strong>Plisa to najbardziej elastyczna osłona okienna.</strong> Zamiast jednej rolety, która zasłania tylko od góry, masz dwie ruchome belki: opuszczasz górną i patrzysz w niebo, podnosisz dolną i nikt nie zagląda Ci do salonu. Tkanina złożona w harmonijkę chowa się w skrzydle okna — bez rury, bez łańcuszka — a przy uchylaniu i otwieraniu jedzie razem z oknem.</p>" +
-  "<p><strong>Jesteśmy producentem, nie pośrednikiem.</strong> Każdą plisę robimy na wymiar w naszym zakładzie w Szczecinku. Wpisujesz szerokość i wysokość w milimetrach, wybierasz tkaninę ze 150 wzorów, kolor profili i sposób montażu — z wierceniem albo na uchwytach bez wiercenia. Cenę widzisz od razu. Po 5–10 dniach roboczych plisa jest u Ciebie, a montaż zajmuje kwadrans z wkrętakiem.</p>" +
-  "<p>Najmniejsza plisa kosztuje 77 zł, a z kodem SEZON20 o 20% mniej. Masz 30 dni na zwrot i 5 lat gwarancji — jeśli coś Ci nie pasuje, odsyłasz i dostajesz pieniądze.</p>";
+  "<p><strong>Plisy okienne</strong> to osłony z tkaniny plisowanej, montowane bezpośrednio na skrzydle okna. W odróżnieniu od rolety mają dwie ruchome listwy: tkaninę przesuwasz z góry i z dołu i zasłaniasz tylko tę część okna, którą chcesz. Plisa nie przeszkadza w otwieraniu i uchylaniu okna, nie ma sznurków ani łańcuszków, a złożona zajmuje zaledwie kilka centymetrów.</p>" +
+  "<p><strong>Produkujemy plisy sami, w Polsce.</strong> Jesteśmy producentem osłon okiennych. Każdą plisę wykonujemy na indywidualny wymiar, z aluminiowymi profilami w 10 kolorach i tkaninami z 5 kolekcji: od przepuszczających światło, przez termoizolacyjne plastry miodu, po w pełni zaciemniające. Wszystkie tkaniny są antystatyczne i łatwe w czyszczeniu.</p>" +
+  "<p><strong>Zamawiasz online w kilka minut.</strong> Wybierasz sposób montażu, kolor profili i tkaninę, wpisujesz wymiary i od razu widzisz cenę. Plisę produkujemy w 5–10 dni roboczych i wysyłamy kurierem w 24 h od wyprodukowania. Darmowa dostawa od 79 zł, 5 lat gwarancji, 30 dni na zwrot.</p>";
 
 export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
   {
-    label: "Na wymiar co do milimetra",
+    label: "Na wymiar, co do milimetra",
     value:
-      "Wpisujesz szerokość i wysokość, resztą zajmujemy się my. Plisa wchodzi między listwy przyszybowe jak część okna — bez prześwitów po bokach, bez docinania w domu.",
+      "Każda plisa jest produkowana pod wymiar Twojego okna. Podajesz szerokość i wysokość w milimetrach, my wykonujemy resztę. Pasuje do okien i drzwi balkonowych PCV, drewnianych i aluminiowych.",
   },
   {
-    label: "Od góry, od dołu albo sam środek",
+    label: "Regulacja z góry i z dołu",
     value:
-      "Dwie belki, zero sznurków z boku. Rano opuszczasz górną i wpuszczasz światło, wieczorem zasłaniasz całość. Sąsiad z naprzeciwka przestaje być tematem.",
+      "Dwie ruchome listwy pozwalają zasłonić dowolną część okna: górę, dół albo środek. Pełna kontrola światła i prywatności bez rezygnacji z widoku.",
   },
   {
-    label: "Montaż w 15 minut — z wierceniem lub bez",
+    label: "Montaż bez wiercenia lub z wierceniem",
     value:
-      "STANDARD: cztery wkręty w listwie przyszybowej, nic nie odstaje. Bezinwazyjny (od +4,90 zł): uchwyty na skrzydło, bez śladu — do mieszkania na wynajem i okien na gwarancji.",
+      "Uchwyty bezinwazyjne zakładane na skrzydło (bez śladów, łatwy demontaż) albo montaż standardowy w listwach przyszybowych. Montaż zajmuje około 15 minut, zestaw montażowy jest w komplecie.",
   },
   {
-    label: "Zero ryzyka: 30 dni na zwrot, 5 lat gwarancji",
+    label: "5 lat gwarancji i 30 dni na zwrot",
     value:
-      "Jeżeli plisa nie spełni oczekiwań, odsyłasz ją w 30 dni i oddajemy pieniądze. Źle zmierzysz? Napisz zaraz po zamówieniu — przed produkcją poprawiamy wymiar bezpłatnie.",
+      "Plisy produkujemy sami, dlatego dajemy na nie 5 lat gwarancji. Jeżeli produkt nie spełni Twoich oczekiwań, masz 30 dni na zwrot.",
   },
 ];
 
 export const PLISY_FEATURE_BULLETS: PlisyFeatureBullet[] = [
   {
+    lead: "Plisy na wymiar",
+    detail: "produkowane pod wymiar Twojego okna: szerokość od 40 do 210 cm, wysokość od 60 do 230 cm",
+  },
+  {
+    lead: "Regulacja z góry i z dołu",
+    detail: "dowolny przesuw tkaniny na oknie, bez sznurków i łańcuszków",
+  },
+  {
+    lead: "Montaż bezinwazyjny",
+    detail: "uchwyty PCV lub metalowe zakładane na skrzydło okna, bez wiercenia, z możliwością demontażu bez śladu",
+  },
+  {
     lead: "150 tkanin w 5 kolekcjach",
-    detail: "od lekkich, rozpraszających światło, po pełny blackout i termoizolacyjny plaster miodu — każda z kodem producenta, więc dokupisz identyczną",
+    detail: "Klasyczne, Reflex, Blackout, DUO plaster miodu i DUO TERMO: od przepuszczających światło po w pełni zaciemniające",
   },
   {
     lead: "10 kolorów profili",
-    detail: "biel, brąz, anoda, antracyt, oliwka, czarny mat i cztery drewnopodobne — dopasujesz do każdej stolarki",
+    detail: "biel, brąz, anoda, antracyt, oliwka, czarny mat, sosna, winchester, złoty dąb, orzech",
   },
   {
-    lead: "Sterowanie od góry i od dołu",
-    detail: "tkanina zatrzymuje się w dowolnym miejscu okna; żadnych sznurków ani łańcuszków zwisających z boku",
+    lead: "Tkaniny antystatyczne",
+    detail: "nie przyciągają kurzu, do czyszczenia wystarczy wilgotna ściereczka",
   },
   {
-    lead: "Trzy sposoby montażu",
-    detail: "STANDARD wkręcany przy szybie, bezinwazyjny PCV lub METAL na skrzydło — te dwa bez wiercenia i bez śladu",
-  },
-  {
-    lead: "Nie blokuje uchylania ani otwierania",
-    detail: "plisa jedzie razem ze skrzydłem, klamka zostaje wolna",
-  },
-  {
-    lead: "Okna od 40 do 210 cm szerokości i do 230 cm wysokości",
-    detail: "pokoje, kuchnie, łazienki, drzwi balkonowe — każdy wymiar w tym zakresie robimy na zamówienie",
-  },
-  {
-    lead: "Wszystko w komplecie",
-    detail: "uchwyty, wkręty i instrukcja w paczce; potrzebujesz tylko wkrętaka i kwadransa",
+    lead: "Nie przeszkadza w otwieraniu okna",
+    detail: "plisa porusza się razem ze skrzydłem, klamka pozostaje wolna",
   },
 ];
 
@@ -190,9 +190,8 @@ export const PLISY_COLLECTIONS: PlisyCollectionRow[] = [
 ];
 
 export const PLISY_CALLOUT = {
-  title: `Producent ze Szczecinka: realizacja ${PLISY_LEAD_TIME_LABEL}, kurier w 24 h`,
-  body:
-    "Plisę robimy u siebie, na Twój wymiar — bez pośredników i bez czekania na wycenę mailem. Po wyprodukowaniu paczka wychodzi kurierem w 24 h; od 79 zł dostawa jest darmowa. Kilka okien? Dodasz kolejne wymiary do jednego zamówienia i zapłacisz za jedną przesyłkę.",
+  title: "Polski producent: plisy wykonujemy sami, we własnym zakładzie",
+  body: `Nie sprowadzamy gotowych plis, produkujemy je na Twój wymiar. Realizacja ${PLISY_LEAD_TIME_LABEL}, wysyłka kurierem w 24 h od wyprodukowania, darmowa dostawa od 79 zł. Zamawiając plisy do kilku okien, dodajesz kolejne wymiary do jednego zamówienia.`,
 };
 
 // FAQ, rewritten 2026-09-16 against what the market answers (Karnix,
@@ -206,7 +205,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Ile kosztuje plisa na wymiar?",
     answer:
-      "Najmniejsza plisa (40 × 60 cm, kolekcja Klasyczne, montaż STANDARD) kosztuje 77 zł. Cena rośnie z wymiarem i zależy od kolekcji tkaniny — dokładną kwotę dla swojego okna zobaczysz w konfiguratorze po wpisaniu szerokości i wysokości, bez rejestracji i bez podawania telefonu. Kod SEZON20 obniża ją o 20 %. Orientacyjne ceny dla wybranego wymiaru pokazuje też sekcja „Którą kolekcję tkanin wybrać?”.",
+      "Cena zależy od wymiaru, kolekcji tkaniny i sposobu montażu. Najmniejsza plisa 40 × 60 cm w kolekcji Klasyczne kosztuje 77 zł. Dokładną cenę dla swojego okna sprawdzisz w konfiguratorze po wpisaniu wymiarów, bez rejestracji. Kod SEZON20 obniża cenę o 20 %.",
   },
   {
     question: "Czym plisa różni się od rolety?",
@@ -275,7 +274,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   },
   {
     question: "Jak długo czekam na plisę?",
-    answer: `Każda plisa powstaje na Twój wymiar w naszym zakładzie w Szczecinku. Realizacja to ${PLISY_LEAD_TIME_LABEL}, potem kurier dostarcza paczkę w 24 h. Darmowa dostawa od 79 zł.`,
+    answer: `Każdą plisę produkujemy na Twój wymiar we własnym zakładzie w Polsce. Realizacja to ${PLISY_LEAD_TIME_LABEL}, potem kurier dostarcza paczkę w 24 h. Darmowa dostawa od 79 zł.`,
   },
   {
     question: "Czy mogę zamówić próbki tkanin?",

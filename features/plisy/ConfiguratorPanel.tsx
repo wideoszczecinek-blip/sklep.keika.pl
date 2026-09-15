@@ -415,7 +415,7 @@ export default function ConfiguratorPanel({
     <>
       <header>
         <strong>Wyceń plisę do swojego okna</strong>
-        <p>4 kroki, cena od razu — bez maila i telefonu.</p>
+        <p>Wybierz montaż, kolor profili i tkaninę, wpisz wymiary. Cena od razu.</p>
       </header>
 
       {profile.mountOptions.length > 0 ? (
