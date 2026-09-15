@@ -53,8 +53,8 @@ type Spec = {
   sub: string;
   target: { x: number; y: number };
   targetName: string;
-  width: { from: number; to: number; mm: number; how: string };
-  height: { from: number; to: number; mm: number; how: string };
+  width: { from: number; to: number; mm: number; how: string; a: string; b: string };
+  height: { from: number; to: number; mm: number; how: string; a: string; b: string };
   note: string;
 };
 
@@ -64,8 +64,8 @@ const MODES: Record<Mode, Spec> = {
     sub: "wkręcany przy szybie",
     target: { x: M.x0, y: M.y0 },
     targetName: "połowa uszczelki",
-    width: { from: M.x0, to: M.x1, mm: 620, how: "od połowy uszczelki do połowy uszczelki" },
-    height: { from: M.y0, to: M.y1, mm: 1180, how: "od połowy uszczelki do połowy uszczelki" },
+    width: { from: M.x0, to: M.x1, mm: 620, how: "od połowy uszczelki do połowy uszczelki", a: "od połowy uszczelki", b: "do połowy uszczelki" },
+    height: { from: M.y0, to: M.y1, mm: 1180, how: "od połowy uszczelki do połowy uszczelki", a: "od połowy uszczelki", b: "do połowy uszczelki" },
     note: "Nic nie odejmuj — połowa uszczelki z każdej strony to dokładnie luz, którego potrzebuje profil, żeby wejść między listwy.",
   },
   bezinwazyjny: {
@@ -73,8 +73,8 @@ const MODES: Record<Mode, Spec> = {
     sub: "uchwyty na skrzydło",
     target: { x: K.x0, y: K.y0 },
     targetName: "kreseczka",
-    width: { from: K.x0, to: K.x1, mm: 690, how: "od kreseczki do kreseczki — szyba razem z listwami" },
-    height: { from: SASH.y, to: SASH.y + SASH.h, mm: 1320, how: "całe skrzydło, od góry do dołu ramy" },
+    width: { from: K.x0, to: K.x1, mm: 690, how: "od kreseczki do kreseczki — szyba razem z listwami", a: "od kreseczki", b: "do kreseczki" },
+    height: { from: SASH.y, to: SASH.y + SASH.h, mm: 1320, how: "całe skrzydło, od góry do dołu ramy", a: "od góry ramy", b: "do dołu ramy" },
     note: "Kreseczka to cienka linia, w której listwa przyszybowa łączy się z ramą skrzydła. Nic nie odejmuj; zostaw 5 mm od klamki.",
   },
 };
@@ -188,25 +188,78 @@ function Tape({
   );
 }
 
-/* Result chip that stays once a dimension is measured. */
-function Chip({ x, y, label, mm, opacity }: { x: number; y: number; label: string; mm: number; opacity: number }) {
+/* Short "od ... / do ..." tag at one end of the tape. */
+function EndLabel({ x, y, text, anchor, opacity }: { x: number; y: number; text: string; anchor: "start" | "end"; opacity: number }) {
   if (opacity <= 0.01) return null;
+  const w = Math.round(text.length * 7.6) + 22;
+  const rx = anchor === "start" ? x : x - w;
   return (
     <g opacity={opacity}>
-      <rect x={x - 96} y={y - 19} width={192} height={38} rx="9" fill="#0e1a2a" />
-      <text x={x - 84} y={y + 6} fill="#ffc45c" fontSize="15" fontWeight="800">
-        {label}
+      <rect x={rx} y={y - 13} width={w} height={26} rx="7" fill="#ef4444" />
+      <text x={rx + w / 2} y={y + 5} textAnchor="middle" fill="#fff" fontSize="13" fontWeight="800">
+        {text}
       </text>
-      <text x={x + 84} y={y + 6} textAnchor="end" fill="#e2ecf8" fontSize="16" fontWeight="900" style={{ fontVariantNumeric: "tabular-nums" }}>
-        {mm} mm
+    </g>
+  );
+}
+
+/* Notepad in the corner: the readings get written in pencil as they land.
+ * wWrite / hWrite are 0..1 writing progress per line. Takes the corner the
+ * magnifier vacates after step 1. */
+const PAD = { x: 662, y: 462, w: 226, h: 176 };
+const HAND = '"Segoe Print", "Bradley Hand", "Comic Sans MS", "Chalkboard", cursive';
+
+function Notepad({ opacity, wWrite, hWrite, wmm, hmm, clipId }: { opacity: number; wWrite: number; hWrite: number; wmm: number; hmm: number; clipId: string }) {
+  if (opacity <= 0.01) return null;
+  const textW = 160;
+  const w1 = textW * wWrite;
+  const w2 = textW * hWrite;
+  const writing = (wWrite > 0 && wWrite < 1) || (hWrite > 0 && hWrite < 1);
+  const penX = PAD.x + 24 + (hWrite > 0 ? w2 : w1);
+  const penY = PAD.y + (hWrite > 0 ? 122 : 88);
+  return (
+    <g opacity={opacity} transform={`rotate(-4 ${PAD.x + PAD.w / 2} ${PAD.y + PAD.h / 2})`}>
+      <rect x={PAD.x + 4} y={PAD.y + 6} width={PAD.w} height={PAD.h} rx="6" fill="#000" opacity="0.18" />
+      <rect x={PAD.x} y={PAD.y} width={PAD.w} height={PAD.h} rx="6" fill="#fff8dc" stroke="#d9c58a" strokeWidth="1.5" />
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <g key={i}>
+          <circle cx={PAD.x + 24 + i * 30} cy={PAD.y + 8} r="5" fill="none" stroke="#6b7280" strokeWidth="2" />
+          <rect x={PAD.x + 21 + i * 30} y={PAD.y - 6} width="6" height="14" rx="3" fill="#9ca3af" />
+        </g>
+      ))}
+      {[62, 96, 130, 164].map((dy) => (
+        <line key={dy} x1={PAD.x + 14} y1={PAD.y + dy} x2={PAD.x + PAD.w - 14} y2={PAD.y + dy} stroke="#e5d9b6" strokeWidth="1" />
+      ))}
+      <text x={PAD.x + 20} y={PAD.y + 44} fill="#374151" fontSize="17" fontWeight="700" style={{ fontFamily: HAND }}>
+        Okno — salon
       </text>
+      <clipPath id={`${clipId}w`}>
+        <rect x={PAD.x + 16} y={PAD.y + 66} width={w1} height={34} />
+      </clipPath>
+      <clipPath id={`${clipId}h`}>
+        <rect x={PAD.x + 16} y={PAD.y + 100} width={w2} height={34} />
+      </clipPath>
+      <text x={PAD.x + 22} y={PAD.y + 90} fill="#1f2937" fontSize="20" fontWeight="700" style={{ fontFamily: HAND }} clipPath={`url(#${clipId}w)`}>
+        szer. {wmm} mm
+      </text>
+      <text x={PAD.x + 22} y={PAD.y + 124} fill="#1f2937" fontSize="20" fontWeight="700" style={{ fontFamily: HAND }} clipPath={`url(#${clipId}h)`}>
+        wys. {hmm} mm
+      </text>
+      {writing ? (
+        <g transform={`translate(${penX} ${penY}) rotate(-38)`}>
+          <rect x="0" y="-5" width="70" height="10" rx="2" fill="#fbbf24" stroke="#92400e" strokeWidth="1" />
+          <rect x="58" y="-5" width="12" height="10" rx="2" fill="#f87171" />
+          <path d="M0 -5 L-12 0 L0 5 z" fill="#f5d0a9" stroke="#92400e" strokeWidth="1" />
+          <path d="M-12 0 L-7 -2 L-7 2 z" fill="#1f2937" />
+        </g>
+      ) : null}
     </g>
   );
 }
 
 export default function PlisyMeasureGuide() {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
-  const ID = { clip: `plmgClip${uid}`, shadow: `plmgShadow${uid}`, sheen: `plmgSheen${uid}` };
+  const ID = { clip: `plmgClip${uid}`, shadow: `plmgShadow${uid}`, sheen: `plmgSheen${uid}`, pad: `plmgPad${uid}` };
 
   const [mode, setMode] = useState<Mode>("standard");
   const [run, setRun] = useState(0);
@@ -249,15 +302,15 @@ export default function PlisyMeasureGuide() {
   const wP = pull(seg(t, T.wPull));
   const wBlade = wLen * wP;
   const wReading = t >= T.wPull[0] ? Math.round(m.width.mm * Math.min(1, wP)) : null;
-  const wChipO = easeOut(seg(t, T.wSettle));
+  const wWrite = easeInOut(seg(t, T.wSettle));
 
   const hO = easeOut(seg(t, T.hMove));
   const hP = pull(seg(t, T.hPull));
   const hBlade = hLen * hP;
   const hReading = t >= T.hPull[0] ? Math.round(m.height.mm * Math.min(1, hP)) : null;
-  const hChipO = easeOut(seg(t, T.hSettle));
+  const hWrite = easeInOut(seg(t, T.hSettle));
+  const padO = easeOut(seg(t, [T.lupaOut[1], T.lupaOut[1] + 400] as const));
 
-  const doneO = easeOut(seg(t, T.done));
 
   const stepIndex = STEPS.reduce((acc, s, i) => (t >= s.from ? i : acc), 0);
   const caption =
@@ -267,7 +320,7 @@ export default function PlisyMeasureGuide() {
         ? `Szerokość: ${m.width.how}`
         : stepIndex === 2
           ? `Wysokość: ${m.height.how}`
-          : "Wpisz oba wymiary w milimetrach w konfiguratorze";
+          : "Przepisz wymiary z notatnika do konfiguratora — w milimetrach";
 
   // Magnifier maths.
   const z = LUPA.zoom;
@@ -348,9 +401,22 @@ export default function PlisyMeasureGuide() {
             </g>
           ) : null}
 
-          {/* result chips stay after each measurement */}
-          <Chip x={m.width.from + wLen / 2} y={TAPE_W_Y - 62} label="Szerokość" mm={m.width.mm} opacity={wChipO * (1 - doneO)} />
-          <Chip x={TAPE_H_X + 150} y={m.height.from + hLen * 0.6} label="Wysokość" mm={m.height.mm} opacity={hChipO * (1 - doneO)} />
+          {/* "od ... / do ..." at both ends of the current tape */}
+          {showW ? (
+            <>
+              <EndLabel x={m.width.from} y={TAPE_W_Y + 34} text={m.width.a} anchor="start" opacity={wO} />
+              <EndLabel x={m.width.to} y={TAPE_W_Y + 34} text={m.width.b} anchor="end" opacity={wO * easeOut(seg(wP, [0.85, 1] as const))} />
+            </>
+          ) : null}
+          {showH ? (
+            <>
+              <EndLabel x={TAPE_H_X + 40} y={m.height.from + 4} text={m.height.a} anchor="start" opacity={hO} />
+              <EndLabel x={TAPE_H_X + 40} y={m.height.to - 4} text={m.height.b} anchor="start" opacity={hO * easeOut(seg(hP, [0.85, 1] as const))} />
+            </>
+          ) : null}
+
+          {/* notepad takes the corner the magnifier leaves */}
+          <Notepad opacity={padO} wWrite={wWrite} hWrite={hWrite} wmm={m.width.mm} hmm={m.height.mm} clipId={ID.pad} />
 
           {/* the tape: width, then height */}
           {showW ? <Tape x={m.width.from} y={TAPE_W_Y} len={wBlade} vertical={false} reading={wReading} opacity={wO} /> : null}
@@ -395,32 +461,6 @@ export default function PlisyMeasureGuide() {
             </g>
           ) : null}
 
-          {/* finale */}
-          {doneO > 0.01 ? (
-            <g opacity={doneO} transform={`translate(0 ${(1 - doneO) * 20})`}>
-              <rect x="250" y="330" width="500" height="150" rx="16" fill="#0e1a2a" filter={`url(#${ID.shadow})`} />
-              <text x="500" y="372" textAnchor="middle" fill="#e2ecf8" fontSize="17" fontWeight="700">
-                Wpisz w konfiguratorze (mm)
-              </text>
-              <rect x="285" y="392" width="200" height="60" rx="10" fill="rgba(255,255,255,0.06)" stroke="#ffc45c" strokeWidth="1.5" />
-              <text x="385" y="415" textAnchor="middle" fill="#ffc45c" fontSize="12" fontWeight="800">
-                SZEROKOŚĆ
-              </text>
-              <text x="385" y="441" textAnchor="middle" fill="#fff" fontSize="24" fontWeight="900">
-                {m.width.mm}
-              </text>
-              <rect x="515" y="392" width="200" height="60" rx="10" fill="rgba(255,255,255,0.06)" stroke="#ffc45c" strokeWidth="1.5" />
-              <text x="615" y="415" textAnchor="middle" fill="#ffc45c" fontSize="12" fontWeight="800">
-                WYSOKOŚĆ
-              </text>
-              <text x="615" y="441" textAnchor="middle" fill="#fff" fontSize="24" fontWeight="900">
-                {m.height.mm}
-              </text>
-              <text x="500" y="470" textAnchor="middle" fill="#9fb3c8" fontSize="11.5" fontWeight="600">
-                wartości przykładowe — u Ciebie będą inne
-              </text>
-            </g>
-          ) : null}
         </svg>
 
         <button type="button" className="plmg-replay" onClick={() => setRun((r) => r + 1)} aria-label="Odtwórz animację ponownie">
