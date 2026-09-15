@@ -33,6 +33,40 @@ type CrmReview = { author: string; stars: number; text: string; date: string };
 // rating across its sales channels; individual reviews he adds himself in
 // the CRM and they render below it without any labels.
 const COMPANY_RATING_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/allegro_offer_rating_public.php?slug=moskitiery-ramkowe";
+// Real customer reviews of KEIKA across its sales channels (CRM feed:
+// both Allegro accounts via the seller-ratings API + reviews the owner
+// copies in by hand from Google / Facebook). Shown as plain entries, no
+// source labels - owner's call, 2026-09-16.
+const COMPANY_REVIEWS_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/company_reviews_public.php";
+type CompanyReview = { id: string; author: string; date: string; stars: number; text: string };
+
+function useCompanyReviews(): CompanyReview[] {
+  const [rows, setRows] = useState<CompanyReview[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetch(COMPANY_REVIEWS_URL)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!alive || !j?.ok || !Array.isArray(j.reviews)) return;
+        setRows(
+          j.reviews
+            .map((r: Record<string, unknown>) => ({
+              id: String(r.id || ""),
+              author: String(r.author || "Klient"),
+              date: String(r.date || ""),
+              stars: Math.min(5, Math.max(1, Number(r.stars) || 5)),
+              text: String(r.text || "").trim(),
+            }))
+            .filter((r: CompanyReview) => r.text),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return rows;
+}
 type CompanyRating = { average: number; total: number; distribution: { stars: number; count: number }[] };
 
 function CompanyRatingBlock() {
@@ -84,6 +118,7 @@ function CompanyRatingBlock() {
 export default function PlisyReviews({ crmReviews }: { crmReviews?: CrmReview[] }) {
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [visible, setVisible] = useState(PAGE);
+  const companyReviews = useCompanyReviews();
 
   // Reviews entered in the CRM (Sklep WWW -> Produkty i konfiguratory ->
   // plisy -> Opinie) replace the generated placeholders outright - and with
@@ -110,25 +145,37 @@ export default function PlisyReviews({ crmReviews }: { crmReviews?: CrmReview[] 
   const hasMore = shown.length < filtered.length;
 
   if (!total || usingCrm) {
+    const combined: CompanyReview[] = [
+      ...fromCrm.map((r, i) => ({ id: `crm-${i}`, author: r.maskedLogin, date: r.date, stars: r.stars, text: r.body })),
+      ...companyReviews,
+    ];
+    const shownCombined = combined.slice(0, visible);
     return (
       <div className="hero-product-allegro-reviews">
         <CompanyRatingBlock />
-        {usingCrm ? (
+        {combined.length ? (
           <ul className="hero-product-reviews">
-            {fromCrm.map((review, index) => (
-              <li key={`${review.date}-${review.maskedLogin}-${index}`}>
+            {shownCombined.map((review) => (
+              <li key={review.id}>
                 <div className="allegro-review-meta">
-                  <strong>{review.maskedLogin}</strong>
+                  <strong>{review.author}</strong>
                   <span>{review.date}</span>
                   <span className="allegro-review-estimated-stars" aria-label={`${review.stars} na 5`}>
                     {"★".repeat(review.stars)}
                     {"☆".repeat(5 - review.stars)}
                   </span>
                 </div>
-                <p>{review.body}</p>
+                <p>{review.text}</p>
               </li>
             ))}
           </ul>
+        ) : null}
+        {shownCombined.length < combined.length ? (
+          <div className="hero-product-reviews-load-more">
+            <button type="button" className="hero-product-reviews-load-more-btn" onClick={() => setVisible((v) => v + PAGE)}>
+              Pokaż więcej opinii ({combined.length - shownCombined.length})
+            </button>
+          </div>
         ) : null}
       </div>
     );
