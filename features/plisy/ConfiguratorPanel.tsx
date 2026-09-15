@@ -54,9 +54,13 @@ export default function ConfiguratorPanel({
   onSubmit,
   onAddVariant,
   onZoom,
+  onOpenMeasureGuide,
 }: {
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
+  /** Opens the landing's animated measuring guide (the "Pomiar" instruction
+   * step in a single-step modal). Optional: /koszyk's edit modal has no landing. */
+  onOpenMeasureGuide?: () => void;
   onSubmit: (result: ConfiguratorResult) => void;
   // Used by handleFinalSubmit for every position in the customer's set
   // except the last one - same mount/hardware/fabric selection, just a
@@ -796,7 +800,16 @@ export default function ConfiguratorPanel({
                     <div className="hero-product-step-body">
                       <div className="plisy-position-form">
                         <p className="hero-product-config-hint">
-                          Zmierz szerokość i wysokość otworu okiennego (mm) i podaj ilość sztuk w tym rozmiarze.
+                          Wymiar zależy od montażu: STANDARD — od połowy uszczelki do połowy uszczelki; bezinwazyjny — od kreseczki do
+                          kreseczki i całe skrzydło. Podaj w milimetrach i ilość sztuk w tym rozmiarze.
+                          {onOpenMeasureGuide ? (
+                            <>
+                              {" "}
+                              <button type="button" className="plisy-measure-link" onClick={onOpenMeasureGuide}>
+                                📐 Jak mierzyć?
+                              </button>
+                            </>
+                          ) : null}
                         </p>
                         <div className="hero-product-dimensions-grid">
                           <label>

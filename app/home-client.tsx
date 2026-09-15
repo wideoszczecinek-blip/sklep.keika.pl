@@ -128,6 +128,8 @@ const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/Configurat
 import PlisyHeroPhotos from "@/features/plisy/PlisyHeroPhotos";
 import PlisyVisualizer from "@/features/plisy/PlisyVisualizer";
 import PlisyReviews from "@/features/plisy/Reviews";
+import PlisyMeasureGuide from "@/features/plisy/MeasureGuide";
+import { PLISY_INSTRUCTION_STEPS } from "@/features/plisy/instructions";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 
@@ -243,6 +245,8 @@ type ProductInstructionStep = {
   body: string;
   mediaUrl?: string;
   mediaType?: "image" | "video";
+  /** A React-rendered guide instead of a media file (features/plisy/MeasureGuide). */
+  customMedia?: "plisy-measure";
 };
 
 type AllegroOfferRating = {
@@ -659,6 +663,9 @@ function productInstructionSteps(label: string): ProductInstructionStep[] {
   }
   if (normalized.includes("rolet") && normalized.includes("dachow")) {
     return ROLETY_DACHOWE_INSTRUCTION_STEPS;
+  }
+  if (/^plis/.test(normalized)) {
+    return PLISY_INSTRUCTION_STEPS;
   }
   return GENERIC_INSTRUCTION_STEPS;
 }
@@ -3583,12 +3590,22 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             <div className="pl-spec-grid">
                               {(productLanding?.specItems?.length ? productLanding.specItems : PLISY_SPEC_ITEMS).map((item) => {
                                 const icon = plisySpecIcon(item.label);
+                                // "Jak mierzyć?" hangs off the sizing tile - same
+                                // single-step popup the configurator's dimensions
+                                // step and the Instrukcje tab open (MeasureGuide).
+                                const withMeasureCta = /wymiar/i.test(item.label);
                                 return (
-                                  <div className="pl-spec-item" key={item.label}>
+                                  <div className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`} key={item.label}>
                                     {icon ? <span className="pl-spec-icon">{icon}</span> : null}
                                     <div className="pl-spec-item-text">
                                       <span className="pl-spec-label">{item.label}</span>
                                       <span className="pl-spec-value">{item.value}</span>
+                                      {withMeasureCta ? (
+                                        <button type="button" className="pl-measure-cta" onClick={openMeasurementInstructions}>
+                                          <span aria-hidden="true">📐</span>
+                                          Jak mierzyć? Zobacz animację pomiaru
+                                        </button>
+                                      ) : null}
                                     </div>
                                   </div>
                                 );
@@ -4252,7 +4269,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               }}
                             >
                               <summary>{step.title}</summary>
-                              {step.mediaUrl ? (
+                              {step.customMedia === "plisy-measure" ? (
+                                <div className="hero-product-instruction-media hero-product-instruction-media--guide">
+                                  <PlisyMeasureGuide />
+                                </div>
+                              ) : step.mediaUrl ? (
                                 <div className="hero-product-instruction-media">
                                   {step.mediaType === "video" ? (
                                     <>
@@ -4676,6 +4697,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                   ) : (
                     <PlisyConfiguratorPanel
                       key={plisyConfigKey}
+                      onOpenMeasureGuide={openMeasurementInstructions}
                       initialValues={
                         plisyLastResult
                           ? {
@@ -5362,7 +5384,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
               </button>
             ) : null}
             <h3>{activeInstructionSteps[instructionModalIndex].title}</h3>
-            {activeInstructionSteps[instructionModalIndex].mediaUrl ? (
+            {activeInstructionSteps[instructionModalIndex].customMedia === "plisy-measure" ? (
+              <div className="hero-product-instruction-media hero-product-instruction-media--guide">
+                <PlisyMeasureGuide />
+              </div>
+            ) : activeInstructionSteps[instructionModalIndex].mediaUrl ? (
               <div className="instruction-modal-media">
                 {activeInstructionSteps[instructionModalIndex].mediaType === "video" ? (
                   <>

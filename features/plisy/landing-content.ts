@@ -175,77 +175,116 @@ export const PLISY_CALLOUT = {
     "Każda plisa powstaje na Twój wymiar w naszej produkcji. Po wyprodukowaniu wysyłamy kurierem w 24 h, darmowa dostawa od 79 zł. Kilka okien? W konfiguratorze dodasz kolejne wymiary do jednego zamówienia.",
 };
 
+// FAQ, rewritten 2026-09-16 against what the market answers (Karnix,
+// Sun-Systems, Rolmajster, Karpol, Minirolety, Nasze Domowe Pielesze - all
+// fetched that day) and reordered along the buying path: what it is -> does
+// it fit my window -> mounting -> measuring -> fabric -> ordering -> after.
+// Every number here is ours (matrix range, surcharges, lead time, warranty),
+// not theirs; where a competitor's caveat applies to us too (flush sashes,
+// wooden frames, measuring each window) it is included in our own words.
 export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
-    question: "Czym plisa różni się od zwykłej rolety?",
+    question: "Czym plisa różni się od rolety?",
     answer:
-      "Roleta zasłania okno od góry w dół. Plisa ma dwa uchwyty: zasłonisz dolną część okna, górną albo zostawisz tkaninę pośrodku. Widzisz niebo, sąsiad nie widzi Ciebie. Plisa nie ma rury nawojowej, więc jest cieńsza i lżejsza.",
+      "Roleta zasłania okno tylko od góry w dół. Plisa ma dwie ruchome listwy: zasłonisz dolną część okna, górną albo sam środek — widzisz niebo, sąsiad nie widzi Ciebie. Tkanina jest złożona w harmonijkę, nie nawija się na rurę, więc plisa jest cieńsza, lżejsza i schowana w skrzydle okna.",
+  },
+  {
+    question: "Do jakich okien pasuje plisa?",
+    answer:
+      "Do okien i drzwi balkonowych PCV, drewnianych i aluminiowych, w każdym kształcie prostokątnym. Do okien drewnianych i aluminiowych polecamy montaż STANDARD (wkręcany przy szybie) — uchwyty bezinwazyjne projektowane są pod skrzydła PCV. Do okien dachowych mamy osobny produkt: rolety dachowe, dobierane pod model okna.",
+  },
+  {
+    question: "Jakie wymiary plis wykonujecie?",
+    answer:
+      "Szerokość od 40 do 210 cm, wysokość od 60 do 230 cm — to obejmuje okna, drzwi balkonowe i większość witryn. Wymiar podajesz w milimetrach, produkujemy co do milimetra. Okno spoza tego zakresu? Napisz, sprawdzimy, czy da się je zasłonić dwiema plisami.",
   },
   {
     question: "Czy muszę wiercić w oknie?",
     answer:
-      "Nie musisz. Wybierz montaż bezinwazyjny PCV (+4,90 zł) lub METAL (+19,90 zł): uchwyty zakładane na skrzydło okna, bez wiercenia i bez śladów. Idealne do mieszkań wynajmowanych i nowych okien na gwarancji. Montaż STANDARD (uchwyty przykręcane przy szybie) daje najbardziej wbudowany wygląd.",
+      "Nie musisz. Montaż bezinwazyjny PCV (+4,90 zł) lub METAL (+19,90 zł) to uchwyty zakładane na krawędź skrzydła — bez wiercenia i bez śladu, zdejmiesz je w każdej chwili. Idealne do wynajmowanego mieszkania i okien na gwarancji. Montaż STANDARD to cztery wkręty w listwach przyszybowych: nic nie odstaje, plisa wygląda jak część okna.",
   },
   {
-    question: "Czym różnią się uchwyty bezinwazyjne PCV od metalowych?",
+    question: "Bezinwazyjny PCV czy METAL — który wybrać?",
     answer:
-      "Oba zakłada się na skrzydło okna bez wiercenia. PCV to najtańszy sposób montażu bez wiercenia. Metalowe są sztywniejsze i trwalsze, polecamy je do szerszych i wyższych plis oraz cięższych tkanin DUO.",
+      "Oba zakłada się tak samo, bez wiercenia. PCV wystarcza do typowych okien. METAL to stalowe, sztywniejsze zaczepy — polecamy je do szerokich i wysokich plis, drzwi balkonowych i cięższych tkanin DUO. Jeśli Twoje skrzydło licuje z ramą albo odstaje od niej tylko o kilka milimetrów, napisz do nas przed zamówieniem — sprawdzimy, który uchwyt się zmieści.",
   },
   {
     question: "Jak zmierzyć okno?",
     answer:
-      "W milimetrach, w trzech miejscach (góra, środek, dół), i wpisz najmniejszy wynik. Przy montażu STANDARD mierzysz szerokość i wysokość szyby między listwami przyszybowymi. Przy montażu bezinwazyjnym mierzysz szerokość i wysokość całego skrzydła, bo uchwyty zaczepiają się o jego krawędź. Masz wątpliwość? Napisz na czacie, sprawdzimy pomiar przed produkcją.",
+      "Zależy od montażu, dlatego najpierw wybierz sposób. STANDARD: szerokość i wysokość od połowy uszczelki do połowy uszczelki — nic nie odejmuj. Bezinwazyjny: szerokość od kreseczki do kreseczki (linii, w której listwa przyszybowa łączy się z ramą), wysokość całego skrzydła. Animowany przewodnik jest w zakładce Instrukcje; w konfiguratorze otworzysz go przyciskiem „Jak mierzyć?”.",
   },
   {
-    question: "Czy plisa przeszkadza w uchylaniu i otwieraniu okna?",
-    answer: "Nie. Plisa jest zamocowana do skrzydła i porusza się razem z nim. Klamka pozostaje wolna.",
+    question: "Mam kilka takich samych okien — mogę zmierzyć jedno?",
+    answer:
+      "Lepiej nie. Okna z jednej serii potrafią różnić się o 2–5 mm, a przy montażu STANDARD profil musi wejść między listwy. Zmierz każde skrzydło osobno i wpisz każde jako osobną pozycję — w konfiguratorze robisz to jednym kliknięciem „Dodaj kolejną”.",
+  },
+  {
+    question: "Czy plisa przeszkadza w otwieraniu i uchylaniu okna?",
+    answer:
+      "Nie. Plisa jest przymocowana do skrzydła i porusza się razem z nim, także przy uchylaniu. Klamka zostaje wolna — przy montażu bezinwazyjnym zachowaj tylko 5 mm odstępu profilu od klamki.",
   },
   {
     question: "Która tkanina do sypialni?",
     answer:
-      "Podgumowane (Blackout) albo DUO TERMO. Blackout blokuje światło, DUO TERMO dodatkowo izoluje termicznie i nie ma otworów pod sznurki, więc nie ma punktowych prześwitów. Przy każdej osłonie wewnętrznej zostaje minimalny prześwit na krawędziach, to cecha wszystkich plis i rolet.",
+      "Podgumowane (Blackout) albo DUO TERMO. Blackout blokuje światło podgumowanym rdzeniem. DUO TERMO to plaster miodu z powłoką termiczną: pełne zaciemnienie, bez otworów pod sznurki (więc bez punktowych prześwitów) i najlepsza izolacja w ofercie. Przy każdej osłonie montowanej w skrzydle zostaje kilka milimetrów prześwitu na krawędziach — to cecha plis i rolet, nie wada egzemplarza.",
   },
   {
-    question: "Która tkanina do kuchni i łazienki?",
+    question: "Która tkanina do salonu, a która do kuchni i łazienki?",
     answer:
-      "Klasyczne lub Reflex: gładkie tkaniny poliestrowe, które łatwo przetrzeć wilgotną ściereczką. W jasnych kolorach wnętrze wydaje się większe, ciemne dodają elegancji.",
+      "Do salonu Klasyczne lub DUO plaster miodu: rozpraszają światło, chronią prywatność w dzień, nie zaciemniają. Do kuchni i łazienki Klasyczne lub Reflex — gładki poliester, który wystarczy przetrzeć wilgotną ściereczką. Wszystkie tkaniny mają powłokę antystatyczną, więc kurz osiada wolniej.",
   },
   {
-    question: "Czy plisa chroni przed nagrzewaniem latem?",
+    question: "Czy plisa chroni przed nagrzewaniem latem i zimnem od okna zimą?",
     answer:
-      "Tak, w różnym stopniu. Reflex ma od strony szyby powłokę odbijającą promienie słoneczne. DUO plaster miodu i DUO TERMO tworzą poduszkę powietrzną między dwiema warstwami tkaniny: latem ogranicza nagrzewanie, zimą ucieczkę ciepła przez szybę.",
+      "Tak, w różnym stopniu. Reflex ma od strony szyby powłokę odbijającą słońce — do okien południowych i zachodnich. DUO plaster miodu i DUO TERMO zamykają między dwiema warstwami tkaniny poduszkę powietrzną: latem ogranicza nagrzewanie, zimą ucieczkę ciepła przez szybę. Klasyczne i Podgumowane nie mają właściwości termicznych.",
+  },
+  {
+    question: "Ile światła przepuszcza plisa?",
+    answer:
+      "Klasyczne, Reflex i DUO plaster miodu są półprzepuszczalne: w dzień w pokoju jest jasno, ale nie widać, co dzieje się w środku. Podgumowane i DUO TERMO są zaciemniające. Kolor ma znaczenie w obu grupach — ciemna tkanina półprzepuszczalna przepuści wyraźnie mniej światła niż jasna.",
+  },
+  {
+    question: "Jak dobrać kolor tkaniny i profili?",
+    answer:
+      "Tkanina: 150 kolorów w 5 kolekcjach; jasne optycznie powiększają pokój, ciemne wyglądają elegancko, ale przy tkaninach półprzepuszczalnych zabierają więcej światła. Profile: 10 kolorów — biel, brąz, anoda, antracyt, oliwka, czarny mat i cztery drewnopodobne — dobierasz do stolarki. Część kolorów profili jest z dopłatą; konfigurator pokaże cenę od razu po wyborze.",
   },
   {
     question: "Jak długo czekam na plisę?",
-    answer: `Każda plisa jest produkowana na Twój wymiar w naszym zakładzie w Szczecinku. Czas realizacji to ${PLISY_LEAD_TIME_LABEL}, potem kurier dostarcza paczkę w 24 h. Darmowa dostawa od 79 zł.`,
+    answer: `Każda plisa powstaje na Twój wymiar w naszym zakładzie w Szczecinku. Realizacja to ${PLISY_LEAD_TIME_LABEL}, potem kurier dostarcza paczkę w 24 h. Darmowa dostawa od 79 zł.`,
   },
   {
     question: "Czy mogę zamówić próbki tkanin?",
     answer:
-      "Obecnie nie wysyłamy próbek. Zdjęcia tkanin w konfiguratorze robimy z realnych próbników, a każdy kolor ma kod producenta tkanin (np. PP 151), więc jeśli masz już plisę z tym kodem, dostaniesz identyczną. Pamiętaj, że ekran telefonu może lekko zmienić odcień.",
+      "Obecnie nie wysyłamy próbek. Zdjęcia tkanin w konfiguratorze robimy z realnych próbników, a każdy kolor ma kod producenta (np. PP 151) — jeśli masz już plisę z tym kodem, dostaniesz identyczną. Pamiętaj, że ekran telefonu może lekko zmienić odcień.",
   },
   {
     question: "Co jeśli źle zmierzę?",
     answer:
-      "Napisz do nas od razu po złożeniu zamówienia. Jeśli plisa nie weszła jeszcze do produkcji, poprawimy wymiar. Sprawdź pomiar w trzech miejscach przed zamówieniem: okna bywają krzywe o kilka milimetrów.",
+      "Napisz do nas od razu po złożeniu zamówienia — jeśli plisa nie weszła jeszcze do produkcji, poprawimy wymiar bez kosztów. Plisa produkowana na wymiar nie podlega wymianie z powodu pomyłki w pomiarze, dlatego przed zamówieniem zmierz dwa razy, a przy wątpliwości wyślij nam zdjęcie okna na czacie.",
   },
   {
-    question: "Czy mogę zamówić plisy do kilku okien w różnych wymiarach?",
+    question: "Czy mogę zamówić plisy do kilku okien w jednym zamówieniu?",
     answer:
-      "Tak. W konfiguratorze po wpisaniu wymiaru kliknij „Dodaj kolejną”, wpisz następny wymiar i tak dalej. Wszystkie pozycje trafią do jednego koszyka, a dostawa powyżej 79 zł jest darmowa.",
+      "Tak. Po wpisaniu wymiaru kliknij „Dodaj kolejną”, wpisz następny wymiar — każde okno może mieć inną tkaninę i inny montaż. Wszystko trafia do jednego koszyka, jedna dostawa, a powyżej 79 zł darmowa.",
   },
   {
     question: "Jak czyścić plisę?",
     answer:
-      "Odkurzaczem z miękką końcówką lub suchą ściereczką. Miejscowe zabrudzenia delikatnie wilgotną gąbką z łagodnym detergentem. Nie prać, nie prasować.",
+      "Kurz: odkurzacz z miękką końcówką albo sucha ściereczka, przy złożonej plisie. Plamę: lekko wilgotna gąbka, bez detergentów i bez moczenia całej tkaniny. Nie prać, nie prasować — tkanina straciłaby fałdy.",
+  },
+  {
+    question: "Co się zużywa i czy mogę to naprawić sam?",
+    answer:
+      "Profile są aluminiowe, tkanina nie ma części ruchomych. Jedyne, co z czasem może się poluzować, to napięcie sznurków — regulujesz je samodzielnie supełkiem pod górną listwą, bez narzędzi. Uchwyty bezinwazyjne można zdjąć i założyć ponownie, na przykład do mycia okna.",
   },
   {
     question: "Czy kod SEZON20 działa na plisy?",
     answer:
-      "Tak. Kod SEZON20 obniża cenę plis o 20 %. Aktywuj go na tej stronie lub wpisz w koszyku, rabat zobaczysz w podsumowaniu zamówienia.",
+      "Tak. SEZON20 obniża cenę plis o 20 %. Aktywuj go na tej stronie albo wpisz w koszyku — rabat zobaczysz w podsumowaniu zamówienia.",
   },
   {
-    question: "Jaka jest gwarancja?",
-    answer: "5 lat gwarancji, tak jak na wszystkie produkty KEIKA. Do tego 30 dni na zwrot bez podania przyczyny.",
+    question: "Jaka jest gwarancja i czy mogę zwrócić plisę?",
+    answer:
+      "5 lat gwarancji na plisę, tak jak na wszystkie produkty KEIKA. Do tego 30 dni na zwrot bez podania przyczyny — jeśli plisa nie spełni oczekiwań, odsyłasz ją, a my oddajemy pieniądze.",
   },
 ];
