@@ -2622,6 +2622,7 @@ export default function CartPage() {
                     qty: result.qty,
                     price: result.unitPrice,
                     total: result.totalPrice,
+                    oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
                   });
                   setItems(updated);
                   setEditingItemId(null);

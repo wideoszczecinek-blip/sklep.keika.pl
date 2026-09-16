@@ -395,6 +395,7 @@ export function formatPriceDeltaBadge(priceDelta: number, priceDeltaType: PriceD
 
 export type ConfiguratorInitialValues = {
   mountId?: string;
+  bracketColorId?: string;
   hardwareId?: string;
   fabricGroupId?: string;
   fabricId?: string;
@@ -414,9 +415,58 @@ export type ConfiguratorInitialValues = {
   fabricLabel?: string;
 };
 
+/** Owner rules, 2026-09-16:
+ *  - width above 150 cm ships as an oversized parcel (same one-time
+ *    surcharge tiers as moskitiery ramkowe; the cart charges the highest
+ *    tier once per order - see lib/cart.ts cartOversizeSurcharge);
+ *  - above 110 cm (single fabrics) / 90 cm (DUO honeycomb) the customer
+ *    has to accept that the top rail may sag slightly under the fabric's
+ *    weight - cosmetic, not functional;
+ *  - the non-invasive mount ("Bezinwazyjny") comes in three bracket
+ *    colours chosen in a sub-step right after the rail colour. */
+export const PLISY_OVERSIZE_WIDTH_MM = 1500;
+export const PLISY_OVERSIZE_TIER_2_MM = 2000;
+export const PLISY_OVERSIZE_TIER_1_AMOUNT = 19.9;
+export const PLISY_OVERSIZE_TIER_2_AMOUNT = 29;
+export function plisyOversizeSurcharge(widthMm: number): number {
+  if (!Number.isFinite(widthMm) || widthMm <= PLISY_OVERSIZE_WIDTH_MM) return 0;
+  return widthMm <= PLISY_OVERSIZE_TIER_2_MM ? PLISY_OVERSIZE_TIER_1_AMOUNT : PLISY_OVERSIZE_TIER_2_AMOUNT;
+}
+export const PLISY_SAG_WIDTH_SINGLE_MM = 1100;
+export const PLISY_SAG_WIDTH_DUO_MM = 900;
+export function plisySagWarningWidthMm(fabricGroupId: string): number {
+  return /duo/i.test(String(fabricGroupId || "")) ? PLISY_SAG_WIDTH_DUO_MM : PLISY_SAG_WIDTH_SINGLE_MM;
+}
+export function isPlisyMountNonInvasive(mountIdOrLabel: string | null | undefined): boolean {
+  return /bezinwazyjn/i.test(String(mountIdOrLabel || ""));
+}
+export type BracketColor = { id: string; label: string; color: string };
+export const PLISY_BRACKET_COLORS: BracketColor[] = [
+  { id: "bialy", label: "Biały", color: "#f4f4f1" },
+  { id: "jasny-braz", label: "Jasny brąz", color: "#b98b5e" },
+  { id: "ciemny-braz", label: "Ciemny brąz", color: "#4a3123" },
+];
+/** Cart/CRM label: "Bezinwazyjny · uchwyty: Jasny brąz". Split back with
+ * splitPlisyMountLabel() when /koszyk re-opens the configurator. */
+export const PLISY_BRACKET_LABEL_SEP = " · uchwyty: ";
+export function joinPlisyMountLabel(mountLabel: string, bracketLabel: string | undefined): string {
+  return bracketLabel ? `${mountLabel}${PLISY_BRACKET_LABEL_SEP}${bracketLabel}` : mountLabel;
+}
+export function splitPlisyMountLabel(label: string | undefined): { mountLabel: string; bracketLabel: string } {
+  const raw = String(label || "");
+  const at = raw.indexOf(PLISY_BRACKET_LABEL_SEP);
+  return at < 0 ? { mountLabel: raw, bracketLabel: "" } : { mountLabel: raw.slice(0, at), bracketLabel: raw.slice(at + PLISY_BRACKET_LABEL_SEP.length) };
+}
+
 export type ConfiguratorResult = {
   mountId: string;
   mountLabel: string;
+  /** Non-invasive mount only - the bracket colour sub-step. */
+  bracketColorId: string;
+  bracketColorLabel: string;
+  /** One-time oversized-parcel surcharge this position's width requires
+   * (0 for widths up to 150 cm) - the cart charges the highest one once. */
+  oversizeSurchargeAmount: number;
   hardwareId: string;
   hardwareLabel: string;
   fabricGroupId: string;

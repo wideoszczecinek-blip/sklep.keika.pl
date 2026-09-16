@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Plisy went live 2026-09-16: the menu links to /produkt/plisy and old
+  // links to the placeholder category page both land on the real landing.
+  async redirects() {
+    return [
+      { source: "/produkt/plisy", destination: "/?produkt=plisy", permanent: false },
+      { source: "/kategoria/plisy", destination: "/?produkt=plisy", permanent: false },
+    ];
+  },
   // /?produkt=moskitiery-ramkowe -> /moskitiery-ramkowe lives in proxy.ts
   // (needs to drop just that one query param, which a static redirect
   // rule can't express).

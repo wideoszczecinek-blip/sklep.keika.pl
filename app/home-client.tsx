@@ -917,7 +917,9 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
   }
 
   if (groupSlug === "oslony-wewnetrzne" && /^plisy$/.test(label)) {
-    return "/kategoria/plisy";
+    // Live since 2026-09-16 - the landing, not the placeholder category page
+    // (/kategoria/plisy and /produkt/plisy redirect there too, next.config.ts).
+    return "/produkt/plisy";
   }
 
   if (groupSlug === "oslony-wewnetrzne" && /^zaluzje$/.test(label)) {
@@ -1007,7 +1009,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
     items: [
       { label: "Rolety tradycyjne", iconUrl: iconInside, linkUrl: "/kategoria/oslony-wewnetrzne" },
       { label: "Rolety dzień - noc", iconUrl: iconInside, linkUrl: "/kategoria/rolety-dzien-noc" },
-      { label: "Plisy", iconUrl: iconInside, linkUrl: "/kategoria/plisy" },
+      { label: "Plisy", iconUrl: iconInside, linkUrl: "/produkt/plisy" },
       { label: "Żaluzje", iconUrl: iconInside, linkUrl: "/kategoria/zaluzje" },
       { label: "Rolety rzymskie", iconUrl: iconInside, linkUrl: "/produkt/rolety-rzymskie" },
       { label: "Rolety do okien dachowych", iconUrl: iconInside, linkUrl: "/produkt/rolety-dachowe" },
@@ -4757,6 +4759,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           price: result.unitPrice,
                           total: result.totalPrice,
                           createdAt: new Date().toISOString(),
+                          oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
                         };
                         const items = addCartItem(item);
                         setCartItems(items);
@@ -4785,6 +4788,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           price: result.unitPrice,
                           total: result.totalPrice,
                           createdAt: new Date().toISOString(),
+                          oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
                         };
                         const items = addCartItem(item);
                         setCartItems(items);

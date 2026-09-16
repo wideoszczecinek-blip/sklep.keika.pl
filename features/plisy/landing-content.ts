@@ -96,7 +96,7 @@ export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
   {
     label: "Montaż bez wiercenia lub z wierceniem",
     value:
-      "Uchwyty bezinwazyjne zakładane na skrzydło (bez śladów, łatwy demontaż) albo montaż standardowy w listwach przyszybowych. Montaż zajmuje około 15 minut, zestaw montażowy jest w komplecie.",
+      "Uchwyty bezinwazyjne zakładane na skrzydło (bez śladów, łatwy demontaż, w kolorze białym, jasnym lub ciemnym brązie) albo montaż standardowy w listwach przyszybowych. Montaż zajmuje około 15 minut; wkręty, przymiar montażowy i instrukcja są w komplecie.",
   },
   {
     label: "5 lat gwarancji i 30 dni na zwrot",
@@ -116,7 +116,7 @@ export const PLISY_FEATURE_BULLETS: PlisyFeatureBullet[] = [
   },
   {
     lead: "Montaż bezinwazyjny",
-    detail: "uchwyty PCV lub metalowe zakładane na skrzydło okna, bez wiercenia, z możliwością demontażu bez śladu",
+    detail: "uchwyty zakładane na skrzydło okna, bez wiercenia, z możliwością demontażu bez śladu; w kolorze białym, jasnym lub ciemnym brązie",
   },
   {
     lead: "150 tkanin w 5 kolekcjach",
@@ -215,7 +215,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Do jakich okien pasuje plisa?",
     answer:
-      "Do okien i drzwi balkonowych PCV, drewnianych i aluminiowych, w każdym kształcie prostokątnym. Do okien drewnianych i aluminiowych polecamy montaż STANDARD (wkręcany przy szybie) — uchwyty bezinwazyjne projektowane są pod skrzydła PCV. Do okien dachowych mamy osobny produkt: rolety dachowe, dobierane pod model okna.",
+      "Do okien i drzwi balkonowych PCV, drewnianych i aluminiowych, w każdym kształcie prostokątnym. Do okien drewnianych i aluminiowych polecamy montaż STANDARD (wkręcany przy szybie) — uchwyty bezinwazyjne projektowane są pod skrzydła z PCV. Do okien dachowych mamy osobny produkt: rolety dachowe, dobierane pod model okna.",
   },
   {
     question: "Jakie wymiary plis wykonujecie?",
@@ -225,12 +225,12 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Czy muszę wiercić w oknie?",
     answer:
-      "Nie musisz. Montaż bezinwazyjny PCV (+4,90 zł) lub METAL (+19,90 zł) to uchwyty zakładane na krawędź skrzydła — bez wiercenia i bez śladu, zdejmiesz je w każdej chwili. Idealne do wynajmowanego mieszkania i okien na gwarancji. Montaż STANDARD to cztery wkręty w listwach przyszybowych: nic nie odstaje, plisa wygląda jak część okna.",
+      "Nie musisz. Montaż bezinwazyjny (+29,90 zł) to uchwyty zakładane na krawędź skrzydła — bez wiercenia i bez śladu, zdejmiesz je w każdej chwili. Idealne do wynajmowanego mieszkania i okien na gwarancji. Uchwyty wybierasz w kolorze białym, jasnym brązie lub ciemnym brązie. Montaż STANDARD to cztery wkręty w listwach przyszybowych: nic nie odstaje, plisa wygląda jak część okna. W obu wariantach w paczce są wkręty, specjalny przymiar montażowy i czytelna instrukcja.",
   },
   {
-    question: "Bezinwazyjny PCV czy METAL — który wybrać?",
+    question: "Ile uchwytów do przesuwania ma plisa?",
     answer:
-      "Oba zakłada się tak samo, bez wiercenia. PCV wystarcza do typowych okien. METAL to stalowe, sztywniejsze zaczepy — polecamy je do szerokich i wysokich plis, drzwi balkonowych i cięższych tkanin DUO. Jeśli Twoje skrzydło licuje z ramą albo odstaje od niej tylko o kilka milimetrów, napisz do nas przed zamówieniem — sprawdzimy, który uchwyt się zmieści.",
+      "Plisy do 100 cm szerokości mają jeden uchwyt na środku każdej listwy. Plisy szersze niż 100 cm dostają po dwa uchwyty na listwę, żeby szeroka belka szła równo — ciągniesz za oba naraz. Przy szerokościach powyżej 110 cm (tkaniny pojedyncze) i 90 cm (plaster miodu DUO) profil aluminiowy może się lekko ugiąć pod ciężarem tkaniny — to naturalne, nie wpływa na działanie plisy, tylko na jej wygląd; konfigurator poprosi Cię o potwierdzenie.",
   },
   {
     question: "Jak zmierzyć okno?",
@@ -271,6 +271,11 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
     question: "Jak dobrać kolor tkaniny i profili?",
     answer:
       "Tkanina: 150 kolorów w 5 kolekcjach; jasne optycznie powiększają pokój, ciemne wyglądają elegancko, ale przy tkaninach półprzepuszczalnych zabierają więcej światła. Profile: 10 kolorów — biel, brąz, anoda, antracyt, oliwka, czarny mat i cztery drewnopodobne — dobierasz do stolarki. Część kolorów profili jest z dopłatą; konfigurator pokaże cenę od razu po wyborze.",
+  },
+  {
+    question: "Czy szeroka plisa kosztuje więcej w dostawie?",
+    answer:
+      "Plisy o szerokości powyżej 150 cm wysyłamy jako przesyłkę dłużycową — kurier dolicza za nią jednorazowo 19,90 zł (do 200 cm) lub 29 zł (powyżej 200 cm) za całe zamówienie, niezależnie od liczby plis. Konfigurator pokaże tę dopłatę od razu po wpisaniu szerokości, a koszyk doliczy ją raz.",
   },
   {
     question: "Jak długo czekam na plisę?",

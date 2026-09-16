@@ -25,6 +25,13 @@ import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
   calcPlisyPrice,
+  isPlisyMountNonInvasive,
+  joinPlisyMountLabel,
+  splitPlisyMountLabel,
+  plisyOversizeSurcharge,
+  plisySagWarningWidthMm,
+  PLISY_BRACKET_COLORS,
+  PLISY_OVERSIZE_WIDTH_MM,
   fetchPlisyProfile,
   formatPriceDeltaBadge,
   type ConfiguratorInitialValues,
@@ -45,6 +52,7 @@ type PlisyPosition = {
   qty: number;
   unitPrice: number;
   totalPrice: number;
+  oversizeSurchargeAmount: number;
 };
 
 function formatZl(value: number): string {
@@ -117,6 +125,19 @@ export default function ConfiguratorPanel({
   const [stepZeroCollapsed, setStepZeroCollapsed] = useState(Boolean(initialValues?.mountId));
 
   const [selectedHardwareId, setSelectedHardwareId] = useState(initialValues?.hardwareId || "");
+  // Bracket colour of the non-invasive mount (owner, 2026-09-16): a
+  // required sub-step right after the rail colour, only when "Bezinwazyjny"
+  // is the chosen mount. Resolved from the cart label on /koszyk's edit.
+  const [selectedBracketId, setSelectedBracketId] = useState(() => {
+    if (initialValues?.bracketColorId) return initialValues.bracketColorId;
+    const { bracketLabel } = splitPlisyMountLabel(initialValues?.mountLabel);
+    return PLISY_BRACKET_COLORS.find((entry) => entry.label === bracketLabel)?.id || "";
+  });
+  const [stepBracketCollapsed, setStepBracketCollapsed] = useState(Boolean(selectedBracketId));
+  // "Profil może się ugiąć" acknowledgement for wide blinds - reset when
+  // the collection changes (different threshold) or the width drops back
+  // under it.
+  const [sagAccepted, setSagAccepted] = useState(false);
   const [stepOneChosen, setStepOneChosen] = useState(Boolean(initialValues?.hardwareId));
   const [stepOneCollapsed, setStepOneCollapsed] = useState(Boolean(initialValues?.hardwareId));
 
@@ -207,7 +228,8 @@ export default function ConfiguratorPanel({
   useEffect(() => {
     if (!profile) return;
     if (!selectedMountId && initialValues?.mountLabel) {
-      const match = profile.mountOptions.find((option) => option.label === initialValues.mountLabel);
+      const wanted = splitPlisyMountLabel(initialValues.mountLabel).mountLabel;
+      const match = profile.mountOptions.find((option) => option.label === wanted);
       if (match) {
         setSelectedMountId(match.id);
         setStepZeroChosen(true);
@@ -240,6 +262,12 @@ export default function ConfiguratorPanel({
     () => profile?.hardware.find((option) => option.id === selectedHardwareId) || null,
     [profile, selectedHardwareId],
   );
+  const bracketRequired = isPlisyMountNonInvasive(selectedMount?.id || selectedMount?.label);
+  const selectedBracket = bracketRequired ? PLISY_BRACKET_COLORS.find((entry) => entry.id === selectedBracketId) || null : null;
+  const bracketChosen = !bracketRequired || Boolean(selectedBracket);
+  const stepBracketRef = useRef<HTMLButtonElement | null>(null);
+  // Later step numbers shift by one while the bracket sub-step is showing.
+  const stepShift = bracketRequired ? 1 : 0;
   const selectedFabricGroup = useMemo(
     () => profile?.fabricGroups.find((group) => group.id === selectedFabricGroupId) || null,
     [profile, selectedFabricGroupId],
@@ -287,6 +315,14 @@ export default function ConfiguratorPanel({
       heightNum <= profile.heightMaxMm
     : false;
   const quantityNum = Math.max(1, Number(quantity) || 1);
+  const sagLimitMm = plisySagWarningWidthMm(selectedFabricGroupId);
+  const sagWarning = dimensionsValid && widthNum > sagLimitMm;
+  const sagBlocked = sagWarning && !sagAccepted;
+  const oversizeSurcharge = dimensionsValid ? plisyOversizeSurcharge(widthNum) : 0;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSagAccepted(false);
+  }, [selectedFabricGroupId]);
 
   const matrixUnitPrice =
     profile && dimensionsValid && selectedHardwareId && selectedFabricGroupId
@@ -307,7 +343,7 @@ export default function ConfiguratorPanel({
   // the set, then clears the fields so the next size can go straight in.
   // Nothing is sent to the parent/cart yet - see handleFinalSubmit.
   function handleAddPosition() {
-    if (!dimensionsValid || unitPrice === null || totalPrice === null) return;
+    if (!dimensionsValid || unitPrice === null || totalPrice === null || sagBlocked) return;
     setPositions((prev) => [
       ...prev,
       {
@@ -317,11 +353,13 @@ export default function ConfiguratorPanel({
         qty: quantityNum,
         unitPrice,
         totalPrice,
+        oversizeSurchargeAmount: oversizeSurcharge,
       },
     ]);
     setWidth("");
     setHeight("");
     setQuantity("1");
+    setSagAccepted(false);
   }
 
   function handleRemovePosition(id: string) {
@@ -338,9 +376,10 @@ export default function ConfiguratorPanel({
   // form too, and a valid one still sitting in the fields gets folded into
   // the set right before it's sent, so nothing typed-but-not-yet-added is
   // silently dropped.
-  const canFinalSubmit = positions.length > 0 || (dimensionsValid && totalPrice !== null);
+  const canFinalSubmit = bracketChosen && !sagBlocked && (positions.length > 0 || (dimensionsValid && totalPrice !== null));
 
   function handleFinalSubmit() {
+    if (!canFinalSubmit) return;
     const finalPositions = [...positions];
     if (dimensionsValid && unitPrice !== null && totalPrice !== null) {
       finalPositions.push({
@@ -350,13 +389,16 @@ export default function ConfiguratorPanel({
         qty: quantityNum,
         unitPrice,
         totalPrice,
+        oversizeSurchargeAmount: oversizeSurcharge,
       });
     }
     if (finalPositions.length === 0) return;
 
     const base = {
       mountId: selectedMount?.id || "",
-      mountLabel: selectedMount?.label || "",
+      mountLabel: joinPlisyMountLabel(selectedMount?.label || "", selectedBracket?.label),
+      bracketColorId: selectedBracket?.id || "",
+      bracketColorLabel: selectedBracket?.label || "",
       hardwareId: selectedHardware?.id || "",
       hardwareLabel: selectedHardware?.label || "",
       fabricGroupId: selectedFabricGroup?.id || "",
@@ -378,6 +420,7 @@ export default function ConfiguratorPanel({
         qty: position.qty,
         unitPrice: position.unitPrice,
         totalPrice: position.totalPrice,
+        oversizeSurchargeAmount: position.oversizeSurchargeAmount,
       };
       if (index < finalPositions.length - 1 && onAddVariant) {
         onAddVariant(result);
@@ -456,6 +499,11 @@ export default function ConfiguratorPanel({
                         setSelectedMountId(option.id);
                         setStepZeroCollapsed(true);
                         if (!stepZeroChosen) setStepZeroChosen(true);
+                        if (!isPlisyMountNonInvasive(option.id) && !isPlisyMountNonInvasive(option.label)) {
+                          setSelectedBracketId("");
+                        } else {
+                          setStepBracketCollapsed(false);
+                        }
                         window.setTimeout(() => {
                           scrollStepIntoView(stepOneRef.current);
                         }, 380);
@@ -573,7 +621,7 @@ export default function ConfiguratorPanel({
                       setStepOneCollapsed(true);
                       if (!stepOneChosen) setStepOneChosen(true);
                       window.setTimeout(() => {
-                        scrollStepIntoView(stepTwoRef.current);
+                        scrollStepIntoView(bracketRequired && !selectedBracketId ? stepBracketRef.current : stepTwoRef.current);
                       }, 380);
                     }}
                   >
@@ -604,7 +652,71 @@ export default function ConfiguratorPanel({
         </div>
       </section>
 
-      {stepOneChosen ? (
+      {stepOneChosen && bracketRequired ? (
+        <section className={`hero-product-step-accordion hero-product-step-accordion--bracket ${stepBracketCollapsed ? "is-collapsed" : ""}`}>
+          <button
+            type="button"
+            ref={stepBracketRef}
+            className="hero-product-step-head"
+            onClick={() => {
+              trackShopStep("configurator_step_toggle", "bracket_color", { collapsed_after: !stepBracketCollapsed });
+              setStepBracketCollapsed((prev) => !prev);
+            }}
+            aria-expanded={stepBracketCollapsed ? "false" : "true"}
+          >
+            <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+              <span className={`hero-product-step-check ${selectedBracket ? "" : "is-muted"}`} aria-hidden="true">
+                {selectedBracket ? "✓" : "3"}
+              </span>
+              Wybierz kolor uchwytów bezinwazyjnych
+            </span>
+            <span className="hero-product-step-head-meta">
+              {selectedBracket && stepBracketCollapsed ? (
+                <span className="hero-product-step-head-swatch" style={{ background: selectedBracket.color }} aria-hidden="true" />
+              ) : null}
+              {selectedBracket ? <strong>{selectedBracket.label}</strong> : null}
+              {stepBracketCollapsed ? (
+                <span className="hero-product-step-head-change">Zmień</span>
+              ) : (
+                <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+              )}
+            </span>
+          </button>
+          <div className="hero-product-step-body">
+            <p className="hero-product-config-hint">Uchwyty zakładane na skrzydło są widoczne od strony pokoju — dobierz kolor do okna.</p>
+            <div className="plisy-bracket-grid">
+              {PLISY_BRACKET_COLORS.map((entry) => {
+                const isActive = entry.id === selectedBracketId;
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className={`plisy-bracket-option ${isActive ? "is-active" : ""}`}
+                    onClick={() => {
+                      trackShopStep("select_bracket_color", entry.label, { option_id: entry.id });
+                      setSelectedBracketId(entry.id);
+                      setStepBracketCollapsed(true);
+                      window.setTimeout(() => {
+                        scrollStepIntoView(stepTwoRef.current);
+                      }, 380);
+                    }}
+                  >
+                    <span className="plisy-bracket-dot" style={{ background: entry.color }} aria-hidden="true" />
+                    <strong>{entry.label}</strong>
+                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {stepOneChosen && !bracketChosen ? (
+        <p className="hero-product-config-hint">Wybierz kolor uchwytów, aby przejść do kolejnego kroku.</p>
+      ) : null}
+
+      {stepOneChosen && bracketChosen ? (
         <>
           <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
             <button
@@ -619,7 +731,7 @@ export default function ConfiguratorPanel({
             >
               <span className="hero-product-config-step-title hero-product-config-step-title--muted">
                 <span className={`hero-product-step-check ${fabricGroupChosen ? "" : "is-muted"}`} aria-hidden="true">
-                  {fabricGroupChosen ? "✓" : "3"}
+                  {fabricGroupChosen ? "✓" : String(3 + stepShift)}
                 </span>
                 Wybierz kolekcję tkaniny
               </span>
@@ -689,7 +801,7 @@ export default function ConfiguratorPanel({
                 >
                   <span className="hero-product-config-step-title hero-product-config-step-title--muted">
                     <span className={`hero-product-step-check ${fabricChosen ? "" : "is-muted"}`} aria-hidden="true">
-                      {fabricChosen ? "✓" : "4"}
+                      {fabricChosen ? "✓" : String(4 + stepShift)}
                     </span>
                     Wybierz kolor tkaniny
                   </span>
@@ -851,7 +963,7 @@ export default function ConfiguratorPanel({
                     >
                       <span className="hero-product-config-step-title hero-product-config-step-title--muted">
                         <span className={`hero-product-step-check ${dimensionsValid ? "" : "is-muted"}`} aria-hidden="true">
-                          {dimensionsValid ? "✓" : "5"}
+                          {dimensionsValid ? "✓" : String(5 + stepShift)}
                         </span>
                         Wymiary i ilość
                       </span>
@@ -948,13 +1060,42 @@ export default function ConfiguratorPanel({
                             Wymiar musi mieścić się w zakresie {profile.widthMinMm}–{profile.widthMaxMm} mm.
                           </p>
                         ) : null}
+                        {sagWarning ? (
+                          <div className={`plisy-sag-notice ${sagAccepted ? "is-accepted" : ""}`} role="note">
+                            <p>
+                              <strong>Szerokość powyżej {sagLimitMm / 10} cm.</strong> Przy tej szerokości profil aluminiowy może się
+                              lekko ugiąć pod ciężarem tkaniny (grawitacja). To naturalne zjawisko — nie wpływa na działanie plisy, jedynie na jej
+                              estetykę.
+                            </p>
+                            {sagAccepted ? (
+                              <span className="plisy-sag-accepted">✓ Zaakceptowano</span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="plisy-sag-accept"
+                                onClick={() => {
+                                  trackShopStep("accept_sag_notice", String(widthNum), { limit_mm: sagLimitMm });
+                                  setSagAccepted(true);
+                                }}
+                              >
+                                Akceptuję
+                              </button>
+                            )}
+                          </div>
+                        ) : null}
+                        {oversizeSurcharge > 0 ? (
+                          <p className="plisy-oversize-note">
+                            Szerokość powyżej {PLISY_OVERSIZE_WIDTH_MM / 10} cm: dopłata za przesyłkę dłużycową{" "}
+                            <strong>+{formatZl(oversizeSurcharge)}</strong> (jednorazowo dla całego zamówienia, doliczana w koszyku).
+                          </p>
+                        ) : null}
                         <div className="plisy-position-form-footer">
                           <span className="plisy-position-price">{totalPrice !== null ? formatZl(totalPrice) : "--"}</span>
                           <button
                             type="button"
                             className="plisy-position-add"
                             onClick={handleAddPosition}
-                            disabled={!dimensionsValid || totalPrice === null}
+                            disabled={!dimensionsValid || totalPrice === null || sagBlocked}
                           >
                             + Dodaj kolejną
                           </button>
@@ -1002,9 +1143,10 @@ export default function ConfiguratorPanel({
             </>
           ) : null}
         </>
-      ) : (
+      ) : null}
+      {!stepOneChosen ? (
         <p className="hero-product-config-hint">Wybierz kolor mechanizmu, aby przejść do kolejnego kroku.</p>
-      )}
+      ) : null}
         </>
       ) : (
         <p className="hero-product-config-hint">Wybierz rodzaj montażu, aby przejść do kolejnego kroku.</p>

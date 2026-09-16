@@ -45,13 +45,18 @@ export const PLISY_INSTRUCTION_STEPS: PlisyInstructionStep[] = [
   {
     title: "2. Montaż — kwadrans na okno, wkrętak wystarczy",
     body: `
-<p>Plisę dostajesz gotową, z uchwytami i wkrętami w komplecie.</p>
+<p>Plisę dostajesz gotową do zawieszenia. W paczce jest wszystko, czego potrzebujesz:</p>
 <ul>
-<li><strong>STANDARD:</strong> przykręcasz cztery uchwyty w narożnikach listew przyszybowych, potem wpinasz górną i dolną listwę plisy. Wiertarka niepotrzebna — wkręty wchodzą w PCV wkrętakiem.</li>
-<li><strong>Bezinwazyjny PCV:</strong> uchwyty zakładasz na górną i dolną krawędź skrzydła, bez żadnych śladów. Zdejmiesz je w każdej chwili.</li>
-<li><strong>Bezinwazyjny METAL:</strong> jak wyżej, ale stalowe, sztywniejsze zaczepy — do szerokich i wysokich plis, drzwi balkonowych i cięższych tkanin DUO.</li>
+<li><strong>uchwyty</strong> do wybranego montażu,</li>
+<li><strong>wkręty</strong> (montaż STANDARD),</li>
+<li><strong>specjalny przymiar — uchwyt montażowy</strong>, który ustawia uchwyty w dokładnie tym samym miejscu na obu listwach,</li>
+<li><strong>czytelna instrukcja montażu</strong> krok po kroku.</li>
 </ul>
-<p>Po zawieszeniu przesuń obie listwy do końca w górę i w dół. Jeśli sznurki są za luźne albo za sztywne, napięcie regulujesz supełkiem pod górną listwą.</p>
+<ul>
+<li><strong>STANDARD:</strong> przykładasz przymiar do narożników listew przyszybowych, przykręcasz cztery uchwyty wkrętakiem (wiertarka niepotrzebna — wkręty wchodzą w PCV), potem wpinasz górną i dolną listwę plisy.</li>
+<li><strong>Bezinwazyjny:</strong> uchwyty zakładasz na górną i dolną krawędź skrzydła — bez wiercenia i bez śladów, zdejmiesz je w każdej chwili. Uchwyty są w kolorze wybranym w konfiguratorze: białym, jasnym brązie lub ciemnym brązie.</li>
+</ul>
+<p>Plisy szersze niż 100 cm mają po dwa uchwyty do przesuwania na każdej listwie — ciągnij za oba naraz, listwa idzie równo. Po zawieszeniu przesuń obie listwy do końca w górę i w dół. Jeśli sznurki są za luźne albo za sztywne, napięcie regulujesz supełkiem pod górną listwą.</p>
 `,
   },
   {

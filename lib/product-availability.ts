@@ -11,7 +11,7 @@
 // line change (not a CRM toggle) since "go live" is a rare, high-stakes
 // moment worth a conscious code change, unlike routine content edits like
 // swatch colors or prices which are meant to be self-service in the CRM.
-export const LIVE_PRODUCT_SLUGS = new Set<string>(["moskitiery-ramkowe"]);
+export const LIVE_PRODUCT_SLUGS = new Set<string>(["moskitiery-ramkowe", "plisy"]);
 
 export function isProductSlugLive(slug: string): boolean {
   return LIVE_PRODUCT_SLUGS.has(String(slug || "").trim().toLowerCase());
