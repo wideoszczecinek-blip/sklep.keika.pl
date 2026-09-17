@@ -1252,6 +1252,12 @@ function resolveProductViewForSlug(
 /** CRM-authored HTML (product description, instruction steps) sometimes
  * carries its own <h1> - the page already has one. Steps every h1 down to
  * h2 before injection (audit 2026-09-13: two H1s on the product view). */
+/** "od X zł" z groszami tylko, gdy są (69,30 / 77). */
+function formatStartingPrice(value: number): string {
+  const hasFraction = Math.abs(value - Math.round(value)) >= 0.005;
+  return value.toLocaleString("pl-PL", { minimumFractionDigits: hasFraction ? 2 : 0, maximumFractionDigits: 2 });
+}
+
 function demoteHeadings(html: string): string {
   return String(html || "").replace(/<(\/?)h1(\s|>)/gi, "<$1h2$2");
 }
@@ -1619,6 +1625,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   }, [displayedProductSlugForPlisy, plisyProfile]);
   // Lowest price in the whole matrix (any table, STANDARD mount has no
   // surcharge) - the honest "od X zł" for the trust row.
+  // Teksty z CRM (cena "od", FAQ) mogą zawierać {{cena_od}} - podstawiamy
+  // aktualną najniższą cenę plisy (z korektą %), żeby kwoty w opisach nie
+  // rozjeżdżały się z cennikiem po zmianie korekty.
   const plisyStartingPrice = useMemo(() => {
     if (!plisyProfile) return PLISY_STARTING_PRICE_FALLBACK;
     let min = Number.POSITIVE_INFINITY;
@@ -1635,6 +1644,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       plisyPriceAdjustmentPercent,
     );
   }, [plisyProfile, plisyPriceAdjustmentPercent]);
+  const fillPricePlaceholders = (text: string): string =>
+    text.replace(/{{s*cena_ods*}}/gi, `${formatStartingPrice(plisyStartingPrice)} zł`);
   // "Ekspres" toggle (lib/express.ts) - the choice made here carries into
   // /koszyk's "Termin realizacji" via localStorage.
   const [expressSelected, setExpressSelectedState] = useState(false);
@@ -3637,7 +3648,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             ) : null}
                             <div className="pl-trust-row">
                               <span className="pl-price">
-                                od {plisyStartingPrice.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} zł
+                                od {formatStartingPrice(plisyStartingPrice)} zł
                                 <span className="pl-price-unit"> / szt.</span>
                               </span>
                               <span className="pl-chip">Polski producent</span>
@@ -3791,7 +3802,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           <div className="pl-landing">
                             <h2 className="hero-product-section-title">Opis produktu</h2>
                             <div className="pl-trust-row">
-                              {productLanding.priceFrom ? <span className="pl-price">{productLanding.priceFrom}</span> : null}
+                              {productLanding.priceFrom ? <span className="pl-price">{fillPricePlaceholders(productLanding.priceFrom)}</span> : null}
                               <span className="pl-chip">5 lat gwarancji</span>
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
@@ -4308,7 +4319,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             {(productLanding?.faq?.length ? productLanding.faq : PLISY_FAQ).map((entry, index) => (
                               <details key={`${entry.question}-${index}`} className="hero-product-faq-item">
                                 <summary>{entry.question}</summary>
-                                <p>{entry.answer}</p>
+                                <p>{fillPricePlaceholders(entry.answer)}</p>
                               </details>
                             ))}
                           </div>

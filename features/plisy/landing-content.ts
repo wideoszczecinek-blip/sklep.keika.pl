@@ -205,7 +205,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Ile kosztuje plisa na wymiar?",
     answer:
-      "Cena zależy od wymiaru, kolekcji tkaniny i sposobu montażu. Najmniejsza plisa 40 × 60 cm w kolekcji Klasyczne kosztuje 77 zł. Dokładną cenę dla swojego okna sprawdzisz w konfiguratorze po wpisaniu wymiarów, bez rejestracji. Kod SEZON20 obniża cenę o 20 %.",
+      "Cena zależy od wymiaru, kolekcji tkaniny i sposobu montażu. Najmniejsza plisa 40 × 60 cm w kolekcji Klasyczne kosztuje {{cena_od}}. Dokładną cenę dla swojego okna sprawdzisz w konfiguratorze po wpisaniu wymiarów, bez rejestracji. Kod SEZON20 obniża cenę o 20 %.",
   },
   {
     question: "Czym plisa różni się od rolety?",
