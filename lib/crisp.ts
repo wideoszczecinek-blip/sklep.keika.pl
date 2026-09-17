@@ -12,7 +12,10 @@ const CRISP_WEBSITE_ID = "8c31cd03-8650-476a-accf-9d63cde5da9c";
 
 let injected = false;
 
-export function openCrispChat(): void {
+/** `prefill` (2026-09-17, chat nudge): a message dropped into the composer
+ * so the customer only has to hit send - "Dzień dobry, mam pytanie o
+ * pomiar plisy". Never sent on its own. */
+export function openCrispChat(prefill?: string): void {
   if (typeof window === "undefined") return;
   const w = window as unknown as { $crisp?: unknown[]; CRISP_WEBSITE_ID?: string };
 
@@ -23,6 +26,14 @@ export function openCrispChat(): void {
   // On a second click $crisp is already the live API and this runs instantly.
   w.$crisp.push(["do", "chat:show"]);
   w.$crisp.push(["do", "chat:open"]);
+  if (prefill) {
+    w.$crisp.push(["set", "message:text", [prefill]]);
+  }
+  try {
+    window.sessionStorage.setItem("keika_chat_opened", "1");
+  } catch {
+    // nic do zrobienia
+  }
 
   if (!injected) {
     injected = true;

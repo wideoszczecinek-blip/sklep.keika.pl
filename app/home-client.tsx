@@ -55,6 +55,7 @@ import {
 import InfoModal from "./components/info-modal";
 import MeasurementHelp from "./components/measurement-help";
 import { openCrispChat } from "@/lib/crisp";
+import ChatNudge from "@/app/components/chat-nudge";
 import {
   getRescueGrant,
   resolveResumeToken,
@@ -3141,6 +3142,10 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
               contributes nothing of its own to this flex row - the
               portaled button is the real flex item. */}
           <div id="header-save-share-slot" style={{ display: "contents" }} />
+          {/* The nudge (chat-nudge.tsx) hangs off this wrapper, right under
+              the icon, so it follows the sticky header in both its states. */}
+          <div className="header-chat-wrap">
+          <ChatNudge productSlug={productSlugFromSelected(displayedProduct)} active={isProductView} />
           <button
             type="button"
             className="header-chat-button"
@@ -3162,6 +3167,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
             </svg>
             <span className="header-chat-button-dot" aria-hidden="true" />
           </button>
+          </div>
           <div
             className="header-cart-wrap"
             onMouseEnter={() => setCartTooltipOpen(true)}

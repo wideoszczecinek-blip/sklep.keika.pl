@@ -33,6 +33,7 @@ import { readCartItems } from "@/lib/cart";
 import { PROMO_CODE, isPromoActive } from "@/lib/promo";
 import { buildRescuePosition, type RescueSavePosition } from "@/lib/rescue";
 import { buildResumeUrl, saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
+import { trackShopStep } from "@/lib/track-step";
 
 const TEASER_DELAY_MS = 5000;
 const TEASER_VISIBLE_MS = 5000;
@@ -145,7 +146,9 @@ export default function SaveShareWidget({
     setSendOpen(false);
     setSendValue("");
     setSendStatus("idle");
-    void ensureLink();
+    void ensureLink().then((result) => {
+      trackShopStep("open_save_share", "widget", { quote_code: result.quoteCode || null }, result.quoteCode || undefined);
+    });
   }
 
   /** Always resolves to something shareable - never a dead end. Priority:
@@ -219,6 +222,9 @@ export default function SaveShareWidget({
 
   async function handleCopyLink() {
     const result = await ensureLink();
+    // Logged against the quote (2026-09-17) - see promo-save-modal.tsx's
+    // note: without this the CRM's quote list never saw a copied link.
+    trackShopStep("copy_quote_link", "widget", { quote_code: result.quoteCode || null }, result.quoteCode || undefined);
     try {
       await navigator.clipboard.writeText(result.url);
       setCopyState("copied");
@@ -264,6 +270,9 @@ export default function SaveShareWidget({
       });
     }
     setSendStatus(sendResult.ok ? "sent" : "error");
+    if (sendResult.ok) {
+      trackShopStep("send_quote_link", isEmail ? "email" : "sms", { quote_code: result.quoteCode }, result.quoteCode);
+    }
   }
 
   async function handleNativeShare() {
@@ -274,6 +283,7 @@ export default function SaveShareWidget({
         text: configLabel ? `Zapisałem: ${configLabel}. Link do wznowienia:` : "Zobacz KEIKA:",
         url: result.url,
       });
+      trackShopStep("share_quote_link", "widget", { quote_code: result.quoteCode || null }, result.quoteCode || undefined);
     } catch {
       // Użytkownik zamknął arkusz udostępniania albo API nie jest wsparte -
       // link jest już widoczny w modalu jako fallback.

@@ -8,6 +8,7 @@
 // anything, per explicit business requirement (never send without an
 // explicit, specific choice about what the contact info is for).
 import { useEffect, useState } from "react";
+import { trackShopStep } from "@/lib/track-step";
 import { createPortal } from "react-dom";
 import { formatPromoRemaining } from "@/lib/promo";
 import { savePromoContact, type PromoConsent } from "@/lib/promo-save";
@@ -82,7 +83,19 @@ export default function PromoSaveModal({
 
   const canNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
+  // Every save/share action is logged against the quote (2026-09-17). Until
+  // now only the SMS/e-mail submit reached the CRM; "Kopiuj link" and the
+  // system share sheet - the two things people actually tap on a phone -
+  // left no trace, so the quote list's 💾/🔗 badges stayed empty for every
+  // customer of the current landing pages and the owner concluded nobody
+  // saves anything. 25 resume links were opened in the 14 days before this.
+  useEffect(() => {
+    trackShopStep("open_save_share", variant, { quote_code: quoteCode || null }, quoteCode || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleCopyLink() {
+    trackShopStep("copy_quote_link", variant, { quote_code: quoteCode || null }, quoteCode || undefined);
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopyState("copied");
@@ -99,6 +112,7 @@ export default function PromoSaveModal({
         text: "Zapisałem link do sklepu z aktywnym rabatem:",
         url: shareUrl,
       });
+      trackShopStep("share_quote_link", variant, { quote_code: quoteCode || null }, quoteCode || undefined);
     } catch {
       // Użytkownik zamknął arkusz udostępniania albo API nie jest wsparte -
       // link jest już widoczny na ekranie jako fallback.
@@ -133,6 +147,7 @@ export default function PromoSaveModal({
       setError(result.error || "Nie udało się zapisać. Spróbuj ponownie.");
       return;
     }
+    trackShopStep("send_quote_link", channel, { quote_code: quoteCode || null, consent }, quoteCode || undefined);
     setStatus("sent");
   }
 

@@ -14340,3 +14340,88 @@ html[data-theme="light"] .plisy-positions-total strong {
   justify-content: flex-end;
   text-align: right;
 }
+
+/* Chat nudge under the header icon (app/components/chat-nudge.tsx,
+   2026-09-17): a speech bubble that asks "mogę pomóc?" at the moment a
+   customer got stuck. */
+.header-chat-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.chat-nudge {
+  position: absolute;
+  top: calc(100% + 0.7rem);
+  right: 0;
+  z-index: 90;
+  width: min(300px, calc(100vw - 2rem));
+  padding: 0.8rem 2.1rem 0.8rem 0.9rem;
+  border-radius: 0.9rem;
+  background: #fff;
+  color: #16314e;
+  border: 1px solid #d5dee8;
+  box-shadow: 0 16px 36px rgba(19, 40, 67, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: left;
+  animation: chat-nudge-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes chat-nudge-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.chat-nudge-arrow {
+  position: absolute;
+  top: -7px;
+  right: 0.95rem;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-left: 1px solid #d5dee8;
+  border-top: 1px solid #d5dee8;
+  transform: rotate(45deg);
+}
+.chat-nudge strong {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+.chat-nudge > span:not(.chat-nudge-arrow) {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #35506b;
+}
+.chat-nudge-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  border: none;
+  background: transparent;
+  color: #7a8794;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+}
+.chat-nudge-cta {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  background: #0f9f8f;
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.chat-nudge-cta:hover {
+  background: #0c8779;
+}
