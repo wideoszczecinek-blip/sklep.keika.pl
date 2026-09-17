@@ -1,40 +1,49 @@
 "use client";
 
-// Top-of-page price for a REAL window (plisy landing analysis 2026-09-17).
+// "Ile za Twoje okno?" - the price for a REAL window (plisy landing
+// analysis 2026-09-17), sitting under the first paragraph of the
+// description.
 //
 // 80% of visitors left without ever touching the configurator, which sits
 // at the very bottom of an 11-screen page, and "od 69,30 zł" anchored on
 // the smallest 40 x 60 sash. This block answers the one question cold Meta
-// traffic arrives with - "ile za MOJE okno?" - in two fields, in centimetres
-// (the unit the ad speaks, and the one people think in), showing the
-// SEZON20 price the cart will actually charge. "Konfiguruj to okno" hands
-// the size straight into the configurator (home-client's plisyPrefillDims),
-// so the customer never re-types it in millimetres.
+// traffic arrives with - "ile za MOJE okno?" - with two sliders in
+// centimetres (the unit the ad speaks, and the one people think in),
+// showing the SEZON20 price the cart will actually charge.
+//
+// Owner's second pass, same day: sliders instead of typed fields, quieter
+// than the first orange-card version, and the size is OWNED by the page
+// (widthMm/heightMm + onSizeChange) so the fabric-collection comparison
+// further down prices every collection for the same window - and moving
+// its own sliders moves these. "Konfiguruj to okno" still hands the size
+// into the configurator so it's never typed twice.
 //
 // Pricing is the configurator's own calcPlisyPrice on the live CRM matrix,
 // including the per-product percent correction (useProductPriceAdjustment)
 // - the cheapest sensible build: Klasyczne, first hardware colour, STANDARD
 // mount. Nothing hardcoded, so the number here can't drift from the number
 // the configurator shows a screen later.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
-import { PLISY_COLLECTIONS, PLISY_DEFAULT_HEIGHT_MM, PLISY_DEFAULT_WIDTH_MM } from "./landing-content";
+import { PLISY_COLLECTIONS, PLISY_EXAMPLE_HEIGHT_MM, PLISY_EXAMPLE_WIDTH_MM } from "./landing-content";
 import { calcPlisyPrice, type PlisyProfile } from "./shared";
 
 function zl(value: number): string {
-  return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} zł`;
+  return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 }
 
-function toMm(raw: string): number {
-  const n = Number(String(raw).replace(",", "."));
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 10) : 0;
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 export default function PlisyQuickPrice({
   profile,
   promo,
+  widthMm,
+  heightMm,
+  onSizeChange,
   onConfigure,
 }: {
   profile: PlisyProfile | null;
@@ -42,14 +51,22 @@ export default function PlisyQuickPrice({
    * struck-through/discounted pair never promises a discount the cart
    * won't apply. */
   promo: PromoPreview | null;
+  widthMm: number;
+  heightMm: number;
+  onSizeChange: (widthMm: number, heightMm: number) => void;
   onConfigure: (widthMm: number, heightMm: number) => void;
 }) {
   const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
-  const [widthCm, setWidthCm] = useState(String(PLISY_DEFAULT_WIDTH_MM / 10));
-  const [heightCm, setHeightCm] = useState(String(PLISY_DEFAULT_HEIGHT_MM / 10));
 
-  const widthMm = toMm(widthCm);
-  const heightMm = toMm(heightCm);
+  // Slider bounds = the price matrix (40-210 x 60-230 cm today); the
+  // EXAMPLE_* pair is the same floor the collection picker's sliders use.
+  const minW = profile ? profile.widthMinMm / 10 : PLISY_EXAMPLE_WIDTH_MM / 10;
+  const maxW = profile ? profile.widthMaxMm / 10 : 210;
+  const minH = profile ? profile.heightMinMm / 10 : PLISY_EXAMPLE_HEIGHT_MM / 10;
+  const maxH = profile ? profile.heightMaxMm / 10 : 230;
+  const widthCm = Math.round(widthMm / 10);
+  const heightCm = Math.round(heightMm / 10);
+
   const inRange = profile
     ? widthMm >= profile.widthMinMm &&
       widthMm <= profile.widthMaxMm &&
@@ -70,83 +87,85 @@ export default function PlisyQuickPrice({
   }, [profile, inRange, widthMm, heightMm, priceAdjustmentPercent]);
   const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
 
-  const rangeLabel = profile
-    ? `${profile.widthMinMm / 10}–${profile.widthMaxMm / 10} × ${profile.heightMinMm / 10}–${profile.heightMaxMm / 10} cm`
-    : "";
-
-  function trackSize() {
-    trackShopStep("quick_price_size", "plisy", { width_mm: widthMm, height_mm: heightMm, in_range: inRange, price: regular ?? 0 });
-  }
+  // One analytics event per settled size (sliders fire on every pixel).
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      trackShopStep("quick_price_size", "plisy", { width_mm: widthMm, height_mm: heightMm, in_range: inRange, price: regular ?? 0 });
+    }, 700);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widthMm, heightMm]);
 
   return (
     <div className="pl-quick" role="group" aria-label="Szybka wycena plisy dla Twojego okna">
-      <p className="pl-quick-title">Ile za Twoje okno?</p>
-      <div className="pl-quick-fields">
-        <label className="pl-quick-field">
-          <span className="pl-quick-field-label">Szerokość</span>
-          <span className="pl-quick-field-input">
-            <input
-              type="number"
-              inputMode="decimal"
-              step={0.5}
-              min={profile ? profile.widthMinMm / 10 : 40}
-              max={profile ? profile.widthMaxMm / 10 : 210}
-              value={widthCm}
-              onChange={(event) => setWidthCm(event.target.value)}
-              onBlur={trackSize}
-              aria-label="Szerokość okna w centymetrach"
-            />
-            <span>cm</span>
-          </span>
-        </label>
-        <span className="pl-quick-times" aria-hidden="true">
-          ×
+      <div className="pl-quick-head">
+        <span className="pl-quick-title">Ile za Twoje okno?</span>
+        <span className="pl-quick-size">
+          {widthCm} × {heightCm} cm
         </span>
-        <label className="pl-quick-field">
-          <span className="pl-quick-field-label">Wysokość</span>
-          <span className="pl-quick-field-input">
-            <input
-              type="number"
-              inputMode="decimal"
-              step={0.5}
-              min={profile ? profile.heightMinMm / 10 : 60}
-              max={profile ? profile.heightMaxMm / 10 : 230}
-              value={heightCm}
-              onChange={(event) => setHeightCm(event.target.value)}
-              onBlur={trackSize}
-              aria-label="Wysokość okna w centymetrach"
-            />
-            <span>cm</span>
-          </span>
-        </label>
       </div>
-      <div className="pl-quick-result" aria-live="polite">
-        {regular === null ? (
-          <span className="pl-quick-na">{profile ? `Podaj wymiar w zakresie ${rangeLabel}` : "Ładuję cennik…"}</span>
-        ) : withPromo !== null ? (
-          <span className="pl-quick-amounts">
-            <s>{zl(regular)}</s>
-            <strong>{zl(withPromo)}</strong>
-            <small>z kodem {PROMO_CODE}</small>
-          </span>
-        ) : (
-          <span className="pl-quick-amounts">
-            <strong>{zl(regular)}</strong>
-          </span>
-        )}
-        <span className="pl-quick-note">Klasyczne, biały profil, montaż STANDARD — inne tkaniny i kolory policzy konfigurator.</span>
+      <label className="pl-quick-slider">
+        <span>
+          Szerokość <b>{widthCm} cm</b>
+        </span>
+        <input
+          type="range"
+          min={minW}
+          max={maxW}
+          step={1}
+          value={clamp(widthCm, minW, maxW)}
+          onChange={(event) => onSizeChange(Number(event.target.value) * 10, heightMm)}
+          aria-label="Szerokość okna w centymetrach"
+        />
+      </label>
+      <label className="pl-quick-slider">
+        <span>
+          Wysokość <b>{heightCm} cm</b>
+        </span>
+        <input
+          type="range"
+          min={minH}
+          max={maxH}
+          step={1}
+          value={clamp(heightCm, minH, maxH)}
+          onChange={(event) => onSizeChange(widthMm, Number(event.target.value) * 10)}
+          aria-label="Wysokość okna w centymetrach"
+        />
+      </label>
+      <div className="pl-quick-row">
+        <div className="pl-quick-result" aria-live="polite">
+          {regular === null ? (
+            <span className="pl-quick-na">{profile ? "Ten wymiar wyceni konfigurator" : "Ładuję cennik…"}</span>
+          ) : withPromo !== null ? (
+            <span className="pl-quick-amounts">
+              <s>{zl(regular)}</s>
+              <strong>{zl(withPromo)}</strong>
+              <small>z kodem {PROMO_CODE}</small>
+            </span>
+          ) : (
+            <span className="pl-quick-amounts">
+              <strong>{zl(regular)}</strong>
+            </span>
+          )}
+          <span className="pl-quick-note">Klasyczne, biały profil, montaż STANDARD · inne kolekcje w porównaniu poniżej</span>
+        </div>
+        <button
+          type="button"
+          className="pl-quick-cta"
+          disabled={!inRange}
+          onClick={() => {
+            trackShopStep("quick_price_configure", "plisy", { width_mm: widthMm, height_mm: heightMm, price: regular ?? 0 });
+            onConfigure(widthMm, heightMm);
+          }}
+        >
+          Konfiguruj to okno →
+        </button>
       </div>
-      <button
-        type="button"
-        className="pl-quick-cta"
-        disabled={!inRange}
-        onClick={() => {
-          trackShopStep("quick_price_configure", "plisy", { width_mm: widthMm, height_mm: heightMm, price: regular ?? 0 });
-          onConfigure(widthMm, heightMm);
-        }}
-      >
-        Konfiguruj to okno →
-      </button>
     </div>
   );
 }

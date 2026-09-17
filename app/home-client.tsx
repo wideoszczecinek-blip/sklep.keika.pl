@@ -100,6 +100,8 @@ import { fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
 import {
   isPlisyPlaceholderCopy,
   PLISY_H1,
+  PLISY_DEFAULT_HEIGHT_MM,
+  PLISY_DEFAULT_WIDTH_MM,
   PLISY_LEAD_TIME_LABEL,
   PLISY_PRIMARY_CTA,
   PLISY_DESCRIPTION_HTML,
@@ -580,7 +582,10 @@ type ProductLandingContent = {
 // allegro_offer_rating_public.php in the CRM). Everything else falls back to
 // the generic placeholder review list further down.
 const PRODUCT_SLUGS_WITH_ALLEGRO_RATING = new Set(["moskitiery-ramkowe"]);
-const REVIEWS_PAGE_SIZE = 5;
+// Owner, 2026-09-17 ("zdejmijmy trochę tego scrollowania"): three reviews
+// and three FAQ entries up front, the rest behind "Pokaż więcej".
+const REVIEWS_PAGE_SIZE = 3;
+const FAQ_INITIAL_COUNT = 3;
 
 type SelectedProductView = {
   groupIndex: number;
@@ -1365,6 +1370,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // landing (2026-09-17) - handed to the configurator on "Konfiguruj to
   // okno" so it's never typed twice; cleared once a set reaches the cart.
   const [plisyPrefillDims, setPlisyPrefillDims] = useState<{ widthMm: number; heightMm: number } | null>(null);
+  // The window size shared by "Ile za Twoje okno?" and the fabric-collection
+  // comparison below it (owner, 2026-09-17): one size, priced in both.
+  const [plisyQuickDims, setPlisyQuickDims] = useState({ widthMm: PLISY_DEFAULT_WIDTH_MM, heightMm: PLISY_DEFAULT_HEIGHT_MM });
   // Plisy landing copy prices itself from the live CRM matrix ("od 77 zł",
   // the per-collection examples) instead of the hand-typed CRM price_from,
   // which read "od 219 zł" against a 77 zł matrix minimum (audit
@@ -1931,6 +1939,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     };
   }, [allegroRating]);
   const [visibleReviewCount, setVisibleReviewCount] = useState(REVIEWS_PAGE_SIZE);
+  const [faqExpanded, setFaqExpanded] = useState(false);
   const [reviewStarFilter, setReviewStarFilter] = useState<number | null>(null);
   const [productLanding, setProductLanding] = useState<ProductLandingContent | null>(null);
   // Standalone modal for a single instruction step - same content as the
@@ -2173,6 +2182,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   useEffect(() => {
     const slug = productSlugFromSelected(displayedProduct);
     setVisibleReviewCount(REVIEWS_PAGE_SIZE);
+    setFaqExpanded(false);
     if (!slug || !PRODUCT_SLUGS_WITH_ALLEGRO_RATING.has(slug)) {
       setAllegroRating(null);
       return;
@@ -3615,24 +3625,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           </div>
                         ) : productSlugFromSelected(displayedProduct) === "plisy" ? (
                           <div className="pl-landing">
-                            {/* First thing under the title, before the SEZON20
-                                strip and the subtitle: on a 390px phone anything
-                                after the 5-line subtitle is already below the
-                                fold, and the fold is exactly where 80% of ad
-                                visitors left (2026-09-17). */}
-                            <PlisyQuickPrice
-                              profile={plisyProfile}
-                              promo={topPromoActive ? topPromoPreview : null}
-                              onConfigure={(widthMm, heightMm) => {
-                                // Dims only - the panel re-seeds steps 1-4
-                                // from its own saved draft and keeps the
-                                // size step open with the price under it.
-                                setPlisyLastResult(null);
-                                setPlisyPrefillDims({ widthMm, heightMm });
-                                setPlisyConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
-                              }}
-                            />
                             {/* Plisy landing (audit 2026-09-14) - built-in copy from
                                 features/plisy/landing-content.ts, CRM fields take
                                 over one by one once the owner fills them. SEZON20
@@ -3698,6 +3690,27 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
                             </p>
 
+                            {/* Under the first paragraph, not above it (owner,
+                                2026-09-17): sliders, quiet, and the size it
+                                holds is the one the collection comparison
+                                further down prices every fabric for. */}
+                            <PlisyQuickPrice
+                              profile={plisyProfile}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              widthMm={plisyQuickDims.widthMm}
+                              heightMm={plisyQuickDims.heightMm}
+                              onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
+                              onConfigure={(widthMm, heightMm) => {
+                                // Dims only - the panel re-seeds steps 1-4
+                                // from its own saved draft and keeps the
+                                // size step open with the price under it.
+                                setPlisyLastResult(null);
+                                setPlisyPrefillDims({ widthMm, heightMm });
+                                setPlisyConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
+
                             <PlisyHeroPhotos />
 
                             <div className="pl-spec-grid">
@@ -3751,6 +3764,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             <PlisyCollectionsPicker
                               profile={plisyProfile}
                               promo={topPromoPreview}
+                              widthCm={plisyQuickDims.widthMm / 10}
+                              heightCm={plisyQuickDims.heightMm / 10}
+                              onSizeChange={(widthCm, heightCm) => setPlisyQuickDims({ widthMm: widthCm * 10, heightMm: heightCm * 10 })}
                               onQuote={scrollToConfigPanel}
                               onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
                             />
@@ -4350,12 +4366,30 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             : []
                         ).length ? (
                           <div className="hero-product-faq">
-                            {(productLanding?.faq?.length ? productLanding.faq : PLISY_FAQ).map((entry, index) => (
-                              <details key={`${entry.question}-${index}`} className="hero-product-faq-item">
-                                <summary>{entry.question}</summary>
-                                <p>{fillPricePlaceholders(entry.answer)}</p>
-                              </details>
-                            ))}
+                            {(() => {
+                              const faqEntries = productLanding?.faq?.length ? productLanding.faq : PLISY_FAQ;
+                              const shownFaq = faqExpanded ? faqEntries : faqEntries.slice(0, FAQ_INITIAL_COUNT);
+                              return (
+                                <>
+                                  {shownFaq.map((entry, index) => (
+                                    <details key={`${entry.question}-${index}`} className="hero-product-faq-item">
+                                      <summary>{entry.question}</summary>
+                                      <p>{fillPricePlaceholders(entry.answer)}</p>
+                                    </details>
+                                  ))}
+                                  {faqEntries.length > FAQ_INITIAL_COUNT ? (
+                                    <button
+                                      type="button"
+                                      className="hero-product-faq-more"
+                                      aria-expanded={faqExpanded}
+                                      onClick={() => setFaqExpanded((prev) => !prev)}
+                                    >
+                                      {faqExpanded ? "Zwiń" : `Pokaż więcej (${faqEntries.length - FAQ_INITIAL_COUNT})`}
+                                    </button>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
                           </div>
                         ) : (
                           <p className="hero-product-faq-empty">Wkrótce dodamy tu odpowiedzi na najczęstsze pytania.</p>

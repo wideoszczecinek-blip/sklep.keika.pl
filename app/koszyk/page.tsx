@@ -137,7 +137,7 @@ function itemFitsPaczkomat(item: CartLineItem): boolean {
 // Cash-on-delivery is a flat one-time surcharge on top of the order, not a
 // per-item fee - the courier collects it once for the whole parcel. It's a
 // delivery method choice (a courier variant), not a separate payment step.
-const COD_SURCHARGE_AMOUNT = 25.9;
+const COD_SURCHARGE_AMOUNT = 14.9;
 const COD_DELIVERY_METHOD_ID = "pobranie";
 
 // Darmowa dostawa od 79 zł liczonych PO wszelkich rabatach (decyzja

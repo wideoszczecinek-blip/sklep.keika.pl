@@ -34,7 +34,7 @@ import {
 import { calcPlisyPrice, type PlisyProfile } from "./shared";
 
 function zl(value: number): string {
-  return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} zł`;
+  return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 }
 
 /** Slider ceiling = the largest breakpoint the price matrix knows; past it
@@ -106,12 +106,22 @@ export default function PlisyCollectionsPicker({
   promo,
   onQuote,
   onZoom,
+  widthCm: widthCmProp,
+  heightCm: heightCmProp,
+  onSizeChange,
 }: {
   profile: PlisyProfile | null;
   promo: PromoPreview | null;
   onQuote: () => void;
   /** Opens the page's lightbox on a swatch. */
   onZoom?: (title: string, urls: string[], index: number) => void;
+  /** Two-way sync with the "Ile za Twoje okno?" sliders further up
+   * (owner, 2026-09-17): when the page owns the size, the window set up
+   * there prices every collection here, and dragging these sliders moves
+   * those. Without the props this block keeps its own local size. */
+  widthCm?: number;
+  heightCm?: number;
+  onSizeChange?: (widthCm: number, heightCm: number) => void;
 }) {
   const minW = PLISY_EXAMPLE_WIDTH_MM / 10;
   const minH = PLISY_EXAMPLE_HEIGHT_MM / 10;
@@ -121,8 +131,18 @@ export default function PlisyCollectionsPicker({
   // Starts on the ad's 60 x 120 cm window (2026-09-17), not the 40 x 60
   // minimum - see PLISY_DEFAULT_*_MM. The sliders still go down to the
   // smallest sash.
-  const [widthCm, setWidthCm] = useState(PLISY_DEFAULT_WIDTH_MM / 10);
-  const [heightCm, setHeightCm] = useState(PLISY_DEFAULT_HEIGHT_MM / 10);
+  const [internalWidthCm, setInternalWidthCm] = useState(PLISY_DEFAULT_WIDTH_MM / 10);
+  const [internalHeightCm, setInternalHeightCm] = useState(PLISY_DEFAULT_HEIGHT_MM / 10);
+  const widthCm = widthCmProp ?? internalWidthCm;
+  const heightCm = heightCmProp ?? internalHeightCm;
+  const setWidthCm = (value: number) => {
+    setInternalWidthCm(value);
+    onSizeChange?.(value, heightCm);
+  };
+  const setHeightCm = (value: number) => {
+    setInternalHeightCm(value);
+    onSizeChange?.(widthCm, value);
+  };
 
   // The same per-product percent correction from the CRM the configurator
   // itself applies (ConfiguratorPanel.tsx, useProductPriceAdjustment) -
