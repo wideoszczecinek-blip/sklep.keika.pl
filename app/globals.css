@@ -14307,3 +14307,29 @@ body.has-product-tabs .consent-bar {
 .hero-product-faq-more:hover {
   background: #f3f6fa;
 }
+
+/* Saved-positions rows (2026-09-17): with the SEZON20 pair and an "Edytuj"
+   button the one-line row broke word-by-word on phones - now two lines:
+   size + buttons, price underneath. */
+.plisy-positions-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "label edit remove"
+    "price price price";
+  align-items: center;
+  gap: 0.15rem 0.5rem;
+}
+.plisy-positions-row-label {
+  grid-area: label;
+}
+.plisy-positions-row-edit {
+  grid-area: edit;
+}
+.plisy-positions-row-remove {
+  grid-area: remove;
+}
+.plisy-positions-row-price {
+  grid-area: price;
+  white-space: normal;
+}
