@@ -13,6 +13,7 @@ import PromoCountdownBanner from "@/app/components/promo-countdown-banner";
 import PromoSaveModal from "@/app/components/promo-save-modal";
 import SaveShareWidget from "@/app/components/save-share-widget";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { applyPriceAdjustment, useProductPriceAdjustment } from "@/lib/price-adjustment";
 import {
   buildRescuePosition,
   hasSeenRescueModal,
@@ -104,6 +105,10 @@ export default function ConfiguratorPanel({
    * same default-off reasoning for the cart's edit modal. */
   enableSaveShareBanner?: boolean;
 }) {
+  // Korekta procentowa ceny produktu z CRM (lib/price-adjustment.ts).
+  const priceAdjustmentPercent = useProductPriceAdjustment("moskitiery-ramkowe");
+  const moskPricePerMbPromo = applyPriceAdjustment(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, priceAdjustmentPercent);
+  const moskPricePerMbStandard = applyPriceAdjustment(MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD, priceAdjustmentPercent);
   const hardwareOptions = ALLEGRO_MOSKITIERY_HARDWARE;
 
   const [selectedHardwareId, setSelectedHardwareId] = useState(initialValues?.hardwareId || "");
@@ -239,7 +244,7 @@ export default function ConfiguratorPanel({
     widthNum >= MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM && heightNum >= MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM;
   const perimeterMeters = hasValidDimensions ? moskPerimeterMeters(widthNum, heightNum) : null;
   const billedMeters = perimeterMeters !== null ? moskBilledMeters(perimeterMeters) : null;
-  const dimensionUnitPrice = billedMeters !== null ? billedMeters * MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO : null;
+  const dimensionUnitPrice = billedMeters !== null ? billedMeters * moskPricePerMbPromo : null;
   const dimensionTotalPrice = dimensionUnitPrice !== null ? dimensionUnitPrice * quantityNum : null;
 
   // Exit-intent modal - a visitor about to leave gets one chance (per
@@ -396,8 +401,8 @@ export default function ConfiguratorPanel({
   // big enough to be worth mentioning.
   const effectivePricePerMb =
     promoActive && promoPreview
-      ? applyPromoToPrice(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, promoPreview) ?? MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO
-      : MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO;
+      ? applyPromoToPrice(moskPricePerMbPromo, promoPreview) ?? moskPricePerMbPromo
+      : moskPricePerMbPromo;
   const leftoverCapacity =
     perimeterMeters !== null && billedMeters !== null
       ? moskLeftoverCapacity(perimeterMeters, billedMeters, effectivePricePerMb)
@@ -875,10 +880,10 @@ export default function ConfiguratorPanel({
                       {promoActive && promoPreview ? (
                         <>
                           <span className="price-per-mb-standard">
-                            {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                            {moskPricePerMbPromo.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
                           </span>
                           <span className="price-per-mb-promo pl-price-sezon-active">
-                            {applyPromoToPrice(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, promoPreview)!.toLocaleString(
+                            {applyPromoToPrice(moskPricePerMbPromo, promoPreview)!.toLocaleString(
                               "pl-PL",
                               { minimumFractionDigits: 2, maximumFractionDigits: 2 },
                             )}{" "}
@@ -888,11 +893,11 @@ export default function ConfiguratorPanel({
                       ) : (
                         <>
                           <span className="price-per-mb-promo">
-                            {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                            {moskPricePerMbPromo.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
                           </span>
                           {MOSKITIERY_RAMKOWE_PRICE_ON_PROMO ? (
                             <span className="price-per-mb-standard">
-                              {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                              {moskPricePerMbStandard.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
                             </span>
                           ) : null}
                         </>

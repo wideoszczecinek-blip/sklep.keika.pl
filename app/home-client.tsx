@@ -35,6 +35,11 @@ import {
 import { ensurePromoQuoteCode } from "@/lib/promo-save";
 import PromoCountdownBanner from "./components/promo-countdown-banner";
 import PromoTopStrip from "./components/promo-top-strip";
+import {
+  applyPriceAdjustment,
+  setProductPriceAdjustmentsFromConfig,
+  useProductPriceAdjustment,
+} from "@/lib/price-adjustment";
 import SwatchHoverPreview from "./components/swatch-hover-preview";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 import {
@@ -185,6 +190,12 @@ type HomepageConfig = {
     title?: string;
     price_from?: string;
     note?: string;
+  }>;
+  product_groups?: Array<{
+    products?: Array<{
+      slug?: string;
+      price_adjustment_percent?: number;
+    }>;
   }>;
   product_configurators?: Array<{
     product_slug?: string;
@@ -474,7 +485,7 @@ const ROLETY_DACHOWE_GALLERY_PHOTOS: string[] = [
   "https://crm-keika.groovemedia.pl/storage/shop/media/20260809_002723_40b6e7e0_A-7.webp",
 ];
 
-const ROLETY_DACHOWE_FEATURE_BULLETS: ProductFeatureBullet[] = [
+const buildRoletyDachoweFeatureBullets = (startingPrice: number): ProductFeatureBullet[] => [
   {
     lead: "73 kolory tkaniny — Termo i Półprzepuszczalna Deko",
     detail: "Termo nie przepuszcza światła i dzięki powłoce termicznej na zewnątrz skutecznie zmniejsza nagrzewanie się pomieszczenia; Deko subtelnie rozprasza światło",
@@ -489,7 +500,7 @@ const ROLETY_DACHOWE_FEATURE_BULLETS: ProductFeatureBullet[] = [
   },
   {
     lead: "Cena dobierana automatycznie z cennika",
-    detail: `zależnie od koloru, materiału i rozmiaru — od ${ROLETY_DACHOWE_STARTING_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł za sztukę`,
+    detail: `zależnie od koloru, materiału i rozmiaru — od ${startingPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł za sztukę`,
   },
   {
     lead: "Nie znalazłeś swojego modelu?",
@@ -497,11 +508,11 @@ const ROLETY_DACHOWE_FEATURE_BULLETS: ProductFeatureBullet[] = [
   },
 ];
 
-const ROLETY_DACHOWE_SPEC_ITEMS: ProductSpecItem[] = [
+const buildRoletyDachoweSpecItems = (startingPrice: number): ProductSpecItem[] => [
   { label: "Kaseta i prowadnice", value: "3 kolory: Anoda, Biały, Jasna Sosna" },
   { label: "Tkanina", value: "Termo (19) i Deko (54), 73 kolory łącznie" },
   { label: "Dopasowanie", value: "Pod model okna dachowego (biblioteka 400+ modeli)" },
-  { label: "Cena", value: `od ${ROLETY_DACHOWE_STARTING_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł / szt., zależnie od wymiaru` },
+  { label: "Cena", value: `od ${startingPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł / szt., zależnie od wymiaru` },
 ];
 
 // Verbatim from the same CRM record's measurement_guide_sections - real
@@ -1348,6 +1359,28 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // 2026-09-14). Same public profile the configurator fetches - cached by
   // fetchPlisyProfile, so it costs nothing extra once the panel mounts.
   const [plisyProfile, setPlisyProfile] = useState<PlisyProfile | null>(null);
+  // Korekta procentowa ceny per produkt (CRM: Sklep WWW → Produkty →
+  // "Korekta ceny (%)"), nakładana na ceny bazowe - patrz lib/price-adjustment.ts.
+  const moskPriceAdjustmentPercent = useProductPriceAdjustment("moskitiery-ramkowe");
+  // Rolety dachowe: w CRM produkt nazywa się "roleta-dachowa-dekolux", sklep
+  // używa "rolety-dachowe" - honorujemy oba slugi.
+  const roletyPriceAdjustmentPercentBySlug = useProductPriceAdjustment("rolety-dachowe");
+  const roletyPriceAdjustmentPercentByCrmSlug = useProductPriceAdjustment("roleta-dachowa-dekolux");
+  const roletyPriceAdjustmentPercent =
+    roletyPriceAdjustmentPercentBySlug || roletyPriceAdjustmentPercentByCrmSlug;
+  const plisyPriceAdjustmentPercent = useProductPriceAdjustment("plisy");
+  const moskPricePerMbPromo = applyPriceAdjustment(
+    MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
+    moskPriceAdjustmentPercent,
+  );
+  const moskPricePerMbStandard = applyPriceAdjustment(
+    MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
+    moskPriceAdjustmentPercent,
+  );
+  const roletyStartingPrice = applyPriceAdjustment(
+    ROLETY_DACHOWE_STARTING_PRICE,
+    roletyPriceAdjustmentPercent,
+  );
   // Desktop-only "Powiększ" toggle on .hero-product-config-panel (shared by
   // every product's configurator, applied once here instead of per-product).
   // Pure CSS state - no scroll position or config selection is touched by
@@ -1597,8 +1630,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       }
     }
     if (!Number.isFinite(min)) return PLISY_STARTING_PRICE_FALLBACK;
-    return Math.max(0, min * (1 + plisyProfile.priceAdjustmentPercent / 100) + plisyProfile.priceAdjustmentAmount);
-  }, [plisyProfile]);
+    return applyPriceAdjustment(
+      Math.max(0, min * (1 + plisyProfile.priceAdjustmentPercent / 100) + plisyProfile.priceAdjustmentAmount),
+      plisyPriceAdjustmentPercent,
+    );
+  }, [plisyProfile, plisyPriceAdjustmentPercent]);
   // "Ekspres" toggle (lib/express.ts) - the choice made here carries into
   // /koszyk's "Termin realizacji" via localStorage.
   const [expressSelected, setExpressSelectedState] = useState(false);
@@ -2172,6 +2208,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       if (nextHash === configHashRef.current) return;
       configHashRef.current = nextHash;
       if (!mounted) return;
+      setProductPriceAdjustmentsFromConfig(nextConfig);
       setConfig(nextConfig);
     };
 
@@ -2748,7 +2785,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const hasValidDimensions = widthNum > 0 && heightNum > 0;
   const perimeterMeters = hasValidDimensions ? moskPerimeterMeters(widthNum, heightNum) : null;
   const billedMeters = perimeterMeters !== null ? moskBilledMeters(perimeterMeters) : null;
-  const dimensionUnitPrice = billedMeters !== null ? billedMeters * MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO : null;
+  const dimensionUnitPrice = billedMeters !== null ? billedMeters * moskPricePerMbPromo : null;
   const dimensionTotalPrice = dimensionUnitPrice !== null ? dimensionUnitPrice * quantityNum : null;
 
   useEffect(() => {
@@ -3317,14 +3354,14 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 {topPromoActive && topPromoPreview ? (
                                   <>
                                     <span className="pl-price-original">
-                                      {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", {
+                                      {moskPricePerMbPromo.toLocaleString("pl-PL", {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
                                       })}{" "}
                                       zł
                                     </span>
                                     <span className="price-per-mb-promo pl-price-sezon-active">
-                                      {applyPromoToPrice(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, topPromoPreview)!.toLocaleString(
+                                      {applyPromoToPrice(moskPricePerMbPromo, topPromoPreview)!.toLocaleString(
                                         "pl-PL",
                                         { minimumFractionDigits: 2, maximumFractionDigits: 2 },
                                       )}{" "}
@@ -3335,7 +3372,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 ) : (
                                   <>
                                     <span className="price-per-mb-promo">
-                                      {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", {
+                                      {moskPricePerMbPromo.toLocaleString("pl-PL", {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
                                       })}{" "}
@@ -3344,7 +3381,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                     <span className="pl-price-unit"> / mb</span>
                                     {MOSKITIERY_RAMKOWE_PRICE_ON_PROMO ? (
                                       <span className="price-per-mb-standard">
-                                        {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", {
+                                        {moskPricePerMbStandard.toLocaleString("pl-PL", {
                                           minimumFractionDigits: 2,
                                           maximumFractionDigits: 2,
                                         })}{" "}
@@ -3685,7 +3722,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           <div className="pl-landing">
                             <div className="pl-trust-row">
                               <span className="pl-price">
-                                od {ROLETY_DACHOWE_STARTING_PRICE.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                od {roletyStartingPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
                                 <span className="pl-price-unit"> / szt.</span>
                               </span>
                               <span className="pl-chip">400+ modeli okien</span>
@@ -3702,7 +3739,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             />
 
                             <div className="pl-spec-grid">
-                              {(productLanding?.specItems?.length ? productLanding.specItems : ROLETY_DACHOWE_SPEC_ITEMS).map(
+                              {(productLanding?.specItems?.length ? productLanding.specItems : buildRoletyDachoweSpecItems(roletyStartingPrice)).map(
                                 (item) => (
                                   <div className="pl-spec-item" key={item.label}>
                                     <div className="pl-spec-item-text">
@@ -3733,7 +3770,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             <ul className="pl-feature-list">
                               {(productLanding?.featureBullets?.length
                                 ? productLanding.featureBullets
-                                : ROLETY_DACHOWE_FEATURE_BULLETS
+                                : buildRoletyDachoweFeatureBullets(roletyStartingPrice)
                               ).map((bullet) => (
                                 <li key={bullet.lead}>
                                   <strong>{bullet.lead}</strong>
@@ -4590,9 +4627,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         // show two different zł figures for the same leftover.
                         const effectivePricePerMbForToast =
                           topPromoActive && topPromoPreview
-                            ? (applyPromoToPrice(MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO, topPromoPreview) ??
-                              MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO)
-                            : MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO;
+                            ? (applyPromoToPrice(moskPricePerMbPromo, topPromoPreview) ??
+                              moskPricePerMbPromo)
+                            : moskPricePerMbPromo;
                         const leftover = moskLeftoverCapacity(perimeterMeters, billedMeters, effectivePricePerMbForToast);
                         setAddToCartToast({
                           productSlug: "moskitiery-ramkowe",
@@ -5155,11 +5192,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 <dt>Cena za 1 mb</dt>
                                 <dd>
                                   <span className="price-per-mb-promo">
-                                    {MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                    {moskPricePerMbPromo.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
                                   </span>
                                   {MOSKITIERY_RAMKOWE_PRICE_ON_PROMO ? (
                                     <span className="price-per-mb-standard">
-                                      {MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                      {moskPricePerMbStandard.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
                                     </span>
                                   ) : null}
                                 </dd>

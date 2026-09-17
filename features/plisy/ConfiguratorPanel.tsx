@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import PlisaPreview from "./PlisaPreview";
 import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
@@ -77,6 +78,9 @@ export default function ConfiguratorPanel({
   onAddVariant?: (result: ConfiguratorResult) => void;
   onZoom?: (preview: ZoomPreview) => void;
 }) {
+  // Korekta procentowa ceny produktu z CRM (lib/price-adjustment.ts) - dokłada
+  // się do korekty profilu cen sklepu.
+  const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
   const [profile, setProfile] = useState<PlisyProfile | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -326,7 +330,13 @@ export default function ConfiguratorPanel({
 
   const matrixUnitPrice =
     profile && dimensionsValid && selectedHardwareId && selectedFabricGroupId
-      ? calcPlisyPrice(profile, widthNum, heightNum, selectedHardwareId, selectedFabricGroupId)
+      ? calcPlisyPrice(
+          { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
+          widthNum,
+          heightNum,
+          selectedHardwareId,
+          selectedFabricGroupId,
+        )
       : null;
   // Every step's "Dopłata / rabat" (montaż, kolor osprzętu, kolor tkaniny)
   // lands in the charged price now, not just mount's - each is a badge on

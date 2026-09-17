@@ -282,6 +282,9 @@ export function calcRoletyDachowePrice(
   heightMm: number,
   hardwareId: string,
   materialTypeId: string,
+  // Korekta procentowa produktu z CRM (Sklep WWW → Produkty), nakładana na
+  // cenę z tabeli po stałej korekcie profilu.
+  extraPercent = 0,
 ): number | null {
   const table = findPricingTable(hardwareId, materialTypeId);
   if (!table) return null;
@@ -291,7 +294,7 @@ export function calcRoletyDachowePrice(
   const matrixPrice = table.prices[heightIndex]?.[widthIndex];
   if (typeof matrixPrice !== "number" || !Number.isFinite(matrixPrice) || matrixPrice <= 0) return null;
   return rdRoundMoney(
-    Math.max(0, matrixPrice * (1 + ROLETY_DACHOWE_PRICE_ADJUSTMENT_PERCENT / 100) + ROLETY_DACHOWE_PRICE_ADJUSTMENT_AMOUNT),
+    Math.max(0, (matrixPrice * (1 + ROLETY_DACHOWE_PRICE_ADJUSTMENT_PERCENT / 100) + ROLETY_DACHOWE_PRICE_ADJUSTMENT_AMOUNT) * (1 + (extraPercent || 0) / 100)),
   );
 }
 

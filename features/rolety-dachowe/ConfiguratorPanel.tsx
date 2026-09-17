@@ -9,6 +9,7 @@
 // contract) but with this product's own real step content and pricing.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import {
   ROLETY_DACHOWE_FABRIC,
@@ -37,6 +38,10 @@ export default function ConfiguratorPanel({
   onSubmit: (result: ConfiguratorResult) => void;
   onZoom?: (preview: ZoomPreview) => void;
 }) {
+  // Korekta procentowa ceny produktu z CRM (lib/price-adjustment.ts).
+  const priceAdjustmentPercentBySlug = useProductPriceAdjustment("rolety-dachowe");
+  const priceAdjustmentPercentByCrmSlug = useProductPriceAdjustment("roleta-dachowa-dekolux");
+  const priceAdjustmentPercent = priceAdjustmentPercentBySlug || priceAdjustmentPercentByCrmSlug;
   const [selectedHardwareId, setSelectedHardwareId] = useState(initialValues?.hardwareId || "");
   const [stepOneChosen, setStepOneChosen] = useState(Boolean(initialValues?.hardwareId));
   const [stepOneCollapsed, setStepOneCollapsed] = useState(Boolean(initialValues?.hardwareId));
@@ -151,7 +156,7 @@ export default function ConfiguratorPanel({
   // configurator computes it - see calcRoletyDachowePrice in shared.ts.
   const unitPrice =
     hasWindowInfo && selectedHardwareId && selectedMaterialTypeId
-      ? calcRoletyDachowePrice(resolvedWidthMm, resolvedHeightMm, selectedHardwareId, selectedMaterialTypeId)
+      ? calcRoletyDachowePrice(resolvedWidthMm, resolvedHeightMm, selectedHardwareId, selectedMaterialTypeId, priceAdjustmentPercent)
       : null;
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
 
