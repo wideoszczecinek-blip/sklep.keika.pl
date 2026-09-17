@@ -108,6 +108,23 @@ function fieldName(el: Element): string {
   return cleanText(el.getAttribute("placeholder") || el.getAttribute("name") || el.getAttribute("autocomplete") || el.tagName.toLowerCase(), 40);
 }
 
+/** IntersectionObserver nie patrzy na opacity/visibility - ukryte sekcje
+ * produktowe na stronie głównej (renderowane, ale niewidoczne) nie mogą
+ * liczyć się jako "zobaczył". */
+function isReallyVisible(el: Element): boolean {
+  let node: Element | null = el;
+  let depth = 0;
+  while (node && node !== document.body && depth < 12) {
+    if (node.getAttribute("aria-hidden") === "true" || (node as HTMLElement).hidden) return false;
+    const cs = getComputedStyle(node);
+    if (cs.visibility === "hidden" || cs.display === "none" || Number(cs.opacity) === 0) return false;
+    node = node.parentElement;
+    depth += 1;
+  }
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
 function isExternalLink(href: string): boolean {
   try {
     const url = new URL(href, window.location.href);
@@ -446,6 +463,7 @@ export default function SiteAnalytics() {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const el = entry.target as HTMLElement;
+          if (!isReallyVisible(el)) continue;
           const label = cleanText(el.tagName.startsWith("H") ? el.textContent : el.id || el.getAttribute("aria-label") || el.querySelector("h1, h2, h3")?.textContent || "", 100);
           if (!label || seen.has(label) || stats.sections >= SECTION_CAP_PER_PAGE) continue;
           seen.add(label);
