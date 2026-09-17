@@ -51,6 +51,14 @@ function MoonIcon() {
   );
 }
 
+function DecoIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+      <path d="M8 1.5l1.6 4.2 4.4.3-3.4 2.8 1.1 4.3L8 10.7l-3.7 2.4 1.1-4.3L2 6l4.4-.3z" fill="currentColor" />
+    </svg>
+  );
+}
+
 function ThermoIcon() {
   return (
     <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
@@ -213,6 +221,11 @@ export default function PlisyCollectionsPicker({
                   {row.thermal ? (
                     <span className="pl-coll-badge pl-coll-badge--thermo" title="Ogranicza nagrzewanie / straty ciepła">
                       <ThermoIcon /> Termo
+                    </span>
+                  ) : null}
+                  {row.decorative ? (
+                    <span className="pl-coll-badge pl-coll-badge--deco" title="Tkanina dekoracyjna - rozprasza światło, nie zaciemnia, bez powłoki termicznej">
+                      <DecoIcon /> Dekoracyjna
                     </span>
                   ) : null}
                   {row.swatches.length ? <span className="pl-coll-count">{row.swatches.length} kolorów</span> : null}

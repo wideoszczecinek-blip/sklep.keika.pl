@@ -94,7 +94,7 @@ const BODY_BY_COLLECTION: Record<PlisyReview["collection"], string[]> = {
   ],
   "DUO plaster miodu": [
     "Plaster miodu wygląda bardzo elegancko, bez dziurek po sznurkach.",
-    "Zimą przy oknie jest wyraźnie cieplej, izolacja działa.",
+    "W salonie wygląda bardzo dekoracyjnie, światło wpada miękko.",
     "Podwójna tkanina daje ładny, miękki efekt światła.",
     "Nie ma tych punkcików światła jak w zwykłych plisach.",
   ],

@@ -25,6 +25,9 @@ export type PlisyCollectionRow = {
   blackout: boolean;
   /** Reduces heat gain or loss - the thermometer badge. */
   thermal: boolean;
+  /** Kolekcja bez zaciemnienia i bez termiki - znacznik "Dekoracyjna"
+   * (właściciel, 2026-09-17: Klasyczne i DUO plaster miodu). */
+  decorative?: boolean;
   /** Spec sheet lines. Only what we actually know about the fabric - no
    * grammage or fire class here because the CRM does not hold them. */
   lightNote: string;
@@ -87,7 +90,7 @@ export const PLISY_PRIMARY_CTA = "Sprawdź cenę dla swojego okna";
 /** Fallback for the CRM "description" field (HTML). */
 export const PLISY_DESCRIPTION_HTML =
   "<p><strong>Plisy okienne</strong> to osłony z tkaniny plisowanej, montowane bezpośrednio na skrzydle okna. W odróżnieniu od rolety mają dwie ruchome listwy: tkaninę przesuwasz z góry i z dołu i zasłaniasz tylko tę część okna, którą chcesz. Plisa nie przeszkadza w otwieraniu i uchylaniu okna, nie ma sznurków ani łańcuszków, a złożona zajmuje zaledwie kilka centymetrów.</p>" +
-  "<p><strong>Produkujemy plisy sami, w Polsce.</strong> Jesteśmy producentem osłon okiennych. Każdą plisę wykonujemy na indywidualny wymiar, z aluminiowymi profilami w 10 kolorach i tkaninami z 5 kolekcji: od przepuszczających światło, przez termoizolacyjne plastry miodu, po w pełni zaciemniające. Wszystkie tkaniny są antystatyczne i łatwe w czyszczeniu.</p>" +
+  "<p><strong>Produkujemy plisy sami, w Polsce.</strong> Jesteśmy producentem osłon okiennych. Każdą plisę wykonujemy na indywidualny wymiar, z aluminiowymi profilami w 10 kolorach i tkaninami z 5 kolekcji: od dekoracyjnych, rozpraszających światło, przez zaciemniające, po zaciemniająco-termoizolacyjne DUO TERMO. Wszystkie tkaniny są antystatyczne i łatwe w czyszczeniu.</p>" +
   "<p><strong>Zamawiasz online w kilka minut.</strong> Wybierasz sposób montażu, kolor profili i tkaninę, wpisujesz wymiary i od razu widzisz cenę. Plisę produkujemy w 5–10 dni roboczych i wysyłamy kurierem w 24 h od wyprodukowania. Darmowa dostawa od 79 zł, 5 lat gwarancji, 30 dni na zwrot.</p>";
 
 export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
@@ -128,7 +131,7 @@ export const PLISY_FEATURE_BULLETS: PlisyFeatureBullet[] = [
   },
   {
     lead: "150 tkanin w 5 kolekcjach",
-    detail: "Klasyczne, Reflex, Blackout, DUO plaster miodu i DUO TERMO: od przepuszczających światło po w pełni zaciemniające",
+    detail: "Klasyczne, Reflex, Blackout, DUO plaster miodu i DUO TERMO: od dekoracyjnych, rozpraszających światło, po w pełni zaciemniające",
   },
   {
     lead: "10 kolorów profili",
@@ -148,10 +151,11 @@ export const PLISY_COLLECTIONS: PlisyCollectionRow[] = [
   {
     groupId: "clasic",
     name: "Klasyczne",
-    what: "Półprzepuszczalna: rozprasza światło i chroni prywatność w dzień",
+    what: "Dekoracyjna, półprzepuszczalna: rozprasza światło i chroni prywatność w dzień, nie zaciemnia",
     where: "Salon, kuchnia, biuro, pokój dziecięcy",
     blackout: false,
     thermal: false,
+    decorative: true,
     lightNote: "Półprzepuszczalna — rozprasza światło, nie zaciemnia",
     thermalNote: "Bez powłoki termicznej",
   },
@@ -178,12 +182,13 @@ export const PLISY_COLLECTIONS: PlisyCollectionRow[] = [
   {
     groupId: "duo",
     name: "DUO plaster miodu",
-    what: "Podwójna tkanina o strukturze plastra miodu, bez otworów pod sznurki: żadnych punktów światła, izolacja termiczna",
-    where: "Sypialnia, gabinet, okna z przeciągiem",
+    what: "Dekoracyjna, podwójna tkanina o strukturze plastra miodu: rozprasza światło, bez otworów pod sznurki, nie zaciemnia",
+    where: "Salon, jadalnia, gabinet",
     blackout: false,
-    thermal: true,
-    lightNote: "Półprzepuszczalna — bez otworów pod sznurki, żadnych punktów światła",
-    thermalNote: "Komora powietrzna plastra miodu — izoluje zimą i latem",
+    thermal: false,
+    decorative: true,
+    lightNote: "Półprzepuszczalna — rozprasza światło, bez otworów pod sznurki, żadnych punktów światła",
+    thermalNote: "Bez powłoki termicznej — termoizolację ma DUO TERMO",
   },
   {
     groupId: "duo-blackout",
@@ -263,12 +268,12 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Która tkanina do salonu, a która do kuchni i łazienki?",
     answer:
-      "Do salonu Klasyczne lub DUO plaster miodu: rozpraszają światło, chronią prywatność w dzień, nie zaciemniają. Do kuchni i łazienki Klasyczne lub Reflex — gładki poliester, który wystarczy przetrzeć wilgotną ściereczką. Wszystkie tkaniny mają powłokę antystatyczną, więc kurz osiada wolniej.",
+      "Do salonu Klasyczne lub DUO plaster miodu — obie kolekcje są dekoracyjne: rozpraszają światło, chronią prywatność w dzień, nie zaciemniają. Do kuchni i łazienki Klasyczne lub Reflex — gładki poliester, który wystarczy przetrzeć wilgotną ściereczką. Wszystkie tkaniny mają powłokę antystatyczną, więc kurz osiada wolniej.",
   },
   {
     question: "Czy plisa chroni przed nagrzewaniem latem i zimnem od okna zimą?",
     answer:
-      "Tak, w różnym stopniu. Reflex ma od strony szyby powłokę odbijającą słońce — do okien południowych i zachodnich. DUO plaster miodu i DUO TERMO zamykają między dwiema warstwami tkaniny poduszkę powietrzną: latem ogranicza nagrzewanie, zimą ucieczkę ciepła przez szybę. Klasyczne i Podgumowane nie mają właściwości termicznych.",
+      "Tak, dwie kolekcje. Reflex ma od strony szyby powłokę odbijającą słońce — do okien południowych i zachodnich. DUO TERMO to plaster miodu z wewnętrzną powłoką termiczną: latem ogranicza nagrzewanie, zimą ucieczkę ciepła przez szybę. Klasyczne, Podgumowane i DUO plaster miodu nie mają właściwości termicznych — DUO plaster miodu to kolekcja dekoracyjna, która rozprasza światło.",
   },
   {
     question: "Ile światła przepuszcza plisa?",

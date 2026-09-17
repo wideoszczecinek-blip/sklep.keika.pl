@@ -12940,6 +12940,10 @@ html[data-theme="light"] .plisy-viz-section .plisy-viz-lead {
   background: rgba(239, 68, 68, 0.18);
   color: #ffb4b4;
 }
+.pl-coll-badge--deco {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd27a;
+}
 .pl-coll-count {
   font-size: 0.72rem;
   font-weight: 600;
@@ -13168,6 +13172,10 @@ html[data-theme="light"] .pl-coll-badge--dark {
 html[data-theme="light"] .pl-coll-badge--thermo {
   background: rgba(220, 38, 38, 0.1);
   color: #b91c1c;
+}
+html[data-theme="light"] .pl-coll-badge--deco {
+  background: rgba(217, 119, 6, 0.12);
+  color: #a16207;
 }
 html[data-theme="light"] .pl-coll-swatch img {
   border-color: rgba(19, 40, 67, 0.18);
