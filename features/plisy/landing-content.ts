@@ -45,6 +45,14 @@ export const PLISY_STARTING_PRICE_FALLBACK = 77;
 export const PLISY_EXAMPLE_WIDTH_MM = 400;
 export const PLISY_EXAMPLE_HEIGHT_MM = 600;
 
+/** Where the top-of-page quick price (QuickPrice.tsx) and the collections
+ * picker START (plisy landing analysis 2026-09-17): the ad's own 60 x 120
+ * cm, not the smallest sash. A 40 x 60 anchor read "62 zł" while a real
+ * window costs ~118 zł, and that gap looked like bait at the moment of
+ * truth. The EXAMPLE_* pair above stays the sliders' minimum. */
+export const PLISY_DEFAULT_WIDTH_MM = 600;
+export const PLISY_DEFAULT_HEIGHT_MM = 1200;
+
 export const PLISY_LEAD_TIME_LABEL = "5–10 dni roboczych";
 
 /** The CRM currently holds this placeholder sentence in subtitle,

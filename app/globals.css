@@ -13900,3 +13900,229 @@ html[data-theme="light"] .plisy-oversize-note {
 @media (prefers-reduced-motion: reduce) {
   .swatch-hover-preview { animation: none; }
 }
+
+/* ==== plisy landing analysis 2026-09-17 ==== */
+/* Top-of-page "Ile za Twoje okno?" (features/plisy/QuickPrice.tsx): the
+   price for a REAL window, in cm, before the customer scrolls anywhere. */
+.pl-quick {
+  margin: 0.2rem 0 0.9rem;
+  padding: 0.85rem 0.9rem 0.9rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.pl-quick-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #fff;
+}
+.pl-quick-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+.pl-quick-field {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.74rem;
+  color: rgba(240, 248, 255, 0.72);
+}
+.pl-quick-field-input {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.6rem 0 0;
+  border-radius: 0.7rem;
+  background: #fff;
+  color: #16314e;
+  font-weight: 700;
+}
+.pl-quick-field-input input {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0.6rem 0.65rem;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #16314e;
+  outline: none;
+}
+.pl-quick-times {
+  padding-bottom: 0.65rem;
+  color: rgba(240, 248, 255, 0.55);
+  font-weight: 700;
+}
+.pl-quick-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0.6rem 0 0.7rem;
+}
+.pl-quick-amounts {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.pl-quick-amounts s {
+  color: rgba(240, 248, 255, 0.5);
+  font-weight: 600;
+}
+.pl-quick-amounts strong {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #1f9d6e;
+  line-height: 1;
+}
+.pl-quick-amounts small {
+  color: rgba(240, 248, 255, 0.72);
+  font-size: 0.78rem;
+}
+.pl-quick-na {
+  color: #ffd28a;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.pl-quick-note {
+  font-size: 0.72rem;
+  color: rgba(240, 248, 255, 0.55);
+}
+.pl-quick-cta {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 1rem;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #22150a;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
+  box-shadow: 0 10px 24px rgba(255, 123, 0, 0.28);
+  cursor: pointer;
+}
+.pl-quick-cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* The SEZON20 card on plisy, compacted to a strip: it used to be the
+   biggest thing above the fold with "Zapisz / wyślij link" as the only
+   prominent button - a "put it off" action before anyone saw a price. */
+.pl-sezon-banner--compact {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem;
+  border-radius: 0.8rem;
+  box-shadow: 0 6px 16px rgba(180, 60, 0, 0.2);
+}
+.pl-sezon-banner--compact::after {
+  display: none;
+}
+.pl-sezon-banner--compact .pl-sezon-banner-top {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pl-sezon-banner--compact .pl-sezon-banner-badge {
+  transform: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: 0.72rem;
+}
+.pl-sezon-banner--compact .pl-sezon-banner-text {
+  font-size: 0.86rem;
+}
+.pl-sezon-banner--compact .pl-sezon-banner-sub {
+  font-size: 0.74rem;
+}
+.pl-sezon-banner-link {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0.3rem 0.2rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Configurator step 5: unit toggle sits under the hint, "nie mam wymiarów"
+   escape hatch next to it, promo price under the fields. */
+.plisy-dimensions-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.8rem;
+  margin: 0 0 0.55rem;
+}
+.plisy-dimensions-tools .hero-product-unit-toggle {
+  margin: 0;
+}
+.plisy-measure-later {
+  border: 1px dashed rgba(22, 49, 78, 0.35);
+  background: rgba(255, 255, 255, 0.7);
+  color: #16314e;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.plisy-measure-later:hover {
+  background: #fff;
+}
+.plisy-dimensions-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #16314e;
+}
+.plisy-dimensions-hint button {
+  margin-left: 0.35rem;
+  border: none;
+  background: #16314e;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.18rem 0.65rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.plisy-price-promo {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.plisy-price-promo s {
+  font-size: 0.85em;
+  font-weight: 600;
+  opacity: 0.6;
+}
+.plisy-price-promo small {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+/* Cookie bar lifts above the floating product tabs (Konfiguruj | Opis…)
+   instead of covering them - the bar sat right on top of "Konfiguruj" on
+   phones, one extra tap before the configurator for every ad click. */
+body.has-product-tabs .consent-bar {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 4.6rem);
+}

@@ -270,7 +270,12 @@ function Notepad({ opacity, wWrite, hWrite, wmm, hmm, clipId, k = 1 }: { opacity
 export default function PlisyMeasureGuide({
   fixedMode,
   startDelayMs = 900,
+  unit = "mm",
 }: {
+  /** Unit the configurator's fields currently take (cm/mm toggle,
+   * 2026-09-17) - step 4 reads "Wpisz w cm" when that's what the field
+   * wants, so the guide never tells someone to type mm into a cm field. */
+  unit?: "mm" | "cm";
   /** Lock to one mounting system (the configurator already knows which one
    * the customer picked) - hides the mode switch. */
   fixedMode?: MeasureMode;
@@ -572,7 +577,7 @@ export default function PlisyMeasureGuide({
           {STEPS.map((s, i) => (
             <li key={s.id} className={i === stepIndex ? "is-active" : i < stepIndex ? "is-done" : ""}>
               <span className="plmg-step-num">{s.id}</span>
-              <span className="plmg-step-label">{s.label}</span>
+              <span className="plmg-step-label">{s.id === 4 ? `Wpisz w ${unit}` : s.label}</span>
             </li>
           ))}
         </ol>

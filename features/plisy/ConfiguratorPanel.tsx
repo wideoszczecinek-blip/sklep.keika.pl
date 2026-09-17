@@ -19,6 +19,9 @@ import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
+import { applyPromoToPrice, getPromoRemainingMs, PROMO_CODE, type PromoPreview } from "@/lib/promo";
+import { ensurePromoQuoteCode } from "@/lib/promo-save";
+import PromoSaveModal from "@/app/components/promo-save-modal";
 import PlisaPreview from "./PlisaPreview";
 import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
 import PlisyFabricGallery from "./FabricGallery";
@@ -60,13 +63,89 @@ function formatZl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 }
 
+// Dimensions step (plisy landing analysis 2026-09-17). Half of everyone who
+// got as far as picking a fabric colour typed nothing here and left; the
+// two live samples of what they DID type were "60" and "120" - centimetres,
+// the unit the ad and every competitor speak - rejected by a mm-only field
+// whose error quoted a range no plisa is even made in. So: the same cm/mm
+// toggle moskitiery-ramkowe has (shared localStorage key, so a customer
+// who set mm there keeps mm here), cm by default, a "that looks like cm"
+// nudge when mm is on and both numbers are tiny, the SEZON20 price the
+// cart will actually charge next to the regular one, and a way out for the
+// customer who simply hasn't measured yet (openMeasureLater).
+type DimensionUnit = "mm" | "cm";
+const DIMENSION_UNIT_STORAGE_KEY = "keika_dimension_unit_v1";
+
+function readStoredUnit(): DimensionUnit {
+  try {
+    if (typeof window === "undefined") return "cm";
+    return window.localStorage.getItem(DIMENSION_UNIT_STORAGE_KEY) === "mm" ? "mm" : "cm";
+  } catch {
+    return "cm";
+  }
+}
+
+function mmToInput(mm: number, unit: DimensionUnit): string {
+  return unit === "cm" ? String(Math.round(mm) / 10) : String(Math.round(mm));
+}
+
+function inputToMm(raw: string, unit: DimensionUnit): number {
+  const n = Number(String(raw).replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return unit === "cm" ? Math.round(n * 10) : Math.round(n);
+}
+
+// Steps 1-4 survive a remount and a return visit for a week: the customer
+// who left to measure (or came back through "Konfiguruj to okno" up top,
+// which remounts the panel with the size) finds mount, colours and fabric
+// exactly as picked. Never read for a /koszyk edit - that one carries its
+// own values.
+const DRAFT_STORAGE_KEY = "keika_plisy_draft_v1";
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+type PlisyDraft = {
+  mountId?: string;
+  bracketColorId?: string;
+  hardwareId?: string;
+  fabricGroupId?: string;
+  fabricId?: string;
+  savedAt?: number;
+};
+
+function readDraft(): PlisyDraft | null {
+  try {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PlisyDraft;
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > DRAFT_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(draft: PlisyDraft) {
+  try {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ ...draft, savedAt: Date.now() }));
+  } catch {
+    /* private mode / quota - the draft is a convenience, nothing depends on it */
+  }
+}
+
 export default function ConfiguratorPanel({
   initialValues,
   submitLabel,
   onSubmit,
   onAddVariant,
   onZoom,
+  promo = null,
 }: {
+  /** The ACTIVE SEZON20 preview (null while the code isn't switched on):
+   * every price in this panel then shows the discounted amount the cart
+   * will charge next to the struck regular one. ConfiguratorResult's
+   * unitPrice is untouched - the cart applies the code itself. */
+  promo?: PromoPreview | null;
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
   onSubmit: (result: ConfiguratorResult) => void;
@@ -101,8 +180,15 @@ export default function ConfiguratorPanel({
     };
   }, []);
 
-  const [selectedMountId, setSelectedMountId] = useState(initialValues?.mountId || "");
-  // "Jak mierzyć?" as a full modal on top of everything (owner, 2026-09-16:
+  // A /koszyk edit arrives with its own choices (ids or labels); a fresh
+  // configuration - or one that only brought a size from the "Ile za Twoje
+  // okno?" block up top - is seeded from the saved draft, see readDraft().
+  const isCartEdit = Boolean(
+    initialValues && Object.keys(initialValues).some((key) => key !== "widthMm" && key !== "heightMm" && key !== "qty"),
+  );
+  const [draftSeed] = useState<PlisyDraft | null>(() => (isCartEdit ? null : readDraft()));
+  const seed: PlisyDraft & ConfiguratorInitialValues = { ...(draftSeed ?? {}), ...(initialValues ?? {}) };
+  const [selectedMountId, setSelectedMountId] = useState(seed.mountId || "");  // "Jak mierzyć?" as a full modal on top of everything (owner, 2026-09-16:
   // "w modalu zupełnie na wierzchu - duży, żeby nie rozjeżdżał
   // konfiguratora"). Locked to the mounting system chosen in step 1, so the
   // customer sees only the measurement that applies to them. Portaled to
@@ -125,16 +211,16 @@ export default function ConfiguratorPanel({
       document.body.style.overflow = previousOverflow;
     };
   }, [measureGuideOpen]);
-  const [stepZeroChosen, setStepZeroChosen] = useState(Boolean(initialValues?.mountId));
-  const [stepZeroCollapsed, setStepZeroCollapsed] = useState(Boolean(initialValues?.mountId));
+  const [stepZeroChosen, setStepZeroChosen] = useState(Boolean(seed.mountId));
+  const [stepZeroCollapsed, setStepZeroCollapsed] = useState(Boolean(seed.mountId));
 
-  const [selectedHardwareId, setSelectedHardwareId] = useState(initialValues?.hardwareId || "");
+  const [selectedHardwareId, setSelectedHardwareId] = useState(seed.hardwareId || "");
   // Bracket colour of the non-invasive mount (owner, 2026-09-16): a
   // required sub-step right after the rail colour, only when "Bezinwazyjny"
   // is the chosen mount. Resolved from the cart label on /koszyk's edit.
   const [selectedBracketId, setSelectedBracketId] = useState(() => {
-    if (initialValues?.bracketColorId) return initialValues.bracketColorId;
-    const { bracketLabel } = splitPlisyMountLabel(initialValues?.mountLabel);
+    if (seed.bracketColorId) return seed.bracketColorId;
+    const { bracketLabel } = splitPlisyMountLabel(seed.mountLabel);
     return PLISY_BRACKET_COLORS.find((entry) => entry.label === bracketLabel)?.id || "";
   });
   const [stepBracketCollapsed, setStepBracketCollapsed] = useState(Boolean(selectedBracketId));
@@ -142,34 +228,99 @@ export default function ConfiguratorPanel({
   // the collection changes (different threshold) or the width drops back
   // under it.
   const [sagAccepted, setSagAccepted] = useState(false);
-  const [stepOneChosen, setStepOneChosen] = useState(Boolean(initialValues?.hardwareId));
-  const [stepOneCollapsed, setStepOneCollapsed] = useState(Boolean(initialValues?.hardwareId));
+  const [stepOneChosen, setStepOneChosen] = useState(Boolean(seed.hardwareId));
+  const [stepOneCollapsed, setStepOneCollapsed] = useState(Boolean(seed.hardwareId));
 
-  const [selectedFabricGroupId, setSelectedFabricGroupId] = useState(initialValues?.fabricGroupId || "");
-  const [stepTwoCollapsed, setStepTwoCollapsed] = useState(Boolean(initialValues?.fabricGroupId));
+  const [selectedFabricGroupId, setSelectedFabricGroupId] = useState(seed.fabricGroupId || "");
+  const [stepTwoCollapsed, setStepTwoCollapsed] = useState(Boolean(seed.fabricGroupId));
 
-  const [selectedFabricId, setSelectedFabricId] = useState(initialValues?.fabricId || "");
-  const [stepThreeCollapsed, setStepThreeCollapsed] = useState(Boolean(initialValues?.fabricId));
+  const [selectedFabricId, setSelectedFabricId] = useState(seed.fabricId || "");
+  const [stepThreeCollapsed, setStepThreeCollapsed] = useState(Boolean(seed.fabricId));
 
-  const [width, setWidth] = useState(initialValues?.widthMm ? String(initialValues.widthMm) : "");
-  const [height, setHeight] = useState(initialValues?.heightMm ? String(initialValues.heightMm) : "");
+  const [dimensionUnit, setDimensionUnit] = useState<DimensionUnit>(readStoredUnit);
+  const [width, setWidth] = useState(() => (initialValues?.widthMm ? mmToInput(initialValues.widthMm, readStoredUnit()) : ""));
+  const [height, setHeight] = useState(() => (initialValues?.heightMm ? mmToInput(initialValues.heightMm, readStoredUnit()) : ""));
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
+  const lastTrackedDimsRef = useRef("");
+
+  // convert=false adopts the unit for the digits already typed ("60" in a
+  // mm field really meant 60 cm) instead of converting them.
+  function switchDimensionUnit(next: DimensionUnit, convert = true) {
+    if (next === dimensionUnit) return;
+    if (convert) {
+      const convertValue = (prev: string) => {
+        const mm = inputToMm(prev, dimensionUnit);
+        return mm > 0 ? mmToInput(mm, next) : prev;
+      };
+      setWidth(convertValue);
+      setHeight(convertValue);
+    }
+    setDimensionUnit(next);
+    try {
+      window.localStorage.setItem(DIMENSION_UNIT_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+    trackShopStep("dimension_unit", "plisy", { unit: next, converted: convert });
+  }
   // Wymiary/ilość is its own accordion too (2026-09-09, /koszyk's edit
   // modal) - same "collapsed if already known" rule as every step above,
   // so an existing cart item opens with EVERY choice tucked behind a
   // "Zmień" and the customer clicks whichever one they actually want to
   // change. A fresh configuration (no initialValues) still opens this
   // expanded, unaffected - there's nothing yet to collapse it around.
+  // Only a /koszyk edit opens with the size tucked away - a size that came
+  // from the quick-price block up top stays open with the price under it.
   const [stepFiveCollapsed, setStepFiveCollapsed] = useState(
-    Boolean(initialValues?.widthMm && initialValues?.heightMm),
+    Boolean(isCartEdit && initialValues?.widthMm && initialValues?.heightMm),
   );
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
+
+  // "Nie masz jeszcze wymiarów?" - the save/share modal in its "measure"
+  // variant: the same resume link the SEZON20 flows use (the quote code
+  // remembers the visit), framed around coming back once the window is
+  // measured. The draft above brings steps 1-4 back on return.
+  const [measureSave, setMeasureSave] = useState<{ quoteCode: string; shareUrl: string; remainingMs: number } | null>(null);
+  const [measureSaveBusy, setMeasureSaveBusy] = useState(false);
+  async function openMeasureLater() {
+    if (measureSaveBusy) return;
+    setMeasureSaveBusy(true);
+    trackShopStep("measure_later_open", "plisy", {
+      mount: measureModeForMount(selectedMountId),
+      fabric: selectedFabricId || "",
+    });
+    try {
+      const state = await ensurePromoQuoteCode("plisy");
+      const quoteCode = state?.quoteCode || "";
+      setMeasureSave({
+        quoteCode,
+        shareUrl: quoteCode
+          ? `https://sklep.keika.pl/wizyta/${encodeURIComponent(quoteCode)}`
+          : "https://sklep.keika.pl/?produkt=plisy",
+        remainingMs: getPromoRemainingMs(),
+      });
+    } finally {
+      setMeasureSaveBusy(false);
+    }
+  }
 
   // The customer's whole set, built up one size at a time via "+ Dodaj
   // kolejną" below - same mount/hardware/fabric for every position, only
   // width/height/qty differ. Nothing here reaches the cart until the single
   // final add-to-cart button flushes the whole set (see handleFinalSubmit).
   const [positions, setPositions] = useState<PlisyPosition[]>([]);
+
+  useEffect(() => {
+    if (isCartEdit) return;
+    if (!selectedMountId && !selectedHardwareId && !selectedFabricGroupId && !selectedFabricId) return;
+    writeDraft({
+      mountId: selectedMountId,
+      bracketColorId: selectedBracketId,
+      hardwareId: selectedHardwareId,
+      fabricGroupId: selectedFabricGroupId,
+      fabricId: selectedFabricId,
+    });
+  }, [isCartEdit, selectedMountId, selectedBracketId, selectedHardwareId, selectedFabricGroupId, selectedFabricId]);
 
   const stepOneRef = useRef<HTMLButtonElement | null>(null);
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
@@ -310,8 +461,8 @@ export default function ConfiguratorPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFabricGroupId]);
 
-  const widthNum = Number(width) || 0;
-  const heightNum = Number(height) || 0;
+  const widthNum = inputToMm(width, dimensionUnit);
+  const heightNum = inputToMm(height, dimensionUnit);
   const dimensionsValid = profile
     ? widthNum >= profile.widthMinMm &&
       widthNum <= profile.widthMaxMm &&
@@ -323,6 +474,41 @@ export default function ConfiguratorPanel({
   const sagWarning = dimensionsValid && widthNum > sagLimitMm;
   const sagBlocked = sagWarning && !sagAccepted;
   const oversizeSurcharge = dimensionsValid ? plisyOversizeSurcharge(widthNum) : 0;
+  // "60 x 120" typed while mm is on: both numbers under half the smallest
+  // plisa - centimetres, almost certainly. Offer the switch instead of a
+  // range nobody reads.
+  const looksLikeCm =
+    dimensionUnit === "mm" &&
+    !dimensionsValid &&
+    widthNum > 0 &&
+    heightNum > 0 &&
+    (profile ? widthNum < profile.widthMinMm / 2 && heightNum < profile.heightMinMm / 2 : false);
+  const formatRange = (minMm: number, maxMm: number) =>
+    dimensionUnit === "cm" ? `${minMm / 10}–${maxMm / 10} cm` : `${minMm}–${maxMm} mm`;
+
+  // Fired on blur, once per distinct pair - the first analytics signal
+  // this step ever had for "typed something but it didn't validate".
+  function handleDimensionBlur() {
+    if (!profile || widthNum <= 0 || heightNum <= 0) return;
+    const key = `${widthNum}x${heightNum}:${dimensionsValid ? 1 : 0}`;
+    if (key === lastTrackedDimsRef.current) return;
+    lastTrackedDimsRef.current = key;
+    if (dimensionsValid) {
+      trackShopStep("enter_dimensions", "plisy", {
+        width_mm: widthNum,
+        height_mm: heightNum,
+        qty: quantityNum,
+        unit: dimensionUnit,
+      });
+    } else {
+      trackShopStep("dimensions_invalid", "plisy", {
+        width_mm: widthNum,
+        height_mm: heightNum,
+        unit: dimensionUnit,
+        looks_like_cm: looksLikeCm,
+      });
+    }
+  }
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSagAccepted(false);
@@ -348,6 +534,22 @@ export default function ConfiguratorPanel({
   const unitPrice =
     matrixUnitPrice !== null ? applyPriceDeltas(matrixUnitPrice, [selectedMount, selectedHardware, selectedFabric]) : null;
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
+
+  // Regular price struck, SEZON20 price next to it - only while the code is
+  // actually active (promo prop), so this never promises what the cart
+  // won't do. Before this the panel said 147,60 and the cart 118,08 for
+  // the same blind, and the ad had said 131.
+  function renderPrice(amount: number) {
+    const discounted = promo ? applyPromoToPrice(amount, promo) : null;
+    if (discounted === null || discounted >= amount) return formatZl(amount);
+    return (
+      <span className="plisy-price-promo">
+        <s>{formatZl(amount)}</s>
+        {formatZl(discounted)}
+        <small>z kodem {PROMO_CODE}</small>
+      </span>
+    );
+  }
 
   // Adds the currently-filled-in width/height/qty as one more position on
   // the set, then clears the fields so the next size can go straight in.
@@ -996,7 +1198,7 @@ export default function ConfiguratorPanel({
                           {measureModeForMount(selectedMountId) === "bezinwazyjny"
                             ? "Montaż bezinwazyjny: szerokość od kreseczki do kreseczki (szyba razem z listwami), wysokość całego skrzydła."
                             : "Montaż STANDARD: szerokość i wysokość od połowy uszczelki do połowy uszczelki, nic nie odejmuj."}{" "}
-                          Podaj w milimetrach i ilość sztuk w tym rozmiarze.{" "}
+                          Podaj w {dimensionUnit === "cm" ? "centymetrach" : "milimetrach"} i ilość sztuk w tym rozmiarze.{" "}
                           <button
                             type="button"
                             className="plisy-measure-link"
@@ -1008,6 +1210,29 @@ export default function ConfiguratorPanel({
                             📐 Jak mierzyć?
                           </button>
                         </p>
+                        <div className="plisy-dimensions-tools">
+                          <div className="hero-product-unit-toggle" role="group" aria-label="Jednostka wymiarów">
+                            <button
+                              type="button"
+                              className={dimensionUnit === "cm" ? "is-active" : ""}
+                              aria-pressed={dimensionUnit === "cm"}
+                              onClick={() => switchDimensionUnit("cm")}
+                            >
+                              cm
+                            </button>
+                            <button
+                              type="button"
+                              className={dimensionUnit === "mm" ? "is-active" : ""}
+                              aria-pressed={dimensionUnit === "mm"}
+                              onClick={() => switchDimensionUnit("mm")}
+                            >
+                              mm
+                            </button>
+                          </div>
+                          <button type="button" className="plisy-measure-later" onClick={openMeasureLater} disabled={measureSaveBusy}>
+                            Nie masz jeszcze wymiarów? Wyślij mi link + instrukcję
+                          </button>
+                        </div>
                         {measureGuideOpen && typeof document !== "undefined"
                           ? createPortal(
                               <div
@@ -1022,35 +1247,48 @@ export default function ConfiguratorPanel({
                                     ×
                                   </button>
                                   <h3>Jak zmierzyć okno pod plisę</h3>
-                                  <PlisyMeasureGuide fixedMode={measureModeForMount(selectedMountId)} startDelayMs={700} />
+                                  <PlisyMeasureGuide fixedMode={measureModeForMount(selectedMountId)} startDelayMs={700} unit={dimensionUnit} />
                                 </div>
                               </div>,
                               document.body,
                             )
                           : null}
+                        {measureSave ? (
+                          <PromoSaveModal
+                            variant="measure"
+                            quoteCode={measureSave.quoteCode}
+                            shareUrl={measureSave.shareUrl}
+                            remainingMs={measureSave.remainingMs}
+                            onClose={() => setMeasureSave(null)}
+                          />
+                        ) : null}
                         <div className="hero-product-dimensions-grid">
                           <label>
-                            Szerokość (mm)
+                            Szerokość ({dimensionUnit})
                             <input
                               type="number"
-                              inputMode="numeric"
-                              min={profile.widthMinMm}
-                              max={profile.widthMaxMm}
-                              placeholder={`np. ${profile.widthDefaultMm}`}
+                              inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                              step={dimensionUnit === "cm" ? 0.1 : 1}
+                              min={dimensionUnit === "cm" ? profile.widthMinMm / 10 : profile.widthMinMm}
+                              max={dimensionUnit === "cm" ? profile.widthMaxMm / 10 : profile.widthMaxMm}
+                              placeholder={`np. ${mmToInput(profile.widthDefaultMm, dimensionUnit)}`}
                               value={width}
                               onChange={(event) => setWidth(event.target.value)}
+                              onBlur={handleDimensionBlur}
                             />
                           </label>
                           <label>
-                            Wysokość (mm)
+                            Wysokość ({dimensionUnit})
                             <input
                               type="number"
-                              inputMode="numeric"
-                              min={profile.heightMinMm}
-                              max={profile.heightMaxMm}
-                              placeholder={`np. ${profile.heightDefaultMm}`}
+                              inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                              step={dimensionUnit === "cm" ? 0.1 : 1}
+                              min={dimensionUnit === "cm" ? profile.heightMinMm / 10 : profile.heightMinMm}
+                              max={dimensionUnit === "cm" ? profile.heightMaxMm / 10 : profile.heightMaxMm}
+                              placeholder={`np. ${mmToInput(profile.heightDefaultMm, dimensionUnit)}`}
                               value={height}
                               onChange={(event) => setHeight(event.target.value)}
+                              onBlur={handleDimensionBlur}
                             />
                           </label>
                           <label>
@@ -1066,9 +1304,23 @@ export default function ConfiguratorPanel({
                           </label>
                         </div>
                         {(width || height) && !dimensionsValid ? (
-                          <p className="hero-product-dimensions-error">
-                            Wymiar musi mieścić się w zakresie {profile.widthMinMm}–{profile.widthMaxMm} mm.
-                          </p>
+                          <div className="hero-product-dimensions-error">
+                            {looksLikeCm ? (
+                              <p className="plisy-dimensions-hint">
+                                {widthNum} × {heightNum} mm to tylko {widthNum / 10} × {heightNum / 10} cm — mniej niż najmniejsza plisa.
+                                Wygląda na centymetry.
+                                <button type="button" onClick={() => switchDimensionUnit("cm", false)}>
+                                  Tak, to centymetry
+                                </button>
+                              </p>
+                            ) : (
+                              <p>
+                                Szerokość {formatRange(profile.widthMinMm, profile.widthMaxMm)}, wysokość{" "}
+                                {formatRange(profile.heightMinMm, profile.heightMaxMm)}.
+                                {dimensionUnit === "mm" ? " Masz wymiar w centymetrach? Przełącz jednostkę powyżej." : ""}
+                              </p>
+                            )}
+                          </div>
                         ) : null}
                         {sagWarning ? (
                           <div className={`plisy-sag-notice ${sagAccepted ? "is-accepted" : ""}`} role="note">
@@ -1100,7 +1352,7 @@ export default function ConfiguratorPanel({
                           </p>
                         ) : null}
                         <div className="plisy-position-form-footer">
-                          <span className="plisy-position-price">{totalPrice !== null ? formatZl(totalPrice) : "--"}</span>
+                          <span className="plisy-position-price">{totalPrice !== null ? renderPrice(totalPrice) : "--"}</span>
                           <button
                             type="button"
                             className="plisy-position-add"
@@ -1122,7 +1374,7 @@ export default function ConfiguratorPanel({
                           <span className="plisy-positions-row-label">
                             {index + 1}. {position.widthMm} × {position.heightMm} mm, {position.qty} szt.
                           </span>
-                          <span className="plisy-positions-row-price">{formatZl(position.totalPrice)}</span>
+                          <span className="plisy-positions-row-price">{renderPrice(position.totalPrice)}</span>
                           <button
                             type="button"
                             className="plisy-positions-row-remove"
@@ -1135,7 +1387,7 @@ export default function ConfiguratorPanel({
                       ))}
                       <div className="plisy-positions-total">
                         <span>Razem za cały zestaw</span>
-                        <strong>{formatZl(positionsGrandTotal)}</strong>
+                        <strong>{renderPrice(positionsGrandTotal)}</strong>
                       </div>
                     </div>
                   ) : null}

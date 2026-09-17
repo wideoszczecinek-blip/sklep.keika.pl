@@ -22,8 +22,11 @@
 import { useMemo, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import {
   PLISY_COLLECTIONS,
+  PLISY_DEFAULT_HEIGHT_MM,
+  PLISY_DEFAULT_WIDTH_MM,
   PLISY_EXAMPLE_HEIGHT_MM,
   PLISY_EXAMPLE_WIDTH_MM,
   PLISY_LEAD_TIME_LABEL,
@@ -115,8 +118,18 @@ export default function PlisyCollectionsPicker({
   const maxW = Math.max(minW + 10, Math.floor(matrixMax(profile, "width") / 10));
   const maxH = Math.max(minH + 10, Math.floor(matrixMax(profile, "height") / 10));
 
-  const [widthCm, setWidthCm] = useState(minW);
-  const [heightCm, setHeightCm] = useState(minH);
+  // Starts on the ad's 60 x 120 cm window (2026-09-17), not the 40 x 60
+  // minimum - see PLISY_DEFAULT_*_MM. The sliders still go down to the
+  // smallest sash.
+  const [widthCm, setWidthCm] = useState(PLISY_DEFAULT_WIDTH_MM / 10);
+  const [heightCm, setHeightCm] = useState(PLISY_DEFAULT_HEIGHT_MM / 10);
+
+  // The same per-product percent correction from the CRM the configurator
+  // itself applies (ConfiguratorPanel.tsx, useProductPriceAdjustment) -
+  // without it this block quoted the raw matrix (77 zł) while the
+  // configurator, a screen later, said 69,30 zł for the same size. One
+  // number for one window, everywhere on the page.
+  const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
 
   const rows = useMemo(
     () =>
@@ -124,13 +137,19 @@ export default function PlisyCollectionsPicker({
         const group = profile?.fabricGroups.find((entry) => entry.id === row.groupId);
         const regular =
           profile && group
-            ? calcPlisyPrice(profile, widthCm * 10, heightCm * 10, profile.hardware[0]?.id || "", row.groupId)
+            ? calcPlisyPrice(
+                { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
+                widthCm * 10,
+                heightCm * 10,
+                profile.hardware[0]?.id || "",
+                row.groupId,
+              )
             : null;
         const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
         const swatches = (group?.swatches || []).filter((s) => s.thumbnailUrl || s.imageUrl);
         return { ...row, regular, withPromo, swatches };
       }),
-    [profile, promo, widthCm, heightCm],
+    [profile, promo, widthCm, heightCm, priceAdjustmentPercent],
   );
 
   const sizeLabel = `${widthCm} × ${heightCm} cm`;

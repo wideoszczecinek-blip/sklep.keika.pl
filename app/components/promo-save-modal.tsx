@@ -52,8 +52,14 @@ export default function PromoSaveModal({
    * header save/share button instead ("korzystając z przycisku u góry") -
    * that button itself shakes right as this modal closes (see
    * ATTRACT_SAVE_SHARE_EVENT below) so there's exactly one, unambiguous
-   * place to go save/share from, never two competing flows. */
-  variant?: "reminder" | "activated" | "announcement";
+   * place to go save/share from, never two competing flows.
+   * "measure": opened from the plisy configurator's dimensions step
+   * (2026-09-17) for the customer who has picked everything but can't type
+   * a size yet because the window isn't measured - half of everyone who
+   * reached that step just went quiet and left. Same save/share options,
+   * copy framed around "come back once you've measured", never around the
+   * discount. */
+  variant?: "reminder" | "activated" | "announcement" | "measure";
   onClose: () => void;
 }) {
   const [introDismissed, setIntroDismissed] = useState(variant !== "activated");
@@ -197,17 +203,32 @@ export default function PromoSaveModal({
           <div className="promo-save-modal-done">
             <span className="promo-save-modal-done-check" aria-hidden="true">✓</span>
             <h3>Wysłaliśmy link!</h3>
-            <p>Sprawdź {channel === "email" ? "skrzynkę e-mail" : "SMS-y"} - link zaprowadzi Cię z powrotem tutaj, z rabatem wciąż naliczonym.</p>
+            <p>
+              Sprawdź {channel === "email" ? "skrzynkę e-mail" : "SMS-y"} - link zaprowadzi Cię z powrotem tutaj
+              {variant === "measure" ? ", do instrukcji pomiaru i Twojej konfiguracji" : ""}, z rabatem wciąż naliczonym.
+            </p>
             <button type="button" className="promo-save-modal-done-cta" onClick={onClose}>
               Zamknij
             </button>
           </div>
         ) : channel === null ? (
           <>
-            <h3>Zabierz swój rabat -20% ze sobą</h3>
-            <p className="promo-save-modal-lead">
-              Zapisz link i wróć do zakupów kiedy zechcesz - rabat będzie na Ciebie czekał.
-            </p>
+            {variant === "measure" ? (
+              <>
+                <h3>Zmierz okno na spokojnie</h3>
+                <p className="promo-save-modal-lead">
+                  Wyślemy Ci link do tej strony - z instrukcją pomiaru i zapisanym rabatem SEZON20. Wrócisz jednym
+                  kliknięciem, także z innego telefonu.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3>Zabierz swój rabat -20% ze sobą</h3>
+                <p className="promo-save-modal-lead">
+                  Zapisz link i wróć do zakupów kiedy zechcesz - rabat będzie na Ciebie czekał.
+                </p>
+              </>
+            )}
             <div className="promo-save-modal-options">
               {canNativeShare ? (
                 <button type="button" className="promo-save-option is-primary" onClick={handleNativeShare}>

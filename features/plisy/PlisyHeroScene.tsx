@@ -122,6 +122,24 @@ function colorAt(palette: Rgb[], times: number[], t: number): Rgb {
 const rgb = (c: Rgb, k = 1, a = 1) =>
   `rgba(${Math.round(Math.min(255, c[0] * k))}, ${Math.round(Math.min(255, c[1] * k))}, ${Math.round(Math.min(255, c[2] * k))}, ${a})`;
 
+// Older WebKit (Safari < 16) has no CanvasRenderingContext2D.roundRect - it
+// threw "e.roundRect is not a function" in live sessions on the plisy
+// landing (2026-09-17), killing the hero scene. A hand-built path costs
+// nothing and needs no per-frame feature detection.
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.arcTo(x + w, y, x + w, y + rr, rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.arcTo(x + w, y + h, x + w - rr, y + h, rr);
+  ctx.lineTo(x + rr, y + h);
+  ctx.arcTo(x, y + h, x, y + h - rr, rr);
+  ctx.lineTo(x, y + rr);
+  ctx.arcTo(x, y, x + rr, y, rr);
+  ctx.closePath();
+}
+
 function drawRail(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
   // slim white aluminium profile with a soft shadow below and a small handle
   ctx.save();
@@ -134,7 +152,7 @@ function drawRail(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
   g.addColorStop(1, "#d3d7dc");
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.roundRect(x, y, w, RAIL_H, 2);
+  roundRectPath(ctx, x, y, w, RAIL_H, 2);
   ctx.fill();
   ctx.restore();
   ctx.fillStyle = "rgba(120, 128, 138, 0.55)";

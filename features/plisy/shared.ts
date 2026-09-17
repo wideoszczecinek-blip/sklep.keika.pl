@@ -223,18 +223,22 @@ export async function fetchPlisyProfile(): Promise<PlisyProfile | null> {
 
     const startingPrice = product.display_price_amount ? Number(product.display_price_amount) : null;
 
+    // Real bounds come off the price matrix itself: the smallest and largest
+    // breakpoint any table knows (400-2100 x 600-2300 mm today). The old
+    // generic 200-3000 mm range let a 25 cm or 250 cm plisa pass validation
+    // with no price row behind it, and told a customer who typed "60" (cm,
+    // as the ad says) only "zakres 200-3000 mm" - plisy landing analysis
+    // 2026-09-17. Generic fallback kept only for an empty matrix.
+    const widthBps = tables.flatMap((table) => table.widthBreakpointsMm).filter((n) => Number.isFinite(n) && n > 0);
+    const heightBps = tables.flatMap((table) => table.heightBreakpointsMm).filter((n) => Number.isFinite(n) && n > 0);
+
     return {
       productName: product.label || "Plisy",
-      // Bounds aren't threaded through configurator_public.php's dimensions
-      // step today (only label/placeholder), so a sane generic range is
-      // used here - matches the same 200-2300mm range every non-mosquito
-      // product in this shop already enforces (see e.g.
-      // ROLETY_DACHOWE_MIN/MAX_DIMENSION_MM).
-      widthMinMm: 200,
-      widthMaxMm: 3000,
+      widthMinMm: widthBps.length ? Math.min(...widthBps) : 200,
+      widthMaxMm: widthBps.length ? Math.max(...widthBps) : 3000,
       widthDefaultMm: Number(widthField?.width_placeholder?.replace(/\D/g, "")) || 900,
-      heightMinMm: 200,
-      heightMaxMm: 3000,
+      heightMinMm: heightBps.length ? Math.min(...heightBps) : 200,
+      heightMaxMm: heightBps.length ? Math.max(...heightBps) : 3000,
       heightDefaultMm: Number(widthField?.height_placeholder?.replace(/\D/g, "")) || 1200,
       mountOptions,
       hardware,

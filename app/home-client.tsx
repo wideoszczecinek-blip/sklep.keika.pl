@@ -100,6 +100,7 @@ import { fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
 import {
   isPlisyPlaceholderCopy,
   PLISY_H1,
+  PLISY_LEAD_TIME_LABEL,
   PLISY_PRIMARY_CTA,
   PLISY_DESCRIPTION_HTML,
   PLISY_CALLOUT,
@@ -141,6 +142,7 @@ import PlisyMeasureGuide from "@/features/plisy/MeasureGuide";
 import { PLISY_INSTRUCTION_STEPS } from "@/features/plisy/instructions";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
+import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -1359,6 +1361,10 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // is fetched live from the CRM instead of hardcoded like the two above.
   const [plisyConfigKey, setPlisyConfigKey] = useState(0);
   const [plisyLastResult, setPlisyLastResult] = useState<PlisyConfiguratorResult | null>(null);
+  // Size typed into the "Ile za Twoje okno?" block at the top of the plisy
+  // landing (2026-09-17) - handed to the configurator on "Konfiguruj to
+  // okno" so it's never typed twice; cleared once a set reaches the cart.
+  const [plisyPrefillDims, setPlisyPrefillDims] = useState<{ widthMm: number; heightMm: number } | null>(null);
   // Plisy landing copy prices itself from the live CRM matrix ("od 77 zł",
   // the per-collection examples) instead of the hand-typed CRM price_from,
   // which read "od 219 zł" against a 77 zł matrix minimum (audit
@@ -1593,6 +1599,18 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     container.addEventListener("scroll", onScroll, { passive: true });
     return () => container.removeEventListener("scroll", onScroll);
   }, [isProductView]);
+  // The cookie bar (position: fixed, bottom 0.75rem) sat right on top of
+  // the floating Konfiguruj/Opis tabs on phones - one extra tap before the
+  // configurator for every ad click that hadn't consented yet (plisy
+  // landing analysis 2026-09-17). The bar lifts itself above the tabs via
+  // this body class (globals.css: body.has-product-tabs .consent-bar).
+  useEffect(() => {
+    const active = isProductView && !hideBottomTabs;
+    document.body.classList.toggle("has-product-tabs", active);
+    return () => {
+      document.body.classList.remove("has-product-tabs");
+    };
+  }, [isProductView, hideBottomTabs]);
   // Opis/Galeria/Opinie/Instrukcje are one continuous stacked page now, not
   // a tab-switcher - activeProductTab still exists, just repurposed to drive
   // which nav pill is highlighted (via the scroll-spy effect below) instead
@@ -3607,7 +3625,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             {topPromoPreview || topPromoActive ? (
                               <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
                                 {(promo) => (
-                                  <div className={`pl-sezon-banner ${topPromoActive ? "is-active" : ""}`}>
+                                  <div className={`pl-sezon-banner pl-sezon-banner--compact ${topPromoActive ? "is-active" : ""}`}>
                                     <div className="pl-sezon-banner-top">
                                       <span className="pl-sezon-banner-badge" aria-hidden="true">
                                         {topPromoActive ? "✓" : "-20%"}
@@ -3620,7 +3638,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                           {topPromoActive ? (
                                             promo ? (
                                               <>
-                                                Rabat -20% naliczy się w koszyku, ważny jeszcze <strong>{promo.remainingText}</strong>
+                                                -20% naliczy się w koszyku · jeszcze <strong>{promo.remainingText}</strong>
                                               </>
                                             ) : (
                                               "Rabat -20% naliczy się w koszyku"
@@ -3633,24 +3651,25 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                     </div>
                                     {!topPromoActive ? (
                                       <button type="button" className="pl-sezon-banner-cta" onClick={activateTopPromo}>
-                                        Aktywuj rabat -20%
+                                        Aktywuj -20%
                                       </button>
                                     ) : promo ? (
-                                      <button type="button" className="pl-sezon-banner-cta" onClick={promo.openModal}>
-                                        Zapisz / wyślij link
+                                      <button type="button" className="pl-sezon-banner-link" onClick={promo.openModal}>
+                                        Zapisz link
                                       </button>
                                     ) : null}
                                   </div>
                                 )}
                               </PromoCountdownBanner>
                             ) : !topPromoResolved ? (
-                              <div className="pl-sezon-banner pl-sezon-banner--placeholder" aria-hidden="true" />
+                              <div className="pl-sezon-banner pl-sezon-banner--compact pl-sezon-banner--placeholder" aria-hidden="true" />
                             ) : null}
                             <div className="pl-trust-row">
                               <span className="pl-price">
                                 od {formatStartingPrice(plisyStartingPrice)} zł
                                 <span className="pl-price-unit"> / szt.</span>
                               </span>
+                              <span className="pl-chip">Realizacja {PLISY_LEAD_TIME_LABEL}</span>
                               <span className="pl-chip">Polski producent</span>
                               <span className="pl-chip">5 lat gwarancji</span>
                               <span className="pl-chip">30 dni na zwrot</span>
@@ -3660,9 +3679,19 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             <p className="pl-subtitle">
                               {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
                             </p>
-                            <button type="button" className="pl-mobile-price-cta" onClick={scrollToConfigPanel}>
-                              {PLISY_PRIMARY_CTA} — 10 sekund
-                            </button>
+                            <PlisyQuickPrice
+                              profile={plisyProfile}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              onConfigure={(widthMm, heightMm) => {
+                                // Dims only - the panel re-seeds steps 1-4
+                                // from its own saved draft and keeps the
+                                // size step open with the price under it.
+                                setPlisyLastResult(null);
+                                setPlisyPrefillDims({ widthMm, heightMm });
+                                setPlisyConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
 
                             <PlisyHeroPhotos />
 
@@ -4781,19 +4810,28 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                     <PlisyConfiguratorPanel
                       key={plisyConfigKey}
                       initialValues={
-                        plisyLastResult
+                        plisyLastResult || plisyPrefillDims
                           ? {
-                              mountId: plisyLastResult.mountId,
-                              hardwareId: plisyLastResult.hardwareId,
-                              fabricGroupId: plisyLastResult.fabricGroupId,
-                              fabricId: plisyLastResult.fabricId,
+                              ...(plisyLastResult
+                                ? {
+                                    mountId: plisyLastResult.mountId,
+                                    hardwareId: plisyLastResult.hardwareId,
+                                    fabricGroupId: plisyLastResult.fabricGroupId,
+                                    fabricId: plisyLastResult.fabricId,
+                                  }
+                                : {}),
+                              ...(plisyPrefillDims
+                                ? { widthMm: plisyPrefillDims.widthMm, heightMm: plisyPrefillDims.heightMm }
+                                : {}),
                             }
                           : undefined
                       }
+                      promo={topPromoActive ? topPromoPreview : null}
                       submitLabel="Dodaj do koszyka"
                       onZoom={(preview) => setZoomPreview(preview)}
                       onSubmit={(result) => {
                         setPlisyLastResult(result);
+                        setPlisyPrefillDims(null);
                         const item: CartLineItem = {
                           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                           productSlug: "plisy",
