@@ -13905,17 +13905,18 @@ html[data-theme="light"] .plisy-oversize-note {
 /* Top-of-page "Ile za Twoje okno?" (features/plisy/QuickPrice.tsx): the
    price for a REAL window, in cm, before the customer scrolls anywhere. */
 .pl-quick {
+  max-width: 560px;
   margin: 0.2rem 0 0.9rem;
   padding: 0.85rem 0.9rem 0.9rem;
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #f3f6fa;
+  border: 1px solid #d9e1ea;
 }
 .pl-quick-title {
   margin: 0 0 0.5rem;
   font-size: 1.02rem;
   font-weight: 800;
-  color: #fff;
+  color: #16314e;
 }
 .pl-quick-fields {
   display: flex;
@@ -13928,7 +13929,7 @@ html[data-theme="light"] .plisy-oversize-note {
   flex-direction: column;
   gap: 0.2rem;
   font-size: 0.74rem;
-  color: rgba(240, 248, 255, 0.72);
+  color: #4a5b6e;
 }
 .pl-quick-field-input {
   display: flex;
@@ -13937,6 +13938,7 @@ html[data-theme="light"] .plisy-oversize-note {
   padding: 0 0.6rem 0 0;
   border-radius: 0.7rem;
   background: #fff;
+  border: 1px solid #c9d3de;
   color: #16314e;
   font-weight: 700;
 }
@@ -13954,7 +13956,7 @@ html[data-theme="light"] .plisy-oversize-note {
 }
 .pl-quick-times {
   padding-bottom: 0.65rem;
-  color: rgba(240, 248, 255, 0.55);
+  color: #7a8794;
   font-weight: 700;
 }
 .pl-quick-result {
@@ -13970,7 +13972,7 @@ html[data-theme="light"] .plisy-oversize-note {
   gap: 0.45rem;
 }
 .pl-quick-amounts s {
-  color: rgba(240, 248, 255, 0.5);
+  color: #7a8794;
   font-weight: 600;
 }
 .pl-quick-amounts strong {
@@ -13980,17 +13982,17 @@ html[data-theme="light"] .plisy-oversize-note {
   line-height: 1;
 }
 .pl-quick-amounts small {
-  color: rgba(240, 248, 255, 0.72);
+  color: #4a5b6e;
   font-size: 0.78rem;
 }
 .pl-quick-na {
-  color: #ffd28a;
+  color: #b45309;
   font-size: 0.86rem;
   font-weight: 600;
 }
 .pl-quick-note {
   font-size: 0.72rem;
-  color: rgba(240, 248, 255, 0.55);
+  color: #5b6b7c;
 }
 .pl-quick-cta {
   width: 100%;

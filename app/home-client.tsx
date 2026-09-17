@@ -3615,6 +3615,24 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           </div>
                         ) : productSlugFromSelected(displayedProduct) === "plisy" ? (
                           <div className="pl-landing">
+                            {/* First thing under the title, before the SEZON20
+                                strip and the subtitle: on a 390px phone anything
+                                after the 5-line subtitle is already below the
+                                fold, and the fold is exactly where 80% of ad
+                                visitors left (2026-09-17). */}
+                            <PlisyQuickPrice
+                              profile={plisyProfile}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              onConfigure={(widthMm, heightMm) => {
+                                // Dims only - the panel re-seeds steps 1-4
+                                // from its own saved draft and keeps the
+                                // size step open with the price under it.
+                                setPlisyLastResult(null);
+                                setPlisyPrefillDims({ widthMm, heightMm });
+                                setPlisyConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
                             {/* Plisy landing (audit 2026-09-14) - built-in copy from
                                 features/plisy/landing-content.ts, CRM fields take
                                 over one by one once the owner fills them. SEZON20
@@ -3679,19 +3697,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             <p className="pl-subtitle">
                               {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
                             </p>
-                            <PlisyQuickPrice
-                              profile={plisyProfile}
-                              promo={topPromoActive ? topPromoPreview : null}
-                              onConfigure={(widthMm, heightMm) => {
-                                // Dims only - the panel re-seeds steps 1-4
-                                // from its own saved draft and keeps the
-                                // size step open with the price under it.
-                                setPlisyLastResult(null);
-                                setPlisyPrefillDims({ widthMm, heightMm });
-                                setPlisyConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
-                              }}
-                            />
 
                             <PlisyHeroPhotos />
 
