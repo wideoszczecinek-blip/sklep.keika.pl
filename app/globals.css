@@ -13857,3 +13857,46 @@ html[data-theme="light"] .plisy-bracket-option {
 html[data-theme="light"] .plisy-oversize-note {
   color: #4b5d70;
 }
+
+/* Duży podgląd próbnika po najechaniu (app/components/swatch-hover-preview.tsx):
+   portal position: fixed, pozycja liczona od kursora - nad nim w dolnej
+   połowie ekranu, pod nim w górnej. */
+.swatch-hover-preview {
+  position: fixed;
+  z-index: 1200;
+  pointer-events: none;
+  padding: 0.55rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 56px rgba(8, 20, 35, 0.32);
+  animation: swatchHoverPreviewIn 0.14s ease-out;
+}
+.swatch-hover-preview-image {
+  overflow: hidden;
+  border-radius: 0.7rem;
+  background: #eef2f6;
+}
+.swatch-hover-preview-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.swatch-hover-preview-label {
+  margin-top: 0.4rem;
+  padding: 0 0.2rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #16304a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@keyframes swatchHoverPreviewIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .swatch-hover-preview { animation: none; }
+}

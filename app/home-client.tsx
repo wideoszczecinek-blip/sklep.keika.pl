@@ -35,6 +35,7 @@ import {
 import { ensurePromoQuoteCode } from "@/lib/promo-save";
 import PromoCountdownBanner from "./components/promo-countdown-banner";
 import PromoTopStrip from "./components/promo-top-strip";
+import SwatchHoverPreview from "./components/swatch-hover-preview";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 import {
   type CartLineItem,
@@ -3152,6 +3153,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
         </div>
       </header>
 
+      <SwatchHoverPreview />
       <main>
         <section className="hero-full" id="start">
           <div
