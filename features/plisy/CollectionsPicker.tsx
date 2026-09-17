@@ -23,28 +23,20 @@ import { useMemo, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
+import { PLISY_COLLECTIONS, PLISY_DEFAULT_HEIGHT_MM, PLISY_DEFAULT_WIDTH_MM, PLISY_LEAD_TIME_LABEL } from "./landing-content";
 import {
-  PLISY_COLLECTIONS,
-  PLISY_DEFAULT_HEIGHT_MM,
-  PLISY_DEFAULT_WIDTH_MM,
-  PLISY_EXAMPLE_HEIGHT_MM,
-  PLISY_EXAMPLE_WIDTH_MM,
-  PLISY_LEAD_TIME_LABEL,
-} from "./landing-content";
-import { calcPlisyPrice, type PlisyProfile } from "./shared";
+  calcPlisyPrice,
+  PLISY_HEIGHT_MAX_MM,
+  PLISY_HEIGHT_MIN_MM,
+  PLISY_WIDTH_MAX_MM,
+  PLISY_WIDTH_MIN_MM,
+  type PlisyProfile,
+} from "./shared";
 
 function zl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 }
 
-/** Slider ceiling = the largest breakpoint the price matrix knows; past it
- * calcPlisyPrice returns null. Sane fallback while the profile loads. */
-function matrixMax(profile: PlisyProfile | null, axis: "width" | "height"): number {
-  if (!profile) return axis === "width" ? 1500 : 2200;
-  const all = profile.tables.flatMap((t) => (axis === "width" ? t.widthBreakpointsMm : t.heightBreakpointsMm));
-  const max = Math.max(0, ...all);
-  return max > 0 ? max : axis === "width" ? 1500 : 2200;
-}
 
 function clampInt(v: number, lo: number, hi: number): number {
   if (!Number.isFinite(v)) return lo;
@@ -123,10 +115,12 @@ export default function PlisyCollectionsPicker({
   heightCm?: number;
   onSizeChange?: (widthCm: number, heightCm: number) => void;
 }) {
-  const minW = PLISY_EXAMPLE_WIDTH_MM / 10;
-  const minH = PLISY_EXAMPLE_HEIGHT_MM / 10;
-  const maxW = Math.max(minW + 10, Math.floor(matrixMax(profile, "width") / 10));
-  const maxH = Math.max(minH + 10, Math.floor(matrixMax(profile, "height") / 10));
+  // Production limits (20-150 x 20-230 cm) - the same bounds the quick
+  // price up top and the configurator use.
+  const minW = (profile ? profile.widthMinMm : PLISY_WIDTH_MIN_MM) / 10;
+  const minH = (profile ? profile.heightMinMm : PLISY_HEIGHT_MIN_MM) / 10;
+  const maxW = (profile ? profile.widthMaxMm : PLISY_WIDTH_MAX_MM) / 10;
+  const maxH = (profile ? profile.heightMaxMm : PLISY_HEIGHT_MAX_MM) / 10;
 
   // Starts on the ad's 60 x 120 cm window (2026-09-17), not the 40 x 60
   // minimum - see PLISY_DEFAULT_*_MM. The sliders still go down to the

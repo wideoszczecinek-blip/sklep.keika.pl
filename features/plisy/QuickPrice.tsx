@@ -27,8 +27,15 @@ import { useEffect, useMemo, useRef } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
-import { PLISY_COLLECTIONS, PLISY_EXAMPLE_HEIGHT_MM, PLISY_EXAMPLE_WIDTH_MM } from "./landing-content";
-import { calcPlisyPrice, type PlisyProfile } from "./shared";
+import { PLISY_COLLECTIONS } from "./landing-content";
+import {
+  calcPlisyPrice,
+  PLISY_HEIGHT_MAX_MM,
+  PLISY_HEIGHT_MIN_MM,
+  PLISY_WIDTH_MAX_MM,
+  PLISY_WIDTH_MIN_MM,
+  type PlisyProfile,
+} from "./shared";
 
 function zl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
@@ -58,12 +65,12 @@ export default function PlisyQuickPrice({
 }) {
   const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
 
-  // Slider bounds = the price matrix (40-210 x 60-230 cm today); the
-  // EXAMPLE_* pair is the same floor the collection picker's sliders use.
-  const minW = profile ? profile.widthMinMm / 10 : PLISY_EXAMPLE_WIDTH_MM / 10;
-  const maxW = profile ? profile.widthMaxMm / 10 : 210;
-  const minH = profile ? profile.heightMinMm / 10 : PLISY_EXAMPLE_HEIGHT_MM / 10;
-  const maxH = profile ? profile.heightMaxMm / 10 : 230;
+  // Slider bounds = the production limits (20-150 x 20-230 cm), the same
+  // ones the collection comparison and the configurator enforce.
+  const minW = (profile ? profile.widthMinMm : PLISY_WIDTH_MIN_MM) / 10;
+  const maxW = (profile ? profile.widthMaxMm : PLISY_WIDTH_MAX_MM) / 10;
+  const minH = (profile ? profile.heightMinMm : PLISY_HEIGHT_MIN_MM) / 10;
+  const maxH = (profile ? profile.heightMaxMm : PLISY_HEIGHT_MAX_MM) / 10;
   const widthCm = Math.round(widthMm / 10);
   const heightCm = Math.round(heightMm / 10);
 

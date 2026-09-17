@@ -229,16 +229,17 @@ export async function fetchPlisyProfile(): Promise<PlisyProfile | null> {
     // with no price row behind it, and told a customer who typed "60" (cm,
     // as the ad says) only "zakres 200-3000 mm" - plisy landing analysis
     // 2026-09-17. Generic fallback kept only for an empty matrix.
-    const widthBps = tables.flatMap((table) => table.widthBreakpointsMm).filter((n) => Number.isFinite(n) && n > 0);
-    const heightBps = tables.flatMap((table) => table.heightBreakpointsMm).filter((n) => Number.isFinite(n) && n > 0);
-
+    // Owner's production limits (2026-09-17): 20-150 cm wide, 20-230 cm
+    // high. Sizes under the matrix's first breakpoint price as that first
+    // column (resolvePriceBreakpointIndex rounds up), so a 20 cm plisa
+    // costs the same as a 40 cm one - the CRM accepts 200-3000 mm.
     return {
       productName: product.label || "Plisy",
-      widthMinMm: widthBps.length ? Math.min(...widthBps) : 200,
-      widthMaxMm: widthBps.length ? Math.max(...widthBps) : 3000,
+      widthMinMm: PLISY_WIDTH_MIN_MM,
+      widthMaxMm: PLISY_WIDTH_MAX_MM,
       widthDefaultMm: Number(widthField?.width_placeholder?.replace(/\D/g, "")) || 900,
-      heightMinMm: heightBps.length ? Math.min(...heightBps) : 200,
-      heightMaxMm: heightBps.length ? Math.max(...heightBps) : 3000,
+      heightMinMm: PLISY_HEIGHT_MIN_MM,
+      heightMaxMm: PLISY_HEIGHT_MAX_MM,
       heightDefaultMm: Number(widthField?.height_placeholder?.replace(/\D/g, "")) || 1200,
       mountOptions,
       hardware,
@@ -428,6 +429,13 @@ export type ConfiguratorInitialValues = {
  *    weight - cosmetic, not functional;
  *  - the non-invasive mount ("Bezinwazyjny") comes in three bracket
  *    colours chosen in a sub-step right after the rail colour. */
+/** Production limits, owner 2026-09-17: "szerokość 20-150 cm, wysokość
+ * 20-230 cm". Every size input on the plisy landing (quick price, the
+ * collection comparison, the configurator) reads these off the profile. */
+export const PLISY_WIDTH_MIN_MM = 200;
+export const PLISY_WIDTH_MAX_MM = 1500;
+export const PLISY_HEIGHT_MIN_MM = 200;
+export const PLISY_HEIGHT_MAX_MM = 2300;
 export const PLISY_OVERSIZE_WIDTH_MM = 1500;
 export const PLISY_OVERSIZE_TIER_2_MM = 2000;
 export const PLISY_OVERSIZE_TIER_1_AMOUNT = 19.9;

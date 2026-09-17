@@ -116,7 +116,7 @@ export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
 export const PLISY_FEATURE_BULLETS: PlisyFeatureBullet[] = [
   {
     lead: "Plisy na wymiar",
-    detail: "produkowane pod wymiar Twojego okna: szerokość od 40 do 210 cm, wysokość od 60 do 230 cm",
+    detail: "produkowane pod wymiar Twojego okna: szerokość od 20 do 150 cm, wysokość od 20 do 230 cm",
   },
   {
     lead: "Regulacja z góry i z dołu",
@@ -228,7 +228,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Jakie wymiary plis wykonujecie?",
     answer:
-      "Szerokość od 40 do 210 cm, wysokość od 60 do 230 cm — to obejmuje okna, drzwi balkonowe i większość witryn. Wymiar podajesz w milimetrach, produkujemy co do milimetra. Okno spoza tego zakresu? Napisz, sprawdzimy, czy da się je zasłonić dwiema plisami.",
+      "Szerokość od 20 do 150 cm, wysokość od 20 do 230 cm — to obejmuje okna, drzwi balkonowe i większość witryn. Wymiar podajesz w centymetrach lub milimetrach, produkujemy co do milimetra. Okno spoza tego zakresu? Napisz, sprawdzimy, czy da się je zasłonić dwiema plisami.",
   },
   {
     question: "Czy muszę wiercić w oknie?",

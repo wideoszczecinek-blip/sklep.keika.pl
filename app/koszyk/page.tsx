@@ -261,7 +261,7 @@ function buildQuotePayloadFromCart(
   const positions = items.map((item, index) => {
     const fieldLabels = cartItemFieldLabels(item.productSlug);
     const specs = [
-      item.mountLabel ? `rodzaj montażu ${item.mountLabel}` : "",
+      item.mountLabel ? `sposób montażu ${item.mountLabel}` : "",
       item.hardwareLabel ? `${fieldLabels.hardware.toLowerCase()} ${item.hardwareLabel}` : "",
       item.meshLabel ? `${fieldLabels.mesh.toLowerCase()} ${item.meshLabel}` : "",
       item.modelLabel ? `model okna ${item.modelLabel}` : "",

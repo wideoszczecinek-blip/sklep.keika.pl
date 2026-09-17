@@ -25,6 +25,7 @@ import PromoSaveModal from "@/app/components/promo-save-modal";
 import PlisaPreview from "./PlisaPreview";
 import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
 import PlisyFabricGallery from "./FabricGallery";
+import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta } from "./CollectionVisual";
 import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
@@ -554,29 +555,63 @@ export default function ConfiguratorPanel({
   // Adds the currently-filled-in width/height/qty as one more position on
   // the set, then clears the fields so the next size can go straight in.
   // Nothing is sent to the parent/cart yet - see handleFinalSubmit.
-  function handleAddPosition() {
-    if (!dimensionsValid || unitPrice === null || totalPrice === null || sagBlocked) return;
-    setPositions((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        widthMm: widthNum,
-        heightMm: heightNum,
-        qty: quantityNum,
-        unitPrice,
-        totalPrice,
-        oversizeSurchargeAmount: oversizeSurcharge,
-      },
-    ]);
+  // While a saved position is being edited (editingPositionId, owner
+  // 2026-09-17: "każdą zapisaną pozycję muszę móc edytować") the same
+  // button saves the fields back into THAT row instead of appending.
+  const [editingPositionId, setEditingPositionId] = useState<string | null>(null);
+  const currentPosition = (): PlisyPosition | null =>
+    dimensionsValid && unitPrice !== null && totalPrice !== null
+      ? {
+          id: editingPositionId || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          widthMm: widthNum,
+          heightMm: heightNum,
+          qty: quantityNum,
+          unitPrice,
+          totalPrice,
+          oversizeSurchargeAmount: oversizeSurcharge,
+        }
+      : null;
+
+  function clearPositionForm() {
     setWidth("");
     setHeight("");
     setQuantity("1");
     setSagAccepted(false);
+    setEditingPositionId(null);
+  }
+
+  function handleAddPosition() {
+    const next = currentPosition();
+    if (!next || sagBlocked) return;
+    if (editingPositionId) {
+      setPositions((prev) => prev.map((position) => (position.id === editingPositionId ? next : position)));
+      trackShopStep("edit_position_save", "plisy", { width_mm: next.widthMm, height_mm: next.heightMm, qty: next.qty });
+    } else {
+      setPositions((prev) => [...prev, next]);
+    }
+    clearPositionForm();
   }
 
   function handleRemovePosition(id: string) {
     setPositions((prev) => prev.filter((position) => position.id !== id));
+    if (editingPositionId === id) clearPositionForm();
   }
+
+  // Pulls a saved row back into the fields (in whichever unit is on) and
+  // opens the size step on it; "+ Dodaj kolejną" becomes "Zapisz zmiany".
+  function handleEditPosition(position: PlisyPosition) {
+    setEditingPositionId(position.id);
+    setWidth(mmToInput(position.widthMm, dimensionUnit));
+    setHeight(mmToInput(position.heightMm, dimensionUnit));
+    setQuantity(String(position.qty));
+    setSagAccepted(true);
+    setStepFiveCollapsed(false);
+    trackShopStep("edit_position_open", "plisy", { width_mm: position.widthMm, height_mm: position.heightMm, qty: position.qty });
+    window.setTimeout(() => {
+      positionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
+  }
+  const positionFormRef = useRef<HTMLDivElement | null>(null);
 
   const positionsGrandTotal = useMemo(
     () => positions.reduce((sum, position) => sum + position.totalPrice, 0),
@@ -592,18 +627,14 @@ export default function ConfiguratorPanel({
 
   function handleFinalSubmit() {
     if (!canFinalSubmit) return;
-    const finalPositions = [...positions];
-    if (dimensionsValid && unitPrice !== null && totalPrice !== null) {
-      finalPositions.push({
-        id: "current",
-        widthMm: widthNum,
-        heightMm: heightNum,
-        qty: quantityNum,
-        unitPrice,
-        totalPrice,
-        oversizeSurchargeAmount: oversizeSurcharge,
-      });
-    }
+    // A row mid-edit goes in with the edited values when they validate,
+    // and as it was saved when they don't - never twice, never dropped.
+    const pending = currentPosition();
+    const finalPositions = editingPositionId
+      ? positions.map((position) => (position.id === editingPositionId && pending ? pending : position))
+      : pending
+        ? [...positions, pending]
+        : [...positions];
     if (finalPositions.length === 0) return;
 
     const base = {
@@ -670,7 +701,6 @@ export default function ConfiguratorPanel({
     <>
       <header>
         <strong>Wyceń plisę do swojego okna</strong>
-        <p>Wybierz montaż, kolor profili i tkaninę, wpisz wymiary. Cena od razu.</p>
       </header>
 
       {profile.mountOptions.length > 0 ? (
@@ -686,7 +716,7 @@ export default function ConfiguratorPanel({
           >
             <span className="hero-product-config-step-title">
               <span className="hero-product-step-check" aria-hidden="true">✓</span>
-              Wybierz rodzaj montażu
+              Wybierz sposób montażu
             </span>
             <span className="hero-product-step-head-meta">
               {selectedMount ? <strong>{selectedMount.label}</strong> : null}
@@ -960,17 +990,23 @@ export default function ConfiguratorPanel({
               className="hero-product-step-body"
               style={stepTwoCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}
             >
-              <div
-                className="hero-product-mesh-grid hero-product-mesh-grid--visual"
-                style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
-              >
+              {/* Owner, 2026-09-17: the CRM's collection photos are all
+                  near-white close-ups, indistinguishable at card size. Each
+                  card now shows what the fabric DOES (light / blackout /
+                  reflex / honeycomb - CollectionVisual.tsx), one line of
+                  plain words, and a strip of that collection's real colours. */}
+              <div className="plisy-coll-grid">
                 {profile.fabricGroups.map((group) => {
                   const isActive = group.id === selectedFabricGroupId;
+                  const kind = plisyCollectionKind(group);
+                  const meta = plisyCollectionMeta(kind);
+                  const mosaic = group.swatches.filter((swatch) => swatch.thumbnailUrl || swatch.imageUrl).slice(0, 6);
+                  const extra = group.swatches.length - mosaic.length;
                   return (
                     <button
                       key={group.id}
                       type="button"
-                      className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
+                      className={`hero-product-mesh-option plisy-coll-card ${isActive ? "is-active" : ""}`}
                       title={group.note || group.label}
                       onClick={() => {
                         trackShopStep("select_fabric_group", group.label, { option_id: group.id });
@@ -981,15 +1017,30 @@ export default function ConfiguratorPanel({
                         }, 380);
                       }}
                     >
-                      <span
-                        className="hero-product-mesh-option-image"
-                        style={
-                          group.imageUrl
-                            ? { backgroundImage: `url(${optimizeImageUrl(group.imageUrl, 640, 80)})` }
-                            : { background: group.swatches[0]?.color || "#E2E8F0" }
-                        }
-                      />
-                      <strong>{group.label}</strong>
+                      <span className="plisy-coll-card-visual">
+                        <PlisyCollectionVisual kind={kind} />
+                      </span>
+                      <span className="plisy-coll-card-body">
+                        <span className="plisy-coll-card-head">
+                          <strong>{group.label}</strong>
+                          <span className="plisy-coll-card-badges">
+                            {meta.badges.map((badge) => (
+                              <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : ""}`}>
+                                {badge}
+                              </span>
+                            ))}
+                          </span>
+                        </span>
+                        <span className="plisy-coll-card-note">{meta.light}</span>
+                        {mosaic.length ? (
+                          <span className="plisy-coll-card-mosaic" aria-label={`${group.swatches.length} kolorów w kolekcji`}>
+                            {mosaic.map((swatch) => (
+                              <img key={swatch.id} src={optimizeImageUrl(swatch.thumbnailUrl || swatch.imageUrl, 96)} alt="" loading="lazy" />
+                            ))}
+                            <em>{extra > 0 ? `+${extra}` : `${group.swatches.length} kol.`}</em>
+                          </span>
+                        ) : null}
+                      </span>
                     </button>
                   );
                 })}
@@ -1193,7 +1244,15 @@ export default function ConfiguratorPanel({
                       </span>
                     </button>
                     <div className="hero-product-step-body">
-                      <div className="plisy-position-form">
+                      <div className={`plisy-position-form ${editingPositionId ? "is-editing" : ""}`} ref={positionFormRef}>
+                        {editingPositionId ? (
+                          <p className="plisy-position-editing">
+                            Edytujesz pozycję {positions.findIndex((position) => position.id === editingPositionId) + 1} z zestawu.
+                            <button type="button" onClick={clearPositionForm}>
+                              Anuluj
+                            </button>
+                          </p>
+                        ) : null}
                         <p className="hero-product-config-hint">
                           {measureModeForMount(selectedMountId) === "bezinwazyjny"
                             ? "Montaż bezinwazyjny: szerokość od kreseczki do kreseczki (szyba razem z listwami), wysokość całego skrzydła."
@@ -1360,7 +1419,7 @@ export default function ConfiguratorPanel({
                             onClick={handleAddPosition}
                             disabled={!dimensionsValid || totalPrice === null || sagBlocked}
                           >
-                            + Dodaj kolejną
+                            {editingPositionId ? "Zapisz zmiany" : "+ Dodaj kolejną"}
                           </button>
                         </div>
                       </div>
@@ -1371,11 +1430,19 @@ export default function ConfiguratorPanel({
                     <div className="plisy-positions-list">
                       <h4>Twój zestaw</h4>
                       {positions.map((position, index) => (
-                        <div key={position.id} className="plisy-positions-row">
+                        <div key={position.id} className={`plisy-positions-row ${position.id === editingPositionId ? "is-editing" : ""}`}>
                           <span className="plisy-positions-row-label">
-                            {index + 1}. {position.widthMm} × {position.heightMm} mm, {position.qty} szt.
+                            {index + 1}. {position.widthMm / 10} × {position.heightMm / 10} cm, {position.qty} szt.
                           </span>
                           <span className="plisy-positions-row-price">{renderPrice(position.totalPrice)}</span>
+                          <button
+                            type="button"
+                            className="plisy-positions-row-edit"
+                            onClick={() => handleEditPosition(position)}
+                            aria-label={`Edytuj pozycję ${index + 1}`}
+                          >
+                            Edytuj
+                          </button>
                           <button
                             type="button"
                             className="plisy-positions-row-remove"
@@ -1412,7 +1479,7 @@ export default function ConfiguratorPanel({
       ) : null}
         </>
       ) : (
-        <p className="hero-product-config-hint">Wybierz rodzaj montażu, aby przejść do kolejnego kroku.</p>
+        <p className="hero-product-config-hint">Wybierz sposób montażu, aby przejść do kolejnego kroku.</p>
       )}
 
       {!onZoom && internalZoomPreview ? (
