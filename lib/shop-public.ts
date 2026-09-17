@@ -10,20 +10,56 @@ function crmUrl(path: string) {
   return `${crmBaseUrl}${path}`;
 }
 
+// Błędy i wolne odpowiedzi API CRM trafiają do analityki jako api_error /
+// api_slow (etykieta = ścieżka bez parametrów) - "konfigurator się nie
+// wczytał", "koszyk czekał 8 s" to realne powody ucieczek, niewidoczne
+// w samych klikach. Sam endpoint analityki jest wyłączony, żeby błąd
+// zapisu zdarzenia nie zapętlał kolejnych zdarzeń.
+const API_SLOW_MS = 4000;
+function reportApiHealth(path: string, startedAt: number, status: number | null, errorMessage: string): void {
+  if (typeof window === "undefined" || path.includes("analytics_event")) return;
+  const durationMs = Math.round(performance.now() - startedAt);
+  const isError = status === null || status >= 400;
+  if (!isError && durationMs < API_SLOW_MS) return;
+  let sessionToken = "";
+  try {
+    sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+  } catch {
+    // brak sessionStorage - zdarzenie i tak poleci
+  }
+  void trackStorefrontEvent({
+    event_name: isError ? "api_error" : "api_slow",
+    event_label: path.split("?")[0].slice(0, 120),
+    page_slug: (window.location.pathname + window.location.search).slice(0, 120),
+    session_token: sessionToken,
+    device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+    meta: { status, ms: durationMs, message: errorMessage.slice(0, 200) },
+  }).catch(() => null);
+}
+
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(crmUrl(path), {
-    ...init,
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(init?.headers ?? {}),
-    },
-    cache: "no-store",
-  });
+  const startedAt = typeof performance !== "undefined" ? performance.now() : 0;
+  let response: Response;
+  try {
+    response = await fetch(crmUrl(path), {
+      ...init,
+      headers: {
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...(init?.headers ?? {}),
+      },
+      cache: "no-store",
+    });
+  } catch (networkError) {
+    reportApiHealth(path, startedAt, null, networkError instanceof Error ? networkError.message : "network error");
+    throw networkError;
+  }
 
   if (!response.ok) {
     const message = await response.text();
+    reportApiHealth(path, startedAt, response.status, message);
     throw new Error(message || `Request failed for ${path}`);
   }
+  reportApiHealth(path, startedAt, response.status, "");
 
   return (await response.json()) as T;
 }
@@ -302,13 +338,27 @@ export async function trackStorefrontEvent(payload: {
   session_token?: string;
   device_type?: string;
   referrer?: string;
+  visitor_id?: string;
   meta?: Record<string, boolean | number | string | null>;
 }) {
+  // Trwałe id przeglądarki dokładane do każdego zdarzenia (lib/analytics-context).
+  let visitorId = payload.visitor_id || "";
+  if (!visitorId && typeof window !== "undefined") {
+    try {
+      visitorId = window.localStorage.getItem("keika_visitor_id") || "";
+    } catch {
+      // brak localStorage - bez visitor_id
+    }
+  }
   return fetchJson<{ ok: boolean; stored_at: string }>(
     "/biuro/api/shop-public/analytics_event",
     {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        ...(visitorId ? { visitor_id: visitorId } : {}),
+        ...(payload.page_slug ? { page_slug: payload.page_slug.slice(0, 120) } : {}),
+      }),
     },
   );
 }

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
 import type { PublicOrder } from "@/lib/shop-public";
 import { clearCart } from "@/lib/cart";
+import { trackShopStep } from "@/lib/track-step";
 import PaymentStep, { type CheckoutContact } from "@/app/components/stripe-payment-step";
 
 // Payment intents Stripe considers "not final" - a customer can still land
@@ -52,8 +53,10 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
           throw new Error(json.error || "Nie udało się odczytać zamówienia.");
         }
         setOrder(json.order);
+        trackShopStep("order_lookup", "ok", { order_code: orderCode, via: accessToken ? "link" : "verifier" });
       } catch (submitError) {
         setError(submitError instanceof Error ? submitError.message : "Wystąpił błąd.");
+        trackShopStep("order_lookup", "failed", { order_code: orderCode, message: (submitError instanceof Error ? submitError.message : "błąd").slice(0, 200) });
       } finally {
         setIsSubmitting(false);
       }

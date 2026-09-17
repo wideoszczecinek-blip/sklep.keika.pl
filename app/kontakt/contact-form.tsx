@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
+import { trackShopStep } from "@/lib/track-step";
 
 type SubmitState = "idle" | "submitting" | "sent" | "error";
 
@@ -42,6 +43,7 @@ export default function ContactForm() {
         throw new Error(json.error || "Nie udało się wysłać zapytania.");
       }
       setState("sent");
+      trackShopStep("contact_form_sent", "kontakt", { has_phone: phone.trim() !== "", message_length: message.length });
       setName("");
       setEmail("");
       setPhone("");
@@ -49,6 +51,7 @@ export default function ContactForm() {
     } catch (submitError) {
       setState("error");
       setError(submitError instanceof Error ? submitError.message : "Wystąpił błąd.");
+      trackShopStep("contact_form_failed", "kontakt", { message: (submitError instanceof Error ? submitError.message : "błąd").slice(0, 200) });
     }
   }
 

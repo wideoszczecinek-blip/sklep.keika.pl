@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
+import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configurator-state";
 import {
   ROLETY_DACHOWE_FABRIC,
   ROLETY_DACHOWE_HARDWARE,
@@ -159,6 +160,43 @@ export default function ConfiguratorPanel({
       ? calcRoletyDachowePrice(resolvedWidthMm, resolvedHeightMm, selectedHardwareId, selectedMaterialTypeId, priceAdjustmentPercent)
       : null;
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
+
+  // Zmiana ilości (poza pierwszym renderem) - do logu ruchu.
+  const quantityTrackedRef = useRef(quantityNum);
+  useEffect(() => {
+    if (quantityTrackedRef.current === quantityNum) return;
+    quantityTrackedRef.current = quantityNum;
+    trackShopStep("set_quantity", "rolety-dachowe", { qty: quantityNum });
+  }, [quantityNum]);
+
+  // Stan formularza dla analityki "na czym stanął" (lib/configurator-state).
+  useEffect(() => {
+    const done: string[] = [];
+    const missing: string[] = [];
+    (selectedHardwareId ? done : missing).push("kolor profili");
+    (selectedMaterialTypeId ? done : missing).push("rodzaj materiału");
+    (selectedFabricId ? done : missing).push("tkanina");
+    (hasWindowInfo ? done : missing).push(manualMode ? "wymiary" : "model okna");
+    const blockedReason = manualMode && (manualWidthNum > 0 || manualHeightNum > 0) && !manualValid
+      ? "wymiary poza zakresem"
+      : !manualMode && windowQuery.trim() !== "" && !selectedWindow
+        ? "nie znalazł modelu okna"
+        : "";
+    reportConfiguratorState({
+      product: "rolety-dachowe",
+      done,
+      missing,
+      blocked_reason: blockedReason,
+      cta_enabled: totalPrice !== null,
+      price: totalPrice,
+      positions: 0,
+      qty: quantityNum,
+      width_mm: resolvedWidthMm,
+      height_mm: resolvedHeightMm,
+      unit: "mm",
+    });
+  }, [selectedHardwareId, selectedMaterialTypeId, selectedFabricId, hasWindowInfo, manualMode, manualWidthNum, manualHeightNum, manualValid, windowQuery, selectedWindow, totalPrice, quantityNum, resolvedWidthMm, resolvedHeightMm]);
+  useEffect(() => () => clearConfiguratorState("rolety-dachowe"), []);
 
   function handleSubmit() {
     if (!hasWindowInfo || unitPrice === null || totalPrice === null) return;

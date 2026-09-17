@@ -19,6 +19,7 @@ import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
+import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configurator-state";
 import { applyPromoToPrice, getPromoRemainingMs, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { ensurePromoQuoteCode } from "@/lib/promo-save";
 import PromoSaveModal from "@/app/components/promo-save-modal";
@@ -171,10 +172,12 @@ export default function ConfiguratorPanel({
       if (cancelled) return;
       if (!result || result.hardware.length === 0 || result.fabricGroups.length === 0) {
         setLoadState("error");
+        trackShopStep("configurator_load_failed", "plisy", { ms_since_nav: Math.round(performance.now()) });
         return;
       }
       setProfile(result);
       setLoadState("ready");
+      trackShopStep("configurator_ready", "plisy", { ms_since_nav: Math.round(performance.now()) });
     });
     return () => {
       cancelled = true;
@@ -536,6 +539,15 @@ export default function ConfiguratorPanel({
     matrixUnitPrice !== null ? applyPriceDeltas(matrixUnitPrice, [selectedMount, selectedHardware, selectedFabric]) : null;
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
 
+  // Zmiana ilości (poza pierwszym renderem) - do logu ruchu.
+  const quantityTrackedRef = useRef(quantityNum);
+  useEffect(() => {
+    if (quantityTrackedRef.current === quantityNum) return;
+    quantityTrackedRef.current = quantityNum;
+    trackShopStep("set_quantity", "plisy", { qty: quantityNum });
+  }, [quantityNum]);
+
+
   // Regular price struck, SEZON20 price next to it - only while the code is
   // actually active (promo prop), so this never promises what the cart
   // won't do. Before this the panel said 147,60 and the cart 118,08 for
@@ -588,11 +600,13 @@ export default function ConfiguratorPanel({
       trackShopStep("edit_position_save", "plisy", { width_mm: next.widthMm, height_mm: next.heightMm, qty: next.qty });
     } else {
       setPositions((prev) => [...prev, next]);
+      trackShopStep("add_position", "plisy", { width_mm: next.widthMm, height_mm: next.heightMm, qty: next.qty, positions: positions.length + 1 });
     }
     clearPositionForm();
   }
 
   function handleRemovePosition(id: string) {
+    trackShopStep("remove_position", "plisy", { positions: Math.max(0, positions.length - 1) });
     setPositions((prev) => prev.filter((position) => position.id !== id));
     if (editingPositionId === id) clearPositionForm();
   }
@@ -624,6 +638,40 @@ export default function ConfiguratorPanel({
   // the set right before it's sent, so nothing typed-but-not-yet-added is
   // silently dropped.
   const canFinalSubmit = bracketChosen && !sagBlocked && (positions.length > 0 || (dimensionsValid && totalPrice !== null));
+
+  // Stan formularza dla analityki "na czym stanął" (lib/configurator-state):
+  // heartbeat i page_exit niosą, które kroki gotowe, czego brakuje i czy
+  // "Dodaj do koszyka" było aktywne.
+  useEffect(() => {
+    const done: string[] = [];
+    const missing: string[] = [];
+    (selectedMount ? done : missing).push("montaż");
+    if (bracketRequired) (selectedBracket ? done : missing).push("kolor uchwytów");
+    (selectedHardware ? done : missing).push("kolor profili");
+    (selectedFabricGroup ? done : missing).push("kolekcja");
+    (selectedFabric ? done : missing).push("tkanina");
+    (dimensionsValid || positions.length > 0 ? done : missing).push("wymiary");
+    const hasDims = widthNum > 0 || heightNum > 0;
+    const blockedReason = sagBlocked
+      ? "ugięcie profilu niezaakceptowane"
+      : hasDims && !dimensionsValid && positions.length === 0
+        ? "wymiary poza zakresem"
+        : "";
+    reportConfiguratorState({
+      product: "plisy",
+      done,
+      missing,
+      blocked_reason: blockedReason,
+      cta_enabled: canFinalSubmit,
+      price: totalPrice,
+      positions: positions.length,
+      qty: quantityNum,
+      width_mm: widthNum,
+      height_mm: heightNum,
+      unit: dimensionUnit,
+    });
+  }, [selectedMount, bracketRequired, selectedBracket, selectedHardware, selectedFabricGroup, selectedFabric, dimensionsValid, positions.length, widthNum, heightNum, sagBlocked, canFinalSubmit, totalPrice, quantityNum, dimensionUnit]);
+  useEffect(() => () => clearConfiguratorState("plisy"), []);
 
   function handleFinalSubmit() {
     if (!canFinalSubmit) return;

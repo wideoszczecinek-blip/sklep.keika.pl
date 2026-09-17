@@ -499,6 +499,20 @@ export default function CartPage() {
   // sklepie" w CRM ("uzupełnia: telefon"). Tylko nazwa pola, nigdy wartość;
   // każde pole raz na wejście na stronę.
   const trackedCheckoutFieldsRef = useRef<Set<string>>(new Set());
+  // Wejście do koszyka z jego zawartością (kwota, liczba pozycji) - jeden
+  // raz na wejście na stronę, gdy koszyk już wczytany.
+  const viewCartTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!hydrated || viewCartTrackedRef.current) return;
+    viewCartTrackedRef.current = true;
+    const total = Math.round(items.reduce((sum, item) => sum + (Number(item.total) || 0), 0) * 100) / 100;
+    trackCheckoutIssue("view_cart", String(items.length), {
+      cart_total: total,
+      cart_positions: items.length,
+      products: Array.from(new Set(items.map((item) => item.productSlug))).join(","),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
   function handleCheckoutFieldBlur(event: FocusEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement | null;
     if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLTextAreaElement)) return;

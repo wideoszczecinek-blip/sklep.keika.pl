@@ -17,6 +17,8 @@ let injected = false;
  * pomiar plisy". Never sent on its own. */
 export function openCrispChat(prefill?: string): void {
   if (typeof window === "undefined") return;
+  // Otwarcie czatu to sygnał "ma pytanie / utknął" - do analityki CRM.
+  void import("@/lib/track-step").then(({ trackShopStep }) => trackShopStep("chat_opened", prefill ? "z podpowiedzią" : "ręcznie")).catch(() => null);
   const w = window as unknown as { $crisp?: unknown[]; CRISP_WEBSITE_ID?: string };
 
   w.$crisp = w.$crisp || [];

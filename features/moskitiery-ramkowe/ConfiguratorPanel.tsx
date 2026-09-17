@@ -22,6 +22,7 @@ import {
   markRescueModalShown,
 } from "@/lib/rescue";
 import { trackShopStep } from "@/lib/track-step";
+import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configurator-state";
 import {
   PROMO_ACTIVATED_EVENT,
   PROMO_CODE,
@@ -438,6 +439,49 @@ export default function ConfiguratorPanel({
   const dimensionsBlocked =
     bothDimensionsOverTechnicalLimit || widthOverAbsoluteMax || requiredSurchargeForCurrentDims < 0 || !surchargeSatisfied;
   const activeSurchargeAmount = surchargeSatisfied && requiredSurchargeForCurrentDims > 0 ? requiredSurchargeForCurrentDims : 0;
+
+  // Zmiana ilości (poza pierwszym renderem) - do logu ruchu.
+  const quantityTrackedRef = useRef(quantityNum);
+  useEffect(() => {
+    if (quantityTrackedRef.current === quantityNum) return;
+    quantityTrackedRef.current = quantityNum;
+    trackShopStep("set_quantity", "moskitiery-ramkowe", { qty: quantityNum });
+  }, [quantityNum]);
+
+  // Stan formularza dla analityki "na czym stanął" (lib/configurator-state).
+  useEffect(() => {
+    const done: string[] = [];
+    const missing: string[] = [];
+    (selectedHardwareId ? done : missing).push("kolor profili");
+    (selectedMeshId ? done : missing).push("kolor siatki");
+    (hasValidDimensions ? done : missing).push("wymiary");
+    const hasDims = widthNum > 0 || heightNum > 0;
+    const blockedReason = bothDimensionsOverTechnicalLimit
+      ? "wymiary ponad limit techniczny"
+      : widthOverAbsoluteMax
+        ? "szerokość ponad maksimum"
+        : requiredSurchargeForCurrentDims < 0
+          ? "wymiar nieobsługiwany"
+          : !surchargeSatisfied
+            ? "dopłata za rozmiar niezaakceptowana"
+            : hasDims && !hasValidDimensions
+              ? "wymiary niepełne lub poza zakresem"
+              : "";
+    reportConfiguratorState({
+      product: "moskitiery-ramkowe",
+      done,
+      missing,
+      blocked_reason: blockedReason,
+      cta_enabled: !(isCalculatingPrice || dimensionTotalPrice === null || dimensionsBlocked),
+      price: dimensionTotalPrice,
+      positions: 0,
+      qty: quantityNum,
+      width_mm: widthNum,
+      height_mm: heightNum,
+      unit: dimensionUnit,
+    });
+  }, [selectedHardwareId, selectedMeshId, hasValidDimensions, widthNum, heightNum, bothDimensionsOverTechnicalLimit, widthOverAbsoluteMax, requiredSurchargeForCurrentDims, surchargeSatisfied, isCalculatingPrice, dimensionTotalPrice, dimensionsBlocked, quantityNum, dimensionUnit]);
+  useEffect(() => () => clearConfiguratorState("moskitiery-ramkowe"), []);
 
   function handleDimensionBlur() {
     if (!hasValidDimensions) return;
