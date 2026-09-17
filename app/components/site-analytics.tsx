@@ -122,7 +122,17 @@ function isReallyVisible(el: Element): boolean {
     depth += 1;
   }
   const rect = el.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  // Zasłonięte przez inny element (np. sekcje produktu pod tłem strony
+  // głównej): sprawdzamy, co jest na wierzchu w środku elementu.
+  const cx = Math.min(window.innerWidth - 1, Math.max(0, rect.left + rect.width / 2));
+  const cy = Math.min(window.innerHeight - 1, Math.max(0, rect.top + rect.height / 2));
+  const top = document.elementFromPoint(cx, cy);
+  if (!top) return false;
+  if (el.contains(top) || top.contains(el)) return true;
+  // Pasek zgody / nakładki fixed na wierzchu nie znaczą, że sekcja jest ukryta.
+  const topCs = getComputedStyle(top);
+  return topCs.position === "fixed" || Boolean(top.closest(".consent-bar, [role=dialog]"));
 }
 
 function isExternalLink(href: string): boolean {
