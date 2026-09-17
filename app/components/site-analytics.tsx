@@ -455,22 +455,40 @@ export default function SiteAnalytics() {
   }, []);
 
   // --- które sekcje / nagłówki zobaczył ---
+  // IntersectionObserver mówi tylko "jest w kadrze"; widoczność (opacity,
+  // fade-in po starcie, ukryte panele) sprawdzamy osobno - element w kadrze,
+  // ale jeszcze niewidoczny, czeka w `inView` i jest zaliczany, gdy
+  // faktycznie się pokaże.
   useEffect(() => {
     const seen = new Set<string>();
+    const inView = new Set<Element>();
+    function labelFor(el: Element): string {
+      return cleanText(el.tagName.startsWith("H") ? el.textContent : el.id || el.getAttribute("aria-label") || el.querySelector("h1, h2, h3")?.textContent || "", 100);
+    }
+    function flush() {
+      const stats = pageStatsRef.current;
+      inView.forEach((el) => {
+        if (!el.isConnected) {
+          inView.delete(el);
+          return;
+        }
+        if (!isReallyVisible(el)) return;
+        const label = labelFor(el);
+        inView.delete(el);
+        if (!label || seen.has(label) || stats.sections >= SECTION_CAP_PER_PAGE) return;
+        seen.add(label);
+        stats.sections += 1;
+        stats.lastSection = label;
+        emit("section_view", label, { tag: el.tagName.toLowerCase(), seconds_since_enter: Math.round((Date.now() - pageEnteredAtRef.current) / 1000) });
+      });
+    }
     const io = new IntersectionObserver(
       (entries) => {
-        const stats = pageStatsRef.current;
         for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const el = entry.target as HTMLElement;
-          if (!isReallyVisible(el)) continue;
-          const label = cleanText(el.tagName.startsWith("H") ? el.textContent : el.id || el.getAttribute("aria-label") || el.querySelector("h1, h2, h3")?.textContent || "", 100);
-          if (!label || seen.has(label) || stats.sections >= SECTION_CAP_PER_PAGE) continue;
-          seen.add(label);
-          stats.sections += 1;
-          stats.lastSection = label;
-          emit("section_view", label, { tag: el.tagName.toLowerCase(), seconds_since_enter: Math.round((Date.now() - pageEnteredAtRef.current) / 1000) });
+          if (entry.isIntersecting) inView.add(entry.target);
+          else inView.delete(entry.target);
         }
+        flush();
       },
       { threshold: 0.5 },
     );
@@ -492,9 +510,11 @@ export default function SiteAnalytics() {
     });
     mo.observe(document.body, { childList: true, subtree: true });
     attach();
+    const ticker = window.setInterval(flush, 1000);
     return () => {
       io.disconnect();
       mo.disconnect();
+      window.clearInterval(ticker);
       if (scheduled) window.clearTimeout(scheduled);
     };
     // Nowa strona = nowy zestaw sekcji.
