@@ -1230,7 +1230,8 @@ export default function ConfiguratorPanel({
                             </button>
                           </div>
                           <button type="button" className="plisy-measure-later" onClick={openMeasureLater} disabled={measureSaveBusy}>
-                            Nie masz jeszcze wymiarów? Wyślij mi link + instrukcję
+                            <strong>Nie masz wymiarów?</strong>
+                            <span>Zapisz lub udostępnij link do tej konfiguracji i dokończ w dowolnym momencie</span>
                           </button>
                         </div>
                         {measureGuideOpen && typeof document !== "undefined"

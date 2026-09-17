@@ -14074,18 +14074,36 @@ html[data-theme="light"] .plisy-oversize-note {
   margin: 0;
 }
 .plisy-measure-later {
-  border: 1px dashed rgba(22, 49, 78, 0.35);
-  background: rgba(255, 255, 255, 0.7);
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  text-align: left;
+  border: 1px solid #bfe3d3;
+  background: #eefaf4;
   color: #16314e;
-  border-radius: 999px;
-  padding: 0.28rem 0.7rem;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.8rem;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
   cursor: pointer;
 }
+.plisy-measure-later strong {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #157a55;
+}
+.plisy-measure-later span {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #2c4560;
+}
 .plisy-measure-later:hover {
-  background: #fff;
+  background: #e3f6ec;
+}
+.plisy-measure-later:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 .plisy-dimensions-hint {
   margin: 0.4rem 0 0;

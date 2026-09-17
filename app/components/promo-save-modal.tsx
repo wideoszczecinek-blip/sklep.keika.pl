@@ -215,10 +215,10 @@ export default function PromoSaveModal({
           <>
             {variant === "measure" ? (
               <>
-                <h3>Zmierz okno na spokojnie</h3>
+                <h3>Dokończ, kiedy zmierzysz okno</h3>
                 <p className="promo-save-modal-lead">
-                  Wyślemy Ci link do tej strony - z instrukcją pomiaru i zapisanym rabatem SEZON20. Wrócisz jednym
-                  kliknięciem, także z innego telefonu.
+                  Zapisz lub udostępnij link do tej konfiguracji - montaż, kolor i tkanina zostaną zapamiętane, a rabat
+                  SEZON20 będzie czekał. Wrócisz jednym kliknięciem, także z innego telefonu.
                 </p>
               </>
             ) : (
