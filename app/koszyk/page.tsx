@@ -24,6 +24,7 @@ import {
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import { ROLETY_DACHOWE_FABRIC, ROLETY_DACHOWE_HARDWARE } from "@/features/rolety-dachowe/shared";
 import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
+import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
 import PaczkomatPicker from "../components/paczkomat-picker";
@@ -809,6 +810,17 @@ export default function CartPage() {
   // pulled in the shared site-content loader, which is a server-only cache()
   // helper anyway).
   const [siteContact, setSiteContact] = useState<{ phone: string; email: string }>({ phone: "", email: "" });
+  // Per-product price correction ("Korekta ceny (%)", lib/price-adjustment.ts)
+  // was only ever fed on the homepage - here it stayed at 0, so "Edytuj
+  // pozycję" re-priced an item WITHOUT it: the first plisy order
+  // (2026-09-17, 462/09/2026) left the cart at 175,49 for a blind the
+  // landing sells at 157,94 (-10 %). Same config the homepage pulls.
+  useEffect(() => {
+    fetch(`https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public?_ts=${Date.now()}`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => setProductPriceAdjustmentsFromConfig(json))
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/site")
       .then((response) => response.json())
@@ -962,6 +974,32 @@ export default function CartPage() {
       setDiscountChecking(false);
     }
   }
+
+  // An APPLIED code is re-validated whenever the discountable subtotal
+  // changes (2026-09-17): the first plisy order removed one of two blinds
+  // after typing SEZON20, the cart kept showing the two-blind 63,90 zł
+  // discount (total 126,49) while quote_save.php's own recompute charged
+  // the right 35,10 (155,29) - the customer saw one number and got another.
+  const appliedDiscountSubtotalRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!appliedDiscount) {
+      appliedDiscountSubtotalRef.current = null;
+      return;
+    }
+    const subtotal = Math.round(Math.max(0, summary.total - combinedSavings) * 100) / 100;
+    if (appliedDiscountSubtotalRef.current === null) {
+      appliedDiscountSubtotalRef.current = subtotal;
+      return;
+    }
+    if (Math.abs(appliedDiscountSubtotalRef.current - subtotal) < 0.005) return;
+    appliedDiscountSubtotalRef.current = subtotal;
+    if (subtotal <= 0) {
+      setAppliedDiscount(null);
+      return;
+    }
+    void checkDiscountCode(appliedDiscount.code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedDiscount, summary.total, combinedSavings]);
 
   // Silent, error-swallowing preview of the standing SEZON20 promo (distinct
   // from checkDiscountCode above, which is user-triggered and surfaces
