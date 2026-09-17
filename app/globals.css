@@ -14333,3 +14333,10 @@ body.has-product-tabs .consent-bar {
   grid-area: price;
   white-space: normal;
 }
+html[data-theme="light"] .plisy-positions-total strong {
+  color: #16314e;
+}
+.plisy-positions-total .plisy-price-promo {
+  justify-content: flex-end;
+  text-align: right;
+}
