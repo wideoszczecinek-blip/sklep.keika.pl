@@ -818,7 +818,9 @@ export default function CartPage() {
   useEffect(() => {
     fetch(`https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public?_ts=${Date.now()}`, { cache: "no-store" })
       .then((response) => response.json())
-      .then((json) => setProductPriceAdjustmentsFromConfig(json))
+      .then((json) => {
+        if (json?.ok && json.config && typeof json.config === "object") setProductPriceAdjustmentsFromConfig(json.config);
+      })
       .catch(() => {});
   }, []);
   useEffect(() => {
