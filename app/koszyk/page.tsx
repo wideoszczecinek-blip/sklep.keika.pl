@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FocusEvent } from "react";
 import Link from "next/link";
 import { saveShopQuote } from "@/features/moskitiery/api";
 import {
@@ -495,6 +495,31 @@ export default function CartPage() {
   // payment method. Single link/document: "Regulamin sklepu i płatności"
   // (shop terms and payment terms live together, not as two documents).
   const [termsAccepted, setTermsAccepted] = useState(false);
+  // Które pola formularza klient już wypełnił - dla tooltipa "online w
+  // sklepie" w CRM ("uzupełnia: telefon"). Tylko nazwa pola, nigdy wartość;
+  // każde pole raz na wejście na stronę.
+  const trackedCheckoutFieldsRef = useRef<Set<string>>(new Set());
+  function handleCheckoutFieldBlur(event: FocusEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null;
+    if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLTextAreaElement)) return;
+    if (target instanceof HTMLInputElement && (target.type === "radio" || target.type === "checkbox")) return;
+    if (target.value.trim() === "") return;
+    const label = target.closest("label");
+    let fieldName = "";
+    if (label) {
+      for (const node of Array.from(label.childNodes)) {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent && node.textContent.trim() !== "") {
+          fieldName = node.textContent.trim();
+          break;
+        }
+      }
+    }
+    if (fieldName === "") fieldName = target.getAttribute("autocomplete") || target.getAttribute("placeholder") || target.name || "pole";
+    fieldName = fieldName.replace(/\s+/g, " ").slice(0, 40);
+    if (trackedCheckoutFieldsRef.current.has(fieldName)) return;
+    trackedCheckoutFieldsRef.current.add(fieldName);
+    trackCheckoutIssue("checkout_field", fieldName, { invoice: label ? Boolean(label.closest(".cart-invoice-fields")) : false });
+  }
 
   // Discount code (see core/lib/shop_discount_codes.php on the CRM side).
   // "Sprawdź" just previews the discount for display - it's re-validated
@@ -918,6 +943,7 @@ export default function CartPage() {
         throw new Error(json.error || "Nie udało się wysłać kodu SMS.");
       }
       setCodSms({ status: "sent", token: json.verification_token, code: "", error: "" });
+      trackCheckoutIssue("checkout_cod_sms_sent", "cod");
     } catch (smsError) {
       const message = smsError instanceof Error ? smsError.message : "Nie udało się wysłać kodu SMS.";
       setCodSms({ status: "error", token: "", code: "", error: message });
@@ -938,6 +964,7 @@ export default function CartPage() {
         throw new Error(json.error || "Niepoprawny kod SMS.");
       }
       setCodSms((current) => ({ ...current, status: "verified", error: "" }));
+      trackCheckoutIssue("checkout_cod_verified", "cod");
     } catch (smsError) {
       const message = smsError instanceof Error ? smsError.message : "Niepoprawny kod SMS.";
       setCodSms((current) => ({ ...current, status: "sent", error: message }));
@@ -968,6 +995,7 @@ export default function CartPage() {
       }
       setAppliedDiscount(json.discount);
       setDiscountCodeInput(json.discount.code);
+      trackCheckoutIssue("checkout_discount_applied", json.discount.code);
     } catch (checkError) {
       setAppliedDiscount(null);
       setDiscountError(checkError instanceof Error ? checkError.message : "Nie udało się sprawdzić kodu.");
@@ -1635,7 +1663,10 @@ export default function CartPage() {
                       <button
                         type="button"
                         className="cart-page-item-edit"
-                        onClick={() => setEditingItemId(item.id)}
+                        onClick={() => {
+                          setEditingItemId(item.id);
+                          trackCheckoutIssue("cart_edit_open", item.productSlug);
+                        }}
                         disabled={dataLocked}
                       >
                         Edytuj pozycję
@@ -1669,7 +1700,7 @@ export default function CartPage() {
             ) : null}
 
             <div className="cart-checkout-layout">
-              <div className="cart-checkout-left">
+              <div className="cart-checkout-left" onBlurCapture={handleCheckoutFieldBlur}>
                 {EXPRESS_ENABLED && items.some((item) => item.productSlug === "moskitiery-ramkowe") ? (
                   <section className="cart-delivery-card cart-dispatch-card">
                     <h2>Termin realizacji</h2>
@@ -1729,7 +1760,10 @@ export default function CartPage() {
                               name="delivery-method"
                               value={method.id}
                               checked={isActive}
-                              onChange={() => setDeliveryMethod(method.id)}
+                              onChange={() => {
+                                setDeliveryMethod(method.id);
+                                trackCheckoutIssue("checkout_delivery", method.label, { method_id: method.id });
+                              }}
                               disabled={dataLocked}
                             />
                             <span className="cart-delivery-option-copy">
@@ -1744,7 +1778,13 @@ export default function CartPage() {
                             <div className={`cart-paczkomat-accordion ${isActive ? "is-open" : ""}`}>
                               <div className="cart-paczkomat-accordion-inner">
                                 {isActive ? (
-                                  <PaczkomatPicker value={selectedPaczkomat} onChange={setSelectedPaczkomat} />
+                                  <PaczkomatPicker
+                                    value={selectedPaczkomat}
+                                    onChange={(point) => {
+                                      setSelectedPaczkomat(point);
+                                      if (point) trackCheckoutIssue("checkout_paczkomat", point.id, { address: point.address });
+                                    }}
+                                  />
                                 ) : null}
                               </div>
                             </div>
@@ -1769,7 +1809,10 @@ export default function CartPage() {
                       <input
                         type="checkbox"
                         checked={wantsInvoice}
-                        onChange={(event) => setWantsInvoice(event.target.checked)}
+                        onChange={(event) => {
+                          setWantsInvoice(event.target.checked);
+                          trackCheckoutIssue("checkout_invoice", event.target.checked ? "on" : "off");
+                        }}
                       />
                       Chcę otrzymać fakturę
                     </label>
@@ -1859,7 +1902,10 @@ export default function CartPage() {
                         type="button"
                         className="cart-section-next-button"
                         disabled={!invoiceReady}
-                        onClick={() => scrollToSection(shippingAddressSectionRef)}
+                        onClick={() => {
+                          trackCheckoutIssue("checkout_next", "adres");
+                          scrollToSection(shippingAddressSectionRef);
+                        }}
                         aria-label="Dalej"
                         title="Dalej"
                       >
@@ -2193,7 +2239,10 @@ export default function CartPage() {
                       <input
                         type="checkbox"
                         checked={termsAccepted}
-                        onChange={(event) => setTermsAccepted(event.target.checked)}
+                        onChange={(event) => {
+                          setTermsAccepted(event.target.checked);
+                          trackCheckoutIssue("checkout_terms", event.target.checked ? "on" : "off");
+                        }}
                         required
                       />
                       <span>

@@ -184,7 +184,7 @@ export function addCartItem(item: CartLineItem): CartLineItem[] {
     .catch(() => {
       /* tracking never blocks the cart */
     });
-  void trackCartEventToCrm("add_to_cart", item.productSlug, item);
+  void trackCartEventToCrm("add_to_cart", item.productSlug, item, items);
   return items;
 }
 
@@ -197,7 +197,7 @@ export function removeCartItem(id: string): CartLineItem[] {
   const items = readCartItems().filter((item) => item.id !== id);
   writeCartItems(items);
   if (removed) {
-    void trackCartEventToCrm("remove_from_cart", removed.productSlug, removed);
+    void trackCartEventToCrm("remove_from_cart", removed.productSlug, removed, items);
   }
   return items;
 }
@@ -206,8 +206,13 @@ export function removeCartItem(id: string): CartLineItem[] {
  * Meta's own dashboard) - this is the CRM's own visitor-tracking table, so
  * cart abandonment ("do którego miejsca dochodzą") is actually queryable
  * in-house, not just visible as an aggregate ad-platform funnel number. */
-function trackCartEventToCrm(eventName: string, productSlug: string, item: CartLineItem): void {
+function trackCartEventToCrm(eventName: string, productSlug: string, item: CartLineItem, cartItems?: CartLineItem[]): void {
   if (typeof window === "undefined") return;
+  // Cały koszyk po zmianie (liczba pozycji + kwota) - dashboard CRM pokazuje
+  // przy osobie online "ile ma w koszyku" jeszcze zanim powstanie wycena.
+  const cartSnapshot = Array.isArray(cartItems) ? cartItems : readCartItems();
+  const cartTotal = Math.round(cartSnapshot.reduce((sum, entry) => sum + (Number(entry.total) || 0), 0) * 100) / 100;
+  const cartPositions = cartSnapshot.length;
   let sessionToken = "";
   try {
     sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
@@ -222,7 +227,7 @@ function trackCartEventToCrm(eventName: string, productSlug: string, item: CartL
         page_slug: window.location.pathname + window.location.search,
         session_token: sessionToken,
         device_type: window.innerWidth < 768 ? "mobile" : "desktop",
-        meta: { product_slug: productSlug, qty: item.qty, total: item.total },
+        meta: { product_slug: productSlug, qty: item.qty, total: item.total, cart_total: cartTotal, cart_positions: cartPositions },
       }),
     )
     .catch(() => {
@@ -236,6 +241,10 @@ export function updateCartItemQty(id: string, qty: number): CartLineItem[] {
     item.id === id ? { ...item, qty: safeQty, total: item.price * safeQty } : item,
   );
   writeCartItems(items);
+  const changed = items.find((item) => item.id === id);
+  if (changed) {
+    void trackCartEventToCrm("cart_qty_change", changed.productSlug, changed, items);
+  }
   return items;
 }
 
@@ -249,6 +258,10 @@ export function updateCartItemConfig(
 ): CartLineItem[] {
   const items = readCartItems().map((item) => (item.id === id ? { ...item, ...patch } : item));
   writeCartItems(items);
+  const edited = items.find((item) => item.id === id);
+  if (edited) {
+    void trackCartEventToCrm("cart_edit_position", edited.productSlug, edited, items);
+  }
   return items;
 }
 

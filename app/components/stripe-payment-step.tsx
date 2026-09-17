@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import type { PaymentIntentResult } from "@stripe/stripe-js";
@@ -25,6 +25,38 @@ function trackPaymentIssue(label: string, orderCode: string, message: string) {
     meta: { message: message.slice(0, 300) },
   }).catch(() => null);
 }
+
+// Wybór metody płatności i klik "Zapłać" - dla tooltipa "online w sklepie"
+// w CRM (właściciel 2026-09-17: "jak jest w checkout to chcę wiedzieć, co
+// wybiera"). Fire-and-forget jak trackPaymentIssue wyżej.
+function trackPaymentChoice(eventName: string, label: string, orderCode: string) {
+  let sessionToken = "";
+  try {
+    sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
+  } catch {
+    // sessionStorage niedostępny - event i tak poleci bez grupowania w sesję.
+  }
+  void trackStorefrontEvent({
+    event_name: eventName,
+    event_label: label,
+    order_code: orderCode,
+    page_slug: window.location.pathname,
+    session_token: sessionToken,
+    device_type: window.innerWidth < 768 ? "mobile" : "desktop",
+  }).catch(() => null);
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  blik: "BLIK",
+  card: "karta",
+  p24: "Przelewy24",
+  przelewy24: "Przelewy24",
+  revolut_pay: "Revolut Pay",
+  paypal: "PayPal",
+  apple_pay: "Apple Pay",
+  google_pay: "Google Pay",
+  link: "Link",
+};
 
 // Shared by the real checkout (/koszyk) and the "retry a failed payment"
 // flow (/zamowienie/[orderCode]) - both just need a clientSecret/
@@ -147,6 +179,7 @@ function StripePaymentStep({
   // this, that gap looked like "only a card field, nothing else" and some
   // customers ordered before the rest had a chance to appear.
   const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
+  const lastPaymentMethodRef = useRef("");
   // BLIK (and any other async method) needs the customer to approve a push
   // in their banking app *after* confirmPayment() already resolved - real
   // customer report: they typed the BLIK code, the shop said "zamówienie
@@ -218,6 +251,7 @@ function StripePaymentStep({
 
     setIsSubmitting(true);
     setError("");
+    trackPaymentChoice("checkout_pay_click", lastPaymentMethodRef.current || "nieznana", orderCode);
     // "if_required" keeps the customer on this page (and the order only
     // becomes real to them) once the payment has actually gone through -
     // only redirect-based methods (BLIK, wallets, ...) leave the page, in
@@ -329,6 +363,12 @@ function StripePaymentStep({
       <div className={paymentMethodsLoading ? "cart-payment-element-loading" : undefined}>
         <PaymentElement
           onReady={() => setPaymentMethodsLoading(false)}
+          onChange={(event) => {
+            const type = String(event?.value?.type || "").trim();
+            if (type === "" || type === lastPaymentMethodRef.current) return;
+            lastPaymentMethodRef.current = type;
+            trackPaymentChoice("checkout_payment_method", PAYMENT_METHOD_LABELS[type] || type, orderCode);
+          }}
           options={{
             defaultValues: {
               billingDetails: {
