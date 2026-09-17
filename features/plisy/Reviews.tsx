@@ -11,7 +11,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { PLISY_REVIEWS, PLISY_REVIEWS_ARE_PLACEHOLDERS, PLISY_SHOW_PLACEHOLDER_REVIEWS, type PlisyReview } from "./reviews-data";
 
-const PAGE = 8;
+// Owner, 2026-09-17 ("zdejmijmy trochę tego scrollowania"): three reviews up
+// front, three more per "Pokaż więcej" - same as the FAQ and moskitiery lists.
+const PAGE = 3;
 
 function Stars({ n }: { n: number }) {
   return (
