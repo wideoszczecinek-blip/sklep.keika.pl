@@ -358,6 +358,9 @@ export default function SiteAnalytics() {
       if (!el || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) return;
       if (el instanceof HTMLInputElement && ["radio", "checkbox", "hidden", "submit", "button"].includes(el.type)) return;
       if (el.closest(".cart-checkout-left")) return;
+      // Pola niewidoczne (honeypot antyspamowy, ukryte inputy) - nie są
+      // ruchem klienta.
+      if (el.offsetParent === null || el.getAttribute("aria-hidden") === "true" || el.tabIndex === -1) return;
       const name = fieldName(el);
       const filled = String(el.value || "").trim() !== "";
       const key = `${name}|${filled ? 1 : 0}`;
@@ -459,6 +462,8 @@ export default function SiteAnalytics() {
       scheduled = 0;
       document.querySelectorAll("main h2, main h3, main section[id], main [data-track-section], h1").forEach((el) => {
         if (observed.has(el)) return;
+        // Sekcja z własnym nagłówkiem: liczy się nagłówek, nie duplikat po id.
+        if (el.tagName === "SECTION" && el.querySelector("h1, h2, h3")) return;
         observed.add(el);
         io.observe(el);
       });
