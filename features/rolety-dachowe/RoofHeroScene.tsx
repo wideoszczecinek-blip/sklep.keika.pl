@@ -1,72 +1,65 @@
 "use client";
 
-// Hero animation for rolety dachowe - a rendered product presentation on a
-// photoreal attic plate, same idea as features/plisy/PlisyHeroScene.tsx:
-// the blind is drawn on a canvas in the base image's own pixel space, so it
-// stays razor sharp at any size, and the whole plate turns gently in 3D.
-//
-// Base plate: /rolety-dachowe/hero/attic-window.jpg - an empty pine roof
-// window in a bright attic (generated with gemini-2.5-flash-image from the
-// owner's own DEKO arrangement visual, 1344x768). The glass opening is a
-// trapezoid measured in that image; everything below is drawn in that
-// coordinate system: the aluminium cassette on top, the two side guides,
-// the fabric unrolling from the cassette and the bottom bar with its handle
-// and brush seal. The fabric stops at any height (the MULTISTOP brake the
-// product is about), changes colour while it rests (real DEKO / TERMO
-// swatch colours) and the hardware cycles through the three real finishes
-// (biały, anoda, jasna sosna).
+// Hero animation for rolety dachowe (v2, 2026-09-18 - the owner on v1: "w
+// ogóle nie przypomina rolety"). Instead of drawing the blind by hand, the
+// scene is built from photoreal frames of the SAME attic window rendered
+// with gemini-2.5-flash-image from one reference plate:
+//   /rolety-dachowe/hero/attic-window.jpg  - blind rolled up: white cassette
+//                                             at the top, side guides, clear
+//                                             glass (the base <img>)
+//   /rolety-dachowe/hero/fabric-*.jpg      - blind fully closed in four real
+//                                             fabrics (DEKO beige, TERMO
+//                                             graphite, TERMO navy, DEKO
+//                                             sage), cropped to the pane
+// The frames are pixel-aligned (mean difference outside the pane ≈ 2/255),
+// so unrolling is a wipe: the closed frame is clipped to the fabric area
+// between the cassette and the current bottom-bar position, drawn over the
+// open plate, with a shaded aluminium bottom bar (handle, brush seal) and
+// its shadow on the glass at the wipe edge. Fabric colours cross-fade while
+// the blind rests - the MULTISTOP brake holds it at any height, which is the
+// one thing this product is about. Everything is drawn in the base plate's
+// pixel space (1344x768) at device pixel ratio, so it stays sharp at any
+// size; a gentle 3D turn of the whole plate reads as a showroom presentation.
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 export const RD_HERO_BASE_SRC = "/rolety-dachowe/hero/attic-window.jpg";
 const IMG_W = 1344;
 const IMG_H = 768;
 
-// Glass opening corners in base-plate pixels (top-left, top-right,
-// bottom-right, bottom-left) - the window is seen from below, so the top
-// edge is wider than the bottom one.
-const PANE = { tl: [480, 96], tr: [905, 96], br: [876, 632], bl: [500, 632] } as const;
-const PANE_H = PANE.bl[1] - PANE.tl[1];
-
-const CASSETTE_H = 34;
-const RAIL_W = 9;
-const BAR_H = 16;
-const LOOP_MS = 24000;
-
-type Rgb = [number, number, number];
-// Real swatch colours from the CRM profile: DEKO 01, TERMO 61, DEKO 13,
-// TERMO 65, DEKO 19 - translucent DEKO shades alternate with opaque TERMO.
-const FABRICS: Array<{ rgb: Rgb; termo: boolean }> = [
-  { rgb: [218, 204, 165], termo: false },
-  { rgb: [96, 102, 102], termo: true },
-  { rgb: [190, 202, 182], termo: false },
-  { rgb: [35, 70, 108], termo: true },
-  { rgb: [128, 165, 192], termo: false },
+// The closed-fabric crops cover this rectangle of the base plate.
+const CROP = { x: 440, y: 60, w: 500, h: 600 };
+const FABRIC_FRAMES = [
+  { id: "deko-beige", src: "/rolety-dachowe/hero/fabric-beige.jpg" },
+  { id: "termo-graphite", src: "/rolety-dachowe/hero/fabric-graphite.jpg" },
+  { id: "termo-navy", src: "/rolety-dachowe/hero/fabric-navy.jpg" },
+  { id: "deko-sage", src: "/rolety-dachowe/hero/fabric-sage.jpg" },
 ];
-const FABRIC_TIMES = [7000, 12300, 16700, 21200];
-// Hardware finishes: biały, anoda, jasna sosna (CRM accent colours).
-const HARDWARE: Rgb[] = [
-  [244, 247, 248],
-  [199, 206, 214],
-  [229, 189, 114],
-];
-const HARDWARE_TIMES = [7000, 16700, 22600];
-const FADE_MS = 1400;
 
-// [time, bottom-bar position as a fraction of the pane height]
+// Fabric area between the side guides, measured on the frames (base-plate
+// pixels): top edge right under the cassette, bottom edge where the closed
+// blind's bottom bar rests on the sash. The window is seen from below, so
+// the quad narrows towards the bottom.
+const FABRIC = { top: 131, bottom: 622, xlTop: 489, xrTop: 884, xlBottom: 525, xrBottom: 833 };
+const BAR_H = 14;
+const LOOP_MS = 26000;
+
+// [time ms, bottom bar position: 0 = tucked under the cassette, 1 = fully closed]
 type Key = [number, number];
 const KEYS: Key[] = [
-  [0, 0.06],
-  [2400, 0.06],
-  [6000, 0.62],
-  [7400, 0.62],
-  [10500, 0.96],
-  [12000, 0.96],
-  [15000, 0.36],
-  [16400, 0.36],
-  [19500, 0.74],
-  [21000, 0.74],
-  [24000, 0.06],
+  [0, 0.03],
+  [2200, 0.03],
+  [6600, 0.56],
+  [8600, 0.56],
+  [12600, 1.0],
+  [14800, 1.0],
+  [18600, 0.32],
+  [20200, 0.32],
+  [23600, 0.03],
+  [26000, 0.03],
 ];
+// Fabric changes happen while the blind rests (or is rolled up, invisibly).
+const FABRIC_TIMES = [7300, 13400, 19100, 24600];
+const FADE_MS = 1300;
 
 const easeInOut = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
 
@@ -85,36 +78,50 @@ function barAt(t: number): number {
   return a[1] + (b[1] - a[1]) * p;
 }
 
-function cycleAt<T>(palette: T[], times: number[], t: number, mix: (from: T, to: T, k: number) => T): T {
+/** Which fabric frame shows at time t, and the next one blended in (0..1). */
+function fabricAt(t: number): { from: number; to: number; blend: number } {
   let idx = 0;
   let blend = 0;
-  for (let i = 0; i < times.length; i++) {
-    if (t >= times[i]) {
+  for (let i = 0; i < FABRIC_TIMES.length; i++) {
+    if (t >= FABRIC_TIMES[i]) {
       idx = i + 1;
-      const into = t - times[i];
+      const into = t - FABRIC_TIMES[i];
       blend = into < FADE_MS ? easeInOut(into / FADE_MS) : 1;
     }
   }
-  if (idx === 0) return palette[0];
-  const from = palette[(idx - 1) % palette.length];
-  const to = palette[idx % palette.length];
-  return mix(from, to, blend);
+  const n = FABRIC_FRAMES.length;
+  return { from: (idx - 1 + n) % n, to: idx % n, blend: idx === 0 ? 1 : blend };
 }
 
-const mixRgb = (a: Rgb, b: Rgb, k: number): Rgb => [0, 1, 2].map((c) => a[c] + (b[c] - a[c]) * k) as Rgb;
-const rgb = (c: Rgb, k = 1, a = 1) =>
-  `rgba(${Math.round(Math.min(255, c[0] * k))}, ${Math.round(Math.min(255, c[1] * k))}, ${Math.round(Math.min(255, c[2] * k))}, ${a})`;
-
-// Point on the (perspective) pane: u across (0 left .. 1 right), v down
-// (0 top .. 1 bottom). Edges are straight lines between the measured corners.
-function pt(u: number, v: number): [number, number] {
-  const xl = PANE.tl[0] + (PANE.bl[0] - PANE.tl[0]) * v;
-  const xr = PANE.tr[0] + (PANE.br[0] - PANE.tr[0]) * v;
-  return [xl + (xr - xl) * u, PANE.tl[1] + PANE_H * v];
+/** Left/right edge of the fabric at a given vertical position (0 top .. 1 bottom). */
+function edgesAt(v: number): { y: number; xl: number; xr: number } {
+  return {
+    y: FABRIC.top + (FABRIC.bottom - FABRIC.top) * v,
+    xl: FABRIC.xlTop + (FABRIC.xlBottom - FABRIC.xlTop) * v,
+    xr: FABRIC.xrTop + (FABRIC.xrBottom - FABRIC.xrTop) * v,
+  };
 }
 
-// Older WebKit has no CanvasRenderingContext2D.roundRect (it killed the plisy
-// hero scene live, 2026-09-17) - a hand-built path costs nothing.
+function fabricClip(ctx: CanvasRenderingContext2D, v: number) {
+  const bot = edgesAt(v);
+  ctx.beginPath();
+  ctx.moveTo(FABRIC.xlTop, FABRIC.top - 2);
+  ctx.lineTo(FABRIC.xrTop, FABRIC.top - 2);
+  ctx.lineTo(bot.xr, bot.y);
+  ctx.lineTo(bot.xl, bot.y);
+  ctx.closePath();
+}
+
+function paneClip(ctx: CanvasRenderingContext2D) {
+  ctx.beginPath();
+  ctx.moveTo(FABRIC.xlTop - 4, FABRIC.top - 2);
+  ctx.lineTo(FABRIC.xrTop + 4, FABRIC.top - 2);
+  ctx.lineTo(FABRIC.xrBottom + 4, FABRIC.bottom + 12);
+  ctx.lineTo(FABRIC.xlBottom - 4, FABRIC.bottom + 12);
+  ctx.closePath();
+}
+
+// Older WebKit has no roundRect - hand-built path.
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rr = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath();
@@ -130,174 +137,91 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.closePath();
 }
 
-function quad(ctx: CanvasRenderingContext2D, a: [number, number], b: [number, number], c: [number, number], d: [number, number]) {
-  ctx.beginPath();
-  ctx.moveTo(a[0], a[1]);
-  ctx.lineTo(b[0], b[1]);
-  ctx.lineTo(c[0], c[1]);
-  ctx.lineTo(d[0], d[1]);
-  ctx.closePath();
-}
-
-function metalGradient(ctx: CanvasRenderingContext2D, y0: number, y1: number, color: Rgb): CanvasGradient {
-  const g = ctx.createLinearGradient(0, y0, 0, y1);
-  g.addColorStop(0, rgb(color, 1.06));
-  g.addColorStop(0.45, rgb(color, 1.0));
-  g.addColorStop(1, rgb(color, 0.82));
-  return g;
-}
-
-function drawScene(ctx: CanvasRenderingContext2D, t: number, weave: CanvasPattern | null) {
+function drawScene(ctx: CanvasRenderingContext2D, t: number, frames: Array<HTMLImageElement | null>) {
   const v = barAt(t);
-  const fabric = cycleAt(FABRICS, FABRIC_TIMES, t, (a, b, k) => ({ rgb: mixRgb(a.rgb, b.rgb, k), termo: k < 0.5 ? a.termo : b.termo }));
-  const hardware = cycleAt(HARDWARE, HARDWARE_TIMES, t, mixRgb);
-  const isSosna = hardware[0] > 215 && hardware[2] < 150;
+  const fab = fabricAt(t);
+  const edge = edgesAt(v);
+  const from = frames[fab.from];
+  const to = frames[fab.to];
 
-  // --- fabric (clipped to the pane) ---------------------------------------
-  const top = pt(0, 0);
-  const topR = pt(1, 0);
-  const botL = pt(0, v);
-  const botR = pt(1, v);
-  ctx.save();
-  quad(ctx, PANE.tl as unknown as [number, number], PANE.tr as unknown as [number, number], PANE.br as unknown as [number, number], PANE.bl as unknown as [number, number]);
-  ctx.clip();
-  if (v > 0.01) {
-    // contact shadow on the glass
-    ctx.fillStyle = "rgba(25, 32, 45, 0.16)";
-    quad(ctx, [top[0] + 4, top[1] + 4], [topR[0] + 4, topR[1] + 4], [botR[0] + 4, botR[1] + 6], [botL[0] + 4, botL[1] + 6]);
-    ctx.fill();
-    // fabric body - lit from the upper left, DEKO slightly translucent
-    const alpha = fabric.termo ? 1 : 0.9;
-    const body = ctx.createLinearGradient(top[0], 0, topR[0], 0);
-    body.addColorStop(0, rgb(fabric.rgb, 1.05, alpha));
-    body.addColorStop(0.55, rgb(fabric.rgb, 1.0, alpha));
-    body.addColorStop(1, rgb(fabric.rgb, 0.9, alpha));
-    ctx.fillStyle = body;
-    quad(ctx, top, topR, botR, botL);
-    ctx.fill();
-    // vertical tension shading near the guides
-    const edge = ctx.createLinearGradient(top[0], 0, topR[0], 0);
-    edge.addColorStop(0, "rgba(0,0,0,0.16)");
-    edge.addColorStop(0.05, "rgba(0,0,0,0)");
-    edge.addColorStop(0.95, "rgba(0,0,0,0)");
-    edge.addColorStop(1, "rgba(0,0,0,0.18)");
-    ctx.fillStyle = edge;
-    quad(ctx, top, topR, botR, botL);
-    ctx.fill();
-    // faint horizontal weave + a soft sheen band (TERMO has the smooth face)
-    if (weave) {
-      ctx.globalAlpha = fabric.termo ? 0.05 : 0.09;
-      ctx.fillStyle = weave;
-      quad(ctx, top, topR, botR, botL);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-    const sheen = ctx.createLinearGradient(0, top[1], 0, botL[1]);
-    sheen.addColorStop(0, "rgba(255,255,255,0.10)");
-    sheen.addColorStop(0.35, "rgba(255,255,255,0)");
-    sheen.addColorStop(1, "rgba(0,0,0,0.06)");
-    ctx.fillStyle = sheen;
-    quad(ctx, top, topR, botR, botL);
-    ctx.fill();
-  }
-  ctx.restore();
-
-  // --- side guides ------------------------------------------------------------
-  const railTop = PANE.tl[1] + 2;
-  for (const side of [0, 1] as const) {
-    const a = pt(side, 0);
-    const b = pt(side, 1);
-    const dir = side === 0 ? 1 : -1;
+  // --- fabric: the closed frame(s) wiped down to the bar -------------------
+  if (v > 0.005 && (from || to)) {
     ctx.save();
-    ctx.shadowColor = "rgba(20, 30, 45, 0.25)";
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = dir * 1.5;
-    const g = ctx.createLinearGradient(a[0], 0, a[0] + dir * RAIL_W, 0);
-    g.addColorStop(0, rgb(hardware, 0.8));
-    g.addColorStop(0.4, rgb(hardware, 1.04));
-    g.addColorStop(1, rgb(hardware, 0.9));
+    fabricClip(ctx, v);
+    ctx.clip();
+    const draw = (img: HTMLImageElement, alpha: number) => {
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(img, 0, 0, CROP.w, CROP.h, CROP.x, CROP.y, CROP.w, CROP.h);
+    };
+    if (from && (fab.blend < 1 || !to)) draw(from, 1);
+    if (to && fab.blend > 0) draw(to, from && fab.blend < 1 ? fab.blend : 1);
+    ctx.globalAlpha = 1;
+    // the fabric curls slightly under the bar - a soft dark band at the edge
+    const g = ctx.createLinearGradient(0, edge.y - 10, 0, edge.y);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0.22)");
     ctx.fillStyle = g;
-    quad(ctx, [a[0] - dir * 2, railTop], [a[0] + dir * RAIL_W, railTop], [b[0] + dir * RAIL_W, b[1]], [b[0] - dir * 2, b[1]]);
-    ctx.fill();
+    ctx.fillRect(edge.xl - 2, edge.y - 10, edge.xr - edge.xl + 4, 10);
     ctx.restore();
   }
 
-  // --- bottom bar with handle and brush seal -----------------------------------
-  if (v > 0.01) {
-    const bl = pt(-0.01, v);
-    const br = pt(1.01, v);
+  // --- bar shadow on the glass below the bar ---------------------------------
+  if (v < 0.995) {
     ctx.save();
-    ctx.shadowColor = "rgba(20, 30, 45, 0.35)";
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
-    ctx.fillStyle = metalGradient(ctx, bl[1] - BAR_H, bl[1] + 2, hardware);
-    quad(ctx, [bl[0], bl[1] - BAR_H], [br[0], br[1] - BAR_H], [br[0], br[1] + 2], [bl[0], bl[1] + 2]);
-    ctx.fill();
+    paneClip(ctx);
+    ctx.clip();
+    const g = ctx.createLinearGradient(0, edge.y + BAR_H - 1, 0, edge.y + BAR_H + 16);
+    g.addColorStop(0, "rgba(20, 28, 40, 0.30)");
+    g.addColorStop(1, "rgba(20, 28, 40, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(edge.xl - 2, edge.y + BAR_H - 1, edge.xr - edge.xl + 4, 18);
     ctx.restore();
-    // brush seal under the bar
-    ctx.fillStyle = "rgba(60, 60, 60, 0.55)";
-    ctx.fillRect(bl[0] + 2, bl[1] + 2, br[0] - bl[0] - 4, 2.2);
-    // handle
-    const cx = (bl[0] + br[0]) / 2;
-    ctx.fillStyle = rgb(hardware, 0.72);
-    roundRectPath(ctx, cx - 16, bl[1] - BAR_H + 4, 32, BAR_H - 6, 3);
-    ctx.fill();
-    ctx.fillStyle = "rgba(0,0,0,0.18)";
-    ctx.fillRect(cx - 12, bl[1] - BAR_H / 2 - 1, 24, 2);
   }
 
-  // --- cassette on top --------------------------------------------------------
-  const cl = pt(-0.025, 0);
-  const cr = pt(1.025, 0);
-  const cy = PANE.tl[1] - 12;
+  // --- aluminium bottom bar with handle and brush seal ---------------------------
+  const barW = edge.xr - edge.xl + 6;
+  const barX = edge.xl - 3;
+  const barY = edge.y - 1;
   ctx.save();
-  ctx.shadowColor = "rgba(20, 30, 45, 0.35)";
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetY = 4;
-  ctx.fillStyle = metalGradient(ctx, cy - CASSETTE_H, cy + 6, hardware);
-  roundRectPath(ctx, cl[0], cy - CASSETTE_H, cr[0] - cl[0], CASSETTE_H + 6, 5);
+  ctx.shadowColor = "rgba(15, 20, 30, 0.35)";
+  ctx.shadowBlur = 5;
+  ctx.shadowOffsetY = 2;
+  const metal = ctx.createLinearGradient(0, barY, 0, barY + BAR_H);
+  metal.addColorStop(0, "#ffffff");
+  metal.addColorStop(0.35, "#f4f6f8");
+  metal.addColorStop(0.8, "#dde2e7");
+  metal.addColorStop(1, "#c4cad1");
+  ctx.fillStyle = metal;
+  roundRectPath(ctx, barX, barY, barW, BAR_H, 2.5);
   ctx.fill();
   ctx.restore();
-  if (isSosna) {
-    // faint wood grain on the pine finish
-    ctx.strokeStyle = "rgba(120, 80, 30, 0.14)";
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 6; i++) {
-      const y = cy - CASSETTE_H + 5 + i * 5.2;
-      ctx.beginPath();
-      ctx.moveTo(cl[0] + 6, y);
-      ctx.bezierCurveTo(cl[0] + 150, y + 1.5, cr[0] - 150, y - 1.5, cr[0] - 6, y + 0.5);
-      ctx.stroke();
-    }
-  }
-  // the slot the fabric exits from
-  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-  ctx.fillRect(cl[0] + 10, cy + 3, cr[0] - cl[0] - 20, 2.5);
+  // brush seal under the bar
+  ctx.fillStyle = "rgba(70, 72, 76, 0.55)";
+  ctx.fillRect(barX + 3, barY + BAR_H, barW - 6, 1.8);
+  // handle: a small centred grip, slightly recessed
+  const cx = barX + barW / 2;
+  const hg = ctx.createLinearGradient(0, barY + 3, 0, barY + BAR_H - 3);
+  hg.addColorStop(0, "#d3d8dd");
+  hg.addColorStop(1, "#b7bec6");
+  ctx.fillStyle = hg;
+  roundRectPath(ctx, cx - 17, barY + 3, 34, BAR_H - 6, 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+  ctx.fillRect(cx - 12, barY + BAR_H / 2 - 0.6, 24, 1.2);
 }
 
-function makeWeave(): CanvasPattern | null {
-  if (typeof document === "undefined") return null;
-  const c = document.createElement("canvas");
-  c.width = 64;
-  c.height = 64;
-  const g = c.getContext("2d");
-  if (!g) return null;
-  let seed = 11;
-  const rnd = () => {
-    seed = (seed * 16807) % 2147483647;
-    return seed / 2147483647;
-  };
-  for (let i = 0; i < 700; i++) {
-    const v = rnd() < 0.5 ? 0 : 255;
-    g.fillStyle = `rgba(${v},${v},${v},${0.3 + rnd() * 0.5})`;
-    g.fillRect(rnd() * 64, rnd() * 64, 1, 1);
-  }
-  for (let y = 0; y < 64; y += 4) {
-    g.fillStyle = "rgba(0,0,0,0.35)";
-    g.fillRect(0, y, 64, 0.6);
-  }
-  const ctx = document.createElement("canvas").getContext("2d");
-  return ctx ? ctx.createPattern(c, "repeat") : null;
+function loadFrames(onReady: () => void): Array<HTMLImageElement | null> {
+  const list: Array<HTMLImageElement | null> = FABRIC_FRAMES.map(() => null);
+  FABRIC_FRAMES.forEach((frame, index) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      list[index] = img;
+      onReady();
+    };
+    img.src = frame.src;
+  });
+  return list;
 }
 
 export default function RoofHeroScene({ active = true }: { active?: boolean }) {
@@ -320,13 +244,13 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
     if (!canvas || !plate) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const weave = makeWeave();
 
     let raf: number | null = null;
     let start: number | null = null;
     let width = 0;
     let height = 0;
     let dpr = 1;
+    let disposed = false;
 
     const fit = () => {
       dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -341,25 +265,34 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
     const render = (t: number) => {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // base-plate pixels -> canvas (the plate is object-fit: cover)
       const s = Math.max(width / IMG_W, height / IMG_H) * dpr;
       const ox = (width * dpr - IMG_W * s) / 2;
       const oy = (height * dpr - IMG_H * s) / 2;
       ctx.setTransform(s, 0, 0, s, ox, oy);
-      drawScene(ctx, t, weave);
+      drawScene(ctx, t, frames);
       const phase = (t / LOOP_MS) * Math.PI * 2;
-      const turn = reduced ? 0 : 5 * Math.sin(phase);
-      const tilt = reduced ? 0 : 1.2 * Math.sin(phase * 2 + 1);
+      const turn = reduced ? 0 : 4.5 * Math.sin(phase);
+      const tilt = reduced ? 0 : 1.1 * Math.sin(phase * 2 + 1);
       if (!reduced) {
         const k = Math.sin(phase);
         const sweep = ctx.createLinearGradient(0, 0, IMG_W, 0);
-        sweep.addColorStop(0, `rgba(0, 0, 0, ${(0.06 * Math.max(0, k)).toFixed(3)})`);
-        sweep.addColorStop(0.5, `rgba(255, 255, 255, ${(0.03 * Math.abs(k)).toFixed(3)})`);
-        sweep.addColorStop(1, `rgba(0, 0, 0, ${(0.06 * Math.max(0, -k)).toFixed(3)})`);
+        sweep.addColorStop(0, `rgba(0, 0, 0, ${(0.05 * Math.max(0, k)).toFixed(3)})`);
+        sweep.addColorStop(0.5, `rgba(255, 255, 255, ${(0.025 * Math.abs(k)).toFixed(3)})`);
+        sweep.addColorStop(1, `rgba(0, 0, 0, ${(0.05 * Math.max(0, -k)).toFixed(3)})`);
         ctx.fillStyle = sweep;
         ctx.fillRect(-IMG_W, -IMG_H, IMG_W * 3, IMG_H * 3);
       }
       plate.style.transform = `scale(1.06) rotateY(${turn.toFixed(2)}deg) rotateX(${tilt.toFixed(2)}deg)`;
     };
+
+    // Static frame (reduced motion / paused): blind half down in beige.
+    const staticT = 7000;
+    const currentT = () => (start === null ? staticT : (performance.now() - start) % LOOP_MS);
+
+    const frames = loadFrames(() => {
+      if (!disposed && (reduced || !active)) render(staticT);
+    });
 
     const tick = (now: number) => {
       if (start === null) start = now;
@@ -372,17 +305,18 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
             fit();
-            render(start === null ? 6000 : (performance.now() - start) % LOOP_MS);
+            render(currentT());
           })
         : null;
     ro?.observe(plate);
 
     if (reduced || !active) {
-      render(6000);
+      render(staticT);
     } else {
       raf = requestAnimationFrame(tick);
     }
     return () => {
+      disposed = true;
       if (raf !== null) cancelAnimationFrame(raf);
       ro?.disconnect();
     };
@@ -392,7 +326,7 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
     <div
       className="plisy-hero-scene rd-hero-scene"
       role="img"
-      aria-label="Animacja: roleta dachowa KEIKA w aluminiowej kasecie z prowadnicami - zatrzymuje się w dowolnym miejscu, tkaniny DEKO i TERMO, trzy kolory osprzętu"
+      aria-label="Animacja: roleta dachowa KEIKA w aluminiowej kasecie z prowadnicami rozwija się i zatrzymuje w dowolnym miejscu; tkaniny DEKO i TERMO"
     >
       <div className="plisy-hero-scene-plate" ref={plateRef}>
         <img className="plisy-hero-scene-base" src={RD_HERO_BASE_SRC} alt="" aria-hidden="true" fetchPriority="high" decoding="async" />

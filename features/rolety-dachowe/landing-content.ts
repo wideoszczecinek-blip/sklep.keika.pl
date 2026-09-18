@@ -249,7 +249,7 @@ export const RD_INSTRUCTION_STEPS = [
       "<p>Oznaczenie modelu jest na tabliczce znamionowej producenta, zwykle na górnej lub bocznej krawędzi otwartego skrzydła. Wpisz je w konfiguratorze albo zrób zdjęcie — model odczytamy automatycznie i dobierzemy właściwy wymiar rolety. Dla okien z biblioteki nie musisz nic mierzyć.</p>",
   },
   {
-    title: "2. Okno spoza biblioteki: zmierz wymiar A (szerokość)",
+    title: "2. Pomiar okna spoza biblioteki: wymiar A (szerokość)",
     body:
       "<p>Zmierz wymiar poziomy miejsca montażu od lewej do prawej krawędzi. Pomiaru dokonaj dokładnie w zaznaczonym miejscu — nie przy samej szybie, tylko na rancie ramy, tam gdzie będzie montowana roleta. Wynik wpisz w milimetrach.</p>",
     mediaUrl: RD_MEASUREMENT_VIDEO_URL,

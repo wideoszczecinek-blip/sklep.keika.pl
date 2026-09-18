@@ -40,7 +40,6 @@ import {
   setProductPriceAdjustmentsFromConfig,
   useProductPriceAdjustment,
 } from "@/lib/price-adjustment";
-import SwatchHoverPreview from "./components/swatch-hover-preview";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "./moskitiery-ramkowe-reviews-data";
 import {
   type CartLineItem,
@@ -3292,7 +3291,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
         </div>
       </header>
 
-      <SwatchHoverPreview />
       <main>
         <section className="hero-full" id="start">
           <div
