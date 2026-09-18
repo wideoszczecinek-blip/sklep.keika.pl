@@ -191,6 +191,16 @@ export default function ConfiguratorPanel({
     initialValues && Object.keys(initialValues).some((key) => key !== "widthMm" && key !== "heightMm" && key !== "qty"),
   );
   const [draftSeed] = useState<PlisyDraft | null>(() => (isCartEdit ? null : readDraft()));
+  // A returning visitor whose steps 1-4 came back from the 7-day draft
+  // (2026-09-18): the one signal we had none of - how many people come back
+  // and how many of those finish. Once per mount.
+  useEffect(() => {
+    if (!draftSeed || !draftSeed.savedAt) return;
+    const ageHours = Math.round((Date.now() - draftSeed.savedAt) / 36e5);
+    if (ageHours < 1) return; // same-session remount (e.g. quick-price -> configurator), not a return
+    trackShopStep("draft_restored", "plisy", { age_h: ageHours, mount: draftSeed.mountId || "", fabric: draftSeed.fabricId || "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const seed: PlisyDraft & ConfiguratorInitialValues = { ...(draftSeed ?? {}), ...(initialValues ?? {}) };
   const [selectedMountId, setSelectedMountId] = useState(seed.mountId || "");  // "Jak mierzyć?" as a full modal on top of everything (owner, 2026-09-16:
   // "w modalu zupełnie na wierzchu - duży, żeby nie rozjeżdżał
