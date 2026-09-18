@@ -103,7 +103,11 @@ export type RescueSavePosition = {
 /** Builds the single-position payload shape the CRM already expects (same
  * as one line of buildQuotePayloadFromCart in app/koszyk/page.tsx) from a
  * not-yet-added-to-cart configurator selection. */
+let rescuePositionSequence = 0;
+
 export function buildRescuePosition(item: {
+  /** Id linii koszyka (CartLineItem.id) - unikalny per pozycja. */
+  id?: string;
   productSlug: string;
   productLabel: string;
   hardwareLabel: string;
@@ -120,8 +124,16 @@ export function buildRescuePosition(item: {
   ]
     .filter(Boolean)
     .join(", ");
+  // Real live bug (2026-09-18): `position-${Date.now()}` nadawało wszystkim
+  // pozycjom z jednego zapisu to samo id, a CRM (quote_save.php) traktuje
+  // powtórzony id jako tę samą linię wysłaną dwa razy i liczy ją raz -
+  // 94 wyceny z zaniżoną kwotą (sama dopłata dłużycowa zamiast koszyka).
+  rescuePositionSequence += 1;
+  const positionId = (item.id || "").trim()
+    ? `position-${item.id}`
+    : `position-${Date.now()}-${rescuePositionSequence}-${Math.random().toString(36).slice(2, 8)}`;
   return {
-    id: `position-${Date.now()}`,
+    id: positionId,
     product_slug: item.productSlug || "produkt",
     product_label: item.productLabel,
     quantity: item.qty,

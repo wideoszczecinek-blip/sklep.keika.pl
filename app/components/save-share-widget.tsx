@@ -194,6 +194,7 @@ export default function SaveShareWidget({
       setIsSaving(true);
       const positions = cartItems.map((item) =>
         buildRescuePosition({
+          id: item.id,
           productSlug: item.productSlug,
           productLabel: item.productLabel,
           hardwareLabel: item.hardwareLabel,
