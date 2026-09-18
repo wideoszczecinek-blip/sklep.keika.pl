@@ -3696,27 +3696,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
                             </p>
 
-                            {/* Under the first paragraph, not above it (owner,
-                                2026-09-17): sliders, quiet, and the size it
-                                holds is the one the collection comparison
-                                further down prices every fabric for. */}
-                            <PlisyQuickPrice
-                              profile={plisyProfile}
-                              promo={topPromoActive ? topPromoPreview : null}
-                              widthMm={plisyQuickDims.widthMm}
-                              heightMm={plisyQuickDims.heightMm}
-                              onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
-                              onConfigure={(widthMm, heightMm) => {
-                                // Dims only - the panel re-seeds steps 1-4
-                                // from its own saved draft and keeps the
-                                // size step open with the price under it.
-                                setPlisyLastResult(null);
-                                setPlisyPrefillDims({ widthMm, heightMm });
-                                setPlisyConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
-                              }}
-                            />
-
                             <PlisyHeroPhotos />
 
                             <div className="pl-spec-grid">
@@ -3743,6 +3722,27 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 );
                               })}
                             </div>
+
+                            {/* Pod galerią i zaletami, nad opisem produktu
+                                (właściciel, 2026-09-18) - klient najpierw widzi
+                                produkt, potem liczy; rozmiar stąd trafia do
+                                porównania kolekcji niżej. */}
+                            <PlisyQuickPrice
+                              profile={plisyProfile}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              widthMm={plisyQuickDims.widthMm}
+                              heightMm={plisyQuickDims.heightMm}
+                              onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
+                              onConfigure={(widthMm, heightMm) => {
+                                // Dims only - the panel re-seeds steps 1-4
+                                // from its own saved draft and keeps the
+                                // size step open with the price under it.
+                                setPlisyLastResult(null);
+                                setPlisyPrefillDims({ widthMm, heightMm });
+                                setPlisyConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
 
                             <h2 className="hero-product-section-title">Opis produktu</h2>
                             <div
