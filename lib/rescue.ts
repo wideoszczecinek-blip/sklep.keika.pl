@@ -123,8 +123,16 @@ export function buildRescuePosition(item: {
    * a resumed position reads back the same way (extractSpecsFromSummaryRows). */
   labels?: { hardware: string; mesh: string };
 }): RescueSavePosition {
-  const hardwareLabelName = item.labels?.hardware || "Kolor profilu";
-  const meshLabelName = item.labels?.mesh || "Kolor siatki";
+  // Row names per product - the same ones /koszyk sends (cartItemFieldLabels),
+  // so a quote saved from the promo/save flows reads like one from checkout.
+  const defaultLabels =
+    item.productSlug === "rolety-dachowe"
+      ? { hardware: "Kolor kasety", mesh: "Kolor materiału" }
+      : item.productSlug === "plisy"
+        ? { hardware: "Kolor mechanizmu", mesh: "Kolekcja i kolor tkaniny" }
+        : { hardware: "Kolor profilu", mesh: "Kolor siatki" };
+  const hardwareLabelName = item.labels?.hardware || defaultLabels.hardware;
+  const meshLabelName = item.labels?.mesh || defaultLabels.mesh;
   const specs = [
     item.hardwareLabel ? `${hardwareLabelName.toLowerCase()} ${item.hardwareLabel}` : "",
     item.meshLabel ? `${meshLabelName.toLowerCase()} ${item.meshLabel}` : "",
