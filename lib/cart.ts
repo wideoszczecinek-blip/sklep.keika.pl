@@ -66,6 +66,26 @@ export type CartLineItem = {
    * back to the plain thumb, same convention as imageUrl/mountLabel). */
   fabricColor?: string;
   hardwareColor?: string;
+  /** rolety-dachowe only (2026-09-18): the library id of the chosen window
+   * (0/undefined for a manual size), whether the library flags its size as
+   * verified, the handle count on the bottom bar, free-text notes, the
+   * nameplate photo the customer uploaded (CRM attachment id) and the
+   * "nie ma mojego okna" request - all carried to the CRM quote/order. */
+  windowLibraryId?: number;
+  windowCertain?: boolean;
+  bracketCount?: 1 | 2;
+  notes?: string;
+  nameplateAttachmentId?: string;
+  missingModelRequest?: {
+    producer: string;
+    model: string;
+    dimensionAMm: number;
+    dimensionBMm: number;
+    attachmentIds: string[];
+    aiProducer?: string;
+    aiModel?: string;
+    aiConfidence?: string;
+  };
 };
 
 export type CartSummary = {
@@ -99,6 +119,24 @@ function readCartRows(): unknown[] {
       : [];
 }
 
+function readMissingModelRequest(value: unknown): CartLineItem["missingModelRequest"] {
+  if (!value || typeof value !== "object") return undefined;
+  const raw = value as Record<string, unknown>;
+  const producer = String(raw.producer ?? "").trim();
+  const model = String(raw.model ?? "").trim();
+  if (!producer && !model) return undefined;
+  return {
+    producer,
+    model,
+    dimensionAMm: Number(raw.dimensionAMm ?? 0) || 0,
+    dimensionBMm: Number(raw.dimensionBMm ?? 0) || 0,
+    attachmentIds: Array.isArray(raw.attachmentIds) ? raw.attachmentIds.map((id) => String(id)).filter(Boolean) : [],
+    aiProducer: raw.aiProducer ? String(raw.aiProducer) : undefined,
+    aiModel: raw.aiModel ? String(raw.aiModel) : undefined,
+    aiConfidence: raw.aiConfidence ? String(raw.aiConfidence) : undefined,
+  };
+}
+
 export function readCartItems(): CartLineItem[] {
   return readCartRows()
     .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object")
@@ -126,6 +164,13 @@ export function readCartItems(): CartLineItem[] {
         mountLabel: row.mountLabel ? String(row.mountLabel) : undefined,
         fabricColor: row.fabricColor ? String(row.fabricColor) : undefined,
         hardwareColor: row.hardwareColor ? String(row.hardwareColor) : undefined,
+        // rolety-dachowe extras (2026-09-18) - round-tripped as stored.
+        windowLibraryId: Number(row.windowLibraryId ?? 0) > 0 ? Number(row.windowLibraryId) : undefined,
+        windowCertain: typeof row.windowCertain === "boolean" ? row.windowCertain : undefined,
+        bracketCount: Number(row.bracketCount) === 2 ? 2 : Number(row.bracketCount) === 1 ? 1 : undefined,
+        notes: row.notes ? String(row.notes).slice(0, 500) : undefined,
+        nameplateAttachmentId: row.nameplateAttachmentId ? String(row.nameplateAttachmentId) : undefined,
+        missingModelRequest: readMissingModelRequest(row.missingModelRequest),
       } satisfies CartLineItem;
     });
 }

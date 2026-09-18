@@ -1,18 +1,14 @@
 // Shared data + pure helpers for the rolety-dachowe (roof window blind)
-// configurator, mirroring features/moskitiery-ramkowe/shared.ts - used both
-// by the homepage (app/page.tsx, "add to cart") and by the cart's "Edytuj
-// pozycję" modal. See ConfiguratorPanel.tsx for the actual step UI.
+// configurator - used by the landing (app/home-client.tsx), the panel
+// (ConfiguratorPanel.tsx) and the cart's "Edytuj pozycję" modal.
 //
-// Hardware/material-type/fabric option data and the price tables are real,
-// pulled from the CRM's public configurator API for the wider "dachowe"
-// product family (configurator_public?slug=dachowe - this shop product is
-// branded/copy-wise "rolety-dachowe" but per the business owner should
-// price and offer options exactly like "dachowe" does), fetched
-// 2026-08-30. The 420-model window library in roof-windows-data.ts comes
-// from that same CRM's public roof-window library endpoint. Nothing here
-// is invented.
+// Hardware/material-type/fabric options and price tables come LIVE from the
+// CRM's public "dachowe" payload (fetchRoofBlindProfile below - the same
+// source the Allegro configurator uses). The arrays in this file are the
+// 2026-08-30 snapshot of that payload, kept as the offline fallback; the
+// 420-model window library moved to roof-window-library.ts. Nothing here is
+// invented.
 import { optimizeImageUrl } from "@/lib/image-optim";
-import { ROOF_WINDOW_MODELS, type RoofWindowModel } from "./roof-windows-data";
 import { ROLETY_DACHOWE_PRICE_TABLES, type PricingTable } from "./price-tables-data";
 
 export type HardwareOption = {
@@ -232,11 +228,243 @@ export function buildRdLayerSurfaceStyle(imageUrl: string, accentColor: string) 
 
 export { ROLETY_DACHOWE_PRICE_TABLES, type PricingTable };
 
-// The "Domyslny profil Allegro" adjustment applied on top of every matrix
-// price, real CRM data (allegro_profiles[0] on the "dachowe" product
-// record) - a flat 10% discount, no fixed-amount component.
-export const ROLETY_DACHOWE_PRICE_ADJUSTMENT_PERCENT = -10;
-export const ROLETY_DACHOWE_PRICE_ADJUSTMENT_AMOUNT = 0;
+// ---------------------------------------------------------------------------
+// Live profile (2026-09-18). The option data and the price tables above were
+// a snapshot of the CRM's public "dachowe" payload from 2026-08-30. Since the
+// shop launch of this product they are read LIVE from the same endpoint the
+// Allegro configurator (konfiguruj.com.pl/dachowa) uses, so the owner edits
+// prices and fabrics in one place (CRM -> Allegro -> Konfiguratory ->
+// dachowe) and both channels follow. The snapshot stays as the fallback for
+// a failed fetch or an empty/zeroed profile (which is exactly what happened
+// 2026-08-31 .. 2026-09-18 on the Allegro side) - the shop then prices from
+// the bundled tables and reports it (configurator_profile_fallback).
+//
+// Owner decision 2026-09-18: the shop charges the table price 1:1 (no
+// "-10 % profil Allegro" as before - that profile belongs to the Allegro
+// unit-price scheme). The only shop-side knob is the CRM "Korekta ceny (%)"
+// (lib/price-adjustment.ts), applied on top by calcRoletyDachowePrice.
+// ---------------------------------------------------------------------------
+
+export const ROOF_BLIND_SOURCE_SLUG = "dachowe";
+const ROOF_BLIND_PROFILE_URL = `https://crm-keika.groovemedia.pl/biuro/api/allegro/configurator_public?slug=${ROOF_BLIND_SOURCE_SLUG}`;
+
+export type RoofBlindProfile = {
+  hardware: HardwareOption[];
+  materialTypes: MaterialTypeOption[];
+  fabrics: FabricOption[];
+  tables: PricingTable[];
+  /** "Skąd wziąć model okna" help block (CRM roof_window_model_help). */
+  modelHelp: { eyebrow: string; title: string; body: string; imageUrl: string };
+  measurementSections: Array<{ id: string; eyebrow: string; title: string; body: string }>;
+  source: "live" | "bundled";
+};
+
+type RawOption = {
+  id?: string;
+  label?: string;
+  value?: string;
+  subtitle?: string;
+  image_url?: string;
+  full_image_url?: string;
+  thumbnail_url?: string;
+  gallery_urls?: string[];
+  preview_layer_url?: string;
+  accent_color?: string;
+  material_parent_values?: string[];
+};
+type RawStep = { key?: string; type?: string; options?: RawOption[] };
+type RawTable = {
+  id?: string;
+  hardware_ids?: string[];
+  fabric_group_ids?: string[];
+  width_breakpoints?: number[];
+  height_breakpoints?: number[];
+  prices?: number[][];
+};
+type RawProduct = {
+  slug?: string;
+  pricing_calculation?: { mode?: string; tables?: RawTable[] };
+  configurator?: {
+    steps?: RawStep[];
+    roof_window_model_help?: { eyebrow?: string; title?: string; body?: string; image_url?: string };
+    measurement_guide_sections?: Array<{ id?: string; eyebrow?: string; title?: string; body?: string }>;
+  };
+};
+
+// The CRM labels for this product were typed without Polish diacritics
+// ("Bialy", "Polprzepuszczalny") - the shop shows them properly.
+const LABEL_FIXES: Record<string, string> = {
+  bialy: "Biały",
+  polprzepuszczalny: "Półprzepuszczalny",
+  "jasna sosna": "Jasna Sosna",
+};
+function fixLabel(label: string): string {
+  const key = String(label || "").trim().toLowerCase();
+  return LABEL_FIXES[key] || String(label || "").trim();
+}
+
+function normalizeStepKey(key: string | undefined): string {
+  return String(key || "").trim().toLowerCase().replace(/-/g, "_");
+}
+
+function firstTruthy(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    const trimmed = String(value || "").trim();
+    if (trimmed) return trimmed;
+  }
+  return "";
+}
+
+export function buildBundledRoofBlindProfile(): RoofBlindProfile {
+  return {
+    hardware: ROLETY_DACHOWE_HARDWARE,
+    materialTypes: ROLETY_DACHOWE_MATERIAL_TYPES,
+    fabrics: ROLETY_DACHOWE_FABRIC,
+    tables: ROLETY_DACHOWE_PRICE_TABLES,
+    modelHelp: { eyebrow: "", title: "", body: "", imageUrl: ROOF_WINDOW_MODEL_HELP_IMAGE_FALLBACK },
+    measurementSections: [],
+    source: "bundled",
+  };
+}
+
+/** The nameplate-location illustration (CRM roof_window_model_help.image_url). */
+export const ROOF_WINDOW_MODEL_HELP_IMAGE_FALLBACK =
+  "https://crm-keika.groovemedia.pl/storage/shop/media/20260809_002723_40b6e7e0_A-7.webp";
+
+function tableHasPositiveCell(table: PricingTable): boolean {
+  return table.prices.some((row) => row.some((cell) => typeof cell === "number" && Number.isFinite(cell) && cell > 0));
+}
+
+function parseRoofBlindProfile(product: RawProduct): RoofBlindProfile | null {
+  const steps = product.configurator?.steps || [];
+  const byKey = (wanted: string) => steps.find((step) => normalizeStepKey(step.key) === wanted) || null;
+  const hardwareStep = byKey("hardware_color");
+  const materialStep = byKey("material_type");
+  const fabricStep = byKey("fabric_variant");
+  if (!hardwareStep || !materialStep || !fabricStep) return null;
+
+  const hardware: HardwareOption[] = (hardwareStep.options || [])
+    .map((option) => ({
+      id: String(option.value || option.id || "").trim(),
+      label: fixLabel(option.label || ""),
+      color: String(option.accent_color || "").trim() || "#D8DEE3",
+      imageUrl: firstTruthy(option.image_url, option.full_image_url, option.thumbnail_url),
+      galleryUrls: (Array.isArray(option.gallery_urls) && option.gallery_urls.length
+        ? option.gallery_urls
+        : [firstTruthy(option.full_image_url, option.image_url)]
+      ).filter(Boolean),
+      priceDelta: 0,
+      previewLayerUrl: String(option.preview_layer_url || "").trim() || undefined,
+    }))
+    .filter((option) => option.id && option.label);
+
+  const materialTypes: MaterialTypeOption[] = (materialStep.options || [])
+    .map((option) => ({
+      id: String(option.value || option.id || "").trim(),
+      label: fixLabel(option.label || ""),
+      subtitle: String(option.subtitle || "").trim(),
+      color: String(option.accent_color || "").trim() || "#D8DEE3",
+      imageUrl: firstTruthy(option.image_url, option.full_image_url, option.thumbnail_url),
+    }))
+    .filter((option) => option.id && option.label);
+
+  const materialIds = new Set(materialTypes.map((option) => option.id));
+  const fabrics: FabricOption[] = (fabricStep.options || [])
+    .map((option) => {
+      const parents = Array.isArray(option.material_parent_values) ? option.material_parent_values : [];
+      const materialTypeId = parents.map((entry) => String(entry || "").trim()).find((entry) => materialIds.has(entry)) || "";
+      return {
+        id: String(option.value || option.id || "").trim(),
+        label: fixLabel(option.label || "").replace(/^Term (\d)/, "Termo $1"),
+        subtitle: String(option.subtitle || "").trim(),
+        color: String(option.accent_color || "").trim() || "#D8DEE3",
+        imageUrl: firstTruthy(option.thumbnail_url, option.image_url, option.full_image_url),
+        materialTypeId,
+      };
+    })
+    .filter((option) => option.id && option.label && option.materialTypeId);
+
+  const tables: PricingTable[] = (product.pricing_calculation?.tables || [])
+    .map((table) => ({
+      id: String(table.id || "").trim(),
+      hardwareIds: (table.hardware_ids || []).map((entry) => String(entry || "").trim()).filter(Boolean),
+      materialTypeIds: (table.fabric_group_ids || []).map((entry) => String(entry || "").trim()).filter(Boolean),
+      widthBreakpointsMm: (table.width_breakpoints || []).map(Number).filter((n) => Number.isFinite(n) && n > 0),
+      heightBreakpointsMm: (table.height_breakpoints || []).map(Number).filter((n) => Number.isFinite(n) && n > 0),
+      prices: (table.prices || []).map((row) => (Array.isArray(row) ? row.map(Number) : [])),
+    }))
+    .filter((table) => table.widthBreakpointsMm.length && table.heightBreakpointsMm.length && tableHasPositiveCell(table));
+
+  if (!hardware.length || !materialTypes.length || !fabrics.length || !tables.length) return null;
+  if (product.pricing_calculation?.mode !== "dimension_price_matrix_allegro_profile") return null;
+
+  const help = product.configurator?.roof_window_model_help || {};
+  return {
+    hardware,
+    materialTypes,
+    fabrics,
+    tables,
+    modelHelp: {
+      eyebrow: String(help.eyebrow || "").trim(),
+      title: String(help.title || "").trim(),
+      body: String(help.body || "").trim(),
+      imageUrl: String(help.image_url || "").trim() || ROOF_WINDOW_MODEL_HELP_IMAGE_FALLBACK,
+    },
+    measurementSections: (product.configurator?.measurement_guide_sections || [])
+      .map((section) => ({
+        id: String(section.id || "").trim(),
+        eyebrow: String(section.eyebrow || "").trim(),
+        title: String(section.title || "").trim(),
+        body: String(section.body || "").trim(),
+      }))
+      .filter((section) => section.title || section.body),
+    source: "live",
+  };
+}
+
+let roofBlindProfilePromise: Promise<RoofBlindProfile> | null = null;
+let lastProfileFallbackReason = "";
+
+/** Why the last fetchRoofBlindProfile() fell back to the bundled snapshot
+ * ("" when the live profile is in use) - for the tracking event only. */
+export function roofBlindProfileFallbackReason(): string {
+  return lastProfileFallbackReason;
+}
+
+/** Fetches the live roof-blind profile (steps + price tables) from the CRM.
+ * Cached for the page lifetime; never throws - falls back to the bundled
+ * snapshot and records why (see roofBlindProfileFallbackReason). */
+export function fetchRoofBlindProfile(): Promise<RoofBlindProfile> {
+  if (!roofBlindProfilePromise) {
+    roofBlindProfilePromise = (async () => {
+      try {
+        const response = await fetch(ROOF_BLIND_PROFILE_URL, { cache: "no-store" });
+        const json = (await response.json()) as {
+          ok?: boolean;
+          config?: { catalog?: { categories?: Array<{ products?: RawProduct[] }> } };
+        };
+        const product = (json?.config?.catalog?.categories || [])
+          .flatMap((category) => category.products || [])
+          .find((entry) => entry.slug === ROOF_BLIND_SOURCE_SLUG);
+        if (!json?.ok || !product) {
+          lastProfileFallbackReason = "no_product";
+          return buildBundledRoofBlindProfile();
+        }
+        const parsed = parseRoofBlindProfile(product);
+        if (!parsed) {
+          lastProfileFallbackReason = "invalid_profile";
+          return buildBundledRoofBlindProfile();
+        }
+        lastProfileFallbackReason = "";
+        return parsed;
+      } catch {
+        lastProfileFallbackReason = "fetch_failed";
+        return buildBundledRoofBlindProfile();
+      }
+    })();
+  }
+  return roofBlindProfilePromise;
+}
 
 /** Same rounding as the real configurator's roundMoneyAmount()
  * (product-configurator-shell.tsx) - 2 decimal places. */
@@ -257,119 +485,162 @@ export function resolvePriceBreakpointIndex(size: number, breakpoints: number[])
   return breakpoints.length - 1;
 }
 
-/** Every real table happens to have exactly one hardwareIds/materialTypeIds
- * combination that matches any given (hardwareId, materialTypeId) pair (no
- * ties in this dataset), so a direct lookup gives the identical result the
- * real configurator's fuller scored-match algorithm
- * (resolveMatchedPricingTable) would - simpler code for the same outcome. */
-export function findPricingTable(hardwareId: string, materialTypeId: string): PricingTable | null {
-  return (
-    ROLETY_DACHOWE_PRICE_TABLES.find(
-      (table) => table.hardwareIds.includes(hardwareId) && table.materialTypeIds.includes(materialTypeId),
-    ) || null
-  );
+// The shop's historical option ids and the CRM's "dachowe" values differ
+// for two entries - accepted both ways so a cart item from before the live
+// profile still prices.
+const OPTION_ID_ALIASES: Record<string, string[]> = {
+  srebrny: ["anoda"],
+  anoda: ["srebrny"],
+  polprzepuszczalny: ["ed", "deko"],
+  ed: ["polprzepuszczalny"],
+  termo: ["silver"],
+  silver: ["termo"],
+};
+function idMatches(wanted: string, list: string[]): boolean {
+  if (list.includes(wanted)) return true;
+  return (OPTION_ID_ALIASES[wanted] || []).some((alias) => list.includes(alias));
 }
 
-/** The real per-unit price for a given size/hardware/material combination:
- * matrix cell (ceiling-breakpoint lookup) with the price-adjustment
- * percent/amount applied - same formula as the real configurator's
- * calculateMatrixProfilePricing(), just without its final step (converting
- * into a whole number of tiny-priced Allegro listing units), which only
- * matters for the actual Allegro purchase flow, not this shop's own
- * checkout. Returns null if any input is missing or out of range. */
+/** Most specific table for the (hardware, material) pair - same scoring idea
+ * as the real configurator's resolveMatchedPricingTable(): a table naming
+ * both ids beats one naming only one, which beats an unscoped table. */
+export function findPricingTable(tables: PricingTable[], hardwareId: string, materialTypeId: string): PricingTable | null {
+  let best: PricingTable | null = null;
+  let bestScore = -1;
+  for (const table of tables) {
+    const hwScoped = table.hardwareIds.length > 0;
+    const matScoped = table.materialTypeIds.length > 0;
+    if (hwScoped && !idMatches(hardwareId, table.hardwareIds)) continue;
+    if (matScoped && !idMatches(materialTypeId, table.materialTypeIds)) continue;
+    const score = (hwScoped ? 2 : 0) + (matScoped ? 2 : 0);
+    if (score > bestScore) {
+      best = table;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+/** Price of one blind: matrix cell (ceiling-breakpoint lookup) x the CRM
+ * "Korekta ceny (%)" of this product. No Allegro unit rounding, no -10 %
+ * profile (owner, 2026-09-18). Returns null if any input is missing or the
+ * size falls outside the matrix. */
 export function calcRoletyDachowePrice(
+  tables: PricingTable[],
   widthMm: number,
   heightMm: number,
   hardwareId: string,
   materialTypeId: string,
-  // Korekta procentowa produktu z CRM (Sklep WWW → Produkty), nakładana na
-  // cenę z tabeli po stałej korekcie profilu.
   extraPercent = 0,
 ): number | null {
-  const table = findPricingTable(hardwareId, materialTypeId);
+  const table = findPricingTable(tables, hardwareId, materialTypeId);
   if (!table) return null;
   const widthIndex = resolvePriceBreakpointIndex(widthMm, table.widthBreakpointsMm);
   const heightIndex = resolvePriceBreakpointIndex(heightMm, table.heightBreakpointsMm);
   if (widthIndex === null || heightIndex === null) return null;
   const matrixPrice = table.prices[heightIndex]?.[widthIndex];
   if (typeof matrixPrice !== "number" || !Number.isFinite(matrixPrice) || matrixPrice <= 0) return null;
-  return rdRoundMoney(
-    Math.max(0, (matrixPrice * (1 + ROLETY_DACHOWE_PRICE_ADJUSTMENT_PERCENT / 100) + ROLETY_DACHOWE_PRICE_ADJUSTMENT_AMOUNT) * (1 + (extraPercent || 0) / 100)),
-  );
+  return rdRoundMoney(Math.max(0, matrixPrice * (1 + (extraPercent || 0) / 100)));
 }
 
-// "Od X zł" starting-price figure shown before a size is known (product
-// description trust-row) - the smallest real table cell (smallest width +
-// height breakpoint, Anoda/Biały + Półprzepuszczalny), run through the same
-// adjustment formula. Deliberately not the matrix-wide minimum: one cell
-// elsewhere (b25anoda2) is a known CRM data-entry anomaly ("37") far below
-// its neighbors, and using it would show a starting price nobody would
-// actually be charged.
-export const ROLETY_DACHOWE_STARTING_PRICE = calcRoletyDachowePrice(400, 800, "bialy", "polprzepuszczalny") ?? 0;
+/** "Od X zł" - the cheapest real blind: the smallest size in the cheapest
+ * hardware/material combination (never the matrix-wide minimum, which could
+ * be a data-entry slip). */
+export function roofBlindStartingPrice(profile: RoofBlindProfile | null, extraPercent = 0): number {
+  const source = profile || buildBundledRoofBlindProfile();
+  let best = Number.POSITIVE_INFINITY;
+  for (const table of source.tables) {
+    const cell = table.prices[0]?.[0];
+    if (typeof cell === "number" && Number.isFinite(cell) && cell > 0 && cell < best) best = cell;
+  }
+  if (!Number.isFinite(best)) return 0;
+  return rdRoundMoney(best * (1 + (extraPercent || 0) / 100));
+}
+
+/** Server-render / first-paint value: the bundled snapshot's cheapest cell. */
+export const ROLETY_DACHOWE_STARTING_PRICE = roofBlindStartingPrice(null);
+
+/** Size limits of the price matrix (widest/tallest breakpoint) - a manual
+ * "Wymiar A/B" outside them cannot be priced. */
+export function roofBlindSizeLimits(profile: RoofBlindProfile | null): { maxWidthMm: number; maxHeightMm: number } {
+  const source = profile || buildBundledRoofBlindProfile();
+  let maxWidthMm = 0;
+  let maxHeightMm = 0;
+  for (const table of source.tables) {
+    maxWidthMm = Math.max(maxWidthMm, ...table.widthBreakpointsMm);
+    maxHeightMm = Math.max(maxHeightMm, ...table.heightBreakpointsMm);
+  }
+  return { maxWidthMm: maxWidthMm || 2100, maxHeightMm: maxHeightMm || 2300 };
+}
 
 // Manual "Wymiar A / Wymiar B" fallback range (customer types their own
-// measured size instead of picking a library window model) - same
-// 200-2300mm range the real configurator enforces for every non-mosquito
-// product (MOSQUITO_MIN/MAX_DIMENSION_MM in product-configurator-shell.tsx,
-// reused generically there; renamed here since this product has nothing to
-// do with mosquito nets).
+// measured size instead of picking a library window model) - same 200 mm
+// floor the real configurator enforces; the ceiling is the matrix itself.
 export const ROLETY_DACHOWE_MIN_DIMENSION_MM = 200;
 export const ROLETY_DACHOWE_MAX_DIMENSION_MM = 2300;
 
-export type RoofWindowSelection = {
-  /** Set when picked from the library; empty for a manual "Wymiar A/B" entry. */
+export type MissingModelRequest = {
   producer: string;
   model: string;
-  widthMm: number;
-  heightMm: number;
-  /** False for a library pick whose measurement the CRM flags unverified,
-   * or for a manual entry (nothing to verify). */
-  certain: boolean;
-  isManual: boolean;
+  dimensionAMm: number;
+  dimensionBMm: number;
+  attachmentIds: string[];
+  aiProducer?: string;
+  aiModel?: string;
+  aiConfidence?: string;
 };
-
-/** Simple substring search across producer + model + alternate model,
- * matching how the real configurator's own search box works - no fuzzy
- * matching, just case/diacritics-insensitive "contains". */
-export function searchRoofWindowModels(query: string, limit = 30): RoofWindowModel[] {
-  const normalized = query
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
-  if (!normalized) return ROOF_WINDOW_MODELS.slice(0, limit);
-  const terms = normalized.split(/\s+/).filter(Boolean);
-  return ROOF_WINDOW_MODELS.filter((entry) => {
-    const haystack = `${entry.producer} ${entry.model} ${entry.altModel}`
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "");
-    return terms.every((term) => haystack.includes(term));
-  }).slice(0, limit);
-}
 
 export type ConfiguratorInitialValues = {
   hardwareId?: string;
   materialTypeId?: string;
   fabricId?: string;
+  /** /koszyk's "Edytuj pozycję" only has the cart item's LABELS - resolved
+   * against the live profile once it loads (see ConfiguratorPanel). */
+  hardwareLabel?: string;
+  materialTypeLabel?: string;
+  fabricLabel?: string;
+  /** Library window picked before (cart edit / "Wyceń podobną"). */
+  windowLibraryId?: number;
+  /** Pre-typed search ("Konfiguruj to okno" from the quick price up top). */
+  windowQuery?: string;
   widthMm?: number;
   heightMm?: number;
   qty?: number;
+  bracketCount?: 1 | 2;
+  notes?: string;
+  /** Cart edit of an "okno spoza biblioteki" position - restored 1:1. */
+  missingModelRequest?: MissingModelRequest | null;
 };
 
 export type ConfiguratorResult = {
   hardwareId: string;
   hardwareLabel: string;
   hardwareImageUrl: string;
+  hardwareColor: string;
+  previewLayerUrl: string;
   materialTypeId: string;
   materialTypeLabel: string;
   fabricId: string;
   fabricLabel: string;
+  fabricColor: string;
+  fabricImageUrl: string;
   windowProducer: string;
   windowModel: string;
+  /** Library id of the chosen window (0 for a manual size). */
+  windowLibraryId: number;
+  /** False when the library flags the measurement as unverified or for a
+   * manual "Wymiar A/B" entry - the CRM shows "wymiar orientacyjny". */
+  windowCertain: boolean;
+  isManual: boolean;
   widthMm: number;
   heightMm: number;
   qty: number;
   unitPrice: number;
   totalPrice: number;
+  /** Number of handles on the bottom bar (owner's extra option, no surcharge). */
+  bracketCount: 1 | 2;
+  notes: string;
+  /** Attachment id of the nameplate photo the customer uploaded (CRM storage). */
+  nameplateAttachmentId: string;
+  missingModelRequest: MissingModelRequest | null;
 };

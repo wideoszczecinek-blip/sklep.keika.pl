@@ -116,10 +116,19 @@ export function buildRescuePosition(item: {
   heightMm: number;
   qty: number;
   total: number;
+  /** rolety-dachowe: the chosen window ("Velux MK04") or "Wymiar własny". */
+  modelLabel?: string;
+  /** Row labels for products whose "hardware"/"mesh" are not profile/mesh
+   * (rolety-dachowe: kaseta / materiał) - the same names /koszyk sends, so
+   * a resumed position reads back the same way (extractSpecsFromSummaryRows). */
+  labels?: { hardware: string; mesh: string };
 }): RescueSavePosition {
+  const hardwareLabelName = item.labels?.hardware || "Kolor profilu";
+  const meshLabelName = item.labels?.mesh || "Kolor siatki";
   const specs = [
-    item.hardwareLabel ? `kolor profilu ${item.hardwareLabel}` : "",
-    item.meshLabel ? `kolor siatki ${item.meshLabel}` : "",
+    item.hardwareLabel ? `${hardwareLabelName.toLowerCase()} ${item.hardwareLabel}` : "",
+    item.meshLabel ? `${meshLabelName.toLowerCase()} ${item.meshLabel}` : "",
+    item.modelLabel ? `model okna ${item.modelLabel}` : "",
     item.widthMm && item.heightMm ? `${item.widthMm} × ${item.heightMm} mm` : "",
   ]
     .filter(Boolean)
@@ -141,8 +150,9 @@ export function buildRescuePosition(item: {
     currency: "PLN",
     summary: `${item.productLabel}${specs ? ` — ${specs}` : ""}`,
     summary_rows: [
-      item.hardwareLabel ? { label: "Kolor profilu", value: item.hardwareLabel, note: "" } : null,
-      item.meshLabel ? { label: "Kolor siatki", value: item.meshLabel, note: "" } : null,
+      item.hardwareLabel ? { label: hardwareLabelName, value: item.hardwareLabel, note: "" } : null,
+      item.meshLabel ? { label: meshLabelName, value: item.meshLabel, note: "" } : null,
+      item.modelLabel ? { label: "Model okna", value: item.modelLabel, note: "" } : null,
       item.widthMm && item.heightMm
         ? { label: "Rozmiar", value: `${item.widthMm} × ${item.heightMm} mm`, note: "" }
         : null,
@@ -225,18 +235,21 @@ type SummaryRow = { label?: string; value?: string };
 function extractSpecsFromSummaryRows(rows: SummaryRow[]): {
   hardwareLabel: string;
   meshLabel: string;
+  modelLabel: string;
   widthMm: number;
   heightMm: number;
 } {
   let hardwareLabel = "";
   let meshLabel = "";
+  let modelLabel = "";
   let widthMm = 0;
   let heightMm = 0;
   for (const row of rows) {
     const label = row?.label || "";
     const value = row?.value || "";
-    if (label === "Kolor profilu" || label === "Kolor kasety") hardwareLabel = value;
-    else if (label === "Kolor siatki" || label === "Kolor materiału") meshLabel = value;
+    if (label === "Kolor profilu" || label === "Kolor kasety" || label === "Kolor mechanizmu") hardwareLabel = value;
+    else if (label === "Kolor siatki" || label === "Kolor materiału" || label === "Kolekcja i kolor tkaniny") meshLabel = value;
+    else if (label === "Model okna") modelLabel = value;
     else if (label === "Rozmiar") {
       const match = value.match(/(\d+(?:[.,]\d+)?)\s*[×x]\s*(\d+(?:[.,]\d+)?)/);
       if (match) {
@@ -245,7 +258,7 @@ function extractSpecsFromSummaryRows(rows: SummaryRow[]): {
       }
     }
   }
-  return { hardwareLabel, meshLabel, widthMm, heightMm };
+  return { hardwareLabel, meshLabel, modelLabel, widthMm, heightMm };
 }
 
 type RawResumeQuote = {
@@ -307,6 +320,7 @@ export function mapQuoteToResumeState(quote: RawResumeQuote): ResumeState {
       productLabel: String(productPosition.product_label || "Produkt"),
       hardwareLabel: specs.hardwareLabel,
       meshLabel: specs.meshLabel,
+      modelLabel: specs.modelLabel || undefined,
       widthMm: specs.widthMm,
       heightMm: specs.heightMm,
       qty: quantity,

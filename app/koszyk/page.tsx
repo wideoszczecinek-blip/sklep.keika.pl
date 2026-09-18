@@ -22,7 +22,6 @@ import {
   OVERSIZE_SURCHARGE_THRESHOLD_MM,
 } from "@/features/moskitiery-ramkowe/shared";
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
-import { ROLETY_DACHOWE_FABRIC, ROLETY_DACHOWE_HARDWARE } from "@/features/rolety-dachowe/shared";
 import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
@@ -283,12 +282,61 @@ function buildQuotePayloadFromCart(
         item.mountLabel ? { label: "Rodzaj montażu", value: item.mountLabel, note: "" } : null,
         item.hardwareLabel ? { label: fieldLabels.hardware, value: item.hardwareLabel, note: "" } : null,
         item.meshLabel ? { label: fieldLabels.mesh, value: item.meshLabel, note: "" } : null,
-        item.modelLabel ? { label: "Model okna", value: item.modelLabel, note: "" } : null,
+        item.modelLabel
+          ? {
+              label: "Model okna",
+              value: item.modelLabel,
+              note:
+                item.productSlug === "rolety-dachowe" && item.windowCertain === false && !item.missingModelRequest
+                  ? "wymiar orientacyjny — potwierdzić przed produkcją"
+                  : "",
+            }
+          : null,
         item.widthMm && item.heightMm
-          ? { label: "Rozmiar", value: `${item.widthMm} × ${item.heightMm} mm`, note: "" }
+          ? { label: "Rozmiar", value: `${item.widthMm} × ${item.heightMm} mm`, note: item.missingModelRequest ? "wymiar A/B podany przez klienta" : "" }
+          : null,
+        item.missingModelRequest
+          ? {
+              label: "Okno spoza biblioteki",
+              value: `${item.missingModelRequest.producer} ${item.missingModelRequest.model}`.trim(),
+              note:
+                item.missingModelRequest.aiProducer || item.missingModelRequest.aiModel
+                  ? `odczyt AI: ${[item.missingModelRequest.aiProducer, item.missingModelRequest.aiModel].filter(Boolean).join(" ")} (${item.missingModelRequest.aiConfidence || "?"})`
+                  : "",
+            }
+          : null,
+        item.bracketCount ? { label: "Uchwyty na belce dolnej", value: `${item.bracketCount} szt.`, note: "" } : null,
+        item.notes ? { label: "Uwagi klienta", value: item.notes, note: "" } : null,
+        [item.nameplateAttachmentId, ...(item.missingModelRequest?.attachmentIds || [])].filter((id): id is string => Boolean(id)).filter((id, i, arr) => arr.indexOf(id) === i).length
+          ? {
+              label: "Zdjęcie od klienta",
+              value: `${[item.nameplateAttachmentId, ...(item.missingModelRequest?.attachmentIds || [])].filter((id): id is string => Boolean(id)).filter((id, i, arr) => arr.indexOf(id) === i).length} plik(i)`,
+              note: `attachment_id: ${[item.nameplateAttachmentId, ...(item.missingModelRequest?.attachmentIds || [])].filter((id): id is string => Boolean(id)).filter((id, i, arr) => arr.indexOf(id) === i).join(", ")}`,
+            }
           : null,
         { label: "Ilość", value: `${item.qty} szt.`, note: "" },
       ].filter((row): row is { label: string; value: string; note: string } => row !== null),
+      ...(item.productSlug === "rolety-dachowe"
+        ? {
+            meta: {
+              window_library_id: item.windowLibraryId || 0,
+              window_certain: item.windowCertain !== false,
+              attachment_ids: [item.nameplateAttachmentId, ...(item.missingModelRequest?.attachmentIds || [])].filter((id): id is string => Boolean(id)).filter((id, i, arr) => arr.indexOf(id) === i),
+              missing_model_request: item.missingModelRequest
+                ? {
+                    producer: item.missingModelRequest.producer,
+                    model: item.missingModelRequest.model,
+                    dimension_a: item.missingModelRequest.dimensionAMm,
+                    dimension_b: item.missingModelRequest.dimensionBMm,
+                    attachment_ids: item.missingModelRequest.attachmentIds,
+                    ai_producer: item.missingModelRequest.aiProducer || "",
+                    ai_model: item.missingModelRequest.aiModel || "",
+                    ai_confidence: item.missingModelRequest.aiConfidence || "",
+                  }
+                : null,
+            },
+          }
+        : {}),
     };
   });
 
@@ -1609,6 +1657,7 @@ export default function CartPage() {
                           item.meshLabel ? `${cartItemFieldLabels(item.productSlug).mesh}: ${item.meshLabel}` : "",
                           item.modelLabel ? `Model okna: ${item.modelLabel}` : "",
                           item.widthMm && item.heightMm ? `${item.widthMm} × ${item.heightMm} mm` : "",
+                          item.productSlug === "rolety-dachowe" && item.bracketCount === 2 ? "2 uchwyty" : "",
                         ]
                           .filter(Boolean)
                           .join(" · ")}
@@ -1673,7 +1722,7 @@ export default function CartPage() {
                     >
                       Usuń
                     </button>
-                    {item.productSlug === "moskitiery-ramkowe" || item.productSlug === "plisy" ? (
+                    {item.productSlug === "moskitiery-ramkowe" || item.productSlug === "plisy" || item.productSlug === "rolety-dachowe" ? (
                       <button
                         type="button"
                         className="cart-page-item-edit"
@@ -2666,12 +2715,18 @@ export default function CartPage() {
               <RoletyDachoweConfiguratorPanel
                 key={editingItem.id}
                 initialValues={{
-                  hardwareId: ROLETY_DACHOWE_HARDWARE.find((option) => option.label === editingItem.hardwareLabel)?.id,
-                  materialTypeId: ROLETY_DACHOWE_FABRIC.find((option) => option.label === editingItem.meshLabel)?.materialTypeId,
-                  fabricId: ROLETY_DACHOWE_FABRIC.find((option) => option.label === editingItem.meshLabel)?.id,
+                  // Options come off the live CRM profile inside the panel -
+                  // labels are resolved there (features/rolety-dachowe/shared.ts).
+                  hardwareLabel: editingItem.hardwareLabel,
+                  fabricLabel: editingItem.meshLabel,
+                  windowLibraryId: editingItem.windowLibraryId,
+                  windowQuery: editingItem.windowLibraryId ? undefined : editingItem.modelLabel,
                   widthMm: editingItem.widthMm,
                   heightMm: editingItem.heightMm,
                   qty: editingItem.qty,
+                  bracketCount: editingItem.bracketCount,
+                  notes: editingItem.notes,
+                  missingModelRequest: editingItem.missingModelRequest || null,
                 }}
                 submitLabel="Zapisz zmiany"
                 onSubmit={(result) => {
@@ -2685,6 +2740,14 @@ export default function CartPage() {
                     price: result.unitPrice,
                     total: result.totalPrice,
                     imageUrl: result.hardwareImageUrl,
+                    fabricColor: result.fabricColor || undefined,
+                    hardwareColor: result.hardwareColor || undefined,
+                    windowLibraryId: result.windowLibraryId || undefined,
+                    windowCertain: result.windowCertain,
+                    bracketCount: result.bracketCount,
+                    notes: result.notes || undefined,
+                    nameplateAttachmentId: result.nameplateAttachmentId || undefined,
+                    missingModelRequest: result.missingModelRequest || undefined,
                   });
                   setItems(updated);
                   setEditingItemId(null);

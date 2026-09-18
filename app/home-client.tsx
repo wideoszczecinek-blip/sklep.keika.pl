@@ -94,8 +94,29 @@ import {
 } from "@/features/moskitiery-ramkowe/shared";
 import {
   ROLETY_DACHOWE_STARTING_PRICE,
+  fetchRoofBlindProfile,
+  roofBlindStartingPrice,
   type ConfiguratorResult as RoletyDachoweConfiguratorResult,
+  type RoofBlindProfile,
 } from "@/features/rolety-dachowe/shared";
+import RoofHeroPhotos from "@/features/rolety-dachowe/RoofHeroPhotos";
+import RoofQuickPrice from "@/features/rolety-dachowe/RoofQuickPrice";
+import { RoofFabricsGuide, RoofHardwareStrip, RoofHowItWorks, RoofLibraryTeaser } from "@/features/rolety-dachowe/RoofLandingBlocks";
+import RoofReviews from "@/features/rolety-dachowe/Reviews";
+import { RD_ALL_PHOTOS, buildRdGalleryCategories } from "@/features/rolety-dachowe/gallery";
+import {
+  RD_CALLOUT,
+  RD_DESCRIPTION_HTML,
+  RD_FAQ,
+  RD_FEATURE_BULLETS,
+  RD_H1,
+  RD_INSTRUCTION_STEPS,
+  RD_PRIMARY_CTA,
+  RD_SPEC_ITEMS,
+  RD_SUBTITLE,
+  isRdPlaceholderCopy,
+} from "@/features/rolety-dachowe/landing-content";
+import { buildRoofWindowDisplayLabel, fetchRoofWindowLibrary, type RoofWindowLibraryItem } from "@/features/rolety-dachowe/roof-window-library";
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
 import { fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
 import {
@@ -265,6 +286,9 @@ type ProductInstructionStep = {
   body: string;
   mediaUrl?: string;
   mediaType?: "image" | "video";
+  /** An embedded player (YouTube nocookie) instead of a media file - the
+   * rolety-dachowe installation film. */
+  embedUrl?: string;
   /** A React-rendered guide instead of a media file (features/plisy/MeasureGuide). */
   customMedia?: "plisy-measure";
 };
@@ -479,68 +503,9 @@ const MOSKITIERY_RAMKOWE_GALLERY_PHOTOS: string[] = MOSKITIERY_RAMKOWE_GALLERY_C
   (category) => category.photos,
 );
 
-// rolety-dachowe (roof window blinds) - real content pulled from the same
-// live CRM product record features/rolety-dachowe/shared.ts's options come
-// from (configurator_public?slug=rolety-dachowe, fetched 2026-08-30), not
-// invented. Only 2 real photos exist for this product (its Allegro
-// catalog thumbnail and the "wybierz model okna" helper illustration) -
-// deliberately not padded out with stock/placeholder photos.
-const ROLETY_DACHOWE_GALLERY_PHOTOS: string[] = [
-  "https://crm-keika.groovemedia.pl/storage/shop/media/20260327_214003_14dc8ed5_KONFIGURATOR-2.png",
-  "https://crm-keika.groovemedia.pl/storage/shop/media/20260809_002723_40b6e7e0_A-7.webp",
-];
-
-const buildRoletyDachoweFeatureBullets = (startingPrice: number): ProductFeatureBullet[] => [
-  {
-    lead: "73 kolory tkaniny — Termo i Półprzepuszczalna Deko",
-    detail: "Termo nie przepuszcza światła i dzięki powłoce termicznej na zewnątrz skutecznie zmniejsza nagrzewanie się pomieszczenia; Deko subtelnie rozprasza światło",
-  },
-  {
-    lead: "3 kolory kasety i prowadnic",
-    detail: "Anoda (srebrny), Biały i Jasna Sosna",
-  },
-  {
-    lead: "Ponad 400 modeli okien w bibliotece",
-    detail: "Velux, Fakro, Roto, OKPOL i inne — wybierz swój model, a rozmiar rolety dobierzemy automatycznie",
-  },
-  {
-    lead: "Cena dobierana automatycznie z cennika",
-    detail: `zależnie od koloru, materiału i rozmiaru — od ${startingPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł za sztukę`,
-  },
-  {
-    lead: "Nie znalazłeś swojego modelu?",
-    detail: "podaj własny wymiar (Wymiar A / Wymiar B) — roletę wykonamy na miarę",
-  },
-];
-
-const buildRoletyDachoweSpecItems = (startingPrice: number): ProductSpecItem[] => [
-  { label: "Kaseta i prowadnice", value: "3 kolory: Anoda, Biały, Jasna Sosna" },
-  { label: "Tkanina", value: "Termo (19) i Deko (54), 73 kolory łącznie" },
-  { label: "Dopasowanie", value: "Pod model okna dachowego (biblioteka 400+ modeli)" },
-  { label: "Cena", value: `od ${startingPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł / szt., zależnie od wymiaru` },
-];
-
-// Verbatim from the same CRM record's measurement_guide_sections - real
-// instructions specific to this product, not the generic fallback.
-const ROLETY_DACHOWE_INSTRUCTION_STEPS: ProductInstructionStep[] = [
-  {
-    title: "1. Zmierz szerokość",
-    body: "Zmierz wymiar poziomy miejsca montażu od lewej do prawej krawędzi. Wpisz wynik w milimetrach. Pomiaru dokonaj dokładnie w widocznym - zaznaczonym miejscu - nie przy samej szybie tylko na rancie ramy, w miejscu gdzie będzie montowana roleta.",
-  },
-  {
-    title: "2. Zmierz wysokość",
-    body: "Zmierz wymiar pionowy od górnej do dolnej krawędzi miejsca montażu. Również wpisz wynik w milimetrach. Pomiaru również nie dokonuj przy szybie tylko w miejscach zaznaczonych - na rancie ramy.",
-  },
-  {
-    title: "3. Albo po prostu wybierz model okna",
-    body: "Zamiast ręcznego pomiaru możesz wyszukać swój model okna (Velux, Fakro, Roto, OKPOL i inne) w bibliotece ponad 400 modeli — rozmiar rolety dobierzemy automatycznie.",
-  },
-  {
-    title: "4. Ważne: zaokrąglone listwy",
-    body: "Te rolety nie będą kompatybilne z zaokrąglonymi listwami (jeżeli łuk jest minimalny - kilka milimetrów - roleta będzie pasować, natomiast przy oknach z typowo okrągłym profilem niestety nie).",
-  },
-];
-
+// rolety-dachowe landing content lives in features/rolety-dachowe/
+// landing-content.ts (built-in copy, CRM fields take over field by field)
+// and gallery.ts (the owner's photo set from the Allegro offer).
 type ProductCallout = {
   title: string;
   body: string;
@@ -582,7 +547,7 @@ type ProductLandingContent = {
 // Product slugs that have a real, live Allegro rating wired up (see
 // allegro_offer_rating_public.php in the CRM). Everything else falls back to
 // the generic placeholder review list further down.
-const PRODUCT_SLUGS_WITH_ALLEGRO_RATING = new Set(["moskitiery-ramkowe"]);
+const PRODUCT_SLUGS_WITH_ALLEGRO_RATING = new Set(["moskitiery-ramkowe", "rolety-dachowe"]);
 // Owner, 2026-09-17 ("zdejmijmy trochę tego scrollowania"): three reviews
 // and three FAQ entries up front, the rest behind "Pokaż więcej".
 const REVIEWS_PAGE_SIZE = 3;
@@ -686,7 +651,7 @@ function productInstructionSteps(label: string): ProductInstructionStep[] {
     return MOSKITIERY_RAMKOWE_INSTRUCTION_STEPS;
   }
   if (normalized.includes("rolet") && normalized.includes("dachow")) {
-    return ROLETY_DACHOWE_INSTRUCTION_STEPS;
+    return RD_INSTRUCTION_STEPS;
   }
   if (/^plis/.test(normalized)) {
     return PLISY_INSTRUCTION_STEPS;
@@ -764,7 +729,7 @@ function resolveMainProductPhoto(
     slug === "moskitiery-ramkowe"
       ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
       : slug === "rolety-dachowe"
-        ? ROLETY_DACHOWE_GALLERY_PHOTOS
+        ? RD_ALL_PHOTOS
         : product.gallery;
   const galleryPhotos =
     productLanding?.gallery?.length && productLanding.gallery.length >= builtinGallery.length
@@ -779,7 +744,7 @@ function resolveMainProductPhoto(
 function productSectionCtaLabel(product: SelectedProductView | null): string {
   const slug = productSlugFromSelected(product);
   if (slug === "moskitiery-ramkowe") return "Wyceń swoją moskitierę";
-  if (slug === "rolety-dachowe") return "Wyceń swoją roletę";
+  if (slug === "rolety-dachowe") return RD_PRIMARY_CTA;
   if (slug === "plisy") return PLISY_PRIMARY_CTA;
   return "Skonfiguruj i zobacz cenę";
 }
@@ -787,6 +752,55 @@ function productSectionCtaLabel(product: SelectedProductView | null): string {
 // Small suggestive icons for plisy's 4 built-in spec labels (see
 // features/plisy/landing-content.ts) - keyed by exact label like
 // moskitieryRamkoweSpecIcon above, so a CRM-renamed item simply has none.
+// Spec-tile icons for rolety dachowe (features/rolety-dachowe/landing-content.ts).
+function rdSpecIcon(label: string): React.ReactNode | null {
+  const common = { viewBox: "0 0 24 24", fill: "none", "aria-hidden": true } as const;
+  const stroke = { stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+  const key = label.toLowerCase();
+  if (key.includes("model")) {
+    return (
+      <svg {...common}>
+        <path d="M4 18L12 5l8 13" {...stroke} />
+        <path d="M8 18v-6h8v6" {...stroke} />
+        <circle cx="12" cy="9" r="1.2" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (key.includes("kaseta") || key.includes("alumin")) {
+    return (
+      <svg {...common}>
+        <rect x="3" y="4" width="18" height="5" rx="1.5" {...stroke} />
+        <path d="M6 9v11M18 9v11M6 20h12" {...stroke} />
+      </svg>
+    );
+  }
+  if (key.includes("zatrzym") || key.includes("hamul")) {
+    return (
+      <svg {...common}>
+        <path d="M4 5h16" {...stroke} />
+        <path d="M4 12h16" {...stroke} strokeWidth="2.6" />
+        <path d="M12 13v6M9 19h6" {...stroke} />
+      </svg>
+    );
+  }
+  if (key.includes("gwaranc")) {
+    return (
+      <svg {...common}>
+        <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" {...stroke} />
+        <path d="M9 12l2 2 4-4" {...stroke} />
+      </svg>
+    );
+  }
+  return null;
+}
+
+// Built-in FAQ per product (CRM entries take over when the owner fills them).
+function builtinFaqForSlug(slug: string): ProductFaqEntry[] {
+  if (slug === "plisy") return PLISY_FAQ;
+  if (slug === "rolety-dachowe") return RD_FAQ;
+  return [];
+}
+
 function plisySpecIcon(label: string): React.ReactNode | null {
   const common = { viewBox: "0 0 24 24", fill: "none", "aria-hidden": true } as const;
   const stroke = { stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
@@ -1362,6 +1376,15 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // rolety-dachowe's own <ConfiguratorPanel> (features/rolety-dachowe/).
   const [rdConfigKey, setRdConfigKey] = useState(0);
   const [rdLastResult, setRdLastResult] = useState<RoletyDachoweConfiguratorResult | null>(null);
+  // Rolety dachowe landing (2026-09-18): the live CRM "dachowe" profile and
+  // the window library feed the quick price, the fabrics guide and the
+  // library teaser; rdPrefill hands the window / material chosen up top
+  // into the configurator ("Konfiguruj to okno").
+  const [rdProfile, setRdProfile] = useState<RoofBlindProfile | null>(null);
+  const [rdLibrary, setRdLibrary] = useState<RoofWindowLibraryItem[]>([]);
+  const [rdQuickMaterial, setRdQuickMaterial] = useState("");
+  const [rdQuickDims, setRdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
+  const [rdPrefill, setRdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; materialTypeId?: string } | null>(null);
   // Same pattern again, for plisy's own <ConfiguratorPanel>
   // (features/plisy/) - see that folder's shared.ts for why its option data
   // is fetched live from the CRM instead of hardcoded like the two above.
@@ -1398,10 +1421,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
     moskPriceAdjustmentPercent,
   );
-  const roletyStartingPrice = applyPriceAdjustment(
-    ROLETY_DACHOWE_STARTING_PRICE,
-    roletyPriceAdjustmentPercent,
-  );
+  const roletyStartingPrice = rdProfile
+    ? roofBlindStartingPrice(rdProfile, roletyPriceAdjustmentPercent)
+    : applyPriceAdjustment(ROLETY_DACHOWE_STARTING_PRICE, roletyPriceAdjustmentPercent);
   // Desktop-only "Powiększ" toggle on .hero-product-config-panel (shared by
   // every product's configurator, applied once here instead of per-product).
   // Pure CSS state - no scroll position or config selection is touched by
@@ -1650,6 +1672,22 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       cancelled = true;
     };
   }, [displayedProductSlugForPlisy, plisyProfile]);
+  useEffect(() => {
+    if (displayedProductSlugForPlisy !== "rolety-dachowe" || rdProfile) return;
+    let cancelled = false;
+    void fetchRoofBlindProfile().then((profile) => {
+      if (cancelled) return;
+      setRdProfile(profile);
+      if (!rdQuickMaterial && profile.materialTypes[0]) setRdQuickMaterial(profile.materialTypes[0].id);
+    });
+    void fetchRoofWindowLibrary().then((result) => {
+      if (!cancelled) setRdLibrary(result.items);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayedProductSlugForPlisy, rdProfile]);
   // Lowest price in the whole matrix (any table, STANDARD mount has no
   // surcharge) - the honest "od X zł" for the trust row.
   // Teksty z CRM (cena "od", FAQ) mogą zawierać {{cena_od}} - podstawiamy
@@ -1672,7 +1710,10 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     );
   }, [plisyProfile, plisyPriceAdjustmentPercent]);
   const fillPricePlaceholders = (text: string): string =>
-    text.replace(/{{s*cena_ods*}}/gi, `${formatStartingPrice(plisyStartingPrice)} zł`);
+    text.replace(
+      /{{s*cena_ods*}}/gi,
+      `${formatStartingPrice(displayedProductSlugForPlisy === "rolety-dachowe" ? roletyStartingPrice : plisyStartingPrice)} zł`,
+    );
   // "Ekspres" toggle (lib/express.ts) - the choice made here carries into
   // /koszyk's "Termin realizacji" via localStorage.
   const [expressSelected, setExpressSelectedState] = useState(false);
@@ -2010,6 +2051,13 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       source: "landing_spec",
     });
   }, [activeInstructionSteps, displayedProduct]);
+  // The "Instrukcja pomiaru" button inside the roof-blind window form opens
+  // the same measurement popup the spec tile does.
+  useEffect(() => {
+    const handler = () => openMeasurementInstructions();
+    window.addEventListener("keika:rd-open-measure-guide", handler);
+    return () => window.removeEventListener("keika:rd-open-measure-guide", handler);
+  }, [openMeasurementInstructions]);
 
   const [dimensionWidth, setDimensionWidth] = useState("");
   const [dimensionHeight, setDimensionHeight] = useState("");
@@ -3342,7 +3390,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         ? productLanding?.title && productLanding.title.toLowerCase() !== "plisy"
                           ? productLanding.title
                           : PLISY_H1
-                        : displayedProduct.label}
+                        : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
+                          ? productLanding?.title && !/dekolux/i.test(productLanding.title) && productLanding.title.toLowerCase() !== "rolety do okien dachowych"
+                            ? productLanding.title
+                            : RD_H1
+                          : displayedProduct.label}
                     </h1>
                   ) : null}
                     <div className="hero-product-content">
@@ -3786,59 +3838,99 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             </div>
                           </div>
                         ) : productSlugFromSelected(displayedProduct) === "rolety-dachowe" ? (
-                          <div className="pl-landing">
+                          <div className="pl-landing rd-landing">
+                            {/* Rolety dachowe landing (2026-09-18) - built-in copy
+                                from features/rolety-dachowe/landing-content.ts, CRM
+                                fields take over one by one once the owner fills
+                                them. Same section order as plisy. */}
                             <div className="pl-trust-row">
                               <span className="pl-price">
-                                od {roletyStartingPrice.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                od {formatStartingPrice(roletyStartingPrice)} zł
                                 <span className="pl-price-unit"> / szt.</span>
                               </span>
-                              <span className="pl-chip">400+ modeli okien</span>
+                              <span className="pl-chip">{rdLibrary.length ? `${rdLibrary.length} modeli okien` : "420+ modeli okien"}</span>
+                              <span className="pl-chip">Polski producent</span>
+                              <span className="pl-chip">5 lat gwarancji</span>
+                              <span className="pl-chip">30 dni na zwrot</span>
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
 
                             <p className="pl-subtitle">
-                              Roleta dachowa dobierana pod Twój model okna — albo na własny wymiar.
+                              {isRdPlaceholderCopy(productLanding?.subtitle) ? RD_SUBTITLE : productLanding!.subtitle}
                             </p>
 
-                            <div
-                              className="pl-hero-photo"
-                              style={{ backgroundImage: `url(${optimizeImageUrl(ROLETY_DACHOWE_GALLERY_PHOTOS[0], 700)})` }}
-                            />
+                            <RoofHeroPhotos />
 
                             <div className="pl-spec-grid">
-                              {(productLanding?.specItems?.length ? productLanding.specItems : buildRoletyDachoweSpecItems(roletyStartingPrice)).map(
-                                (item) => (
-                                  <div className="pl-spec-item" key={item.label}>
+                              {(productLanding?.specItems?.length ? productLanding.specItems : RD_SPEC_ITEMS).map((item) => {
+                                const icon = rdSpecIcon(item.label);
+                                const withMeasureCta = /model/i.test(item.label);
+                                return (
+                                  <div className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`} key={item.label}>
+                                    {icon ? <span className="pl-spec-icon">{icon}</span> : null}
                                     <div className="pl-spec-item-text">
                                       <span className="pl-spec-label">{item.label}</span>
                                       <span className="pl-spec-value">{item.value}</span>
+                                      {withMeasureCta ? (
+                                        <button type="button" className="pl-measure-cta" onClick={openMeasurementInstructions}>
+                                          <span aria-hidden="true">📐</span>
+                                          Okno spoza listy? Zobacz, jak zmierzyć
+                                        </button>
+                                      ) : null}
                                     </div>
                                   </div>
-                                ),
-                              )}
+                                );
+                              })}
                             </div>
 
+                            <RoofQuickPrice
+                              profile={rdProfile}
+                              library={rdLibrary}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              materialTypeId={rdQuickMaterial}
+                              onMaterialChange={setRdQuickMaterial}
+                              onSelectionChange={(selection) =>
+                                setRdQuickDims({
+                                  widthMm: selection.widthMm,
+                                  heightMm: selection.heightMm,
+                                  label: selection.widthMm
+                                    ? selection.item
+                                      ? buildRoofWindowDisplayLabel(selection.item)
+                                      : `${selection.widthMm} × ${selection.heightMm} mm`
+                                    : "",
+                                })
+                              }
+                              onConfigure={(selection) => {
+                                setRdQuickDims({
+                                  widthMm: selection.widthMm,
+                                  heightMm: selection.heightMm,
+                                  label: selection.item ? buildRoofWindowDisplayLabel(selection.item) : `${selection.widthMm} × ${selection.heightMm} mm`,
+                                });
+                                setRdLastResult(null);
+                                setRdPrefill({
+                                  windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
+                                  windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
+                                  materialTypeId: selection.materialTypeId || undefined,
+                                });
+                                setRdConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
+
                             <h2 className="hero-product-section-title">Opis produktu</h2>
-                            {productLanding?.description ? (
-                              <div
-                                className="pl-description"
-                                dangerouslySetInnerHTML={{ __html: demoteHeadings(productLanding.description) }}
-                              />
-                            ) : null}
-                            {resolveMainProductPhoto(displayedProduct, productLanding) ? (
-                              <img
-                                className="pl-description-photo"
-                                src={optimizeImageUrl(resolveMainProductPhoto(displayedProduct, productLanding), 900)}
-                                alt={displayedProduct.label}
-                                loading="lazy"
-                              />
-                            ) : null}
+                            <div
+                              className="pl-description"
+                              dangerouslySetInnerHTML={{
+                                __html: demoteHeadings(
+                                  productLanding?.description && !isRdPlaceholderCopy(productLanding.description)
+                                    ? productLanding.description
+                                    : RD_DESCRIPTION_HTML,
+                                ),
+                              }}
+                            />
 
                             <ul className="pl-feature-list">
-                              {(productLanding?.featureBullets?.length
-                                ? productLanding.featureBullets
-                                : buildRoletyDachoweFeatureBullets(roletyStartingPrice)
-                              ).map((bullet) => (
+                              {(productLanding?.featureBullets?.length ? productLanding.featureBullets : RD_FEATURE_BULLETS).map((bullet) => (
                                 <li key={bullet.lead}>
                                   <strong>{bullet.lead}</strong>
                                   {bullet.detail ? <span> — {bullet.detail}</span> : null}
@@ -3846,12 +3938,43 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               ))}
                             </ul>
 
+                            <RoofHowItWorks />
+
+                            <RoofFabricsGuide
+                              profile={rdProfile}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              widthMm={rdQuickDims.widthMm}
+                              heightMm={rdQuickDims.heightMm}
+                              sizeLabel={rdQuickDims.label}
+                              activeMaterialTypeId={rdQuickMaterial}
+                              onPick={(materialTypeId) => {
+                                setRdQuickMaterial(materialTypeId);
+                                setRdLastResult(null);
+                                setRdPrefill((prev) => ({ ...(prev || {}), materialTypeId }));
+                                setRdConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                              onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
+                            />
+
+                            <RoofHardwareStrip profile={rdProfile} onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
+
+                            <RoofLibraryTeaser
+                              library={rdLibrary}
+                              onSearch={(query) => {
+                                setRdLastResult(null);
+                                setRdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query }));
+                                setRdConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
+
                             <div className="pl-callout">
-                              <strong>{productLanding?.callout?.title || "Rolety nie pasują do okien z zaokrągloną listwą"}</strong>
-                              <p>
-                                {productLanding?.callout?.body ||
-                                  "Jeżeli łuk jest minimalny (kilka milimetrów), roleta będzie pasować — natomiast przy oknach z typowo okrągłym profilem niestety nie."}
-                              </p>
+                              <strong>{productLanding?.callout?.title || RD_CALLOUT.title}</strong>
+                              <p>{productLanding?.callout?.body || RD_CALLOUT.body}</p>
+                              <button type="button" className="pl-inline-cta-button pl-callout-cta" onClick={scrollToConfigPanel}>
+                                {RD_PRIMARY_CTA}
+                              </button>
                             </div>
                           </div>
                         ) : productLanding && productLanding.sections.length > 0 ? (
@@ -3933,13 +4056,13 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         const plisyCategories =
                           productSlugFromSelected(displayedProduct) === "plisy"
                             ? buildPlisyGalleryCategories()
-                            : [];
+                            : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
+                              ? buildRdGalleryCategories()
+                              : [];
                         const builtinGallery =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                             ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
-                            : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
-                              ? ROLETY_DACHOWE_GALLERY_PHOTOS
-                              : plisyCategories.length
+                            : plisyCategories.length
                                 ? plisyCategories.flatMap((category) => category.photos)
                                 : displayedProduct.gallery;
                         const usingCrmGallery = Boolean(
@@ -4347,7 +4470,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             ) : null}
                           </div>
                           );
-                        })() : productSlugFromSelected(displayedProduct) === "plisy" ? (
+                        })() : productSlugFromSelected(displayedProduct) === "rolety-dachowe" ? (
+                          <RoofReviews crmReviews={productLanding?.reviews?.length ? productLanding.reviews : undefined} />
+                        ) : productSlugFromSelected(displayedProduct) === "plisy" ? (
                           <PlisyReviews crmReviews={productLanding?.reviews?.length ? productLanding.reviews : undefined} />
                         ) : (
                           <ul className="hero-product-reviews">
@@ -4367,13 +4492,13 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         <h2 className="hero-product-section-title">FAQ - Pytania i Odpowiedzi</h2>
                         {(productLanding?.faq?.length
                           ? productLanding.faq
-                          : productSlugFromSelected(displayedProduct) === "plisy"
-                            ? PLISY_FAQ
-                            : []
+                          : builtinFaqForSlug(productSlugFromSelected(displayedProduct))
                         ).length ? (
                           <div className="hero-product-faq">
                             {(() => {
-                              const faqEntries = productLanding?.faq?.length ? productLanding.faq : PLISY_FAQ;
+                              const faqEntries = productLanding?.faq?.length
+                                ? productLanding.faq
+                                : builtinFaqForSlug(productSlugFromSelected(displayedProduct));
                               const shownFaq = faqExpanded ? faqEntries : faqEntries.slice(0, FAQ_INITIAL_COUNT);
                               return (
                                 <>
@@ -4429,6 +4554,16 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               {step.customMedia === "plisy-measure" ? (
                                 <div className="hero-product-instruction-media hero-product-instruction-media--guide">
                                   <PlisyMeasureGuide />
+                                </div>
+                              ) : step.embedUrl ? (
+                                <div className="hero-product-instruction-media hero-product-instruction-media--embed">
+                                  <iframe
+                                    src={step.embedUrl}
+                                    title={step.title}
+                                    loading="lazy"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                  />
                                 </div>
                               ) : step.mediaUrl ? (
                                 <div className="hero-product-instruction-media">
@@ -4777,18 +4912,33 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                     <RoletyDachoweConfiguratorPanel
                       key={rdConfigKey}
                       initialValues={
-                        rdLastResult
+                        rdLastResult || rdPrefill
                           ? {
-                              hardwareId: rdLastResult.hardwareId,
-                              materialTypeId: rdLastResult.materialTypeId,
-                              fabricId: rdLastResult.fabricId,
+                              ...(rdLastResult
+                                ? {
+                                    hardwareId: rdLastResult.hardwareId,
+                                    materialTypeId: rdLastResult.materialTypeId,
+                                    fabricId: rdLastResult.fabricId,
+                                  }
+                                : {}),
+                              ...(rdPrefill
+                                ? {
+                                    ...(rdPrefill.materialTypeId && !rdLastResult ? { materialTypeId: rdPrefill.materialTypeId } : {}),
+                                    ...(rdPrefill.windowLibraryId ? { windowLibraryId: rdPrefill.windowLibraryId } : {}),
+                                    ...(rdPrefill.windowQuery ? { windowQuery: rdPrefill.windowQuery } : {}),
+                                  }
+                                : {}),
                             }
                           : undefined
                       }
+                      promo={topPromoActive ? topPromoPreview : null}
+                      enableSaveShareBanner
+                      enableRescueModal
                       submitLabel="Dodaj do koszyka"
                       onZoom={(preview) => setZoomPreview(preview)}
                       onSubmit={(result) => {
                         setRdLastResult(result);
+                        setRdPrefill(null);
                         const item: CartLineItem = {
                           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                           productSlug: "rolety-dachowe",
@@ -4802,6 +4952,14 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           price: result.unitPrice,
                           total: result.totalPrice,
                           imageUrl: result.hardwareImageUrl,
+                          fabricColor: result.fabricColor || undefined,
+                          hardwareColor: result.hardwareColor || undefined,
+                          windowLibraryId: result.windowLibraryId || undefined,
+                          windowCertain: result.windowCertain,
+                          bracketCount: result.bracketCount,
+                          notes: result.notes || undefined,
+                          nameplateAttachmentId: result.nameplateAttachmentId || undefined,
+                          missingModelRequest: result.missingModelRequest || undefined,
                           createdAt: new Date().toISOString(),
                         };
                         const items = addCartItem(item);
