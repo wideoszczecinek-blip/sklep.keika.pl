@@ -1680,14 +1680,23 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       setRdProfile(profile);
       if (!rdQuickMaterial && profile.materialTypes[0]) setRdQuickMaterial(profile.materialTypes[0].id);
     });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayedProductSlugForPlisy, rdProfile]);
+  // Separate effect: the profile effect above re-runs (and cancels) once the
+  // profile lands, which silently dropped a slower library response live.
+  useEffect(() => {
+    if (displayedProductSlugForPlisy !== "rolety-dachowe" || rdLibrary.length) return;
+    let cancelled = false;
     void fetchRoofWindowLibrary().then((result) => {
       if (!cancelled) setRdLibrary(result.items);
     });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayedProductSlugForPlisy, rdProfile]);
+  }, [displayedProductSlugForPlisy, rdLibrary.length]);
   // Lowest price in the whole matrix (any table, STANDARD mount has no
   // surcharge) - the honest "od X zł" for the trust row.
   // Teksty z CRM (cena "od", FAQ) mogą zawierać {{cena_od}} - podstawiamy
