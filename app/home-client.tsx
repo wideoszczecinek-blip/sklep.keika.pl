@@ -118,6 +118,23 @@ import {
 import { buildRoofWindowDisplayLabel, fetchRoofWindowLibrary, type RoofWindowLibraryItem } from "@/features/rolety-dachowe/roof-window-library";
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
 import { fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
+import PdHeroPhotos from "@/features/plisy-dachowe/PdHeroPhotos";
+import PdQuickPrice from "@/features/plisy-dachowe/PdQuickPrice";
+import { PdHardwareStrip, PdHowItWorks } from "@/features/plisy-dachowe/PdLandingBlocks";
+import PdReviews from "@/features/plisy-dachowe/Reviews";
+import { PD_ALL_PHOTOS, buildPdGalleryCategories } from "@/features/plisy-dachowe/gallery";
+import {
+  PD_CALLOUT,
+  PD_DESCRIPTION_HTML,
+  PD_FAQ,
+  PD_FEATURE_BULLETS,
+  PD_H1,
+  PD_INSTRUCTION_STEPS,
+  PD_PRIMARY_CTA,
+  PD_SPEC_ITEMS,
+  PD_SUBTITLE,
+} from "@/features/plisy-dachowe/landing-content";
+import { PD_PRICE_MULTIPLIER, PD_STARTING_PRICE_FALLBACK, pdStartingPrice, type ConfiguratorResult as PlisyDachoweConfiguratorResult } from "@/features/plisy-dachowe/shared";
 import {
   isPlisyPlaceholderCopy,
   PLISY_H1,
@@ -156,6 +173,7 @@ const RoletyDachoweConfiguratorPanel = dynamic(() => import("@/features/rolety-d
   ssr: false,
 });
 const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/ConfiguratorPanel"), { ssr: false });
+const PlisyDachoweConfiguratorPanel = dynamic(() => import("@/features/plisy-dachowe/ConfiguratorPanel"), { ssr: false });
 // Statycznie, nie przez dynamic(): to jest hero, więc ma się pojawić od razu
 // razem z resztą sekcji, a nie doładować po hydratacji (LCP).
 import PlisyHeroPhotos from "@/features/plisy/PlisyHeroPhotos";
@@ -652,6 +670,9 @@ function productInstructionSteps(label: string): ProductInstructionStep[] {
   if (normalized.includes("rolet") && normalized.includes("dachow")) {
     return RD_INSTRUCTION_STEPS;
   }
+  if (normalized.includes("plis") && normalized.includes("dachow")) {
+    return PD_INSTRUCTION_STEPS;
+  }
   if (/^plis/.test(normalized)) {
     return PLISY_INSTRUCTION_STEPS;
   }
@@ -729,7 +750,9 @@ function resolveMainProductPhoto(
       ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
       : slug === "rolety-dachowe"
         ? RD_ALL_PHOTOS
-        : product.gallery;
+        : slug === "plisy-dachowe"
+          ? PD_ALL_PHOTOS
+          : product.gallery;
   const galleryPhotos =
     productLanding?.gallery?.length && productLanding.gallery.length >= builtinGallery.length
       ? productLanding.gallery
@@ -744,6 +767,7 @@ function productSectionCtaLabel(product: SelectedProductView | null): string {
   const slug = productSlugFromSelected(product);
   if (slug === "moskitiery-ramkowe") return "Wyceń swoją moskitierę";
   if (slug === "rolety-dachowe") return RD_PRIMARY_CTA;
+  if (slug === "plisy-dachowe") return PD_PRIMARY_CTA;
   if (slug === "plisy") return PLISY_PRIMARY_CTA;
   return "Skonfiguruj i zobacz cenę";
 }
@@ -797,6 +821,7 @@ function rdSpecIcon(label: string): React.ReactNode | null {
 function builtinFaqForSlug(slug: string): ProductFaqEntry[] {
   if (slug === "plisy") return PLISY_FAQ;
   if (slug === "rolety-dachowe") return RD_FAQ;
+  if (slug === "plisy-dachowe") return PD_FAQ;
   return [];
 }
 
@@ -947,6 +972,12 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
 
   if (groupSlug === "oslony-wewnetrzne" && /^rolety tradycyjne$/.test(label)) {
     return "/kategoria/oslony-wewnetrzne";
+  }
+
+  if (groupSlug === "oslony-wewnetrzne" && /^plisy do okien dachowych$/.test(label)) {
+    // Plisy dachowe (2026-09-19) - resolves to the same slug the virtual
+    // item below uses, so the owner's future CRM tab just takes over.
+    return "/produkt/plisy-dachowe";
   }
 
   if (groupSlug === "oslony-wewnetrzne" && /^plisy$/.test(label)) {
@@ -1248,6 +1279,25 @@ function buildProductView(
   };
 }
 
+/** Products reachable by "?produkt=<slug>" before the owner adds their
+ * menu tab in the CRM (plisy dachowe, 2026-09-19): a hidden menu item
+ * attached to an existing group, used ONLY for URL resolution - never
+ * rendered in the header / flyout. Once a real "Plisy do okien dachowych"
+ * tab exists it resolves to the same slug (resolveMenuFallbackLink) and
+ * wins, because the menu loop runs first. */
+const VIRTUAL_PRODUCT_ITEMS: Record<string, { groupSlug: string; label: string; linkUrl: string }> = {
+  "plisy-dachowe": { groupSlug: "oslony-wewnetrzne", label: "Plisy do okien dachowych", linkUrl: "/produkt/plisy-dachowe" },
+};
+
+function resolveVirtualProductItem(slug: string, groups: HeroMenuGroup[]): { group: HeroMenuGroup; groupIndex: number; item: HeroMenuItem } | null {
+  const virtual = VIRTUAL_PRODUCT_ITEMS[String(slug || "").trim().toLowerCase()];
+  if (!virtual || !groups.length) return null;
+  const foundIndex = groups.findIndex((group) => String(group.slug || "").toLowerCase() === virtual.groupSlug);
+  const groupIndex = foundIndex >= 0 ? foundIndex : 0;
+  const group = groups[groupIndex];
+  return { group, groupIndex, item: { label: virtual.label, iconUrl: group.iconUrl, linkUrl: virtual.linkUrl } };
+}
+
 /** Resolves a product slug against the (snapshot) config the way
  * activateFromUrl() does at runtime - null when the slug isn't a known
  * menu item. Pure, so it's safe in useState initialisers on the server. */
@@ -1267,6 +1317,8 @@ function resolveProductViewForSlug(
       return buildProductView(group, groupIndex, subItem, heroMedia);
     }
   }
+  const virtual = resolveVirtualProductItem(wanted, groups);
+  if (virtual) return buildProductView(virtual.group, virtual.groupIndex, virtual.item, heroMedia);
   return null;
 }
 
@@ -1384,6 +1436,14 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const [rdQuickMaterial, setRdQuickMaterial] = useState("");
   const [rdQuickDims, setRdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
   const [rdPrefill, setRdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; materialTypeId?: string } | null>(null);
+  // Plisy dachowe (2026-09-19): fabrics/prices come off the plisy profile
+  // (plisyProfile below), the window library is rdLibrary; pdPrefill hands
+  // the window / collection chosen up top into the configurator.
+  const [pdConfigKey, setPdConfigKey] = useState(0);
+  const [pdLastResult, setPdLastResult] = useState<PlisyDachoweConfiguratorResult | null>(null);
+  const [pdQuickGroup, setPdQuickGroup] = useState("");
+  const [pdQuickDims, setPdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
+  const [pdPrefill, setPdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; fabricGroupId?: string } | null>(null);
   // Same pattern again, for plisy's own <ConfiguratorPanel>
   // (features/plisy/) - see that folder's shared.ts for why its option data
   // is fetched live from the CRM instead of hardcoded like the two above.
@@ -1412,6 +1472,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const roletyPriceAdjustmentPercent =
     roletyPriceAdjustmentPercentBySlug || roletyPriceAdjustmentPercentByCrmSlug;
   const plisyPriceAdjustmentPercent = useProductPriceAdjustment("plisy");
+  const pdPriceAdjustmentPercent = useProductPriceAdjustment("plisy-dachowe");
   const moskPricePerMbPromo = applyPriceAdjustment(
     MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
     moskPriceAdjustmentPercent,
@@ -1423,6 +1484,10 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const roletyStartingPrice = rdProfile
     ? roofBlindStartingPrice(rdProfile, roletyPriceAdjustmentPercent)
     : applyPriceAdjustment(ROLETY_DACHOWE_STARTING_PRICE, roletyPriceAdjustmentPercent);
+  // Plisy dachowe: window-plisa "od" x 1,25 with this product's own Korekta.
+  const pdStartingPriceValue = plisyProfile
+    ? pdStartingPrice(plisyProfile, pdPriceAdjustmentPercent)
+    : applyPriceAdjustment(PD_STARTING_PRICE_FALLBACK, pdPriceAdjustmentPercent);
   // Desktop-only "Powiększ" toggle on .hero-product-config-panel (shared by
   // every product's configurator, applied once here instead of per-product).
   // Pure CSS state - no scroll position or config selection is touched by
@@ -1662,7 +1727,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const [shippingBannerPending, setShippingBannerPending] = useState(true);
   const displayedProductSlugForPlisy = productSlugFromSelected(displayedProduct);
   useEffect(() => {
-    if (displayedProductSlugForPlisy !== "plisy" || plisyProfile) return;
+    if ((displayedProductSlugForPlisy !== "plisy" && displayedProductSlugForPlisy !== "plisy-dachowe") || plisyProfile) return;
     let cancelled = false;
     void fetchPlisyProfile().then((profile) => {
       if (!cancelled && profile) setPlisyProfile(profile);
@@ -1687,7 +1752,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // Separate effect: the profile effect above re-runs (and cancels) once the
   // profile lands, which silently dropped a slower library response live.
   useEffect(() => {
-    if (displayedProductSlugForPlisy !== "rolety-dachowe" || rdLibrary.length) return;
+    if ((displayedProductSlugForPlisy !== "rolety-dachowe" && displayedProductSlugForPlisy !== "plisy-dachowe") || rdLibrary.length) return;
     let cancelled = false;
     void fetchRoofWindowLibrary().then((result) => {
       if (!cancelled) setRdLibrary(result.items);
@@ -1720,7 +1785,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const fillPricePlaceholders = (text: string): string =>
     text.replace(
       /{{s*cena_ods*}}/gi,
-      `${formatStartingPrice(displayedProductSlugForPlisy === "rolety-dachowe" ? roletyStartingPrice : plisyStartingPrice)} zł`,
+      `${formatStartingPrice(
+        displayedProductSlugForPlisy === "rolety-dachowe" ? roletyStartingPrice : displayedProductSlugForPlisy === "plisy-dachowe" ? pdStartingPriceValue : plisyStartingPrice,
+      )} zł`,
     );
   // "Ekspres" toggle (lib/express.ts) - the choice made here carries into
   // /koszyk's "Termin realizacji" via localStorage.
@@ -2119,9 +2186,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     const load =
       slug === "rolety-dachowe"
         ? import("@/features/rolety-dachowe/ConfiguratorPanel")
-        : slug === "plisy"
-          ? import("@/features/plisy/ConfiguratorPanel")
-          : import("@/features/moskitiery-ramkowe/ConfiguratorPanel");
+        : slug === "plisy-dachowe"
+          ? import("@/features/plisy-dachowe/ConfiguratorPanel")
+          : slug === "plisy"
+            ? import("@/features/plisy/ConfiguratorPanel")
+            : import("@/features/moskitiery-ramkowe/ConfiguratorPanel");
     load
       .then(() => {
         if (!cancelled) setConfiguratorChunkReady(true);
@@ -2837,6 +2906,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           }
         }
       }
+      const virtual = resolveVirtualProductItem(slug, heroMenuGroups);
+      if (virtual) activateProductView(virtual.group, virtual.groupIndex, virtual.item, { updateUrl: false });
     };
 
     activateFromUrl();
@@ -3401,7 +3472,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           ? productLanding?.title && !/dekolux/i.test(productLanding.title) && productLanding.title.toLowerCase() !== "rolety do okien dachowych"
                             ? productLanding.title
                             : RD_H1
-                          : displayedProduct.label}
+                          : productSlugFromSelected(displayedProduct) === "plisy-dachowe"
+                            ? productLanding?.title && productLanding.title.toLowerCase() !== "plisy do okien dachowych"
+                              ? productLanding.title
+                              : PD_H1
+                            : displayedProduct.label}
                     </h1>
                   ) : null}
                     <div className="hero-product-content">
@@ -3844,6 +3919,142 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               </button>
                             </div>
                           </div>
+                        ) : productSlugFromSelected(displayedProduct) === "plisy-dachowe" ? (
+                          <div className="pl-landing rd-landing pd-landing">
+                            {/* Plisy dachowe landing (2026-09-19) - built-in copy from
+                                features/plisy-dachowe/landing-content.ts; the roof-blind
+                                section order (trust row, hero photos, spec grid, quick
+                                price by window model, description, how it works,
+                                fabric collections priced x1,25, hardware, library
+                                teaser, callout). */}
+                            <div className="pl-trust-row">
+                              <span className="pl-price">
+                                od {formatStartingPrice(pdStartingPriceValue)} zł
+                                <span className="pl-price-unit"> / szt.</span>
+                              </span>
+                              <span className="pl-chip">{rdLibrary.length ? `${rdLibrary.length} modeli okien` : "420+ modeli okien"}</span>
+                              <span className="pl-chip">Polski producent</span>
+                              <span className="pl-chip">5 lat gwarancji</span>
+                              <span className="pl-chip">30 dni na zwrot</span>
+                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
+                            </div>
+
+                            <p className="pl-subtitle">{productLanding?.subtitle?.trim() ? productLanding.subtitle : PD_SUBTITLE}</p>
+
+                            <PdHeroPhotos />
+
+                            <div className="pl-spec-grid">
+                              {(productLanding?.specItems?.length ? productLanding.specItems : PD_SPEC_ITEMS).map((item) => {
+                                const icon = rdSpecIcon(item.label);
+                                const withMeasureCta = /model/i.test(item.label);
+                                return (
+                                  <div className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`} key={item.label}>
+                                    {icon ? <span className="pl-spec-icon">{icon}</span> : null}
+                                    <div className="pl-spec-item-text">
+                                      <span className="pl-spec-label">{item.label}</span>
+                                      <span className="pl-spec-value">{item.value}</span>
+                                      {withMeasureCta ? (
+                                        <button type="button" className="pl-measure-cta" onClick={openMeasurementInstructions}>
+                                          <span aria-hidden="true">📐</span>
+                                          Okno spoza listy? Zobacz, jak zmierzyć
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <PdQuickPrice
+                              profile={plisyProfile}
+                              library={rdLibrary}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              fabricGroupId={pdQuickGroup}
+                              onFabricGroupChange={setPdQuickGroup}
+                              onSelectionChange={(selection) =>
+                                setPdQuickDims({
+                                  widthMm: selection.widthMm,
+                                  heightMm: selection.heightMm,
+                                  label: selection.widthMm
+                                    ? selection.item
+                                      ? buildRoofWindowDisplayLabel(selection.item)
+                                      : `${selection.widthMm} × ${selection.heightMm} mm`
+                                    : "",
+                                })
+                              }
+                              onConfigure={(selection) => {
+                                setPdQuickDims({
+                                  widthMm: selection.widthMm,
+                                  heightMm: selection.heightMm,
+                                  label: selection.item ? buildRoofWindowDisplayLabel(selection.item) : `${selection.widthMm} × ${selection.heightMm} mm`,
+                                });
+                                setPdLastResult(null);
+                                setPdPrefill({
+                                  windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
+                                  windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
+                                  fabricGroupId: selection.fabricGroupId || undefined,
+                                });
+                                setPdConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
+
+                            <h2 className="hero-product-section-title">Opis produktu</h2>
+                            <div
+                              className="pl-description"
+                              dangerouslySetInnerHTML={{
+                                __html: demoteHeadings(productLanding?.description?.trim() ? productLanding.description : PD_DESCRIPTION_HTML),
+                              }}
+                            />
+
+                            <ul className="pl-feature-list">
+                              {(productLanding?.featureBullets?.length ? productLanding.featureBullets : PD_FEATURE_BULLETS).map((bullet) => (
+                                <li key={bullet.lead}>
+                                  <strong>{bullet.lead}</strong>
+                                  {bullet.detail ? <span> — {bullet.detail}</span> : null}
+                                </li>
+                              ))}
+                            </ul>
+
+                            <PdHowItWorks />
+
+                            <PlisyCollectionsPicker
+                              profile={plisyProfile}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              widthCm={pdQuickDims.widthMm ? Math.round(pdQuickDims.widthMm / 10) : 78}
+                              heightCm={pdQuickDims.heightMm ? Math.round(pdQuickDims.heightMm / 10) : 118}
+                              onSizeChange={(widthCm, heightCm) => setPdQuickDims({ widthMm: widthCm * 10, heightMm: heightCm * 10, label: `${widthCm * 10} × ${heightCm * 10} mm` })}
+                              onQuote={scrollToConfigPanel}
+                              onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
+                              priceMultiplier={PD_PRICE_MULTIPLIER}
+                              adjustmentSlug="plisy-dachowe"
+                              title="Którą kolekcję tkanin wybrać?"
+                              lead={`Te same pięć kolekcji co w plisach okiennych. Ceny poglądowe dla plisy dachowej ${pdQuickDims.label ? `do okna ${pdQuickDims.label}` : "78 × 118 cm (typowe okno dachowe)"} z białym osprzętem — dokładną cenę z kolorem osprzętu i tkaniny policzy konfigurator.`}
+                              sizeLabelPrefix="Ceny dla plisy dachowej"
+                              mountSuffix=""
+                              ctaLabel={(name) => `Wyceń plisę dachową ${name} w konfiguratorze`}
+                            />
+
+                            <PdHardwareStrip onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
+
+                            <RoofLibraryTeaser
+                              library={rdLibrary}
+                              onSearch={(query) => {
+                                setPdLastResult(null);
+                                setPdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query }));
+                                setPdConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
+
+                            <div className="pl-callout">
+                              <strong>{productLanding?.callout?.title || PD_CALLOUT.title}</strong>
+                              <p>{productLanding?.callout?.body || PD_CALLOUT.body}</p>
+                              <button type="button" className="pl-inline-cta-button pl-callout-cta" onClick={scrollToConfigPanel}>
+                                {PD_PRIMARY_CTA}
+                              </button>
+                            </div>
+                          </div>
                         ) : productSlugFromSelected(displayedProduct) === "rolety-dachowe" ? (
                           <div className="pl-landing rd-landing">
                             {/* Rolety dachowe landing (2026-09-18) - built-in copy
@@ -4065,7 +4276,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             ? buildPlisyGalleryCategories()
                             : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
                               ? buildRdGalleryCategories()
-                              : [];
+                              : productSlugFromSelected(displayedProduct) === "plisy-dachowe"
+                                ? buildPdGalleryCategories()
+                                : [];
                         const builtinGallery =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                             ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
@@ -4479,6 +4692,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           );
                         })() : productSlugFromSelected(displayedProduct) === "rolety-dachowe" ? (
                           <RoofReviews crmReviews={productLanding?.reviews?.length ? productLanding.reviews : undefined} />
+                        ) : productSlugFromSelected(displayedProduct) === "plisy-dachowe" ? (
+                          <PdReviews crmReviews={productLanding?.reviews?.length ? productLanding.reviews : undefined} />
                         ) : productSlugFromSelected(displayedProduct) === "plisy" ? (
                           <PlisyReviews crmReviews={productLanding?.reviews?.length ? productLanding.reviews : undefined} />
                         ) : (
@@ -4975,6 +5190,107 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
                         setAddToCartToast({ productSlug: "rolety-dachowe", productLabel: displayedProduct.label });
+                      }}
+                    />
+                  )
+                ) : productSlugFromSelected(displayedProduct) === "plisy-dachowe" ? (
+                  addToCartToast ? (
+                    <MobileOverlayPortal>
+                    <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
+                      <div className="hero-product-mini-summary-body">
+                        <div className="hero-product-added-toast">
+                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
+                          <p>
+                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
+                          </p>
+                          <div className="hero-product-added-toast-actions">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setPdConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń podobną plisę
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setPdLastResult(null);
+                                setPdConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń nową plisę
+                            </button>
+                            <a href="/koszyk" className="is-primary">
+                              Przejdź do koszyka
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    </MobileOverlayPortal>
+                  ) : (
+                    <PlisyDachoweConfiguratorPanel
+                      key={pdConfigKey}
+                      initialValues={
+                        pdLastResult || pdPrefill
+                          ? {
+                              ...(pdLastResult
+                                ? {
+                                    hardwareId: pdLastResult.hardwareId,
+                                    fabricGroupId: pdLastResult.fabricGroupId,
+                                    fabricId: pdLastResult.fabricId,
+                                  }
+                                : {}),
+                              ...(pdPrefill
+                                ? {
+                                    ...(pdPrefill.fabricGroupId && !pdLastResult ? { fabricGroupId: pdPrefill.fabricGroupId } : {}),
+                                    ...(pdPrefill.windowLibraryId ? { windowLibraryId: pdPrefill.windowLibraryId } : {}),
+                                    ...(pdPrefill.windowQuery ? { windowQuery: pdPrefill.windowQuery } : {}),
+                                  }
+                                : {}),
+                            }
+                          : undefined
+                      }
+                      promo={topPromoActive ? topPromoPreview : null}
+                      enableSaveShareBanner
+                      enableRescueModal
+                      submitLabel="Dodaj do koszyka"
+                      onZoom={(preview) => setZoomPreview(preview)}
+                      onSubmit={(result) => {
+                        setPdLastResult(result);
+                        setPdPrefill(null);
+                        const item: CartLineItem = {
+                          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                          productSlug: "plisy-dachowe",
+                          productLabel: displayedProduct.label,
+                          hardwareLabel: result.hardwareLabel,
+                          meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
+                          modelLabel: result.windowProducer ? `${result.windowProducer} ${result.windowModel}` : result.windowModel,
+                          widthMm: result.widthMm,
+                          heightMm: result.heightMm,
+                          qty: result.qty,
+                          price: result.unitPrice,
+                          total: result.totalPrice,
+                          imageUrl: result.hardwareImageUrl,
+                          fabricColor: result.fabricColor || undefined,
+                          hardwareColor: result.hardwareColor || undefined,
+                          oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
+                          windowLibraryId: result.windowLibraryId || undefined,
+                          windowCertain: result.windowCertain,
+                          notes: result.notes || undefined,
+                          nameplateAttachmentId: result.nameplateAttachmentId || undefined,
+                          missingModelRequest: result.missingModelRequest || undefined,
+                          createdAt: new Date().toISOString(),
+                        };
+                        const items = addCartItem(item);
+                        setCartItems(items);
+                        setCartSummary(cartSummaryWithSurcharge(items));
+                        setCartIsBumping(true);
+                        window.setTimeout(() => setCartIsBumping(false), 500);
+                        setAddToCartToast({ productSlug: "plisy-dachowe", productLabel: displayedProduct.label });
                       }}
                     />
                   )

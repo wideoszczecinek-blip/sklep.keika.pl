@@ -109,6 +109,13 @@ export default function PlisyCollectionsPicker({
   widthCm: widthCmProp,
   heightCm: heightCmProp,
   onSizeChange,
+  priceMultiplier = 1,
+  adjustmentSlug = "plisy",
+  title,
+  lead,
+  sizeLabelPrefix,
+  mountSuffix,
+  ctaLabel,
 }: {
   profile: PlisyProfile | null;
   promo: PromoPreview | null;
@@ -122,6 +129,16 @@ export default function PlisyCollectionsPicker({
   widthCm?: number;
   heightCm?: number;
   onSizeChange?: (widthCm: number, heightCm: number) => void;
+  /** Plisy dachowe (2026-09-19) reuse this block: the same five collections
+   * priced x1,25, with this product's own CRM Korekta and its own copy. */
+  priceMultiplier?: number;
+  adjustmentSlug?: string;
+  title?: string;
+  lead?: string;
+  sizeLabelPrefix?: string;
+  /** "" hides the ", montaż STANDARD" suffix (no mount step on roof plisy). */
+  mountSuffix?: string;
+  ctaLabel?: (collectionName: string) => string;
 }) {
   // Production limits (20-150 x 20-230 cm) - the same bounds the quick
   // price up top and the configurator use.
@@ -151,13 +168,13 @@ export default function PlisyCollectionsPicker({
   // without it this block quoted the raw matrix (77 zł) while the
   // configurator, a screen later, said 69,30 zł for the same size. One
   // number for one window, everywhere on the page.
-  const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
+  const priceAdjustmentPercent = useProductPriceAdjustment(adjustmentSlug);
 
   const rows = useMemo(
     () =>
       PLISY_COLLECTIONS.map((row) => {
         const group = profile?.fabricGroups.find((entry) => entry.id === row.groupId);
-        const regular =
+        const regularBase =
           profile && group
             ? calcPlisyPrice(
                 { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
@@ -167,27 +184,29 @@ export default function PlisyCollectionsPicker({
                 row.groupId,
               )
             : null;
+        const regular = regularBase !== null ? Math.round(regularBase * priceMultiplier * 100) / 100 : null;
         const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
         const swatches = (group?.swatches || []).filter((s) => s.thumbnailUrl || s.imageUrl);
         return { ...row, regular, withPromo, swatches };
       }),
-    [profile, promo, widthCm, heightCm, priceAdjustmentPercent],
+    [profile, promo, widthCm, heightCm, priceAdjustmentPercent, priceMultiplier],
   );
 
   const sizeLabel = `${widthCm} × ${heightCm} cm`;
 
   return (
     <div className="pl-coll">
-      <h3 className="pl-coll-title">Którą kolekcję tkanin wybrać?</h3>
+      <h3 className="pl-coll-title">{title || "Którą kolekcję tkanin wybrać?"}</h3>
       <p className="pl-coll-lead">
-        Pięć kolekcji, od lekkich po zaciemniające. Ceny poglądowe — dokładną cenę z montażem, kolorem profilu i kilkoma
-        sztukami policzy konfigurator.
+        {lead ||
+          "Pięć kolekcji, od lekkich po zaciemniające. Ceny poglądowe — dokładną cenę z montażem, kolorem profilu i kilkoma sztukami policzy konfigurator."}
       </p>
 
       <details className="pl-mini-acc pl-coll-sizeacc">
         <summary>
           <span>
-            Ceny dla plisy <strong>{sizeLabel}</strong>, montaż STANDARD
+            {sizeLabelPrefix || "Ceny dla plisy"} <strong>{sizeLabel}</strong>
+            {mountSuffix ?? ", montaż STANDARD"}
             {promo ? (
               <>
                 {" "}
@@ -311,7 +330,7 @@ export default function PlisyCollectionsPicker({
                 ) : null}
 
                 <button type="button" className="pl-inline-cta-button pl-coll-cta" onClick={onQuote}>
-                  Wyceń plisę {row.name} w konfiguratorze
+                  {ctaLabel ? ctaLabel(row.name) : `Wyceń plisę ${row.name} w konfiguratorze`}
                 </button>
               </div>
             </details>

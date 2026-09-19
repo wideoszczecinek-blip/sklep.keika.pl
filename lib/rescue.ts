@@ -130,7 +130,9 @@ export function buildRescuePosition(item: {
       ? { hardware: "Kolor kasety", mesh: "Kolor materiału" }
       : item.productSlug === "plisy"
         ? { hardware: "Kolor mechanizmu", mesh: "Kolekcja i kolor tkaniny" }
-        : { hardware: "Kolor profilu", mesh: "Kolor siatki" };
+        : item.productSlug === "plisy-dachowe"
+          ? { hardware: "Kolor osprzętu", mesh: "Kolekcja i kolor tkaniny" }
+          : { hardware: "Kolor profilu", mesh: "Kolor siatki" };
   const hardwareLabelName = item.labels?.hardware || defaultLabels.hardware;
   const meshLabelName = item.labels?.mesh || defaultLabels.mesh;
   const specs = [
@@ -255,7 +257,7 @@ function extractSpecsFromSummaryRows(rows: SummaryRow[]): {
   for (const row of rows) {
     const label = row?.label || "";
     const value = row?.value || "";
-    if (label === "Kolor profilu" || label === "Kolor kasety" || label === "Kolor mechanizmu") hardwareLabel = value;
+    if (label === "Kolor profilu" || label === "Kolor kasety" || label === "Kolor mechanizmu" || label === "Kolor osprzętu") hardwareLabel = value;
     else if (label === "Kolor siatki" || label === "Kolor materiału" || label === "Kolekcja i kolor tkaniny") meshLabel = value;
     else if (label === "Model okna") modelLabel = value;
     else if (label === "Rozmiar") {

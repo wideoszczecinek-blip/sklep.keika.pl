@@ -23,6 +23,8 @@ import {
 } from "@/features/moskitiery-ramkowe/shared";
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
+import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
+import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
@@ -249,6 +251,9 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
   if (productSlug === "plisy") {
     return { hardware: "Kolor mechanizmu", mesh: "Kolekcja i kolor tkaniny" };
   }
+  if (productSlug === "plisy-dachowe") {
+    return { hardware: "Kolor osprzętu", mesh: "Kolekcja i kolor tkaniny" };
+  }
   return { hardware: "Kolor profilu", mesh: "Kolor siatki" };
 }
 
@@ -287,7 +292,7 @@ function buildQuotePayloadFromCart(
               label: "Model okna",
               value: item.modelLabel,
               note:
-                item.productSlug === "rolety-dachowe" && item.windowCertain === false && !item.missingModelRequest
+                (item.productSlug === "rolety-dachowe" || item.productSlug === "plisy-dachowe") && item.windowCertain === false && !item.missingModelRequest
                   ? "wymiar orientacyjny — potwierdzić przed produkcją"
                   : "",
             }
@@ -316,7 +321,7 @@ function buildQuotePayloadFromCart(
           : null,
         { label: "Ilość", value: `${item.qty} szt.`, note: "" },
       ].filter((row): row is { label: string; value: string; note: string } => row !== null),
-      ...(item.productSlug === "rolety-dachowe"
+      ...(item.productSlug === "rolety-dachowe" || item.productSlug === "plisy-dachowe"
         ? {
             meta: {
               window_library_id: item.windowLibraryId || 0,
@@ -1642,6 +1647,10 @@ export default function CartPage() {
                       <div className="cart-page-item-thumb cart-page-item-thumb--plisa">
                         <PlisaPreview fabricColor={item.fabricColor} hardwareColor={item.hardwareColor || ""} />
                       </div>
+                    ) : item.productSlug === "plisy-dachowe" && item.fabricColor ? (
+                      <div className="cart-page-item-thumb cart-page-item-thumb--plisa">
+                        <PlisaDachowaPreview fabricColor={item.fabricColor} hardwareColor={item.hardwareColor || ""} />
+                      </div>
                     ) : (
                       <div
                         className="cart-page-item-thumb"
@@ -1722,7 +1731,7 @@ export default function CartPage() {
                     >
                       Usuń
                     </button>
-                    {item.productSlug === "moskitiery-ramkowe" || item.productSlug === "plisy" || item.productSlug === "rolety-dachowe" ? (
+                    {item.productSlug === "moskitiery-ramkowe" || item.productSlug === "plisy" || item.productSlug === "rolety-dachowe" || item.productSlug === "plisy-dachowe" ? (
                       <button
                         type="button"
                         className="cart-page-item-edit"
@@ -2745,6 +2754,50 @@ export default function CartPage() {
                     windowLibraryId: result.windowLibraryId || undefined,
                     windowCertain: result.windowCertain,
                     bracketCount: result.bracketCount,
+                    notes: result.notes || undefined,
+                    nameplateAttachmentId: result.nameplateAttachmentId || undefined,
+                    missingModelRequest: result.missingModelRequest || undefined,
+                  });
+                  setItems(updated);
+                  setEditingItemId(null);
+                }}
+              />
+            ) : editingItem.productSlug === "plisy-dachowe" ? (
+              <PlisyDachoweConfiguratorPanel
+                key={editingItem.id}
+                initialValues={{
+                  // Hardware is static (features/plisy-dachowe/shared.ts), the
+                  // fabric collection/colour come off the live plisy profile
+                  // inside the panel - labels resolved there. meshLabel is
+                  // "<kolekcja> — <kolor>" like plisy.
+                  hardwareLabel: editingItem.hardwareLabel,
+                  fabricGroupLabel: editingItem.meshLabel.split(" — ")[0],
+                  fabricLabel: editingItem.meshLabel.split(" — ")[1],
+                  windowLibraryId: editingItem.windowLibraryId,
+                  windowQuery: editingItem.windowLibraryId ? undefined : editingItem.modelLabel,
+                  widthMm: editingItem.widthMm,
+                  heightMm: editingItem.heightMm,
+                  qty: editingItem.qty,
+                  notes: editingItem.notes,
+                  missingModelRequest: editingItem.missingModelRequest || null,
+                }}
+                submitLabel="Zapisz zmiany"
+                onSubmit={(result) => {
+                  const updated = updateCartItemConfig(editingItem.id, {
+                    hardwareLabel: result.hardwareLabel,
+                    meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
+                    modelLabel: result.windowProducer ? `${result.windowProducer} ${result.windowModel}` : result.windowModel,
+                    widthMm: result.widthMm,
+                    heightMm: result.heightMm,
+                    qty: result.qty,
+                    price: result.unitPrice,
+                    total: result.totalPrice,
+                    imageUrl: result.hardwareImageUrl,
+                    fabricColor: result.fabricColor || undefined,
+                    hardwareColor: result.hardwareColor || undefined,
+                    oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
+                    windowLibraryId: result.windowLibraryId || undefined,
+                    windowCertain: result.windowCertain,
                     notes: result.notes || undefined,
                     nameplateAttachmentId: result.nameplateAttachmentId || undefined,
                     missingModelRequest: result.missingModelRequest || undefined,
