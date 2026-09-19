@@ -237,38 +237,33 @@ export const RD_FAQ: RdFaqEntry[] = [
   },
 ];
 
-/** Instruction tab: measurement film + installation film (owner's own
- * material used in the Allegro configurator), then the CRM's text steps. */
-export const RD_MEASUREMENT_VIDEO_URL = "https://keika.groovemedia.pl/wp-content/uploads/2025/07/Wymiar-A-szerokosc.mp4";
+/** Instruction tab (owner, 2026-09-19: "instrukcje ograniczamy do pomiaru
+ * i montażu oraz uwag dodatkowych"): ONE measurement instruction (A and B
+ * together, with the owner's film re-encoded to a local 720p file - the
+ * 7 MB WordPress original was too slow to start on phones), the
+ * installation film and the extra notes (rounded glazing bead). */
+export const RD_MEASUREMENT_VIDEO_URL = "/rolety-dachowe/pomiar-wymiar.mp4";
 export const RD_INSTALLATION_VIDEO_EMBED_URL = "https://www.youtube-nocookie.com/embed/4STksYhAhyg?rel=0&modestbranding=1&playsinline=1";
 
 export const RD_INSTRUCTION_STEPS = [
   {
-    title: "1. Znajdź model okna — albo zrób zdjęcie tabliczki",
+    title: "1. Pomiar okna spoza biblioteki (wymiar A i B)",
     body:
-      "<p>Oznaczenie modelu jest na tabliczce znamionowej producenta, zwykle na górnej lub bocznej krawędzi otwartego skrzydła. Wpisz je w konfiguratorze albo zrób zdjęcie — model odczytamy automatycznie i dobierzemy właściwy wymiar rolety. Dla okien z biblioteki nie musisz nic mierzyć.</p>",
-  },
-  {
-    title: "2. Pomiar okna spoza biblioteki: wymiar A (szerokość)",
-    body:
-      "<p>Zmierz wymiar poziomy miejsca montażu od lewej do prawej krawędzi. Pomiaru dokonaj dokładnie w zaznaczonym miejscu — nie przy samej szybie, tylko na rancie ramy, tam gdzie będzie montowana roleta. Wynik wpisz w milimetrach.</p>",
+      "<p><strong>Okno z biblioteki nie wymaga pomiaru</strong> — po wybraniu modelu (albo zdjęciu tabliczki znamionowej) wymiar rolety dobieramy sami. Mierz tylko okno, którego nie ma na liście.</p>" +
+      "<p><strong>Wymiar A (szerokość):</strong> zmierz wymiar poziomy miejsca montażu od lewej do prawej krawędzi. Pomiaru dokonaj dokładnie w zaznaczonym miejscu — nie przy samej szybie, tylko na rancie ramy skrzydła, tam gdzie będzie montowana roleta.</p>" +
+      "<p><strong>Wymiar B (wysokość):</strong> zmierz wymiar pionowy od górnej do dolnej krawędzi miejsca montażu — również na rancie ramy, nie przy szybie. Oba wyniki wpisz w milimetrach; roletę wykonamy dokładnie pod te wymiary, a dobór sprawdzimy przed produkcją.</p>",
     mediaUrl: RD_MEASUREMENT_VIDEO_URL,
     mediaType: "video" as const,
   },
   {
-    title: "3. Zmierz wymiar B (wysokość)",
-    body:
-      "<p>Zmierz wymiar pionowy od górnej do dolnej krawędzi miejsca montażu — również na rancie ramy, nie przy szybie. Wpisz wynik w milimetrach. Roletę wykonamy dokładnie pod te wymiary, a przed produkcją sprawdzimy dobór.</p>",
-  },
-  {
-    title: "4. Montaż rolety na skrzydle — film",
+    title: "2. Montaż rolety na skrzydle",
     body:
       "<p>Kaseta u góry skrzydła, prowadnice po bokach, belka z hamulcem — wszystko na wkręty z kompletu, bez specjalistycznych narzędzi. Zobacz cały montaż krok po kroku.</p>",
     embedUrl: RD_INSTALLATION_VIDEO_EMBED_URL,
   },
   {
-    title: "5. Ważne: zaokrąglone listwy",
+    title: "3. Uwagi dodatkowe: zaokrąglone listwy",
     body:
-      "<p>Te rolety nie są kompatybilne z zaokrąglonymi listwami przyszybowymi. Jeżeli łuk jest minimalny (kilka milimetrów), roleta będzie pasować; przy oknach z typowo okrągłym profilem — niestety nie.</p>",
+      "<p>Te rolety nie są kompatybilne z zaokrąglonymi listwami przyszybowymi. Jeżeli łuk jest minimalny (kilka milimetrów), roleta będzie pasować; przy oknach z typowo okrągłym profilem — niestety nie. W razie wątpliwości dołącz zdjęcie okna w konfiguratorze — sprawdzimy dobór przed produkcją.</p>",
   },
 ];
