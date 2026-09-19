@@ -19,7 +19,7 @@
 // server and the client and does not change between builds.
 
 export const RD_REVIEWS_ARE_PLACEHOLDERS = true;
-export const RD_SHOW_PLACEHOLDER_REVIEWS = true;
+export const RD_SHOW_PLACEHOLDER_REVIEWS = false;
 
 export type RdReview = {
   date: string;

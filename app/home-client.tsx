@@ -1077,6 +1077,7 @@ const defaultHeroMenuGroups: HeroMenuGroup[] = [
       { label: "Żaluzje", iconUrl: iconInside, linkUrl: "/kategoria/zaluzje" },
       { label: "Rolety rzymskie", iconUrl: iconInside, linkUrl: "/produkt/rolety-rzymskie" },
       { label: "Rolety do okien dachowych", iconUrl: iconInside, linkUrl: "/produkt/rolety-dachowe" },
+      { label: "Plisy do okien dachowych", iconUrl: iconInside, linkUrl: "/produkt/plisy-dachowe" },
       { label: "Verticale", iconUrl: iconInside, linkUrl: "#kolekcje" },
     ],
   },
@@ -1216,7 +1217,22 @@ function buildHeroMenuGroups(config: HomepageConfig | null, endpointOrigin: stri
     if (!exists) withRequiredSections.push(required);
   });
 
-  return withRequiredSections;
+  // Plisy dachowe (live 2026-09-19) have no tab in the CRM menu yet - shown
+  // right after "Rolety do okien dachowych" until the owner adds one (a CRM
+  // item "Plisy do okien dachowych" resolves to the same slug and wins).
+  return withRequiredSections.map((group) => {
+    if (String(group.slug || "").toLowerCase() !== "oslony-wewnetrzne") return group;
+    const slugOf = (item: HeroMenuItem) => slugFromLink(item.linkUrl, item.label).toLowerCase();
+    if (group.items.some((item) => slugOf(item) === "plisy-dachowe")) return group;
+    const roofIndex = group.items.findIndex((item) => slugOf(item) === "rolety-dachowe");
+    const injected: HeroMenuItem = {
+      label: "Plisy do okien dachowych",
+      iconUrl: (roofIndex >= 0 ? group.items[roofIndex].iconUrl : "") || group.iconUrl,
+      linkUrl: "/produkt/plisy-dachowe",
+    };
+    const at = roofIndex >= 0 ? roofIndex + 1 : group.items.length;
+    return { ...group, items: [...group.items.slice(0, at), injected, ...group.items.slice(at)] };
+  });
 }
 
 function buildHeroMedia(config: HomepageConfig | null, endpointOrigin: string): HeroMedia[] {
@@ -4883,6 +4899,18 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         loading="lazy"
                       />
                       <h3>{item.title}</h3>
+                      {(() => {
+                        // Owner (2026-09-19): the menu should show at a glance
+                        // which products are already launched.
+                        const liveCount = item.items.filter((subItem) => isProductSlugLive(slugFromLink(subItem.linkUrl, subItem.label))).length;
+                        return liveCount ? (
+                          <span className="hero-menu-live-count">
+                            {liveCount} {liveCount === 1 ? "produkt dostępny" : liveCount < 5 ? "produkty dostępne" : "produktów dostępnych"}
+                          </span>
+                        ) : (
+                          <span className="hero-menu-live-count is-none">wkrótce</span>
+                        );
+                      })()}
                     </span>
                     <span className="hero-menu-chevron" aria-hidden="true">▾</span>
                   </button>
@@ -4891,6 +4919,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                       <li key={`${item.title}-${subItem.label}`}>
                         <a
                           href={subItem.linkUrl}
+                          className={isProductSlugLive(slugFromLink(subItem.linkUrl, subItem.label)) ? "is-live" : "is-soon"}
                           onClick={(event) => {
                             if (
                               event.metaKey ||
@@ -4915,6 +4944,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             loading="lazy"
                           />
                           <span>{subItem.label}</span>
+                          {isProductSlugLive(slugFromLink(subItem.linkUrl, subItem.label)) ? (
+                            <span className="hero-menu-live-badge">Dostępne</span>
+                          ) : (
+                            <span className="hero-menu-soon-badge">wkrótce</span>
+                          )}
                         </a>
                       </li>
                     ))}

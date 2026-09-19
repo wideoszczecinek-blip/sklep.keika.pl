@@ -15548,3 +15548,105 @@ html[data-theme="light"] .plisy-positions-total strong {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ---- Homepage readability + "launched" markers in the menu (2026-09-19,
+   owner: "nie wszystko jest widoczne i czytelne - niektóre napisy na
+   zdjęciach są nieczytelne"; "żeby widział od razu które produkty są już
+   uruchomione"). ---- */
+/* Hero copy sits on whatever photo the CRM carousel shows - a frosted
+   light panel behind it keeps the navy headline readable on dark photos. */
+html[data-theme="light"] .hero-home-content {
+  padding: 1.15rem 1.4rem 1rem;
+  margin-left: -1.4rem;
+  border-radius: 1.3rem;
+  background: linear-gradient(90deg, rgba(247, 251, 255, 0.92) 0%, rgba(247, 251, 255, 0.84) 62%, rgba(247, 251, 255, 0.4) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 18px 40px rgba(20, 40, 60, 0.12);
+}
+html[data-theme="light"] .hero-title-slide {
+  color: #10304f;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+html[data-theme="light"] .eyebrow {
+  color: #1d4a74;
+  font-weight: 700;
+}
+html[data-theme="light"] .hero-subtitle-slide {
+  color: #173d62;
+}
+@media (max-width: 760px) {
+  html[data-theme="light"] .hero-home-content {
+    margin-left: 0;
+    padding: 1rem 1rem 0.85rem;
+    background: linear-gradient(180deg, rgba(247, 251, 255, 0.92), rgba(247, 251, 255, 0.8));
+  }
+}
+/* Menu cards: the category title sits on the left over a near-solid light
+   scrim; the photo shows through on the right. */
+html[data-theme="light"] .hero-menu-card-bg::after {
+  background: linear-gradient(90deg, rgba(247, 251, 255, 0.96) 0%, rgba(247, 251, 255, 0.88) 46%, rgba(247, 251, 255, 0.44) 100%);
+}
+html[data-theme="light"] .hero-menu-card.is-open .hero-menu-card-bg::after {
+  background: linear-gradient(180deg, rgba(242, 248, 255, 0.92), rgba(228, 239, 250, 0.95));
+}
+html[data-theme="light"] .hero-menu-card-head h3 {
+  color: #12304f;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+.hero-menu-card-head-main {
+  flex-wrap: wrap;
+  row-gap: 0.35rem;
+}
+.hero-menu-live-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.16rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 107, 58, 0.28);
+  background: #e3f7ec;
+  color: #0f6b3a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.hero-menu-live-count::before {
+  content: "";
+  width: 0.46rem;
+  height: 0.46rem;
+  border-radius: 50%;
+  background: #1fa35a;
+  box-shadow: 0 0 0 3px rgba(31, 163, 90, 0.18);
+}
+.hero-menu-live-count.is-none {
+  border-color: rgba(91, 107, 122, 0.28);
+  background: rgba(255, 255, 255, 0.72);
+  color: #5b6b7a;
+}
+.hero-menu-live-count.is-none::before {
+  background: #9aa7b3;
+  box-shadow: none;
+}
+.hero-menu-card-list a.is-soon {
+  opacity: 0.74;
+}
+.hero-menu-live-badge,
+.hero-menu-soon-badge {
+  margin-left: auto;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.hero-menu-live-badge {
+  background: #dff5e8;
+  color: #0f6b3a;
+}
+.hero-menu-soon-badge {
+  background: rgba(120, 135, 150, 0.16);
+  color: #5b6b7a;
+}

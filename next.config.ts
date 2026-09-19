@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
     return [
       { source: "/produkt/plisy", destination: "/?produkt=plisy", permanent: false },
       { source: "/kategoria/plisy", destination: "/?produkt=plisy", permanent: false },
+      // Rolety dachowe + plisy dachowe went live 2026-09-19 (same pattern;
+      // the CRM catalog placeholder for roof blinds is "rolety-dachowe-dekolux").
+      { source: "/produkt/rolety-dachowe", destination: "/?produkt=rolety-dachowe", permanent: false },
+      { source: "/produkt/rolety-dachowe-dekolux", destination: "/?produkt=rolety-dachowe", permanent: false },
+      { source: "/kategoria/rolety-dachowe", destination: "/?produkt=rolety-dachowe", permanent: false },
+      { source: "/produkt/plisy-dachowe", destination: "/?produkt=plisy-dachowe", permanent: false },
     ];
   },
   // /?produkt=moskitiery-ramkowe -> /moskitiery-ramkowe lives in proxy.ts

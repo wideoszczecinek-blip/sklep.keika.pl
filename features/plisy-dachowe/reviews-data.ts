@@ -14,7 +14,7 @@
 // The generator is deterministic (seeded), identical on server and client.
 
 export const PD_REVIEWS_ARE_PLACEHOLDERS = true;
-export const PD_SHOW_PLACEHOLDER_REVIEWS = true;
+export const PD_SHOW_PLACEHOLDER_REVIEWS = false;
 
 export type PdReviewCollection = "Klasyczne" | "Reflex" | "Blackout" | "DUO" | "DUO TERMO";
 

@@ -221,32 +221,22 @@ const fixedRoofCategory: ProductGroup = {
     "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2400&q=80",
   products: [
     {
-      name: "Rolety dachowe Dekolux",
+      name: "Rolety dachowe",
       slug: "rolety-dachowe-dekolux",
-      subtitle: "Rolety z prowadnicami i mechanizmem sprężynowym.",
-      price_from: "od 389 zł",
-      badge: "",
-      image_url:
-        "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1400&q=80",
-      gallery_urls: [
-        "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=80",
-        "https://images.unsplash.com/photo-1600607687644-c7f34b5f3ef7?auto=format&fit=crop&w=1000&q=80",
-        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1000&q=80",
-      ],
+      subtitle: "Roleta w aluminiowej kasecie z prowadnicami, dopasowana do modelu okna (ponad 420 modeli).",
+      price_from: "od 174 zł",
+      badge: "Dostępne online",
+      image_url: "/rolety-dachowe/produkt-01.jpg",
+      gallery_urls: ["/rolety-dachowe/produkt-01.jpg", "/rolety-dachowe/aranzacja-deko.jpg", "/rolety-dachowe/aranzacja-termo.jpg"],
     },
     {
       name: "Plisy dachowe",
       slug: "plisy-dachowe",
-      subtitle: "Plisa z prowadnicami umożliwiająca zakrycie dowolnej powierzchni okna.",
-      price_from: "od 429 zł",
-      badge: "",
-      image_url:
-        "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=1400&q=80",
-      gallery_urls: [
-        "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=1000&q=80",
-        "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1000&q=80",
-        "https://images.unsplash.com/photo-1600210492493-0946911123ea?auto=format&fit=crop&w=1000&q=80",
-      ],
+      subtitle: "Plisa z aluminiowymi prowadnicami, dopasowana do modelu okna - zasłania dowolny fragment szyby.",
+      price_from: "od 96,25 zł",
+      badge: "Dostępne online",
+      image_url: "/plisy-dachowe/produkt-01.jpg",
+      gallery_urls: ["/plisy-dachowe/produkt-01.jpg", "/plisy-dachowe/okno-01.jpg", "/plisy-dachowe/aranzacja-01.jpg"],
     },
   ],
 };
@@ -461,6 +451,9 @@ function absolutizeUrl(rawUrl: string, fallbackOrigin: string): string {
   try {
     if (value.startsWith("//")) return `https:${value}`;
     if (/^https?:\/\//i.test(value)) return value;
+    // The shop's own /public photos (rolety/plisy dachowe placeholders) stay
+    // site-relative so Next's image optimizer serves them.
+    if (/^\/(rolety-dachowe|plisy-dachowe|plisy)\//.test(value)) return value;
     return new URL(value, fallbackOrigin).toString();
   } catch {
     return value;

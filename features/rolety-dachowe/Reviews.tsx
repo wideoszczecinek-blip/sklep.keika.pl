@@ -133,7 +133,7 @@ export default function RoofReviews({ crmReviews }: { crmReviews?: CrmReview[] }
             <div className="allegro-rating-score">
               <strong>{rating.average.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
               <Stars n={Math.round(rating.average)} />
-              <span className="allegro-rating-count">{rating.total.toLocaleString("pl-PL")} ocen</span>
+              <span className="allegro-rating-count">{rating.total.toLocaleString("pl-PL")} {rating.total === 1 ? "ocena" : rating.total % 10 >= 2 && rating.total % 10 <= 4 && (rating.total % 100 < 12 || rating.total % 100 > 14) ? "oceny" : "ocen"}</span>
               <span className="allegro-rating-source">Ocena tej rolety dachowej od klientów, którzy kupili ją na Allegro</span>
             </div>
             <div className="allegro-rating-distribution">

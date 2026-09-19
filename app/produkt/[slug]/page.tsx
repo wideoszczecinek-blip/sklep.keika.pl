@@ -315,18 +315,18 @@ const fixedRomanProducts: ProductItem[] = [
 
 const fixedRoofProducts: ProductItem[] = [
   {
-    name: "Rolety dachowe Dekolux",
+    name: "Rolety dachowe",
     slug: "rolety-dachowe-dekolux",
-    subtitle: "Rolety z prowadnicami i mechanizmem sprężynowym.",
-    price_from: "od 389 zł",
+    subtitle: "Roleta w aluminiowej kasecie z prowadnicami, dopasowana do modelu okna.",
+    price_from: "od 174 zł",
     image_url:
       "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1400&q=80",
   },
   {
     name: "Plisy dachowe",
     slug: "plisy-dachowe",
-    subtitle: "Plisa z prowadnicami umożliwiająca zakrycie dowolnej powierzchni okna.",
-    price_from: "od 429 zł",
+    subtitle: "Plisa z aluminiowymi prowadnicami, dopasowana do modelu okna.",
+    price_from: "od 96,25 zł",
     image_url:
       "https://images.unsplash.com/photo-1616047006789-b7af3f061b46?auto=format&fit=crop&w=1400&q=80",
   },
