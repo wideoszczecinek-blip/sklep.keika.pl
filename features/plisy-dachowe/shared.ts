@@ -181,7 +181,6 @@ export type ConfiguratorInitialValues = {
   widthMm?: number;
   heightMm?: number;
   qty?: number;
-  notes?: string;
   /** Cart edit of an "okno spoza biblioteki" position - restored 1:1. */
   missingModelRequest?: MissingModelRequest | null;
 };
@@ -212,7 +211,6 @@ export type ConfiguratorResult = {
   totalPrice: number;
   /** One-time oversized-parcel surcharge (0 up to 150 cm wide). */
   oversizeSurchargeAmount: number;
-  notes: string;
   /** Attachment id of the nameplate photo the customer uploaded (CRM storage). */
   nameplateAttachmentId: string;
   missingModelRequest: MissingModelRequest | null;

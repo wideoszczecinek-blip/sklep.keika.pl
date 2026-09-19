@@ -2734,7 +2734,6 @@ export default function CartPage() {
                   heightMm: editingItem.heightMm,
                   qty: editingItem.qty,
                   bracketCount: editingItem.bracketCount,
-                  notes: editingItem.notes,
                   missingModelRequest: editingItem.missingModelRequest || null,
                 }}
                 submitLabel="Zapisz zmiany"
@@ -2754,7 +2753,6 @@ export default function CartPage() {
                     windowLibraryId: result.windowLibraryId || undefined,
                     windowCertain: result.windowCertain,
                     bracketCount: result.bracketCount,
-                    notes: result.notes || undefined,
                     nameplateAttachmentId: result.nameplateAttachmentId || undefined,
                     missingModelRequest: result.missingModelRequest || undefined,
                   });
@@ -2778,7 +2776,6 @@ export default function CartPage() {
                   widthMm: editingItem.widthMm,
                   heightMm: editingItem.heightMm,
                   qty: editingItem.qty,
-                  notes: editingItem.notes,
                   missingModelRequest: editingItem.missingModelRequest || null,
                 }}
                 submitLabel="Zapisz zmiany"
@@ -2798,7 +2795,6 @@ export default function CartPage() {
                     oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
                     windowLibraryId: result.windowLibraryId || undefined,
                     windowCertain: result.windowCertain,
-                    notes: result.notes || undefined,
                     nameplateAttachmentId: result.nameplateAttachmentId || undefined,
                     missingModelRequest: result.missingModelRequest || undefined,
                   });

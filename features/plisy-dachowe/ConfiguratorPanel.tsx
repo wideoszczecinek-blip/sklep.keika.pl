@@ -6,7 +6,7 @@
 // UI as features/plisy/ConfiguratorPanel.tsx) -> model okna (the roof-blind
 // step: library search with highlighted matches, nameplate PHOTO
 // recognition through the CRM's Gemini reader, or the manual "Nie ma
-// mojego okna" form - features/rolety-dachowe/) -> uwagi -> price (window
+// mojego okna" form - features/rolety-dachowe/) -> price (window
 // plisa x 1,25, shared.ts) -> add to cart. Same accordion/scroll/tracking/
 // cart contract as the other panels; draft in localStorage for a week.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
@@ -183,8 +183,7 @@ export default function ConfiguratorPanel({
   const [pendingNameplate, setPendingNameplate] = useState<{ attachmentId: string; aiProducer: string; aiModel: string; aiConfidence: string } | null>(null);
   const recognitionsRef = useRef(0);
 
-  // Step 5 - notes + quantity.
-  const [notes, setNotes] = useState(initialValues?.notes || "");
+  // Quantity (no free-text fields in any configurator - owner, 2026-09-19).
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
 
@@ -555,7 +554,6 @@ export default function ConfiguratorPanel({
       unitPrice,
       totalPrice,
       oversizeSurchargeAmount: oversizeSurcharge,
-      notes: notes.trim(),
       nameplateAttachmentId: isManual ? windowChoice.request.attachmentIds[0] || "" : windowChoice.attachmentId,
       missingModelRequest: isManual && windowChoice.request.model !== MANUAL_MODEL_LABEL ? windowChoice.request : null,
     };
@@ -931,24 +929,6 @@ export default function ConfiguratorPanel({
                     </div>
                   </section>
 
-                  {hasWindowInfo && !priceOutOfRange ? (
-                    <section className="hero-product-step-accordion rd-extras">
-                      <div className="hero-product-step-head is-static">
-                        <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                          <span className="hero-product-step-check is-muted" aria-hidden="true">
-                            5
-                          </span>
-                          Uwagi do zamówienia
-                        </span>
-                      </div>
-                      <div className="hero-product-step-body">
-                        <label className="rd-notes">
-                          <span>Opcjonalnie — np. o oknie, terminie albo kontakcie</span>
-                          <textarea value={notes} onChange={(event) => setNotes(event.target.value.slice(0, 500))} rows={2} placeholder="np. okno w pokoju dziecięcym, proszę o kontakt przed produkcją" />
-                        </label>
-                      </div>
-                    </section>
-                  ) : null}
                 </>
               ) : null}
 

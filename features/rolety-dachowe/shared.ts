@@ -607,7 +607,6 @@ export type ConfiguratorInitialValues = {
   heightMm?: number;
   qty?: number;
   bracketCount?: 1 | 2;
-  notes?: string;
   /** Cart edit of an "okno spoza biblioteki" position - restored 1:1. */
   missingModelRequest?: MissingModelRequest | null;
 };
@@ -639,7 +638,6 @@ export type ConfiguratorResult = {
   totalPrice: number;
   /** Number of handles on the bottom bar (owner's extra option, no surcharge). */
   bracketCount: 1 | 2;
-  notes: string;
   /** Attachment id of the nameplate photo the customer uploaded (CRM storage). */
   nameplateAttachmentId: string;
   missingModelRequest: MissingModelRequest | null;

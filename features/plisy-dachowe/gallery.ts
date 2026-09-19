@@ -17,9 +17,8 @@ export const PD_DETAIL_PHOTOS: string[] = ["/plisy-dachowe/detal-01.jpg", "/plis
 
 export const PD_INTERIOR_PHOTOS: string[] = ["/plisy-dachowe/aranzacja-01.jpg"];
 
-/** Hero: the attic with two roof windows as the stage, then product,
- * window and close-up as the three tiles. */
-export const PD_HERO_STAGE_PHOTO = "/plisy-dachowe/aranzacja-01.jpg";
+/** Hero mosaic tiles next to the rendered presentation (PdHeroScene):
+ * window, product render, close-up. */
 export const PD_HERO_PHOTOS: string[] = ["/plisy-dachowe/okno-01.jpg", "/plisy-dachowe/produkt-01.jpg", "/plisy-dachowe/detal-02.jpg"];
 
 export const PD_HERO_PHOTO_ALT: string[] = [

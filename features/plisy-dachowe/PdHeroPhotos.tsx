@@ -1,19 +1,20 @@
 "use client";
 
-// Top-of-landing hero for plisy dachowe: the owner's attic photo (two roof
-// windows with plisas) as the stage plus three product visuals - the same
-// intro -> dock -> mosaic behaviour as features/rolety-dachowe/
-// RoofHeroPhotos.tsx (full-size stage for a few seconds, then it docks
-// top-left and the tiles slide into the remaining L-shape; phones keep the
-// stage full with a strip of the tiles under it). Reuses the .plisy-hero-*
-// layout rules. Photo-led on purpose: real product photos, no rendered
-// animation to argue with.
+// Top-of-landing hero for plisy dachowe: the rendered presentation
+// (PdHeroScene - the plisa lowering in the attic window, owner 2026-09-19:
+// "brakuje mi animacji tak jak przy innych produktach") plus three product
+// photos - the same intro -> dock -> mosaic behaviour as features/
+// rolety-dachowe/RoofHeroPhotos.tsx (full-size presentation for a few
+// seconds, then it docks top-left and the tiles slide into the remaining
+// L-shape; phones keep the presentation full with a strip of the photos
+// under it). Reuses the .plisy-hero-* layout rules.
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { PD_HERO_PHOTO_ALT, PD_HERO_PHOTOS, PD_HERO_STAGE_PHOTO } from "./gallery";
+import { PD_HERO_PHOTO_ALT, PD_HERO_PHOTOS } from "./gallery";
+import PdHeroScene from "./PdHeroScene";
 
-const INTRO_MS = 6000;
-const REOPEN_MS = 8000;
+const INTRO_MS = 7000;
+const REOPEN_MS = 9000;
 
 const tileSrc = (src: string, w = 700) => `/_next/image?url=${encodeURIComponent(src)}&w=${w}&q=75`;
 
@@ -57,9 +58,8 @@ export default function PdHeroPhotos() {
     return () => window.clearTimeout(id);
   }, [reopenedAt]);
 
-  // Lightbox indexes: 0..n-1 = tiles, n = the stage photo.
-  const all = [...photos, PD_HERO_STAGE_PHOTO];
-  const alts = [...PD_HERO_PHOTO_ALT, "Dwa okna dachowe z plisami KEIKA na poddaszu"];
+  const all = photos;
+  const alts = PD_HERO_PHOTO_ALT;
   useEffect(() => {
     if (lightbox === null) return;
     const onKey = (event: KeyboardEvent) => {
@@ -89,34 +89,26 @@ export default function PdHeroPhotos() {
 
   return (
     <>
-      <div className={`plisy-hero-photos rd-hero-photos pd-hero-photos ${isDocked ? "is-docked" : ""} ${reduced ? "is-instant" : ""}`} role="region" aria-label="Plisy dachowe KEIKA - zdjęcia produktu">
+      <div className={`plisy-hero-photos rd-hero-photos pd-hero-photos ${isDocked ? "is-docked" : ""} ${reduced ? "is-instant" : ""}`} role="region" aria-label="Plisy dachowe KEIKA - prezentacja i zdjęcia produktu">
         <div
-          className="plisy-hero-stage pd-hero-stage"
+          className="plisy-hero-stage"
           onClick={() => {
-            if (!isDocked) {
-              setLightbox(photos.length);
-              return;
-            }
+            if (!isDocked) return;
             setDocked(false);
             setReopenedAt(Date.now());
           }}
-          role="button"
-          tabIndex={0}
-          title={isDocked ? "Powiększ zdjęcie" : "Powiększ"}
+          role={isDocked ? "button" : undefined}
+          tabIndex={isDocked ? 0 : undefined}
+          title={isDocked ? "Powiększ prezentację" : undefined}
           onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
+            if (isDocked && (event.key === "Enter" || event.key === " ")) {
               event.preventDefault();
-              if (!isDocked) {
-                setLightbox(photos.length);
-                return;
-              }
               setDocked(false);
               setReopenedAt(Date.now());
             }
           }}
         >
-          <img className="pd-hero-stage-img" src={tileSrc(PD_HERO_STAGE_PHOTO, 1200)} alt="Dwa okna dachowe z plisami KEIKA na poddaszu" loading="eager" decoding="async" />
-          <span className="pd-hero-stage-caption">Plisy dachowe KEIKA · zdjęcie z realizacji</span>
+          <PdHeroScene active />
           {isDocked ? (
             <span className="plisy-hero-stage-hint" aria-hidden="true">
               ⤢

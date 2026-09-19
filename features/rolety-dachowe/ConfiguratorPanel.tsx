@@ -5,8 +5,8 @@
 // shop's own panel: kaseta/prowadnice colour -> rodzaj materiału (Deko /
 // Termo) -> kolor materiału -> model okna (library search with highlighted
 // matches, nameplate PHOTO recognition through the CRM's Gemini reader, or
-// the manual "Nie ma mojego okna" form) -> opcje (handles on the bottom bar,
-// notes) -> price -> add to cart. Options and price tables are the LIVE CRM
+// the manual "Nie ma mojego okna" form) -> opcje (handles on the bottom bar)
+// -> price -> add to cart. No free-text fields (owner, 2026-09-19). Options and price tables are the LIVE CRM
 // "dachowe" profile (features/rolety-dachowe/shared.ts), the window library
 // is the live CRM library (roof-window-library.ts); both degrade to bundled
 // snapshots. Same accordion/scroll/tracking/cart contract as the plisy and
@@ -178,7 +178,6 @@ export default function ConfiguratorPanel({
 
   // Step 5 - extras + quantity.
   const [bracketCount, setBracketCount] = useState<1 | 2>(initialValues?.bracketCount === 2 ? 2 : 1);
-  const [notes, setNotes] = useState(initialValues?.notes || "");
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
 
@@ -559,7 +558,6 @@ export default function ConfiguratorPanel({
       unitPrice,
       totalPrice,
       bracketCount,
-      notes: notes.trim(),
       nameplateAttachmentId: isManual ? windowChoice.request.attachmentIds[0] || "" : windowChoice.attachmentId,
       missingModelRequest: isManual && windowChoice.request.model !== MANUAL_MODEL_LABEL ? windowChoice.request : null,
     };
@@ -883,10 +881,6 @@ export default function ConfiguratorPanel({
                             ))}
                           </div>
                         </div>
-                        <label className="rd-notes">
-                          <span>Uwagi do zamówienia (opcjonalnie)</span>
-                          <textarea value={notes} onChange={(event) => setNotes(event.target.value.slice(0, 500))} rows={2} placeholder="np. okno w pokoju dziecięcym, proszę o kontakt przed produkcją" />
-                        </label>
                       </div>
                     </section>
                   ) : null}

@@ -15500,32 +15500,6 @@ html[data-theme="light"] .plisy-positions-total strong {
   line-height: 1.4;
   vertical-align: middle;
 }
-.pd-hero-stage {
-  background: #dfe6ec;
-  cursor: zoom-in;
-}
-.pd-hero-stage-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.pd-hero-stage-caption {
-  position: absolute;
-  left: 0.9rem;
-  bottom: 0.8rem;
-  z-index: 2;
-  padding: 0.3rem 0.7rem;
-  border-radius: 999px;
-  background: rgba(20, 28, 36, 0.55);
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  backdrop-filter: blur(4px);
-}
 .pd-quick-collections,
 .pd-reviews-collections {
   flex-wrap: wrap;
