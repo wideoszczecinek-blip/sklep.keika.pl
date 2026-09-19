@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
+import { Montserrat } from "next/font/google";
 import "./globals.css";
 import LastPageTracker from "./components/last-page-tracker";
 import TrackingBoot from "./components/tracking-boot";
 import SiteAnalytics from "./components/site-analytics";
 import ChatBubble from "./components/chat-bubble";
 import ConsentBar from "./components/consent-bar";
+
+// Hero slogans on the homepage (owner, 2026-09-19: "kwestia dobrania
+// odpowiedniej czcionki") - the heading stack ("Avenir Next", "Montserrat",
+// "Century Gothic") fell through to Century Gothic on Windows, a thin face
+// that vanished on the carousel photos. Self-hosted Montserrat 600-800 with
+// Polish glyphs, exposed as --font-montserrat; used only where CSS asks.
+const montserrat = Montserrat({ subsets: ["latin", "latin-ext"], weight: ["600", "700", "800"], variable: "--font-montserrat", display: "swap" });
 
 export const metadata: Metadata = {
   title: "KEIKA | Rolety i Markizy na Wymiar",
@@ -35,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pl" suppressHydrationWarning>
+    <html lang="pl" suppressHydrationWarning className={montserrat.variable}>
       <head>
         {/* The CRM (crm-keika.groovemedia.pl) is a separate origin that the
             homepage/product views hit on mount for the config, product
