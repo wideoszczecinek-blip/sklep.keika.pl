@@ -150,8 +150,37 @@ export function syncPromoDeadlineFromServer(deadlineAtMs: number): void {
  * the previous deadline passed). Unlike syncPromoDeadlineFromServer() this
  * deliberately moves the stamp LATER - that is the whole point - but only
  * to a value the server just confirmed, never one invented here. */
+// Device-side twin of the CRM's once-per-quote rule: the quote code lives in
+// sessionStorage, so a return in a new tab/day would otherwise get a fresh
+// quote and a fresh renewal each time. 30 days, same lifetime as the
+// activation cookie - clearing cookies still resets everything, which is the
+// accepted ceiling.
+const PROMO_RENEWED_COOKIE = "keika_shop_promo_renewed_at";
+
+export function hasPromoRenewalOnThisDevice(): boolean {
+  if (typeof document === "undefined") return false;
+  if (/(?:^|; )keika_shop_promo_renewed_at=/.test(document.cookie)) return true;
+  try {
+    return Boolean(window.localStorage.getItem(PROMO_RENEWED_COOKIE));
+  } catch {
+    return false;
+  }
+}
+
+function markPromoRenewedOnThisDevice(): void {
+  if (typeof document === "undefined") return;
+  const now = String(Date.now());
+  document.cookie = `${PROMO_RENEWED_COOKIE}=${now}; path=/; max-age=${PROMO_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`;
+  try {
+    window.localStorage.setItem(PROMO_RENEWED_COOKIE, now);
+  } catch {
+    // cookie above carries it
+  }
+}
+
 export function renewPromoActivationFromServer(deadlineAtMs: number): boolean {
   if (!Number.isFinite(deadlineAtMs) || deadlineAtMs <= Date.now()) return false;
+  markPromoRenewedOnThisDevice();
   const activatedAtMs = deadlineAtMs - PROMO_DEADLINE_WINDOW_HOURS * 60 * 60 * 1000;
   writePromoCookie(PROMO_CODE);
   writePromoActivatedAtCookie(activatedAtMs);

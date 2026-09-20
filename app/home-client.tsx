@@ -30,6 +30,7 @@ import {
   getPromoActivatedAt,
   isPromoActive,
   isPromoDeadlineExpired,
+  hasPromoRenewalOnThisDevice,
   syncPromoDeadlineFromServer,
   type PromoPreview,
 } from "@/lib/promo";
@@ -1921,6 +1922,10 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     if (!wroc) return;
     if (getPromoActivatedAt() !== null && !isPromoDeadlineExpired()) {
       trackShopStep("rm_return", "still_active", { product: slug });
+      return;
+    }
+    if (hasPromoRenewalOnThisDevice()) {
+      trackShopStep("rm_return", "already_renewed", { product: slug });
       return;
     }
     void import("@/lib/promo-save").then(({ renewPromoOnReturn }) =>
