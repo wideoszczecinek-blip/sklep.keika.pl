@@ -176,6 +176,12 @@ async function ensurePromoQuoteCodeInner(productSlug?: string): Promise<PromoQuo
  * nothing was renewed (already used, or still running). */
 export async function renewPromoOnReturn(productSlug?: string): Promise<{ renewed: boolean; deadlineAtMs: number | null }> {
   const activatedAt = getPromoActivatedAt();
+  // Go through the shared in-flight ensure first: on a return the countdown
+  // banner fires its own ensurePromoQuoteCode() in the same tick, and two
+  // concurrent saves with an empty quote_code made the CRM open TWO quotes
+  // (seen live 2026-09-20) - the renewal landed on one, the device tracked
+  // the other. Serialising here means one quote, one renewal.
+  await ensurePromoQuoteCode(productSlug).catch(() => null);
   const tracked = getTracked();
   const effectiveSlug = productSlug || tracked.productSlug;
   try {
