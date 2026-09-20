@@ -1451,6 +1451,16 @@ export default function CartPage() {
         clearCart();
         setItems([]);
         lastQuoteCodeRef.current = "";
+        const createdOrder = json.order;
+        if (createdOrder.amount_total) {
+          void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
+            trackOpenAiOrderCreated({
+              orderCode: createdOrder.order_code,
+              amountZl: Number(createdOrder.amount_total),
+              items: items.map((item) => ({ id: item.productSlug, name: item.productLabel, quantity: item.qty })),
+            });
+          });
+        }
       }
     } catch (submitError) {
       submittedRef.current = false;
@@ -2371,6 +2381,19 @@ export default function CartPage() {
                             termsAccepted={termsAccepted}
                             onPaid={() => {
                               clearCart();
+                              if (orderState.amountTotal) {
+                                void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
+                                  trackOpenAiOrderCreated({
+                                    orderCode: orderState.orderCode,
+                                    amountZl: Number(orderState.amountTotal),
+                                    items: items.map((item) => ({
+                                      id: item.productSlug,
+                                      name: item.productLabel,
+                                      quantity: item.qty,
+                                    })),
+                                  });
+                                });
+                              }
                               setItems([]);
                               lastQuoteCodeRef.current = "";
                               setPaymentConfirmed(true);

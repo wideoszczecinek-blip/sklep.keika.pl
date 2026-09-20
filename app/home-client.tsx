@@ -29,6 +29,7 @@ import {
   fetchPromoPreview,
   getPromoActivatedAt,
   isPromoActive,
+  isPromoDeadlineExpired,
   syncPromoDeadlineFromServer,
   type PromoPreview,
 } from "@/lib/promo";
@@ -1868,6 +1869,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // in sync the instant either one is activated, not just after a remount.
   const [topPromoActive, setTopPromoActive] = useState(false);
   const [topPromoPreview, setTopPromoPreview] = useState<PromoPreview | null>(null);
+  const [promoRenewToast, setPromoRenewToast] = useState(false);
   // false until the first client-side read of the promo state - the banner
   // row below is held by a same-height placeholder in the meantime so the
   // price/CTA block never jumps down after hydration (CLS 2026-09-14).
@@ -1899,6 +1901,38 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     const handleActivated = () => setTopPromoActive(isPromoActive());
     window.addEventListener(PROMO_ACTIVATED_EVENT, handleActivated);
     return () => window.removeEventListener(PROMO_ACTIVATED_EVENT, handleActivated);
+  }, []);
+  // Remarketing return ("?wroc=1", 2026-09-20): a customer brought back by
+  // a retargeting ad whose 24 h SEZON20 window already ran out gets ONE
+  // fresh window from the CRM (once per quote) - otherwise the ad promised
+  // -20% and the cart charged full price (p90 of decisions is 6 days, the
+  // window is 24 h). A first-time visitor on this device is handled by the
+  // auto-activation just above; a still-running window is left alone.
+  useEffect(() => {
+    let wroc = "";
+    let slug = "";
+    try {
+      const url = new URL(window.location.href);
+      wroc = url.searchParams.get("wroc") || "";
+      slug = (url.searchParams.get("produkt") || "").trim().toLowerCase();
+    } catch {
+      /* ignore */
+    }
+    if (!wroc) return;
+    if (getPromoActivatedAt() !== null && !isPromoDeadlineExpired()) {
+      trackShopStep("rm_return", "still_active", { product: slug });
+      return;
+    }
+    void import("@/lib/promo-save").then(({ renewPromoOnReturn }) =>
+      renewPromoOnReturn(slug || undefined).then((result) => {
+        trackShopStep("rm_return", result.renewed ? "renewed" : "not_renewed", { product: slug });
+        if (!result.renewed) return;
+        setTopPromoActive(true);
+        setPromoRenewToast(true);
+        window.setTimeout(() => setPromoRenewToast(false), 9000);
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     // The SEZON20 definition (type/value) is the same on every view and the
@@ -3288,6 +3322,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           {/* The nudge (chat-nudge.tsx) hangs off this wrapper, right under
               the icon, so it follows the sticky header in both its states. */}
           <div className="header-chat-wrap">
+          {promoRenewToast ? (
+            <div className="promo-renew-toast" role="status">
+              <strong>Witaj ponownie!</strong> Rabat SEZON20 wraca na 24 h — naliczy się w koszyku.
+            </div>
+          ) : null}
           <ChatNudge productSlug={productSlugFromSelected(displayedProduct)} active={isProductView} />
           <button
             type="button"

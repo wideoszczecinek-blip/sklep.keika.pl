@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
 import type { PublicOrder } from "@/lib/shop-public";
@@ -38,6 +38,10 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   const [retryLoading, setRetryLoading] = useState(false);
   const [retryError, setRetryError] = useState("");
   const [justPaid, setJustPaid] = useState(false);
+  // Guards the redirect-success OpenAI tracking effect below so it can only
+  // ever fire once per mount, even if `order`/searchParams re-trigger it
+  // (e.g. a re-render after lookupOrder resolves).
+  const openAiTrackedRef = useRef(false);
 
   const lookupOrder = useCallback(
     async (verifierValue: string) => {
@@ -87,6 +91,31 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
       // przeglądarka w aplikacji FB, gdzie fbq bywa blokowany.
     }
   }, [searchParams, orderCode]);
+
+  // OpenAI Ads "order_created" - dodane 2026-09-19, nie ma (jeszcze) własnego
+  // server-side Conversions API jak Meta, więc leci stąd, z przeglądarki.
+  // Celowo TYLKO na "succeeded" (nie "processing" powyżej - BLIK bywa jeszcze
+  // odrzucone w aplikacji bankowej, patrz [[blik-processing-premature-success-bug]])
+  // i TYLKO gdy `order` jest już wczytane (potrzebne do amount/currency) - stąd
+  // osobny efekt zamiast dopisania do tego powyżej, który odpala się od razu
+  // z samych searchParams. openAiTrackedRef pilnuje, żeby to nie odpaliło się
+  // ponownie przy zwykłym powrocie na tę stronę z e-maila, gdzie order.payment_status
+  // może już i tak pokazywać "paid" ze starej, wcześniejszej płatności.
+  useEffect(() => {
+    if (openAiTrackedRef.current || !order) return;
+    const redirectStatus = searchParams.get("redirect_status");
+    if (searchParams.get("from_payment") !== "1" || redirectStatus !== "succeeded") return;
+    if (!order.amount_total) return;
+    openAiTrackedRef.current = true;
+    void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
+      trackOpenAiOrderCreated({
+        orderCode: order.order_code,
+        amountZl: Number(order.amount_total),
+        currency: order.currency,
+        items: [{ id: order.product_slug, name: order.product_label, quantity: 1 }],
+      });
+    });
+  }, [order, searchParams]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -197,7 +226,19 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
                 publishableKey={retryPayment.publishableKey}
                 orderCode={order.order_code}
                 contact={retryPayment.contact}
-                onPaid={() => setJustPaid(true)}
+                onPaid={() => {
+                  setJustPaid(true);
+                  if (order.amount_total) {
+                    void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
+                      trackOpenAiOrderCreated({
+                        orderCode: order.order_code,
+                        amountZl: Number(order.amount_total),
+                        currency: order.currency,
+                        items: [{ id: order.product_slug, name: order.product_label, quantity: 1 }],
+                      });
+                    });
+                  }
+                }}
                 termsAccepted
                 submitLabel="Zapłać ponownie"
               />

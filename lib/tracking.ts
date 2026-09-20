@@ -69,6 +69,7 @@ declare global {
   interface Window {
     fbq?: ((...args: unknown[]) => void) & { queue?: unknown[]; loaded?: boolean };
     _fbq?: unknown;
+    oaiq?: ((...args: unknown[]) => void) & { q?: unknown[] };
   }
 }
 
@@ -316,6 +317,81 @@ function injectPixelScript(pixelId: string): void {
   window.fbq?.("init", pixelId);
 }
 
+let openAiPixelInjected = false;
+// ChatGPT/OpenAI Ads pixel - dodany 2026-09-19 na prośbę właściciela (nowa
+// kampania GPT Ads). Niezależny od Meta/CRM tracking_config (Meta ID jest
+// tam zarządzalny, ale to jest jedyny pixel tego typu na razie - brak
+// sensu budować dla niego osobne pole w CRM) - ID wpisany na stałe tutaj.
+// Ten sam gate zgody co Meta - patrz initTracking() poniżej - i celowo NIE
+// wewnątrz `if (!cfg) return` dalej w tej funkcji, żeby nieudany fetch
+// Meta-owego tracking_config nigdy nie blokował tego pixela.
+function injectOpenAiPixelScript(): void {
+  if (openAiPixelInjected || typeof window === "undefined") return;
+  openAiPixelInjected = true;
+
+  /* eslint-disable */
+  (function (w: any, d: any, s: string, u: string) {
+    if (w.oaiq) return;
+    const q: any = function () {
+      q.q.push(arguments);
+    };
+    q.q = [];
+    w.oaiq = q;
+    const j = d.createElement(s);
+    j.async = true;
+    j.src = u;
+    const f = d.getElementsByTagName(s)[0];
+    f.parentNode.insertBefore(j, f);
+  })(window, document, "script", "https://bzrcdn.openai.com/sdk/oaiq.min.js");
+  /* eslint-enable */
+
+  window.oaiq?.("init", { pixelId: "S6yWuTLTD7meKp4DkUJ4EF" });
+}
+
+/**
+ * Standardowe zdarzenie konwersji OpenAI Ads dla realnego zamówienia
+ * ("order_created" to ICH nazwa dla zakupu - patrz developers.openai.com/
+ * ads/conversion-tracking: "use order_created for a purchase"). Wołać
+ * WYŁĄCZNIE w momencie, gdy zamówienie jest naprawdę finalne (płatność
+ * Stripe potwierdzona / zamówienie za pobraniem utworzone) - NIGDY w
+ * momencie samego draftu/utworzenia PaymentIntent, tak samo jak Meta
+ * Purchase kiedyś ucierpiał na liczeniu porzuconych prób jako realnych
+ * zamówień (patrz [[shop-stats-visits-quotes-orders-mixed-up]]). `amount`
+ * musi być liczbą całkowitą w najmniejszej jednostce waluty (grosze dla
+ * PLN, nie złotówki) - dokumentacja jawnie ostrzega, że wysłanie wartości
+ * dziesiętnej psuje raportowanie przychodu. `event_id` = order_code, ten
+ * sam wzorzec deduplikacji co Meta CAPI (żeby ewentualny przyszły
+ * server-side Conversions API dla tego pixela mógł bezpiecznie
+ * deduplikować bez zmiany tu). Cichy no-op bez zgody/przed załadowaniem
+ * pixela (window.oaiq wtedy nie istnieje).
+ */
+export function trackOpenAiOrderCreated(params: {
+  orderCode: string;
+  amountZl: number;
+  currency?: string;
+  items: Array<{ id: string; name: string; quantity: number }>;
+}): void {
+  if (typeof window === "undefined") return;
+  const amountMinorUnits = Math.round(params.amountZl * 100);
+  if (!Number.isFinite(amountMinorUnits) || amountMinorUnits <= 0) return;
+  window.oaiq?.(
+    "measure",
+    "order_created",
+    {
+      type: "contents",
+      amount: amountMinorUnits,
+      currency: params.currency || "PLN",
+      contents: params.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        content_type: "product",
+        quantity: Math.max(1, Math.round(item.quantity)),
+      })),
+    },
+    { event_id: params.orderCode },
+  );
+}
+
 /**
  * Wywołać raz (z klienckiego komponentu w layoucie). Idempotentne.
  * Ładuje Pixel i wysyła pierwszy PageView tylko gdy jest zgoda.
@@ -327,6 +403,7 @@ export async function initTracking(): Promise<void> {
   if (consented) {
     ensureFbp();
     ensureFbc(readAttribution());
+    injectOpenAiPixelScript();
   }
 
   const cfg = await loadConfig();

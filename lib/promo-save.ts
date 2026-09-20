@@ -12,6 +12,7 @@ import { PROMO_CODE, getPromoActivatedAt } from "@/lib/promo";
 import { readCartItems } from "@/lib/cart";
 import { buildRescuePosition } from "@/lib/rescue";
 
+import { renewPromoActivationFromServer } from "@/lib/promo";
 const QUOTE_SAVE_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop-public/quote_save.php";
 
 // Separate from koszyk/page.tsx's own lastQuoteCodeRef (an in-memory ref
@@ -165,6 +166,43 @@ async function ensurePromoQuoteCodeInner(productSlug?: string): Promise<PromoQuo
     };
   } catch {
     return null;
+  }
+}
+
+/** Remarketing return (`?wroc=1`): asks the CRM for the one-off 24 h
+ * renewal of this customer's SEZON20 window. Sends the OLD activation stamp
+ * so the server can see the window really ran out; the server answers with
+ * the new deadline plus `promo_renewed: true`, or the unchanged state when
+ * nothing was renewed (already used, or still running). */
+export async function renewPromoOnReturn(productSlug?: string): Promise<{ renewed: boolean; deadlineAtMs: number | null }> {
+  const activatedAt = getPromoActivatedAt();
+  const tracked = getTracked();
+  const effectiveSlug = productSlug || tracked.productSlug;
+  try {
+    const response = await fetch(QUOTE_SAVE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quote_code: tracked.quoteCode,
+        resume_token: tracked.resumeToken,
+        session_token: getSessionToken(),
+        promo_code: PROMO_CODE,
+        ...(activatedAt !== null ? { promo_activated_at_ms: activatedAt } : {}),
+        promo_renew: 1,
+        ...(effectiveSlug ? { product_slug: effectiveSlug } : {}),
+      }),
+    });
+    const json = (await response.json()) as {
+      ok: boolean;
+      quote?: { quote_code?: string; resume_token?: string; promo_deadline_at_ms?: number; promo_renewed?: boolean };
+    };
+    if (!json.ok || !json.quote?.quote_code) return { renewed: false, deadlineAtMs: null };
+    setTracked(String(json.quote.quote_code), String(json.quote.resume_token || ""), effectiveSlug);
+    const deadlineAtMs = typeof json.quote.promo_deadline_at_ms === "number" ? json.quote.promo_deadline_at_ms : null;
+    const renewed = Boolean(json.quote.promo_renewed) && deadlineAtMs !== null && renewPromoActivationFromServer(deadlineAtMs);
+    return { renewed, deadlineAtMs };
+  } catch {
+    return { renewed: false, deadlineAtMs: null };
   }
 }
 

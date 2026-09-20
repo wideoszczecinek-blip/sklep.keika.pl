@@ -14398,6 +14398,27 @@ html[data-theme="light"] .plisy-positions-total strong {
   background: #0c8779;
 }
 
+/* "Rabat wraca na 24 h" after a remarketing return (home-client, ?wroc=1) */
+.promo-renew-toast {
+  position: fixed;
+  top: 4.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 95;
+  width: min(420px, calc(100vw - 2rem));
+  padding: 0.7rem 0.95rem;
+  border-radius: 0.8rem;
+  background: #0f3d2e;
+  color: #eafff5;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  box-shadow: 0 14px 34px rgba(6, 40, 28, 0.35);
+  animation: chat-nudge-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.promo-renew-toast strong {
+  color: #7ff0c0;
+}
+
 /* =========================================================================
    Rolety dachowe (2026-09-18) - landing blocks (features/rolety-dachowe/
    RoofLandingBlocks.tsx, RoofQuickPrice.tsx), the configurator's window

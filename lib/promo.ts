@@ -144,6 +144,27 @@ export function syncPromoDeadlineFromServer(deadlineAtMs: number): void {
   }
 }
 
+/** A customer brought back by a remarketing ad (`?wroc=1`, 2026-09-20)
+ * whose 24 h window already ran out gets ONE fresh window, granted by the
+ * CRM (shop_www_quotes_handle_promo_renewal - once per quote, only after
+ * the previous deadline passed). Unlike syncPromoDeadlineFromServer() this
+ * deliberately moves the stamp LATER - that is the whole point - but only
+ * to a value the server just confirmed, never one invented here. */
+export function renewPromoActivationFromServer(deadlineAtMs: number): boolean {
+  if (!Number.isFinite(deadlineAtMs) || deadlineAtMs <= Date.now()) return false;
+  const activatedAtMs = deadlineAtMs - PROMO_DEADLINE_WINDOW_HOURS * 60 * 60 * 1000;
+  writePromoCookie(PROMO_CODE);
+  writePromoActivatedAtCookie(activatedAtMs);
+  try {
+    window.localStorage.setItem(ACTIVE_PROMO_STORAGE_KEY, PROMO_CODE);
+    window.localStorage.setItem(PROMO_ACTIVATED_AT_STORAGE_KEY, String(activatedAtMs));
+  } catch {
+    // localStorage niedostępny - cookie powyżej i tak przenosi odnowienie.
+  }
+  window.dispatchEvent(new CustomEvent(PROMO_ACTIVATED_EVENT, { detail: { code: PROMO_CODE, renewed: true } }));
+  return true;
+}
+
 export type PromoPreview = {
   code: string;
   type: "percent" | "amount";
