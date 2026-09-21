@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import SiteFooter from "@/app/components/site-footer";
+import { COMPANY_LEGAL } from "@/lib/company-legal";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 
@@ -3462,6 +3464,12 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
 
           <div className="hero-dim" aria-hidden="true" />
           <div className="hero-grain" aria-hidden="true" />
+          {!isProductView ? (
+            <div className="hero-legal-strip" aria-label="Dane sprzedawcy">
+              <span>{COMPANY_LEGAL.legalName} (marka {COMPANY_LEGAL.brand}) · {COMPANY_LEGAL.street}, {COMPANY_LEGAL.postalCode} {COMPANY_LEGAL.city} · NIP {COMPANY_LEGAL.nip}</span>
+              <span><a href="/regulamin">Regulamin</a> · <a href="/legal/prywatnosc">Prywatność</a> · <a href="/legal/reklamacje">Reklamacje i zwroty</a> · <a href="/legal/dostawa-i-platnosc">Dostawa i płatność</a> · <a href="/kontakt">Kontakt</a></span>
+            </div>
+          ) : null}
           {/* Product-view-only alternative background, tried in place of the
               photo/video hero-slides above (hidden via CSS in product view -
               see .home-root.product-focus-active .hero-slides/.hero-dim/
@@ -4889,6 +4897,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         </div>
                       ) : null}
                       </section>
+                      <SiteFooter variant="landing" />
                     </div>
                   </section>
               </div>
