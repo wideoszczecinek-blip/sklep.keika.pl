@@ -15773,6 +15773,14 @@ html[data-theme="light"] .hero-menu-card-head h3 {
 .home-root ~ .site-footer--page {
   display: none;
 }
+/* Strona glowna bez wybranego produktu: niewidoczny (opacity 0) panel
+   produktu nie moze dokladac wysokosci do kontenera przewijania hero -
+   na telefonie robil z hero przewijana strone z pustym miejscem pod
+   sloganami (wlasciciel, 2026-09-21). */
+.hero-inner:not(.product-mode) .hero-product-panel {
+  max-height: 0;
+  overflow: hidden;
+}
 /* Strona glowna (bez wybranego produktu) nie przewija okna - dane
    sprzedawcy i linki formalne sa w pasku na dole hero. */
 .hero-legal-strip {
@@ -15814,8 +15822,9 @@ html[data-theme="light"] .hero-menu-card-head h3 {
   }
 }
 .site-footer--landing {
-  margin: 2.5rem -1rem 0;
-  border-radius: 1.2rem 1.2rem 0 0;
+  /* pod siatka landingu (opis + konfigurator), na cala szerokosc kontenera przewijania */
+  margin: 2.5rem 0 0;
+  width: 100%;
 }
 @media (max-width: 760px) {
   .site-footer-shell {
@@ -15823,6 +15832,6 @@ html[data-theme="light"] .hero-menu-card-head h3 {
     gap: 1.4rem;
   }
   .site-footer--landing {
-    margin: 2rem -0.5rem 0;
+    margin: 2rem 0 0;
   }
 }

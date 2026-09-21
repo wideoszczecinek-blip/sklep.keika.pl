@@ -492,7 +492,21 @@ export default function CartPage() {
     setExpressSelectedState(on);
     trackCheckoutIssue("express_toggled", on ? "on" : "off", { place: "koszyk" });
   }
-  const expressFee = EXPRESS_ENABLED && expressSelected ? EXPRESS_FEE_AMOUNT : 0;
+  // Ekspres jest priorytetem w kolejce produkcyjnej MOSKITIER - inne
+  // produkty (plisy, rolety dachowe...) mają własne, ręcznie ustalane
+  // terminy, więc koszyk z czymkolwiek innym w środku nie dostaje tej
+  // opcji wcale (właściciel, 2026-09-21). Zapamiętany wcześniej wybór
+  // (localStorage, z landingu moskitier) jest wtedy kasowany, żeby dopłata
+  // nie doliczyła się po cichu.
+  const expressEligible =
+    EXPRESS_ENABLED && items.length > 0 && items.every((item) => item.productSlug === "moskitiery-ramkowe");
+  useEffect(() => {
+    if (!expressEligible && expressSelected) {
+      setExpressSelected(false);
+      setExpressSelectedState(false);
+    }
+  }, [expressEligible, expressSelected]);
+  const expressFee = expressEligible && expressSelected ? EXPRESS_FEE_AMOUNT : 0;
   const [selectedPaczkomat, setSelectedPaczkomat] = useState<PaczkomatPoint | null>(null);
   const [form, setForm] = useState({
     firstName: "",
@@ -1365,7 +1379,7 @@ export default function CartPage() {
       const paymentLabel = paymentMethod === "cod" ? "Za pobraniem" : "Online (Stripe)";
       const noteWithDelivery = [
         // First line on purpose - production reads the note top-down.
-        EXPRESS_ENABLED && expressSelected ? EXPRESS_NOTE_LINE : "",
+        expressEligible && expressSelected ? EXPRESS_NOTE_LINE : "",
         `Metoda dostawy: ${deliveryLabel}`,
         paczkomatLine,
         `Metoda płatności: ${paymentLabel}`,
@@ -1783,7 +1797,7 @@ export default function CartPage() {
 
             <div className="cart-checkout-layout">
               <div className="cart-checkout-left" onBlurCapture={handleCheckoutFieldBlur}>
-                {EXPRESS_ENABLED && items.some((item) => item.productSlug === "moskitiery-ramkowe") ? (
+                {expressEligible ? (
                   <section className="cart-delivery-card cart-dispatch-card">
                     <h2>Termin realizacji</h2>
                     <div className="cart-delivery-options">

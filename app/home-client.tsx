@@ -3466,7 +3466,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           <div className="hero-grain" aria-hidden="true" />
           {!isProductView ? (
             <div className="hero-legal-strip" aria-label="Dane sprzedawcy">
-              <span>{COMPANY_LEGAL.legalName} (marka {COMPANY_LEGAL.brand}) · {COMPANY_LEGAL.street}, {COMPANY_LEGAL.postalCode} {COMPANY_LEGAL.city} · NIP {COMPANY_LEGAL.nip}</span>
+              <span>{COMPANY_LEGAL.legalName} · {COMPANY_LEGAL.street}, {COMPANY_LEGAL.postalCode} {COMPANY_LEGAL.city} · NIP {COMPANY_LEGAL.nip}</span>
               <span><a href="/regulamin">Regulamin</a> · <a href="/legal/prywatnosc">Prywatność</a> · <a href="/legal/reklamacje">Reklamacje i zwroty</a> · <a href="/legal/dostawa-i-platnosc">Dostawa i płatność</a> · <a href="/kontakt">Kontakt</a></span>
             </div>
           ) : null}
@@ -4897,7 +4897,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         </div>
                       ) : null}
                       </section>
-                      <SiteFooter variant="landing" />
                     </div>
                   </section>
               </div>
@@ -5893,6 +5892,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
               </aside>
             ) : null}
           </div>
+          {displayedProduct ? <SiteFooter variant="landing" /> : null}
           {displayedProduct ? (
             <nav
               className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""} ${hideBottomTabs ? "is-suppressed" : ""}`}

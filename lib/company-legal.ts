@@ -5,7 +5,7 @@
 // bez tego metoda P24 jest oznaczana jako "Ineligible" (2026-09-21).
 export const COMPANY_LEGAL = {
   brand: "KEIKA",
-  legalName: "Renata Kisiel",
+  legalName: "KEIKA Renata Kisiel",
   legalForm: "działalność gospodarcza wpisana do CEIDG",
   street: "ul. Kościuszki 21",
   postalCode: "78-400",

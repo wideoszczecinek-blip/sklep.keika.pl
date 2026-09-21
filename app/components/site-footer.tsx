@@ -21,7 +21,7 @@ export default function SiteFooter({ variant = "page" }: { variant?: "page" | "l
             Producent osłon okiennych na wymiar od {COMPANY_LEGAL.producingSince} roku.
           </p>
           <address className="site-footer-address">
-            <strong>{COMPANY_LEGAL.legalName}</strong> (marka {COMPANY_LEGAL.brand})
+            <strong>{COMPANY_LEGAL.legalName}</strong>
             <br />
             {COMPANY_LEGAL.street}, {COMPANY_LEGAL.postalCode} {COMPANY_LEGAL.city}, {COMPANY_LEGAL.country}
             <br />
@@ -57,7 +57,7 @@ export default function SiteFooter({ variant = "page" }: { variant?: "page" | "l
         </div>
       </div>
       <p className="site-footer-copy">
-        © {year} {COMPANY_LEGAL.brand} · {COMPANY_LEGAL.legalName}, {COMPANY_LEGAL.city}
+        © {year} {COMPANY_LEGAL.legalName}, {COMPANY_LEGAL.city}
       </p>
     </footer>
   );
