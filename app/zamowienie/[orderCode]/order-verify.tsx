@@ -16,6 +16,8 @@ const RETRYABLE_PAYMENT_STATUSES = new Set(["failed", "requires_payment", "cance
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   paid: "Opłacone",
   cod_pending: "Za pobraniem (nieopłacone)",
+  transfer_pending: "Przelew tradycyjny – oczekujemy na wpłatę",
+  transfer_cancelled: "Anulowane – brak wpłaty",
   requires_payment: "Oczekuje na płatność",
   failed: "Nieudana płatność",
   canceled: "Anulowana",
@@ -182,6 +184,43 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
             <div>Faktura VAT: <strong>{order.invoice_issued ? "wystawiona" : "w przygotowaniu"}</strong></div>
           ) : null}
         </div>
+
+        {order.transfer && order.payment_status === "transfer_pending" ? (
+          <div className="order-transfer-card">
+            <h3>Dane do przelewu</h3>
+            <dl className="order-transfer-grid">
+              <div>
+                <dt>Odbiorca</dt>
+                <dd>
+                  {order.transfer.account_holder}
+                  {order.transfer.holder_address ? <small>{order.transfer.holder_address}</small> : null}
+                </dd>
+              </div>
+              <div>
+                <dt>Numer konta</dt>
+                <dd className="order-transfer-iban">
+                  {order.transfer.account_number}
+                  {order.transfer.bank_name ? <small>{order.transfer.bank_name}</small> : null}
+                </dd>
+              </div>
+              <div>
+                <dt>Kwota</dt>
+                <dd>
+                  {order.transfer.amount ? `${order.transfer.amount.replace(".", ",")} ${order.transfer.currency || "PLN"}` : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Tytuł przelewu</dt>
+                <dd className="order-transfer-title">{order.transfer.title || order.order_code}</dd>
+              </div>
+            </dl>
+            <p className="order-transfer-note">
+              Zaksięgowanie przelewu może potrwać <strong>do 2 dni roboczych</strong>. Gdy wpłata do nas dotrze,
+              poinformujemy Cię e-mailem, że zamówienie zostało przekazane do realizacji. Te same dane wysłaliśmy
+              na Twój adres e-mail.
+            </p>
+          </div>
+        ) : null}
 
         {order.estimated_completion ? (
           <div className={styles.noticeBox}>

@@ -38,6 +38,7 @@ export async function POST(request: Request) {
         currency: string;
         access_token?: string;
         crm_order_number?: string;
+        transfer?: Record<string, unknown> | null;
       };
       error?: string;
     };
@@ -58,6 +59,18 @@ export async function POST(request: Request) {
         order: crmJson.order,
         payment_enabled: false,
         payment_provider: "cod",
+      });
+    }
+
+    // Przelew tradycyjny: zamówienie jest złożone od razu (CRM: status
+    // confirmed, payment_status transfer_pending), dane do przelewu wracają
+    // w order.transfer, e-mail z tymi danymi wysłał już CRM. Żadnego Stripe.
+    if (paymentProvider === "transfer") {
+      return NextResponse.json({
+        ok: true,
+        order: crmJson.order,
+        payment_enabled: false,
+        payment_provider: "transfer",
       });
     }
 

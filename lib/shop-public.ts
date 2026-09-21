@@ -92,6 +92,28 @@ export type CheckoutSettings = {
   currency: string;
   terms_required_label: string;
   checkout_note_html: string;
+  /** Przelew tradycyjny (CRM → Sklep WWW → checkout). false = opcja
+   * ukryta w koszyku; CRM odrzuca wtedy też payment_provider=transfer. */
+  transfer_enabled?: boolean;
+  transfer_account_holder?: string;
+  transfer_account_number?: string;
+  transfer_bank_name?: string;
+  transfer_holder_address?: string;
+};
+
+/** Dane do przelewu tradycyjnego zwracane przy zamówieniu z
+ * payment_provider=transfer (null dla innych metod). Tytuł = kod
+ * zamówienia; `pending` = wpłata jeszcze niepotwierdzona w CRM. */
+export type PublicOrderTransfer = {
+  account_holder: string;
+  account_number: string;
+  bank_name: string;
+  holder_address: string;
+  title: string;
+  amount: string | null;
+  currency: string;
+  booking_note: string;
+  pending: boolean;
 };
 
 export type SiteResponse = {
@@ -277,6 +299,7 @@ export type PublicOrder = {
   invoice_issued: boolean;
   invoice_required: boolean;
   shipments: PublicOrderShipment[];
+  transfer?: PublicOrderTransfer | null;
   customer_name?: string;
   customer_phone?: string;
   customer_email?: string;

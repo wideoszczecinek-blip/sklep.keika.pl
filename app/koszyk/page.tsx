@@ -79,6 +79,7 @@ type OrderCreateResponse = {
     amount_total: string | null;
     currency: string;
     access_token?: string;
+    transfer?: TransferDetails | null;
   };
   payment_enabled?: boolean;
   payment_provider?: string;
@@ -141,6 +142,32 @@ function itemFitsPaczkomat(item: CartLineItem): boolean {
 // delivery method choice (a courier variant), not a separate payment step.
 const COD_SURCHARGE_AMOUNT = 14.9;
 const COD_DELIVERY_METHOD_ID = "pobranie";
+
+// Przelew tradycyjny (właściciel, 2026-09-21): druga opcja obok płatności
+// online dla dostaw innych niż pobranie. Zamówienie jest składane od razu
+// (jak COD, bez SMS-a), klient dostaje dane do przelewu z unikatowym
+// tytułem (= numer zamówienia) na ekranie i e-mailem; produkcja rusza
+// dopiero po ręcznym potwierdzeniu wpłaty w CRM (do 2 dni roboczych na
+// zaksięgowanie). Dane rachunku przychodzą z CRM (shop-public/site →
+// checkout.transfer_*), nigdy nie są tu zaszyte na sztywno.
+type TransferDetails = {
+  account_holder: string;
+  account_number: string;
+  bank_name: string;
+  holder_address: string;
+  title: string;
+  amount: string | null;
+  currency: string;
+  booking_note: string;
+  pending: boolean;
+};
+type TransferSettings = {
+  enabled: boolean;
+  accountHolder: string;
+  accountNumber: string;
+  bankName: string;
+  holderAddress: string;
+};
 
 // Darmowa dostawa od 79 zł liczonych PO wszelkich rabatach (decyzja
 // właściciela 2026-09-03 - typowa pojedyncza moskitiera z kodem SEZON20 to
@@ -679,7 +706,19 @@ export default function CartPage() {
     paymentEnabled: boolean;
     paymentProvider: string;
     accessToken?: string;
+    transfer?: TransferDetails | null;
   } | null>(null);
+  // "online" (Stripe: BLIK/karta/P24/Revolut) albo "transfer" (przelew
+  // tradycyjny) - wybór w panelu płatności, tylko gdy dostawa nie jest
+  // pobraniowa (pobranie samo w sobie jest metodą płatności).
+  const [onlinePaymentKind, setOnlinePaymentKind] = useState<"online" | "transfer">("online");
+  const [transferSettings, setTransferSettings] = useState<TransferSettings>({
+    enabled: false,
+    accountHolder: "",
+    accountNumber: "",
+    bankName: "",
+    holderAddress: "",
+  });
   // For online payment, picking a delivery method and filling in the address
   // only drafts the order - it isn't real until the card/BLIK/... payment
   // actually goes through, so the cart stays intact until then. Cash-on-
@@ -793,7 +832,12 @@ export default function CartPage() {
 
   // Payment method is no longer a separate choice - cash-on-delivery is one
   // of the delivery methods on the left, so it's derived straight from that.
-  const paymentMethod: "online" | "cod" = deliveryMethod === COD_DELIVERY_METHOD_ID ? "cod" : "online";
+  const paymentMethod: "online" | "cod" | "transfer" =
+    deliveryMethod === COD_DELIVERY_METHOD_ID
+      ? "cod"
+      : onlinePaymentKind === "transfer" && transferSettings.enabled
+        ? "transfer"
+        : "online";
 
   const editingItem = editingItemId ? items.find((item) => item.id === editingItemId) || null : null;
 
@@ -844,7 +888,7 @@ export default function CartPage() {
   // The payment section itself is always rendered (see JSX below) - this
   // just controls whether it's locked/greyed out or interactive.
   const deliveryDataReady = contactReady && addressReady && paczkomatReady && invoiceReady && items.length > 0;
-  const paymentReady = paymentMethod === "online" || codSms.status === "verified";
+  const paymentReady = paymentMethod === "online" || paymentMethod === "transfer" || codSms.status === "verified";
   const checkoutReady = deliveryDataReady && paymentReady;
   // Delivery/address data stays editable even once a draft order (and its
   // Stripe payment form) already exists - a typo fix shouldn't require
@@ -892,7 +936,9 @@ export default function CartPage() {
   // or online payment confirmed) - swap the whole cart/checkout layout for a
   // dedicated thank-you view instead of leaving the (now pointless) delivery
   // method + address form sitting there with just a one-line note appended.
-  const orderConfirmed = orderState !== null && (orderState.paymentProvider === "cod" || paymentConfirmed);
+  const orderConfirmed =
+    orderState !== null &&
+    (orderState.paymentProvider === "cod" || orderState.paymentProvider === "transfer" || paymentConfirmed);
   const orderTrackingLink =
     orderState !== null
       ? `/zamowienie/${encodeURIComponent(orderState.orderCode)}${
@@ -938,6 +984,17 @@ export default function CartPage() {
           phone: typeof site?.contact_phone === "string" ? site.contact_phone : "",
           email: typeof site?.contact_email === "string" ? site.contact_email : "",
         });
+        const checkout = json?.checkout && typeof json.checkout === "object" ? json.checkout : null;
+        if (checkout) {
+          const accountNumber = typeof checkout.transfer_account_number === "string" ? checkout.transfer_account_number.trim() : "";
+          setTransferSettings({
+            enabled: checkout.transfer_enabled === true && accountNumber !== "",
+            accountHolder: typeof checkout.transfer_account_holder === "string" ? checkout.transfer_account_holder : "",
+            accountNumber,
+            bankName: typeof checkout.transfer_bank_name === "string" ? checkout.transfer_bank_name : "",
+            holderAddress: typeof checkout.transfer_holder_address === "string" ? checkout.transfer_holder_address : "",
+          });
+        }
       })
       .catch(() => {});
   }, []);
@@ -982,6 +1039,7 @@ export default function CartPage() {
     if (
       current &&
       current.paymentProvider !== "cod" &&
+      current.paymentProvider !== "transfer" &&
       !paymentConfirmed &&
       draftSnapshotRef.current &&
       draftSnapshotRef.current !== snapshot
@@ -1376,7 +1434,8 @@ export default function CartPage() {
         deliveryMethod === PACZKOMAT_METHOD.id && selectedPaczkomat
           ? `Paczkomat: ${selectedPaczkomat.id} - ${selectedPaczkomat.address}`
           : "";
-      const paymentLabel = paymentMethod === "cod" ? "Za pobraniem" : "Online (Stripe)";
+      const paymentLabel =
+        paymentMethod === "cod" ? "Za pobraniem" : paymentMethod === "transfer" ? "Przelew tradycyjny" : "Online (Stripe)";
       const noteWithDelivery = [
         // First line on purpose - production reads the note top-down.
         expressEligible && expressSelected ? EXPRESS_NOTE_LINE : "",
@@ -1437,8 +1496,8 @@ export default function CartPage() {
               }
             : null,
           note_text: noteWithDelivery,
-          payment_provider: paymentMethod === "cod" ? "cod" : "stripe",
-          payment_method: paymentMethod === "cod" ? "cod" : "",
+          payment_provider: paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : "stripe",
+          payment_method: paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : "",
           tracking,
           ...(paymentMethod === "cod" ? { cod_sms_verification_token: codSms.token } : {}),
         }),
@@ -1454,14 +1513,20 @@ export default function CartPage() {
         clientSecret: json.client_secret,
         publishableKey: json.publishable_key,
         paymentEnabled: Boolean(json.payment_enabled && json.client_secret && json.publishable_key),
-        paymentProvider: json.payment_provider || (paymentMethod === "cod" ? "cod" : "stripe"),
+        paymentProvider:
+          json.payment_provider || (paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : "stripe"),
         accessToken: json.order.access_token,
+        transfer: json.order.transfer || null,
       });
       // Cash-on-delivery has no further payment step - the order is real the
       // moment it's created. Online payment isn't real yet at this point;
       // the cart only clears once StripePaymentStep reports success (or a
       // payment_enabled:false fallback, handled below).
-      if (paymentMethod === "cod" || !Boolean(json.payment_enabled && json.client_secret && json.publishable_key)) {
+      if (
+        paymentMethod === "cod" ||
+        paymentMethod === "transfer" ||
+        !Boolean(json.payment_enabled && json.client_secret && json.publishable_key)
+      ) {
         clearCart();
         setItems([]);
         lastQuoteCodeRef.current = "";
@@ -1598,7 +1663,12 @@ export default function CartPage() {
             </p>
 
             <div className="cart-thankyou-note">
-              {orderState.paymentProvider === "cod" ? (
+              {orderState.paymentProvider === "transfer" ? (
+                <p>
+                  Zamówienie przyjęte z płatnością przelewem tradycyjnym. Poniżej dane do przelewu – te same
+                  wysłaliśmy na Twój adres e-mail.
+                </p>
+              ) : orderState.paymentProvider === "cod" ? (
                 <p>
                   Zamówienie przyjęte z płatnością za pobraniem. Kurier odbierze{" "}
                   <strong>
@@ -1620,13 +1690,60 @@ export default function CartPage() {
               )}
             </div>
 
+            {orderState.paymentProvider === "transfer" ? (
+              <div className="cart-transfer-card">
+                <h2>Dane do przelewu</h2>
+                <dl className="cart-transfer-grid">
+                  <div>
+                    <dt>Odbiorca</dt>
+                    <dd>
+                      {orderState.transfer?.account_holder || transferSettings.accountHolder}
+                      {orderState.transfer?.holder_address || transferSettings.holderAddress ? (
+                        <small>{orderState.transfer?.holder_address || transferSettings.holderAddress}</small>
+                      ) : null}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Numer konta</dt>
+                    <dd className="cart-transfer-iban">
+                      {orderState.transfer?.account_number || transferSettings.accountNumber}
+                      {orderState.transfer?.bank_name || transferSettings.bankName ? (
+                        <small>{orderState.transfer?.bank_name || transferSettings.bankName}</small>
+                      ) : null}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Kwota</dt>
+                    <dd>{orderState.amountTotal ? formatPln(Number(orderState.amountTotal)) : "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Tytuł przelewu</dt>
+                    <dd className="cart-transfer-title">{orderState.transfer?.title || orderState.orderCode}</dd>
+                  </div>
+                </dl>
+                <p className="cart-transfer-note">
+                  <strong>Ważne:</strong> zaksięgowanie przelewu może potrwać <strong>do 2 dni roboczych</strong>.
+                  Gdy wpłata do nas dotrze, poinformujemy Cię e-mailem, że zamówienie zostało przekazane do
+                  realizacji. Do tego czasu zamówienie czeka w kolejce.
+                </p>
+              </div>
+            ) : null}
+
             <div className="cart-thankyou-next">
               <h2>Co dalej?</h2>
-              <ul>
-                <li>Potwierdzenie zamówienia wysłaliśmy na podany adres e-mail.</li>
-                <li>Zamówienie trafiło do realizacji - o kolejnych krokach (i przesyłce) poinformujemy mailowo.</li>
-                <li>Status zamówienia możesz sprawdzić w każdej chwili poniżej, bez logowania.</li>
-              </ul>
+              {orderState.paymentProvider === "transfer" ? (
+                <ul>
+                  <li>Dane do przelewu (z tytułem = numer zamówienia) wysłaliśmy też na podany adres e-mail.</li>
+                  <li>Po zaksięgowaniu wpłaty dostaniesz e-mail, że zamówienie idzie do realizacji.</li>
+                  <li>Status zamówienia możesz sprawdzić w każdej chwili poniżej, bez logowania.</li>
+                </ul>
+              ) : (
+                <ul>
+                  <li>Potwierdzenie zamówienia wysłaliśmy na podany adres e-mail.</li>
+                  <li>Zamówienie trafiło do realizacji - o kolejnych krokach (i przesyłce) poinformujemy mailowo.</li>
+                  <li>Status zamówienia możesz sprawdzić w każdej chwili poniżej, bez logowania.</li>
+                </ul>
+              )}
             </div>
 
             <Link href={orderTrackingLink} className="cart-page-checkout-cta cart-thankyou-track">
@@ -2315,8 +2432,50 @@ export default function CartPage() {
                     ) : (
                       <>
                         <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
-                          {paymentMethod === "cod" ? "Płatność za pobraniem" : "Płatność online"}
+                          {paymentMethod === "cod"
+                            ? "Płatność za pobraniem"
+                            : paymentMethod === "transfer"
+                              ? "Przelew tradycyjny"
+                              : "Płatność online"}
                         </p>
+                        {paymentMethod !== "cod" && transferSettings.enabled ? (
+                          <div className="cart-delivery-options cart-payment-kind-options" role="radiogroup" aria-label="Sposób płatności">
+                            <label className={`cart-delivery-option ${paymentMethod === "online" ? "is-active" : ""}`}>
+                              <input
+                                type="radio"
+                                name="payment-kind"
+                                value="online"
+                                checked={paymentMethod === "online"}
+                                onChange={() => {
+                                  setOnlinePaymentKind("online");
+                                  trackCheckoutIssue("checkout_payment_kind", "online");
+                                }}
+                                disabled={dataLocked}
+                              />
+                              <span className="cart-delivery-option-copy">
+                                <strong>Płatność online</strong>
+                                <small>BLIK, karta, Przelewy24, Revolut Pay – od razu</small>
+                              </span>
+                            </label>
+                            <label className={`cart-delivery-option ${paymentMethod === "transfer" ? "is-active" : ""}`}>
+                              <input
+                                type="radio"
+                                name="payment-kind"
+                                value="transfer"
+                                checked={paymentMethod === "transfer"}
+                                onChange={() => {
+                                  setOnlinePaymentKind("transfer");
+                                  trackCheckoutIssue("checkout_payment_kind", "transfer");
+                                }}
+                                disabled={dataLocked}
+                              />
+                              <span className="cart-delivery-option-copy">
+                                <strong>Przelew tradycyjny</strong>
+                                <small>Dane do przelewu po złożeniu zamówienia; realizacja po zaksięgowaniu (do 2 dni roboczych)</small>
+                              </span>
+                            </label>
+                          </div>
+                        ) : null}
                         {paymentMethod === "online" ? (
                           <ul className="cart-payment-badges" aria-label="Dostępne metody płatności">
                             <li>BLIK</li>
@@ -2487,6 +2646,26 @@ export default function CartPage() {
                         </>
                       )}
                     </>
+                  ) : paymentMethod === "transfer" ? (
+                    <>
+                      {error ? <div className="cart-checkout-error">{error}</div> : null}
+                      <button
+                        type="button"
+                        className="cart-page-checkout-cta"
+                        onClick={() => {
+                          setError("");
+                          submittedRef.current = false;
+                          void submitOrder();
+                        }}
+                        disabled={!termsAccepted || isSubmitting}
+                      >
+                        {isSubmitting ? "Zapisujemy zamówienie…" : "Zamawiam i płacę przelewem"}
+                      </button>
+                      <p className="cart-checkout-cta-hint">
+                        Po kliknięciu pokażemy dane do przelewu z unikatowym tytułem i wyślemy je na Twój e-mail.
+                        Zamówienie ruszy do realizacji po zaksięgowaniu wpłaty – zwykle do 2 dni roboczych.
+                      </p>
+                    </>
                   ) : (
                     <>
                       {error ? <div className="cart-checkout-error">{error}</div> : null}
@@ -2534,6 +2713,19 @@ export default function CartPage() {
               }}
             >
               Zapisz dane i zapłać
+            </button>
+          ) : checkoutReady && paymentMethod === "transfer" && termsAccepted ? (
+            <button
+              type="button"
+              className="cart-sticky-bar-cta"
+              disabled={isSubmitting}
+              onClick={() => {
+                setError("");
+                submittedRef.current = false;
+                void submitOrder();
+              }}
+            >
+              {isSubmitting ? "Zapisujemy…" : "Zamawiam (przelew)"}
             </button>
           ) : (
             <button

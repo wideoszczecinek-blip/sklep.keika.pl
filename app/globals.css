@@ -8226,6 +8226,163 @@ html[data-theme="light"] .edit-item-modal-panel.hero-product-config-panel {
   display: grid;
 }
 
+/* Wybór "online / przelew tradycyjny" w panelu płatności - te same kafelki
+   co metody dostawy, tylko bez kolumny ceny. */
+.cart-payment-kind-options {
+  margin: 0.2rem 0 0.9rem;
+}
+
+/* Dane do przelewu na ekranie "dziękujemy" (koszyk) - jasna karta na
+   ciemnym tle podziękowania, IBAN dużą czcionką, tytuł przelewu wyróżniony. */
+.cart-transfer-card {
+  width: 100%;
+  text-align: left;
+  border-radius: 1rem;
+  border: 1px solid rgba(243, 181, 70, 0.55);
+  background: linear-gradient(180deg, rgba(255, 249, 235, 0.98), rgba(255, 255, 255, 0.98));
+  color: #132843;
+  padding: 1.1rem 1.25rem 1rem;
+  margin: 0.4rem 0 0.2rem;
+  box-shadow: 0 18px 46px rgba(35, 60, 88, 0.14);
+}
+
+.cart-transfer-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  font-family: var(--font-heading), sans-serif;
+  color: #132843;
+}
+
+.cart-transfer-grid {
+  margin: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.cart-transfer-grid > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.cart-transfer-grid dt {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4e6480;
+}
+
+.cart-transfer-grid dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #132843;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.cart-transfer-grid dd small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #4e6480;
+}
+
+.cart-transfer-iban {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.cart-transfer-title {
+  font-size: 1.35rem;
+  color: #007f7b;
+  letter-spacing: 0.04em;
+}
+
+.cart-transfer-note {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.7rem;
+  background: rgba(243, 181, 70, 0.16);
+  border: 1px solid rgba(243, 181, 70, 0.5);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #132843;
+}
+
+/* Ta sama karta na stronie statusu zamówienia (/zamowienie/[kod]). */
+.order-transfer-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(243, 181, 70, 0.6);
+  background: linear-gradient(180deg, #fff9eb, #ffffff);
+  padding: 1.1rem 1.25rem 1rem;
+  margin: 0 0 1rem;
+  color: #132843;
+}
+
+.order-transfer-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.order-transfer-grid {
+  margin: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.order-transfer-grid > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.order-transfer-grid dt {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4e6480;
+}
+
+.order-transfer-grid dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.order-transfer-grid dd small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #4e6480;
+}
+
+.order-transfer-iban {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.03em;
+  overflow-wrap: anywhere;
+}
+
+.order-transfer-title {
+  font-size: 1.35rem;
+  color: #007f7b;
+  letter-spacing: 0.04em;
+}
+
+.order-transfer-note {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.7rem;
+  background: rgba(243, 181, 70, 0.16);
+  border: 1px solid rgba(243, 181, 70, 0.5);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
 /* Collapsed by default (max-height:0, no padding) - the inner picker only
    mounts once the radio above is actually checked (see page.tsx), both to
    avoid an unprompted geolocation dialog for every visitor and so the panel
