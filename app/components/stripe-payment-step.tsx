@@ -201,7 +201,7 @@ function StripePaymentStep({
       return;
     }
     const message =
-      outcome.kind === "rejected" ? rejectionMessage(outcome.errorCode, outcome.errorMessage) : POLL_TIMEOUT_MESSAGE;
+      outcome.kind === "rejected" ? rejectionMessage(outcome.errorCode) : POLL_TIMEOUT_MESSAGE;
     setError(message);
     setIsSubmitting(false);
     trackPaymentIssue(

@@ -23,6 +23,10 @@ export async function POST(request: Request, context: RouteContext) {
     const body = await request.json().catch(() => ({}));
     const verifier = typeof body.verifier === "string" ? body.verifier : "";
     const accessToken = typeof body.access_token === "string" ? body.access_token : "";
+    // Kafelek wybrany na stronie zamówienia - jedna metoda = jeden typ w
+    // intencji, tak samo jak w koszyku (Payment Element pokazuje wtedy
+    // tylko to jedno pole).
+    const stripeMethod = typeof body.stripe_method === "string" ? body.stripe_method : "";
 
     if (!verifier && !accessToken) {
       return NextResponse.json({ ok: false, error: "Brak danych dostępu." }, { status: 400 });
@@ -47,7 +51,11 @@ export async function POST(request: Request, context: RouteContext) {
     if (order.payment_status === "paid") {
       return NextResponse.json({ ok: false, error: "To zamówienie jest już opłacone." }, { status: 409 });
     }
-    if (order.payment_provider !== "stripe" || !order.amount_total) {
+    // Dostawca zamówienia NIE ogranicza już ponowienia: klient może zmienić
+    // metodę (P24 / przelew -> BLIK, karta, portfel), a attach_payment_intent
+    // przestawia payment_provider na 'stripe'. Blokujemy tylko pobranie,
+    // które rozlicza się przy kurierze.
+    if (order.payment_provider === "cod" || !order.amount_total) {
       return NextResponse.json(
         { ok: false, error: "Płatność online jest niedostępna dla tego zamówienia." },
         { status: 400 },
@@ -65,12 +73,18 @@ export async function POST(request: Request, context: RouteContext) {
     const intent = await stripe.paymentIntents.create({
       amount,
       currency: (order.currency || "pln").toLowerCase(),
-      payment_method_types: ["card", "blik", "revolut_pay"],
+      payment_method_types:
+        stripeMethod === "blik"
+          ? ["blik"]
+          : stripeMethod === "card" || stripeMethod === "wallets"
+            ? ["card"]
+            : ["card", "blik", "revolut_pay"],
       ...(order.customer_email ? { receipt_email: order.customer_email } : {}),
       metadata: {
         order_code: order.order_code,
         quote_code: order.quote_code || "",
         retry: "1",
+        ...(stripeMethod ? { stripe_method: stripeMethod } : {}),
       },
     });
 

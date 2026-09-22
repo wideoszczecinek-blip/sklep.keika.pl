@@ -85,17 +85,25 @@ export const POLL_REJECTED_MESSAGE =
   "Płatność nie została potwierdzona w aplikacji bankowej (upłynął czas albo została odrzucona). Spróbuj ponownie.";
 
 /** Komunikat dopasowany do tego, co faktycznie zwrócił bank/Stripe. */
-export function rejectionMessage(errorCode?: string, errorMessage?: string): string {
+export function rejectionMessage(errorCode?: string): string {
   if (errorCode === "payment_method_provider_timeout") {
     return `Płatność nie została zatwierdzona w aplikacji banku w ciągu ${BLIK_APPROVAL_SECONDS} sekund i kod wygasł. Wygeneruj nowy kod BLIK i spróbuj ponownie - nic nie zostało pobrane.`;
   }
   if (errorCode === "payment_method_invalid_parameter") {
     return "Ten kod BLIK jest nieprawidłowy lub już wygasł. Wygeneruj nowy kod w aplikacji banku i wpisz go ponownie.";
   }
-  if (errorCode === "payment_method_not_available") {
-    return "Bank odrzucił płatność BLIK. Spróbuj ponownie za chwilę albo wybierz inną metodę płatności.";
+  if (errorCode === "payment_method_provider_decline") {
+    return "Płatność została odrzucona w aplikacji banku. Jeśli to pomyłka, wygeneruj nowy kod BLIK i spróbuj ponownie - nic nie zostało pobrane.";
   }
-  return errorMessage || POLL_REJECTED_MESSAGE;
+  if (errorCode === "payment_method_not_available" || errorCode === "payment_intent_payment_attempt_failed") {
+    return "Bank odrzucił płatność. Spróbuj ponownie za chwilę albo wybierz inną metodę płatności.";
+  }
+  if (errorCode === "insufficient_funds") {
+    return "Bank odrzucił płatność z powodu braku środków. Wybierz inną metodę płatności.";
+  }
+  // Komunikaty Stripe są po angielsku - klientowi pokazujemy własny,
+  // polski tekst; oryginał i tak trafia do zdarzeń (trackPaymentIssue).
+  return POLL_REJECTED_MESSAGE;
 }
 
 export const POLL_TIMEOUT_MESSAGE =

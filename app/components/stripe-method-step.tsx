@@ -215,7 +215,7 @@ function StripeMethodInner({
       // Wygasły/odrzucony kod nie zadziała po ponownym wysłaniu - czyścimy pole,
       // żeby klient wpisał świeży kod z aplikacji banku.
       setBlikCode("");
-      const message = rejectionMessage(outcome.errorCode, outcome.errorMessage);
+      const message = rejectionMessage(outcome.errorCode);
       setError(message);
       setIsSubmitting(false);
       trackPaymentIssue(outcome.errorCode || outcome.status, orderCode, message);
