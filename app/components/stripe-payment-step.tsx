@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { POLL_TIMEOUT_MESSAGE, pollPaymentIntentUntilSettled, rejectionMessage } from "./payment-poll";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import type { PaymentIntentResult } from "@stripe/stripe-js";
@@ -192,40 +193,22 @@ function StripePaymentStep({
   const [isWaitingBankConfirmation, setIsWaitingBankConfirmation] = useState(false);
 
   async function pollUntilSettled(clientSecret: string, orderCode: string) {
-    const POLL_INTERVAL_MS = 3000;
-    const MAX_ATTEMPTS = 40; // ~2 minuty - BLIK w aplikacji bankowej wygasa w tym czasie
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      await new Promise((resolve) => window.setTimeout(resolve, POLL_INTERVAL_MS));
-      if (!stripe) break;
-      let status: string | undefined;
-      try {
-        const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
-        status = paymentIntent?.status;
-      } catch {
-        continue; // przejściowy błąd sieci - próbujemy dalej, nie przerywamy czekania
-      }
-      if (status === "succeeded") {
-        setIsWaitingBankConfirmation(false);
-        onPaid();
-        return;
-      }
-      if (status && status !== "processing") {
-        // requires_payment_method (odrzucone/wygasłe w aplikacji bankowej), canceled, ...
-        setIsWaitingBankConfirmation(false);
-        const message = "Płatność nie została potwierdzona w aplikacji bankowej (upłynął czas albo została odrzucona). Spróbuj ponownie.";
-        setError(message);
-        setIsSubmitting(false);
-        trackPaymentIssue(status, orderCode, message);
-        return;
-      }
-    }
-    // Limit czasu minął, a intencja wciąż "processing" - nie zgadujemy dalej.
+    if (!stripe) return;
+    const outcome = await pollPaymentIntentUntilSettled(stripe, clientSecret);
     setIsWaitingBankConfirmation(false);
+    if (outcome.kind === "succeeded") {
+      onPaid();
+      return;
+    }
     const message =
-      "Nie otrzymaliśmy jeszcze potwierdzenia z banku. Jeśli zatwierdziłeś/aś płatność w aplikacji, zamówienie i tak zostanie opłacone - w innym przypadku spróbuj ponownie.";
+      outcome.kind === "rejected" ? rejectionMessage(outcome.errorCode, outcome.errorMessage) : POLL_TIMEOUT_MESSAGE;
     setError(message);
     setIsSubmitting(false);
-    trackPaymentIssue("processing_timeout", orderCode, message);
+    trackPaymentIssue(
+      outcome.kind === "rejected" ? outcome.errorCode || outcome.status : "processing_timeout",
+      orderCode,
+      message,
+    );
   }
 
   async function handlePay() {
@@ -312,7 +295,10 @@ function StripePaymentStep({
       onPaid();
       return;
     }
-    if (result.paymentIntent && result.paymentIntent.status === "processing") {
+    if (
+      result.paymentIntent &&
+      (result.paymentIntent.status === "processing" || result.paymentIntent.status === "requires_action")
+    ) {
       // Not done yet - BLIK (and similar) still needs the customer to open
       // their banking app and approve. Showing success here is exactly the
       // bug that was reported: the shop said "zamówienie złożone" before
@@ -344,8 +330,8 @@ function StripePaymentStep({
           <span className="cart-invoice-nip-spinner" aria-hidden="true" />
           <strong>Potwierdź płatność w aplikacji bankowej</strong>
           <p>
-            Kod BLIK został przyjęty - otwórz teraz aplikację swojego banku i zatwierdź płatność. To może potrwać do
-            dwóch minut, nie zamykaj tej strony.
+            Kod BLIK został przyjęty - otwórz teraz aplikację swojego banku i zatwierdź płatność w ciągu minuty. Nie
+            zamykaj tej strony.
           </p>
         </div>
       </div>

@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Elements, ExpressCheckoutElement, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import type { PaymentIntentResult, StripeElementsOptions, StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js";
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import type { CheckoutContact } from "./stripe-payment-step";
+import {
+  BLIK_APPROVAL_SECONDS,
+  POLL_TIMEOUT_MESSAGE,
+  pollPaymentIntentUntilSettled,
+  rejectionMessage,
+} from "./payment-poll";
 
 // Jedna metoda Stripe na raz - "po kliknięciu BLIK po prostu pojawia się
 // pole BLIK" (właściciel, 2026-09-22). Tryb odroczony (deferred intent):
@@ -175,6 +181,7 @@ function StripeMethodInner({
   const [walletsAvailable, setWalletsAvailable] = useState<boolean | null>(null);
   const [isWaitingBankConfirmation, setIsWaitingBankConfirmation] = useState(false);
   const [blikCode, setBlikCode] = useState("");
+  const [approvalSecondsLeft, setApprovalSecondsLeft] = useState(BLIK_APPROVAL_SECONDS);
   const blikInputRef = useRef<HTMLInputElement | null>(null);
 
   const billingDetails = {
@@ -190,40 +197,34 @@ function StripeMethodInner({
     },
   };
 
+  useEffect(() => {
+    if (!isWaitingBankConfirmation) return;
+    const id = window.setInterval(() => setApprovalSecondsLeft((left) => (left > 0 ? left - 1 : 0)), 1000);
+    return () => window.clearInterval(id);
+  }, [isWaitingBankConfirmation]);
+
   async function pollUntilSettled(clientSecret: string, orderCode: string) {
-    const POLL_INTERVAL_MS = 3000;
-    const MAX_ATTEMPTS = 40; // ~2 min - tyle żyje kod BLIK w aplikacji banku
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      await new Promise((resolve) => window.setTimeout(resolve, POLL_INTERVAL_MS));
-      if (!stripe) break;
-      let status: string | undefined;
-      try {
-        const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
-        status = paymentIntent?.status;
-      } catch {
-        continue;
-      }
-      if (status === "succeeded") {
-        setIsWaitingBankConfirmation(false);
-        onPaid(orderCode);
-        return;
-      }
-      if (status && status !== "processing") {
-        setIsWaitingBankConfirmation(false);
-        const message =
-          "Płatność nie została potwierdzona w aplikacji bankowej (upłynął czas albo została odrzucona). Spróbuj ponownie.";
-        setError(message);
-        setIsSubmitting(false);
-        trackPaymentIssue(status, orderCode, message);
-        return;
-      }
-    }
+    if (!stripe) return;
+    const outcome = await pollPaymentIntentUntilSettled(stripe, clientSecret);
     setIsWaitingBankConfirmation(false);
-    const message =
-      "Nie otrzymaliśmy jeszcze potwierdzenia z banku. Jeśli zatwierdziłeś/aś płatność w aplikacji, zamówienie i tak zostanie opłacone - w innym przypadku spróbuj ponownie.";
-    setError(message);
+    if (outcome.kind === "succeeded") {
+      onPaid(orderCode);
+      return;
+    }
+    if (outcome.kind === "rejected") {
+      // Wygasły/odrzucony kod nie zadziała po ponownym wysłaniu - czyścimy pole,
+      // żeby klient wpisał świeży kod z aplikacji banku.
+      setBlikCode("");
+      const message = rejectionMessage(outcome.errorCode, outcome.errorMessage);
+      setError(message);
+      setIsSubmitting(false);
+      trackPaymentIssue(outcome.errorCode || outcome.status, orderCode, message);
+      window.setTimeout(() => blikInputRef.current?.focus(), 50);
+      return;
+    }
+    setError(POLL_TIMEOUT_MESSAGE);
     setIsSubmitting(false);
-    trackPaymentIssue("processing_timeout", orderCode, message);
+    trackPaymentIssue("processing_timeout", orderCode, POLL_TIMEOUT_MESSAGE);
   }
 
   async function confirmWithIntent(intent: CreatedIntent, withBilling: boolean) {
@@ -257,7 +258,10 @@ function StripeMethodInner({
       onPaid(intent.orderCode);
       return;
     }
-    if (result.paymentIntent && result.paymentIntent.status === "processing") {
+    if (
+      result.paymentIntent &&
+      (result.paymentIntent.status === "processing" || result.paymentIntent.status === "requires_action")
+    ) {
       setIsWaitingBankConfirmation(true);
       void pollUntilSettled(result.paymentIntent.client_secret || intent.clientSecret, intent.orderCode);
       return;
@@ -335,6 +339,7 @@ function StripeMethodInner({
       return;
     }
     // BLIK: kod przyjęty, klient zatwierdza w aplikacji banku - czekamy.
+    setApprovalSecondsLeft(BLIK_APPROVAL_SECONDS);
     setIsWaitingBankConfirmation(true);
     void pollUntilSettled(result.paymentIntent?.client_secret || intent.clientSecret, intent.orderCode);
   }
@@ -416,8 +421,9 @@ function StripeMethodInner({
           <span className="cart-invoice-nip-spinner" aria-hidden="true" />
           <strong>Potwierdź płatność w aplikacji bankowej</strong>
           <p>
-            Kod BLIK został przyjęty - otwórz teraz aplikację swojego banku i zatwierdź płatność. To może potrwać do
-            dwóch minut, nie zamykaj tej strony.
+            Kod BLIK został przyjęty - otwórz teraz aplikację swojego banku i zatwierdź płatność. Masz na to
+            {" "}
+            {approvalSecondsLeft > 0 ? `${approvalSecondsLeft} s` : "jeszcze chwilę"}. Nie zamykaj tej strony.
           </p>
         </div>
       </div>
