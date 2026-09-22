@@ -65,7 +65,7 @@ export async function POST(request: Request, context: RouteContext) {
     const intent = await stripe.paymentIntents.create({
       amount,
       currency: (order.currency || "pln").toLowerCase(),
-      payment_method_types: ["card", "blik", "p24", "revolut_pay"],
+      payment_method_types: ["card", "blik", "revolut_pay"],
       ...(order.customer_email ? { receipt_email: order.customer_email } : {}),
       metadata: {
         order_code: order.order_code,

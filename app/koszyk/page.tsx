@@ -85,6 +85,8 @@ type OrderCreateResponse = {
   payment_provider?: string;
   publishable_key?: string;
   client_secret?: string;
+  /** Przelewy24: adres strony płatności, na którą przekierowujemy klienta. */
+  redirect_url?: string;
   error?: string;
 };
 
@@ -167,6 +169,29 @@ type TransferSettings = {
   accountNumber: string;
   bankName: string;
   holderAddress: string;
+};
+// Przelewy24 (umowa bezpośrednia, 2026-09-22): przelew online (wybór
+// banku), raty i PayPo. Zamówienie jest szkicem jak przy Stripe; klient
+// jest przekierowywany na stronę P24, a po powrocie strona statusu
+// odpytuje CRM, aż płatność zostanie potwierdzona.
+type P24Kind = "p24_transfer" | "p24_installments" | "p24_paypo";
+type P24Settings = { enabled: boolean; transfer: boolean; installments: boolean; paypo: boolean };
+const P24_KIND_LABELS: Record<P24Kind, { title: string; hint: string; note: string }> = {
+  p24_transfer: {
+    title: "Przelew online – wybór banku",
+    hint: "Przelewy24: logujesz się do swojego banku i zatwierdzasz płatność",
+    note: "Przelewy24 – przelew online",
+  },
+  p24_installments: {
+    title: "Raty",
+    hint: "Przelewy24: decyzja ratalna online, bez wychodzenia z domu",
+    note: "Przelewy24 – raty",
+  },
+  p24_paypo: {
+    title: "PayPo – kup teraz, zapłać później",
+    hint: "Odbierz zamówienie, zapłać do 30 dni albo w ratach (PayPo przez Przelewy24)",
+    note: "Przelewy24 – PayPo",
+  },
 };
 
 // Darmowa dostawa od 79 zł liczonych PO wszelkich rabatach (decyzja
@@ -711,7 +736,8 @@ export default function CartPage() {
   // "online" (Stripe: BLIK/karta/P24/Revolut) albo "transfer" (przelew
   // tradycyjny) - wybór w panelu płatności, tylko gdy dostawa nie jest
   // pobraniowa (pobranie samo w sobie jest metodą płatności).
-  const [onlinePaymentKind, setOnlinePaymentKind] = useState<"online" | "transfer">("online");
+  const [onlinePaymentKind, setOnlinePaymentKind] = useState<"online" | "transfer" | P24Kind>("online");
+  const [p24Settings, setP24Settings] = useState<P24Settings>({ enabled: false, transfer: false, installments: false, paypo: false });
   const [transferSettings, setTransferSettings] = useState<TransferSettings>({
     enabled: false,
     accountHolder: "",
@@ -832,12 +858,20 @@ export default function CartPage() {
 
   // Payment method is no longer a separate choice - cash-on-delivery is one
   // of the delivery methods on the left, so it's derived straight from that.
-  const paymentMethod: "online" | "cod" | "transfer" =
+  const p24KindAvailable = (kind: P24Kind) =>
+    p24Settings.enabled &&
+    ((kind === "p24_transfer" && p24Settings.transfer) ||
+      (kind === "p24_installments" && p24Settings.installments) ||
+      (kind === "p24_paypo" && p24Settings.paypo));
+  const paymentMethod: "online" | "cod" | "transfer" | "p24" =
     deliveryMethod === COD_DELIVERY_METHOD_ID
       ? "cod"
       : onlinePaymentKind === "transfer" && transferSettings.enabled
         ? "transfer"
-        : "online";
+        : onlinePaymentKind.startsWith("p24_") && p24KindAvailable(onlinePaymentKind as P24Kind)
+          ? "p24"
+          : "online";
+  const p24Kind: P24Kind = onlinePaymentKind.startsWith("p24_") ? (onlinePaymentKind as P24Kind) : "p24_transfer";
 
   const editingItem = editingItemId ? items.find((item) => item.id === editingItemId) || null : null;
 
@@ -888,7 +922,8 @@ export default function CartPage() {
   // The payment section itself is always rendered (see JSX below) - this
   // just controls whether it's locked/greyed out or interactive.
   const deliveryDataReady = contactReady && addressReady && paczkomatReady && invoiceReady && items.length > 0;
-  const paymentReady = paymentMethod === "online" || paymentMethod === "transfer" || codSms.status === "verified";
+  const paymentReady =
+    paymentMethod === "online" || paymentMethod === "transfer" || paymentMethod === "p24" || codSms.status === "verified";
   const checkoutReady = deliveryDataReady && paymentReady;
   // Delivery/address data stays editable even once a draft order (and its
   // Stripe payment form) already exists - a typo fix shouldn't require
@@ -993,6 +1028,12 @@ export default function CartPage() {
             accountNumber,
             bankName: typeof checkout.transfer_bank_name === "string" ? checkout.transfer_bank_name : "",
             holderAddress: typeof checkout.transfer_holder_address === "string" ? checkout.transfer_holder_address : "",
+          });
+          setP24Settings({
+            enabled: checkout.p24_enabled === true,
+            transfer: checkout.p24_transfer_enabled === true,
+            installments: checkout.p24_installments_enabled === true,
+            paypo: checkout.p24_paypo_enabled === true,
           });
         }
       })
@@ -1435,7 +1476,13 @@ export default function CartPage() {
           ? `Paczkomat: ${selectedPaczkomat.id} - ${selectedPaczkomat.address}`
           : "";
       const paymentLabel =
-        paymentMethod === "cod" ? "Za pobraniem" : paymentMethod === "transfer" ? "Przelew tradycyjny" : "Online (Stripe)";
+        paymentMethod === "cod"
+          ? "Za pobraniem"
+          : paymentMethod === "transfer"
+            ? "Przelew tradycyjny"
+            : paymentMethod === "p24"
+              ? P24_KIND_LABELS[p24Kind].note
+              : "Online (Stripe)";
       const noteWithDelivery = [
         // First line on purpose - production reads the note top-down.
         expressEligible && expressSelected ? EXPRESS_NOTE_LINE : "",
@@ -1496,8 +1543,10 @@ export default function CartPage() {
               }
             : null,
           note_text: noteWithDelivery,
-          payment_provider: paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : "stripe",
-          payment_method: paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : "",
+          payment_provider:
+            paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : paymentMethod === "p24" ? "p24" : "stripe",
+          payment_method:
+            paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : paymentMethod === "p24" ? p24Kind : "",
           tracking,
           ...(paymentMethod === "cod" ? { cod_sms_verification_token: codSms.token } : {}),
         }),
@@ -1507,6 +1556,15 @@ export default function CartPage() {
         throw new Error(json.error || "Nie udało się utworzyć zamówienia.");
       }
 
+      // Przelewy24: koszyk zostaje (płatność jeszcze nie jest faktem),
+      // klient idzie na stronę P24; wraca na /zamowienie/[kod]?p24=1, gdzie
+      // strona statusu czeka na potwierdzenie i dopiero wtedy czyści koszyk.
+      if (json.payment_provider === "p24" && json.redirect_url) {
+        trackCheckoutIssue("checkout_p24_redirect", p24Kind, { order_code: json.order.order_code });
+        window.location.assign(json.redirect_url);
+        return;
+      }
+
       setOrderState({
         orderCode: json.order.order_code,
         amountTotal: json.order.amount_total,
@@ -1514,7 +1572,8 @@ export default function CartPage() {
         publishableKey: json.publishable_key,
         paymentEnabled: Boolean(json.payment_enabled && json.client_secret && json.publishable_key),
         paymentProvider:
-          json.payment_provider || (paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : "stripe"),
+          json.payment_provider ||
+          (paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : paymentMethod === "p24" ? "p24" : "stripe"),
         accessToken: json.order.access_token,
         transfer: json.order.transfer || null,
       });
@@ -1557,6 +1616,7 @@ export default function CartPage() {
     wantsInvoice,
     invoice,
     paymentMethod,
+    p24Kind,
     codSms.token,
     orderSurcharge,
     shippingFee,
@@ -2436,9 +2496,11 @@ export default function CartPage() {
                             ? "Płatność za pobraniem"
                             : paymentMethod === "transfer"
                               ? "Przelew tradycyjny"
-                              : "Płatność online"}
+                              : paymentMethod === "p24"
+                                ? `Przelewy24 – ${P24_KIND_LABELS[p24Kind].title}`
+                                : "Płatność online"}
                         </p>
-                        {paymentMethod !== "cod" && transferSettings.enabled ? (
+                        {paymentMethod !== "cod" && (transferSettings.enabled || p24Settings.enabled) ? (
                           <div className="cart-delivery-options cart-payment-kind-options" role="radiogroup" aria-label="Sposób płatności">
                             <label className={`cart-delivery-option ${paymentMethod === "online" ? "is-active" : ""}`}>
                               <input
@@ -2453,10 +2515,38 @@ export default function CartPage() {
                                 disabled={dataLocked}
                               />
                               <span className="cart-delivery-option-copy">
-                                <strong>Płatność online</strong>
-                                <small>BLIK, karta, Przelewy24, Revolut Pay – od razu</small>
+                                <strong>BLIK, karta, Revolut Pay</strong>
+                                <small>Płatność online od razu, bez wychodzenia ze strony</small>
                               </span>
                             </label>
+                            {(["p24_transfer", "p24_installments", "p24_paypo"] as P24Kind[])
+                              .filter((kind) => p24KindAvailable(kind))
+                              .map((kind) => (
+                                <label
+                                  key={kind}
+                                  className={`cart-delivery-option ${paymentMethod === "p24" && p24Kind === kind ? "is-active" : ""}`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="payment-kind"
+                                    value={kind}
+                                    checked={paymentMethod === "p24" && p24Kind === kind}
+                                    onChange={() => {
+                                      setOnlinePaymentKind(kind);
+                                      trackCheckoutIssue("checkout_payment_kind", kind);
+                                    }}
+                                    disabled={dataLocked}
+                                  />
+                                  <span className="cart-delivery-option-copy">
+                                    <strong>{P24_KIND_LABELS[kind].title}</strong>
+                                    <small>{P24_KIND_LABELS[kind].hint}</small>
+                                  </span>
+                                  <span className="cart-payment-kind-logo" aria-hidden="true">
+                                    P24
+                                  </span>
+                                </label>
+                              ))}
+                            {transferSettings.enabled ? (
                             <label className={`cart-delivery-option ${paymentMethod === "transfer" ? "is-active" : ""}`}>
                               <input
                                 type="radio"
@@ -2474,6 +2564,7 @@ export default function CartPage() {
                                 <small>Dane do przelewu po złożeniu zamówienia; realizacja po zaksięgowaniu (do 2 dni roboczych)</small>
                               </span>
                             </label>
+                            ) : null}
                           </div>
                         ) : null}
                         {paymentMethod === "online" ? (
@@ -2481,7 +2572,6 @@ export default function CartPage() {
                             <li>BLIK</li>
                             <li>Visa</li>
                             <li>Mastercard</li>
-                            <li>Przelewy24</li>
                             <li>Revolut Pay</li>
                           </ul>
                         ) : null}
@@ -2640,11 +2730,31 @@ export default function CartPage() {
                             Zapisz dane i przejdź do płatności
                           </button>
                           <p className="cart-checkout-cta-hint">
-                            Otworzy się bezpieczna płatność online: BLIK, karta, Przelewy24 lub Revolut Pay. Dane
-                            zamówienia możesz jeszcze poprawić przed zapłatą.
+                            Otworzy się bezpieczna płatność online: BLIK, karta lub Revolut Pay. Dane zamówienia
+                            możesz jeszcze poprawić przed zapłatą.
                           </p>
                         </>
                       )}
+                    </>
+                  ) : paymentMethod === "p24" ? (
+                    <>
+                      {error ? <div className="cart-checkout-error">{error}</div> : null}
+                      <button
+                        type="button"
+                        className="cart-page-checkout-cta"
+                        onClick={() => {
+                          setError("");
+                          submittedRef.current = false;
+                          void submitOrder();
+                        }}
+                        disabled={!termsAccepted || isSubmitting}
+                      >
+                        {isSubmitting ? "Przekierowujemy do Przelewy24…" : "Zamawiam i płacę przez Przelewy24"}
+                      </button>
+                      <p className="cart-checkout-cta-hint">
+                        Przeniesiemy Cię na bezpieczną stronę Przelewy24 ({P24_KIND_LABELS[p24Kind].title.toLowerCase()}).
+                        Po zaksięgowaniu wpłaty wrócisz do sklepu z potwierdzeniem, a zamówienie od razu trafi do realizacji.
+                      </p>
                     </>
                   ) : paymentMethod === "transfer" ? (
                     <>
@@ -2713,6 +2823,19 @@ export default function CartPage() {
               }}
             >
               Zapisz dane i zapłać
+            </button>
+          ) : checkoutReady && paymentMethod === "p24" && termsAccepted ? (
+            <button
+              type="button"
+              className="cart-sticky-bar-cta"
+              disabled={isSubmitting}
+              onClick={() => {
+                setError("");
+                submittedRef.current = false;
+                void submitOrder();
+              }}
+            >
+              {isSubmitting ? "Przekierowujemy…" : "Zamawiam (Przelewy24)"}
             </button>
           ) : checkoutReady && paymentMethod === "transfer" && termsAccepted ? (
             <button

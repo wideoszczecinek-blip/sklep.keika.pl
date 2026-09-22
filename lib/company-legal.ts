@@ -31,5 +31,7 @@ export const FOOTER_LINKS = [
   { href: "/moje-zamowienia", label: "Moje zamówienia" },
 ] as const;
 
-export const PAYMENT_METHODS_LABEL = "BLIK, karta płatnicza (Visa, Mastercard), Przelewy24, Revolut Pay, przelew tradycyjny, płatność za pobraniem";
+export const PAYMENT_METHODS_LABEL =
+  "BLIK, karta płatnicza (Visa, Mastercard), Revolut Pay, przelew online (Przelewy24), raty i PayPo (Przelewy24), przelew tradycyjny, płatność za pobraniem";
+export const PAYMENT_OPERATORS_LABEL = "Stripe oraz Przelewy24 (PayPro S.A.)";
 export const DELIVERY_METHODS_LABEL = "kurier, Paczkomat InPost, odbiór osobisty w Szczecinku";

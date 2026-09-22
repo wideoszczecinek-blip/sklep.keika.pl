@@ -13,6 +13,16 @@ import PaymentStep, { type CheckoutContact } from "@/app/components/stripe-payme
 // e-mail's whole reason to exist).
 const RETRYABLE_PAYMENT_STATUSES = new Set(["failed", "requires_payment", "canceled", ""]);
 
+// Przelewy24 (umowa bezpośrednia): rodzaje ponownej płatności ze strony
+// statusu; CRM (payment_p24_start) sam wybiera kanał/metodę P24.
+const P24_RETRY_KINDS: { kind: string; label: string; flag: "p24_transfer_enabled" | "p24_installments_enabled" | "p24_paypo_enabled" }[] = [
+  { kind: "transfer", label: "Przelew online (wybór banku)", flag: "p24_transfer_enabled" },
+  { kind: "installments", label: "Raty", flag: "p24_installments_enabled" },
+  { kind: "paypo", label: "PayPo – kup teraz, zapłać później", flag: "p24_paypo_enabled" },
+];
+const P24_POLL_ATTEMPTS = 24;
+const P24_POLL_INTERVAL_MS = 3000;
+
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   paid: "Opłacone",
   cod_pending: "Za pobraniem (nieopłacone)",
@@ -40,6 +50,14 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   const [retryLoading, setRetryLoading] = useState(false);
   const [retryError, setRetryError] = useState("");
   const [justPaid, setJustPaid] = useState(false);
+  // Przelewy24: po powrocie (?p24=1) odpytujemy CRM, aż wpłata zostanie
+  // potwierdzona (powiadomienie P24 -> CRM bywa kilka sekund po powrocie).
+  const p24Return = searchParams.get("p24") === "1";
+  const [p24Polling, setP24Polling] = useState(false);
+  const [p24Timeout, setP24Timeout] = useState(false);
+  const [p24Kind, setP24Kind] = useState("transfer");
+  const [p24Flags, setP24Flags] = useState<Record<string, boolean> | null>(null);
+  const p24PollStartedRef = useRef(false);
   // Guards the redirect-success OpenAI tracking effect below so it can only
   // ever fire once per mount, even if `order`/searchParams re-trigger it
   // (e.g. a re-render after lookupOrder resolves).
@@ -119,6 +137,108 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     });
   }, [order, searchParams]);
 
+  // Które rodzaje P24 są włączone (CRM -> Sklep WWW -> checkout) - do
+  // przycisku "Dokończ płatność"; gdy nie da się pobrać, pokazujemy wszystkie.
+  useEffect(() => {
+    if (!order || order.payment_provider !== "p24" || order.payment_status === "paid") return;
+    fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/site", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((json) => {
+        const c = json?.checkout && typeof json.checkout === "object" ? json.checkout : {};
+        setP24Flags({
+          p24_transfer_enabled: c.p24_transfer_enabled === true,
+          p24_installments_enabled: c.p24_installments_enabled === true,
+          p24_paypo_enabled: c.p24_paypo_enabled === true,
+        });
+      })
+      .catch(() => setP24Flags(null));
+  }, [order]);
+
+  // Powrót z Przelewy24: odpytuj p24-check (CRM sprawdza w P24 i księguje),
+  // maks. ~72 s; sukces = koszyk wyczyszczony + zielony box jak po Stripe.
+  useEffect(() => {
+    if (!p24Return || !order || p24PollStartedRef.current) return;
+    if (order.payment_provider !== "p24") return;
+    if (order.payment_status === "paid") {
+      clearCart();
+      return;
+    }
+    p24PollStartedRef.current = true;
+    let cancelled = false;
+    let attempt = 0;
+    setP24Polling(true);
+    const tick = async () => {
+      if (cancelled) return;
+      attempt += 1;
+      try {
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/p24-check`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(accessToken ? { access_token: accessToken } : { verifier }),
+        });
+        const json = (await res.json()) as { ok?: boolean; paid?: boolean };
+        if (!cancelled && json.ok && json.paid) {
+          setP24Polling(false);
+          setJustPaid(true);
+          clearCart();
+          trackShopStep("p24_return", "paid", { order_code: orderCode, attempts: attempt });
+          if (order.amount_total) {
+            void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
+              trackOpenAiOrderCreated({
+                orderCode: order.order_code,
+                amountZl: Number(order.amount_total),
+                currency: order.currency,
+                items: [{ id: order.product_slug, name: order.product_label, quantity: 1 }],
+              });
+            });
+          }
+          void lookupOrder(verifier);
+          return;
+        }
+      } catch {
+        /* spróbuj ponownie */
+      }
+      if (cancelled) return;
+      if (attempt >= P24_POLL_ATTEMPTS) {
+        setP24Polling(false);
+        setP24Timeout(true);
+        trackShopStep("p24_return", "timeout", { order_code: orderCode });
+        return;
+      }
+      window.setTimeout(tick, P24_POLL_INTERVAL_MS);
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p24Return, order?.order_code, order?.payment_provider, order?.payment_status]);
+
+  const p24Kinds = P24_RETRY_KINDS.filter((k) => !p24Flags || p24Flags[k.flag]);
+  const p24EffectiveKind = p24Kinds.length === 1 ? p24Kinds[0].kind : p24Kind;
+
+  async function handleStartP24() {
+    if (!order) return;
+    setRetryLoading(true);
+    setRetryError("");
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/p24-start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...(accessToken ? { access_token: accessToken } : { verifier }), method_kind: p24EffectiveKind }),
+      });
+      const json = (await res.json()) as { ok?: boolean; redirect_url?: string; error?: string };
+      if (!res.ok || !json.ok || !json.redirect_url) {
+        throw new Error(json.error || "Nie udało się uruchomić płatności Przelewy24.");
+      }
+      trackShopStep("p24_retry", p24EffectiveKind, { order_code: orderCode });
+      window.location.assign(json.redirect_url);
+    } catch (e) {
+      setRetryError(e instanceof Error ? e.message : "Wystąpił błąd.");
+      setRetryLoading(false);
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void lookupOrder(verifier);
@@ -159,6 +279,11 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   if (order) {
     const canRetryPayment =
       order.payment_provider === "stripe" && RETRYABLE_PAYMENT_STATUSES.has(order.payment_status) && !justPaid;
+    const canRetryP24 =
+      order.payment_provider === "p24" &&
+      RETRYABLE_PAYMENT_STATUSES.has(order.payment_status) &&
+      !justPaid &&
+      !p24Polling;
     const paymentLabel = justPaid ? "Opłacone" : PAYMENT_STATUS_LABELS[order.payment_status] || order.payment_status;
 
     return (
@@ -255,8 +380,51 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
         {order.note_text ? <div className={styles.noticeBox}>{order.note_text}</div> : null}
         {order.summary_text ? <div className={styles.copyHtml}><p>{order.summary_text}</p></div> : null}
 
+        {p24Polling ? (
+          <div className="order-p24-waiting">
+            <span className="order-p24-spinner" aria-hidden="true" />
+            <span>
+              Czekamy na potwierdzenie płatności z Przelewy24… Zwykle trwa to kilka sekund. Nie zamykaj tej strony.
+            </span>
+          </div>
+        ) : null}
+        {p24Timeout && !justPaid && order.payment_status !== "paid" ? (
+          <div className={styles.noticeBox}>
+            Nie dostaliśmy jeszcze potwierdzenia z Przelewy24. Jeśli płatność została wykonana, zaksięgujemy ją
+            automatycznie, gdy tylko dotrze potwierdzenie – dostaniesz wtedy e-mail. Jeśli płatność nie doszła do
+            skutku, możesz ją ponowić poniżej.
+          </div>
+        ) : null}
+
         {justPaid ? (
           <div className={styles.successBox}>Płatność zakończona sukcesem - dziękujemy!</div>
+        ) : canRetryP24 ? (
+          <div className={styles.paymentShell}>
+            <p className={styles.sectionIntro}>
+              Płatność za to zamówienie nie została jeszcze zakończona. Możesz ją dokończyć przez Przelewy24 bez
+              wypełniania niczego od nowa.
+            </p>
+            {p24Kinds.length > 1 ? (
+              <div className="order-p24-kinds" role="radiogroup" aria-label="Sposób płatności Przelewy24">
+                {p24Kinds.map((k) => (
+                  <label key={k.kind} className={`order-p24-kind ${p24Kind === k.kind ? "is-active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="p24-kind"
+                      value={k.kind}
+                      checked={p24Kind === k.kind}
+                      onChange={() => setP24Kind(k.kind)}
+                    />
+                    {k.label}
+                  </label>
+                ))}
+              </div>
+            ) : null}
+            {retryError ? <div className={styles.errorBox}>{retryError}</div> : null}
+            <button type="button" className={styles.ctaButton} onClick={handleStartP24} disabled={retryLoading}>
+              {retryLoading ? "Przekierowujemy…" : "Dokończ płatność przez Przelewy24"}
+            </button>
+          </div>
         ) : canRetryPayment ? (
           retryPayment ? (
             <div className={styles.paymentShell}>

@@ -99,6 +99,12 @@ export type CheckoutSettings = {
   transfer_account_number?: string;
   transfer_bank_name?: string;
   transfer_holder_address?: string;
+  /** Przelewy24 (umowa bezpośrednia) - CRM zwraca true tylko gdy ma klucze
+   * (config/p24.local.php) i metoda jest włączona w ustawieniach. */
+  p24_enabled?: boolean;
+  p24_transfer_enabled?: boolean;
+  p24_installments_enabled?: boolean;
+  p24_paypo_enabled?: boolean;
 };
 
 /** Dane do przelewu tradycyjnego zwracane przy zamówieniu z

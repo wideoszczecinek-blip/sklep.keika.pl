@@ -4,6 +4,7 @@ import {
   DELIVERY_METHODS_LABEL,
   FOOTER_LINKS,
   PAYMENT_METHODS_LABEL,
+  PAYMENT_OPERATORS_LABEL,
 } from "@/lib/company-legal";
 
 // Stopka z danymi rejestrowymi sprzedawcy i linkami do stron formalnych.
@@ -48,7 +49,7 @@ export default function SiteFooter({ variant = "page" }: { variant?: "page" | "l
         <div className="site-footer-col site-footer-col--payments">
           <p className="site-footer-heading">Płatność i dostawa</p>
           <p>
-            Płatności online: {PAYMENT_METHODS_LABEL}. Operator płatności: Stripe.
+            Płatności: {PAYMENT_METHODS_LABEL}. Operatorzy płatności: {PAYMENT_OPERATORS_LABEL}.
           </p>
           <p>Dostawa: {DELIVERY_METHODS_LABEL}.</p>
           <p>

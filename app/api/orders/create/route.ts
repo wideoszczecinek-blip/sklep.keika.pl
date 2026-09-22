@@ -62,6 +62,46 @@ export async function POST(request: Request) {
       });
     }
 
+    // Przelewy24 (umowa bezpośrednia): zamówienie to szkic jak przy Stripe;
+    // CRM rejestruje transakcję (sessionId = kod zamówienia + próba) i
+    // oddaje URL, na który przekierowujemy klienta. Płatność staje się
+    // faktem dopiero po powiadomieniu P24 -> CRM (payment_p24_status) albo
+    // po sprawdzeniu ze strony statusu (payment_p24_check).
+    if (paymentProvider === "p24") {
+      const kind =
+        typeof payload.payment_method === "string" && payload.payment_method.startsWith("p24_")
+          ? payload.payment_method.slice(4)
+          : "transfer";
+      const startResponse = await fetch(`${crmBaseUrl}/biuro/api/shop-public/payment_p24_start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_code: crmJson.order.order_code,
+          access_token: crmJson.order.access_token || "",
+          method_kind: kind,
+        }),
+        cache: "no-store",
+      });
+      const startJson = (await startResponse.json().catch(() => ({}))) as {
+        ok?: boolean;
+        redirect_url?: string;
+        error?: string;
+      };
+      if (!startResponse.ok || !startJson.ok || !startJson.redirect_url) {
+        return NextResponse.json(
+          { ok: false, error: startJson.error || "Nie udało się uruchomić płatności Przelewy24." },
+          { status: startResponse.status || 502 },
+        );
+      }
+      return NextResponse.json({
+        ok: true,
+        order: crmJson.order,
+        payment_enabled: false,
+        payment_provider: "p24",
+        redirect_url: startJson.redirect_url,
+      });
+    }
+
     // Przelew tradycyjny: zamówienie jest złożone od razu (CRM: status
     // confirmed, payment_status transfer_pending), dane do przelewu wracają
     // w order.transfer, e-mail z tymi danymi wysłał już CRM. Żadnego Stripe.
@@ -101,10 +141,12 @@ export async function POST(request: Request) {
       // Explicit list instead of automatic_payment_methods: with "automatic"
       // Stripe's own "Link" express-checkout (email/phone + SMS code, a
       // separate Stripe product) can take over as the default option once it
-      // recognizes a returning customer, pushing card/BLIK/Przelewy24 behind
-      // a "pay another way" step - confusing for someone expecting to just
-      // pick a method. This keeps the 4 real methods and never offers Link.
-      payment_method_types: ["card", "blik", "p24", "revolut_pay"],
+      // recognizes a returning customer, pushing card/BLIK behind a "pay
+      // another way" step - confusing for someone expecting to just pick a
+      // method. This keeps the real methods and never offers Link.
+      // "p24" removed 2026-09-22: Stripe rejected the P24 capability; the
+      // shop now runs Przelewy24 directly (see the p24 branch above).
+      payment_method_types: ["card", "blik", "revolut_pay"],
       // E-mail is required at checkout now - use it for the Stripe receipt
       // too, on top of pre-filling the Payment Element (done client-side).
       ...(customerEmail ? { receipt_email: customerEmail } : {}),
