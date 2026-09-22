@@ -16351,27 +16351,32 @@ html[data-theme="light"] .hero-menu-card-head h3 {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(240, 248, 255, 0.72);
+  color: rgba(19, 40, 67, 0.72);
 }
 
 .cart-blik-field input {
   width: 100%;
   padding: 0.85rem 1rem;
   border-radius: 0.8rem;
-  border: 1px solid rgba(229, 241, 255, 0.28);
+  border: 1px solid rgba(19, 40, 67, 0.22);
   background: #fff;
   color: #132843;
+  /* min. 16px, inaczej iOS Safari przybliża stronę przy wejściu w pole */
   font-size: 1.6rem;
   font-weight: 800;
-  letter-spacing: 0.22em;
+  /* Odstęp między cyframi jest czysto wizualny - w polu są same cyfry,
+     dlatego kasowanie i wpisywanie działa normalnie (patrz komentarz w
+     stripe-method-step.tsx). Padding po prawej wyrównuje ostatni odstęp. */
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
   text-align: center;
   font-variant-numeric: tabular-nums;
   outline: none;
 }
 
 .cart-blik-field input:focus {
-  border-color: #6fe3bf;
-  box-shadow: 0 0 0 3px rgba(111, 227, 191, 0.3);
+  border-color: #2c9d82;
+  box-shadow: 0 0 0 3px rgba(44, 157, 130, 0.28);
 }
 
 .cart-blik-field input::placeholder {
@@ -16382,5 +16387,5 @@ html[data-theme="light"] .hero-menu-card-head h3 {
 .cart-blik-field small {
   font-size: 0.76rem;
   line-height: 1.45;
-  color: rgba(240, 248, 255, 0.66);
+  color: #4e6480;
 }

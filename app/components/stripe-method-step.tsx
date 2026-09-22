@@ -281,7 +281,7 @@ function StripeMethodInner({
       setError("Zaakceptuj regulamin sklepu, aby zapłacić.");
       return;
     }
-    const code = blikCode.replace(/D+/g, "");
+    const code = blikCode.replace(/\D+/g, "");
     if (code.length !== 6) {
       setError("Wpisz 6-cyfrowy kod BLIK z aplikacji swojego banku.");
       blikInputRef.current?.focus();
@@ -425,7 +425,7 @@ function StripeMethodInner({
   }
 
   if (method === "blik") {
-    const digits = blikCode.replace(/D+/g, "");
+    const digits = blikCode.replace(/\D+/g, "");
     return (
       <div className="cart-checkout-payment">
         <label className="cart-blik-field">
@@ -436,11 +436,15 @@ function StripeMethodInner({
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]*"
-            maxLength={7}
-            placeholder="000 000"
-            value={digits.length > 3 ? `${digits.slice(0, 3)} ${digits.slice(3)}` : digits}
+            maxLength={6}
+            placeholder="000000"
+            // Surowe cyfry w value (odstępy robi CSS letter-spacing):
+            // formatowanie "123 456" w kontrolowanym polu przestawiało kursor
+            // na telefonie przed spację - dało się wpisać tylko 5 cyfr, a
+            // backspace kasujący spację nie zmieniał nic widocznego.
+            value={digits}
             onChange={(event) => {
-              setBlikCode(event.target.value.replace(/D+/g, "").slice(0, 6));
+              setBlikCode(event.target.value.replace(/\D+/g, "").slice(0, 6));
               if (error) setError("");
             }}
             onKeyDown={(event) => {
