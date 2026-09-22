@@ -79,6 +79,11 @@ export async function POST(request: Request) {
           order_code: crmJson.order.order_code,
           access_token: crmJson.order.access_token || "",
           method_kind: kind,
+          // Bank wybrany w koszyku (siatka logotypów) - P24 przenosi prosto do niego.
+          method_id: Number.isFinite(Number(payload.p24_method_id)) ? Number(payload.p24_method_id) : 0,
+          // Klient zaakceptował regulamin sklepu i płatności (w tym P24) przy
+          // naszym checkboxie - P24 pomija własne okno zgody.
+          regulation_accept: payload.p24_regulation_accepted === true,
         }),
         cache: "no-store",
       });
@@ -146,7 +151,16 @@ export async function POST(request: Request) {
       // method. This keeps the real methods and never offers Link.
       // "p24" removed 2026-09-22: Stripe rejected the P24 capability; the
       // shop now runs Przelewy24 directly (see the p24 branch above).
-      payment_method_types: ["card", "blik", "revolut_pay"],
+      // Kafelki w koszyku (BLIK / karta / Google Pay & Apple Pay) tworzą
+      // intencję z JEDNYM typem (stripe_method), żeby Payment Element
+      // pokazał tylko wybrane pole; bez stripe_method (stare wywołania,
+      // ponowna płatność) - pełna lista.
+      payment_method_types:
+        payload.stripe_method === "blik"
+          ? ["blik"]
+          : payload.stripe_method === "card" || payload.stripe_method === "wallets"
+            ? ["card"]
+            : ["card", "blik", "revolut_pay"],
       // E-mail is required at checkout now - use it for the Stripe receipt
       // too, on top of pre-filling the Payment Element (done client-side).
       ...(customerEmail ? { receipt_email: customerEmail } : {}),

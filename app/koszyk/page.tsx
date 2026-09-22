@@ -31,7 +31,8 @@ import { readLastPage } from "../components/last-page-tracker";
 import PaczkomatPicker from "../components/paczkomat-picker";
 import PromoTopStrip from "../components/promo-top-strip";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
-import PaymentStep, { type CheckoutContact } from "../components/stripe-payment-step";
+import type { CheckoutContact } from "../components/stripe-payment-step";
+import StripeMethodStep, { type CreatedIntent, type StripeMethod } from "../components/stripe-method-step";
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import { isPromoActive, PROMO_CODE } from "@/lib/promo";
 import {
@@ -175,6 +176,15 @@ type TransferSettings = {
 // jest przekierowywany na stronę P24, a po powrocie strona statusu
 // odpytuje CRM, aż płatność zostanie potwierdzona.
 type P24Kind = "p24_transfer" | "p24_installments" | "p24_paypo";
+// Kafelki metod płatności w panelu (właściciel 2026-09-22, wzór: strona
+// z kafelkami P24): BLIK / karta / Google Pay & Apple Pay przez Stripe (pole
+// pojawia się od razu po kliknięciu, zamówienie powstaje przy "Płacę"),
+// przelew online przez Przelewy24 (klient wybiera bank u nas i jest
+// przenoszony prosto do banku), PayPo / raty gdy konto P24 je ma, na końcu
+// przelew tradycyjny.
+type PaymentKind = StripeMethod | P24Kind | "transfer";
+type P24Bank = { id: number; name: string; img: string };
+const STRIPE_PUBLISHABLE_KEY = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "").trim();
 type P24Settings = { enabled: boolean; transfer: boolean; installments: boolean; paypo: boolean };
 const P24_KIND_LABELS: Record<P24Kind, { title: string; hint: string; note: string }> = {
   p24_transfer: {
@@ -732,11 +742,18 @@ export default function CartPage() {
     paymentProvider: string;
     accessToken?: string;
     transfer?: TransferDetails | null;
+    /** Metoda Stripe, dla której powstał ten PaymentIntent (blik / card /
+     * wallets) - ponowne użycie tylko przy tej samej metodzie. */
+    stripeMethod?: StripeMethod;
   } | null>(null);
   // "online" (Stripe: BLIK/karta/P24/Revolut) albo "transfer" (przelew
   // tradycyjny) - wybór w panelu płatności, tylko gdy dostawa nie jest
   // pobraniowa (pobranie samo w sobie jest metodą płatności).
-  const [onlinePaymentKind, setOnlinePaymentKind] = useState<"online" | "transfer" | P24Kind>("online");
+  const [onlinePaymentKind, setOnlinePaymentKind] = useState<PaymentKind>("blik");
+  // Siatka banków dla "Przelew online" (Przelewy24) - lista z CRM
+  // (shop-public/p24_banks, logotypy z CDN P24), pobierana raz.
+  const [p24Banks, setP24Banks] = useState<P24Bank[]>([]);
+  const [p24BankId, setP24BankId] = useState<number>(0);
   const [p24Settings, setP24Settings] = useState<P24Settings>({ enabled: true, transfer: true, installments: false, paypo: false });
   // Domyślnie WŁĄCZONE (do czasu odpowiedzi CRM): gdyby pobranie ustawień
   // z CRM nie doszło do skutku, klient i tak widzi przelew tradycyjny /
@@ -875,6 +892,8 @@ export default function CartPage() {
           ? "p24"
           : "online";
   const p24Kind: P24Kind = onlinePaymentKind.startsWith("p24_") ? (onlinePaymentKind as P24Kind) : "p24_transfer";
+  const stripeMethod: StripeMethod =
+    onlinePaymentKind === "card" || onlinePaymentKind === "wallets" ? onlinePaymentKind : "blik";
 
   const editingItem = editingItemId ? items.find((item) => item.id === editingItemId) || null : null;
 
@@ -1038,6 +1057,27 @@ export default function CartPage() {
             installments: checkout.p24_installments_enabled === true,
             paypo: checkout.p24_paypo_enabled === true,
           });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Banki Przelewy24 do siatki "wybierz swój bank".
+  useEffect(() => {
+    fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/p24_banks")
+      .then((response) => response.json())
+      .then((json) => {
+        if (json?.ok && Array.isArray(json.banks)) {
+          setP24Banks(
+            json.banks
+              .filter((b: unknown) => b && typeof b === "object")
+              .map((b: { id?: unknown; name?: unknown; img?: unknown }) => ({
+                id: Number(b.id) || 0,
+                name: String(b.name || ""),
+                img: String(b.img || ""),
+              }))
+              .filter((b: P24Bank) => b.id > 0 && b.name),
+          );
         }
       })
       .catch(() => {});
@@ -1414,8 +1454,8 @@ export default function CartPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary.total]);
 
-  const submitOrder = useCallback(async () => {
-    if (submittedRef.current) return;
+  const submitOrder = useCallback(async (opts?: { stripeMethod?: StripeMethod; p24MethodId?: number }): Promise<CreatedIntent | null> => {
+    if (submittedRef.current) return null;
     submittedRef.current = true;
     draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod, appliedDiscount, expressSelected });
     setError("");
@@ -1552,6 +1592,9 @@ export default function CartPage() {
             paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : paymentMethod === "p24" ? p24Kind : "",
           tracking,
           ...(paymentMethod === "cod" ? { cod_sms_verification_token: codSms.token } : {}),
+          ...(paymentMethod === "online" ? { stripe_method: opts?.stripeMethod || stripeMethod } : {}),
+          ...(paymentMethod === "p24" && opts?.p24MethodId ? { p24_method_id: opts.p24MethodId } : {}),
+          ...(paymentMethod === "p24" ? { p24_regulation_accepted: termsAccepted } : {}),
         }),
       });
       const json = (await response.json()) as OrderCreateResponse;
@@ -1565,7 +1608,7 @@ export default function CartPage() {
       if (json.payment_provider === "p24" && json.redirect_url) {
         trackCheckoutIssue("checkout_p24_redirect", p24Kind, { order_code: json.order.order_code });
         window.location.assign(json.redirect_url);
-        return;
+        return null;
       }
 
       setOrderState({
@@ -1579,6 +1622,7 @@ export default function CartPage() {
           (paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : paymentMethod === "p24" ? "p24" : "stripe"),
         accessToken: json.order.access_token,
         transfer: json.order.transfer || null,
+        stripeMethod: opts?.stripeMethod || stripeMethod,
       });
       // Cash-on-delivery has no further payment step - the order is real the
       // moment it's created. Online payment isn't real yet at this point;
@@ -1602,12 +1646,17 @@ export default function CartPage() {
             });
           });
         }
+        return null;
       }
+      // Stripe (BLIK / karta / portfele): PaymentIntent powstał - element
+      // w StripeMethodStep potwierdza go tym clientSecret.
+      return json.client_secret ? { clientSecret: json.client_secret, orderCode: json.order.order_code } : null;
     } catch (submitError) {
       submittedRef.current = false;
       const message = submitError instanceof Error ? submitError.message : "Wystąpił błąd.";
       setError(message);
       trackCheckoutIssue("checkout_error", "order_submit_failed", { message, payment_method: paymentMethod });
+      throw submitError instanceof Error ? submitError : new Error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -1620,6 +1669,8 @@ export default function CartPage() {
     invoice,
     paymentMethod,
     p24Kind,
+    stripeMethod,
+    termsAccepted,
     codSms.token,
     orderSurcharge,
     shippingFee,
@@ -1654,7 +1705,7 @@ export default function CartPage() {
   useEffect(() => {
     if (orderState || isSubmitting || !checkoutReady) return;
     if (paymentMethod === "cod") {
-      void submitOrder();
+      void submitOrder().catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkoutReady, orderState, paymentMethod, submitOrder]);
@@ -1701,12 +1752,10 @@ export default function CartPage() {
   // psuje optymalizacji pod Zakup.
 
 
-  // Wybór sposobu płatności (online Stripe / Przelewy24 / przelew
-  // tradycyjny). Widoczny także, gdy istnieje już szkic zamówienia z
-  // formularzem Stripe (właściciel 2026-09-22: "nie mam wdrożonej płatności
-  // tradycyjnej ani P24" - wybór znikał po kliknięciu "Zapisz dane"), a
-  // zmiana metody porzuca ten szkic tak samo jak "Zmień dane zamówienia".
-  const selectPaymentKind = (kind: "online" | "transfer" | P24Kind) => {
+  // Wybór sposobu płatności - kafelki (patrz PaymentKind). Zmiana metody
+  // przy istniejącym PaymentIntent (nieudana próba) porzuca go, tak jak
+  // "Zmień dane zamówienia" - nowa metoda dostanie własną intencję.
+  const selectPaymentKind = (kind: PaymentKind) => {
     if (orderState && !paymentConfirmed) {
       setOrderState(null);
       setError("");
@@ -1715,68 +1764,215 @@ export default function CartPage() {
     setOnlinePaymentKind(kind);
     trackCheckoutIssue("checkout_payment_kind", kind);
   };
+  const stripeAvailable = STRIPE_PUBLISHABLE_KEY !== "";
+  const paymentTiles: { kind: PaymentKind; title: string; hint: string; logo: React.ReactNode; wide?: boolean }[] = [
+    ...(stripeAvailable
+      ? [
+          {
+            kind: "blik" as PaymentKind,
+            title: "BLIK",
+            hint: "Wpisz 6-cyfrowy kod BLIK",
+            logo: <span className="cart-pay-logo cart-pay-logo--blik">blik</span>,
+          },
+        ]
+      : []),
+    ...(p24KindAvailable("p24_transfer")
+      ? [
+          {
+            kind: "p24_transfer" as PaymentKind,
+            title: "Przelew online",
+            hint: "Wybierz swój bank",
+            logo: (
+              <span className="cart-pay-logo cart-pay-logo--p24">
+                Przelewy<em>24</em>
+              </span>
+            ),
+          },
+        ]
+      : []),
+    ...(stripeAvailable
+      ? [
+          {
+            kind: "card" as PaymentKind,
+            title: "Karta płatnicza",
+            hint: "Visa, Mastercard",
+            logo: (
+              <span className="cart-pay-logo cart-pay-logo--card">
+                <span className="cart-pay-visa">VISA</span>
+                <span className="cart-pay-mc" aria-hidden="true">
+                  <i />
+                  <i />
+                </span>
+              </span>
+            ),
+          },
+        ]
+      : []),
+    ...(p24KindAvailable("p24_paypo")
+      ? [
+          {
+            kind: "p24_paypo" as PaymentKind,
+            title: "PayPo",
+            hint: "Kup teraz, zapłać później",
+            logo: <span className="cart-pay-logo cart-pay-logo--paypo">PayPo</span>,
+          },
+        ]
+      : []),
+    ...(p24KindAvailable("p24_installments")
+      ? [
+          {
+            kind: "p24_installments" as PaymentKind,
+            title: "Raty",
+            hint: "Raty Przelewy24 – decyzja online",
+            logo: (
+              <span className="cart-pay-logo cart-pay-logo--p24">
+                Przelewy<em>24</em>
+              </span>
+            ),
+          },
+        ]
+      : []),
+    ...(stripeAvailable
+      ? [
+          {
+            kind: "wallets" as PaymentKind,
+            title: "Google Pay / Apple Pay",
+            hint: "Jednym dotknięciem – kartą zapisaną w telefonie",
+            wide: true,
+            logo: (
+              <span className="cart-pay-logo cart-pay-logo--wallets">
+                <span className="cart-pay-gpay">
+                  <b>G</b> Pay
+                </span>
+                <span className="cart-pay-applepay">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M16.7 12.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1.9-4 2.4-1.7 2.9-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.6-1-2.6-3.9zM14.3 5.5c.7-.8 1.1-1.9 1-3-1 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.5 2.8-1.3z"
+                    />
+                  </svg>
+                  Pay
+                </span>
+              </span>
+            ),
+          },
+        ]
+      : []),
+    ...(transferSettings.enabled
+      ? [
+          {
+            kind: "transfer" as PaymentKind,
+            title: "Przelew tradycyjny",
+            hint: "Dane do przelewu po złożeniu zamówienia; realizacja po zaksięgowaniu",
+            wide: true,
+            logo: (
+              <span className="cart-pay-logo cart-pay-logo--bank" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M3 10h18M5 10v8M9 10v8M15 10v8M19 10v8M3 18h18M12 3 3 8h18l-9-5z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            ),
+          },
+        ]
+      : []),
+  ];
   const paymentKindChooser = (
-    <>
-      {paymentMethod !== "cod" && (transferSettings.enabled || p24Settings.enabled) ? (
-        <div className="cart-delivery-options cart-payment-kind-options" role="radiogroup" aria-label="Sposób płatności">
-          <label className={`cart-delivery-option ${paymentMethod === "online" ? "is-active" : ""}`}>
+    <div className="cart-pay-tiles" role="radiogroup" aria-label="Sposób płatności">
+      {paymentTiles.map((tile) => {
+        const active = onlinePaymentKind === tile.kind;
+        return (
+          <label key={tile.kind} className={`cart-pay-tile ${active ? "is-active" : ""} ${tile.wide ? "is-wide" : ""}`}>
             <input
               type="radio"
               name="payment-kind"
-              value="online"
-              checked={paymentMethod === "online"}
-              onChange={() => selectPaymentKind("online")}
+              value={tile.kind}
+              checked={active}
+              onChange={() => selectPaymentKind(tile.kind)}
               disabled={paymentConfirmed}
             />
-            <span className="cart-delivery-option-copy">
-              <strong>BLIK, karta, Revolut Pay</strong>
-              <small>Płatność online od razu, bez wychodzenia ze strony</small>
+            {tile.logo}
+            <span className="cart-pay-tile-copy">
+              <strong>{tile.title}</strong>
+              <small>{tile.hint}</small>
             </span>
+            <span className="cart-pay-tile-check" aria-hidden="true" />
           </label>
-          {(["p24_transfer", "p24_installments", "p24_paypo"] as P24Kind[])
-            .filter((kind) => p24KindAvailable(kind))
-            .map((kind) => (
-              <label
-                key={kind}
-                className={`cart-delivery-option ${paymentMethod === "p24" && p24Kind === kind ? "is-active" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="payment-kind"
-                  value={kind}
-                  checked={paymentMethod === "p24" && p24Kind === kind}
-                  onChange={() => selectPaymentKind(kind)}
-                  disabled={paymentConfirmed}
-                />
-                <span className="cart-delivery-option-copy">
-                  <strong>{P24_KIND_LABELS[kind].title}</strong>
-                  <small>{P24_KIND_LABELS[kind].hint}</small>
-                </span>
-                <span className="cart-payment-kind-logo" aria-hidden="true">
-                  P24
-                </span>
-              </label>
-            ))}
-          {transferSettings.enabled ? (
-          <label className={`cart-delivery-option ${paymentMethod === "transfer" ? "is-active" : ""}`}>
-            <input
-              type="radio"
-              name="payment-kind"
-              value="transfer"
-              checked={paymentMethod === "transfer"}
-              onChange={() => selectPaymentKind("transfer")}
-              disabled={paymentConfirmed}
-            />
-            <span className="cart-delivery-option-copy">
-              <strong>Przelew tradycyjny</strong>
-              <small>Dane do przelewu po złożeniu zamówienia; realizacja po zaksięgowaniu (do 2 dni roboczych)</small>
-            </span>
-          </label>
-          ) : null}
-        </div>
-      ) : null}
-    </>
+        );
+      })}
+    </div>
   );
+  // Dlaczego (jeszcze) nie można zapłacić - pod polem BLIK/karty i przy
+  // przyciskach P24 / przelewu tradycyjnego.
+  const payBlockedReason = !items.length
+    ? "Koszyk jest pusty."
+    : !paczkomatReady
+      ? "Wybierz paczkomat powyżej, aby zapłacić."
+      : !deliveryDataReady
+        ? "Uzupełnij dane powyżej (imię i nazwisko, kontakt, adres), aby zapłacić."
+        : "";
+  const checkoutContact: CheckoutContact = {
+    name: `${form.firstName} ${form.lastName}`.trim(),
+    phone: form.phone,
+    email: form.email,
+    city: form.city,
+    postcode: form.postcode,
+    address1: form.address1,
+  };
+  const termsCheckbox =
+    !paymentConfirmed && items.length > 0 ? (
+      <label className="cart-terms-checkbox">
+        <input
+          type="checkbox"
+          checked={termsAccepted}
+          onChange={(event) => {
+            setTermsAccepted(event.target.checked);
+            trackCheckoutIssue("checkout_terms", event.target.checked ? "on" : "off");
+          }}
+          required
+        />
+        <span>
+          Przeczytałem i akceptuję{" "}
+          <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
+            regulamin sklepu i płatności
+          </button>
+          {paymentMethod === "p24" ? (
+            <>
+              {" "}
+              oraz{" "}
+              <a className="cart-terms-link" href="https://www.przelewy24.pl/regulamin" target="_blank" rel="noopener noreferrer">
+                regulamin Przelewy24
+              </a>{" "}
+              (PayPro S.A.)
+            </>
+          ) : null}
+          .
+        </span>
+      </label>
+    ) : null;
+  const handleStripePaid = (paidOrderCode: string) => {
+    const current = orderStateRef.current;
+    clearCart();
+    const amount = current?.amountTotal;
+    if (amount) {
+      void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
+        trackOpenAiOrderCreated({
+          orderCode: paidOrderCode,
+          amountZl: Number(amount),
+          items: items.map((item) => ({ id: item.productSlug, name: item.productLabel, quantity: item.qty })),
+        });
+      });
+    }
+    setItems([]);
+    lastQuoteCodeRef.current = "";
+    setPaymentConfirmed(true);
+  };
 
   return (
     <div className="cart-page">
@@ -2554,248 +2750,40 @@ export default function CartPage() {
                     </button>
                   ) : null}
 
-                  {/* The payment method itself is no longer a choice made
-                      here - it follows straight from the delivery method
-                      picked on the left (cash-on-delivery is one of those
-                      options now). This badge just reflects that. */}
-                  {!orderState ? (
-                    isSubmitting && checkoutReady ? (
-                      // Distinct from the "uzupełnij dane" badge below - this
-                      // is the brief gap while a just-applied discount/qty
-                      // change tears down the old PaymentIntent (wrong
-                      // amount now) and mints a correct one. Without this,
-                      // the payment panel just blanks back to its pre-order
-                      // look for a few seconds, which reads as "moja
-                      // płatność zniknęła" rather than "przelicza się".
-                      <p className="cart-payment-method-badge cart-payment-method-badge--recalculating">
-                        Przeliczamy zamówienie z rabatem…
-                      </p>
-                    ) : (
-                      <>
-                        <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
-                          {paymentMethod === "cod"
-                            ? "Płatność za pobraniem"
-                            : paymentMethod === "transfer"
-                              ? "Przelew tradycyjny"
-                              : paymentMethod === "p24"
-                                ? `Przelewy24 – ${P24_KIND_LABELS[p24Kind].title}`
-                                : "Płatność online"}
-                        </p>
-                        {paymentKindChooser}
-                        {paymentMethod === "online" ? (
-                          <ul className="cart-payment-badges" aria-label="Dostępne metody płatności">
-                            <li>BLIK</li>
-                            <li>Visa</li>
-                            <li>Mastercard</li>
-                            <li>Revolut Pay</li>
-                          </ul>
-                        ) : null}
-                      </>
-                    )
-                  ) : null}
-
-                  {!dataLocked && items.length > 0 ? (
-                    <label className="cart-terms-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={termsAccepted}
-                        onChange={(event) => {
-                          setTermsAccepted(event.target.checked);
-                          trackCheckoutIssue("checkout_terms", event.target.checked ? "on" : "off");
-                        }}
-                        required
-                      />
-                      <span>
-                        Przeczytałem i akceptuję{" "}
-                        <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
-                          regulamin sklepu i płatności
-                        </button>
-                        .
-                      </span>
-                    </label>
-                  ) : null}
-
-                  {orderState ? (
-                    <>
-                      {/* orderConfirmed (COD, or paymentConfirmed) is handled
-                          entirely by the thank-you view above, which
-                          replaces this whole layout - only the still-in-
-                          -progress online payment states reach here. */}
-                      {orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
-                        <>
-                          <p className="cart-payment-method-badge">Płatność online</p>
-                          {paymentKindChooser}
-                          <button
-                            type="button"
-                            className="cart-change-data-link"
-                            onClick={() => {
-                              // Drops the draft and unmounts the Stripe form
-                              // for its PaymentIntent BEFORE any field can be
-                              // edited - the old intent stays unpaid in Stripe
-                              // and can never be paid from here again, so an
-                              // edited address can't end up on a payment the
-                              // CRM doesn't recognise (2026-09-13 incident,
-                              // see the removed resync effect's notes above).
-                              // The same "Zapisz dane" button re-creates a
-                              // fresh, matching draft.
-                              setOrderState(null);
-                              setError("");
-                              submittedRef.current = false;
-                              trackCheckoutIssue("checkout_edit_after_draft", "zmien_dane", { payment_method: paymentMethod });
-                            }}
-                          >
-                            ← Zmień dane zamówienia
-                          </button>
-                          <PaymentStep
-                            clientSecret={orderState.clientSecret}
-                            publishableKey={orderState.publishableKey}
-                            orderCode={orderState.orderCode}
-                            contact={{
-                              name: `${form.firstName} ${form.lastName}`.trim(),
-                              phone: form.phone,
-                              email: form.email,
-                              city: form.city,
-                              postcode: form.postcode,
-                              address1: form.address1,
-                            }}
-                            termsAccepted={termsAccepted}
-                            onPaid={() => {
-                              clearCart();
-                              if (orderState.amountTotal) {
-                                void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
-                                  trackOpenAiOrderCreated({
-                                    orderCode: orderState.orderCode,
-                                    amountZl: Number(orderState.amountTotal),
-                                    items: items.map((item) => ({
-                                      id: item.productSlug,
-                                      name: item.productLabel,
-                                      quantity: item.qty,
-                                    })),
-                                  });
-                                });
-                              }
-                              setItems([]);
-                              lastQuoteCodeRef.current = "";
-                              setPaymentConfirmed(true);
-                            }}
-                          />
-                        </>
-                      ) : (
-                        <div className="cart-page-checkout-note">
-                          Płatność online nie jest jeszcze skonfigurowana w tym środowisku. Zamówienie zapisaliśmy
-                          pod numerem <strong>{orderState.orderCode}</strong> - skontaktujemy się, aby dokończyć
-                          płatność.
-                        </div>
-                      )}
-                    </>
-                  ) : !deliveryDataReady ? (
-                    <p className="cart-checkout-intro">
-                      {/* Desktop: the form really is the left column here.
-                          Mobile stacks everything in one column, so the
-                          form sits above this instead - CSS swaps which
-                          span shows per the same breakpoint the layout
-                          itself switches at. */}
-                      {!paczkomatReady ? (
-                        "Wybierz paczkomat powyżej, aby przejść do płatności."
-                      ) : (
-                        <>
-                          <span className="cart-checkout-intro-desktop">Uzupełnij dane po lewej</span>
-                          <span className="cart-checkout-intro-mobile">Uzupełnij dane powyżej</span>{" "}
-                          (imię i nazwisko, kontakt, adres), aby przejść do płatności.
-                        </>
-                      )}
+                  {paymentMethod === "cod" ? (
+                    <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
+                      Płatność za pobraniem
                     </p>
-                  ) : paymentMethod === "online" ? (
-                    <>
-                      {error ? (
-                        <>
-                          <div className="cart-checkout-error">{error}</div>
-                          <button
-                            type="button"
-                            className="cart-page-checkout-cta"
-                            onClick={() => {
-                              setError("");
-                              submittedRef.current = false;
-                              void submitOrder();
-                            }}
-                          >
-                            Spróbuj ponownie
-                          </button>
-                        </>
-                      ) : isSubmitting ? (
-                        <div className="cart-payment-waiting">
-                          <span className="cart-invoice-nip-spinner" aria-hidden="true" />
-                          Przygotowujemy płatność…
-                        </div>
-                      ) : (
-                        <>
-                          {/* Explicit step (audit 2026-09-13) instead of the
-                              old "auto-submit 1,8 s after the last keystroke"
-                              - that guessed wrong twice on real paid orders
-                              (truncated street names) and, combined with the
-                              since-removed resync effect, orphaned two real
-                              Stripe payments on 2026-09-13. */}
-                          <button
-                            type="button"
-                            className="cart-page-checkout-cta"
-                            onClick={() => {
-                              setError("");
-                              submittedRef.current = false;
-                              void submitOrder();
-                            }}
-                          >
-                            Zapisz dane i przejdź do płatności
-                          </button>
-                          <p className="cart-checkout-cta-hint">
-                            Otworzy się bezpieczna płatność online: BLIK, karta lub Revolut Pay. Dane zamówienia
-                            możesz jeszcze poprawić przed zapłatą.
-                          </p>
-                        </>
-                      )}
-                    </>
-                  ) : paymentMethod === "p24" ? (
-                    <>
-                      {error ? <div className="cart-checkout-error">{error}</div> : null}
-                      <button
-                        type="button"
-                        className="cart-page-checkout-cta"
-                        onClick={() => {
-                          setError("");
-                          submittedRef.current = false;
-                          void submitOrder();
-                        }}
-                        disabled={!termsAccepted || isSubmitting}
-                      >
-                        {isSubmitting ? "Przekierowujemy do Przelewy24…" : "Zamawiam i płacę przez Przelewy24"}
-                      </button>
-                      <p className="cart-checkout-cta-hint">
-                        Przeniesiemy Cię na bezpieczną stronę Przelewy24 ({P24_KIND_LABELS[p24Kind].title.toLowerCase()}).
-                        Po zaksięgowaniu wpłaty wrócisz do sklepu z potwierdzeniem, a zamówienie od razu trafi do realizacji.
-                      </p>
-                    </>
-                  ) : paymentMethod === "transfer" ? (
-                    <>
-                      {error ? <div className="cart-checkout-error">{error}</div> : null}
-                      <button
-                        type="button"
-                        className="cart-page-checkout-cta"
-                        onClick={() => {
-                          setError("");
-                          submittedRef.current = false;
-                          void submitOrder();
-                        }}
-                        disabled={!termsAccepted || isSubmitting}
-                      >
-                        {isSubmitting ? "Zapisujemy zamówienie…" : "Zamawiam i płacę przelewem"}
-                      </button>
-                      <p className="cart-checkout-cta-hint">
-                        Po kliknięciu pokażemy dane do przelewu z unikatowym tytułem i wyślemy je na Twój e-mail.
-                        Zamówienie ruszy do realizacji po zaksięgowaniu wpłaty – zwykle do 2 dni roboczych.
-                      </p>
-                    </>
                   ) : (
                     <>
+                      <p className="cart-payment-method-badge">Wybierz sposób płatności</p>
+                      {paymentKindChooser}
+                    </>
+                  )}
+
+                  {paymentMethod !== "p24" ? termsCheckbox : null}
+
+                  {orderState && orderState.paymentProvider === "stripe" && !paymentConfirmed ? (
+                    <button
+                      type="button"
+                      className="cart-change-data-link"
+                      onClick={() => {
+                        // Porzuca PaymentIntent z poprzedniej próby i odblokowuje
+                        // formularz (patrz notatki o incydencie 2026-09-13 wyżej).
+                        setOrderState(null);
+                        setError("");
+                        submittedRef.current = false;
+                        trackCheckoutIssue("checkout_edit_after_draft", "zmien_dane", { payment_method: paymentMethod });
+                      }}
+                    >
+                      ← Zmień dane zamówienia
+                    </button>
+                  ) : null}
+
+                  {paymentMethod === "cod" ? (
+                    <>
                       {error ? <div className="cart-checkout-error">{error}</div> : null}
+                      {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
                       <button
                         type="button"
                         className="cart-page-checkout-cta"
@@ -2803,10 +2791,132 @@ export default function CartPage() {
                           setCodModalOpen(true);
                           void sendCodSms();
                         }}
-                        disabled={!termsAccepted}
+                        disabled={!termsAccepted || Boolean(payBlockedReason)}
                       >
                         Zamawiam
                       </button>
+                    </>
+                  ) : paymentMethod === "online" ? (
+                    stripeAvailable ? (
+                      <>
+                        {error ? <div className="cart-checkout-error">{error}</div> : null}
+                        <StripeMethodStep
+                          key={stripeMethod}
+                          publishableKey={STRIPE_PUBLISHABLE_KEY}
+                          method={stripeMethod}
+                          amountGrosze={Math.round(payableTotal * 100)}
+                          contact={checkoutContact}
+                          termsAccepted={termsAccepted}
+                          disabledReason={payBlockedReason}
+                          existingClientSecret={
+                            orderState?.paymentProvider === "stripe" && orderState.stripeMethod === stripeMethod
+                              ? orderState.clientSecret
+                              : undefined
+                          }
+                          existingOrderCode={
+                            orderState?.paymentProvider === "stripe" && orderState.stripeMethod === stripeMethod
+                              ? orderState.orderCode
+                              : undefined
+                          }
+                          createIntent={() => submitOrder({ stripeMethod })}
+                          onPaid={handleStripePaid}
+                          submitLabel={stripeMethod === "blik" ? "Płacę BLIK-iem" : "Płacę kartą"}
+                        />
+                      </>
+                    ) : (
+                      <div className="cart-page-checkout-note">
+                        Płatność online nie jest jeszcze skonfigurowana w tym środowisku. Wybierz inną metodę płatności.
+                      </div>
+                    )
+                  ) : paymentMethod === "p24" ? (
+                    <>
+                      {p24Kind === "p24_transfer" ? (
+                        <div className="cart-p24-banks" role="radiogroup" aria-label="Wybierz swój bank">
+                          {p24Banks.length === 0 ? (
+                            <div className="cart-payment-waiting">
+                              <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                              Wczytujemy listę banków…
+                            </div>
+                          ) : (
+                            p24Banks.map((bank) => (
+                              <label
+                                key={bank.id}
+                                className={`cart-p24-bank ${p24BankId === bank.id ? "is-active" : ""}`}
+                                title={bank.name}
+                              >
+                                <input
+                                  type="radio"
+                                  name="p24-bank"
+                                  value={bank.id}
+                                  checked={p24BankId === bank.id}
+                                  onChange={() => {
+                                    setP24BankId(bank.id);
+                                    trackCheckoutIssue("checkout_p24_bank", bank.name, { bank_id: bank.id });
+                                  }}
+                                />
+                                {bank.img ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={bank.img} alt={bank.name} loading="lazy" />
+                                ) : (
+                                  <span className="cart-p24-bank-name">{bank.name}</span>
+                                )}
+                              </label>
+                            ))
+                          )}
+                        </div>
+                      ) : null}
+                      {termsCheckbox}
+                      {error ? <div className="cart-checkout-error">{error}</div> : null}
+                      {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
+                      <button
+                        type="button"
+                        className="cart-page-checkout-cta"
+                        onClick={() => {
+                          setError("");
+                          submittedRef.current = false;
+                          void submitOrder({ p24MethodId: p24Kind === "p24_transfer" ? p24BankId : 0 }).catch(() => {});
+                        }}
+                        disabled={
+                          !termsAccepted ||
+                          isSubmitting ||
+                          Boolean(payBlockedReason) ||
+                          (p24Kind === "p24_transfer" && p24Banks.length > 0 && !p24BankId)
+                        }
+                      >
+                        {isSubmitting
+                          ? "Przekierowujemy do Przelewy24…"
+                          : p24Kind === "p24_transfer"
+                            ? p24BankId
+                              ? "Płacę – przejdź do banku"
+                              : "Wybierz bank, aby zapłacić"
+                            : "Zamawiam i płacę przez Przelewy24"}
+                      </button>
+                      <p className="cart-checkout-cta-hint">
+                        {p24Kind === "p24_transfer"
+                          ? "Przeniesiemy Cię bezpośrednio na stronę logowania wybranego banku (Przelewy24). Po zatwierdzeniu przelewu wrócisz do sklepu z potwierdzeniem."
+                          : `Przeniesiemy Cię na bezpieczną stronę Przelewy24 (${P24_KIND_LABELS[p24Kind].title.toLowerCase()}). Po zaksięgowaniu wpłaty wrócisz do sklepu z potwierdzeniem.`}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      {error ? <div className="cart-checkout-error">{error}</div> : null}
+                      {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
+                      <button
+                        type="button"
+                        className="cart-page-checkout-cta"
+                        onClick={() => {
+                          setError("");
+                          submittedRef.current = false;
+                          void submitOrder().catch(() => {});
+                        }}
+                        disabled={!termsAccepted || isSubmitting || Boolean(payBlockedReason)}
+                      >
+                        {isSubmitting ? "Zapisujemy zamówienie…" : "Zamawiam i płacę przelewem"}
+                      </button>
+                      <p className="cart-checkout-cta-hint">
+                        Po kliknięciu pokażemy dane do przelewu z unikatowym tytułem i wyślemy je na Twój e-mail.
+                        Zamówienie ruszy do realizacji po zaksięgowaniu wpłaty – zwykle do 2 dni roboczych.
+                      </p>
                     </>
                   )}
                 </section>
@@ -2825,23 +2935,7 @@ export default function CartPage() {
             <span>Razem</span>
             <strong>{formatPln(payableTotal)}</strong>
           </div>
-          {orderState ? (
-            <button type="button" className="cart-sticky-bar-cta" onClick={() => scrollToSection(paymentSectionRef)}>
-              Do płatności ↓
-            </button>
-          ) : checkoutReady && paymentMethod === "online" ? (
-            <button
-              type="button"
-              className="cart-sticky-bar-cta"
-              onClick={() => {
-                setError("");
-                submittedRef.current = false;
-                void submitOrder();
-              }}
-            >
-              Zapisz dane i zapłać
-            </button>
-          ) : checkoutReady && paymentMethod === "p24" && termsAccepted ? (
+          {checkoutReady && paymentMethod === "transfer" && termsAccepted ? (
             <button
               type="button"
               className="cart-sticky-bar-cta"
@@ -2849,20 +2943,7 @@ export default function CartPage() {
               onClick={() => {
                 setError("");
                 submittedRef.current = false;
-                void submitOrder();
-              }}
-            >
-              {isSubmitting ? "Przekierowujemy…" : "Zamawiam (Przelewy24)"}
-            </button>
-          ) : checkoutReady && paymentMethod === "transfer" && termsAccepted ? (
-            <button
-              type="button"
-              className="cart-sticky-bar-cta"
-              disabled={isSubmitting}
-              onClick={() => {
-                setError("");
-                submittedRef.current = false;
-                void submitOrder();
+                void submitOrder().catch(() => {});
               }}
             >
               {isSubmitting ? "Zapisujemy…" : "Zamawiam (przelew)"}
