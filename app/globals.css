@@ -16389,3 +16389,157 @@ html[data-theme="light"] .hero-menu-card-head h3 {
   line-height: 1.45;
   color: #4e6480;
 }
+
+
+/* ===== Panel klienta "Moje zamówienia" (app/moje-zamowienia) ============ */
+.account-orders {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.account-order {
+  border: 1px solid rgba(19, 40, 67, 0.1);
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 1rem 1.1rem 1.15rem;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+}
+
+.account-order-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.account-order-head strong {
+  display: block;
+  font-size: 1.02rem;
+  color: #132843;
+}
+
+.account-order-head small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  color: #5b6f88;
+}
+
+.account-order-badge {
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.account-order-badge.is-paid {
+  background: rgba(44, 157, 130, 0.14);
+  color: #1c6e5b;
+}
+
+.account-order-badge.is-unpaid {
+  background: rgba(217, 96, 10, 0.14);
+  color: #a5490a;
+}
+
+.account-order-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem 1rem;
+  margin: 0.9rem 0 0;
+}
+
+.account-order-grid dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6d829b;
+}
+
+.account-order-grid dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #132843;
+}
+
+.account-order-summary {
+  margin: 0.85rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #4e6480;
+}
+
+.account-order-shipments {
+  margin: 0.7rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+  color: #4e6480;
+}
+
+.account-order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.account-order-pay {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed rgba(19, 40, 67, 0.15);
+}
+
+.account-order-pay .cart-pay-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.account-order-pay .cart-pay-tile {
+  border-color: rgba(19, 40, 67, 0.14);
+}
+
+.account-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: #1f5fbf;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.account-link:hover {
+  color: #133e80;
+}
+
+.account-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.4rem;
+}
+
+.account-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #4e6480;
+}
+
+.account-terms input {
+  margin-top: 0.2rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: #d9600a;
+}
