@@ -737,9 +737,12 @@ export default function CartPage() {
   // tradycyjny) - wybór w panelu płatności, tylko gdy dostawa nie jest
   // pobraniowa (pobranie samo w sobie jest metodą płatności).
   const [onlinePaymentKind, setOnlinePaymentKind] = useState<"online" | "transfer" | P24Kind>("online");
-  const [p24Settings, setP24Settings] = useState<P24Settings>({ enabled: false, transfer: false, installments: false, paypo: false });
+  const [p24Settings, setP24Settings] = useState<P24Settings>({ enabled: true, transfer: true, installments: false, paypo: false });
+  // Domyślnie WŁĄCZONE (do czasu odpowiedzi CRM): gdyby pobranie ustawień
+  // z CRM nie doszło do skutku, klient i tak widzi przelew tradycyjny /
+  // Przelewy24 - CRM i tak weryfikuje metodę przy tworzeniu zamówienia.
   const [transferSettings, setTransferSettings] = useState<TransferSettings>({
-    enabled: false,
+    enabled: true,
     accountHolder: "",
     accountNumber: "",
     bankName: "",
@@ -1697,6 +1700,84 @@ export default function CartPage() {
   // InitiateCheckout) nadal leci z przeglądarki - tam podwójne liczenie nie
   // psuje optymalizacji pod Zakup.
 
+
+  // Wybór sposobu płatności (online Stripe / Przelewy24 / przelew
+  // tradycyjny). Widoczny także, gdy istnieje już szkic zamówienia z
+  // formularzem Stripe (właściciel 2026-09-22: "nie mam wdrożonej płatności
+  // tradycyjnej ani P24" - wybór znikał po kliknięciu "Zapisz dane"), a
+  // zmiana metody porzuca ten szkic tak samo jak "Zmień dane zamówienia".
+  const selectPaymentKind = (kind: "online" | "transfer" | P24Kind) => {
+    if (orderState && !paymentConfirmed) {
+      setOrderState(null);
+      setError("");
+      submittedRef.current = false;
+    }
+    setOnlinePaymentKind(kind);
+    trackCheckoutIssue("checkout_payment_kind", kind);
+  };
+  const paymentKindChooser = (
+    <>
+      {paymentMethod !== "cod" && (transferSettings.enabled || p24Settings.enabled) ? (
+        <div className="cart-delivery-options cart-payment-kind-options" role="radiogroup" aria-label="Sposób płatności">
+          <label className={`cart-delivery-option ${paymentMethod === "online" ? "is-active" : ""}`}>
+            <input
+              type="radio"
+              name="payment-kind"
+              value="online"
+              checked={paymentMethod === "online"}
+              onChange={() => selectPaymentKind("online")}
+              disabled={paymentConfirmed}
+            />
+            <span className="cart-delivery-option-copy">
+              <strong>BLIK, karta, Revolut Pay</strong>
+              <small>Płatność online od razu, bez wychodzenia ze strony</small>
+            </span>
+          </label>
+          {(["p24_transfer", "p24_installments", "p24_paypo"] as P24Kind[])
+            .filter((kind) => p24KindAvailable(kind))
+            .map((kind) => (
+              <label
+                key={kind}
+                className={`cart-delivery-option ${paymentMethod === "p24" && p24Kind === kind ? "is-active" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="payment-kind"
+                  value={kind}
+                  checked={paymentMethod === "p24" && p24Kind === kind}
+                  onChange={() => selectPaymentKind(kind)}
+                  disabled={paymentConfirmed}
+                />
+                <span className="cart-delivery-option-copy">
+                  <strong>{P24_KIND_LABELS[kind].title}</strong>
+                  <small>{P24_KIND_LABELS[kind].hint}</small>
+                </span>
+                <span className="cart-payment-kind-logo" aria-hidden="true">
+                  P24
+                </span>
+              </label>
+            ))}
+          {transferSettings.enabled ? (
+          <label className={`cart-delivery-option ${paymentMethod === "transfer" ? "is-active" : ""}`}>
+            <input
+              type="radio"
+              name="payment-kind"
+              value="transfer"
+              checked={paymentMethod === "transfer"}
+              onChange={() => selectPaymentKind("transfer")}
+              disabled={paymentConfirmed}
+            />
+            <span className="cart-delivery-option-copy">
+              <strong>Przelew tradycyjny</strong>
+              <small>Dane do przelewu po złożeniu zamówienia; realizacja po zaksięgowaniu (do 2 dni roboczych)</small>
+            </span>
+          </label>
+          ) : null}
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
     <div className="cart-page">
       <div className="cart-page-gradient-bg" aria-hidden="true" />
@@ -2500,73 +2581,7 @@ export default function CartPage() {
                                 ? `Przelewy24 – ${P24_KIND_LABELS[p24Kind].title}`
                                 : "Płatność online"}
                         </p>
-                        {paymentMethod !== "cod" && (transferSettings.enabled || p24Settings.enabled) ? (
-                          <div className="cart-delivery-options cart-payment-kind-options" role="radiogroup" aria-label="Sposób płatności">
-                            <label className={`cart-delivery-option ${paymentMethod === "online" ? "is-active" : ""}`}>
-                              <input
-                                type="radio"
-                                name="payment-kind"
-                                value="online"
-                                checked={paymentMethod === "online"}
-                                onChange={() => {
-                                  setOnlinePaymentKind("online");
-                                  trackCheckoutIssue("checkout_payment_kind", "online");
-                                }}
-                                disabled={dataLocked}
-                              />
-                              <span className="cart-delivery-option-copy">
-                                <strong>BLIK, karta, Revolut Pay</strong>
-                                <small>Płatność online od razu, bez wychodzenia ze strony</small>
-                              </span>
-                            </label>
-                            {(["p24_transfer", "p24_installments", "p24_paypo"] as P24Kind[])
-                              .filter((kind) => p24KindAvailable(kind))
-                              .map((kind) => (
-                                <label
-                                  key={kind}
-                                  className={`cart-delivery-option ${paymentMethod === "p24" && p24Kind === kind ? "is-active" : ""}`}
-                                >
-                                  <input
-                                    type="radio"
-                                    name="payment-kind"
-                                    value={kind}
-                                    checked={paymentMethod === "p24" && p24Kind === kind}
-                                    onChange={() => {
-                                      setOnlinePaymentKind(kind);
-                                      trackCheckoutIssue("checkout_payment_kind", kind);
-                                    }}
-                                    disabled={dataLocked}
-                                  />
-                                  <span className="cart-delivery-option-copy">
-                                    <strong>{P24_KIND_LABELS[kind].title}</strong>
-                                    <small>{P24_KIND_LABELS[kind].hint}</small>
-                                  </span>
-                                  <span className="cart-payment-kind-logo" aria-hidden="true">
-                                    P24
-                                  </span>
-                                </label>
-                              ))}
-                            {transferSettings.enabled ? (
-                            <label className={`cart-delivery-option ${paymentMethod === "transfer" ? "is-active" : ""}`}>
-                              <input
-                                type="radio"
-                                name="payment-kind"
-                                value="transfer"
-                                checked={paymentMethod === "transfer"}
-                                onChange={() => {
-                                  setOnlinePaymentKind("transfer");
-                                  trackCheckoutIssue("checkout_payment_kind", "transfer");
-                                }}
-                                disabled={dataLocked}
-                              />
-                              <span className="cart-delivery-option-copy">
-                                <strong>Przelew tradycyjny</strong>
-                                <small>Dane do przelewu po złożeniu zamówienia; realizacja po zaksięgowaniu (do 2 dni roboczych)</small>
-                              </span>
-                            </label>
-                            ) : null}
-                          </div>
-                        ) : null}
+                        {paymentKindChooser}
                         {paymentMethod === "online" ? (
                           <ul className="cart-payment-badges" aria-label="Dostępne metody płatności">
                             <li>BLIK</li>
@@ -2608,6 +2623,8 @@ export default function CartPage() {
                           -progress online payment states reach here. */}
                       {orderState.paymentEnabled && orderState.clientSecret && orderState.publishableKey ? (
                         <>
+                          <p className="cart-payment-method-badge">Płatność online</p>
+                          {paymentKindChooser}
                           <button
                             type="button"
                             className="cart-change-data-link"
