@@ -1,17 +1,22 @@
 import Link from "next/link";
-import {
-  COMPANY_LEGAL,
-  DELIVERY_METHODS_LABEL,
-  FOOTER_LINKS,
-  PAYMENT_METHODS_LABEL,
-  PAYMENT_OPERATORS_LABEL,
-} from "@/lib/company-legal";
+import { COMPANY_LEGAL, DELIVERY_METHODS_LABEL, FOOTER_LINKS } from "@/lib/company-legal";
+import type { CheckoutSettings } from "@/lib/shop-public";
+import SiteFooterPayments from "./site-footer-payments";
 
 // Stopka z danymi rejestrowymi sprzedawcy i linkami do stron formalnych.
 // Bez hooków, więc działa i w layoucie serwerowym, i wewnątrz klienckiego
 // landingu (home-client.tsx renderuje ją na końcu przewijanej treści, bo
 // .home-root ma stałą wysokość 100svh i własne przewijanie).
-export default function SiteFooter({ variant = "page" }: { variant?: "page" | "landing" }) {
+// checkout: flagi metod z CRM (site.checkout) - layout serwerowy przekazuje
+// je z fetchSiteContent(); landing (klient) może nie mieć ich pod ręką i
+// wtedy stopka wymienia tylko metody stałe.
+export default function SiteFooter({
+  variant = "page",
+  checkout = null,
+}: {
+  variant?: "page" | "landing";
+  checkout?: Pick<CheckoutSettings, "p24_enabled" | "p24_transfer_enabled" | "p24_installments_enabled" | "p24_paypo_enabled"> | null;
+}) {
   const year = new Date().getFullYear();
   return (
     <footer className={`site-footer site-footer--${variant}`} aria-label="Informacje o sprzedawcy">
@@ -48,9 +53,7 @@ export default function SiteFooter({ variant = "page" }: { variant?: "page" | "l
         </nav>
         <div className="site-footer-col site-footer-col--payments">
           <p className="site-footer-heading">Płatność i dostawa</p>
-          <p>
-            Płatności: {PAYMENT_METHODS_LABEL}. Operatorzy płatności: {PAYMENT_OPERATORS_LABEL}.
-          </p>
+          <SiteFooterPayments initial={checkout} />
           <p>Dostawa: {DELIVERY_METHODS_LABEL}.</p>
           <p>
             Ceny wszystkich produktów są podane w konfiguratorze i w koszyku (brutto, w PLN).

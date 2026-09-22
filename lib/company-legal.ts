@@ -31,7 +31,27 @@ export const FOOTER_LINKS = [
   { href: "/moje-zamowienia", label: "Moje zamówienia" },
 ] as const;
 
-export const PAYMENT_METHODS_LABEL =
-  "BLIK, karta płatnicza (Visa, Mastercard), Revolut Pay, przelew online (Przelewy24), raty i PayPo (Przelewy24), przelew tradycyjny, płatność za pobraniem";
+// Stała lista bez Przelewy24 - metody P24 (przelew online / raty / PayPo)
+// dokleja paymentMethodsLabel() wg flag z CRM (site.checkout.p24_*), żeby
+// stopka nigdy nie obiecywała rat/PayPo, których konto P24 jeszcze nie ma.
+export const PAYMENT_METHODS_LABEL = "BLIK, karta płatnicza (Visa, Mastercard), Revolut Pay, przelew tradycyjny, płatność za pobraniem";
 export const PAYMENT_OPERATORS_LABEL = "Stripe oraz Przelewy24 (PayPro S.A.)";
+
+export function paymentMethodsLabel(flags?: {
+  p24_transfer_enabled?: boolean;
+  p24_installments_enabled?: boolean;
+  p24_paypo_enabled?: boolean;
+} | null): string {
+  const p24: string[] = [];
+  if (flags?.p24_transfer_enabled) p24.push("przelew online");
+  if (flags?.p24_installments_enabled) p24.push("raty");
+  if (flags?.p24_paypo_enabled) p24.push("PayPo");
+  const base = "BLIK, karta płatnicza (Visa, Mastercard), Revolut Pay";
+  const tail = "przelew tradycyjny, płatność za pobraniem";
+  return p24.length ? `${base}, ${p24.join(", ")} (Przelewy24), ${tail}` : `${base}, ${tail}`;
+}
+
+export function paymentOperatorsLabel(flags?: { p24_enabled?: boolean } | null): string {
+  return flags?.p24_enabled ? PAYMENT_OPERATORS_LABEL : "Stripe";
+}
 export const DELIVERY_METHODS_LABEL = "kurier, Paczkomat InPost, odbiór osobisty w Szczecinku";
