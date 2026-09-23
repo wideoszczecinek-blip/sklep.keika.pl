@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { CRM_PUBLIC_BASE } from "./payment-methods";
-import { trackStorefrontEvent } from "@/lib/shop-public";
 
 // PayPo na stronie produktu (właściciel, 2026-09-23: "już na stronie
 // produktu ma być informacja kup teraz zapłać później - użyj oficjalnych
 // banerów PayPo"). Baner pochodzi z oficjalnego pakietu Przelewy24/PayPo
 // ("PayPo_P24_materialy_graficzne.zip", seria "Zapłać później"), leży w
-// public/paypo/ i jest podlinkowany do landing page PayPo - tego wymagają
-// materiały PayPo dla banerów z przyciskiem.
+// public/paypo/ i jest NIEKLIKALNY (właściciel, 2026-09-23: "te banery PayPo
+// zrób nieklikalne - informacja, która metoda dostępna w koszyku wystarczy").
+// Dlatego użyta jest grafika "placement" bez przycisku "Sprawdź" - baner z
+// przyciskiem sugerowałby klikanie, a materiały PayPo z CTA wymagają
+// podlinkowania do ich landing page.
 //
 // Pokazuje się TYLKO wtedy, gdy PayPo jest realnie dostępne: CRM zwraca
 // checkout.p24_paypo_enabled = true dopiero, gdy konto Przelewy24 ma
@@ -17,7 +19,6 @@ import { trackStorefrontEvent } from "@/lib/shop-public";
 // Dzięki temu strona produktu nigdy nie obiecuje metody, której nie ma w
 // koszyku.
 
-const PAYPO_LANDING_URL = "https://start.paypo.pl/";
 // Nota wymagana przez PayPo dla materiałów z hasłem "Zapłać za 30 dni"
 // (plik "WAŻNE !!!.txt" w oficjalnym pakiecie Przelewy24/PayPo).
 const PAYPO_30_DAYS_NOTE = 'Usługa dla nowych klientów. Szczegóły w Regulaminie usługi „Zapłać za 30 dni” na paypo.pl.';
@@ -53,42 +54,23 @@ export default function PayPoBadge({
     };
   }, []);
 
-  const trackClick = () => {
-    let sessionToken = "";
-    try {
-      sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
-    } catch {
-      // sessionStorage niedostępny - zdarzenie i tak poleci
-    }
-    void trackStorefrontEvent({
-      event_name: "paypo_banner_click",
-      event_label: variant,
-      page_slug: window.location.pathname + window.location.search,
-      session_token: sessionToken,
-      device_type: window.innerWidth < 768 ? "mobile" : "desktop",
-    }).catch(() => null);
-  };
-
   if (!enabled) return null;
 
   return (
     <aside className={`paypo-badge paypo-badge--${variant} ${className}`.trim()} aria-label="Płatność odroczona PayPo">
-      <a
-        className="paypo-badge-banner"
-        href={PAYPO_LANDING_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={trackClick}
-      >
+      <span className="paypo-badge-banner">
+        {/* Grafika bez przycisku CTA i bez linku - to ma być czysta
+            informacja, że metoda jest dostępna w koszyku (właściciel,
+            2026-09-23: "te banery PayPo zrób nieklikalne"). */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/paypo/paypo-zaplac-pozniej-600x80.svg"
+          src="/paypo/paypo-placement-765x145.svg"
           alt="PayPo – zapłać później"
-          width={600}
-          height={80}
+          width={765}
+          height={145}
           loading="lazy"
         />
-      </a>
+      </span>
       <p className="paypo-badge-note">
         <strong>Kup teraz, zapłać nawet 30 dni później</strong> – bez dodatkowych kosztów. PayPo wybierzesz przy
         płatności w koszyku; zamówienie przyjmujemy do realizacji po pozytywnej weryfikacji przez PayPo.{" "}

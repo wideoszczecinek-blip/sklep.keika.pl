@@ -16686,3 +16686,58 @@ html[data-theme="light"] .hero-menu-card-head h3 {
   width: auto;
   display: block;
 }
+
+/* Opcje wybranej metody płatności renderują się pod JEJ kafelkiem
+   (właściciel 2026-09-23). Grupa = kafelek + wysuwany panel. */
+.cart-pay-tile-group {
+  display: grid;
+  gap: 0;
+}
+
+.cart-pay-tile-group.is-active {
+  border-radius: 0.85rem;
+  background: rgba(44, 157, 130, 0.07);
+  box-shadow: 0 0 0 1px rgba(44, 157, 130, 0.22);
+}
+
+.cart-pay-tile-group.is-active > .cart-pay-tile {
+  box-shadow: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+}
+
+.cart-pay-tile-panel {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.7rem 0.75rem 0.85rem;
+  border: 1px solid #2c9d82;
+  border-top: 0;
+  border-radius: 0 0 0.8rem 0.8rem;
+  background: #fff;
+}
+
+.cart-pay-tile-panel .cart-p24-banks {
+  margin: 0;
+}
+
+.cart-pay-tile-panel .cart-blik-label,
+.cart-pay-tile-panel .cart-blik-field small,
+.cart-pay-tile-panel .cart-terms-checkbox span,
+.cart-pay-tile-panel .cart-checkout-cta-hint,
+.cart-pay-tile-panel .cart-checkout-intro {
+  color: #4e6480;
+}
+
+.cart-pay-tile-panel .cart-blik-label {
+  color: rgba(19, 40, 67, 0.72);
+}
+
+.cart-pay-tile-panel .cart-blik-field,
+.cart-pay-tile-panel .cart-checkout-payment {
+  margin: 0;
+}
+
+.cart-pay-tile-panel .cart-terms-checkbox {
+  margin: 0;
+}
