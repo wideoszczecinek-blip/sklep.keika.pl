@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import SiteFooter from "@/app/components/site-footer";
+import PayPoBadge from "@/app/components/paypo-badge";
 import { COMPANY_LEGAL } from "@/lib/company-legal";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
@@ -5889,6 +5890,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                 )}
                   </>
                 )}
+                {/* "Kup teraz, zapłać później" na dole konfiguratora - jedno
+                    miejsce dla wszystkich produktów (moskitiery mają własną
+                    gałąź, reszta idzie przez ConfiguratorPanel). Komponent
+                    sam się chowa, gdy PayPo nie jest aktywne na koncie P24. */}
+                <PayPoBadge />
               </aside>
             ) : null}
           </div>

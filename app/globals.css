@@ -16222,11 +16222,10 @@ html[data-theme="light"] .hero-menu-card-head h3 {
   mix-blend-mode: multiply;
 }
 
-.cart-pay-logo--paypo {
-  font-size: 1rem;
-  font-weight: 900;
-  color: #1c1c1c;
-  letter-spacing: -0.02em;
+.cart-pay-logo--paypo img {
+  width: 100%;
+  max-width: 4.4rem;
+  height: auto;
 }
 
 .cart-pay-logo--wallets {
@@ -16542,4 +16541,61 @@ html[data-theme="light"] .hero-menu-card-head h3 {
   width: 1.05rem;
   height: 1.05rem;
   accent-color: #d9600a;
+}
+
+/* ---------------------------------------------------------------------------
+   PayPo "Zapłać później" na stronie produktu (oficjalny baner z pakietu
+   Przelewy24/PayPo, public/paypo/). Pasek na dole konfiguratora, pod CTA. */
+.paypo-badge {
+  display: grid;
+  gap: 0.4rem;
+  /* Dolny margines przepuszcza cały tekst nad przyklejony pasek zakładek
+     produktu (.hero-product-bottom-tabs, ~50 px) - bez tego nota prawna
+     chowała się pod nim po przewinięciu konfiguratora do końca. */
+  margin: 0.9rem 0 4rem;
+}
+
+.paypo-badge-banner {
+  display: block;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(19, 40, 67, 0.12);
+  box-shadow: 0 6px 18px rgba(35, 60, 88, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.paypo-badge-banner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(35, 60, 88, 0.14);
+}
+
+.paypo-badge-banner img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.paypo-badge-note {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: #4e6480;
+}
+
+.paypo-badge-note strong {
+  color: #132843;
+}
+
+.paypo-badge-note a {
+  color: #007f7b;
+  text-decoration: underline;
+}
+
+.paypo-badge--inline {
+  margin: 0.6rem 0 0;
+}
+
+.paypo-badge--inline .paypo-badge-note {
+  font-size: 0.7rem;
 }

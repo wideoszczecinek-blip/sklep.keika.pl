@@ -1814,7 +1814,13 @@ export default function CartPage() {
             kind: "p24_paypo" as PaymentKind,
             title: "PayPo",
             hint: "Kup teraz, zapłać później",
-            logo: <span className="cart-pay-logo cart-pay-logo--paypo">PayPo</span>,
+            // Oficjalne logo PayPo (pakiet Przelewy24/PayPo, public/paypo/).
+            logo: (
+              <span className="cart-pay-logo cart-pay-logo--paypo">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/paypo/paypo-logo.svg" alt="PayPo" width={96} height={28} />
+              </span>
+            ),
           },
         ]
       : []),
@@ -2884,17 +2890,23 @@ export default function CartPage() {
                         }
                       >
                         {isSubmitting
-                          ? "Przekierowujemy do Przelewy24…"
+                          ? p24Kind === "p24_paypo"
+                            ? "Przekierowujemy do PayPo…"
+                            : "Przekierowujemy do Przelewy24…"
                           : p24Kind === "p24_transfer"
                             ? p24BankId
                               ? "Płacę – przejdź do banku"
                               : "Wybierz bank, aby zapłacić"
-                            : "Zamawiam i płacę przez Przelewy24"}
+                            : p24Kind === "p24_paypo"
+                              ? "Zamawiam z PayPo – zapłacę później"
+                              : "Zamawiam i płacę w ratach"}
                       </button>
                       <p className="cart-checkout-cta-hint">
                         {p24Kind === "p24_transfer"
                           ? "Przeniesiemy Cię bezpośrednio na stronę logowania wybranego banku (Przelewy24). Po zatwierdzeniu przelewu wrócisz do sklepu z potwierdzeniem."
-                          : `Przeniesiemy Cię na bezpieczną stronę Przelewy24 (${P24_KIND_LABELS[p24Kind].title.toLowerCase()}). Po zaksięgowaniu wpłaty wrócisz do sklepu z potwierdzeniem.`}
+                          : p24Kind === "p24_paypo"
+                            ? "Przeniesiemy Cię do PayPo. Zamówienie przyjmujemy do realizacji po pozytywnej weryfikacji przez PayPo – za zakupy zapłacisz PayPo później (do 30 dni lub w ratach), bez dodatkowych opłat z naszej strony."
+                            : `Przeniesiemy Cię na bezpieczną stronę Przelewy24 (${P24_KIND_LABELS[p24Kind].title.toLowerCase()}). Po zaksięgowaniu wpłaty wrócisz do sklepu z potwierdzeniem.`}
                       </p>
                     </>
                   ) : (
