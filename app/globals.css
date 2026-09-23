@@ -16599,3 +16599,83 @@ html[data-theme="light"] .hero-menu-card-head h3 {
 .paypo-badge--inline .paypo-badge-note {
   font-size: 0.7rem;
 }
+
+/* Pasek PayPo na górze panelu produktu: oficjalny baner "Zapłać za 30 dni"
+   + wymagana nota prawna. Klikalny, prowadzi na LP PayPo. */
+/* Specyficzność podbita do .hero-product-config-panel > a (pomarańczowy
+   przycisk CTA panelu) - inaczej pasek PayPo dziedziczył jego gradient. */
+.paypo-top,
+.hero-product-config-panel > a.paypo-top {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0 0 0.8rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(19, 40, 67, 0.12);
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(35, 60, 88, 0.07);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hero-product-config-panel > a.paypo-top {
+  background: #fff;
+  color: #132843;
+  border: 1px solid rgba(19, 40, 67, 0.12);
+  box-shadow: 0 6px 16px rgba(35, 60, 88, 0.07);
+  font-weight: 400;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.paypo-top:hover {
+  border-color: rgba(44, 157, 130, 0.5);
+  box-shadow: 0 10px 22px rgba(35, 60, 88, 0.12);
+}
+
+.paypo-top img {
+  flex: 0 0 auto;
+  width: 8.6rem;
+  height: auto;
+}
+
+.paypo-top-copy {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.paypo-top-copy strong {
+  font-size: 0.86rem;
+  line-height: 1.25;
+  color: #132843;
+}
+
+.paypo-top-copy span {
+  font-size: 0.76rem;
+  line-height: 1.3;
+  color: #4e6480;
+}
+
+.paypo-top-copy small {
+  font-size: 0.64rem;
+  line-height: 1.3;
+  color: #7c8ea3;
+}
+
+@media (max-width: 520px) {
+  .paypo-top {
+    flex-wrap: wrap;
+    gap: 0.45rem 0.6rem;
+  }
+
+  .paypo-top img {
+    width: 7.2rem;
+  }
+
+  .paypo-top-copy strong {
+    font-size: 0.82rem;
+  }
+}
