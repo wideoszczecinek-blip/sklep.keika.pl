@@ -28,6 +28,7 @@
 //    the carousel every 4,5 s, so a screen reader would never stop talking.
 //    Inactive slides are aria-hidden, the visible one is plain readable text.
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CRM_PUBLIC_BASE } from "./payment-methods";
 import PromoCountdownBanner from "./promo-countdown-banner";
 import { PROMO_CODE } from "@/lib/promo";
 import { EXPRESS_CUTOFF, EXPRESS_ENABLED, EXPRESS_FEE_AMOUNT, formatCutoff } from "@/lib/express";
@@ -41,14 +42,35 @@ const TRANSITION_MS = 520;
 /** icon + amber pill + one sentence. The pill carries the number, the
  * sentence says what it means - the "-20%" badge is the pattern the owner
  * picked out as the one that catches the eye, so every slide now has one. */
-type Slide = { key: string; icon: string; badge: string; content: ReactNode };
+type Slide = { key: string; icon: ReactNode; badge: string; content: ReactNode };
 
 // Ekspres exists for moskitiery-ramkowe only (owner, 2026-09-14: plisy take
 // 5-10 business days, no Ekspres), so the slide and the "na moskitiery"
 // wording follow the product the strip is shown for.
-function benefitSlides(productSlug: string): Slide[] {
+function benefitSlides(productSlug: string, paypoEnabled: boolean): Slide[] {
   const isMoskitiery = productSlug === "moskitiery-ramkowe";
   return [
+  // PayPo trafiło tutaj, bo na telefonie to jedyne miejsce widoczne bez
+  // przewijania - konfigurator startuje ~5700 px niżej (właściciel,
+  // 2026-09-23: "na mobile nie rzuca się w oczy, powinna być w okolicach
+  // banera SEZON20"). Hasło bez liczby dni: materiały z "Zapłać za 30 dni"
+  // wymagają noty prawnej, która nie mieści się w jednej linii paska -
+  // pełna informacja (30 dni + nota) jest przy przycisku zakupu.
+  ...(paypoEnabled
+    ? [
+        {
+          key: "paypo",
+          icon: (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="promo-strip-slide-logo" src="/paypo/paypo-logo.svg" alt="" width={48} height={14} />
+          ),
+          // Pigułka niesie liczbę dni (tak jak "GRATIS"/"5 lat" w pozostałych
+          // slajdach), logo po lewej robi za markę - bez powtarzania "PayPo".
+          badge: "30 dni",
+          content: <>Kup teraz, zapłać później</>,
+        },
+      ]
+    : []),
   { key: "dostawa", icon: "🚚", badge: "GRATIS", content: <>Darmowa dostawa od 79 zł</> },
   // 30 days is a voluntary offer term, not the statutory 14-day withdrawal:
   // these frames are made to measure, so art. 38 pkt 3 excludes that right
@@ -79,8 +101,8 @@ function benefitSlides(productSlug: string): Slide[] {
 /** [promo, benefit, promo, benefit, ...] - the countdown gets every other
  * slot instead of one slot in six, so a customer who looks up at any moment
  * has a ~50% chance of seeing how long the discount still runs. */
-function buildSlides(promoSlide: Slide | null, productSlug: string): Slide[] {
-  const benefits = benefitSlides(productSlug);
+function buildSlides(promoSlide: Slide | null, productSlug: string, paypoEnabled: boolean): Slide[] {
+  const benefits = benefitSlides(productSlug, paypoEnabled);
   if (!promoSlide) return benefits;
   return benefits.flatMap((benefit, index) => [
     { ...promoSlide, key: `${promoSlide.key}-${index}` },
@@ -154,6 +176,26 @@ export default function PromoTopStrip({
   productSlug?: string;
   variant?: "fixed" | "static";
 }) {
+  // Slajd PayPo pokazujemy tylko wtedy, gdy metoda jest realnie dostępna w
+  // koszyku (CRM -> checkout.p24_paypo_enabled), tak samo jak baner przy CTA.
+  const [paypoEnabled, setPaypoEnabled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${CRM_PUBLIC_BASE}/site`)
+      .then((response) => response.json())
+      .then((json) => {
+        const checkout = json?.checkout && typeof json.checkout === "object" ? json.checkout : null;
+        if (!cancelled && checkout) {
+          setPaypoEnabled(checkout.p24_enabled === true && checkout.p24_paypo_enabled === true);
+        }
+      })
+      .catch(() => {
+        /* brak odpowiedzi = nie obiecujemy PayPo */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   return (
     <PromoCountdownBanner code={PROMO_CODE} productSlug={productSlug}>
       {(promo) => {
@@ -181,7 +223,7 @@ export default function PromoTopStrip({
             }
           : null;
         if (!promoSlide && variant === "static") return null;
-        return <StripCarousel slides={buildSlides(promoSlide, productSlug)} variant={variant} />;
+        return <StripCarousel slides={buildSlides(promoSlide, productSlug, paypoEnabled)} variant={variant} />;
       }}
     </PromoCountdownBanner>
   );

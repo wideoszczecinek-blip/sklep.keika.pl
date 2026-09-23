@@ -5045,11 +5045,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                     </button>
                   )
                 ) : null}
-                {/* Pasek informacyjny PayPo na samej górze panelu produktu -
-                    widoczny od razu, bez przewijania (właściciel 2026-09-23:
-                    "można ją dać też na górze… albo wskazać za ile dni").
-                    Znika razem z resztą PayPo, gdy metoda jest nieaktywna. */}
-                <PayPoBadge variant="top" />
                 {productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                   addToCartToast ? (
                     <MobileOverlayPortal>

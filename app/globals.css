@@ -16679,3 +16679,10 @@ html[data-theme="light"] .hero-menu-card-head h3 {
     font-size: 0.82rem;
   }
 }
+
+/* Logo PayPo jako ikona slajdu w pasku SEZON20 (promo-top-strip). */
+.promo-strip-slide-logo {
+  height: 0.95em;
+  width: auto;
+  display: block;
+}

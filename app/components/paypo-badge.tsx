@@ -26,9 +26,11 @@ export default function PayPoBadge({
   variant = "strip",
   className = "",
 }: {
-  /** "strip" - pasek pod przyciskiem w konfiguratorze; "top" - wąski pasek
-   * informacyjny na górze strony produktu; "inline" - wariant do kart */
-  variant?: "strip" | "top" | "inline";
+  /** "strip" - pasek pod przyciskiem w konfiguratorze; "inline" - wariant do kart.
+   * Wariant "top" (nad konfiguratorem) został usunięty 2026-09-23 - właściciel:
+   * "w konfiguratorze u góry zabierz, tam źle wygląda"; komunikat o PayPo jest
+   * teraz w rotującym pasku SEZON20 (promo-top-strip.tsx). */
+  variant?: "strip" | "inline";
   className?: string;
 }) {
   const [enabled, setEnabled] = useState(false);
@@ -69,27 +71,6 @@ export default function PayPoBadge({
 
   if (!enabled) return null;
 
-  if (variant === "top") {
-    return (
-      <a
-        className={`paypo-top ${className}`.trim()}
-        href={PAYPO_LANDING_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={trackClick}
-        aria-label="PayPo: kup teraz, zapłać za 30 dni - szczegóły na stronie PayPo"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/paypo/paypo-30dni-468x60.svg" alt="PayPo – zapłać za 30 dni" width={468} height={60} />
-        <span className="paypo-top-copy">
-          <strong>Kup teraz, zapłać za 30 dni</strong>
-          <span>bez dodatkowych kosztów – PayPo wybierzesz w koszyku</span>
-          <small>{PAYPO_30_DAYS_NOTE}</small>
-        </span>
-      </a>
-    );
-  }
-
   return (
     <aside className={`paypo-badge paypo-badge--${variant} ${className}`.trim()} aria-label="Płatność odroczona PayPo">
       <a
@@ -109,13 +90,9 @@ export default function PayPoBadge({
         />
       </a>
       <p className="paypo-badge-note">
-        <strong>Kup teraz, zapłać później.</strong> PayPo wybierzesz przy płatności w koszyku – zamówienie składasz po
-        pozytywnej weryfikacji przez PayPo, a produkt robimy od razu. Usługa dla osób fizycznych; szczegóły i regulamin
-        na{" "}
-        <a href="https://paypo.pl/" target="_blank" rel="noopener noreferrer">
-          paypo.pl
-        </a>
-        .
+        <strong>Kup teraz, zapłać nawet 30 dni później</strong> – bez dodatkowych kosztów. PayPo wybierzesz przy
+        płatności w koszyku; zamówienie przyjmujemy do realizacji po pozytywnej weryfikacji przez PayPo.{" "}
+        {PAYPO_30_DAYS_NOTE}
       </p>
     </aside>
   );
