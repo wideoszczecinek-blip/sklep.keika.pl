@@ -815,7 +815,11 @@ export default function CartPage() {
   // "online" (Stripe: BLIK/karta/P24/Revolut) albo "transfer" (przelew
   // tradycyjny) - wybór w panelu płatności, tylko gdy dostawa nie jest
   // pobraniowa (pobranie samo w sobie jest metodą płatności).
-  const [onlinePaymentKind, setOnlinePaymentKind] = useState<PaymentKind>("blik");
+  // Żadna metoda nie jest zaznaczona z góry (właściciel, 2026-09-24): BLIK
+  // wybierał się sam i klient od razu widział pole na kod, zanim w ogóle
+  // zdecydował, czym płaci. Panel z polami otwiera się dopiero po wybraniu
+  // metody - stąd pusty stan początkowy.
+  const [onlinePaymentKind, setOnlinePaymentKind] = useState<PaymentKind | "">("");
   // Siatka banków dla "Przelew online" (Przelewy24) - lista z CRM
   // (shop-public/p24_banks, logotypy z CDN P24), pobierana raz.
   const [p24Banks, setP24Banks] = useState<P24Bank[]>([]);
