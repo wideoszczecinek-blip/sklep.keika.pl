@@ -28,6 +28,7 @@ import PlisaPreview from "./PlisaPreview";
 import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
 import PlisyFabricGallery from "./FabricGallery";
 import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyColorCountLabel } from "./CollectionVisual";
+import PlisyCollectionBackdrop from "./CollectionBackdrop";
 import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
@@ -43,7 +44,6 @@ import {
   formatPriceDeltaBadge,
   findPlisyMountByLabel,
   plisyMountLabel,
-  plisyMountNote,
   plisyMountShortNote,
   type FabricGroup,
   type FabricSwatch,
@@ -290,25 +290,19 @@ export default function ConfiguratorPanel({
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const lastTrackedDimsRef = useRef("");
 
-  // convert=false adopts the unit for the digits already typed ("60" in a
-  // mm field really meant 60 cm) instead of converting them.
-  function switchDimensionUnit(next: DimensionUnit, convert = true) {
+  // Przełącznik NIE przelicza wpisanych liczb (właściciel, 2026-09-24):
+  // kto wpisał 55, myśląc o centymetrach, po przełączeniu na cm ma mieć 55
+  // cm, a nie 5,5 cm. Jednostka zmienia się pod wpisaną wartością - to samo
+  // robi podpowiedź "Tak, to centymetry" przy podejrzanie małych liczbach.
+  function switchDimensionUnit(next: DimensionUnit) {
     if (next === dimensionUnit) return;
-    if (convert) {
-      const convertValue = (prev: string) => {
-        const mm = inputToMm(prev, dimensionUnit);
-        return mm > 0 ? mmToInput(mm, next) : prev;
-      };
-      setWidth(convertValue);
-      setHeight(convertValue);
-    }
     setDimensionUnit(next);
     try {
       window.localStorage.setItem(DIMENSION_UNIT_STORAGE_KEY, next);
     } catch {
       /* ignore */
     }
-    trackShopStep("dimension_unit", "plisy", { unit: next, converted: convert });
+    trackShopStep("dimension_unit", "plisy", { unit: next, converted: false });
   }
   // Wymiary/ilość is its own accordion too (2026-09-09, /koszyk's edit
   // modal) - same "collapsed if already known" rule as every step above,
@@ -987,7 +981,6 @@ export default function ConfiguratorPanel({
                   );
                 })}
               </div>
-              {selectedMount ? <p className="hero-product-config-hint">{plisyMountNote(selectedMount)}</p> : null}
             </div>
 
             {mountNotice ? (
@@ -1219,6 +1212,11 @@ export default function ConfiguratorPanel({
                           }, 380);
                         }}
                       >
+                        {/* Tło kafelka: cztery zdjęcia tkanin z TEJ kolekcji,
+                            przenikające się płynnie (właściciel, 2026-09-24).
+                            Ikona zostaje na wierzchu, a warstwa przyciemniająca
+                            trzyma czytelność nazwy i plakietek. */}
+                        <PlisyCollectionBackdrop group={group} />
                         <span className="plisy-coll-card-visual">
                           <PlisyCollectionVisual kind={kind} />
                         </span>
@@ -1678,7 +1676,7 @@ export default function ConfiguratorPanel({
                               <p className="plisy-dimensions-hint">
                                 {widthNum} × {heightNum} mm to tylko {widthNum / 10} × {heightNum / 10} cm — mniej niż najmniejsza plisa.
                                 Wygląda na centymetry.
-                                <button type="button" onClick={() => switchDimensionUnit("cm", false)}>
+                                <button type="button" onClick={() => switchDimensionUnit("cm")}>
                                   Tak, to centymetry
                                 </button>
                               </p>
@@ -1693,7 +1691,7 @@ export default function ConfiguratorPanel({
                         ) : null}
                         <button type="button" className="plisy-measure-later" onClick={openMeasureLater} disabled={measureSaveBusy}>
                           <strong>Nie masz jeszcze wymiarów?</strong>
-                          <span>Zapisz lub udostępnij link do tej konfiguracji i dokończ w dowolnym momencie</span>
+                          <span>Wyślij sobie link i dokończ później →</span>
                         </button>
                         {sagWarning ? (
                           <div className={`plisy-sag-notice ${sagAccepted ? "is-accepted" : ""}`} role="note">

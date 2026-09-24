@@ -72,10 +72,12 @@ export default function PayPoBadge({
         />
       </span>
       <p className="paypo-badge-note">
-        <strong>Kup teraz, zapłać nawet 30 dni później</strong> – bez dodatkowych kosztów. PayPo wybierzesz przy
-        płatności w koszyku; zamówienie przyjmujemy do realizacji po pozytywnej weryfikacji przez PayPo.{" "}
-        {PAYPO_30_DAYS_NOTE}
+        <strong>Kup teraz, zapłać nawet za 30 dni</strong> bez dodatkowych kosztów — opcja dostępna przy wyborze metod
+        płatności.
       </p>
+      {/* Nota zostaje, ale drobnym drukiem: wymaga jej pakiet materiałów
+          PayPo przy haśle "Zapłać za 30 dni" (plik "WAŻNE !!!.txt"). */}
+      <p className="paypo-badge-legal">{PAYPO_30_DAYS_NOTE}</p>
     </aside>
   );
 }

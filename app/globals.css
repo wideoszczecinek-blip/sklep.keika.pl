@@ -14276,9 +14276,10 @@ html[data-theme="light"] .plisy-oversize-note {
 .plisy-measure-later {
   flex: 1 1 100%;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.4rem;
   text-align: left;
   border: 1px solid #bfe3d3;
   background: #eefaf4;
@@ -17347,4 +17348,70 @@ html[data-theme="light"] .pl-chip.pl-chip--accent {
 }
 .instruction-modal-shell--collection .plisy-coll-modal-count {
   margin-bottom: 0.9rem;
+}
+
+
+/* Karuzela zdjęć tkanin w tle kafelka kolekcji (features/plisy/CollectionBackdrop.tsx).
+   Nad zdjęciami leży warstwa rozjaśniająca - bez niej nazwa kolekcji ginie
+   na jasnych, beżowych tkaninach. */
+.plisy-coll-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.plisy-coll-card-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.plisy-coll-card-bg-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  animation-name: plisyCollBg;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+.plisy-coll-card-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.82) 45%, rgba(255, 255, 255, 0.45) 100%);
+}
+.plisy-coll-card.is-active .plisy-coll-card-bg::after {
+  background: linear-gradient(100deg, rgba(255, 252, 245, 0.94) 0%, rgba(255, 250, 238, 0.82) 45%, rgba(255, 245, 225, 0.45) 100%);
+}
+.plisy-coll-card-visual,
+.plisy-coll-card-body {
+  position: relative;
+  z-index: 1;
+}
+@keyframes plisyCollBg {
+  0% { opacity: 0; }
+  4% { opacity: 1; }
+  25% { opacity: 1; }
+  29% { opacity: 0; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plisy-coll-card-bg-layer {
+    animation: none;
+    opacity: 0;
+  }
+  .plisy-coll-card-bg-layer:first-child {
+    opacity: 1;
+  }
+}
+
+
+/* Drobny druk wymagany przez PayPo przy haśle "Zapłać za 30 dni". */
+.paypo-badge-legal {
+  margin: 0.25rem 0 0;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  opacity: 0.6;
 }

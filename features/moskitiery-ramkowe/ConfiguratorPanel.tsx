@@ -123,15 +123,11 @@ export default function ConfiguratorPanel({
   // The typed width/height strings are always in dimensionUnit; widthNum /
   // heightNum below are always mm.
   const [dimensionUnit, setDimensionUnit] = useState<DimensionUnit>("mm");
+  // Bez przeliczania wpisanych liczb (właściciel, 2026-09-24): przełącznik
+  // zmienia jednostkę pod tym, co już jest w polu - klient, który wpisał 55
+  // myśląc o centymetrach, nie musi wpisywać niczego jeszcze raz.
   function switchDimensionUnit(next: DimensionUnit) {
     if (next === dimensionUnit) return;
-    const convert = (raw: string) => {
-      const n = Number(String(raw).replace(",", "."));
-      if (!raw || !Number.isFinite(n)) return raw;
-      return next === "cm" ? String(Math.round(n) / 10) : String(Math.round(n * 10));
-    };
-    setDimensionWidth((value) => convert(value));
-    setDimensionHeight((value) => convert(value));
     setDimensionUnit(next);
     try {
       window.localStorage.setItem(DIMENSION_UNIT_STORAGE_KEY, next);

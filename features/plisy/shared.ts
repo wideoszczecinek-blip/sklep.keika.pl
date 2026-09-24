@@ -493,7 +493,7 @@ const PLISY_MOUNT_DISPLAY: Array<{ match: RegExp; display: MountDisplay }> = [
     match: /bezinwazyjn/i,
     display: {
       label: "Bezinwazyjny (bez wiercenia)",
-      short: "bez wiercenia · inny pomiar",
+      short: "Sztywne uchwyty montażowe zaciskane na ramie okna",
       note: "Uchwyty zakładane na krawędź skrzydła — bez wiercenia i bez śladu. Mierzysz inaczej niż przy montażu przykręcanym: szerokość od kreseczki do kreseczki, wysokość całego skrzydła.",
     },
   },
@@ -501,7 +501,7 @@ const PLISY_MOUNT_DISPLAY: Array<{ match: RegExp; display: MountDisplay }> = [
     match: /.*/,
     display: {
       label: "Przykręcany do listwy przyszybowej",
-      short: "wkrętak wystarczy · bez wiertarki",
+      short: "Klasyczny typ montażu",
       note: "Cztery uchwyty wkręcane w listwy przyszybowe — wkręty wchodzą w PCV, wiertarka nie jest potrzebna. Mierzysz w świetle szyby: od połowy uszczelki do połowy uszczelki.",
     },
   },
