@@ -52,7 +52,14 @@ export default function PlisyQuickPrice({
   heightMm,
   onSizeChange,
   onConfigure,
+  collapsible = false,
+  defaultOpen = false,
 }: {
+  /** Akordeon: nagłówek "Szybka wycena" z rozmiarem i ceną, suwaki pod
+   * spodem. Na landingu plis blok siedzi wysoko, zaraz pod plakietkami,
+   * więc domyślnie jest zwinięty - cena i tak jest widoczna w nagłówku. */
+  collapsible?: boolean;
+  defaultOpen?: boolean;
   profile: PlisyProfile | null;
   /** The ACTIVE promo only - null while SEZON20 isn't switched on, so the
    * struck-through/discounted pair never promises a discount the cart
@@ -154,14 +161,44 @@ export default function PlisyQuickPrice({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [widthMm, heightMm]);
 
+  const [open, setOpen] = useState(!collapsible || defaultOpen);
+  const headPrice =
+    regular === null ? null : withPromo !== null && withPromo < regular ? withPromo : regular;
+
   return (
-    <div className="pl-quick" role="group" aria-label="Szybka wycena plisy dla Twojego okna">
-      <div className="pl-quick-head">
-        <span className="pl-quick-title">Ile za Twoje okno?</span>
-        <span className="pl-quick-size">
-          {widthCm} × {heightCm} cm
-        </span>
-      </div>
+    <div className={`pl-quick ${collapsible ? "pl-quick--acc" : ""} ${open ? "is-open" : ""}`} role="group" aria-label="Szybka wycena plisy dla Twojego okna">
+      {collapsible ? (
+        <button
+          type="button"
+          className="pl-quick-acc-head"
+          aria-expanded={open ? "true" : "false"}
+          onClick={() => {
+            setOpen((prev) => !prev);
+            trackShopStep("quick_price_toggle", "plisy", { open: !open });
+          }}
+        >
+          <span className="pl-quick-acc-title">
+            <span aria-hidden="true">🧮</span> Szybka wycena
+          </span>
+          <span className="pl-quick-acc-meta">
+            <span className="pl-quick-acc-size">
+              {widthCm} × {heightCm} cm
+            </span>
+            {headPrice !== null ? <strong>{zl(headPrice)}</strong> : null}
+            <span className="pl-quick-acc-chevron" aria-hidden="true">
+              {open ? "▴" : "▾"}
+            </span>
+          </span>
+        </button>
+      ) : (
+        <div className="pl-quick-head">
+          <span className="pl-quick-title">Ile za Twoje okno?</span>
+          <span className="pl-quick-size">
+            {widthCm} × {heightCm} cm
+          </span>
+        </div>
+      )}
+      <div className="pl-quick-body" hidden={collapsible && !open}>
       <div className="pl-quick-slider">
         <span className="pl-quick-slider-label">Szerokość</span>
         <div className="pl-quick-slider-row">
@@ -246,8 +283,9 @@ export default function PlisyQuickPrice({
             onConfigure(widthMm, heightMm);
           }}
         >
-          Konfiguruj to okno →
+          Przejdź do konfiguratora →
         </button>
+        </div>
       </div>
     </div>
   );

@@ -214,6 +214,14 @@ const P24_KIND_LABELS: Record<P24Kind, { title: string; hint: string; note: stri
 const FREE_SHIPPING_THRESHOLD = 79;
 const SHIPPING_FEE_AMOUNT = 12.9;
 
+// Pilotaż (właściciel, 2026-09-24): plisy mają darmową dostawę od pierwszej
+// sztuki, bez progu kwotowego - landing plis obiecuje to wprost, więc
+// koszyk musi to dotrzymać. Wystarczy jedna plisa w koszyku.
+const FREE_SHIPPING_PILOT_SLUGS = new Set(["plisy"]);
+function cartHasFreeShippingPilot(items: CartLineItem[]): boolean {
+  return items.some((item) => FREE_SHIPPING_PILOT_SLUGS.has(String(item.productSlug || "")));
+}
+
 // The customer just picks "Kurier" - which actual carrier (DPD, GLS, ...)
 // ships it is our own internal decision made during fulfillment, not
 // something we ask them to choose.
@@ -243,7 +251,8 @@ const COD_DELIVERY_METHOD: DeliveryMethod = {
 
 function getAvailableDeliveryMethods(items: CartLineItem[], subtotal: number): DeliveryMethod[] {
   const fitsPaczkomat = items.length > 0 && items.every(itemFitsPaczkomat);
-  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? undefined : SHIPPING_FEE_AMOUNT;
+  const shippingFee =
+    cartHasFreeShippingPilot(items) || subtotal >= FREE_SHIPPING_THRESHOLD ? undefined : SHIPPING_FEE_AMOUNT;
   const courier: DeliveryMethod = { ...COURIER_METHOD, extraFee: shippingFee };
   const paczkomat: DeliveryMethod = { ...PACZKOMAT_METHOD, extraFee: shippingFee };
   const cod: DeliveryMethod = {
@@ -825,9 +834,12 @@ export default function CartPage() {
   const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
   // Odbiór osobisty nigdy nie ma kosztu wysyłki - nic nie jest wysyłane.
+  const freeShippingPilot = cartHasFreeShippingPilot(items);
   const shippingFee =
-    deliveryMethod === PICKUP_METHOD.id || summary.total >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE_AMOUNT;
-  const amountToFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - summary.total);
+    deliveryMethod === PICKUP_METHOD.id || freeShippingPilot || summary.total >= FREE_SHIPPING_THRESHOLD
+      ? 0
+      : SHIPPING_FEE_AMOUNT;
+  const amountToFreeShipping = freeShippingPilot ? 0 : Math.max(0, FREE_SHIPPING_THRESHOLD - summary.total);
 
   useEffect(() => {
     if (!availableDeliveryMethods.some((method) => method.id === deliveryMethod)) {

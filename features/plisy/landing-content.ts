@@ -77,7 +77,7 @@ export function isPlisyPlaceholderCopy(text: string | null | undefined): boolean
  * rewrite 2026-09-16, competitor audit: Karnix, Rolmajster, Sunroll,
  * mojaplisa). The CRM "title" field overrides this when the owner changes
  * it from the default "Plisy". */
-export const PLISY_H1 = "Plisy okienne na wymiar";
+export const PLISY_H1 = "Solidne plisy na wymiar";
 
 export const PLISY_SUBTITLE =
   "Plisy okienne na wymiar od polskiego producenta. Regulacja z góry i z dołu, montaż bez wiercenia lub z wierceniem, 150 tkanin i 10 kolorów profili do wyboru. Cenę dla swojego okna sprawdzisz od razu w konfiguratorze.";

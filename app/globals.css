@@ -16828,9 +16828,11 @@ html[data-theme="light"] .hero-menu-card-head h3 {
   opacity: 0.75;
 }
 .plisy-mount-pick-delta {
+  /* Przy DOLNEJ krawędzi kafelka: u góry wisiała nad nim i nie było
+     wiadomo, czego dotyczy (właściciel, 2026-09-24). */
   position: absolute;
-  top: -0.5rem;
-  right: 0.5rem;
+  bottom: -0.55rem;
+  right: 0.6rem;
   padding: 0.14rem 0.42rem;
   border-radius: 999px;
   background: #ffe3cf;
@@ -17024,39 +17026,325 @@ html[data-theme="light"] .plisy-mount-pick-option {
   color: #4a5b6e;
 }
 
-/* "od 69,30 zł" samo w sobie brzmi jak cena okna - tu pada, za jaką plisę
-   jest ta kwota i ile kosztuje realne okno (punkt 10 audytu). */
-.pl-price-context {
-  margin: 0.35rem 0 0;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: rgba(240, 248, 255, 0.72);
+
+
+
+
+/* Kafelek montażu + lupa ze zdjęciem (krok 1). */
+.plisy-mount-pick-cell {
+  position: relative;
+  min-width: 0;
 }
-.pl-price-context strong {
-  color: #f3b546;
-  font-weight: 800;
+.plisy-mount-pick-cell > .plisy-mount-pick-option {
+  width: 100%;
 }
-.pl-price-context s {
-  opacity: 0.6;
+.plisy-mount-pick-cell > .config-option-zoom {
+  top: 0.4rem;
+  right: 0.4rem;
 }
-.pl-price-context-cta {
-  display: inline;
+
+/* Kafelek kolekcji: sama treść do wyboru, cały opis pod ikoną "i". */
+.plisy-coll-cell {
+  position: relative;
+  min-width: 0;
+}
+.plisy-coll-cell > .plisy-coll-card {
+  width: 100%;
+}
+.plisy-coll-card-info {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  background: rgba(255, 255, 255, 0.95);
+  color: #2b4a6f;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  cursor: pointer;
+}
+.plisy-coll-card-info:hover {
+  background: #fff;
+}
+.plisy-coll-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.6rem;
+}
+.plisy-coll-modal-head h3 {
+  margin: 0 0 0.25rem;
+}
+.plisy-coll-modal-count {
+  font-weight: 700;
+  opacity: 0.85;
+}
+.plisy-coll-modal-cta {
+  margin-top: 0.4rem;
   border: none;
-  background: transparent;
-  padding: 0;
-  color: inherit;
+  border-radius: 999px;
+  padding: 0.7rem 1.2rem;
+  width: 100%;
+  color: #22150a;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
   font: inherit;
   font-weight: 800;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* Ulubione tkaniny: serduszko przy próbniku + pasek skrótów w kroku koloru. */
+.plisy-swatch-fav {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: #9fb0c4;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(8, 20, 35, 0.25);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.plisy-swatch-fav.is-on {
+  color: #e2445c;
+}
+.plisy-swatch-fav:hover {
+  transform: scale(1.08);
+}
+.plisy-fav-strip {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(226, 68, 92, 0.35);
+  background: rgba(226, 68, 92, 0.08);
+}
+.plisy-fav-strip-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.plisy-fav-strip-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.plisy-fav-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem 0.25rem 0.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(194, 228, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.plisy-fav-chip.is-active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #d97706;
+}
+.plisy-fav-chip-swatch {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background-size: cover;
+  background-position: center;
+}
+html[data-theme="light"] .plisy-fav-chip {
+  background: #fff;
+  border-color: rgba(19, 40, 67, 0.16);
+}
+
+/* "Jak mierzyć?" jako wyraźne CTA w kroku wymiarów (opis pomiaru siedzi w
+   modalu, nie na stronie - właściciel, 2026-09-24). */
+.plisy-measure-link--cta {
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid #f3b546;
+  background: rgba(243, 181, 70, 0.12);
+  font-weight: 800;
+}
+
+
+/* Pasek SEZON20 nad tytułem produktu - jedna linia, niska (właściciel,
+   2026-09-24). Poprzednia, dwuwierszowa ramka siedziała pod tytułem i na
+   mobile spychała plakietki oraz wycenę poniżej ekranu. */
+.pl-sezon-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  /* Bez tego jednolinijkowa treść rozpychała całą kolumnę panelu produktu
+     na mobile (424 px przy ekranie 390) i ucinała opis po prawej. */
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  padding: 0.38rem 0.5rem 0.38rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 174, 106, 0.45);
+  background: rgba(31, 174, 106, 0.12);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+.pl-sezon-line-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.6rem;
+  height: 1.5rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: #1f9d6e;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+.pl-sezon-line-text {
+  flex: 1 1 8rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pl-sezon-line-cta,
+.pl-sezon-line-link {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
 }
-html[data-theme="light"] .pl-price-context {
-  color: rgba(19, 40, 67, 0.78);
+.pl-sezon-line-cta {
+  border: none;
+  padding: 0.32rem 0.8rem;
+  color: #22150a;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
 }
-html[data-theme="light"] .pl-price-context strong {
-  color: #b3610a;
+.pl-sezon-line-link {
+  border: none;
+  padding: 0.32rem 0.2rem;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Darmowa dostawa od 1 sztuki - pilotaż na plisach, więc plakietka ma być
+   widoczna, a nie zlewać się z resztą. */
+.pl-chip.pl-chip--accent {
+  border-color: rgba(31, 174, 106, 0.5);
+  background: rgba(31, 174, 106, 0.14);
+  color: #0f7a54;
+  font-weight: 800;
+}
+html[data-theme="light"] .pl-chip.pl-chip--accent {
+  color: #0b6647;
+}
+
+/* Szybka wycena jako akordeon: w nagłówku rozmiar i cena, suwaki pod spodem. */
+.pl-quick--acc {
+  padding: 0;
+  overflow: hidden;
+}
+.pl-quick-acc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pl-quick-acc-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.pl-quick-acc-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+}
+.pl-quick-acc-meta strong {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1f9d6e;
+}
+.pl-quick-acc-size {
+  opacity: 0.75;
+}
+.pl-quick-acc-chevron {
+  opacity: 0.6;
+}
+.pl-quick--acc .pl-quick-body {
+  padding: 0 0.85rem 0.85rem;
+}
+.pl-quick--acc .pl-quick-cta {
+  width: 100%;
 }
 
 
+/* Serduszko przy próbniku tkaniny na landingu (ulubione wracają w
+   konfiguratorze jako skrót). */
+.pl-coll-swatch-cell {
+  position: relative;
+}
+.pl-coll-swatch-cell > .pl-coll-swatch {
+  width: 100%;
+}
+.pl-coll-swatch-fav {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: rgba(255, 255, 255, 0.94);
+  color: #9fb0c4;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.pl-coll-swatch-fav.is-on {
+  color: #e2445c;
+}
+
+
+/* miejsce na lupę i ikonę "i" */
+.plisy-mount-pick-cell .plisy-mount-pick-option {
+  padding-right: 2.5rem;
+}
+.plisy-coll-cell .plisy-coll-card {
+  padding-right: 2.4rem;
+}
+.instruction-modal-shell--collection p {
+  margin: 0 0 0.6rem;
+  line-height: 1.5;
+}
+.instruction-modal-shell--collection .plisy-coll-modal-count {
+  margin-bottom: 0.9rem;
+}

@@ -1817,21 +1817,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     };
   }, [plisyProfile, plisyPriceAdjustmentPercent]);
   const plisyStartingPrice = plisyStartingPriceInfo.amount;
-  // Cena przykładowego, typowego okna (tego samego, które pokazuje suwak
-  // szybkiej wyceny) - liczona z żywej matrycy, więc nie rozjedzie się z
-  // konfiguratorem.
-  const plisyExamplePrice = useMemo(() => {
-    if (!plisyProfile) return null;
-    const groupId = plisyProfile.fabricGroups[0]?.id || "";
-    const amount = calcPlisyPrice(
-      { ...plisyProfile, priceAdjustmentPercent: plisyProfile.priceAdjustmentPercent + plisyPriceAdjustmentPercent },
-      plisyQuickDims.widthMm,
-      plisyQuickDims.heightMm,
-      plisyProfile.hardware[0]?.id || "",
-      groupId,
-    );
-    return amount;
-  }, [plisyProfile, plisyPriceAdjustmentPercent, plisyQuickDims.widthMm, plisyQuickDims.heightMm]);
   const fillPricePlaceholders = (text: string): string =>
     text.replace(
       /{{s*cena_ods*}}/gi,
@@ -2062,22 +2047,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     }
   }
 
-  /** "Policz swoje okno" spod ceny "od" - skrót do bloku szybkiej wyceny
-   * ("Ile za Twoje okno?"), który siedzi niżej, pod galerią. */
-  function scrollToPlisyQuickPrice() {
-    const target = document.getElementById("pl-quick-price-anchor");
-    const container = target?.closest<HTMLElement>(".hero-full");
-    if (target && container && container.scrollHeight > container.clientHeight) {
-      const containerRect = container.getBoundingClientRect();
-      const targetRect = target.getBoundingClientRect();
-      const delta = targetRect.top - containerRect.top - 80;
-      const nextTop = Math.max(0, Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight));
-      container.scrollTo({ top: nextTop, behavior: "smooth" });
-    } else {
-      target?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    trackShopStep("quick_price_jump", "plisy", {});
-  }
 
   // Scroll-spy: highlights whichever section's top has most recently
   // crossed the "just under the header" line as the active nav pill.
@@ -3572,6 +3541,40 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                   aria-hidden={!displayedProduct || !isProductView ? "true" : "false"}
                 >
                   <p className="hero-product-group">{displayedProduct?.groupTitle || ""}</p>
+                  {/* Pasek SEZON20 NAD tytułem i w jednej linii (właściciel,
+                      2026-09-24): dwuwierszowa ramka pod tytułem spychała na
+                      mobile wszystko poniżej ekranu. */}
+                  {displayedProduct && productSlugFromSelected(displayedProduct) === "plisy" && (topPromoPreview || topPromoActive) ? (
+                    <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
+                      {(promo) => (
+                        <div className={`pl-sezon-line ${topPromoActive ? "is-active" : ""}`}>
+                          <span className="pl-sezon-line-badge" aria-hidden="true">
+                            {topPromoActive ? "✓" : "-20%"}
+                          </span>
+                          <span className="pl-sezon-line-text">
+                            {topPromoActive ? (
+                              <>
+                                Kod <strong>SEZON20</strong> aktywny · rabat w koszyku
+                              </>
+                            ) : (
+                              <>
+                                Kod <strong>SEZON20</strong>: -20% w koszyku
+                              </>
+                            )}
+                          </span>
+                          {!topPromoActive ? (
+                            <button type="button" className="pl-sezon-line-cta" onClick={activateTopPromo}>
+                              Aktywuj
+                            </button>
+                          ) : promo ? (
+                            <button type="button" className="pl-sezon-line-link" onClick={promo.openModal}>
+                              Zapisz link
+                            </button>
+                          ) : null}
+                        </div>
+                      )}
+                    </PromoCountdownBanner>
+                  ) : null}
                   {displayedProduct ? (
                     <h1>
                       {productSlugFromSelected(displayedProduct) === "plisy"
@@ -3882,92 +3885,56 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 configurator prices without the code, so the banner
                                 says the discount lands in the cart. No Ekspres, no
                                 dispatch counter here: plisy take 5-10 business days. */}
-                            {topPromoPreview || topPromoActive ? (
-                              <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
-                                {(promo) => (
-                                  <div className={`pl-sezon-banner pl-sezon-banner--compact ${topPromoActive ? "is-active" : ""}`}>
-                                    <div className="pl-sezon-banner-top">
-                                      <span className="pl-sezon-banner-badge" aria-hidden="true">
-                                        {topPromoActive ? "✓" : "-20%"}
-                                      </span>
-                                      <div className="pl-sezon-banner-copy">
-                                        <strong className="pl-sezon-banner-text">
-                                          {topPromoActive ? <>Kod SEZON20 aktywny</> : <>Tylko dzisiaj: kod SEZON20</>}
-                                        </strong>
-                                        <span className="pl-sezon-banner-sub">
-                                          {topPromoActive ? (
-                                            promo ? (
-                                              <>
-                                                -20% naliczy się w koszyku · jeszcze <strong>{promo.remainingText}</strong>
-                                              </>
-                                            ) : (
-                                              "Rabat -20% naliczy się w koszyku"
-                                            )
-                                          ) : (
-                                            "Aktywuj, a rabat -20% naliczy się w koszyku"
-                                          )}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    {!topPromoActive ? (
-                                      <button type="button" className="pl-sezon-banner-cta" onClick={activateTopPromo}>
-                                        Aktywuj -20%
-                                      </button>
-                                    ) : promo ? (
-                                      <button type="button" className="pl-sezon-banner-link" onClick={promo.openModal}>
-                                        Zapisz link
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                )}
-                              </PromoCountdownBanner>
-                            ) : !topPromoResolved ? (
-                              <div className="pl-sezon-banner pl-sezon-banner--compact pl-sezon-banner--placeholder" aria-hidden="true" />
-                            ) : null}
+                            {/* Najważniejsze obietnice (właściciel, 2026-09-24).
+                                Cena "od ... zł" zniknęła - nie mówiła klientowi
+                                nic o jego oknie, a realną kwotę daje szybka
+                                wycena zaraz pod spodem. "Darmowa dostawa od 1
+                                sztuki" to pilotaż na plisach: bez progu
+                                kwotowego (patrz lib/shipping.ts). */}
                             <div className="pl-trust-row">
-                              <span className="pl-price">
-                                od {formatStartingPrice(plisyStartingPrice)} zł
-                                <span className="pl-price-unit"> / szt.</span>
-                              </span>
-                              <span className="pl-chip">Realizacja {PLISY_LEAD_TIME_LABEL}</span>
-                              <span className="pl-chip">Polski producent</span>
                               <span className="pl-chip">5 lat gwarancji</span>
                               <span className="pl-chip">30 dni na zwrot</span>
-                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
+                              <span className="pl-chip">Polski producent</span>
+                              <span className="pl-chip pl-chip--accent">Darmowa dostawa od 1 sztuki</span>
                             </div>
 
-                            {/* Punkt 10 audytu: samo "od 69,30 zł" nie mówi, za
-                                co jest ta cena, i brzmi jak cena okna. Tu pada
-                                rozmiar, którego dotyczy, i cena realnego okna
-                                - liczona z tej samej matrycy co konfigurator. */}
-                            <p className="pl-price-context">
-                              {plisyStartingPriceInfo.widthMm > 0
-                                ? `Cena za plisę do ${plisyStartingPriceInfo.widthMm / 10} × ${plisyStartingPriceInfo.heightMm / 10} cm w kolekcji Klasyczne.`
-                                : "Cena za najmniejszą plisę w kolekcji Klasyczne."}{" "}
-                              {plisyExamplePrice !== null ? (
-                                <>
-                                  Okno {plisyQuickDims.widthMm / 10} × {plisyQuickDims.heightMm / 10} cm to{" "}
-                                  {topPromoActive && topPromoPreview ? (
-                                    <>
-                                      <s>{formatStartingPrice(plisyExamplePrice)} zł</s>{" "}
-                                      <strong>{formatStartingPrice(applyPromoToPrice(plisyExamplePrice, topPromoPreview) ?? plisyExamplePrice)} zł</strong> z
-                                      kodem {PROMO_CODE}.
-                                    </>
-                                  ) : (
-                                    <strong>{formatStartingPrice(plisyExamplePrice)} zł</strong>
-                                  )}
-                                </>
-                              ) : null}{" "}
-                              <button type="button" className="pl-price-context-cta" onClick={scrollToPlisyQuickPrice}>
-                                Policz swoje okno →
-                              </button>
-                            </p>
+                            {/* Szybka wycena jako akordeon, wysoko - to ona
+                                odpowiada na pytanie, z którym przychodzi ruch z
+                                reklam ("ile za MOJE okno?"). Rozmiar stąd trafia
+                                do porównania kolekcji niżej i do konfiguratora. */}
+                            <div id="pl-quick-price-anchor" />
+                            <PlisyQuickPrice
+                              collapsible
+                              profile={plisyProfile}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              widthMm={plisyQuickDims.widthMm}
+                              heightMm={plisyQuickDims.heightMm}
+                              onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
+                              onConfigure={(widthMm, heightMm) => {
+                                setPlisyLastResult(null);
+                                setPlisyPrefillDims({ widthMm, heightMm });
+                                setPlisyConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
 
                             <p className="pl-subtitle">
                               {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
                             </p>
 
                             <PlisyHeroPhotos />
+
+                            <h2 className="hero-product-section-title">Opis produktu</h2>
+                            <div
+                              className="pl-description"
+                              dangerouslySetInnerHTML={{
+                                __html: demoteHeadings(
+                                  productLanding?.description && !isPlisyPlaceholderCopy(productLanding.description)
+                                    ? productLanding.description
+                                    : PLISY_DESCRIPTION_HTML,
+                                ),
+                              }}
+                            />
 
                             <div className="pl-spec-grid">
                               {(productLanding?.specItems?.length ? productLanding.specItems : PLISY_SPEC_ITEMS).map((item) => {
@@ -3994,40 +3961,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               })}
                             </div>
 
-                            {/* Pod galerią i zaletami, nad opisem produktu
-                                (właściciel, 2026-09-18) - klient najpierw widzi
-                                produkt, potem liczy; rozmiar stąd trafia do
-                                porównania kolekcji niżej. */}
-                            <div id="pl-quick-price-anchor" />
-                            <PlisyQuickPrice
-                              profile={plisyProfile}
-                              promo={topPromoActive ? topPromoPreview : null}
-                              widthMm={plisyQuickDims.widthMm}
-                              heightMm={plisyQuickDims.heightMm}
-                              onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
-                              onConfigure={(widthMm, heightMm) => {
-                                // Dims only - the panel re-seeds steps 1-4
-                                // from its own saved draft and keeps the
-                                // size step open with the price under it.
-                                setPlisyLastResult(null);
-                                setPlisyPrefillDims({ widthMm, heightMm });
-                                setPlisyConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
-                              }}
-                            />
-
-                            <h2 className="hero-product-section-title">Opis produktu</h2>
-                            <div
-                              className="pl-description"
-                              dangerouslySetInnerHTML={{
-                                __html: demoteHeadings(
-                                  productLanding?.description && !isPlisyPlaceholderCopy(productLanding.description)
-                                    ? productLanding.description
-                                    : PLISY_DESCRIPTION_HTML,
-                                ),
-                              }}
-                            />
-
                             <ul className="pl-feature-list">
                               {(productLanding?.featureBullets?.length ? productLanding.featureBullets : PLISY_FEATURE_BULLETS).map(
                                 (bullet) => (
@@ -4049,13 +3982,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
                             />
 
-                            <div className="pl-callout">
-                              <strong>{productLanding?.callout?.title || PLISY_CALLOUT.title}</strong>
-                              <p>{productLanding?.callout?.body || PLISY_CALLOUT.body}</p>
-                              <button type="button" className="pl-inline-cta-button pl-callout-cta" onClick={scrollToConfigPanel}>
-                                {PLISY_PRIMARY_CTA}
-                              </button>
-                            </div>
                           </div>
                         ) : productSlugFromSelected(displayedProduct) === "plisy-dachowe" ? (
                           <div className="pl-landing rd-landing pd-landing">

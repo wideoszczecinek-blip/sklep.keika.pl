@@ -23,6 +23,7 @@ import { useMemo, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
+import { usePlisyFavourites } from "@/lib/plisy-favourites";
 import { PLISY_COLLECTIONS, PLISY_DEFAULT_HEIGHT_MM, PLISY_DEFAULT_WIDTH_MM, PLISY_LEAD_TIME_LABEL } from "./landing-content";
 import {
   calcPlisyPrice,
@@ -168,6 +169,7 @@ export default function PlisyCollectionsPicker({
   // without it this block quoted the raw matrix (77 zł) while the
   // configurator, a screen later, said 69,30 zł for the same size. One
   // number for one window, everywhere on the page.
+  const { isFavourite, toggle: toggleFavourite } = usePlisyFavourites();
   const priceAdjustmentPercent = useProductPriceAdjustment(adjustmentSlug);
 
   const rows = useMemo(
@@ -305,25 +307,42 @@ export default function PlisyCollectionsPicker({
                   <div className="pl-coll-swatches" role="list" aria-label={`Kolory kolekcji ${row.name}`}>
                     {row.swatches.map((swatch, index) => {
                       const label = swatch.label ? `${swatch.label}${swatch.code ? ` (${swatch.code})` : ""}` : swatch.code;
+                      const fav = isFavourite(swatch.id);
                       return (
-                        <button
-                          key={swatch.id}
-                          type="button"
-                          role="listitem"
-                          className="pl-coll-swatch"
-                          title={label}
-                          aria-label={`Powiększ ${label}`}
-                          onClick={() =>
-                            onZoom?.(
-                              `${row.name} — ${label}`,
-                              row.swatches.map((s) => s.imageUrl || s.thumbnailUrl),
-                              index,
-                            )
-                          }
-                        >
-                          <img src={optimizeImageUrl(swatch.thumbnailUrl || swatch.imageUrl, 160)} alt="" loading="lazy" />
-                          <span>{swatch.code || swatch.label}</span>
-                        </button>
+                        <div key={swatch.id} role="listitem" className="pl-coll-swatch-cell">
+                          <button
+                            type="button"
+                            className="pl-coll-swatch"
+                            title={label}
+                            aria-label={`Powiększ ${label}`}
+                            onClick={() =>
+                              onZoom?.(
+                                `${row.name} — ${label}`,
+                                row.swatches.map((s) => s.imageUrl || s.thumbnailUrl),
+                                index,
+                              )
+                            }
+                          >
+                            <img src={optimizeImageUrl(swatch.thumbnailUrl || swatch.imageUrl, 160)} alt="" loading="lazy" />
+                            <span>{swatch.code || swatch.label}</span>
+                          </button>
+                          {/* Serduszko zapamiętuje tkaninę w przeglądarce -
+                              w konfiguratorze wraca jako skrót "Twoje ulubione"
+                              (lib/plisy-favourites.ts). */}
+                          <button
+                            type="button"
+                            className={`pl-coll-swatch-fav ${fav ? "is-on" : ""}`}
+                            aria-pressed={fav}
+                            aria-label={fav ? `Usuń ${label} z ulubionych` : `Dodaj ${label} do ulubionych`}
+                            title={fav ? "W ulubionych" : "Dodaj do ulubionych"}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleFavourite(swatch.id);
+                            }}
+                          >
+                            ♥
+                          </button>
+                        </div>
                       );
                     })}
                   </div>

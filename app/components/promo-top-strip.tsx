@@ -76,7 +76,14 @@ function benefitSlides(productSlug: string, paypoEnabled: boolean): Slide[] {
         },
       ]
     : []),
-  { key: "dostawa", icon: "🚚", badge: "GRATIS", content: <>Darmowa dostawa od 79 zł</> },
+  {
+    key: "dostawa",
+    icon: "🚚",
+    badge: "GRATIS",
+    // Plisy: pilotaż darmowej dostawy od pierwszej sztuki (2026-09-24),
+    // reszta oferty ma próg 79 zł.
+    content: isPlisy ? <>Darmowa dostawa od 1 sztuki</> : <>Darmowa dostawa od 79 zł</>,
+  },
   // 30 days is a voluntary offer term, not the statutory 14-day withdrawal:
   // these frames are made to measure, so art. 38 pkt 3 excludes that right
   // and §6 of the shop's own regulamin says so. That same §6 explicitly lets
