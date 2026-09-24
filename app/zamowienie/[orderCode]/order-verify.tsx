@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import InstallmentOffer from "@/app/components/installment-offer";
 import { useSearchParams } from "next/navigation";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
 import type { PublicOrder } from "@/lib/shop-public";
@@ -301,10 +302,15 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
       stripeAvailable: STRIPE_PUBLISHABLE_KEY !== "",
       p24Settings,
       transferEnabled: transferSettings.enabled,
+      // Ta sama rata co w koszyku - kafelek "Raty" pokazuje konkret.
+      amount: Number((order.amount_total || "0").replace(",", ".")) || 0,
       // Przelew tradycyjny tylko dopóki zamówienie nie jest już przelewem.
       allowTransfer: order.payment_provider !== "transfer",
     });
-    const selectedKind: PaymentKind | null = paymentKind ?? (paymentTiles[0]?.kind ?? null);
+    // Nic nie jest zaznaczone z góry - tak samo jak w koszyku (właściciel,
+    // 2026-09-24): klient sam wybiera metodę, a panel z polami otwiera się
+    // dopiero wtedy.
+    const selectedKind: PaymentKind | null = paymentKind;
     const retryContact: CheckoutContact = {
       name: order.customer_name || "",
       phone: order.customer_phone || "",
@@ -431,12 +437,13 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
           <div className={styles.successBox}>
             Zmieniliśmy płatność na przelew tradycyjny. Dane do przelewu masz powyżej i wysłaliśmy je też e-mailem.
           </div>
-        ) : canPayNow && selectedKind ? (
+        ) : canPayNow ? (
           <div className={styles.paymentShell}>
             <p className={styles.sectionIntro}>
               Płatność za to zamówienie nie została jeszcze zakończona. Wybierz sposób płatności - niczego nie
               musisz wypełniać od nowa.
             </p>
+            <InstallmentOffer amount={Number((order.amount_total || "0").replace(",", ".")) || 0} />
             <PaymentMethodTiles
               tiles={paymentTiles}
               selected={selectedKind}
@@ -456,7 +463,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
               />
             ) : null}
             {retryError ? <div className={styles.errorBox}>{retryError}</div> : null}
-            {STRIPE_KINDS.includes(selectedKind) ? (
+            {selectedKind && STRIPE_KINDS.includes(selectedKind) ? (
               <StripeMethodStep
                 key={selectedKind}
                 publishableKey={STRIPE_PUBLISHABLE_KEY}
@@ -503,7 +510,11 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
                   ? "Przekierowujemy…"
                   : selectedKind === "p24_transfer" && p24Banks.length > 0 && !p24BankId
                     ? "Wybierz swój bank"
-                    : "Przejdź do płatności"}
+                    : selectedKind === "p24_paypo" || selectedKind === "p24_installments"
+                      ? // Raty i PayPo kończą się wnioskiem u finansującego,
+                        // nie zapłatą - tak samo jak w koszyku.
+                        "Przechodzę do wniosku"
+                      : "Przejdź do płatności"}
               </button>
             )}
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import InstallmentTileHint from "./installment-tile-hint";
 import { crmGetJson } from "@/lib/crm-get";
 import type { StripeMethod } from "./stripe-method-step";
 
@@ -107,7 +108,8 @@ export function p24KindAvailable(settings: P24Settings, kind: P24Kind): boolean 
 export type PaymentTile = {
   kind: PaymentKind;
   title: string;
-  hint: string;
+  /** JSX, bo PayPo i Raty niosą konkret (kwotę raty, "Zapłać za 30 dni"). */
+  hint: React.ReactNode;
   logo: React.ReactNode;
   wide?: boolean;
 };
@@ -164,11 +166,13 @@ export function buildPaymentTiles(options: {
   stripeAvailable: boolean;
   p24Settings: P24Settings;
   transferEnabled: boolean;
+  /** Kwota do zapłaty (zł) - pozwala pokazać konkretną ratę na kafelku. */
+  amount?: number;
   /** Ponowienie płatności: przelew tradycyjny ma sens tylko zanim zamówienie
    * trafi do realizacji (CRM odrzuci zmianę przyjętego zamówienia). */
   allowTransfer?: boolean;
 }): PaymentTile[] {
-  const { stripeAvailable, p24Settings, transferEnabled, allowTransfer = true } = options;
+  const { stripeAvailable, p24Settings, transferEnabled, allowTransfer = true, amount = 0 } = options;
   const tiles: PaymentTile[] = [];
   if (stripeAvailable) {
     tiles.push({ kind: "blik", title: "BLIK", hint: "Wpisz 6-cyfrowy kod BLIK", logo: LOGO_BLIK });
@@ -180,13 +184,23 @@ export function buildPaymentTiles(options: {
     tiles.push({ kind: "card", title: "Karta płatnicza", hint: "Visa, Mastercard", logo: LOGO_CARD });
   }
   if (p24KindAvailable(p24Settings, "p24_paypo")) {
-    tiles.push({ kind: "p24_paypo", title: "PayPo", hint: "Kup teraz, zapłać później", logo: LOGO_PAYPO });
+    tiles.push({
+      kind: "p24_paypo",
+      title: "PayPo",
+      hint: (
+        <span className="cart-pay-tile-paypo">
+          <span className="cart-pay-tile-lead">Zapłać za 30 dni</span>
+          <span className="cart-pay-tile-sub">bez dodatkowych kosztów</span>
+        </span>
+      ),
+      logo: LOGO_PAYPO,
+    });
   }
   if (p24KindAvailable(p24Settings, "p24_installments")) {
     tiles.push({
       kind: "p24_installments",
       title: "Raty",
-      hint: "Raty Przelewy24 - decyzja online",
+      hint: amount > 0 ? <InstallmentTileHint amount={amount} /> : "Raty Przelewy24 - decyzja online",
       logo: LOGO_P24,
     });
   }
@@ -219,7 +233,8 @@ export function PaymentMethodTiles({
   name = "payment-kind",
 }: {
   tiles: PaymentTile[];
-  selected: PaymentKind;
+  /** null = jeszcze nic nie wybrano (koszyk i ponowienie startują tak samo). */
+  selected: PaymentKind | null;
   onSelect: (kind: PaymentKind) => void;
   disabled?: boolean;
   name?: string;

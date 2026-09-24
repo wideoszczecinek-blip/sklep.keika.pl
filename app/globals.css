@@ -17818,8 +17818,10 @@ html[data-theme="light"] .cart-basket-card {
   margin: 0.6rem 0 0.2rem;
   padding: 0.7rem 0.8rem 0.6rem;
   border-radius: 0.9rem;
-  border: 1px solid rgba(0, 168, 163, 0.32);
-  background: linear-gradient(135deg, rgba(0, 168, 163, 0.12), rgba(19, 40, 67, 0.04));
+  /* Granat, nie zieleń: zieleń niesie kwotę do zapłaty i oszczędność, a te
+     dwie rzeczy mają wygrywać wzrokowo z ofertą ratalną. */
+  border: 1px solid rgba(19, 40, 67, 0.2);
+  background: linear-gradient(135deg, rgba(19, 40, 67, 0.08), rgba(19, 40, 67, 0.02));
 }
 .installment-offer-head {
   display: flex;
@@ -17835,8 +17837,8 @@ html[data-theme="light"] .cart-basket-card {
   width: 2.2rem;
   height: 2.2rem;
   border-radius: 0.7rem;
-  background: rgba(0, 168, 163, 0.18);
-  color: #00807c;
+  background: rgba(19, 40, 67, 0.1);
+  color: #2b4a6f;
 }
 .installment-offer-icon svg {
   width: 1.3rem;
@@ -17864,10 +17866,10 @@ html[data-theme="light"] .cart-basket-card {
   white-space: nowrap;
 }
 .installment-offer-amount strong {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 800;
   line-height: 1;
-  color: #00807c;
+  color: #1d3b5c;
 }
 .installment-offer-amount em {
   font-style: normal;
@@ -17884,9 +17886,9 @@ html[data-theme="light"] .cart-basket-card {
   flex: 1 1 0;
   padding: 0.35rem 0.2rem;
   border-radius: 999px;
-  border: 1px solid rgba(0, 168, 163, 0.35);
-  background: rgba(255, 255, 255, 0.7);
-  color: #0d5f5c;
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  background: rgba(255, 255, 255, 0.75);
+  color: #1d3b5c;
   font: inherit;
   font-size: 0.84rem;
   font-weight: 800;
@@ -17897,10 +17899,10 @@ html[data-theme="light"] .cart-basket-card {
   transform: translateY(-1px);
 }
 .installment-offer-count.is-active {
-  background: linear-gradient(120deg, #00a8a3, #007f7b);
+  background: linear-gradient(120deg, #2b4a6f, #16314e);
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 127, 123, 0.28);
+  box-shadow: 0 4px 12px rgba(19, 40, 67, 0.25);
 }
 .installment-offer-note {
   margin-top: 0.4rem;
@@ -17939,7 +17941,7 @@ html[data-theme="light"] .cart-basket-card {
   display: block;
   font-size: 0.95rem;
   font-weight: 800;
-  color: #0d5f5c;
+  color: #1d3b5c;
   line-height: 1.15;
 }
 .cart-pay-tile-paypo .cart-pay-tile-lead {
@@ -17975,9 +17977,9 @@ html[data-theme="light"] .cart-basket-card {
   gap: 0.2rem;
   padding: 0.16rem 0.5rem;
   border-radius: 999px;
-  border: 1px solid rgba(0, 168, 163, 0.45);
+  border: 1px solid rgba(19, 40, 67, 0.28);
   background: rgba(255, 255, 255, 0.9);
-  color: #0d5f5c;
+  color: #1d3b5c;
   font: inherit;
   font-size: 0.74rem;
   font-weight: 800;
@@ -17987,7 +17989,7 @@ html[data-theme="light"] .cart-basket-card {
 }
 .inst-picker-button:hover {
   background: #fff;
-  border-color: #00a8a3;
+  border-color: #2b4a6f;
 }
 .inst-picker-chevron {
   font-size: 0.62rem;
@@ -18002,7 +18004,7 @@ html[data-theme="light"] .cart-basket-card {
   min-width: 6.2rem;
   padding: 0.25rem;
   border-radius: 0.7rem;
-  border: 1px solid rgba(0, 168, 163, 0.35);
+  border: 1px solid rgba(19, 40, 67, 0.22);
   background: #fff;
   box-shadow: 0 14px 30px rgba(8, 20, 35, 0.18);
 }
@@ -18019,10 +18021,10 @@ html[data-theme="light"] .cart-basket-card {
   cursor: pointer;
 }
 .inst-picker-option:hover {
-  background: rgba(0, 168, 163, 0.12);
+  background: rgba(19, 40, 67, 0.08);
 }
 .inst-picker-option.is-active {
-  background: linear-gradient(120deg, #00a8a3, #007f7b);
+  background: linear-gradient(120deg, #2b4a6f, #16314e);
   color: #fff;
 }
 
@@ -18095,4 +18097,48 @@ html[data-theme="light"] .cart-basket-card {
 }
 html[data-theme="light"] .cart-keep-card {
   background: linear-gradient(135deg, rgba(243, 181, 70, 0.18), rgba(255, 255, 255, 0.9));
+}
+
+
+/* Checkbox "inne dane / faktura" ma byc jedna, niska linijka w ramce
+   (wlasciciel, 2026-09-24: "teraz jest za duzy"). */
+.cart-toggle-checkbox--framed {
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid rgba(197, 222, 247, 0.3);
+  border-radius: 0.65rem;
+}
+html[data-theme="light"] .cart-toggle-checkbox--framed {
+  border-color: rgba(19, 40, 67, 0.16);
+  background: rgba(255, 255, 255, 0.7);
+}
+.cart-toggle-checkbox--framed span {
+  display: block;
+}
+.cart-toggle-checkbox--framed strong {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+.cart-toggle-checkbox--inner {
+  align-items: center;
+  padding: 0.4rem 0.6rem;
+  margin-top: 0.35rem;
+  border: 1px solid rgba(197, 222, 247, 0.3);
+  border-radius: 0.65rem;
+  border-top: 1px solid rgba(197, 222, 247, 0.3);
+}
+html[data-theme="light"] .cart-toggle-checkbox--inner {
+  border-color: rgba(19, 40, 67, 0.16);
+  background: rgba(255, 255, 255, 0.7);
+}
+.cart-toggle-checkbox--inner span {
+  display: block;
+}
+.cart-toggle-checkbox--inner strong {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+.cart-buyer-card {
+  padding: 0.5rem 0.6rem;
 }

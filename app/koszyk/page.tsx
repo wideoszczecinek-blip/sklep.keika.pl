@@ -51,6 +51,7 @@ import {
 import { getRescueGrant, type RescueGrant } from "@/lib/rescue";
 import { useBackToClose } from "@/lib/use-back-to-close";
 import InstallmentOffer from "@/app/components/installment-offer";
+import { buildPaymentTiles } from "@/app/components/payment-methods";
 import InstallmentTileHint from "@/app/components/installment-tile-hint";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 
@@ -543,7 +544,10 @@ export default function CartPage() {
   // Where the customer actually was right before opening the cart (product +
   // step + query string) - "/" until we know better, filled in on mount.
   const [backHref, setBackHref] = useState("/");
-  const [deliveryMethod, setDeliveryMethod] = useState(COURIER_METHOD.id);
+  // Żadna metoda dostawy nie jest wybrana z góry (właściciel, 2026-09-24) -
+  // pola danych pojawiają się dopiero po kliknięciu w metodę, tak samo na
+  // telefonie i na komputerze.
+  const [deliveryMethod, setDeliveryMethod] = useState("");
   // "Ekspres" production priority (see lib/express.ts) - carried over from
   // the landing-page toggle via localStorage, switchable here too.
   const [expressSelected, setExpressSelectedState] = useState(false);
@@ -917,6 +921,9 @@ export default function CartPage() {
   const amountToFreeShipping = freeShippingPilot ? 0 : Math.max(0, FREE_SHIPPING_THRESHOLD - summary.total);
 
   useEffect(() => {
+    // Pusty wybór jest poprawnym stanem startowym - nie podstawiamy za
+    // klienta pierwszej metody z listy.
+    if (deliveryMethod === "") return;
     if (!availableDeliveryMethods.some((method) => method.id === deliveryMethod)) {
       setDeliveryMethod(availableDeliveryMethods[0].id);
     }
@@ -986,7 +993,8 @@ export default function CartPage() {
 
   // Paczkomat nie potrzebuje adresu klienta: przesyłka jedzie do punktu, a
   // adres punktu doklejamy do zamówienia przy wysyłce (patrz submitOrder).
-  const requiresAddress = deliveryMethod !== "odbior-osobisty" && deliveryMethod !== PACZKOMAT_METHOD.id;
+  const requiresAddress =
+    deliveryMethod !== "" && deliveryMethod !== "odbior-osobisty" && deliveryMethod !== PACZKOMAT_METHOD.id;
   // E-mail is mandatory (not just "phone or e-mail" any more) - it's what
   // gets pre-filled into the Stripe payment form and used for the receipt.
   const emailValid = /\S+@\S+\.\S+/.test(form.email.trim());
@@ -1039,7 +1047,7 @@ export default function CartPage() {
   // The payment section itself is always rendered (see JSX below) - this
   // just controls whether it's locked/greyed out or interactive.
   const deliveryDataReady =
-    contactReady && addressReady && paczkomatReady && invoiceReady && buyerReady && items.length > 0;
+    deliveryMethod !== "" && contactReady && addressReady && paczkomatReady && invoiceReady && buyerReady && items.length > 0;
   const paymentReady =
     paymentMethod === "online" || paymentMethod === "transfer" || paymentMethod === "p24" || codSms.status === "verified";
   const checkoutReady = deliveryDataReady && paymentReady;
@@ -1912,137 +1920,15 @@ export default function CartPage() {
     trackCheckoutIssue("checkout_payment_kind", kind);
   };
   const stripeAvailable = STRIPE_PUBLISHABLE_KEY !== "";
-  const paymentTiles: { kind: PaymentKind; title: string; hint: React.ReactNode; logo: React.ReactNode; wide?: boolean }[] = [
-    ...(stripeAvailable
-      ? [
-          {
-            kind: "blik" as PaymentKind,
-            title: "BLIK",
-            hint: "Wpisz 6-cyfrowy kod BLIK",
-            logo: <span className="cart-pay-logo cart-pay-logo--blik">blik</span>,
-          },
-        ]
-      : []),
-    ...(p24KindAvailable("p24_transfer")
-      ? [
-          {
-            kind: "p24_transfer" as PaymentKind,
-            title: "Przelew online",
-            hint: "Wybierz swój bank",
-            logo: (
-              <span className="cart-pay-logo cart-pay-logo--p24">
-                Przelewy<em>24</em>
-              </span>
-            ),
-          },
-        ]
-      : []),
-    ...(stripeAvailable
-      ? [
-          {
-            kind: "card" as PaymentKind,
-            title: "Karta płatnicza",
-            hint: "Visa, Mastercard",
-            logo: (
-              <span className="cart-pay-logo cart-pay-logo--card">
-                <span className="cart-pay-visa">VISA</span>
-                <span className="cart-pay-mc" aria-hidden="true">
-                  <i />
-                  <i />
-                </span>
-              </span>
-            ),
-          },
-        ]
-      : []),
-    ...(p24KindAvailable("p24_paypo")
-      ? [
-          {
-            kind: "p24_paypo" as PaymentKind,
-            title: "PayPo",
-            // Konkret zamiast ogólnika: klient ma od razu wiedzieć, że
-            // płaci dopiero za 30 dni (właściciel, 2026-09-24).
-            hint: (
-              <span className="cart-pay-tile-paypo">
-                <span className="cart-pay-tile-lead">Zapłać za 30 dni</span>
-                <span className="cart-pay-tile-sub">bez dodatkowych kosztów</span>
-              </span>
-            ),
-            // Oficjalne logo PayPo (pakiet Przelewy24/PayPo, public/paypo/).
-            logo: (
-              <span className="cart-pay-logo cart-pay-logo--paypo">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/paypo/paypo-logo.svg" alt="PayPo" width={96} height={28} />
-              </span>
-            ),
-          },
-        ]
-      : []),
-    ...(p24KindAvailable("p24_installments")
-      ? [
-          {
-            kind: "p24_installments" as PaymentKind,
-            title: "Raty",
-            hint: <InstallmentTileHint amount={payableTotal} />,
-            logo: (
-              <span className="cart-pay-logo cart-pay-logo--p24">
-                Przelewy<em>24</em>
-              </span>
-            ),
-          },
-        ]
-      : []),
-    ...(stripeAvailable
-      ? [
-          {
-            kind: "wallets" as PaymentKind,
-            title: "Google Pay / Apple Pay",
-            hint: "Jednym dotknięciem – kartą zapisaną w telefonie",
-            wide: true,
-            logo: (
-              <span className="cart-pay-logo cart-pay-logo--wallets">
-                <span className="cart-pay-gpay">
-                  <b>G</b> Pay
-                </span>
-                <span className="cart-pay-applepay">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      fill="currentColor"
-                      d="M16.7 12.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1.9-4 2.4-1.7 2.9-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.6-1-2.6-3.9zM14.3 5.5c.7-.8 1.1-1.9 1-3-1 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.5 2.8-1.3z"
-                    />
-                  </svg>
-                  Pay
-                </span>
-              </span>
-            ),
-          },
-        ]
-      : []),
-    ...(transferSettings.enabled
-      ? [
-          {
-            kind: "transfer" as PaymentKind,
-            title: "Przelew tradycyjny",
-            hint: "Dane do przelewu po złożeniu zamówienia; realizacja po zaksięgowaniu",
-            wide: true,
-            logo: (
-              <span className="cart-pay-logo cart-pay-logo--bank" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path
-                    d="M3 10h18M5 10v8M9 10v8M15 10v8M19 10v8M3 18h18M12 3 3 8h18l-9-5z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-            ),
-          },
-        ]
-      : []),
-  ];
+  // Kafelki metod płatności budujemy TYM SAMYM kodem co strona ponowienia
+  // płatności z maila (app/components/payment-methods.tsx) - inaczej obie
+  // listy się rozjeżdżają, co się już raz stało (właściciel, 2026-09-24).
+  const paymentTiles = buildPaymentTiles({
+    stripeAvailable,
+    p24Settings,
+    transferEnabled: transferSettings.enabled,
+    amount: payableTotal,
+  });
   // Opcje wybranej metody renderują się pod JEJ kafelkiem - klient widzi pole
   // BLIK-a dokładnie tam, gdzie kliknął, a nie na końcu listy metod.
   const renderMethodPanel = (kind: PaymentKind) => {
@@ -2962,7 +2848,7 @@ export default function CartPage() {
                     "Skopiuj dane z dostawy". */}
                 <section className="cart-checkout-form-card cart-buyer-card">
                   <fieldset className="cart-checkout-form" disabled={dataLocked}>
-                    <label className="cart-toggle-checkbox">
+                    <label className="cart-toggle-checkbox cart-toggle-checkbox--framed">
                       <input
                         type="checkbox"
                         checked={buyerDifferent}
@@ -2976,7 +2862,6 @@ export default function CartPage() {
                       />
                       <span>
                         <strong>Inne dane kupującego / chcę fakturę</strong>
-                        <small>Zamawiasz dla kogoś innego albo na firmę.</small>
                       </span>
                     </label>
 
@@ -3065,7 +2950,6 @@ export default function CartPage() {
                           />
                           <span>
                             <strong>Chcę fakturę</strong>
-                            <small>Dane firmy uzupełnimy po wpisaniu NIP.</small>
                           </span>
                         </label>
 
