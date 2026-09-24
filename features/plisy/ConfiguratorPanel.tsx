@@ -26,7 +26,7 @@ import PromoSaveModal from "@/app/components/promo-save-modal";
 import PlisaPreview from "./PlisaPreview";
 import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
 import PlisyFabricGallery from "./FabricGallery";
-import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta } from "./CollectionVisual";
+import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyColorCountLabel } from "./CollectionVisual";
 import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
@@ -1058,8 +1058,6 @@ export default function ConfiguratorPanel({
                   const isActive = group.id === selectedFabricGroupId;
                   const kind = plisyCollectionKind(group);
                   const meta = plisyCollectionMeta(kind);
-                  const mosaic = group.swatches.filter((swatch) => swatch.thumbnailUrl || swatch.imageUrl).slice(0, 6);
-                  const extra = group.swatches.length - mosaic.length;
                   return (
                     <button
                       key={group.id}
@@ -1083,19 +1081,16 @@ export default function ConfiguratorPanel({
                           <strong>{group.label}</strong>
                           <span className="plisy-coll-card-badges">
                             {meta.badges.map((badge) => (
-                              <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : ""}`}>
+                              <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : badge === "Plaster miodu" ? "is-structure" : ""}`}>
                                 {badge}
                               </span>
                             ))}
                           </span>
                         </span>
                         <span className="plisy-coll-card-note">{meta.light}</span>
-                        {mosaic.length ? (
-                          <span className="plisy-coll-card-mosaic" aria-label={`${group.swatches.length} kolorów w kolekcji`}>
-                            {mosaic.map((swatch) => (
-                              <img key={swatch.id} src={optimizeImageUrl(swatch.thumbnailUrl || swatch.imageUrl, 96)} alt="" loading="lazy" />
-                            ))}
-                            <em>{extra > 0 ? `+${extra}` : `${group.swatches.length} kol.`}</em>
+                        {group.swatches.length ? (
+                          <span className="plisy-coll-card-count">
+                            {plisyColorCountLabel(group.swatches.length)} do wyboru
                           </span>
                         ) : null}
                       </span>

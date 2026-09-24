@@ -48,7 +48,11 @@ type Slide = { key: string; icon: ReactNode; badge: string; content: ReactNode }
 // 5-10 business days, no Ekspres), so the slide and the "na moskitiery"
 // wording follow the product the strip is shown for.
 function benefitSlides(productSlug: string, paypoEnabled: boolean): Slide[] {
+  // "mixed" = koszyk z kilkoma różnymi produktami: żadnych obietnic
+  // przypisanych do jednego z nich (termin, Ekspres, nazwa w gwarancji).
   const isMoskitiery = productSlug === "moskitiery-ramkowe";
+  const isPlisy = productSlug === "plisy" || productSlug === "plisy-dachowe";
+  const isRolety = productSlug === "rolety-dachowe";
   return [
   // PayPo trafiło tutaj, bo na telefonie to jedyne miejsce widoczne bez
   // przewijania - konfigurator startuje ~5700 px niżej (właściciel,
@@ -79,7 +83,20 @@ function benefitSlides(productSlug: string, paypoEnabled: boolean): Slide[] {
   // binding - which is exactly what this slide does, so the promise has to
   // be honoured and the "Reklamacje i zwroty" page should describe it.
   { key: "zwrot", icon: "🔄", badge: "30 dni", content: <>na zwrot bez podania przyczyny</> },
-  { key: "gwarancja", icon: "🏅", badge: "5 lat", content: isMoskitiery ? <>gwarancji na moskitiery</> : <>gwarancji</> },
+  { key: "gwarancja", icon: "🏅", badge: "5 lat", content: isMoskitiery ? <>gwarancji na moskitiery</> : <>gwarancji na produkt</> },
+  // Termin produkcji dla produktów, które NIE mają automatycznej daty
+  // wysyłki (ta jest tylko dla moskitier - zasada z 2026-09-21). Bez tego
+  // klient plisy nie widział w koszyku żadnego terminu.
+  ...(isPlisy || isRolety
+    ? [
+        {
+          key: "termin",
+          icon: "🗓️",
+          badge: isPlisy ? "5-10 dni" : "10-15 dni",
+          content: <>roboczych na produkcję na wymiar</>,
+        },
+      ]
+    : []),
   ...(EXPRESS_ENABLED && isMoskitiery
     ? [
         {

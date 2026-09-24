@@ -959,6 +959,13 @@ export default function CartPage() {
   const dataLocked = paymentConfirmed || orderState !== null;
   // What the customer will actually pay right now - the "Razem" row and the
   // mobile sticky bar both read this one value.
+  // Pasek na górze koszyka mówi o zawartości koszyka, nie o moskitierach:
+  // jeden produkt = jego komunikaty, kilka różnych = wersja neutralna
+  // (właściciel/audyt 2026-09-24: przy plisie leciało "gwarancji na
+  // moskitiery" i "Ekspres do 12:00", którego dla plis w ogóle nie ma).
+  const cartSlugs = Array.from(new Set(items.map((item) => item.productSlug).filter(Boolean)));
+  const cartPromoSlug = cartSlugs.length === 1 ? cartSlugs[0] : cartSlugs.length ? "mixed" : "moskitiery-ramkowe";
+
   const payableTotal = Math.max(
     0,
     summary.total -
@@ -2154,7 +2161,7 @@ export default function CartPage() {
   return (
     <div className="cart-page">
       <div className="cart-page-gradient-bg" aria-hidden="true" />
-      <PromoTopStrip productSlug="moskitiery-ramkowe" variant="static" />
+      <PromoTopStrip productSlug={cartPromoSlug} variant="static" />
       <header className="cart-page-header">
         <Link href="/" className="cart-page-brand">
           keika

@@ -20,7 +20,7 @@ import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configura
 import { activatePromoCode, applyPromoToPrice, getPromoRemainingMs, isPromoActive, type PromoPreview } from "@/lib/promo";
 import { ensurePromoQuoteCode, hasSavedPromoLink } from "@/lib/promo-save";
 import PlisyFabricGallery from "@/features/plisy/FabricGallery";
-import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta } from "@/features/plisy/CollectionVisual";
+import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyColorCountLabel } from "@/features/plisy/CollectionVisual";
 import { buildPlisyHardwareSwatchStyle, fetchPlisyProfile, formatPriceDeltaBadge, type FabricSwatch, type PlisyProfile } from "@/features/plisy/shared";
 import RoofWindowSearchSelector from "@/features/rolety-dachowe/RoofWindowSearchSelector";
 import MissingModelForm from "@/features/rolety-dachowe/MissingModelForm";
@@ -707,8 +707,6 @@ export default function ConfiguratorPanel({
                   const isActive = group.id === selectedFabricGroupId;
                   const kind = plisyCollectionKind(group);
                   const meta = plisyCollectionMeta(kind);
-                  const mosaic = group.swatches.filter((swatch) => swatch.thumbnailUrl || swatch.imageUrl).slice(0, 6);
-                  const extra = group.swatches.length - mosaic.length;
                   return (
                     <button
                       key={group.id}
@@ -730,19 +728,16 @@ export default function ConfiguratorPanel({
                           <strong>{group.label}</strong>
                           <span className="plisy-coll-card-badges">
                             {meta.badges.map((badge) => (
-                              <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : ""}`}>
+                              <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : badge === "Plaster miodu" ? "is-structure" : ""}`}>
                                 {badge}
                               </span>
                             ))}
                           </span>
                         </span>
                         <span className="plisy-coll-card-note">{meta.light}</span>
-                        {mosaic.length ? (
-                          <span className="plisy-coll-card-mosaic" aria-label={`${group.swatches.length} kolorów w kolekcji`}>
-                            {mosaic.map((swatch) => (
-                              <img key={swatch.id} src={optimizeImageUrl(swatch.thumbnailUrl || swatch.imageUrl, 96)} alt="" loading="lazy" />
-                            ))}
-                            <em>{extra > 0 ? `+${extra}` : `${group.swatches.length} kol.`}</em>
+                        {group.swatches.length ? (
+                          <span className="plisy-coll-card-count">
+                            {plisyColorCountLabel(group.swatches.length)} do wyboru
                           </span>
                         ) : null}
                       </span>
