@@ -583,6 +583,10 @@ export default function CartPage() {
   // sama osoba, więc nikt nie wpisuje niczego dwa razy. Gdy się różnią,
   // dane lecą do zamówienia osobnym blokiem i dodatkowo w notatce, żeby
   // biuro widziało je bez zaglądania w JSON.
+  // Lista pozycji startuje zwinięta - klient wie, co zamawia, a w koszyku
+  // liczy się kwota i dane (właściciel, 2026-09-24). Rozwija ją kliknięcie
+  // w nagłówek karty.
+  const [itemsOpen, setItemsOpen] = useState(false);
   const [buyerDifferent, setBuyerDifferent] = useState(false);
   const [buyer, setBuyer] = useState({
     name: "",
@@ -2415,6 +2419,27 @@ export default function CartPage() {
         ) : (
           <>
             {items.length > 0 ? (
+              <section className="cart-basket-card">
+                <button
+                  type="button"
+                  className="cart-basket-toggle"
+                  aria-expanded={itemsOpen ? "true" : "false"}
+                  onClick={() => setItemsOpen((prev) => !prev)}
+                >
+                  <span className="cart-basket-toggle-label">
+                    Twój koszyk
+                    <em>
+                      {summary.items} {summary.items === 1 ? "pozycja" : summary.items < 5 ? "pozycje" : "pozycji"}
+                    </em>
+                  </span>
+                  <span className="cart-basket-toggle-meta">
+                    <strong>{formatPln(payableTotal)}</strong>
+                    <span className="cart-basket-toggle-chevron" aria-hidden="true">
+                      {itemsOpen ? "▴" : "▾"}
+                    </span>
+                  </span>
+                </button>
+                {itemsOpen ? (
               <ul className="cart-page-items">
                 {items.map((item) => (
                   <li key={item.id} className="cart-page-item">
@@ -2526,20 +2551,7 @@ export default function CartPage() {
                   </li>
                 ))}
               </ul>
-            ) : (
-              <p className="cart-page-order-note">Koszyk opróżniony po złożeniu zamówienia poniżej.</p>
-            )}
-
-            {/* Podsumowanie od razu pod pozycjami, jeszcze przed formularzami
-                (właściciel, 2026-09-24): klient ma widzieć ceny PO rabatach i
-                wszystkie dopłaty zanim zacznie wpisywać dane, żeby na końcu
-                nie było niespodzianek. Wcześniej ta sama lista siedziała
-                dopiero w karcie płatności, pod formularzami.
-                Był tu też przycisk "Zapisz / udostępnij link" - usunięty:
-                w koszyku był tylko wygodną furtką do odłożenia zakupu. */}
-            {items.length > 0 ? (
-              <section className="cart-summary-card">
-                <h2>Podsumowanie koszyka</h2>
+                ) : null}
                 <div className="cart-summary-card-body">
                   <div className="cart-discount-code">
                     <span className="cart-discount-code-label">Kod rabatowy</span>
@@ -2674,7 +2686,14 @@ export default function CartPage() {
                   ) : null}
                 </div>
               </section>
-            ) : null}
+            ) : (
+              <p className="cart-page-order-note">Koszyk opróżniony po złożeniu zamówienia poniżej.</p>
+            )}
+
+            {/* Pozycje i podsumowanie w jednej karcie: lista zwinięta,
+                pod nią kwoty już po rabatach (właściciel, 2026-09-24).
+                Był tu też przycisk "Zapisz / udostępnij link" - usunięty:
+                w koszyku był tylko wygodną furtką do odłożenia zakupu. */}
 
 
             <div className="cart-checkout-layout">
@@ -2784,7 +2803,7 @@ export default function CartPage() {
                                       (audyt 2026-09-13): kontakt, potem imię i
                                       nazwisko, potem ulica -> kod -> miasto. */}
                                   <div className="cart-checkout-form-grid">
-                                    <label>
+                                    <label className="is-wide">
                                       E-mail
                                       <CartFieldStatus valid={emailValid}>
                                         <input
@@ -2834,7 +2853,7 @@ export default function CartPage() {
                                     </label>
                                     {needsAddress ? (
                                       <>
-                                        <label>
+                                        <label className="is-wide">
                                           Ulica i numer
                                           <CartFieldStatus valid={address1FieldValid}>
                                             <input
@@ -2894,9 +2913,12 @@ export default function CartPage() {
                   </label>
                 </section>
 
-                {/* Dane kupującego i faktura - dwa niezależne akordeony
-                    (właściciel, 2026-09-24). Domyślnie kupujący = odbiorca,
-                    więc nikt nie wypełnia niczego dwa razy. */}
+                {/* Dane kupującego i faktura w jednym, zwiniętym bloku
+                    (właściciel, 2026-09-24): domyślnie kupujący = odbiorca,
+                    więc karta to jedna linijka. Pytanie o fakturę siedzi w
+                    środku - wychodzi z założenia, że faktura zwykle idzie na
+                    inne dane niż paczka; gdy są te same, jest przycisk
+                    "Skopiuj dane z dostawy". */}
                 <section className="cart-checkout-form-card cart-buyer-card">
                   <fieldset className="cart-checkout-form" disabled={dataLocked}>
                     <label className="cart-toggle-checkbox">
@@ -2905,19 +2927,39 @@ export default function CartPage() {
                         checked={buyerDifferent}
                         onChange={(event) => {
                           setBuyerDifferent(event.target.checked);
+                          // Faktura mieszka w tym akordeonie, więc po jego
+                          // zamknięciu nie może zostać włączona w tle.
+                          if (!event.target.checked) setWantsInvoice(false);
                           trackCheckoutIssue("checkout_buyer_other", event.target.checked ? "on" : "off");
                         }}
                       />
                       <span>
-                        <strong>Dane kupującego inne niż dane dostawy</strong>
-                        <small>Zaznacz, jeśli zamawiasz dla kogoś innego albo na firmę.</small>
+                        <strong>Inne dane kupującego / chcę fakturę</strong>
+                        <small>Zamawiasz dla kogoś innego albo na firmę.</small>
                       </span>
                     </label>
 
                     {buyerDifferent ? (
                       <div className="cart-buyer-fields">
+                        <button
+                          type="button"
+                          className="cart-buyer-copy"
+                          onClick={() =>
+                            setBuyer((current) => ({
+                              ...current,
+                              name: `${form.firstName} ${form.lastName}`.trim() || current.name,
+                              email: form.email || current.email,
+                              phone: form.phone || current.phone,
+                              street: form.address1 || current.street,
+                              postcode: form.postcode || current.postcode,
+                              city: form.city || current.city,
+                            }))
+                          }
+                        >
+                          Skopiuj dane z dostawy
+                        </button>
                         <div className="cart-checkout-form-grid">
-                          <label>
+                          <label className="is-wide">
                             Imię i nazwisko / firma
                             <CartFieldStatus valid={buyerNameValid}>
                               <input
@@ -2946,7 +2988,7 @@ export default function CartPage() {
                               onChange={(event) => setBuyer((current) => ({ ...current, phone: event.target.value }))}
                             />
                           </label>
-                          <label>
+                          <label className="is-wide">
                             Ulica i numer
                             <input
                               value={buyer.street}
@@ -2970,98 +3012,91 @@ export default function CartPage() {
                             />
                           </label>
                         </div>
-                      </div>
-                    ) : null}
 
-                    <label className="cart-toggle-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={wantsInvoice}
-                        onChange={(event) => {
-                          setWantsInvoice(event.target.checked);
-                          trackCheckoutIssue("checkout_invoice", event.target.checked ? "on" : "off");
-                        }}
-                      />
-                      <span>
-                        <strong>Chcę fakturę</strong>
-                        <small>Dane firmy uzupełnimy automatycznie po wpisaniu NIP.</small>
-                      </span>
-                    </label>
-
-                    {wantsInvoice ? (
-                      <div className="cart-invoice-fields">
-                        <label className="cart-invoice-nip-field">
-                          NIP
-                          <div className="cart-invoice-nip-row">
-                            {/* Checkmark celowo wyłączony w trakcie pobierania -
-                                obie ikony siadają w tym samym rogu. */}
-                            <CartFieldStatus valid={nipFieldValid && !nipLookupLoading}>
-                              <input
-                                inputMode="numeric"
-                                placeholder="np. 1234567890"
-                                value={invoice.nip}
-                                onChange={(event) => {
-                                  const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
-                                  setInvoice((current) => ({ ...current, nip: digits }));
-                                  setNipLookupError("");
-                                  if (digits.length === 10) void lookupNip(digits);
-                                }}
-                                onBlur={() => {
-                                  if (invoice.nip.length === 10) void lookupNip(invoice.nip);
-                                }}
-                              />
-                            </CartFieldStatus>
-                            {nipLookupLoading ? <span className="cart-invoice-nip-spinner" aria-hidden="true" /> : null}
-                          </div>
-                          {nipLookupError ? <small className="cart-invoice-nip-error">{nipLookupError}</small> : null}
-                          {!nipLookupError && !nipLookupLoading ? (
-                            <small className="cart-invoice-nip-hint">
-                              Dane firmy uzupełnią się automatycznie po wpisaniu NIP (Biała lista VAT, MF).
-                            </small>
-                          ) : null}
+                        <label className="cart-toggle-checkbox cart-toggle-checkbox--inner">
+                          <input
+                            type="checkbox"
+                            checked={wantsInvoice}
+                            onChange={(event) => {
+                              setWantsInvoice(event.target.checked);
+                              trackCheckoutIssue("checkout_invoice", event.target.checked ? "on" : "off");
+                            }}
+                          />
+                          <span>
+                            <strong>Chcę fakturę</strong>
+                            <small>Dane firmy uzupełnimy po wpisaniu NIP.</small>
+                          </span>
                         </label>
-                        <div className="cart-checkout-form-grid">
-                          <label>
-                            Nazwa firmy
-                            <CartFieldStatus valid={companyNameFieldValid}>
-                              <input
-                                value={invoice.companyName}
-                                onChange={(event) =>
-                                  setInvoice((current) => ({ ...current, companyName: event.target.value }))
-                                }
-                              />
-                            </CartFieldStatus>
-                          </label>
-                          <label>
-                            Ulica i numer
-                            <CartFieldStatus valid={invoiceStreetFieldValid}>
-                              <input
-                                value={invoice.street}
-                                onChange={(event) => setInvoice((current) => ({ ...current, street: event.target.value }))}
-                              />
-                            </CartFieldStatus>
-                          </label>
-                          <label>
-                            Kod pocztowy
-                            <CartFieldStatus valid={invoicePostcodeFieldValid}>
-                              <input
-                                value={invoice.postcode}
-                                onChange={(event) =>
-                                  setInvoice((current) => ({ ...current, postcode: event.target.value }))
-                                }
-                              />
-                            </CartFieldStatus>
-                          </label>
-                          <label>
-                            Miasto
-                            <CartFieldStatus valid={invoiceCityFieldValid}>
-                              <input
-                                value={invoice.city}
-                                onChange={(event) => setInvoice((current) => ({ ...current, city: event.target.value }))}
-                              />
-                            </CartFieldStatus>
-                          </label>
-                        </div>
+
+                        {wantsInvoice ? (
+                          <div className="cart-invoice-fields">
+                            <label className="cart-invoice-nip-field">
+                              NIP
+                              <div className="cart-invoice-nip-row">
+                                <CartFieldStatus valid={nipFieldValid && !nipLookupLoading}>
+                                  <input
+                                    inputMode="numeric"
+                                    placeholder="np. 1234567890"
+                                    value={invoice.nip}
+                                    onChange={(event) => {
+                                      const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
+                                      setInvoice((current) => ({ ...current, nip: digits }));
+                                      setNipLookupError("");
+                                      if (digits.length === 10) void lookupNip(digits);
+                                    }}
+                                    onBlur={() => {
+                                      if (invoice.nip.length === 10) void lookupNip(invoice.nip);
+                                    }}
+                                  />
+                                </CartFieldStatus>
+                                {nipLookupLoading ? <span className="cart-invoice-nip-spinner" aria-hidden="true" /> : null}
+                              </div>
+                              {nipLookupError ? <small className="cart-invoice-nip-error">{nipLookupError}</small> : null}
+                            </label>
+                            <div className="cart-checkout-form-grid">
+                              <label>
+                                Nazwa firmy
+                                <CartFieldStatus valid={companyNameFieldValid}>
+                                  <input
+                                    value={invoice.companyName}
+                                    onChange={(event) =>
+                                      setInvoice((current) => ({ ...current, companyName: event.target.value }))
+                                    }
+                                  />
+                                </CartFieldStatus>
+                              </label>
+                              <label>
+                                Ulica i numer
+                                <CartFieldStatus valid={invoiceStreetFieldValid}>
+                                  <input
+                                    value={invoice.street}
+                                    onChange={(event) => setInvoice((current) => ({ ...current, street: event.target.value }))}
+                                  />
+                                </CartFieldStatus>
+                              </label>
+                              <label>
+                                Kod pocztowy
+                                <CartFieldStatus valid={invoicePostcodeFieldValid}>
+                                  <input
+                                    value={invoice.postcode}
+                                    onChange={(event) =>
+                                      setInvoice((current) => ({ ...current, postcode: event.target.value }))
+                                    }
+                                  />
+                                </CartFieldStatus>
+                              </label>
+                              <label>
+                                Miasto
+                                <CartFieldStatus valid={invoiceCityFieldValid}>
+                                  <input
+                                    value={invoice.city}
+                                    onChange={(event) => setInvoice((current) => ({ ...current, city: event.target.value }))}
+                                  />
+                                </CartFieldStatus>
+                              </label>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
 
