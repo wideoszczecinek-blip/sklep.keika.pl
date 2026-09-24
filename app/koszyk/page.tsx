@@ -49,6 +49,7 @@ import {
   type DispatchInfo,
 } from "@/lib/express";
 import { getRescueGrant, type RescueGrant } from "@/lib/rescue";
+import { useBackToClose } from "@/lib/use-back-to-close";
 import InstallmentOffer from "@/app/components/installment-offer";
 import InstallmentTileHint from "@/app/components/installment-tile-hint";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
@@ -777,6 +778,13 @@ export default function CartPage() {
   );
 
   const [legalModalOpen, setLegalModalOpen] = useState(false);
+
+  // Systemowe "wstecz" ma zamykać to, co jest otwarte na wierzchu, a nie
+  // wyrzucać klienta z koszyka (właściciel, 2026-09-24).
+  useBackToClose(cartShareModalOpen, () => setCartShareModalOpen(false));
+  useBackToClose(codModalOpen, () => setCodModalOpen(false));
+  useBackToClose(legalModalOpen, () => setLegalModalOpen(false));
+  useBackToClose(Boolean(editingItemId), () => setEditingItemId(null));
   const [legalContent, setLegalContent] = useState<{ title: string; bodyHtml: string } | null>(null);
   const [legalLoading, setLegalLoading] = useState(false);
   const [legalError, setLegalError] = useState("");

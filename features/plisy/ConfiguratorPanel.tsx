@@ -21,6 +21,7 @@ import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configurator-state";
 import { usePlisyFavourites } from "@/lib/plisy-favourites";
+import { useBackToClose } from "@/lib/use-back-to-close";
 import { applyPromoToPrice, getPromoRemainingMs, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { ensurePromoQuoteCode } from "@/lib/promo-save";
 import PromoSaveModal from "@/app/components/promo-save-modal";
@@ -327,6 +328,14 @@ export default function ConfiguratorPanel({
   // measured. The draft above brings steps 1-4 back on return.
   const [measureSave, setMeasureSave] = useState<{ quoteCode: string; shareUrl: string; remainingMs: number } | null>(null);
   const [measureSaveBusy, setMeasureSaveBusy] = useState(false);
+
+  // "Wstecz" zamyka wierzchni modal (instrukcja pomiaru, galeria tkanin,
+  // opis kolekcji, powiększenie, zapis wyceny), nie cofa strony.
+  useBackToClose(measureGuideOpen, () => setMeasureGuideOpen(false));
+  useBackToClose(fabricGalleryIndex !== null, () => setFabricGalleryIndex(null));
+  useBackToClose(Boolean(collectionInfoId), () => setCollectionInfoId(""));
+  useBackToClose(Boolean(internalZoomPreview), () => setInternalZoomPreview(null));
+  useBackToClose(Boolean(measureSave), () => setMeasureSave(null));
   async function openMeasureLater() {
     if (measureSaveBusy) return;
     setMeasureSaveBusy(true);

@@ -124,6 +124,7 @@ import { buildRoofWindowDisplayLabel, fetchRoofWindowLibrary, type RoofWindowLib
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
 import { calcPlisyPrice, fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
 import { crmGetJson } from "@/lib/crm-get";
+import { useBackToClose } from "@/lib/use-back-to-close";
 import PdHeroPhotos from "@/features/plisy-dachowe/PdHeroPhotos";
 import PdQuickPrice from "@/features/plisy-dachowe/PdQuickPrice";
 import { PdHardwareStrip, PdHowItWorks } from "@/features/plisy-dachowe/PdLandingBlocks";
@@ -2211,6 +2212,13 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const [dimensionQuantity, setDimensionQuantity] = useState("1");
   const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
   const [surchargeModal, setSurchargeModal] = useState<{ amount: number } | null>(null);
+
+  // Systemowe "wstecz" zamyka wierzchni modal zamiast cofać stronę
+  // (właściciel, 2026-09-24).
+  useBackToClose(Boolean(zoomPreview), () => setZoomPreview(null));
+  useBackToClose(instructionModalIndex !== null, () => setInstructionModalIndex(null));
+  useBackToClose(Boolean(infoModalSlug), () => setInfoModalSlug(null));
+  useBackToClose(Boolean(surchargeModal), () => setSurchargeModal(null));
   const [acceptedSurcharge, setAcceptedSurcharge] = useState<{ width: number; height: number; amount: number } | null>(
     null,
   );
