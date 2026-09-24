@@ -1,13 +1,18 @@
 "use client";
 
-// "lub 10 × 15,68 zł" - oferta ratalna Przelewy24 pokazywana wszędzie tam,
-// gdzie klient widzi kwotę do zapłaty (koszyk, podsumowanie wyceny w
-// konfiguratorze). Właściciel, 2026-09-24: "jak mamy podsumowanie koszyka
-// albo podsumowanie wyceny, wszędzie daj przeliczoną ofertę ratalną".
+// Karta "Rozłóż na raty" - pokazywana wszędzie tam, gdzie klient widzi kwotę
+// do zapłaty (koszyk, podsumowanie wyceny w konfiguratorze). Właściciel,
+// 2026-09-24: "jak mamy podsumowanie koszyka albo podsumowanie wyceny,
+// wszędzie daj przeliczoną ofertę ratalną" i - po pierwszej wersji - "zrób
+// ten banerek ładniej i bardziej zachęcająco".
+//
+// Dlatego: rata miesięczna jako bohater karty, liczba rat jako pigułki
+// (nie lista rozwijana - na telefonie to jeden dotyk zamiast trzech), a cała
+// obowiązkowa drobnica prawna schowana pod "Szczegóły".
 //
 // Pokazuje się tylko wtedy, gdy raty są realnie włączone na koncie P24
-// (CRM: checkout.p24_enabled + p24_installments_enabled) i kwota sięga progu
-// bankowego - inaczej obiecywalibyśmy metodę, której w koszyku nie ma.
+// (CRM: checkout.p24_enabled + p24_installments_enabled) i kwota mieści się
+// w widełkach banku - inaczej obiecywalibyśmy metodę, której w koszyku nie ma.
 import { useEffect, useState } from "react";
 import { crmGetJson } from "@/lib/crm-get";
 import { CRM_PUBLIC_BASE } from "./payment-methods";
@@ -21,7 +26,7 @@ import {
   monthlyInstallment,
 } from "@/lib/installments";
 
-/** "3 raty" / "10 rat" - polska odmiana w liscie wyboru. */
+/** "3 raty" / "10 rat" - polska odmiana. */
 function ratyLabel(count: number): string {
   const last = count % 10;
   const lastTwo = count % 100;
@@ -54,8 +59,8 @@ export default function InstallmentOffer({
         const checkout = json?.checkout && typeof json.checkout === "object" ? json.checkout : null;
         if (cancelled || !checkout) return;
         setEnabled(checkout.p24_enabled === true && checkout.p24_installments_enabled === true);
-        // Gdy właściciel wpisze w CRM realną stawkę ze swojej umowy ratalnej,
-        // liczymy nią; do tego czasu ostrożny szacunek z lib/installments.ts.
+        // Gdy właściciel wpisze w CRM stawkę ze swojej umowy ratalnej,
+        // liczymy nią; domyślnie stopa z przykładu reprezentatywnego banku.
         const crmApr = Number(checkout.p24_installments_apr_percent);
         if (Number.isFinite(crmApr) && crmApr > 0) setApr(crmApr);
       })
@@ -72,36 +77,54 @@ export default function InstallmentOffer({
 
   if (variant === "inline") {
     return (
-      <span className={`installment-offer installment-offer--inline ${className}`.trim()}>
-        lub {DEFAULT_INSTALLMENT_COUNT} × <strong>{zl(monthlyInstallment(value, DEFAULT_INSTALLMENT_COUNT, apr))}</strong>
+      <span className={`installment-offer-inline ${className}`.trim()}>
+        lub {DEFAULT_INSTALLMENT_COUNT} ×{" "}
+        <strong>{zl(monthlyInstallment(value, DEFAULT_INSTALLMENT_COUNT, apr))}</strong>
       </span>
     );
   }
 
   return (
     <div className={`installment-offer ${className}`.trim()}>
-      <div className="installment-offer-row">
-        <span className="installment-offer-label">lub w ratach</span>
-        <span className="installment-offer-value">
-          <select
-            aria-label="Liczba rat"
-            value={count}
-            onChange={(event) => setCount(Number(event.target.value) || DEFAULT_INSTALLMENT_COUNT)}
-          >
-            {INSTALLMENT_COUNTS.map((option) => (
-              <option key={option} value={option}>
-                {ratyLabel(option)}
-              </option>
-            ))}
-          </select>
-          <span aria-hidden="true">×</span>
+      <div className="installment-offer-head">
+        <span className="installment-offer-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="5" width="18" height="15" rx="3" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="8.5" cy="14.8" r="1.25" fill="currentColor" />
+            <circle cx="12" cy="14.8" r="1.25" fill="currentColor" />
+            <circle cx="15.5" cy="14.8" r="1.25" fill="currentColor" />
+          </svg>
+        </span>
+        <span className="installment-offer-title">
+          <strong>Rozłóż na raty</strong>
+          <small>Przelewy24 · decyzja online</small>
+        </span>
+        <span className="installment-offer-amount">
           <strong>{zl(monthly)}</strong>
+          <em>/ mies.</em>
         </span>
       </div>
+
+      <div className="installment-offer-counts" role="group" aria-label="Liczba rat">
+        {INSTALLMENT_COUNTS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            className={`installment-offer-count ${option === count ? "is-active" : ""}`}
+            aria-pressed={option === count}
+            onClick={() => setCount(option)}
+          >
+            {option}×
+          </button>
+        ))}
+      </div>
+
       <details className="installment-offer-note">
         <summary>
-          Rata szacunkowa (Raty Przelewy24): {count} × {zl(monthly)} = {zl(installmentsTotal(value, count, apr))}. Ostateczną
-          ofertę i RRSO podaje bank we wniosku.
+          {ratyLabel(count)} × {zl(monthly)} = {zl(installmentsTotal(value, count, apr))}. Ostateczną ofertę i RRSO
+          podaje bank we wniosku.
         </summary>
         <p>{INSTALLMENTS_REPRESENTATIVE_EXAMPLE}</p>
         <p>

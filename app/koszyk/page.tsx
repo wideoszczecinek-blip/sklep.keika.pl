@@ -891,6 +891,11 @@ export default function CartPage() {
   const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
   // Odbiór osobisty nigdy nie ma kosztu wysyłki - nic nie jest wysyłane.
+  // Ile klient realnie oszczędza na tym koszyku - suma wszystkich rabatów
+  // (kod, wspólne rozliczenie obwodu moskitier, rabat za zapisanie wyceny).
+  // Pokazujemy to przy kwocie do zapłaty, bo inaczej rabat ginie w wierszach.
+  const totalSavings =
+    Math.round((combinedSavings + (appliedDiscount ? appliedDiscount.amount : 0) + rescueAmount) * 100) / 100;
   const freeShippingPilot = cartHasFreeShippingPilot(items);
   const shippingFee =
     deliveryMethod === PICKUP_METHOD.id || freeShippingPilot || summary.total >= FREE_SHIPPING_THRESHOLD
@@ -2648,11 +2653,20 @@ export default function CartPage() {
                       <span>{formatPln(COD_SURCHARGE_AMOUNT)}</span>
                     </div>
                   ) : null}
-                  <div className="cart-page-summary-row">
-                    <span>Razem</span>
-                    <strong>
-                      {formatPln(payableTotal)}
-                    </strong>
+                  <div className="total-block">
+                    <span className="total-block-left">
+                      <span className="total-block-label">Do zapłaty</span>
+                      {totalSavings > 0 ? (
+                        <span className="total-block-savings">Oszczędzasz {formatPln(totalSavings)}</span>
+                      ) : null}
+                      {shippingFee === 0 && deliveryMethod !== PICKUP_METHOD.id ? (
+                        <span className="total-block-chip">🚚 dostawa gratis</span>
+                      ) : null}
+                    </span>
+                    <span className="total-block-right">
+                      {totalSavings > 0 ? <s>{formatPln(payableTotal + totalSavings)}</s> : null}
+                      <strong>{formatPln(payableTotal)}</strong>
+                    </span>
                   </div>
 
                   {/* Oferta ratalna przy każdej kwocie - raty są włączone

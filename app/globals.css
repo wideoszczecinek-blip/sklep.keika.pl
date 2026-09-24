@@ -17729,61 +17729,6 @@ html[data-theme="light"] .cart-basket-card {
 }
 
 
-/* Oferta ratalna pod kwotą (app/components/installment-offer.tsx). */
-.installment-offer {
-  margin: 0.45rem 0 0.2rem;
-  padding: 0.5rem 0.65rem;
-  border-radius: 0.7rem;
-  border: 1px dashed rgba(88, 203, 163, 0.5);
-  background: rgba(44, 157, 130, 0.08);
-}
-.installment-offer-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.installment-offer-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  opacity: 0.85;
-}
-.installment-offer-value {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.95rem;
-}
-.installment-offer-value strong {
-  font-size: 1.05rem;
-  font-weight: 800;
-}
-.installment-offer-value select {
-  border-radius: 0.5rem;
-  border: 1px solid rgba(19, 40, 67, 0.22);
-  background: rgba(255, 255, 255, 0.92);
-  color: #132843;
-  padding: 0.16rem 0.3rem;
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-.installment-offer-note {
-  margin: 0.3rem 0 0;
-  font-size: 0.68rem;
-  line-height: 1.35;
-  opacity: 0.65;
-}
-.installment-offer--inline {
-  display: inline-block;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 0.78rem;
-  opacity: 0.85;
-}
 
 
 /* Przykład reprezentatywny pod podsumowaniem raty: musi być, ale ma być
@@ -17806,3 +17751,184 @@ html[data-theme="light"] .cart-basket-card {
 .installment-offer-note p {
   margin: 0.35rem 0 0;
 }
+
+
+/* ===== Kwota do zapłaty: bohater podsumowania, a nie kolejny szary wiersz
+   (właściciel, 2026-09-24). Przekreślona cena sprzed rabatów i zielona
+   plakietka oszczędności robią z tej samej liczby dobrą wiadomość. ===== */
+.total-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(44, 157, 130, 0.35);
+  background: linear-gradient(135deg, rgba(44, 157, 130, 0.14), rgba(44, 157, 130, 0.05));
+}
+.total-block-left {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: start;
+}
+.total-block-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.total-block-savings {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.55rem;
+  border-radius: 999px;
+  background: #1f9d6e;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+.total-block-chip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.75;
+}
+.total-block-right {
+  display: grid;
+  justify-items: end;
+  gap: 0.1rem;
+  text-align: right;
+}
+.total-block-right s {
+  font-size: 0.82rem;
+  font-weight: 600;
+  opacity: 0.55;
+}
+.total-block-right strong {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+
+/* ===== Karta ratalna: rata miesięczna jako bohater, liczba rat na
+   pigułkach, drobny druk pod "Szczegóły". ===== */
+.installment-offer {
+  margin: 0.6rem 0 0.2rem;
+  padding: 0.7rem 0.8rem 0.6rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(0, 168, 163, 0.32);
+  background: linear-gradient(135deg, rgba(0, 168, 163, 0.12), rgba(19, 40, 67, 0.04));
+}
+.installment-offer-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+}
+.installment-offer-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.7rem;
+  background: rgba(0, 168, 163, 0.18);
+  color: #00807c;
+}
+.installment-offer-icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.installment-offer-title {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  margin-right: auto;
+}
+.installment-offer-title strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.installment-offer-title small {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+.installment-offer-amount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+.installment-offer-amount strong {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #00807c;
+}
+.installment-offer-amount em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+.installment-offer-counts {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0.55rem 0 0.1rem;
+}
+.installment-offer-count {
+  flex: 1 1 0;
+  padding: 0.35rem 0.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 168, 163, 0.35);
+  background: rgba(255, 255, 255, 0.7);
+  color: #0d5f5c;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.installment-offer-count:hover {
+  transform: translateY(-1px);
+}
+.installment-offer-count.is-active {
+  background: linear-gradient(120deg, #00a8a3, #007f7b);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 127, 123, 0.28);
+}
+.installment-offer-note {
+  margin-top: 0.4rem;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  opacity: 0.7;
+}
+.installment-offer-note summary {
+  cursor: pointer;
+  list-style: none;
+}
+.installment-offer-note summary::-webkit-details-marker {
+  display: none;
+}
+.installment-offer-note summary::after {
+  content: " Szczegóły \25BE";
+  font-weight: 800;
+  opacity: 0.9;
+}
+.installment-offer-note[open] summary::after {
+  content: " Zwiń \25B4";
+}
+.installment-offer-note p {
+  margin: 0.35rem 0 0;
+}
+.installment-offer-inline {
+  display: inline-block;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+

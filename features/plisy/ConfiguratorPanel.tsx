@@ -918,6 +918,14 @@ export default function ConfiguratorPanel({
     : effectivePositions.length === 1
       ? `${effectivePositions[0].widthMm / 10} × ${effectivePositions[0].heightMm / 10} cm · ${effectivePositions[0].qty} szt.`
       : `${pozycjeLabel(effectivePositions.length)} · ${effectivePositions.reduce((sum, position) => sum + position.qty, 0)} szt.`;
+  // Kwota, którą klient faktycznie zapłaci (po SEZON20, jeśli aktywny) i
+  // ile na tym oszczędza - do bloku "Do zapłaty" i do oferty ratalnej.
+  const payableGrandTotal =
+    setGrandTotal !== null && promo ? applyPromoToPrice(setGrandTotal, promo) ?? setGrandTotal : setGrandTotal;
+  const promoSavings =
+    setGrandTotal !== null && payableGrandTotal !== null
+      ? Math.round((setGrandTotal - payableGrandTotal) * 100) / 100
+      : 0;
   const priceScopeLabel =
     effectivePositions.length === 1 && effectivePositions[0].qty === 1 ? "za Twoje okno" : "za Twój zestaw";
 
@@ -1788,15 +1796,27 @@ export default function ConfiguratorPanel({
                     </div>
                   ) : null}
 
+                  {/* Kwota do zapłaty jako blok, nie szary wiersz: przekreślona
+                      cena sprzed rabatu i zielona plakietka oszczędności
+                      (właściciel, 2026-09-24). Ta sama oprawa co w koszyku. */}
+                  {setGrandTotal !== null ? (
+                    <div className="total-block">
+                      <span className="total-block-left">
+                        <span className="total-block-label">Do zapłaty</span>
+                        {promoSavings > 0 ? (
+                          <span className="total-block-savings">Oszczędzasz {formatZl(promoSavings)}</span>
+                        ) : null}
+                      </span>
+                      <span className="total-block-right">
+                        {promoSavings > 0 ? <s>{formatZl(setGrandTotal)}</s> : null}
+                        <strong>{formatZl(payableGrandTotal ?? setGrandTotal)}</strong>
+                      </span>
+                    </div>
+                  ) : null}
+
                   {/* Ile to wyjdzie w ratach - liczone od kwoty, którą
                       klient faktycznie zapłaci (właściciel, 2026-09-24). */}
-                  <InstallmentOffer
-                    amount={
-                      setGrandTotal !== null && promo
-                        ? applyPromoToPrice(setGrandTotal, promo) ?? setGrandTotal
-                        : setGrandTotal
-                    }
-                  />
+                  <InstallmentOffer amount={payableGrandTotal} />
 
                   <button
                     type="button"
