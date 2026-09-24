@@ -191,6 +191,7 @@ import { PLISY_INSTRUCTION_STEPS } from "@/features/plisy/instructions";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
+import MoskitieryQuickPrice from "@/features/moskitiery-ramkowe/QuickPrice";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -1445,6 +1446,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // ramkoweLastResult lets "wyceń podobną" re-seed it with the same
   // hardware/mesh but blank dimensions.
   const [ramkoweConfigKey, setRamkoweConfigKey] = useState(0);
+  // Rozmiar z szybkiej wyceny wpada do konfiguratora, żeby klient nie
+  // wpisywał go drugi raz (ten sam wzorzec co przy plisach).
+  const [moskPrefillDims, setMoskPrefillDims] = useState<{ widthMm: number; heightMm: number } | null>(null);
   const [ramkoweLastResult, setRamkoweLastResult] = useState<ConfiguratorResult | null>(null);
   // Same pattern as ramkoweConfigKey/ramkoweLastResult above, for
   // rolety-dachowe's own <ConfiguratorPanel> (features/rolety-dachowe/).
@@ -1479,6 +1483,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // The window size shared by "Ile za Twoje okno?" and the fabric-collection
   // comparison below it (owner, 2026-09-17): one size, priced in both.
   const [plisyQuickDims, setPlisyQuickDims] = useState({ widthMm: PLISY_DEFAULT_WIDTH_MM, heightMm: PLISY_DEFAULT_HEIGHT_MM });
+  // Szybka wycena moskitier: typowe okno na start, klient zmienia suwakami.
+  const [moskQuickDims, setMoskQuickDims] = useState({ widthMm: 900, heightMm: 1400 });
   // Plisy landing copy prices itself from the live CRM matrix ("od 77 zł",
   // the per-collection examples) instead of the hand-typed CRM price_from,
   // which read "od 219 zł" against a 77 zł matrix minimum (audit
@@ -3552,8 +3558,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                   {/* Pasek SEZON20 NAD tytułem i w jednej linii (właściciel,
                       2026-09-24): dwuwierszowa ramka pod tytułem spychała na
                       mobile wszystko poniżej ekranu. */}
-                  {displayedProduct && productSlugFromSelected(displayedProduct) === "plisy" && (topPromoPreview || topPromoActive) ? (
-                    <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
+                  {displayedProduct &&
+                  (productSlugFromSelected(displayedProduct) === "plisy" ||
+                    productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe") &&
+                  (topPromoPreview || topPromoActive) ? (
+                    <PromoCountdownBanner code={PROMO_CODE} productSlug={productSlugFromSelected(displayedProduct)}>
                       {(promo) => (
                         <div className={`pl-sezon-line ${topPromoActive ? "is-active" : ""}`}>
                           <span className="pl-sezon-line-badge" aria-hidden="true">
@@ -3605,50 +3614,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                       {displayedProduct ? (
                         productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                           <div className="pl-landing">
-                            {topPromoPreview || topPromoActive ? (
-                              <PromoCountdownBanner code={PROMO_CODE} productSlug="moskitiery-ramkowe">
-                                {(promo) => (
-                                  <div className={`pl-sezon-banner ${topPromoActive ? "is-active" : ""}`}>
-                                    <div className="pl-sezon-banner-top">
-                                      <span className="pl-sezon-banner-badge" aria-hidden="true">
-                                        {topPromoActive ? "✓" : "-20%"}
-                                      </span>
-                                      <div className="pl-sezon-banner-copy">
-                                        <strong className="pl-sezon-banner-text">
-                                          {topPromoActive ? (
-                                            <>Kod SEZON20 aktywny</>
-                                          ) : (
-                                            <>Tylko dzisiaj: kod SEZON20</>
-                                          )}
-                                        </strong>
-                                        <span className="pl-sezon-banner-sub">
-                                          {topPromoActive
-                                            ? promo
-                                              ? (
-                                                <>
-                                                  Rabat ważny jeszcze <strong>{promo.remainingText}</strong>
-                                                </>
-                                              )
-                                              : "Widzisz ceny z rabatem"
-                                            : "Aktywuj i zobacz niższą cenę od razu"}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    {!topPromoActive ? (
-                                      <button type="button" className="pl-sezon-banner-cta" onClick={activateTopPromo}>
-                                        Aktywuj rabat -20%
-                                      </button>
-                                    ) : promo ? (
-                                      <button type="button" className="pl-sezon-banner-cta" onClick={promo.openModal}>
-                                        Zapisz / wyślij link
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                )}
-                              </PromoCountdownBanner>
-                            ) : !topPromoResolved ? (
-                              <div className="pl-sezon-banner pl-sezon-banner--placeholder" aria-hidden="true" />
-                            ) : null}
+                            {/* Pasek SEZON20 przeniesiony NAD tytuł i do jednej
+                                linijki - tak samo jak przy plisach (właściciel,
+                                2026-09-24). */}
                             <div className="pl-trust-row">
                               <span className="pl-price">
                                 {topPromoActive && topPromoPreview ? (
@@ -3715,6 +3683,23 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             <button type="button" className="pl-mobile-price-cta" onClick={scrollToConfigPanel}>
                               Wyceń swoje okno w 30 sekund
                             </button>
+
+                            {/* Szybka wycena: u moskitier cenę definiują wyłącznie
+                                wymiary, więc wystarczą dwa suwaki (właściciel,
+                                2026-09-24). Liczy tym samym kodem co konfigurator. */}
+                            <MoskitieryQuickPrice
+                              pricePerMb={moskPricePerMbPromo}
+                              promo={topPromoActive ? topPromoPreview : null}
+                              widthMm={moskQuickDims.widthMm}
+                              heightMm={moskQuickDims.heightMm}
+                              onSizeChange={(widthMm, heightMm) => setMoskQuickDims({ widthMm, heightMm })}
+                              onConfigure={(widthMm, heightMm) => {
+                                setRamkoweLastResult(null);
+                                setMoskPrefillDims({ widthMm, heightMm });
+                                setRamkoweConfigKey((key) => key + 1);
+                                scrollToConfigPanel();
+                              }}
+                            />
 
                             {shippingBanner ? (
                               <div className="pl-shipping-banner">
@@ -3869,12 +3854,19 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               ))}
                             </ul>
 
-                            <div className="pl-callout">
-                              <strong>{productLanding?.callout?.title || "Produkt do samodzielnego złożenia"}</strong>
-                              <p>
-                                {productLanding?.callout?.body ||
-                                  "Składasz ramkę, naciągasz siatkę i przykręcasz zaczepy — wszystko masz w komplecie, razem z instrukcją. Zwykle zajmuje to kilka–kilkanaście minut."}
-                              </p>
+                            {/* Baner DIY: właściciel, 2026-09-24 - "wygląda,
+                                jakbyśmy chcieli go ukryć, i ma za dużo treści".
+                                Stąd plakietka, krótka obietnica w jednym zdaniu
+                                i trzy kroki zamiast akapitu. */}
+                            <div className="pl-callout pl-callout--diy">
+                              <span className="pl-callout-badge">Produkt DIY</span>
+                              <strong>Składasz sam w 15 minut</strong>
+                              <p>W komplecie wszystkie elementy i instrukcja — potrzebny tylko śrubokręt.</p>
+                              <ul className="pl-callout-steps">
+                                <li>Złóż ramkę</li>
+                                <li>Naciągnij siatkę</li>
+                                <li>Przykręć zaczepy</li>
+                              </ul>
                               <button
                                 type="button"
                                 className="pl-inline-cta-button pl-callout-cta"
@@ -5113,7 +5105,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                       initialValues={
                         ramkoweLastResult
                           ? { hardwareId: ramkoweLastResult.hardwareId, meshId: ramkoweLastResult.meshId }
-                          : undefined
+                          : moskPrefillDims
+                            ? { widthMm: moskPrefillDims.widthMm, heightMm: moskPrefillDims.heightMm }
+                            : undefined
                       }
                       submitLabel="Dodaj do koszyka"
                       enableRescueModal
