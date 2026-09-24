@@ -17784,3 +17784,25 @@ html[data-theme="light"] .cart-basket-card {
   font-size: 0.78rem;
   opacity: 0.85;
 }
+
+
+/* Przykład reprezentatywny pod podsumowaniem raty: musi być, ale ma być
+   zwinięty. */
+.installment-offer-note summary {
+  cursor: pointer;
+  list-style: none;
+}
+.installment-offer-note summary::-webkit-details-marker {
+  display: none;
+}
+.installment-offer-note summary::after {
+  content: " Szczegóły \25BE";
+  font-weight: 700;
+  opacity: 0.85;
+}
+.installment-offer-note[open] summary::after {
+  content: " Zwiń \25B4";
+}
+.installment-offer-note p {
+  margin: 0.35rem 0 0;
+}

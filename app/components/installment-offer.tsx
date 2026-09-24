@@ -16,6 +16,8 @@ import {
   DEFAULT_INSTALLMENT_COUNT,
   INSTALLMENT_COUNTS,
   installmentsAvailable,
+  installmentsTotal,
+  INSTALLMENTS_REPRESENTATIVE_EXAMPLE,
   monthlyInstallment,
 } from "@/lib/installments";
 
@@ -96,9 +98,17 @@ export default function InstallmentOffer({
           <strong>{zl(monthly)}</strong>
         </span>
       </div>
-      <p className="installment-offer-note">
-        Rata orientacyjna (Raty Przelewy24). Ostateczną wysokość raty i RRSO podaje bank po złożeniu wniosku.
-      </p>
+      <details className="installment-offer-note">
+        <summary>
+          Rata szacunkowa (Raty Przelewy24): {count} × {zl(monthly)} = {zl(installmentsTotal(value, count, apr))}. Ostateczną
+          ofertę i RRSO podaje bank we wniosku.
+        </summary>
+        <p>{INSTALLMENTS_REPRESENTATIVE_EXAMPLE}</p>
+        <p>
+          Kredytu udziela organizacja finansująca wybrana w Przelewy24 (m.in. Santander Consumer Bank, Alior Bank,
+          Smartney, Inbank). Kwoty od 100 zł do 50 000 zł, od 3 do 60 rat.
+        </p>
+      </details>
     </div>
   );
 }
