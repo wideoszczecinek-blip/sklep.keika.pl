@@ -478,7 +478,7 @@ export default function ConfiguratorPanel({
     () => swatchesForGroup.find((swatch) => swatch.id === selectedFabricId) || null,
     [swatchesForGroup, selectedFabricId],
   );
-  const fabricChosen = Boolean(selectedFabricId);
+  const fabricChosen = Boolean(selectedFabric);
 
   // Second pass of the /koszyk label-resolution above: the fabric (swatch)
   // id lives inside whichever group that effect resolved, so it can only be
@@ -495,15 +495,18 @@ export default function ConfiguratorPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [swatchesForGroup]);
 
-  // Switching collection invalidates whatever color was picked under the
-  // previous one - same rule as rolety-dachowe's material-type/fabric pair.
+  // Zmiana kolekcji unieważnia kolor wybrany w poprzedniej. Sprawdzamy
+  // SAMO ID w próbnikach nowej kolekcji - wcześniej warunek opierał się na
+  // rozwiązanym obiekcie, który po przełączeniu jest już null, więc nigdy
+  // nie wchodził i zostawało id z poprzedniej kolekcji.
   useEffect(() => {
-    if (selectedFabric && selectedFabricGroup && !swatchesForGroup.some((swatch) => swatch.id === selectedFabric.id)) {
-      setSelectedFabricId("");
-      setStepThreeCollapsed(false);
-    }
+    if (!selectedFabricId) return;
+    if (swatchesForGroup.length === 0) return; // profil/kolekcja jeszcze się nie wczytały
+    if (swatchesForGroup.some((swatch) => swatch.id === selectedFabricId)) return;
+    setSelectedFabricId("");
+    setStepThreeCollapsed(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFabricGroupId]);
+  }, [selectedFabricGroupId, swatchesForGroup, selectedFabricId]);
 
   const widthNum = inputToMm(width, dimensionUnit);
   const heightNum = inputToMm(height, dimensionUnit);
@@ -680,6 +683,22 @@ export default function ConfiguratorPanel({
           qty: quantityNum,
         }
       : null;
+
+  /** Wybór kolekcji tkanin. Kolor tkaniny z poprzedniej kolekcji przestaje
+   * obowiązywać, więc kasujemy go od razu (nie czekając na efekt), zwijamy
+   * krok kolekcji i otwieramy ten, który teraz jest do uzupełnienia. */
+  function pickFabricGroup(groupId: string) {
+    const changed = groupId !== selectedFabricGroupId;
+    setSelectedFabricGroupId(groupId);
+    setStepTwoCollapsed(true);
+    if (changed) {
+      setSelectedFabricId("");
+      setStepThreeCollapsed(false);
+    }
+    window.setTimeout(() => {
+      scrollStepIntoView(stepThreeRef.current);
+    }, 380);
+  }
 
   /** Klient zmienia sposób montażu. Jeśli ma już wymiary, to są wymiary do
    * innego montażu - prosimy o nowy pomiar zamiast po cichu przeliczać coś,
@@ -1205,11 +1224,7 @@ export default function ConfiguratorPanel({
                         className={`hero-product-mesh-option plisy-coll-card ${isActive ? "is-active" : ""}`}
                         onClick={() => {
                           trackShopStep("select_fabric_group", group.label, { option_id: group.id });
-                          setSelectedFabricGroupId(group.id);
-                          setStepTwoCollapsed(true);
-                          window.setTimeout(() => {
-                            scrollStepIntoView(stepThreeRef.current);
-                          }, 380);
+                          pickFabricGroup(group.id);
                         }}
                       >
                         {/* Tło kafelka: cztery zdjęcia tkanin z TEJ kolekcji,
@@ -1303,12 +1318,8 @@ export default function ConfiguratorPanel({
                       onClick={() => {
                         const group = collectionInfoGroup;
                         trackShopStep("select_fabric_group", group.label, { option_id: group.id, source: "info_modal" });
-                        setSelectedFabricGroupId(group.id);
-                        setStepTwoCollapsed(true);
                         setCollectionInfoId("");
-                        window.setTimeout(() => {
-                          scrollStepIntoView(stepThreeRef.current);
-                        }, 380);
+                        pickFabricGroup(group.id);
                       }}
                     >
                       Wybieram tę kolekcję

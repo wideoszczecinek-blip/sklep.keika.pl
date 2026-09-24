@@ -579,6 +579,19 @@ export default function CartPage() {
   }, [expressEligible, expressSelected]);
   const expressFee = expressEligible && expressSelected ? EXPRESS_FEE_AMOUNT : 0;
   const [selectedPaczkomat, setSelectedPaczkomat] = useState<PaczkomatPoint | null>(null);
+  // Kupujący inny niż odbiorca (właściciel, 2026-09-24): domyślnie to ta
+  // sama osoba, więc nikt nie wpisuje niczego dwa razy. Gdy się różnią,
+  // dane lecą do zamówienia osobnym blokiem i dodatkowo w notatce, żeby
+  // biuro widziało je bez zaglądania w JSON.
+  const [buyerDifferent, setBuyerDifferent] = useState(false);
+  const [buyer, setBuyer] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    street: "",
+    postcode: "",
+    city: "",
+  });
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -589,6 +602,7 @@ export default function CartPage() {
     address1: "",
     note: "",
   });
+
   // Real live bug 2026-09-11 + a regression of the same class 2026-09-13
   // (see address1FieldValid's and the resync effect's own comments below) -
   // a debounce alone can't fully tell "the customer paused typing" apart
@@ -608,6 +622,44 @@ export default function CartPage() {
     postcode: "",
     city: "",
   });
+
+  // Wpisane dane przeżywają przeładowanie strony i powrót z bramki
+  // płatniczej (właściciel, 2026-09-24: "uzupełnione dane mają się
+  // przenosić i zapamiętywać w ramach sesji"). sessionStorage, nie local:
+  // dane adresowe nie mają zostawać na wspólnym komputerze po zamknięciu
+  // przeglądarki.
+  const CHECKOUT_DRAFT_KEY = "keika_checkout_draft_v1";
+  const checkoutDraftLoadedRef = useRef(false);
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(CHECKOUT_DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw) as Record<string, unknown>;
+        if (draft.form && typeof draft.form === "object") setForm((current) => ({ ...current, ...(draft.form as object) }));
+        if (draft.invoice && typeof draft.invoice === "object")
+          setInvoice((current) => ({ ...current, ...(draft.invoice as object) }));
+        if (draft.buyer && typeof draft.buyer === "object") setBuyer((current) => ({ ...current, ...(draft.buyer as object) }));
+        if (typeof draft.wantsInvoice === "boolean") setWantsInvoice(draft.wantsInvoice);
+        if (typeof draft.buyerDifferent === "boolean") setBuyerDifferent(draft.buyerDifferent);
+        if (typeof draft.deliveryMethod === "string" && draft.deliveryMethod) setDeliveryMethod(draft.deliveryMethod);
+      }
+    } catch {
+      /* sessionStorage niedostępny - formularz po prostu startuje pusty */
+    }
+    checkoutDraftLoadedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!checkoutDraftLoadedRef.current) return;
+    try {
+      window.sessionStorage.setItem(
+        CHECKOUT_DRAFT_KEY,
+        JSON.stringify({ form, invoice, buyer, wantsInvoice, buyerDifferent, deliveryMethod }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [form, invoice, buyer, wantsInvoice, buyerDifferent, deliveryMethod]);
   const [nipLookupLoading, setNipLookupLoading] = useState(false);
   const [nipLookupError, setNipLookupError] = useState("");
   const lastLookedUpNip = useRef("");
@@ -909,7 +961,9 @@ export default function CartPage() {
 
   const editingItem = editingItemId ? items.find((item) => item.id === editingItemId) || null : null;
 
-  const requiresAddress = deliveryMethod !== "odbior-osobisty";
+  // Paczkomat nie potrzebuje adresu klienta: przesyłka jedzie do punktu, a
+  // adres punktu doklejamy do zamówienia przy wysyłce (patrz submitOrder).
+  const requiresAddress = deliveryMethod !== "odbior-osobisty" && deliveryMethod !== PACZKOMAT_METHOD.id;
   // E-mail is mandatory (not just "phone or e-mail" any more) - it's what
   // gets pre-filled into the Stripe payment form and used for the receipt.
   const emailValid = /\S+@\S+\.\S+/.test(form.email.trim());
@@ -950,12 +1004,19 @@ export default function CartPage() {
   const addressReady =
     !requiresAddress || (cityFieldValid && address1FieldValid && postcodeFieldValid && !address1Focused);
   const paczkomatReady = deliveryMethod !== PACZKOMAT_METHOD.id || selectedPaczkomat !== null;
+  const buyerNameValid = buyer.name.trim().length >= 3;
+  const buyerEmailValid = /\S+@\S+\.\S+/.test(buyer.email.trim());
+  // Blok kupującego jest dobrowolny, ale jak już ktoś go otworzy, to musi
+  // dać nazwę i e-mail - inaczej zamówienie miałoby dwa zestawy danych,
+  // z czego jeden pusty.
+  const buyerReady = !buyerDifferent || (buyerNameValid && buyerEmailValid);
   const invoiceReady =
     !wantsInvoice ||
     (nipFieldValid && companyNameFieldValid && invoiceStreetFieldValid && invoicePostcodeFieldValid && invoiceCityFieldValid);
   // The payment section itself is always rendered (see JSX below) - this
   // just controls whether it's locked/greyed out or interactive.
-  const deliveryDataReady = contactReady && addressReady && paczkomatReady && invoiceReady && items.length > 0;
+  const deliveryDataReady =
+    contactReady && addressReady && paczkomatReady && invoiceReady && buyerReady && items.length > 0;
   const paymentReady =
     paymentMethod === "online" || paymentMethod === "transfer" || paymentMethod === "p24" || codSms.status === "verified";
   const checkoutReady = deliveryDataReady && paymentReady;
@@ -1556,6 +1617,26 @@ export default function CartPage() {
         .filter(Boolean)
         .join("\n\n");
 
+      // Kupujący inny niż odbiorca ląduje też w notatce - biuro widzi to od
+      // razu na zamówieniu, bez zaglądania w payload.
+      const noteWithBuyer = buyerDifferent
+        ? [
+            noteWithDelivery,
+            [
+              "Kupujący (inny niż odbiorca):",
+              buyer.name.trim(),
+              [buyer.street.trim(), [buyer.postcode.trim(), buyer.city.trim()].filter(Boolean).join(" ")]
+                .filter(Boolean)
+                .join(", "),
+              [buyer.email.trim(), buyer.phone.trim()].filter(Boolean).join(" · "),
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          ]
+            .filter(Boolean)
+            .join("\n\n")
+        : noteWithDelivery;
+
       // Atrybucja Meta/UTM (fbp, fbc, fbclid, utm_*, landing_url, ua) - serwer
       // CRM użyje jej do serwerowego Purchase w Meta CAPI (event_id = order_code).
       let tracking: Record<string, string> = {};
@@ -1585,16 +1666,38 @@ export default function CartPage() {
           session_token: checkoutSessionToken,
           customer: { name: `${form.firstName} ${form.lastName}`.trim(), phone: form.phone, email: form.email },
           shipping: {
-            city: form.city,
-            postcode: form.postcode,
-            address_line_1: form.address1,
+            // Paczkomat: adresem wysyłki jest punkt, nie dom klienta - od
+            // 2026-09-24 nie prosimy go już o własny adres przy tej metodzie,
+            // więc bierzemy adres punktu (kod i miasto wyciągamy z jego
+            // opisu, np. "ul. Kwiatowa 1, 78-400 Szczecinek").
             ...(deliveryMethod === PACZKOMAT_METHOD.id && selectedPaczkomat
-              ? {
-                  paczkomat_id: selectedPaczkomat.id,
-                  paczkomat_address: selectedPaczkomat.address,
-                }
-              : {}),
+              ? (() => {
+                  const raw = String(selectedPaczkomat.address || "");
+                  const match = raw.match(/^(.*?),?\s*(\d{2}-\d{3})\s+(.*)$/);
+                  return {
+                    address_line_1: match ? match[1].trim() : raw,
+                    postcode: match ? match[2] : form.postcode,
+                    city: match ? match[3].trim() : form.city,
+                    paczkomat_id: selectedPaczkomat.id,
+                    paczkomat_address: raw,
+                  };
+                })()
+              : {
+                  city: form.city,
+                  postcode: form.postcode,
+                  address_line_1: form.address1,
+                }),
           },
+          buyer: buyerDifferent
+            ? {
+                name: buyer.name.trim(),
+                email: buyer.email.trim(),
+                phone: buyer.phone.trim(),
+                street: buyer.street.trim(),
+                postcode: buyer.postcode.trim(),
+                city: buyer.city.trim(),
+              }
+            : null,
           invoice: wantsInvoice
             ? {
                 nip: invoice.nip,
@@ -1604,7 +1707,7 @@ export default function CartPage() {
                 city: invoice.city,
               }
             : null,
-          note_text: noteWithDelivery,
+          note_text: noteWithBuyer,
           payment_provider:
             paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : paymentMethod === "p24" ? "p24" : "stripe",
           payment_method:
@@ -1684,6 +1787,8 @@ export default function CartPage() {
     deliveryMethod,
     selectedPaczkomat,
     form,
+    buyerDifferent,
+    buyer,
     wantsInvoice,
     invoice,
     paymentMethod,
@@ -2123,7 +2228,7 @@ export default function CartPage() {
   };
   const termsCheckbox =
     !paymentConfirmed && items.length > 0 ? (
-      <label className="cart-terms-checkbox">
+      <label className={`cart-terms-checkbox ${termsAccepted ? "is-accepted" : ""}`}>
         <input
           type="checkbox"
           checked={termsAccepted}
@@ -2425,25 +2530,152 @@ export default function CartPage() {
               <p className="cart-page-order-note">Koszyk opróżniony po złożeniu zamówienia poniżej.</p>
             )}
 
+            {/* Podsumowanie od razu pod pozycjami, jeszcze przed formularzami
+                (właściciel, 2026-09-24): klient ma widzieć ceny PO rabatach i
+                wszystkie dopłaty zanim zacznie wpisywać dane, żeby na końcu
+                nie było niespodzianek. Wcześniej ta sama lista siedziała
+                dopiero w karcie płatności, pod formularzami.
+                Był tu też przycisk "Zapisz / udostępnij link" - usunięty:
+                w koszyku był tylko wygodną furtką do odłożenia zakupu. */}
             {items.length > 0 ? (
-              <button type="button" className="cart-save-share-banner" onClick={openCartShareModal}>
-                <span className="cart-save-share-banner-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M14 3h7v7M21 3 10 14M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-                <span className="cart-save-share-banner-copy">
-                  <strong>Zapisz / udostępnij link do wyceny z rabatami na później</strong>
-                  <small>Nic nie tracisz - wrócisz do tego koszyka w każdej chwili, na dowolnym urządzeniu.</small>
-                </span>
-              </button>
+              <section className="cart-summary-card">
+                <h2>Podsumowanie koszyka</h2>
+                <div className="cart-summary-card-body">
+                  <div className="cart-discount-code">
+                    <span className="cart-discount-code-label">Kod rabatowy</span>
+                    {appliedDiscount ? (
+                      <div className="cart-discount-code-applied">
+                        <span>
+                          <strong>{appliedDiscount.code}</strong>{" "}
+                          {appliedDiscount.type === "percent"
+                            ? `-${appliedDiscount.value.toLocaleString("pl-PL")}%`
+                            : `-${formatPln(appliedDiscount.value)}`}
+                        </span>
+                        <button type="button" onClick={removeDiscountCode}>
+                          Usuń
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="cart-discount-code-row">
+                        <input
+                          type="text"
+                          value={discountCodeInput}
+                          onChange={(event) => {
+                            setDiscountCodeInput(event.target.value);
+                            if (discountError) setDiscountError("");
+                          }}
+                          placeholder="np. LATO2026"
+                          disabled={discountChecking}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              checkDiscountCode();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => checkDiscountCode()}
+                          disabled={discountChecking || !discountCodeInput.trim()}
+                        >
+                          {discountChecking ? "Sprawdzam…" : "Sprawdź"}
+                        </button>
+                      </div>
+                    )}
+                    {discountError ? <p className="cart-discount-code-error">{discountError}</p> : null}
+                  </div>
+
+                  <div className="cart-page-summary-row is-muted">
+                    <span>
+                      {summary.items} {summary.items === 1 ? "produkt" : "produktów"}
+                    </span>
+                    <span>{formatPln(summary.total)}</span>
+                  </div>
+                  {combinedSavings > 0 ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>Wspólne rozliczenie obwodu moskitier</span>
+                      <span>-{formatPln(combinedSavings)}</span>
+                    </div>
+                  ) : null}
+                  {appliedDiscount ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>Kod rabatowy {appliedDiscount.code}</span>
+                      <span>-{formatPln(appliedDiscount.amount)}</span>
+                    </div>
+                  ) : null}
+                  {rescueGrant && rescueAmount > 0 ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>Rabat za zapisanie wyceny (-{rescueGrant.percent}%)</span>
+                      <span>-{formatPln(rescueAmount)}</span>
+                    </div>
+                  ) : null}
+                  {deliveryMethod !== PICKUP_METHOD.id ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>Koszt dostawy</span>
+                      <span>{shippingFee > 0 ? formatPln(shippingFee) : "Gratis"}</span>
+                    </div>
+                  ) : null}
+                  {expressFee > 0 ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>Ekspres - priorytet produkcji</span>
+                      <span>{formatPln(expressFee)}</span>
+                    </div>
+                  ) : null}
+                  {orderSurcharge > 0 ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>Dopłata za przesyłkę dłużycową</span>
+                      <span>{formatPln(orderSurcharge)}</span>
+                    </div>
+                  ) : null}
+                  {paymentMethod === "cod" ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>Dopłata za płatność za pobraniem</span>
+                      <span>{formatPln(COD_SURCHARGE_AMOUNT)}</span>
+                    </div>
+                  ) : null}
+                  <div className="cart-page-summary-row">
+                    <span>Razem</span>
+                    <strong>
+                      {formatPln(payableTotal)}
+                    </strong>
+                  </div>
+
+                  {shippingFee > 0 && amountToFreeShipping > 0 ? (
+                    <p className="cart-free-shipping-progress">
+                      Brakuje <strong>{formatPln(amountToFreeShipping)}</strong> do <strong>darmowej dostawy</strong>.{" "}
+                      <a href="/produkt/moskitiery-ramkowe" className="cart-free-shipping-cta">
+                        Wyceń dodatkową moskitierę
+                      </a>
+                    </p>
+                  ) : null}
+
+                  {sezon20Promo ? (
+                    <button type="button" className="cart-promo-banner" onClick={applySezon20Promo}>
+                      <span className="cart-promo-banner-label">
+                        Zamów z kodem rabatowym SEZON20{" "}
+                        {sezon20Promo.type === "percent"
+                          ? `-${sezon20Promo.value.toLocaleString("pl-PL")}%`
+                          : `-${formatPln(sezon20Promo.value)}`}
+                      </span>
+                      <strong className="cart-promo-banner-price">
+                        {formatPln(
+                          Math.max(
+                            0,
+                            summary.total -
+                              combinedSavings -
+                              sezon20Promo.amount +
+                              shippingFee +
+                              orderSurcharge +
+                              (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
+                          ),
+                        )}
+                      </strong>
+                    </button>
+                  ) : null}
+                </div>
+              </section>
             ) : null}
+
 
             <div className="cart-checkout-layout">
               <div className="cart-checkout-left" onBlurCapture={handleCheckoutFieldBlur}>
@@ -2492,14 +2724,22 @@ export default function CartPage() {
                   </section>
                 ) : null}
 
-                <section className="cart-delivery-card">
-                  <h2>Metody dostawy</h2>
+                {/* Dostawa jako akordeon (właściciel, 2026-09-24): wybór
+                    metody od razu otwiera pola, których ta metoda wymaga -
+                    kurier prosi o adres, paczkomat o dane odbiorcy i punkt,
+                    odbiór osobisty tylko o kontakt. Wszystkie pola piszą do
+                    tego samego stanu formularza, więc przełączenie metody
+                    nie kasuje tego, co klient już wpisał. */}
+                <section className="cart-delivery-card cart-delivery-card--accordion" ref={shippingAddressSectionRef}>
+                  <h2>Dostawa i dane odbiorcy</h2>
                   <div className="cart-delivery-options">
                     {availableDeliveryMethods.map((method) => {
                       const isPaczkomat = method.id === PACZKOMAT_METHOD.id;
+                      const isPickup = method.id === PICKUP_METHOD.id;
                       const isActive = deliveryMethod === method.id;
+                      const needsAddress = !isPaczkomat && !isPickup;
                       return (
-                        <div key={method.id} className="cart-delivery-option-group">
+                        <div key={method.id} className={`cart-delivery-option-group ${isActive ? "is-open" : ""}`}>
                           <label className={`cart-delivery-option ${isActive ? "is-active" : ""}`}>
                             <input
                               type="radio"
@@ -2520,10 +2760,10 @@ export default function CartPage() {
                               {method.extraFee ? `+${formatPln(method.extraFee)}` : "Gratis"}
                             </span>
                           </label>
-                          {isPaczkomat ? (
-                            <div className={`cart-paczkomat-accordion ${isActive ? "is-open" : ""}`}>
-                              <div className="cart-paczkomat-accordion-inner">
-                                {isActive ? (
+                          <div className={`cart-delivery-accordion ${isActive ? "is-open" : ""}`}>
+                            {isActive ? (
+                              <div className="cart-delivery-accordion-inner">
+                                {isPaczkomat ? (
                                   <PaczkomatPicker
                                     value={selectedPaczkomat}
                                     onChange={(point) => {
@@ -2532,26 +2772,208 @@ export default function CartPage() {
                                     }}
                                   />
                                 ) : null}
+                                <fieldset className="cart-checkout-form" disabled={dataLocked}>
+                                  <legend className="cart-delivery-fields-legend">
+                                    {isPaczkomat
+                                      ? "Dane odbiorcy"
+                                      : isPickup
+                                        ? "Dane do kontaktu"
+                                        : "Dane do wysyłki"}
+                                  </legend>
+                                  {/* Kolejność pod autouzupełnianie przeglądarki
+                                      (audyt 2026-09-13): kontakt, potem imię i
+                                      nazwisko, potem ulica -> kod -> miasto. */}
+                                  <div className="cart-checkout-form-grid">
+                                    <label>
+                                      E-mail
+                                      <CartFieldStatus valid={emailValid}>
+                                        <input
+                                          type="email"
+                                          inputMode="email"
+                                          autoComplete="email"
+                                          value={form.email}
+                                          onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                                          required
+                                        />
+                                      </CartFieldStatus>
+                                    </label>
+                                    <label>
+                                      Telefon
+                                      <CartFieldStatus valid={phoneFieldValid}>
+                                        <input
+                                          type="tel"
+                                          inputMode="tel"
+                                          autoComplete="tel"
+                                          value={form.phone}
+                                          onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                                          required
+                                        />
+                                      </CartFieldStatus>
+                                    </label>
+                                    <label>
+                                      Imię
+                                      <CartFieldStatus valid={firstNameFieldValid}>
+                                        <input
+                                          autoComplete="given-name"
+                                          value={form.firstName}
+                                          onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
+                                          required
+                                        />
+                                      </CartFieldStatus>
+                                    </label>
+                                    <label>
+                                      Nazwisko
+                                      <CartFieldStatus valid={lastNameFieldValid}>
+                                        <input
+                                          autoComplete="family-name"
+                                          value={form.lastName}
+                                          onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
+                                          required
+                                        />
+                                      </CartFieldStatus>
+                                    </label>
+                                    {needsAddress ? (
+                                      <>
+                                        <label>
+                                          Ulica i numer
+                                          <CartFieldStatus valid={address1FieldValid}>
+                                            <input
+                                              autoComplete="street-address"
+                                              value={form.address1}
+                                              onChange={(event) =>
+                                                setForm((current) => ({ ...current, address1: event.target.value }))
+                                              }
+                                              onFocus={() => setAddress1Focused(true)}
+                                              onBlur={() => setAddress1Focused(false)}
+                                            />
+                                          </CartFieldStatus>
+                                        </label>
+                                        <label>
+                                          Kod pocztowy
+                                          <CartFieldStatus valid={postcodeFieldValid}>
+                                            <input
+                                              autoComplete="postal-code"
+                                              inputMode="numeric"
+                                              placeholder="00-000"
+                                              value={form.postcode}
+                                              onChange={(event) =>
+                                                setForm((current) => ({ ...current, postcode: event.target.value }))
+                                              }
+                                            />
+                                          </CartFieldStatus>
+                                        </label>
+                                        <label>
+                                          Miasto
+                                          <CartFieldStatus valid={cityFieldValid}>
+                                            <input
+                                              autoComplete="address-level2"
+                                              value={form.city}
+                                              onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
+                                            />
+                                          </CartFieldStatus>
+                                        </label>
+                                      </>
+                                    ) : null}
+                                  </div>
+                                </fieldset>
                               </div>
-                            </div>
-                          ) : null}
+                            ) : null}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
+
+                  <label className="cart-checkout-note-field">
+                    Dodatkowe informacje
+                    <textarea
+                      value={form.note}
+                      onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+                      disabled={dataLocked}
+                    />
+                  </label>
                 </section>
 
-                {/* Moved here (was inside "Adres wysyłki" below) - real
-                    feedback 2026-09-07: showing it right under the delivery
-                    method, before the address fields, matches how customers
-                    actually decide ("chcę fakturę" is a yes/no up front, not
-                    something they think about mid-address-form) and gives
-                    the NIP auto-fill (see lookupNip()) a completion moment
-                    of its own to trigger the address-section auto-scroll
-                    below. */}
-                <section className="cart-checkout-form-card cart-invoice-card">
+                {/* Dane kupującego i faktura - dwa niezależne akordeony
+                    (właściciel, 2026-09-24). Domyślnie kupujący = odbiorca,
+                    więc nikt nie wypełnia niczego dwa razy. */}
+                <section className="cart-checkout-form-card cart-buyer-card">
                   <fieldset className="cart-checkout-form" disabled={dataLocked}>
-                    <label className="cart-invoice-checkbox">
+                    <label className="cart-toggle-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={buyerDifferent}
+                        onChange={(event) => {
+                          setBuyerDifferent(event.target.checked);
+                          trackCheckoutIssue("checkout_buyer_other", event.target.checked ? "on" : "off");
+                        }}
+                      />
+                      <span>
+                        <strong>Dane kupującego inne niż dane dostawy</strong>
+                        <small>Zaznacz, jeśli zamawiasz dla kogoś innego albo na firmę.</small>
+                      </span>
+                    </label>
+
+                    {buyerDifferent ? (
+                      <div className="cart-buyer-fields">
+                        <div className="cart-checkout-form-grid">
+                          <label>
+                            Imię i nazwisko / firma
+                            <CartFieldStatus valid={buyerNameValid}>
+                              <input
+                                value={buyer.name}
+                                onChange={(event) => setBuyer((current) => ({ ...current, name: event.target.value }))}
+                              />
+                            </CartFieldStatus>
+                          </label>
+                          <label>
+                            E-mail
+                            <CartFieldStatus valid={buyerEmailValid}>
+                              <input
+                                type="email"
+                                inputMode="email"
+                                value={buyer.email}
+                                onChange={(event) => setBuyer((current) => ({ ...current, email: event.target.value }))}
+                              />
+                            </CartFieldStatus>
+                          </label>
+                          <label>
+                            Telefon
+                            <input
+                              type="tel"
+                              inputMode="tel"
+                              value={buyer.phone}
+                              onChange={(event) => setBuyer((current) => ({ ...current, phone: event.target.value }))}
+                            />
+                          </label>
+                          <label>
+                            Ulica i numer
+                            <input
+                              value={buyer.street}
+                              onChange={(event) => setBuyer((current) => ({ ...current, street: event.target.value }))}
+                            />
+                          </label>
+                          <label>
+                            Kod pocztowy
+                            <input
+                              inputMode="numeric"
+                              placeholder="00-000"
+                              value={buyer.postcode}
+                              onChange={(event) => setBuyer((current) => ({ ...current, postcode: event.target.value }))}
+                            />
+                          </label>
+                          <label>
+                            Miasto
+                            <input
+                              value={buyer.city}
+                              onChange={(event) => setBuyer((current) => ({ ...current, city: event.target.value }))}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <label className="cart-toggle-checkbox">
                       <input
                         type="checkbox"
                         checked={wantsInvoice}
@@ -2560,7 +2982,10 @@ export default function CartPage() {
                           trackCheckoutIssue("checkout_invoice", event.target.checked ? "on" : "off");
                         }}
                       />
-                      Chcę otrzymać fakturę
+                      <span>
+                        <strong>Chcę fakturę</strong>
+                        <small>Dane firmy uzupełnimy automatycznie po wpisaniu NIP.</small>
+                      </span>
                     </label>
 
                     {wantsInvoice ? (
@@ -2568,8 +2993,8 @@ export default function CartPage() {
                         <label className="cart-invoice-nip-field">
                           NIP
                           <div className="cart-invoice-nip-row">
-                            {/* Checkmark deliberately suppressed while the spinner is
-                                showing - both render at the same corner spot. */}
+                            {/* Checkmark celowo wyłączony w trakcie pobierania -
+                                obie ikony siadają w tym samym rogu. */}
                             <CartFieldStatus valid={nipFieldValid && !nipLookupLoading}>
                               <input
                                 inputMode="numeric"
@@ -2579,9 +3004,6 @@ export default function CartPage() {
                                   const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
                                   setInvoice((current) => ({ ...current, nip: digits }));
                                   setNipLookupError("");
-                                  // Fetch the moment the 10th digit lands - no need to
-                                  // leave the field first (onBlur below still covers a
-                                  // pasted value where the field never gains focus).
                                   if (digits.length === 10) void lookupNip(digits);
                                 }}
                                 onBlur={() => {
@@ -2647,140 +3069,15 @@ export default function CartPage() {
                       <button
                         type="button"
                         className="cart-section-next-button"
-                        disabled={!invoiceReady}
+                        disabled={!(contactReady && addressReady && paczkomatReady && invoiceReady && buyerReady)}
                         onClick={() => {
-                          trackCheckoutIssue("checkout_next", "adres");
-                          scrollToSection(shippingAddressSectionRef);
+                          trackCheckoutIssue("checkout_next", "platnosc");
+                          scrollToSection(paymentSectionRef);
                         }}
-                        aria-label="Dalej"
-                        title="Dalej"
+                        aria-label="Przejdź do płatności"
+                        title="Przejdź do płatności"
                       >
-                        Dalej <span aria-hidden="true">→</span>
-                      </button>
-                    </div>
-                  </fieldset>
-                </section>
-
-                <section className="cart-checkout-form-card" ref={shippingAddressSectionRef}>
-                  <h2>Adres wysyłki</h2>
-                  <fieldset className="cart-checkout-form" disabled={dataLocked}>
-                    {/* Order + autocomplete (audit 2026-09-13): contact first
-                        (the phone's keyboard/autofill can fill e-mail and
-                        number in one tap), then name, then street -> post
-                        code -> city, which is the order browser autofill
-                        profiles are stored in. autoComplete tokens let the
-                        whole block fill from one saved address. */}
-                    <div className="cart-checkout-form-grid">
-                      <label>
-                        E-mail
-                        <CartFieldStatus valid={emailValid}>
-                          <input
-                            type="email"
-                            inputMode="email"
-                            autoComplete="email"
-                            value={form.email}
-                            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      <label>
-                        Telefon
-                        <CartFieldStatus valid={phoneFieldValid}>
-                          <input
-                            type="tel"
-                            inputMode="tel"
-                            autoComplete="tel"
-                            value={form.phone}
-                            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      <label>
-                        Imię
-                        <CartFieldStatus valid={firstNameFieldValid}>
-                          <input
-                            autoComplete="given-name"
-                            value={form.firstName}
-                            onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      <label>
-                        Nazwisko
-                        <CartFieldStatus valid={lastNameFieldValid}>
-                          <input
-                            autoComplete="family-name"
-                            value={form.lastName}
-                            onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
-                            required
-                          />
-                        </CartFieldStatus>
-                      </label>
-                      {requiresAddress ? (
-                        <>
-                          <label>
-                            Ulica i numer
-                            <CartFieldStatus valid={address1FieldValid}>
-                              <input
-                                autoComplete="street-address"
-                                value={form.address1}
-                                onChange={(event) =>
-                                  setForm((current) => ({ ...current, address1: event.target.value }))
-                                }
-                                onFocus={() => setAddress1Focused(true)}
-                                onBlur={() => setAddress1Focused(false)}
-                              />
-                            </CartFieldStatus>
-                          </label>
-                          <label>
-                            Kod pocztowy
-                            <CartFieldStatus valid={postcodeFieldValid}>
-                              <input
-                                autoComplete="postal-code"
-                                inputMode="numeric"
-                                placeholder="00-000"
-                                value={form.postcode}
-                                onChange={(event) =>
-                                  setForm((current) => ({ ...current, postcode: event.target.value }))
-                                }
-                              />
-                            </CartFieldStatus>
-                          </label>
-                          <label>
-                            Miasto
-                            <CartFieldStatus valid={cityFieldValid}>
-                              <input
-                                autoComplete="address-level2"
-                                value={form.city}
-                                onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
-                              />
-                            </CartFieldStatus>
-                          </label>
-                        </>
-                      ) : null}
-                    </div>
-
-                    <label className="cart-checkout-note-field">
-                      Dodatkowe informacje
-                      <textarea
-                        value={form.note}
-                        onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
-                      />
-                    </label>
-
-                    <div className="cart-section-next-wrap">
-                      <button
-                        type="button"
-                        className="cart-section-next-button"
-                        disabled={!(contactReady && addressReady && paczkomatReady)}
-                        onClick={() => scrollToSection(paymentSectionRef)}
-                        aria-label="Dalej"
-                        title="Dalej"
-                      >
-                        Dalej <span aria-hidden="true">→</span>
+                        Do płatności <span aria-hidden="true">→</span>
                       </button>
                     </div>
                   </fieldset>
@@ -2790,162 +3087,6 @@ export default function CartPage() {
               <aside className="cart-checkout-right">
                 <section className="cart-payment-card" ref={paymentSectionRef}>
                   <h2>Płatność</h2>
-                  {items.length > 0 ? (
-                    <>
-                      <div className="cart-discount-code">
-                        <span className="cart-discount-code-label">Kod rabatowy</span>
-                        {appliedDiscount ? (
-                          <div className="cart-discount-code-applied">
-                            <span>
-                              <strong>{appliedDiscount.code}</strong>{" "}
-                              {appliedDiscount.type === "percent"
-                                ? `-${appliedDiscount.value.toLocaleString("pl-PL")}%`
-                                : `-${formatPln(appliedDiscount.value)}`}
-                            </span>
-                            <button type="button" onClick={removeDiscountCode}>
-                              Usuń
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="cart-discount-code-row">
-                            <input
-                              type="text"
-                              value={discountCodeInput}
-                              onChange={(event) => {
-                                setDiscountCodeInput(event.target.value);
-                                if (discountError) setDiscountError("");
-                              }}
-                              placeholder="np. LATO2026"
-                              disabled={discountChecking}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  event.preventDefault();
-                                  checkDiscountCode();
-                                }
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => checkDiscountCode()}
-                              disabled={discountChecking || !discountCodeInput.trim()}
-                            >
-                              {discountChecking ? "Sprawdzam…" : "Sprawdź"}
-                            </button>
-                          </div>
-                        )}
-                        {discountError ? <p className="cart-discount-code-error">{discountError}</p> : null}
-                      </div>
-
-                      <div className="cart-page-summary-row is-muted">
-                        <span>
-                          {summary.items} {summary.items === 1 ? "produkt" : "produktów"}
-                        </span>
-                        <span>{formatPln(summary.total)}</span>
-                      </div>
-                      {combinedSavings > 0 ? (
-                        <div className="cart-page-summary-row is-muted">
-                          <span>Wspólne rozliczenie obwodu moskitier</span>
-                          <span>-{formatPln(combinedSavings)}</span>
-                        </div>
-                      ) : null}
-                      {appliedDiscount ? (
-                        <div className="cart-page-summary-row is-muted">
-                          <span>Kod rabatowy {appliedDiscount.code}</span>
-                          <span>-{formatPln(appliedDiscount.amount)}</span>
-                        </div>
-                      ) : null}
-                      {rescueGrant && rescueAmount > 0 ? (
-                        <div className="cart-page-summary-row is-muted">
-                          <span>Rabat za zapisanie wyceny (-{rescueGrant.percent}%)</span>
-                          <span>-{formatPln(rescueAmount)}</span>
-                        </div>
-                      ) : null}
-                      {deliveryMethod !== PICKUP_METHOD.id ? (
-                        <div className="cart-page-summary-row is-muted">
-                          <span>Koszt dostawy</span>
-                          <span>{shippingFee > 0 ? formatPln(shippingFee) : "Gratis"}</span>
-                        </div>
-                      ) : null}
-                      {expressFee > 0 ? (
-                        <div className="cart-page-summary-row is-muted">
-                          <span>Ekspres - priorytet produkcji</span>
-                          <span>{formatPln(expressFee)}</span>
-                        </div>
-                      ) : null}
-                      {orderSurcharge > 0 ? (
-                        <div className="cart-page-summary-row is-muted">
-                          <span>Dopłata za przesyłkę dłużycową</span>
-                          <span>{formatPln(orderSurcharge)}</span>
-                        </div>
-                      ) : null}
-                      {paymentMethod === "cod" ? (
-                        <div className="cart-page-summary-row is-muted">
-                          <span>Dopłata za płatność za pobraniem</span>
-                          <span>{formatPln(COD_SURCHARGE_AMOUNT)}</span>
-                        </div>
-                      ) : null}
-                      <div className="cart-page-summary-row">
-                        <span>Razem</span>
-                        <strong>
-                          {formatPln(payableTotal)}
-                        </strong>
-                      </div>
-
-                      {shippingFee > 0 && amountToFreeShipping > 0 ? (
-                        <p className="cart-free-shipping-progress">
-                          Brakuje <strong>{formatPln(amountToFreeShipping)}</strong> do <strong>darmowej dostawy</strong>.{" "}
-                          <a href="/produkt/moskitiery-ramkowe" className="cart-free-shipping-cta">
-                            Wyceń dodatkową moskitierę
-                          </a>
-                        </p>
-                      ) : null}
-
-                      {sezon20Promo ? (
-                        <button type="button" className="cart-promo-banner" onClick={applySezon20Promo}>
-                          <span className="cart-promo-banner-label">
-                            Zamów z kodem rabatowym SEZON20{" "}
-                            {sezon20Promo.type === "percent"
-                              ? `-${sezon20Promo.value.toLocaleString("pl-PL")}%`
-                              : `-${formatPln(sezon20Promo.value)}`}
-                          </span>
-                          <strong className="cart-promo-banner-price">
-                            {formatPln(
-                              Math.max(
-                                0,
-                                summary.total -
-                                  combinedSavings -
-                                  sezon20Promo.amount +
-                                  shippingFee +
-                                  orderSurcharge +
-                                  (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
-                              ),
-                            )}
-                          </strong>
-                        </button>
-                      ) : null}
-                    </>
-                  ) : null}
-
-                  {items.length > 0 ? (
-                    <button type="button" className="cart-save-share-banner cart-save-share-banner--summary" onClick={openCartShareModal}>
-                      <span className="cart-save-share-banner-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none">
-                          <path
-                            d="M14 3h7v7M21 3 10 14M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
-                      <span className="cart-save-share-banner-copy">
-                        <strong>Zapisz / udostępnij link do wyceny z rabatami na później</strong>
-                        <small>Nic nie tracisz - wrócisz do tego koszyka w każdej chwili, na dowolnym urządzeniu.</small>
-                      </span>
-                    </button>
-                  ) : null}
-
                   {paymentMethod === "cod" ? (
                     <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
                       Płatność za pobraniem

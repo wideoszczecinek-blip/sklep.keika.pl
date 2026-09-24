@@ -17415,3 +17415,107 @@ html[data-theme="light"] .pl-chip.pl-chip--accent {
   line-height: 1.35;
   opacity: 0.6;
 }
+
+
+/* ===== Koszyk 2026-09-24: podsumowanie nad formularzami, dostawa i dane
+   jako akordeony, wyraźna zgoda na regulamin. ===== */
+.cart-summary-card {
+  margin: 0 0 1.1rem;
+  padding: 0.9rem 1rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(197, 222, 247, 0.26);
+  background: rgba(12, 28, 48, 0.55);
+}
+.cart-summary-card h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+}
+.cart-summary-card-body {
+  display: grid;
+  gap: 0.15rem;
+}
+html[data-theme="light"] .cart-summary-card {
+  border-color: rgba(19, 40, 67, 0.14);
+  background: #fff;
+}
+
+/* Akordeon dostawy: pola metody rozwijają się pod jej kafelkiem. */
+.cart-delivery-accordion {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.cart-delivery-accordion.is-open {
+  max-height: 1600px;
+}
+.cart-delivery-accordion-inner {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.8rem 0.2rem 0.4rem;
+}
+.cart-delivery-fields-legend {
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  opacity: 0.8;
+}
+.cart-delivery-option-group.is-open {
+  border-radius: 0.9rem;
+}
+
+/* Checkboxy otwierające akordeony (kupujący, faktura). */
+.cart-toggle-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.55rem 0;
+  font: inherit;
+  cursor: pointer;
+}
+.cart-toggle-checkbox + .cart-toggle-checkbox {
+  border-top: 1px solid rgba(197, 222, 247, 0.16);
+}
+.cart-toggle-checkbox input {
+  margin-top: 0.2rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  accent-color: #2c9d82;
+}
+.cart-toggle-checkbox span {
+  display: grid;
+  gap: 0.15rem;
+}
+.cart-toggle-checkbox strong {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+.cart-toggle-checkbox small {
+  font-size: 0.76rem;
+  opacity: 0.7;
+}
+.cart-buyer-fields {
+  margin: 0.2rem 0 0.6rem;
+}
+
+/* Zgoda na regulamin: własna ramka, większy checkbox, czytelny tekst -
+   wcześniej była szarym drobnym drukiem pod przyciskiem płatności. */
+.cart-terms-checkbox {
+  align-items: flex-start;
+  margin: 0.6rem 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(243, 181, 70, 0.5);
+  background: rgba(243, 181, 70, 0.1);
+  font-size: 0.86rem;
+  color: inherit;
+}
+.cart-terms-checkbox input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.05rem;
+}
+.cart-terms-checkbox.is-accepted {
+  border-color: rgba(44, 157, 130, 0.5);
+  background: rgba(44, 157, 130, 0.1);
+}
