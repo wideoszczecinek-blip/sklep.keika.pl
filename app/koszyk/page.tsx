@@ -3187,6 +3187,44 @@ export default function CartPage() {
                 </section>
               </aside>
             </div>
+
+            {/* Ostatni blok koszyka: dla kogoś, kto doszedł do płatności i
+                jednak nie kliknął. Celowo TU, a nie nad formularzami -
+                wcześniej był wygodną furtką do odłożenia zakupu
+                (właściciel, 2026-09-24). */}
+            {items.length > 0 && !orderState ? (
+              <section className="cart-keep-card">
+                <span className="cart-keep-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M6.5 3.5h11a1 1 0 0 1 1 1v15.2a.8.8 0 0 1-1.22.68L12 17.2l-5.28 3.18A.8.8 0 0 1 5.5 19.7V4.5a1 1 0 0 1 1-1Z"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                    />
+                    <path d="M9 8.5h6M9 11.5h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <span className="cart-keep-copy">
+                  <strong>Nie decydujesz dzisiaj?</strong>
+                  <span>
+                    Wyślij sobie link do tego koszyka —{" "}
+                    {appliedDiscount ? (
+                      <>
+                        wymiary i rabat <strong>{appliedDiscount.code}</strong> zostaną zapisane
+                      </>
+                    ) : (
+                      <>wymiary i wycena zostaną zapisane</>
+                    )}
+                    . Wrócisz, kiedy będziesz gotowy — na telefonie albo na komputerze, bez wpisywania czegokolwiek od
+                    nowa.
+                  </span>
+                </span>
+                <button type="button" className="cart-keep-cta" onClick={openCartShareModal}>
+                  Wyślij mi link do koszyka
+                </button>
+              </section>
+            ) : null}
           </>
         )}
       </main>
