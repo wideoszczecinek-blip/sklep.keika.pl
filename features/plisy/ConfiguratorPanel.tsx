@@ -24,6 +24,7 @@ import { usePlisyFavourites } from "@/lib/plisy-favourites";
 import { applyPromoToPrice, getPromoRemainingMs, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { ensurePromoQuoteCode } from "@/lib/promo-save";
 import PromoSaveModal from "@/app/components/promo-save-modal";
+import InstallmentOffer from "@/app/components/installment-offer";
 import PlisaPreview from "./PlisaPreview";
 import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
 import PlisyFabricGallery from "./FabricGallery";
@@ -1786,6 +1787,16 @@ export default function ConfiguratorPanel({
                       ) : null}
                     </div>
                   ) : null}
+
+                  {/* Ile to wyjdzie w ratach - liczone od kwoty, którą
+                      klient faktycznie zapłaci (właściciel, 2026-09-24). */}
+                  <InstallmentOffer
+                    amount={
+                      setGrandTotal !== null && promo
+                        ? applyPromoToPrice(setGrandTotal, promo) ?? setGrandTotal
+                        : setGrandTotal
+                    }
+                  />
 
                   <button
                     type="button"

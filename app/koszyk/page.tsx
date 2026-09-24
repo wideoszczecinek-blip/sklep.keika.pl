@@ -49,6 +49,7 @@ import {
   type DispatchInfo,
 } from "@/lib/express";
 import { getRescueGrant, type RescueGrant } from "@/lib/rescue";
+import InstallmentOffer from "@/app/components/installment-offer";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
@@ -2113,6 +2114,7 @@ export default function CartPage() {
               )}
             </div>
           ) : null}
+          {thisKind === "p24_installments" ? <InstallmentOffer amount={payableTotal} /> : null}
           {termsCheckbox}
           {error ? <div className="cart-checkout-error">{error}</div> : null}
           {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
@@ -2139,16 +2141,17 @@ export default function CartPage() {
                 ? p24BankId
                   ? "Płacę – przejdź do banku"
                   : "Wybierz bank, aby zapłacić"
-                : thisKind === "p24_paypo"
-                  ? "Zamawiam z PayPo – zapłacę później"
-                  : "Zamawiam i płacę w ratach"}
+                : // Raty i PayPo kończą się wnioskiem u finansującego, nie
+                  // zapłatą - CTA ma mówić dokładnie to (właściciel,
+                  // 2026-09-24).
+                  "Przechodzę do wniosku"}
           </button>
           <p className="cart-checkout-cta-hint">
             {thisKind === "p24_transfer"
               ? "Przeniesiemy Cię bezpośrednio na stronę logowania wybranego banku (Przelewy24). Po zatwierdzeniu przelewu wrócisz do sklepu z potwierdzeniem."
               : thisKind === "p24_paypo"
                 ? "Przeniesiemy Cię do PayPo. Zamówienie przyjmujemy do realizacji po pozytywnej weryfikacji przez PayPo – za zakupy zapłacisz PayPo później (do 30 dni lub w ratach), bez dodatkowych opłat z naszej strony."
-                : `Przeniesiemy Cię na bezpieczną stronę Przelewy24 (${P24_KIND_LABELS[thisKind].title.toLowerCase()}). Po zaksięgowaniu wpłaty wrócisz do sklepu z potwierdzeniem.`}
+                : "Przeniesiemy Cię do wniosku ratalnego Przelewy24. Bank podaje tam ostateczną wysokość rat i RRSO; zamówienie przyjmujemy do realizacji po pozytywnej decyzji."}
           </p>
         </>
       );
@@ -2651,6 +2654,10 @@ export default function CartPage() {
                       {formatPln(payableTotal)}
                     </strong>
                   </div>
+
+                  {/* Oferta ratalna przy każdej kwocie - raty są włączone
+                      na koncie P24 (właściciel, 2026-09-24). */}
+                  <InstallmentOffer amount={payableTotal} />
 
                   {shippingFee > 0 && amountToFreeShipping > 0 ? (
                     <p className="cart-free-shipping-progress">

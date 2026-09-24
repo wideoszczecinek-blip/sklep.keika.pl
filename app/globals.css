@@ -17727,3 +17727,60 @@ html[data-theme="light"] .cart-basket-card {
   max-width: 1.15rem;
   height: 1.15rem;
 }
+
+
+/* Oferta ratalna pod kwotą (app/components/installment-offer.tsx). */
+.installment-offer {
+  margin: 0.45rem 0 0.2rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.7rem;
+  border: 1px dashed rgba(88, 203, 163, 0.5);
+  background: rgba(44, 157, 130, 0.08);
+}
+.installment-offer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.installment-offer-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+.installment-offer-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+.installment-offer-value strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.installment-offer-value select {
+  border-radius: 0.5rem;
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  background: rgba(255, 255, 255, 0.92);
+  color: #132843;
+  padding: 0.16rem 0.3rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.installment-offer-note {
+  margin: 0.3rem 0 0;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  opacity: 0.65;
+}
+.installment-offer--inline {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
