@@ -18273,3 +18273,10 @@ html[data-theme="light"] .cart-toggle-checkbox--inner {
 .pl-callout--diy .pl-callout-steps li {
   background: rgba(255, 255, 255, 0.75);
 }
+
+
+/* Komunikat o twardym limicie produkcji w szybkiej wycenie moskitier. */
+.pl-quick-na--limit {
+  color: #b3410a;
+  font-weight: 700;
+}

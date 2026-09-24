@@ -16,6 +16,7 @@ import {
   MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
   OVERSIZE_MAX_WIDTH_MM,
   OVERSIZE_SURCHARGE_TIER_2_MAX_MM,
+  OVERSIZE_TECHNICAL_LIMIT_MM,
   moskBilledMeters,
   moskOversizeSurchargeForDimension,
   moskPerimeterMeters,
@@ -89,11 +90,25 @@ export default function MoskitieryQuickPrice({
     }
   }
 
+  // Gdy jeden bok już przekracza 160 cm, drugi suwak kończy się na 160 -
+  // dzięki temu klient nie ustawi ręcznie rozmiaru, którego nie umiemy
+  // zrobić (a nie zabieramy mu możliwości zrobienia jednego długiego boku).
+  const widthMaxCm = heightMm > OVERSIZE_TECHNICAL_LIMIT_MM ? Math.floor(OVERSIZE_TECHNICAL_LIMIT_MM / 10) : maxCm;
+  const heightMaxCm = widthMm > OVERSIZE_TECHNICAL_LIMIT_MM ? Math.floor(OVERSIZE_TECHNICAL_LIMIT_MM / 10) : maxCm;
+
   const perimeter = moskPerimeterMeters(widthMm, heightMm);
   const billed = moskBilledMeters(perimeter);
   const base = Math.round(billed * pricePerMb * 100) / 100;
   const surcharge = moskOversizeSurchargeForDimension(Math.max(widthMm, heightMm));
-  const inRange = widthMm >= MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM && heightMm >= MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM && surcharge >= 0;
+  // Twardy limit produkcji: jeden bok może przekroczyć 160 cm, ale nie oba
+  // naraz - takiej ramki po prostu nie zrobimy (ten sam warunek co w
+  // konfiguratorze: bothDimensionsOverTechnicalLimit).
+  const bothOverTechnicalLimit = widthMm > OVERSIZE_TECHNICAL_LIMIT_MM && heightMm > OVERSIZE_TECHNICAL_LIMIT_MM;
+  const inRange =
+    widthMm >= MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM &&
+    heightMm >= MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM &&
+    surcharge >= 0 &&
+    !bothOverTechnicalLimit;
   const regular = inRange ? base : null;
   const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
   const headPrice = regular === null ? null : withPromo !== null && withPromo < regular ? withPromo : regular;
@@ -150,9 +165,9 @@ export default function MoskitieryQuickPrice({
             <input
               type="range"
               min={minCm}
-              max={maxCm}
+              max={widthMaxCm}
               step={1}
-              value={clamp(widthCm, minCm, maxCm)}
+              value={clamp(widthCm, minCm, widthMaxCm)}
               onChange={(event) => onSizeChange(Number(event.target.value) * 10, heightMm)}
               aria-label="Szerokość moskitiery w centymetrach"
             />
@@ -178,9 +193,9 @@ export default function MoskitieryQuickPrice({
             <input
               type="range"
               min={minCm}
-              max={maxCm}
+              max={heightMaxCm}
               step={1}
-              value={clamp(heightCm, minCm, maxCm)}
+              value={clamp(heightCm, minCm, heightMaxCm)}
               onChange={(event) => onSizeChange(widthMm, Number(event.target.value) * 10)}
               aria-label="Wysokość moskitiery w centymetrach"
             />
@@ -203,7 +218,11 @@ export default function MoskitieryQuickPrice({
 
         <div className="pl-quick-row">
           <div className="pl-quick-result" aria-live="polite">
-            {regular === null ? (
+            {bothOverTechnicalLimit ? (
+              <span className="pl-quick-na pl-quick-na--limit">
+                Szerokość i wysokość nie mogą jednocześnie przekraczać 160 cm — zmniejsz jeden z wymiarów.
+              </span>
+            ) : regular === null ? (
               <span className="pl-quick-na">Ten wymiar wyceni konfigurator</span>
             ) : withPromo !== null && withPromo < regular ? (
               <span className="pl-quick-amounts">
@@ -216,11 +235,13 @@ export default function MoskitieryQuickPrice({
                 <strong>{zl(regular)}</strong>
               </span>
             )}
-            <span className="pl-quick-note">
-              Obwód {perimeter.toLocaleString("pl-PL", { maximumFractionDigits: 2 })} m — płacisz za {billed} mb ×{" "}
-              {zl(pricePerMb)}
-              {surcharge > 0 ? ` · dopłata dłużycowa ${zl(surcharge)} (raz na zamówienie)` : ""}
-            </span>
+            {bothOverTechnicalLimit ? null : (
+              <span className="pl-quick-note">
+                Obwód {perimeter.toLocaleString("pl-PL", { maximumFractionDigits: 2 })} m — płacisz za {billed} mb ×{" "}
+                {zl(pricePerMb)}
+                {surcharge > 0 ? ` · dopłata dłużycowa ${zl(surcharge)} (raz na zamówienie)` : ""}
+              </span>
+            )}
           </div>
           <button
             type="button"
