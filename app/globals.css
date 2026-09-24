@@ -17932,3 +17932,96 @@ html[data-theme="light"] .cart-basket-card {
   opacity: 0.85;
 }
 
+
+
+/* ===== Kafelki PayPo i Raty mówią konkret (właściciel, 2026-09-24) ===== */
+.cart-pay-tile-lead {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0d5f5c;
+  line-height: 1.15;
+}
+.cart-pay-tile-paypo .cart-pay-tile-lead {
+  color: #1f9d6e;
+}
+.cart-pay-tile-sub {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+.cart-pay-tile-instalments {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+.cart-pay-tile-instalments .cart-pay-tile-lead {
+  display: inline;
+}
+.cart-pay-tile-instalments strong {
+  font-weight: 800;
+}
+
+/* Własna lista wyboru liczby rat - zamiast systemowego <select>. */
+.inst-picker {
+  position: relative;
+  display: inline-flex;
+  z-index: 3;
+}
+.inst-picker-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 168, 163, 0.45);
+  background: rgba(255, 255, 255, 0.9);
+  color: #0d5f5c;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.inst-picker-button:hover {
+  background: #fff;
+  border-color: #00a8a3;
+}
+.inst-picker-chevron {
+  font-size: 0.62rem;
+  opacity: 0.7;
+}
+.inst-picker-list {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  z-index: 40;
+  display: grid;
+  min-width: 6.2rem;
+  padding: 0.25rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(0, 168, 163, 0.35);
+  background: #fff;
+  box-shadow: 0 14px 30px rgba(8, 20, 35, 0.18);
+}
+.inst-picker-option {
+  padding: 0.35rem 0.6rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #16314e;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.inst-picker-option:hover {
+  background: rgba(0, 168, 163, 0.12);
+}
+.inst-picker-option.is-active {
+  background: linear-gradient(120deg, #00a8a3, #007f7b);
+  color: #fff;
+}

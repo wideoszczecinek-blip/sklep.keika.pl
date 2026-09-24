@@ -13,11 +13,8 @@
 // Pokazuje się tylko wtedy, gdy raty są realnie włączone na koncie P24
 // (CRM: checkout.p24_enabled + p24_installments_enabled) i kwota mieści się
 // w widełkach banku - inaczej obiecywalibyśmy metodę, której w koszyku nie ma.
-import { useEffect, useState } from "react";
-import { crmGetJson } from "@/lib/crm-get";
-import { CRM_PUBLIC_BASE } from "./payment-methods";
+import { useInstallmentCount, useInstallmentSettings } from "@/lib/installment-settings";
 import {
-  DEFAULT_INSTALLMENTS_APR_PERCENT,
   DEFAULT_INSTALLMENT_COUNT,
   INSTALLMENT_COUNTS,
   installmentsAvailable,
@@ -48,27 +45,8 @@ export default function InstallmentOffer({
   className?: string;
   variant?: "full" | "inline";
 }) {
-  const [enabled, setEnabled] = useState(false);
-  const [apr, setApr] = useState(DEFAULT_INSTALLMENTS_APR_PERCENT);
-  const [count, setCount] = useState<number>(DEFAULT_INSTALLMENT_COUNT);
-
-  useEffect(() => {
-    let cancelled = false;
-    crmGetJson<{ checkout?: Record<string, unknown> }>(`${CRM_PUBLIC_BASE}/site`)
-      .then((json) => {
-        const checkout = json?.checkout && typeof json.checkout === "object" ? json.checkout : null;
-        if (cancelled || !checkout) return;
-        setEnabled(checkout.p24_enabled === true && checkout.p24_installments_enabled === true);
-        // Gdy właściciel wpisze w CRM stawkę ze swojej umowy ratalnej,
-        // liczymy nią; domyślnie stopa z przykładu reprezentatywnego banku.
-        const crmApr = Number(checkout.p24_installments_apr_percent);
-        if (Number.isFinite(crmApr) && crmApr > 0) setApr(crmApr);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { enabled, apr } = useInstallmentSettings();
+  const [count, setCount] = useInstallmentCount();
 
   const value = typeof amount === "number" ? amount : 0;
   if (!enabled || !installmentsAvailable(value)) return null;

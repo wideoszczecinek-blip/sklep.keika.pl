@@ -50,6 +50,7 @@ import {
 } from "@/lib/express";
 import { getRescueGrant, type RescueGrant } from "@/lib/rescue";
 import InstallmentOffer from "@/app/components/installment-offer";
+import InstallmentTileHint from "@/app/components/installment-tile-hint";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
@@ -1903,7 +1904,7 @@ export default function CartPage() {
     trackCheckoutIssue("checkout_payment_kind", kind);
   };
   const stripeAvailable = STRIPE_PUBLISHABLE_KEY !== "";
-  const paymentTiles: { kind: PaymentKind; title: string; hint: string; logo: React.ReactNode; wide?: boolean }[] = [
+  const paymentTiles: { kind: PaymentKind; title: string; hint: React.ReactNode; logo: React.ReactNode; wide?: boolean }[] = [
     ...(stripeAvailable
       ? [
           {
@@ -1951,7 +1952,14 @@ export default function CartPage() {
           {
             kind: "p24_paypo" as PaymentKind,
             title: "PayPo",
-            hint: "Kup teraz, zapłać później",
+            // Konkret zamiast ogólnika: klient ma od razu wiedzieć, że
+            // płaci dopiero za 30 dni (właściciel, 2026-09-24).
+            hint: (
+              <span className="cart-pay-tile-paypo">
+                <span className="cart-pay-tile-lead">Zapłać za 30 dni</span>
+                <span className="cart-pay-tile-sub">bez dodatkowych kosztów</span>
+              </span>
+            ),
             // Oficjalne logo PayPo (pakiet Przelewy24/PayPo, public/paypo/).
             logo: (
               <span className="cart-pay-logo cart-pay-logo--paypo">
@@ -1967,7 +1975,7 @@ export default function CartPage() {
           {
             kind: "p24_installments" as PaymentKind,
             title: "Raty",
-            hint: "Raty Przelewy24 – decyzja online",
+            hint: <InstallmentTileHint amount={payableTotal} />,
             logo: (
               <span className="cart-pay-logo cart-pay-logo--p24">
                 Przelewy<em>24</em>
