@@ -122,7 +122,8 @@ import {
 } from "@/features/rolety-dachowe/landing-content";
 import { buildRoofWindowDisplayLabel, fetchRoofWindowLibrary, type RoofWindowLibraryItem } from "@/features/rolety-dachowe/roof-window-library";
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
-import { fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
+import { calcPlisyPrice, fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
+import { crmGetJson } from "@/lib/crm-get";
 import PdHeroPhotos from "@/features/plisy-dachowe/PdHeroPhotos";
 import PdQuickPrice from "@/features/plisy-dachowe/PdQuickPrice";
 import { PdHardwareStrip, PdHowItWorks } from "@/features/plisy-dachowe/PdLandingBlocks";
@@ -1787,22 +1788,50 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // Teksty z CRM (cena "od", FAQ) mogą zawierać {{cena_od}} - podstawiamy
   // aktualną najniższą cenę plisy (z korektą %), żeby kwoty w opisach nie
   // rozjeżdżały się z cennikiem po zmianie korekty.
-  const plisyStartingPrice = useMemo(() => {
-    if (!plisyProfile) return PLISY_STARTING_PRICE_FALLBACK;
+  // Zwracamy też ROZMIAR najtańszej komórki matrycy - "od 69,30 zł" bez
+  // informacji, za jaką plisę, brzmi jak cena okna (punkt 10 audytu).
+  const plisyStartingPriceInfo = useMemo(() => {
+    if (!plisyProfile) return { amount: PLISY_STARTING_PRICE_FALLBACK, widthMm: 0, heightMm: 0 };
     let min = Number.POSITIVE_INFINITY;
+    let widthMm = 0;
+    let heightMm = 0;
     for (const table of plisyProfile.tables) {
-      for (const row of table.prices) {
-        for (const cell of row) {
-          if (typeof cell === "number" && Number.isFinite(cell) && cell > 0 && cell < min) min = cell;
-        }
-      }
+      table.prices.forEach((row, heightIndex) => {
+        row.forEach((cell, widthIndex) => {
+          if (typeof cell === "number" && Number.isFinite(cell) && cell > 0 && cell < min) {
+            min = cell;
+            widthMm = table.widthBreakpointsMm[widthIndex] || 0;
+            heightMm = table.heightBreakpointsMm[heightIndex] || 0;
+          }
+        });
+      });
     }
-    if (!Number.isFinite(min)) return PLISY_STARTING_PRICE_FALLBACK;
-    return applyPriceAdjustment(
-      Math.max(0, min * (1 + plisyProfile.priceAdjustmentPercent / 100) + plisyProfile.priceAdjustmentAmount),
-      plisyPriceAdjustmentPercent,
-    );
+    if (!Number.isFinite(min)) return { amount: PLISY_STARTING_PRICE_FALLBACK, widthMm: 0, heightMm: 0 };
+    return {
+      amount: applyPriceAdjustment(
+        Math.max(0, min * (1 + plisyProfile.priceAdjustmentPercent / 100) + plisyProfile.priceAdjustmentAmount),
+        plisyPriceAdjustmentPercent,
+      ),
+      widthMm,
+      heightMm,
+    };
   }, [plisyProfile, plisyPriceAdjustmentPercent]);
+  const plisyStartingPrice = plisyStartingPriceInfo.amount;
+  // Cena przykładowego, typowego okna (tego samego, które pokazuje suwak
+  // szybkiej wyceny) - liczona z żywej matrycy, więc nie rozjedzie się z
+  // konfiguratorem.
+  const plisyExamplePrice = useMemo(() => {
+    if (!plisyProfile) return null;
+    const groupId = plisyProfile.fabricGroups[0]?.id || "";
+    const amount = calcPlisyPrice(
+      { ...plisyProfile, priceAdjustmentPercent: plisyProfile.priceAdjustmentPercent + plisyPriceAdjustmentPercent },
+      plisyQuickDims.widthMm,
+      plisyQuickDims.heightMm,
+      plisyProfile.hardware[0]?.id || "",
+      groupId,
+    );
+    return amount;
+  }, [plisyProfile, plisyPriceAdjustmentPercent, plisyQuickDims.widthMm, plisyQuickDims.heightMm]);
   const fillPricePlaceholders = (text: string): string =>
     text.replace(
       /{{s*cena_ods*}}/gi,
@@ -1828,8 +1857,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     }
     setShippingBannerPending(true);
     let cancelled = false;
-    fetch(`https://crm-keika.groovemedia.pl/biuro/api/shop-public/shipping_banner.php?product=${encodeURIComponent(slug)}`)
-      .then((response) => response.json())
+    crmGetJson<any>(`https://crm-keika.groovemedia.pl/biuro/api/shop-public/shipping_banner.php?product=${encodeURIComponent(slug)}`)
       .then(
         (json: {
           ok: boolean;
@@ -2032,6 +2060,23 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     } else {
       target?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  }
+
+  /** "Policz swoje okno" spod ceny "od" - skrót do bloku szybkiej wyceny
+   * ("Ile za Twoje okno?"), który siedzi niżej, pod galerią. */
+  function scrollToPlisyQuickPrice() {
+    const target = document.getElementById("pl-quick-price-anchor");
+    const container = target?.closest<HTMLElement>(".hero-full");
+    if (target && container && container.scrollHeight > container.clientHeight) {
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const delta = targetRect.top - containerRect.top - 80;
+      const nextTop = Math.max(0, Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight));
+      container.scrollTo({ top: nextTop, behavior: "smooth" });
+    } else {
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    trackShopStep("quick_price_jump", "plisy", {});
   }
 
   // Scroll-spy: highlights whichever section's top has most recently
@@ -2268,11 +2313,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       return;
     }
     let cancelled = false;
-    fetch(
-      `https://crm-keika.groovemedia.pl/biuro/api/shop-public/product?slug=${encodeURIComponent(slug)}`,
-      { cache: "no-store" },
-    )
-      .then((res) => res.json())
+    crmGetJson<any>(`https://crm-keika.groovemedia.pl/biuro/api/shop-public/product?slug=${encodeURIComponent(slug)}`)
       .then((data) => {
         if (cancelled) return;
         const product = data?.ok ? data.product : null;
@@ -3895,6 +3936,33 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
 
+                            {/* Punkt 10 audytu: samo "od 69,30 zł" nie mówi, za
+                                co jest ta cena, i brzmi jak cena okna. Tu pada
+                                rozmiar, którego dotyczy, i cena realnego okna
+                                - liczona z tej samej matrycy co konfigurator. */}
+                            <p className="pl-price-context">
+                              {plisyStartingPriceInfo.widthMm > 0
+                                ? `Cena za plisę do ${plisyStartingPriceInfo.widthMm / 10} × ${plisyStartingPriceInfo.heightMm / 10} cm w kolekcji Klasyczne.`
+                                : "Cena za najmniejszą plisę w kolekcji Klasyczne."}{" "}
+                              {plisyExamplePrice !== null ? (
+                                <>
+                                  Okno {plisyQuickDims.widthMm / 10} × {plisyQuickDims.heightMm / 10} cm to{" "}
+                                  {topPromoActive && topPromoPreview ? (
+                                    <>
+                                      <s>{formatStartingPrice(plisyExamplePrice)} zł</s>{" "}
+                                      <strong>{formatStartingPrice(applyPromoToPrice(plisyExamplePrice, topPromoPreview) ?? plisyExamplePrice)} zł</strong> z
+                                      kodem {PROMO_CODE}.
+                                    </>
+                                  ) : (
+                                    <strong>{formatStartingPrice(plisyExamplePrice)} zł</strong>
+                                  )}
+                                </>
+                              ) : null}{" "}
+                              <button type="button" className="pl-price-context-cta" onClick={scrollToPlisyQuickPrice}>
+                                Policz swoje okno →
+                              </button>
+                            </p>
+
                             <p className="pl-subtitle">
                               {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
                             </p>
@@ -3930,6 +3998,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 (właściciel, 2026-09-18) - klient najpierw widzi
                                 produkt, potem liczy; rozmiar stąd trafia do
                                 porównania kolekcji niżej. */}
+                            <div id="pl-quick-price-anchor" />
                             <PlisyQuickPrice
                               profile={plisyProfile}
                               promo={topPromoActive ? topPromoPreview : null}

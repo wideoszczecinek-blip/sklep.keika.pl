@@ -133,7 +133,30 @@ export default function PlisyVisualizer() {
   const [hand, setHand] = useState<Hand>(HAND_HIDDEN);
   /** Set once the block has been on screen - the demo waits for that. */
   const [inView, setInView] = useState(false);
+  /** Wcześniejszy próg, tylko na zdjęcie widoku (226-340 kB): zaczynamy je
+   * ściągać, gdy wizualizator jest jeszcze ekran niżej, ale nie na starcie
+   * strony, gdzie zabierało pasmo konfiguratorowi (pomiar 2026-09-24). */
+  const [sceneVisible, setSceneVisible] = useState(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setSceneVisible(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setSceneVisible(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "800px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -394,6 +417,12 @@ export default function PlisyVisualizer() {
                 <g clipPath={`url(#${clipId})`}>
                   {/* Sky under the photo covers its load time */}
                   <rect x={sash.x} y={sash.y} width={sash.w} height={sash.h} fill="#cfe3f3" />
+                  {/* Pełne zdjęcie widoku (226-340 kB) ładujemy dopiero,
+                      gdy wizualizator zbliża się do ekranu - wcześniej
+                      zabierało pasmo startowi strony, a leży kilka ekranów
+                      niżej (pomiar 2026-09-24). Do tego czasu w oknie jest
+                      niebo (prostokąt wyżej). */}
+                  {sceneVisible ? (
                   <image
                     key={view.id}
                     href={view.src}
@@ -404,6 +433,7 @@ export default function PlisyVisualizer() {
                     preserveAspectRatio="xMidYMid slice"
                     clipPath={`url(#${ids.opening})`}
                   />
+                  ) : null}
                   <rect x={sash.x} y={sash.y} width={sash.w} height={sash.h} fill={`url(#${ids.sheen})`} />
 
                   {/* Light spill on the glass past each rail */}

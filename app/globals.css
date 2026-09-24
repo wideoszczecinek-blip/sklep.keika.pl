@@ -16761,3 +16761,302 @@ html[data-theme="light"] .hero-menu-card-head h3 {
 .cart-pay-tile-panel .cart-terms-checkbox {
   margin: 0;
 }
+
+
+/* ===== Konfigurator plis: krok 1 = wymiary (przebudowa 2026-09-24) =====
+   Wymiary są pierwsze, a sposób montażu siedzi w tym samym kroku, bo to on
+   decyduje, JAK klient mierzy okno. Kafelki montażu są więc celowo małe -
+   domyślny (przykręcany do listwy) jest już wybrany, a pola wymiarów mają
+   zostać blisko góry kroku. */
+.plisy-mount-pick {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+}
+.plisy-mount-pick-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  opacity: 0.75;
+}
+.plisy-mount-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.5rem;
+}
+.plisy-mount-pick-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.8rem;
+  border: 2px solid rgba(194, 228, 255, 0.25);
+  background: rgba(240, 248, 255, 0.05);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.plisy-mount-pick-option.is-active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #d97706;
+}
+.plisy-mount-pick-thumb {
+  flex: 0 0 auto;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 0.6rem;
+  background-color: rgba(255, 255, 255, 0.92);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.plisy-mount-pick-text {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+.plisy-mount-pick-text strong {
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.plisy-mount-pick-text span {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  opacity: 0.75;
+}
+.plisy-mount-pick-delta {
+  position: absolute;
+  top: -0.5rem;
+  right: 0.5rem;
+  padding: 0.14rem 0.42rem;
+  border-radius: 999px;
+  background: #ffe3cf;
+  color: #a1470c;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+}
+html[data-theme="light"] .plisy-mount-pick-option {
+  border-color: rgba(19, 40, 67, 0.16);
+  background: #fff;
+}
+
+/* Zmiana montażu po wpisaniu wymiarów: bezinwazyjny mierzy się zupełnie
+   inaczej niż przykręcany, więc nie da się po cichu przenieść starych
+   liczb - klient musi rozstrzygnąć, czy mierzy od nowa, czy wraca do
+   poprzedniego montażu (właściciel, 2026-09-24). */
+.plisy-remeasure-notice {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 0.7rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  background: rgba(245, 158, 11, 0.12);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.plisy-remeasure-notice strong {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+.plisy-remeasure-notice p {
+  margin: 0;
+}
+.plisy-remeasure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.plisy-remeasure-accept,
+.plisy-remeasure-cancel {
+  border-radius: 999px;
+  padding: 0.5rem 0.95rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.plisy-remeasure-accept {
+  border: none;
+  color: #22150a;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
+}
+.plisy-remeasure-cancel {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  opacity: 0.85;
+}
+
+/* "Dalej: kolor mechanizmu" - jawne przejście dalej zamiast domyślania się,
+   że po wpisaniu wymiarów trzeba przewinąć niżej. */
+.plisy-step-next {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.plisy-step-next:hover {
+  transform: translateY(-1px);
+}
+.plisy-position-form-footer {
+  flex-wrap: wrap;
+}
+.plisy-position-price.is-pending {
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+/* Cena przy kafelku kolekcji - wymiary i kolor mechanizmu są już znane,
+   więc klient wybiera tkaninę wiedząc, ile kosztuje (punkt 4 audytu). */
+.plisy-coll-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.5rem;
+  margin-top: 0.1rem;
+}
+.plisy-coll-card-price {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-left: auto;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: right;
+}
+.plisy-coll-card-price em {
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-style: normal;
+  opacity: 0.7;
+}
+.plisy-coll-card-price .plisy-price-promo {
+  justify-content: flex-end;
+}
+.plisy-coll-card-price .plisy-price-promo small {
+  width: 100%;
+  text-align: right;
+}
+
+/* Podsumowanie: skrót do wymiarów bez szukania kroku 1 wyżej. */
+.plisy-summary-edit {
+  margin-left: 0.4rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-decoration: underline;
+  opacity: 0.75;
+  cursor: pointer;
+}
+.plisy-summary-total {
+  border-top: 1px solid rgba(197, 222, 247, 0.28);
+}
+
+
+/* Szybka wycena: obok suwaka pole liczbowe - kto zna wymiar, wpisuje go
+   zamiast celować suwakiem (właściciel, 2026-09-24). */
+.pl-quick-slider-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+.pl-quick-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.pl-quick-slider-row input[type="range"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pl-quick-num {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.18rem 0.4rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(19, 40, 67, 0.18);
+  background: #fff;
+}
+.pl-quick-num input {
+  width: 3.1rem;
+  border: none;
+  background: transparent;
+  color: #16314e;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.pl-quick-num input::-webkit-outer-spin-button,
+.pl-quick-num input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pl-quick-num input:focus {
+  outline: 2px solid #ff9f0a;
+  outline-offset: 1px;
+  border-radius: 0.3rem;
+}
+.pl-quick-num em {
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 700;
+  color: #4a5b6e;
+}
+
+/* "od 69,30 zł" samo w sobie brzmi jak cena okna - tu pada, za jaką plisę
+   jest ta kwota i ile kosztuje realne okno (punkt 10 audytu). */
+.pl-price-context {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(240, 248, 255, 0.72);
+}
+.pl-price-context strong {
+  color: #f3b546;
+  font-weight: 800;
+}
+.pl-price-context s {
+  opacity: 0.6;
+}
+.pl-price-context-cta {
+  display: inline;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+html[data-theme="light"] .pl-price-context {
+  color: rgba(19, 40, 67, 0.78);
+}
+html[data-theme="light"] .pl-price-context strong {
+  color: #b3610a;
+}
+
+

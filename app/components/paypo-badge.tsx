@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { crmGetJson } from "@/lib/crm-get";
 import { CRM_PUBLIC_BASE } from "./payment-methods";
 
 // PayPo na stronie produktu (właściciel, 2026-09-23: "już na stronie
@@ -38,8 +39,7 @@ export default function PayPoBadge({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${CRM_PUBLIC_BASE}/site`)
-      .then((response) => response.json())
+    crmGetJson<any>(`${CRM_PUBLIC_BASE}/site`)
       .then((json) => {
         const checkout = json?.checkout && typeof json.checkout === "object" ? json.checkout : null;
         if (!cancelled && checkout) {

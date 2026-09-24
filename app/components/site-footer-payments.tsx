@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { crmGetJson } from "@/lib/crm-get";
 import { paymentMethodsLabel, paymentOperatorsLabel } from "@/lib/company-legal";
 import type { CheckoutSettings } from "@/lib/shop-public";
 
@@ -16,8 +17,7 @@ export default function SiteFooterPayments({ initial = null }: { initial?: Flags
   useEffect(() => {
     if (initial) return;
     let cancelled = false;
-    fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/site", { cache: "no-store" })
-      .then((r) => r.json())
+    crmGetJson<any>("https://crm-keika.groovemedia.pl/biuro/api/shop-public/site")
       .then((json) => {
         const c = json?.checkout && typeof json.checkout === "object" ? json.checkout : null;
         if (!cancelled && c) {

@@ -37,7 +37,45 @@ function reportApiHealth(path: string, startedAt: number, status: number | null,
   }).catch(() => null);
 }
 
+// react cache() działa tylko w obrębie jednego renderu na serwerze - w
+// przeglądarce te same GET-y leciały po kilka razy z różnych komponentów
+// (pomiar landingu plis 2026-09-24: /shop-public/site pięć razy, /product i
+// shipping_banner po trzy, każdy ~1 s na dławionym 4G). Tu: jedno zapytanie
+// w locie na ścieżkę + krótki cache odpowiedzi, wyłącznie dla GET-ów po
+// treść. POST-y (zamówienia, płatności, analityka) nie są ruszane.
+const GET_CACHE_TTL_MS = 30 * 1000;
+const getCache = new Map<string, { at: number; value: unknown }>();
+const getInFlight = new Map<string, Promise<unknown>>();
+
+function isCacheableGet(path: string, init?: RequestInit): boolean {
+  if (typeof window === "undefined") return false;
+  if (init?.body) return false;
+  const method = String(init?.method || "GET").toUpperCase();
+  if (method !== "GET") return false;
+  return !/analytics_event|capi_event|quote_save|discount_code_check/.test(path);
+}
+
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  if (isCacheableGet(path, init)) {
+    const cached = getCache.get(path);
+    if (cached && Date.now() - cached.at < GET_CACHE_TTL_MS) return cached.value as T;
+    const pending = getInFlight.get(path);
+    if (pending) return pending as Promise<T>;
+    const request = fetchJsonUncached<T>(path, init)
+      .then((value) => {
+        getCache.set(path, { at: Date.now(), value });
+        return value;
+      })
+      .finally(() => {
+        getInFlight.delete(path);
+      });
+    getInFlight.set(path, request as Promise<unknown>);
+    return request;
+  }
+  return fetchJsonUncached<T>(path, init);
+}
+
+async function fetchJsonUncached<T>(path: string, init?: RequestInit): Promise<T> {
   const startedAt = typeof performance !== "undefined" ? performance.now() : 0;
   let response: Response;
   try {

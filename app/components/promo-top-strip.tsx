@@ -28,6 +28,7 @@
 //    the carousel every 4,5 s, so a screen reader would never stop talking.
 //    Inactive slides are aria-hidden, the visible one is plain readable text.
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { crmGetJson } from "@/lib/crm-get";
 import { CRM_PUBLIC_BASE } from "./payment-methods";
 import PromoCountdownBanner from "./promo-countdown-banner";
 import { PROMO_CODE } from "@/lib/promo";
@@ -198,8 +199,7 @@ export default function PromoTopStrip({
   const [paypoEnabled, setPaypoEnabled] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    fetch(`${CRM_PUBLIC_BASE}/site`)
-      .then((response) => response.json())
+    crmGetJson<any>(`${CRM_PUBLIC_BASE}/site`)
       .then((json) => {
         const checkout = json?.checkout && typeof json.checkout === "object" ? json.checkout : null;
         if (!cancelled && checkout) {

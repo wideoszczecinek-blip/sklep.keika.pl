@@ -67,8 +67,8 @@ type Spec = {
 
 const MODES: Record<Mode, Spec> = {
   standard: {
-    label: "STANDARD",
-    sub: "wkręcany przy szybie",
+    label: "PRZYKRĘCANY DO LISTWY",
+    sub: "wkręty w listwę przyszybową, bez wiertarki",
     target: { x: M.x0, y: M.y0 },
     targetName: "połowa uszczelki",
     width: { from: M.x0, to: M.x1, mm: 620, how: "od połowy uszczelki do połowy uszczelki", a: "od połowy uszczelki", b: "do połowy uszczelki" },
@@ -77,7 +77,7 @@ const MODES: Record<Mode, Spec> = {
   },
   bezinwazyjny: {
     label: "BEZINWAZYJNY",
-    sub: "uchwyty na skrzydło",
+    sub: "uchwyty na skrzydło, bez wiercenia",
     target: { x: K.x0, y: K.y0 },
     targetName: "kreseczka",
     width: { from: K.x0, to: K.x1, mm: 690, how: "od kreseczki do kreseczki — szyba razem z listwami", a: "od kreseczki", b: "do kreseczki" },

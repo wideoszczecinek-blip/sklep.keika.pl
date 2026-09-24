@@ -25,7 +25,7 @@ export const PLISY_INSTRUCTION_STEPS: PlisyInstructionStep[] = [
     customMedia: "plisy-measure",
     body: `
 <p>Najpierw zdecyduj, jak zamontujesz plisę — bo od tego zależy, co mierzysz. Mierz metalową miarką, dwa razy, i zapisz wynik w milimetrach.</p>
-<h4>Montaż STANDARD (wkręcany przy szybie)</h4>
+<h4>Montaż przykręcany do listwy przyszybowej</h4>
 <p>Profil plisy siedzi między listwami przyszybowymi, dlatego mierzysz w świetle szyby:</p>
 <ul>
 <li><strong>Szerokość:</strong> od połowy lewej uszczelki do połowy prawej uszczelki.</li>
@@ -48,13 +48,13 @@ export const PLISY_INSTRUCTION_STEPS: PlisyInstructionStep[] = [
 <p>Plisę dostajesz gotową do zawieszenia. W paczce jest wszystko, czego potrzebujesz:</p>
 <ul>
 <li><strong>uchwyty</strong> do wybranego montażu,</li>
-<li><strong>wkręty</strong> (montaż STANDARD),</li>
+<li><strong>wkręty</strong> (montaż przykręcany),</li>
 <li><strong>specjalny przymiar — uchwyt montażowy</strong>, który ustawia uchwyty w dokładnie tym samym miejscu na obu listwach,</li>
 <li><strong>czytelna instrukcja montażu</strong> krok po kroku.</li>
 </ul>
 <ul>
-<li><strong>STANDARD:</strong> przykładasz przymiar do narożników listew przyszybowych, przykręcasz cztery uchwyty wkrętakiem (wiertarka niepotrzebna — wkręty wchodzą w PCV), potem wpinasz górną i dolną listwę plisy.</li>
-<li><strong>Bezinwazyjny:</strong> uchwyty zakładasz na górną i dolną krawędź skrzydła — bez wiercenia i bez śladów, zdejmiesz je w każdej chwili. Uchwyty są w kolorze wybranym w konfiguratorze: białym, jasnym brązie lub ciemnym brązie.</li>
+<li><strong>Przykręcany do listwy:</strong> przykładasz przymiar do narożników listew przyszybowych, przykręcasz cztery uchwyty wkrętakiem (wiertarka niepotrzebna — wkręty wchodzą w PCV), potem wpinasz górną i dolną listwę plisy.</li>
+<li><strong>Bezinwazyjny (bez wiercenia):</strong> uchwyty zakładasz na górną i dolną krawędź skrzydła — bez wiercenia i bez śladów, zdejmiesz je w każdej chwili. Uchwyty są w kolorze wybranym w konfiguratorze: białym, jasnym brązie lub ciemnym brązie.</li>
 </ul>
 <p>Plisy szersze niż 100 cm mają po dwa uchwyty do przesuwania na każdej listwie — ciągnij za oba naraz, listwa idzie równo. Po zawieszeniu przesuń obie listwy do końca w górę i w dół. Jeśli sznurki są za luźne albo za sztywne, napięcie regulujesz supełkiem pod górną listwą.</p>
 `,

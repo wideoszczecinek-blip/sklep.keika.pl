@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { crmGetJson } from "@/lib/crm-get";
 import type { StripeMethod } from "./stripe-method-step";
 
 // Jedno źródło kafelków płatności dla całego sklepu: koszyk (/koszyk) i
@@ -51,8 +52,7 @@ export function usePaymentSettings() {
   const [p24Banks, setP24Banks] = useState<P24Bank[]>([]);
 
   useEffect(() => {
-    fetch(`${CRM_PUBLIC_BASE}/site`)
-      .then((response) => response.json())
+    crmGetJson<any>(`${CRM_PUBLIC_BASE}/site`)
       .then((json) => {
         const checkout = json?.checkout && typeof json.checkout === "object" ? json.checkout : null;
         if (!checkout) return;

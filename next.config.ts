@@ -5,8 +5,8 @@ const nextConfig: NextConfig = {
   // links to the placeholder category page both land on the real landing.
   async redirects() {
     return [
-      { source: "/produkt/plisy", destination: "/?produkt=plisy", permanent: false },
-      { source: "/kategoria/plisy", destination: "/?produkt=plisy", permanent: false },
+      { source: "/produkt/plisy", destination: "/plisy", permanent: false },
+      { source: "/kategoria/plisy", destination: "/plisy", permanent: false },
       // Rolety dachowe + plisy dachowe went live 2026-09-19 (same pattern;
       // the CRM catalog placeholder for roof blinds is "rolety-dachowe-dekolux").
       { source: "/produkt/rolety-dachowe", destination: "/?produkt=rolety-dachowe", permanent: false },

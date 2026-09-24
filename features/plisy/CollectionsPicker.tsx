@@ -136,7 +136,7 @@ export default function PlisyCollectionsPicker({
   title?: string;
   lead?: string;
   sizeLabelPrefix?: string;
-  /** "" hides the ", montaż STANDARD" suffix (no mount step on roof plisy). */
+  /** "" hides the ", montaż przykręcany" suffix (no mount step on roof plisy). */
   mountSuffix?: string;
   ctaLabel?: (collectionName: string) => string;
 }) {
@@ -206,7 +206,7 @@ export default function PlisyCollectionsPicker({
         <summary>
           <span>
             {sizeLabelPrefix || "Ceny dla plisy"} <strong>{sizeLabel}</strong>
-            {mountSuffix ?? ", montaż STANDARD"}
+            {mountSuffix ?? ", montaż przykręcany"}
             {promo ? (
               <>
                 {" "}

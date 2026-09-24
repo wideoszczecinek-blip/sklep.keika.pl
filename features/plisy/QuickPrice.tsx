@@ -23,7 +23,7 @@
 // - the cheapest sensible build: Klasyczne, first hardware colour, STANDARD
 // mount. Nothing hardcoded, so the number here can't drift from the number
 // the configurator shows a screen later.
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
@@ -94,6 +94,52 @@ export default function PlisyQuickPrice({
   }, [profile, inRange, widthMm, heightMm, priceAdjustmentPercent]);
   const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
 
+  // Pola liczbowe obok suwaków (właściciel, 2026-09-24): kto zna wymiar,
+  // wpisuje go od razu zamiast celować suwakiem. Tekst trzymany lokalnie,
+  // żeby dało się skasować pole i wpisać liczbę od nowa; do strony idzie
+  // dopiero wartość mieszcząca się w zakresie produkcji.
+  const [widthText, setWidthText] = useState(String(widthCm));
+  const [heightText, setHeightText] = useState(String(heightCm));
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setWidthText(String(widthCm));
+  }, [widthCm]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHeightText(String(heightCm));
+  }, [heightCm]);
+  function typeSize(raw: string, axis: "w" | "h") {
+    if (axis === "w") setWidthText(raw);
+    else setHeightText(raw);
+    const value = Number(String(raw).replace(",", "."));
+    if (!Number.isFinite(value) || value <= 0) return;
+    const min = axis === "w" ? minW : minH;
+    const max = axis === "w" ? maxW : maxH;
+    if (value < min || value > max) return;
+    const mm = Math.round(value) * 10;
+    if (axis === "w") onSizeChange(mm, heightMm);
+    else onSizeChange(widthMm, mm);
+  }
+  function commitSize(axis: "w" | "h") {
+    const raw = axis === "w" ? widthText : heightText;
+    const value = Number(String(raw).replace(",", "."));
+    const min = axis === "w" ? minW : minH;
+    const max = axis === "w" ? maxW : maxH;
+    if (!Number.isFinite(value) || value <= 0) {
+      if (axis === "w") setWidthText(String(widthCm));
+      else setHeightText(String(heightCm));
+      return;
+    }
+    const next = Math.round(clamp(value, min, max));
+    if (axis === "w") {
+      setWidthText(String(next));
+      onSizeChange(next * 10, heightMm);
+    } else {
+      setHeightText(String(next));
+      onSizeChange(widthMm, next * 10);
+    }
+  }
+
   // One analytics event per settled size (sliders fire on every pixel).
   const firstRender = useRef(true);
   useEffect(() => {
@@ -116,34 +162,62 @@ export default function PlisyQuickPrice({
           {widthCm} × {heightCm} cm
         </span>
       </div>
-      <label className="pl-quick-slider">
-        <span>
-          Szerokość <b>{widthCm} cm</b>
-        </span>
-        <input
-          type="range"
-          min={minW}
-          max={maxW}
-          step={1}
-          value={clamp(widthCm, minW, maxW)}
-          onChange={(event) => onSizeChange(Number(event.target.value) * 10, heightMm)}
-          aria-label="Szerokość okna w centymetrach"
-        />
-      </label>
-      <label className="pl-quick-slider">
-        <span>
-          Wysokość <b>{heightCm} cm</b>
-        </span>
-        <input
-          type="range"
-          min={minH}
-          max={maxH}
-          step={1}
-          value={clamp(heightCm, minH, maxH)}
-          onChange={(event) => onSizeChange(widthMm, Number(event.target.value) * 10)}
-          aria-label="Wysokość okna w centymetrach"
-        />
-      </label>
+      <div className="pl-quick-slider">
+        <span className="pl-quick-slider-label">Szerokość</span>
+        <div className="pl-quick-slider-row">
+          <input
+            type="range"
+            min={minW}
+            max={maxW}
+            step={1}
+            value={clamp(widthCm, minW, maxW)}
+            onChange={(event) => onSizeChange(Number(event.target.value) * 10, heightMm)}
+            aria-label="Szerokość okna w centymetrach"
+          />
+          <span className="pl-quick-num">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={minW}
+              max={maxW}
+              step={1}
+              value={widthText}
+              onChange={(event) => typeSize(event.target.value, "w")}
+              onBlur={() => commitSize("w")}
+              aria-label="Szerokość okna w centymetrach - wpisz"
+            />
+            <em>cm</em>
+          </span>
+        </div>
+      </div>
+      <div className="pl-quick-slider">
+        <span className="pl-quick-slider-label">Wysokość</span>
+        <div className="pl-quick-slider-row">
+          <input
+            type="range"
+            min={minH}
+            max={maxH}
+            step={1}
+            value={clamp(heightCm, minH, maxH)}
+            onChange={(event) => onSizeChange(widthMm, Number(event.target.value) * 10)}
+            aria-label="Wysokość okna w centymetrach"
+          />
+          <span className="pl-quick-num">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={minH}
+              max={maxH}
+              step={1}
+              value={heightText}
+              onChange={(event) => typeSize(event.target.value, "h")}
+              onBlur={() => commitSize("h")}
+              aria-label="Wysokość okna w centymetrach - wpisz"
+            />
+            <em>cm</em>
+          </span>
+        </div>
+      </div>
       <div className="pl-quick-row">
         <div className="pl-quick-result" aria-live="polite">
           {regular === null ? (
@@ -159,7 +233,9 @@ export default function PlisyQuickPrice({
               <strong>{zl(regular)}</strong>
             </span>
           )}
-          <span className="pl-quick-note">Klasyczne, biały profil, montaż STANDARD · inne kolekcje w porównaniu poniżej</span>
+          <span className="pl-quick-note">
+            Kolekcja Klasyczne, biały profil, montaż przykręcany do listwy · inne kolekcje w porównaniu poniżej
+          </span>
         </div>
         <button
           type="button"

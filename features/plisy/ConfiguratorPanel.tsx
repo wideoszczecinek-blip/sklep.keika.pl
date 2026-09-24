@@ -40,6 +40,12 @@ import {
   PLISY_OVERSIZE_WIDTH_MM,
   fetchPlisyProfile,
   formatPriceDeltaBadge,
+  findPlisyMountByLabel,
+  plisyMountLabel,
+  plisyMountNote,
+  plisyMountShortNote,
+  type FabricSwatch,
+  type MountOption,
   type ConfiguratorInitialValues,
   type ConfiguratorResult,
   type PlisyProfile,
@@ -51,15 +57,26 @@ type ZoomPreview = { title: string; urls: string[]; index: number };
 // shared by the whole set) but its own width/height/qty - see the
 // "positions" state below for how these get built up before a single final
 // add-to-cart flushes all of them at once.
+// Sam rozmiar - bez ceny. Odkąd wymiary są krokiem 1 (przebudowa
+// 2026-09-24), w chwili dodawania pozycji nie znamy jeszcze mechanizmu ani
+// kolekcji. Cena każdej pozycji liczy się z bieżącego wyboru
+// (priceForSize), dzięki czemu zmiana kolekcji przelicza cały zestaw i przy
+// wyborze kolekcji można pokazać cenę TYCH okien.
 type PlisyPosition = {
   id: string;
   widthMm: number;
   heightMm: number;
   qty: number;
-  unitPrice: number;
-  totalPrice: number;
-  oversizeSurchargeAmount: number;
 };
+
+/** "1 pozycja" / "2 pozycje" / "5 pozycji" - nagłówek zwiniętego kroku 1. */
+function pozycjeLabel(count: number): string {
+  if (count === 1) return "1 pozycja";
+  const last = count % 10;
+  const lastTwo = count % 100;
+  if (last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14)) return `${count} pozycje`;
+  return `${count} pozycji`;
+}
 
 function formatZl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
@@ -225,8 +242,15 @@ export default function ConfiguratorPanel({
       document.body.style.overflow = previousOverflow;
     };
   }, [measureGuideOpen]);
-  const [stepZeroChosen, setStepZeroChosen] = useState(Boolean(seed.mountId));
-  const [stepZeroCollapsed, setStepZeroCollapsed] = useState(Boolean(seed.mountId));
+  // Zmiana sposobu montażu po wpisaniu wymiarów = wymiary są do wyrzucenia,
+  // bo bezinwazyjny mierzy się zupełnie inaczej niż przykręcany (właściciel,
+  // 2026-09-24: "jak klient zmieni na bezinwazyjny to potrzebujemy INNYCH
+  // wymiarów (!)"). Dopóki klient tego nie rozstrzygnie, nic nie trafi do
+  // koszyka.
+  const [mountNotice, setMountNotice] = useState<{ previousMountId: string; previousLabel: string } | null>(null);
+  // Edytowana pozycja zestawu (null = wpisywana nowa). Deklarowana tu,
+  // wysoko, bo effectivePositions poniżej jej potrzebuje.
+  const [editingPositionId, setEditingPositionId] = useState<string | null>(null);
 
   const [selectedHardwareId, setSelectedHardwareId] = useState(seed.hardwareId || "");
   // Bracket colour of the non-invasive mount (owner, 2026-09-16): a
@@ -285,7 +309,7 @@ export default function ConfiguratorPanel({
   // expanded, unaffected - there's nothing yet to collapse it around.
   // Only a /koszyk edit opens with the size tucked away - a size that came
   // from the quick-price block up top stays open with the price under it.
-  const [stepFiveCollapsed, setStepFiveCollapsed] = useState(
+  const [stepDimsCollapsed, setStepDimsCollapsed] = useState(
     Boolean(isCartEdit && initialValues?.widthMm && initialValues?.heightMm),
   );
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
@@ -377,14 +401,18 @@ export default function ConfiguratorPanel({
     else setInternalZoomPreview(preview);
   }
 
-  // Placeholder/early profiles may ship with no mount options configured yet
-  // - skip straight past the step rather than blocking the whole
-  // configurator on a field the business owner hasn't filled in.
+  // Montaż przykręcany do listwy (w CRM: "STANDARD") jest domyślny. Wymiary
+  // są krokiem 1, a to montaż decyduje, JAK klient mierzy okno - bez
+  // domyślnego montażu krok 1 nie miałby instrukcji pomiaru. Klient może go
+  // zmienić w tym samym kroku; wtedy prosimy o nowy pomiar (mountNotice).
   useEffect(() => {
-    if (profile && profile.mountOptions.length === 0 && !stepZeroChosen) {
-      setStepZeroChosen(true);
-      setStepZeroCollapsed(true);
-    }
+    if (!profile || selectedMountId) return;
+    const standard = profile.mountOptions.find(
+      (option) => !isPlisyMountNonInvasive(option.id) && !isPlisyMountNonInvasive(option.label),
+    );
+    const fallback = standard || profile.mountOptions[0];
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (fallback) setSelectedMountId(fallback.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
@@ -398,12 +426,8 @@ export default function ConfiguratorPanel({
     if (!profile) return;
     if (!selectedMountId && initialValues?.mountLabel) {
       const wanted = splitPlisyMountLabel(initialValues.mountLabel).mountLabel;
-      const match = profile.mountOptions.find((option) => option.label === wanted);
-      if (match) {
-        setSelectedMountId(match.id);
-        setStepZeroChosen(true);
-        setStepZeroCollapsed(true);
-      }
+      const match = findPlisyMountByLabel(profile.mountOptions, wanted);
+      if (match) setSelectedMountId(match.id);
     }
     if (!selectedHardwareId && initialValues?.hardwareLabel) {
       const match = profile.hardware.find((option) => option.label === initialValues.hardwareLabel);
@@ -484,10 +508,30 @@ export default function ConfiguratorPanel({
       heightNum <= profile.heightMaxMm
     : false;
   const quantityNum = Math.max(1, Number(quantity) || 1);
+
+  // Pozycje, które faktycznie pójdą do koszyka: zapisane rozmiary + ten
+  // właśnie wpisywany (o ile poprawny). Edytowana pozycja podmienia samą
+  // siebie, nigdy się nie dubluje - ta sama reguła co w handleFinalSubmit.
+  // Dzięki temu klient z jednym oknem nigdy nie musi klikać "+ Dodaj
+  // kolejną", a ceny przy kolekcjach dotyczą całego zestawu.
+  const typedPosition: PlisyPosition | null = dimensionsValid
+    ? { id: editingPositionId || "__typed", widthMm: widthNum, heightMm: heightNum, qty: quantityNum }
+    : null;
+  const effectivePositions: PlisyPosition[] = editingPositionId
+    ? positions.map((position) => (position.id === editingPositionId && typedPosition ? typedPosition : position))
+    : typedPosition
+      ? [...positions, typedPosition]
+      : positions;
+  const hasSizes = effectivePositions.length > 0;
+  // Ugięcie profilu i dopłata dłużycowa dotyczą NAJSZERSZEGO okna zestawu,
+  // nie tylko tego wpisywanego teraz - inaczej klient, który dodał 140 cm, a
+  // potem wybrał DUO (niższy próg), nie zobaczyłby ostrzeżenia.
+  const widestMm = effectivePositions.reduce((max, position) => Math.max(max, position.widthMm), 0);
   const sagLimitMm = plisySagWarningWidthMm(selectedFabricGroupId);
-  const sagWarning = dimensionsValid && widthNum > sagLimitMm;
+  const sagWarning = widestMm > sagLimitMm;
   const sagBlocked = sagWarning && !sagAccepted;
-  const oversizeSurcharge = dimensionsValid ? plisyOversizeSurcharge(widthNum) : 0;
+  const oversizeSurcharge = plisyOversizeSurcharge(widestMm);
+  const remeasureRequired = Boolean(mountNotice);
   // "60 x 120" typed while mm is on: both numbers under half the smallest
   // plisa - centimetres, almost certainly. Offer the switch instead of a
   // range nobody reads.
@@ -528,16 +572,44 @@ export default function ConfiguratorPanel({
     setSagAccepted(false);
   }, [selectedFabricGroupId]);
 
-  const matrixUnitPrice =
-    profile && dimensionsValid && selectedHardwareId && selectedFabricGroupId
-      ? calcPlisyPrice(
-          { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
-          widthNum,
-          heightNum,
-          selectedHardwareId,
-          selectedFabricGroupId,
-        )
-      : null;
+  function priceForSize(
+    widthMm: number,
+    heightMm: number,
+    qty: number,
+    fabricGroupId: string,
+    fabric: FabricSwatch | null,
+  ): { unit: number; total: number } | null {
+    if (!profile || !selectedHardwareId || !fabricGroupId) return null;
+    const matrix = calcPlisyPrice(
+      { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
+      widthMm,
+      heightMm,
+      selectedHardwareId,
+      fabricGroupId,
+    );
+    if (matrix === null) return null;
+    const unit = applyPriceDeltas(matrix, [selectedMount, selectedHardware, fabric]);
+    return { unit, total: Math.round(unit * Math.max(1, qty) * 100) / 100 };
+  }
+
+  /** Cena całego zestawu w danej kolekcji - null, gdy choć jednej pozycji
+   * nie da się wycenić (brak wiersza w matrycy). Tym liczone są ceny
+   * pokazywane już przy kafelkach kolekcji. */
+  function priceForSet(list: PlisyPosition[], fabricGroupId: string, fabric: FabricSwatch | null): number | null {
+    if (list.length === 0) return null;
+    let sum = 0;
+    for (const position of list) {
+      const price = priceForSize(position.widthMm, position.heightMm, position.qty, fabricGroupId, fabric);
+      if (!price) return null;
+      sum += price.total;
+    }
+    return Math.round(sum * 100) / 100;
+  }
+
+  const typedPrice = dimensionsValid
+    ? priceForSize(widthNum, heightNum, quantityNum, selectedFabricGroupId, selectedFabric)
+    : null;
+  const setGrandTotal = priceForSet(effectivePositions, selectedFabricGroupId, selectedFabric);
   // Every step's "Dopłata / rabat" (montaż, kolor osprzętu, kolor tkaniny)
   // lands in the charged price now, not just mount's - each is a badge on
   // its own swatch, so it has to actually be applied or the badge would be
@@ -545,9 +617,8 @@ export default function ConfiguratorPanel({
   // matrix price first, then every flat-zł delta added, then every percent
   // delta combined into one multiplier applied last - see
   // applyPriceDeltas() in shared.ts.
-  const unitPrice =
-    matrixUnitPrice !== null ? applyPriceDeltas(matrixUnitPrice, [selectedMount, selectedHardware, selectedFabric]) : null;
-  const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
+  const unitPrice = typedPrice ? typedPrice.unit : null;
+  const totalPrice = typedPrice ? typedPrice.total : null;
 
   // Zmiana ilości (poza pierwszym renderem) - do logu ruchu.
   const quantityTrackedRef = useRef(quantityNum);
@@ -580,19 +651,58 @@ export default function ConfiguratorPanel({
   // While a saved position is being edited (editingPositionId, owner
   // 2026-09-17: "każdą zapisaną pozycję muszę móc edytować") the same
   // button saves the fields back into THAT row instead of appending.
-  const [editingPositionId, setEditingPositionId] = useState<string | null>(null);
   const currentPosition = (): PlisyPosition | null =>
-    dimensionsValid && unitPrice !== null && totalPrice !== null
+    dimensionsValid
       ? {
           id: editingPositionId || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           widthMm: widthNum,
           heightMm: heightNum,
           qty: quantityNum,
-          unitPrice,
-          totalPrice,
-          oversizeSurchargeAmount: oversizeSurcharge,
         }
       : null;
+
+  /** Klient zmienia sposób montażu. Jeśli ma już wymiary, to są wymiary do
+   * innego montażu - prosimy o nowy pomiar zamiast po cichu przeliczać coś,
+   * czego przeliczyć się nie da (bezinwazyjny: szerokość od kreseczki do
+   * kreseczki i cała wysokość skrzydła; przykręcany: światło szyby). */
+  function handleMountChange(option: MountOption) {
+    if (option.id === selectedMountId) return;
+    const previous = selectedMount;
+    trackShopStep("select_mount_type", option.label, { option_id: option.id });
+    setSelectedMountId(option.id);
+    if (isPlisyMountNonInvasive(option.id) || isPlisyMountNonInvasive(option.label)) {
+      setStepBracketCollapsed(false);
+    } else {
+      setSelectedBracketId("");
+    }
+    if (hasSizes || widthNum > 0 || heightNum > 0) {
+      setMountNotice({ previousMountId: previous?.id || "", previousLabel: plisyMountLabel(previous) });
+      setStepDimsCollapsed(false);
+      trackShopStep("mount_change_remeasure", option.label, { positions: positions.length });
+    }
+  }
+
+  /** "Wpiszę nowe wymiary" - czyści cały zestaw, bo każdy zapisany rozmiar
+   * był mierzony pod poprzedni montaż. */
+  function acceptRemeasure() {
+    trackShopStep("mount_change_remeasure", "clear", { positions: positions.length });
+    setPositions([]);
+    setWidth("");
+    setHeight("");
+    setQuantity("1");
+    setSagAccepted(false);
+    setEditingPositionId(null);
+    setMountNotice(null);
+  }
+
+  /** "Zostaw poprzedni montaż" - wymiary zostają takie, jakie były. */
+  function cancelMountChange() {
+    if (!mountNotice) return;
+    trackShopStep("mount_change_remeasure", "revert", { positions: positions.length });
+    setSelectedMountId(mountNotice.previousMountId);
+    if (!isPlisyMountNonInvasive(mountNotice.previousMountId)) setSelectedBracketId("");
+    setMountNotice(null);
+  }
 
   function clearPositionForm() {
     setWidth("");
@@ -604,7 +714,7 @@ export default function ConfiguratorPanel({
 
   function handleAddPosition() {
     const next = currentPosition();
-    if (!next || sagBlocked) return;
+    if (!next || sagBlocked || remeasureRequired) return;
     if (editingPositionId) {
       setPositions((prev) => prev.map((position) => (position.id === editingPositionId ? next : position)));
       trackShopStep("edit_position_save", "plisy", { width_mm: next.widthMm, height_mm: next.heightMm, qty: next.qty });
@@ -629,7 +739,7 @@ export default function ConfiguratorPanel({
     setHeight(mmToInput(position.heightMm, dimensionUnit));
     setQuantity(String(position.qty));
     setSagAccepted(true);
-    setStepFiveCollapsed(false);
+    setStepDimsCollapsed(false);
     trackShopStep("edit_position_open", "plisy", { width_mm: position.widthMm, height_mm: position.heightMm, qty: position.qty });
     window.setTimeout(() => {
       positionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -637,17 +747,15 @@ export default function ConfiguratorPanel({
   }
   const positionFormRef = useRef<HTMLDivElement | null>(null);
 
-  const positionsGrandTotal = useMemo(
-    () => positions.reduce((sum, position) => sum + position.totalPrice, 0),
-    [positions],
-  );
+  const positionsGrandTotal = priceForSet(positions, selectedFabricGroupId, selectedFabric);
 
   // A customer who only ever wants one size never has to touch "+ Dodaj
   // kolejną" at all - the button is enabled off the currently-filled-in
   // form too, and a valid one still sitting in the fields gets folded into
   // the set right before it's sent, so nothing typed-but-not-yet-added is
   // silently dropped.
-  const canFinalSubmit = bracketChosen && !sagBlocked && (positions.length > 0 || (dimensionsValid && totalPrice !== null));
+  const canFinalSubmit =
+    bracketChosen && fabricChosen && !sagBlocked && !remeasureRequired && hasSizes && setGrandTotal !== null;
 
   // Stan formularza dla analityki "na czym stanął" (lib/configurator-state):
   // heartbeat i page_exit niosą, które kroki gotowe, czego brakuje i czy
@@ -655,49 +763,47 @@ export default function ConfiguratorPanel({
   useEffect(() => {
     const done: string[] = [];
     const missing: string[] = [];
+    (hasSizes ? done : missing).push("wymiary");
     (selectedMount ? done : missing).push("montaż");
-    if (bracketRequired) (selectedBracket ? done : missing).push("kolor uchwytów");
     (selectedHardware ? done : missing).push("kolor profili");
+    if (bracketRequired) (selectedBracket ? done : missing).push("kolor uchwytów");
     (selectedFabricGroup ? done : missing).push("kolekcja");
     (selectedFabric ? done : missing).push("tkanina");
-    (dimensionsValid || positions.length > 0 ? done : missing).push("wymiary");
     const hasDims = widthNum > 0 || heightNum > 0;
-    const blockedReason = sagBlocked
-      ? "ugięcie profilu niezaakceptowane"
-      : hasDims && !dimensionsValid && positions.length === 0
-        ? "wymiary poza zakresem"
-        : "";
+    const blockedReason = remeasureRequired
+      ? "zmiana montażu - potrzebny nowy pomiar"
+      : sagBlocked
+        ? "ugięcie profilu niezaakceptowane"
+        : hasDims && !dimensionsValid && positions.length === 0
+          ? "wymiary poza zakresem"
+          : "";
     reportConfiguratorState({
       product: "plisy",
       done,
       missing,
       blocked_reason: blockedReason,
       cta_enabled: canFinalSubmit,
-      price: totalPrice,
-      positions: positions.length,
+      price: setGrandTotal,
+      positions: effectivePositions.length,
       qty: quantityNum,
       width_mm: widthNum,
       height_mm: heightNum,
       unit: dimensionUnit,
     });
-  }, [selectedMount, bracketRequired, selectedBracket, selectedHardware, selectedFabricGroup, selectedFabric, dimensionsValid, positions.length, widthNum, heightNum, sagBlocked, canFinalSubmit, totalPrice, quantityNum, dimensionUnit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMount, bracketRequired, selectedBracket, selectedHardware, selectedFabricGroup, selectedFabric, hasSizes, effectivePositions.length, widthNum, heightNum, sagBlocked, remeasureRequired, canFinalSubmit, setGrandTotal, quantityNum, dimensionUnit]);
   useEffect(() => () => clearConfiguratorState("plisy"), []);
 
   function handleFinalSubmit() {
     if (!canFinalSubmit) return;
     // A row mid-edit goes in with the edited values when they validate,
     // and as it was saved when they don't - never twice, never dropped.
-    const pending = currentPosition();
-    const finalPositions = editingPositionId
-      ? positions.map((position) => (position.id === editingPositionId && pending ? pending : position))
-      : pending
-        ? [...positions, pending]
-        : [...positions];
+    const finalPositions = effectivePositions;
     if (finalPositions.length === 0) return;
 
     const base = {
       mountId: selectedMount?.id || "",
-      mountLabel: joinPlisyMountLabel(selectedMount?.label || "", selectedBracket?.label),
+      mountLabel: joinPlisyMountLabel(plisyMountLabel(selectedMount), selectedBracket?.label),
       bracketColorId: selectedBracket?.id || "",
       bracketColorLabel: selectedBracket?.label || "",
       hardwareId: selectedHardware?.id || "",
@@ -714,14 +820,16 @@ export default function ConfiguratorPanel({
     // one goes through onSubmit, so the parent's "Dodano do koszyka!"
     // takeover fires exactly once, after the whole set is in the cart.
     finalPositions.forEach((position, index) => {
+      const price = priceForSize(position.widthMm, position.heightMm, position.qty, selectedFabricGroupId, selectedFabric);
+      if (!price) return;
       const result: ConfiguratorResult = {
         ...base,
         widthMm: position.widthMm,
         heightMm: position.heightMm,
         qty: position.qty,
-        unitPrice: position.unitPrice,
-        totalPrice: position.totalPrice,
-        oversizeSurchargeAmount: position.oversizeSurchargeAmount,
+        unitPrice: price.unit,
+        totalPrice: price.total,
+        oversizeSurchargeAmount: plisyOversizeSurcharge(position.widthMm),
       };
       if (index < finalPositions.length - 1 && onAddVariant) {
         onAddVariant(result);
@@ -755,541 +863,656 @@ export default function ConfiguratorPanel({
     );
   }
 
+  // Kolejność kroków (przebudowa 2026-09-24, punkt 4 audytu landingu plis):
+  //   1. WYMIARY - z domyślnym montażem przykręcanym do listwy. To montaż
+  //      decyduje, JAK klient mierzy okno, więc wybór montażu siedzi w tym
+  //      samym kroku; zmiana na bezinwazyjny wymusza nowy pomiar.
+  //   2. kolor mechanizmu,
+  //   3. kolor uchwytów (tylko montaż bezinwazyjny),
+  //   4. kolekcja tkanin - JUŻ Z CENĄ dla wymiarów klienta,
+  //   5. kolor tkaniny, potem podsumowanie i koszyk.
+  // Wcześniej wymiary były ostatnie: klient przechodził cztery kroki, zanim
+  // zobaczył jakąkolwiek cenę, a połowa tych, którzy wybrali kolor tkaniny,
+  // nie wpisywała już nic (analiza lejka 2026-09-17).
+  const showRest = hasSizes || Boolean(selectedHardwareId);
+  const measureMode = measureModeForMount(selectedMountId);
+  const sizeSummaryText = !hasSizes
+    ? ""
+    : effectivePositions.length === 1
+      ? `${effectivePositions[0].widthMm / 10} × ${effectivePositions[0].heightMm / 10} cm · ${effectivePositions[0].qty} szt.`
+      : `${pozycjeLabel(effectivePositions.length)} · ${effectivePositions.reduce((sum, position) => sum + position.qty, 0)} szt.`;
+  const nextStepLabel = !selectedHardwareId
+    ? "Dalej: kolor mechanizmu"
+    : !selectedFabricGroupId
+      ? "Dalej: tkanina i cena"
+      : "Dalej: podsumowanie";
+  function goToNextStep() {
+    setStepDimsCollapsed(true);
+    trackShopStep("configurator_step_toggle", "dimensions_next", { next: nextStepLabel });
+    window.setTimeout(() => {
+      scrollStepIntoView(
+        !selectedHardwareId ? stepOneRef.current : !selectedFabricGroupId ? stepTwoRef.current : stepFourRef.current,
+      );
+    }, 220);
+  }
+  // Cena przy kolekcjach dotyczy tego, co klient już wpisał - jednego okna
+  // albo całego zestawu. Dopłaty pojedynczych tkanin (jeśli właściciel
+  // jakieś ustawił w CRM) dochodzą dopiero przy wyborze koloru, więc wtedy
+  // mówimy o tym wprost zamiast pokazywać cenę, która się jeszcze ruszy.
+  const priceScopeLabel =
+    effectivePositions.length === 1 && effectivePositions[0].qty === 1 ? "za Twoje okno" : "za Twój zestaw";
+  const anyFabricDelta = profile.fabricGroups.some((group) => group.swatches.some((swatch) => swatch.priceDelta !== 0));
+
   return (
     <>
       <header>
         <strong>Wyceń plisę do swojego okna</strong>
       </header>
 
-      {profile.mountOptions.length > 0 ? (
-        <section className={`hero-product-step-accordion hero-product-step-accordion--mount ${stepZeroCollapsed ? "is-collapsed" : ""}`}>
-          <button
-            type="button"
-            className="hero-product-step-head"
-            onClick={() => {
-              trackShopStep("configurator_step_toggle", "mount_type", { collapsed_after: !stepZeroCollapsed });
-              setStepZeroCollapsed((prev) => !prev);
-            }}
-            aria-expanded={stepZeroCollapsed ? "false" : "true"}
-          >
-            <span className="hero-product-config-step-title">
-              <span className="hero-product-step-check" aria-hidden="true">✓</span>
-              Wybierz sposób montażu
-            </span>
-            <span className="hero-product-step-head-meta">
-              {selectedMount ? <strong>{selectedMount.label}</strong> : null}
-              {stepZeroCollapsed ? (
-                <span className="hero-product-step-head-change">Zmień</span>
-              ) : (
-                <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-              )}
-            </span>
-          </button>
-          <div className="hero-product-step-body">
-            <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid hero-product-mount-grid">
-              {profile.mountOptions.map((option) => {
-                const isActive = option.id === selectedMountId;
-                return (
-                  <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""}`}>
-                    <button
-                      type="button"
-                      className="hardware-card-main"
-                      onClick={() => {
-                        trackShopStep("select_mount_type", option.label, { option_id: option.id });
-                        setSelectedMountId(option.id);
-                        setStepZeroCollapsed(true);
-                        if (!stepZeroChosen) setStepZeroChosen(true);
-                        if (!isPlisyMountNonInvasive(option.id) && !isPlisyMountNonInvasive(option.label)) {
-                          setSelectedBracketId("");
-                        } else {
-                          setStepBracketCollapsed(false);
-                        }
-                        window.setTimeout(() => {
-                          scrollStepIntoView(stepOneRef.current);
-                        }, 380);
-                      }}
-                    >
-                      <span
-                        className="hardware-card-image"
-                        style={
-                          option.imageUrl
-                            ? {
-                                // 360, not 320 - must be one of next.config's
-                                // allow-listed imageSizes or the optimizer
-                                // 400s (INVALID_IMAGE_OPTIMIZE_REQUEST),
-                                // which silently renders as no background at
-                                // all - exactly the bug this fix addresses,
-                                // so getting this specific number right
-                                // matters (verified live, not just built).
-                                // No backgroundSize/backgroundPosition override
-                                // here - .hero-product-hardware-grid
-                                // .hardware-card-image's own CSS already sets
-                                // a square box + background-size: contain, so
-                                // the whole photo stays visible instead of
-                                // getting cropped by "cover".
-                                backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 360)})`,
-                              }
-                            : { backgroundImage: "linear-gradient(135deg, #E2E8F0 0%, #C8D0DA 100%)" }
-                        }
-                      />
-                      <span className="hardware-card-footer">
-                        <strong>{option.label}</strong>
-                      </span>
-                    </button>
-                    {/* Both badges live as siblings of .hardware-card-main,
-                        not inside it, deliberately - the button gets a
-                        translateY transform on :hover/:focus-within, and a
-                        transform on any ancestor becomes the new containing
-                        block for position:absolute descendants, which made
-                        these visibly jump a few px on hover when they used
-                        to be nested inside it. Same fix approach as
-                        .config-option-zoom below, which never had this bug
-                        for the same reason. */}
-                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                    {formatPriceDeltaBadge(option.priceDelta, option.priceDeltaType) ? (
-                      <span className="hardware-price-badge">
-                        {formatPriceDeltaBadge(option.priceDelta, option.priceDeltaType)}
-                      </span>
-                    ) : null}
-                    {option.imageUrl ? (
-                      <button
-                        type="button"
-                        className="config-option-zoom"
-                        aria-label={`Powiększ: ${option.label}`}
-                        onClick={() => openZoom({ title: option.label, urls: [option.imageUrl], index: 0 })}
-                      >
-                        🔍
-                      </button>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-            {selectedMount?.note ? <p className="hero-product-config-hint">{selectedMount.note}</p> : null}
-          </div>
-        </section>
-      ) : null}
-
-      {stepZeroChosen ? (
-        <>
-      <section className={`hero-product-step-accordion hero-product-step-accordion--hardware-color ${stepOneCollapsed ? "is-collapsed" : ""}`}>
+      {/* KROK 1: wymiary okna (montaż jest tu, bo od niego zależy pomiar) */}
+      <section className={`hero-product-step-accordion hero-product-step-accordion--dimensions ${stepDimsCollapsed ? "is-collapsed" : ""}`}>
         <button
           type="button"
-          ref={stepOneRef}
           className="hero-product-step-head"
           onClick={() => {
-            trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed });
-            setStepOneCollapsed((prev) => !prev);
+            trackShopStep("configurator_step_toggle", "dimensions", { collapsed_after: !stepDimsCollapsed });
+            setStepDimsCollapsed((prev) => !prev);
           }}
-          aria-expanded={stepOneCollapsed ? "false" : "true"}
+          aria-expanded={stepDimsCollapsed ? "false" : "true"}
         >
-          <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-            <span className={`hero-product-step-check ${selectedHardware ? "" : "is-muted"}`} aria-hidden="true">
-              {selectedHardware ? "✓" : "2"}
+          <span className="hero-product-config-step-title">
+            <span className={`hero-product-step-check ${hasSizes ? "" : "is-muted"}`} aria-hidden="true">
+              {hasSizes ? "✓" : "1"}
             </span>
-            Wybierz kolor mechanizmu
+            Wymiary okna
           </span>
           <span className="hero-product-step-head-meta">
-            {selectedHardware && stepOneCollapsed ? (
-              <span
-                className="hero-product-step-head-swatch"
-                style={buildPlisyHardwareSwatchStyle(selectedHardware.imageUrl, selectedHardware.color)}
-                aria-hidden="true"
-              />
-            ) : null}
-            {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
-            {stepOneCollapsed ? (
+            {sizeSummaryText ? <strong>{sizeSummaryText}</strong> : null}
+            {stepDimsCollapsed ? (
               <span className="hero-product-step-head-change">Zmień</span>
             ) : (
               <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
             )}
           </span>
         </button>
-        <div className="hero-product-step-body">
-          <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid hero-product-hardware-color-grid">
-            {profile.hardware.map((option, index) => {
-              const isActive = option.id === selectedHardwareId;
-              const isLastSolo = profile.hardware.length % 3 === 1 && index === profile.hardware.length - 1;
-              return (
-                <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""} ${isLastSolo ? "is-last-solo" : ""}`}>
+        {/* maxHeight:none - ciało kroku 1 (montaż + pomiar + zestaw) bywa
+            wyższe niż limit animacji akordeonu i obcinało stopkę z
+            przyciskami; ten sam wyjątek co przy kroku kolekcji. */}
+        <div
+          className="hero-product-step-body"
+          style={stepDimsCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}
+        >
+          {profile.mountOptions.length > 0 ? (
+            <div className="plisy-mount-pick" role="group" aria-label="Sposób montażu">
+              <span className="plisy-mount-pick-label">Sposób montażu — od niego zależy, jak mierzysz okno</span>
+              <div className="plisy-mount-pick-grid">
+                {profile.mountOptions.map((option) => {
+                  const isActive = option.id === selectedMountId;
+                  const delta = formatPriceDeltaBadge(option.priceDelta, option.priceDeltaType);
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`plisy-mount-pick-option ${isActive ? "is-active" : ""}`}
+                      aria-pressed={isActive}
+                      onClick={() => handleMountChange(option)}
+                    >
+                      <span
+                        className="plisy-mount-pick-thumb"
+                        aria-hidden="true"
+                        style={
+                          option.imageUrl
+                            ? { backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 160)})` }
+                            : { backgroundImage: "linear-gradient(135deg, #E2E8F0 0%, #C8D0DA 100%)" }
+                        }
+                      />
+                      <span className="plisy-mount-pick-text">
+                        <strong>{plisyMountLabel(option)}</strong>
+                        <span>{plisyMountShortNote(option)}</span>
+                      </span>
+                      {delta ? <span className="plisy-mount-pick-delta">{delta}</span> : null}
+                      {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedMount ? <p className="hero-product-config-hint">{plisyMountNote(selectedMount)}</p> : null}
+            </div>
+          ) : null}
+
+          {mountNotice ? (
+            <div className="plisy-remeasure-notice" role="alert">
+              <strong>Inny montaż = inny pomiar</strong>
+              <p>
+                {measureMode === "bezinwazyjny"
+                  ? "Przy montażu bezinwazyjnym plisa zasłania szybę razem z listwami: szerokość mierzysz od kreseczki do kreseczki, a wysokość to całe skrzydło."
+                  : "Przy montażu przykręcanym plisa siedzi między listwami przyszybowymi: mierzysz w świetle szyby, od połowy uszczelki do połowy uszczelki."}{" "}
+                Wymiary, które już podałeś, były mierzone pod poprzedni montaż („{mountNotice.previousLabel}”) — tutaj nie zagrają.
+              </p>
+              <div className="plisy-remeasure-actions">
+                <button type="button" className="plisy-remeasure-accept" onClick={acceptRemeasure}>
+                  Wpiszę nowe wymiary
+                </button>
+                <button type="button" className="plisy-remeasure-cancel" onClick={cancelMountChange}>
+                  Zostaw montaż: {mountNotice.previousLabel}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className={`plisy-position-form ${editingPositionId ? "is-editing" : ""}`} ref={positionFormRef}>
+            {editingPositionId ? (
+              <p className="plisy-position-editing">
+                Edytujesz pozycję {positions.findIndex((position) => position.id === editingPositionId) + 1} z zestawu.
+                <button type="button" onClick={clearPositionForm}>
+                  Anuluj
+                </button>
+              </p>
+            ) : null}
+            <p className="hero-product-config-hint">
+              {measureMode === "bezinwazyjny"
+                ? "Szerokość: od kreseczki do kreseczki (szyba razem z listwami). Wysokość: całe skrzydło."
+                : "Szerokość i wysokość: od połowy uszczelki do połowy uszczelki, nic nie odejmuj."}{" "}
+              Podaj w {dimensionUnit === "cm" ? "centymetrach" : "milimetrach"} i ilość sztuk w tym rozmiarze.{" "}
+              <button
+                type="button"
+                className="plisy-measure-link"
+                onClick={() => {
+                  setMeasureGuideOpen(true);
+                  trackShopStep("configurator_measure_guide", "open", { mount: measureMode });
+                }}
+              >
+                📐 Jak mierzyć?
+              </button>
+            </p>
+            <div className="plisy-dimensions-tools">
+              <div className="hero-product-unit-toggle" role="group" aria-label="Jednostka wymiarów">
+                <button
+                  type="button"
+                  className={dimensionUnit === "cm" ? "is-active" : ""}
+                  aria-pressed={dimensionUnit === "cm"}
+                  onClick={() => switchDimensionUnit("cm")}
+                >
+                  cm
+                </button>
+                <button
+                  type="button"
+                  className={dimensionUnit === "mm" ? "is-active" : ""}
+                  aria-pressed={dimensionUnit === "mm"}
+                  onClick={() => switchDimensionUnit("mm")}
+                >
+                  mm
+                </button>
+              </div>
+            </div>
+            {measureGuideOpen && typeof document !== "undefined"
+              ? createPortal(
+                  <div
+                    className="instruction-modal instruction-modal--measure"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Jak mierzyć plisę"
+                    onClick={() => setMeasureGuideOpen(false)}
+                  >
+                    <div className="instruction-modal-shell instruction-modal-shell--measure" onClick={(event) => event.stopPropagation()}>
+                      <button type="button" className="instruction-modal-close" aria-label="Zamknij instrukcję" onClick={() => setMeasureGuideOpen(false)}>
+                        ×
+                      </button>
+                      <h3>Jak zmierzyć okno pod plisę</h3>
+                      <PlisyMeasureGuide fixedMode={measureMode} startDelayMs={700} unit={dimensionUnit} />
+                    </div>
+                  </div>,
+                  document.body,
+                )
+              : null}
+            {measureSave ? (
+              <PromoSaveModal
+                variant="measure"
+                quoteCode={measureSave.quoteCode}
+                shareUrl={measureSave.shareUrl}
+                remainingMs={measureSave.remainingMs}
+                onClose={() => setMeasureSave(null)}
+              />
+            ) : null}
+            <div className="hero-product-dimensions-grid">
+              <label>
+                Szerokość ({dimensionUnit})
+                <input
+                  type="number"
+                  inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                  step={dimensionUnit === "cm" ? 0.1 : 1}
+                  min={dimensionUnit === "cm" ? profile.widthMinMm / 10 : profile.widthMinMm}
+                  max={dimensionUnit === "cm" ? profile.widthMaxMm / 10 : profile.widthMaxMm}
+                  placeholder={`np. ${mmToInput(profile.widthDefaultMm, dimensionUnit)}`}
+                  value={width}
+                  onChange={(event) => setWidth(event.target.value)}
+                  onBlur={handleDimensionBlur}
+                />
+              </label>
+              <label>
+                Wysokość ({dimensionUnit})
+                <input
+                  type="number"
+                  inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                  step={dimensionUnit === "cm" ? 0.1 : 1}
+                  min={dimensionUnit === "cm" ? profile.heightMinMm / 10 : profile.heightMinMm}
+                  max={dimensionUnit === "cm" ? profile.heightMaxMm / 10 : profile.heightMaxMm}
+                  placeholder={`np. ${mmToInput(profile.heightDefaultMm, dimensionUnit)}`}
+                  value={height}
+                  onChange={(event) => setHeight(event.target.value)}
+                  onBlur={handleDimensionBlur}
+                />
+              </label>
+              <label>
+                Ilość
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={20}
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
+                />
+              </label>
+            </div>
+            {(width || height) && !dimensionsValid ? (
+              <div className="hero-product-dimensions-error">
+                {looksLikeCm ? (
+                  <p className="plisy-dimensions-hint">
+                    {widthNum} × {heightNum} mm to tylko {widthNum / 10} × {heightNum / 10} cm — mniej niż najmniejsza plisa.
+                    Wygląda na centymetry.
+                    <button type="button" onClick={() => switchDimensionUnit("cm", false)}>
+                      Tak, to centymetry
+                    </button>
+                  </p>
+                ) : (
+                  <p>
+                    Szerokość {formatRange(profile.widthMinMm, profile.widthMaxMm)}, wysokość{" "}
+                    {formatRange(profile.heightMinMm, profile.heightMaxMm)}.
+                    {dimensionUnit === "mm" ? " Masz wymiar w centymetrach? Przełącz jednostkę powyżej." : ""}
+                  </p>
+                )}
+              </div>
+            ) : null}
+            <button type="button" className="plisy-measure-later" onClick={openMeasureLater} disabled={measureSaveBusy}>
+              <strong>Nie masz jeszcze wymiarów?</strong>
+              <span>Zapisz lub udostępnij link do tej konfiguracji i dokończ w dowolnym momencie</span>
+            </button>
+            {sagWarning ? (
+              <div className={`plisy-sag-notice ${sagAccepted ? "is-accepted" : ""}`} role="note">
+                <p>
+                  <strong>Szerokość powyżej {sagLimitMm / 10} cm.</strong> Przy tej szerokości profil aluminiowy może się
+                  lekko ugiąć pod ciężarem tkaniny (grawitacja). To naturalne zjawisko — nie wpływa na działanie plisy, jedynie na jej
+                  estetykę.
+                </p>
+                {sagAccepted ? (
+                  <span className="plisy-sag-accepted">✓ Zaakceptowano</span>
+                ) : (
                   <button
                     type="button"
-                    className="hardware-card-main"
+                    className="plisy-sag-accept"
                     onClick={() => {
-                      trackShopStep("select_hardware_color", option.label, { option_id: option.id });
-                      setSelectedHardwareId(option.id);
-                      setStepOneCollapsed(true);
-                      if (!stepOneChosen) setStepOneChosen(true);
-                      window.setTimeout(() => {
-                        scrollStepIntoView(bracketRequired && !selectedBracketId ? stepBracketRef.current : stepTwoRef.current);
-                      }, 380);
+                      trackShopStep("accept_sag_notice", String(widestMm), { limit_mm: sagLimitMm });
+                      setSagAccepted(true);
                     }}
                   >
-                    <span
-                      className="hardware-card-image"
-                      style={buildPlisyHardwareSwatchStyle(option.imageUrl, option.color)}
-                    />
-                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                    <span className="hardware-card-footer">
-                      <span className="hardware-dot" style={{ background: option.color }} />
-                      <strong>{option.label}</strong>
-                    </span>
+                    Akceptuję
                   </button>
-                  {option.imageUrl ? (
+                )}
+              </div>
+            ) : null}
+            {oversizeSurcharge > 0 ? (
+              <p className="plisy-oversize-note">
+                Szerokość powyżej {PLISY_OVERSIZE_WIDTH_MM / 10} cm: dopłata za przesyłkę dłużycową{" "}
+                <strong>+{formatZl(oversizeSurcharge)}</strong> (jednorazowo dla całego zamówienia, doliczana w koszyku).
+              </p>
+            ) : null}
+            <div className="plisy-position-form-footer">
+              {totalPrice !== null ? (
+                <span className="plisy-position-price">{renderPrice(totalPrice)}</span>
+              ) : (
+                <span className="plisy-position-price is-pending">
+                  {dimensionsValid ? "Cenę zobaczysz przy wyborze tkaniny" : ""}
+                </span>
+              )}
+              <button
+                type="button"
+                className="plisy-position-add"
+                onClick={handleAddPosition}
+                disabled={!dimensionsValid || sagBlocked || remeasureRequired}
+              >
+                {editingPositionId ? "Zapisz zmiany" : "+ Dodaj kolejne okno"}
+              </button>
+              {dimensionsValid && !editingPositionId && !remeasureRequired ? (
+                <button type="button" className="plisy-step-next" onClick={goToNextStep}>
+                  {nextStepLabel} →
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {positions.length > 0 ? (
+            <div className="plisy-positions-list">
+              <h4>Twój zestaw</h4>
+              {positions.map((position, index) => {
+                const rowPrice = priceForSize(position.widthMm, position.heightMm, position.qty, selectedFabricGroupId, selectedFabric);
+                return (
+                  <div key={position.id} className={`plisy-positions-row ${position.id === editingPositionId ? "is-editing" : ""}`}>
+                    <span className="plisy-positions-row-label">
+                      {index + 1}. {position.widthMm / 10} × {position.heightMm / 10} cm, {position.qty} szt.
+                    </span>
+                    <span className="plisy-positions-row-price">{rowPrice ? renderPrice(rowPrice.total) : "—"}</span>
                     <button
                       type="button"
-                      className="config-option-zoom"
-                      aria-label={`Powiększ: ${option.label}`}
-                      onClick={() => openZoom({ title: option.label, urls: [option.imageUrl], index: 0 })}
+                      className="plisy-positions-row-edit"
+                      onClick={() => handleEditPosition(position)}
+                      aria-label={`Edytuj pozycję ${index + 1}`}
                     >
-                      🔍
+                      Edytuj
                     </button>
-                  ) : null}
+                    <button
+                      type="button"
+                      className="plisy-positions-row-remove"
+                      onClick={() => handleRemovePosition(position.id)}
+                      aria-label={`Usuń pozycję ${index + 1}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+              {positionsGrandTotal !== null ? (
+                <div className="plisy-positions-total">
+                  <span>Razem za zapisane pozycje</span>
+                  <strong>{renderPrice(positionsGrandTotal)}</strong>
                 </div>
-              );
-            })}
-          </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </section>
 
-      {stepOneChosen && bracketRequired ? (
-        <section className={`hero-product-step-accordion hero-product-step-accordion--bracket ${stepBracketCollapsed ? "is-collapsed" : ""}`}>
-          <button
-            type="button"
-            ref={stepBracketRef}
-            className="hero-product-step-head"
-            onClick={() => {
-              trackShopStep("configurator_step_toggle", "bracket_color", { collapsed_after: !stepBracketCollapsed });
-              setStepBracketCollapsed((prev) => !prev);
-            }}
-            aria-expanded={stepBracketCollapsed ? "false" : "true"}
-          >
-            <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-              <span className={`hero-product-step-check ${selectedBracket ? "" : "is-muted"}`} aria-hidden="true">
-                {selectedBracket ? "✓" : "3"}
-              </span>
-              Wybierz kolor uchwytów bezinwazyjnych
-            </span>
-            <span className="hero-product-step-head-meta">
-              {selectedBracket && stepBracketCollapsed ? (
-                <span className="hero-product-step-head-swatch" style={{ background: selectedBracket.color }} aria-hidden="true" />
-              ) : null}
-              {selectedBracket ? <strong>{selectedBracket.label}</strong> : null}
-              {stepBracketCollapsed ? (
-                <span className="hero-product-step-head-change">Zmień</span>
-              ) : (
-                <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-              )}
-            </span>
-          </button>
-          <div className="hero-product-step-body">
-            <p className="hero-product-config-hint">Uchwyty zakładane na skrzydło są widoczne od strony pokoju — dobierz kolor do okna.</p>
-            <div className="plisy-bracket-grid">
-              {PLISY_BRACKET_COLORS.map((entry) => {
-                const isActive = entry.id === selectedBracketId;
-                return (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className={`plisy-bracket-option ${isActive ? "is-active" : ""}`}
-                    onClick={() => {
-                      trackShopStep("select_bracket_color", entry.label, { option_id: entry.id });
-                      setSelectedBracketId(entry.id);
-                      setStepBracketCollapsed(true);
-                      window.setTimeout(() => {
-                        scrollStepIntoView(stepTwoRef.current);
-                      }, 380);
-                    }}
-                  >
-                    <span className="plisy-bracket-dot" style={{ background: entry.color }} aria-hidden="true" />
-                    <strong>{entry.label}</strong>
-                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {stepOneChosen && !bracketChosen ? (
-        <p className="hero-product-config-hint">Wybierz kolor uchwytów, aby przejść do kolejnego kroku.</p>
-      ) : null}
-
-      {stepOneChosen && bracketChosen ? (
+      {showRest ? (
         <>
-          <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
+          {/* KROK 2: kolor mechanizmu */}
+          <section className={`hero-product-step-accordion hero-product-step-accordion--hardware-color ${stepOneCollapsed ? "is-collapsed" : ""}`}>
             <button
               type="button"
-              ref={stepTwoRef}
+              ref={stepOneRef}
               className="hero-product-step-head"
               onClick={() => {
-                trackShopStep("configurator_step_toggle", "fabric_group", { collapsed_after: !stepTwoCollapsed });
-                setStepTwoCollapsed((prev) => !prev);
+                trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed });
+                setStepOneCollapsed((prev) => !prev);
               }}
-              aria-expanded={stepTwoCollapsed ? "false" : "true"}
+              aria-expanded={stepOneCollapsed ? "false" : "true"}
             >
               <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                <span className={`hero-product-step-check ${fabricGroupChosen ? "" : "is-muted"}`} aria-hidden="true">
-                  {fabricGroupChosen ? "✓" : String(3 + stepShift)}
+                <span className={`hero-product-step-check ${selectedHardware ? "" : "is-muted"}`} aria-hidden="true">
+                  {selectedHardware ? "✓" : "2"}
                 </span>
-                Wybierz kolekcję tkaniny
+                Wybierz kolor mechanizmu
               </span>
               <span className="hero-product-step-head-meta">
-                {selectedFabricGroup ? <strong>{selectedFabricGroup.label}</strong> : null}
-                {stepTwoCollapsed ? (
+                {selectedHardware && stepOneCollapsed ? (
+                  <span
+                    className="hero-product-step-head-swatch"
+                    style={buildPlisyHardwareSwatchStyle(selectedHardware.imageUrl, selectedHardware.color)}
+                    aria-hidden="true"
+                  />
+                ) : null}
+                {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
+                {stepOneCollapsed ? (
                   <span className="hero-product-step-head-change">Zmień</span>
                 ) : (
                   <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
                 )}
               </span>
             </button>
-            <div
-              className="hero-product-step-body"
-              style={stepTwoCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}
-            >
-              {/* Owner, 2026-09-17: the CRM's collection photos are all
-                  near-white close-ups, indistinguishable at card size. Each
-                  card now shows what the fabric DOES (light / blackout /
-                  reflex / honeycomb - CollectionVisual.tsx), one line of
-                  plain words, and a strip of that collection's real colours. */}
-              <div className="plisy-coll-grid">
-                {profile.fabricGroups.map((group) => {
-                  const isActive = group.id === selectedFabricGroupId;
-                  const kind = plisyCollectionKind(group);
-                  const meta = plisyCollectionMeta(kind);
+            <div className="hero-product-step-body">
+              <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid hero-product-hardware-color-grid">
+                {profile.hardware.map((option, index) => {
+                  const isActive = option.id === selectedHardwareId;
+                  const isLastSolo = profile.hardware.length % 3 === 1 && index === profile.hardware.length - 1;
                   return (
-                    <button
-                      key={group.id}
-                      type="button"
-                      className={`hero-product-mesh-option plisy-coll-card ${isActive ? "is-active" : ""}`}
-                      title={group.note || group.label}
-                      onClick={() => {
-                        trackShopStep("select_fabric_group", group.label, { option_id: group.id });
-                        setSelectedFabricGroupId(group.id);
-                        setStepTwoCollapsed(true);
-                        window.setTimeout(() => {
-                          scrollStepIntoView(stepThreeRef.current);
-                        }, 380);
-                      }}
-                    >
-                      <span className="plisy-coll-card-visual">
-                        <PlisyCollectionVisual kind={kind} />
-                      </span>
-                      <span className="plisy-coll-card-body">
-                        <span className="plisy-coll-card-head">
-                          <strong>{group.label}</strong>
-                          <span className="plisy-coll-card-badges">
-                            {meta.badges.map((badge) => (
-                              <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : badge === "Plaster miodu" ? "is-structure" : ""}`}>
-                                {badge}
-                              </span>
-                            ))}
-                          </span>
+                    <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""} ${isLastSolo ? "is-last-solo" : ""}`}>
+                      <button
+                        type="button"
+                        className="hardware-card-main"
+                        onClick={() => {
+                          trackShopStep("select_hardware_color", option.label, { option_id: option.id });
+                          setSelectedHardwareId(option.id);
+                          setStepOneCollapsed(true);
+                          if (!stepOneChosen) setStepOneChosen(true);
+                          window.setTimeout(() => {
+                            scrollStepIntoView(bracketRequired && !selectedBracketId ? stepBracketRef.current : stepTwoRef.current);
+                          }, 380);
+                        }}
+                      >
+                        <span
+                          className="hardware-card-image"
+                          style={buildPlisyHardwareSwatchStyle(option.imageUrl, option.color)}
+                        />
+                        {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                        <span className="hardware-card-footer">
+                          <span className="hardware-dot" style={{ background: option.color }} />
+                          <strong>{option.label}</strong>
                         </span>
-                        <span className="plisy-coll-card-note">{meta.light}</span>
-                        {group.swatches.length ? (
-                          <span className="plisy-coll-card-count">
-                            {plisyColorCountLabel(group.swatches.length)} do wyboru
-                          </span>
-                        ) : null}
-                      </span>
-                    </button>
+                      </button>
+                      {option.imageUrl ? (
+                        <button
+                          type="button"
+                          className="config-option-zoom"
+                          aria-label={`Powiększ: ${option.label}`}
+                          onClick={() => openZoom({ title: option.label, urls: [option.imageUrl], index: 0 })}
+                        >
+                          🔍
+                        </button>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>
-              {selectedFabricGroup?.note ? <p className="hero-product-config-hint">{selectedFabricGroup.note}</p> : null}
             </div>
           </section>
 
-          {fabricGroupChosen ? (
+          {/* KROK 3: kolor uchwytów - tylko montaż bezinwazyjny */}
+          {selectedHardwareId && bracketRequired ? (
+            <section className={`hero-product-step-accordion hero-product-step-accordion--bracket ${stepBracketCollapsed ? "is-collapsed" : ""}`}>
+              <button
+                type="button"
+                ref={stepBracketRef}
+                className="hero-product-step-head"
+                onClick={() => {
+                  trackShopStep("configurator_step_toggle", "bracket_color", { collapsed_after: !stepBracketCollapsed });
+                  setStepBracketCollapsed((prev) => !prev);
+                }}
+                aria-expanded={stepBracketCollapsed ? "false" : "true"}
+              >
+                <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+                  <span className={`hero-product-step-check ${selectedBracket ? "" : "is-muted"}`} aria-hidden="true">
+                    {selectedBracket ? "✓" : "3"}
+                  </span>
+                  Wybierz kolor uchwytów bezinwazyjnych
+                </span>
+                <span className="hero-product-step-head-meta">
+                  {selectedBracket && stepBracketCollapsed ? (
+                    <span className="hero-product-step-head-swatch" style={{ background: selectedBracket.color }} aria-hidden="true" />
+                  ) : null}
+                  {selectedBracket ? <strong>{selectedBracket.label}</strong> : null}
+                  {stepBracketCollapsed ? (
+                    <span className="hero-product-step-head-change">Zmień</span>
+                  ) : (
+                    <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+                  )}
+                </span>
+              </button>
+              <div className="hero-product-step-body">
+                <p className="hero-product-config-hint">Uchwyty zakładane na skrzydło są widoczne od strony pokoju — dobierz kolor do okna.</p>
+                <div className="plisy-bracket-grid">
+                  {PLISY_BRACKET_COLORS.map((entry) => {
+                    const isActive = entry.id === selectedBracketId;
+                    return (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        className={`plisy-bracket-option ${isActive ? "is-active" : ""}`}
+                        onClick={() => {
+                          trackShopStep("select_bracket_color", entry.label, { option_id: entry.id });
+                          setSelectedBracketId(entry.id);
+                          setStepBracketCollapsed(true);
+                          window.setTimeout(() => {
+                            scrollStepIntoView(stepTwoRef.current);
+                          }, 380);
+                        }}
+                      >
+                        <span className="plisy-bracket-dot" style={{ background: entry.color }} aria-hidden="true" />
+                        <strong>{entry.label}</strong>
+                        {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {selectedHardwareId && !bracketChosen ? (
+            <p className="hero-product-config-hint">Wybierz kolor uchwytów, aby przejść do kolejnego kroku.</p>
+          ) : null}
+
+          {selectedHardwareId && bracketChosen ? (
             <>
-              <section className={`hero-product-step-accordion hero-product-step-accordion--fabric-color ${stepThreeCollapsed ? "is-collapsed" : ""}`}>
+              {/* KROK 4: kolekcja tkanin - z ceną dla wymiarów klienta */}
+              <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
                 <button
                   type="button"
-                  ref={stepThreeRef}
+                  ref={stepTwoRef}
                   className="hero-product-step-head"
                   onClick={() => {
-                    trackShopStep("configurator_step_toggle", "fabric_color", { collapsed_after: !stepThreeCollapsed });
-                    setStepThreeCollapsed((prev) => !prev);
+                    trackShopStep("configurator_step_toggle", "fabric_group", { collapsed_after: !stepTwoCollapsed });
+                    setStepTwoCollapsed((prev) => !prev);
                   }}
-                  aria-expanded={stepThreeCollapsed ? "false" : "true"}
+                  aria-expanded={stepTwoCollapsed ? "false" : "true"}
                 >
                   <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                    <span className={`hero-product-step-check ${fabricChosen ? "" : "is-muted"}`} aria-hidden="true">
-                      {fabricChosen ? "✓" : String(4 + stepShift)}
+                    <span className={`hero-product-step-check ${fabricGroupChosen ? "" : "is-muted"}`} aria-hidden="true">
+                      {fabricGroupChosen ? "✓" : String(3 + stepShift)}
                     </span>
-                    Wybierz kolor tkaniny
+                    Wybierz kolekcję tkaniny
                   </span>
                   <span className="hero-product-step-head-meta">
-                    {selectedFabric && stepThreeCollapsed ? (
-                      <span
-                        className="hero-product-step-head-swatch"
-                        style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl, selectedFabric.color)}
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    {selectedFabric ? <strong>{selectedFabric.label}</strong> : null}
-                    {stepThreeCollapsed ? (
+                    {selectedFabricGroup ? <strong>{selectedFabricGroup.label}</strong> : null}
+                    {stepTwoCollapsed ? (
                       <span className="hero-product-step-head-change">Zmień</span>
                     ) : (
                       <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
                     )}
                   </span>
                 </button>
-                <div className="hero-product-step-body">
-                  {swatchesForGroup.length ? (
-                    <div className="plisy-fabric-tools">
-                      <button
-                        type="button"
-                        className="plisy-fabric-gallery-cta"
-                        onClick={() => {
-                          const at = Math.max(0, swatchesForGroup.findIndex((swatch) => swatch.id === selectedFabricId));
-                          setFabricGalleryIndex(at);
-                          trackShopStep("fabric_gallery_open", selectedFabricGroup?.label || "", { source: "cta" });
-                        }}
-                      >
-                        🔍 Zobacz duże zdjęcia tkanin
-                      </button>
-                    </div>
+                <div
+                  className="hero-product-step-body"
+                  style={stepTwoCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}
+                >
+                  {/* Zdjęcia kolekcji z CRM to prawie białe zbliżenia tkanin,
+                      nie do odróżnienia w rozmiarze kafelka (właściciel,
+                      2026-09-17). Kafelek mówi więc, co tkanina ROBI
+                      (CollectionVisual.tsx), ile ma kolorów - a od przebudowy
+                      kroków (2026-09-24) także ile kosztuje w wymiarach,
+                      które klient właśnie podał. */}
+                  {hasSizes ? (
+                    <p className="hero-product-config-hint">
+                      Ceny poniżej są policzone dla Twoich wymiarów ({sizeSummaryText}).
+                      {anyFabricDelta ? " Pojedyncze tkaniny mogą mieć dopłatę — zobaczysz ją przy wyborze koloru." : ""}
+                    </p>
                   ) : null}
-                  <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
-                    {swatchesForGroup.map((swatch, swatchIndex) => {
-                      const isActive = swatch.id === selectedFabricId;
+                  <div className="plisy-coll-grid">
+                    {profile.fabricGroups.map((group) => {
+                      const isActive = group.id === selectedFabricGroupId;
+                      const kind = plisyCollectionKind(group);
+                      const meta = plisyCollectionMeta(kind);
+                      const groupTotal = priceForSet(effectivePositions, group.id, null);
                       return (
-                        <div key={swatch.id} className="plisy-swatch-cell">
-                          <button
-                            type="button"
-                            className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
-                            title={swatch.label}
-                            onClick={() => {
-                              trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id });
-                              setSelectedFabricId(swatch.id);
-                              setStepThreeCollapsed(true);
-                              window.setTimeout(() => {
-                                scrollStepIntoView(stepFourRef.current);
-                              }, 380);
-                            }}
-                          >
-                            <span
-                              className="hero-product-mesh-option-image"
-                              style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)}
-                            />
-                            <strong>{swatch.label}</strong>
-                          </button>
-                          <button
-                            type="button"
-                            className="plisy-swatch-zoom"
-                            aria-label={`Powiększ ${swatch.label}`}
-                            title="Powiększ"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setFabricGalleryIndex(swatchIndex);
-                              trackShopStep("fabric_gallery_open", swatch.label, { source: "swatch", option_id: swatch.id });
-                            }}
-                          >
-                            🔍
-                          </button>
-                        </div>
+                        <button
+                          key={group.id}
+                          type="button"
+                          className={`hero-product-mesh-option plisy-coll-card ${isActive ? "is-active" : ""}`}
+                          title={group.note || group.label}
+                          onClick={() => {
+                            trackShopStep("select_fabric_group", group.label, { option_id: group.id });
+                            setSelectedFabricGroupId(group.id);
+                            setStepTwoCollapsed(true);
+                            window.setTimeout(() => {
+                              scrollStepIntoView(stepThreeRef.current);
+                            }, 380);
+                          }}
+                        >
+                          <span className="plisy-coll-card-visual">
+                            <PlisyCollectionVisual kind={kind} />
+                          </span>
+                          <span className="plisy-coll-card-body">
+                            <span className="plisy-coll-card-head">
+                              <strong>{group.label}</strong>
+                              <span className="plisy-coll-card-badges">
+                                {meta.badges.map((badge) => (
+                                  <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : badge === "Plaster miodu" ? "is-structure" : ""}`}>
+                                    {badge}
+                                  </span>
+                                ))}
+                              </span>
+                            </span>
+                            <span className="plisy-coll-card-note">{meta.light}</span>
+                            <span className="plisy-coll-card-meta">
+                              {group.swatches.length ? (
+                                <span className="plisy-coll-card-count">
+                                  {plisyColorCountLabel(group.swatches.length)} do wyboru
+                                </span>
+                              ) : null}
+                              {groupTotal !== null ? (
+                                <span className="plisy-coll-card-price">
+                                  {renderPrice(groupTotal)}
+                                  <em>{priceScopeLabel}</em>
+                                </span>
+                              ) : null}
+                            </span>
+                          </span>
+                        </button>
                       );
                     })}
                   </div>
-                  {fabricGalleryIndex !== null && swatchesForGroup.length ? (
-                    <PlisyFabricGallery
-                      swatches={swatchesForGroup}
-                      index={Math.min(fabricGalleryIndex, swatchesForGroup.length - 1)}
-                      collectionLabel={selectedFabricGroup?.label || "Tkaniny"}
-                      selectedId={selectedFabricId}
-                      onIndexChange={setFabricGalleryIndex}
-                      onClose={() => setFabricGalleryIndex(null)}
-                      onPick={(swatch) => {
-                        trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id, source: "gallery" });
-                        setSelectedFabricId(swatch.id);
-                        setFabricGalleryIndex(null);
-                        setStepThreeCollapsed(true);
-                        window.setTimeout(() => {
-                          scrollStepIntoView(stepFourRef.current);
-                        }, 380);
-                      }}
-                    />
-                  ) : null}
+                  {selectedFabricGroup?.note ? <p className="hero-product-config-hint">{selectedFabricGroup.note}</p> : null}
                 </div>
               </section>
 
-              {fabricChosen ? (
-                <div ref={stepFourRef} className="hero-product-mini-summary is-revealed">
-                  <h3>Plisa</h3>
-                  <div className="hero-product-mini-summary-body">
-                    {/* Just the plisa itself (tinted live from the chosen
-                        colours) on a plain soft gradient backdrop - dropped
-                        the room/window stock photo (2026-09-09): kept
-                        fighting to get one exact photo's framing right for
-                        no real payoff over just showing the blind clearly. */}
-                    <div className="plisa-preview-stage">
-                      <PlisaPreview
-                        fabricColor={selectedFabric?.color || ""}
-                        hardwareColor={selectedHardware?.color || ""}
-                        fabricLabel={selectedFabric?.label}
-                        hardwareLabel={selectedHardware?.label}
-                      />
-                    </div>
-                    <dl>
-                      {selectedMount ? (
-                        <div>
-                          <dt>Rodzaj montażu</dt>
-                          <dd>{selectedMount.label}</dd>
-                        </div>
-                      ) : null}
-                      <div>
-                        <dt>Kolor mechanizmu</dt>
-                        <dd>{selectedHardware?.label || "--"}</dd>
-                      </div>
-                      <div>
-                        <dt>Kolekcja tkaniny</dt>
-                        <dd>{selectedFabricGroup?.label || "--"}</dd>
-                      </div>
-                      <div>
-                        <dt>Kolor tkaniny</dt>
-                        <dd>{selectedFabric?.label || "--"}</dd>
-                      </div>
-                    </dl>
-                  </div>
-
-                  {/* Wymiary + ilość budują tu KOLEJNE POZYCJE zestawu (ten
-                      sam montaż/mechanizm/tkanina, inny rozmiar okna) -
-                      "+ Dodaj kolejną" odkłada bieżący wpis na listę poniżej
-                      i czyści pola pod następny rozmiar. Nic nie trafia do
-                      koszyka, dopóki nie padnie jedno finalne CTA na samym
-                      dole (patrz handleFinalSubmit). Własny akordeon (jak
-                      kroki 1-4 powyżej) - w /koszyk "Edytuj pozycję" startuje
-                      zwinięty, pokazując bieżący wymiar/ilość jako
-                      podsumowanie; przy świeżej konfiguracji (brak
-                      initialValues) zostaje rozwinięty jak dotychczas. */}
-                  <section
-                    className={`hero-product-step-accordion hero-product-step-accordion--dimensions ${stepFiveCollapsed ? "is-collapsed" : ""}`}
-                  >
+              {fabricGroupChosen ? (
+                <>
+                  {/* KROK 5: kolor tkaniny */}
+                  <section className={`hero-product-step-accordion hero-product-step-accordion--fabric-color ${stepThreeCollapsed ? "is-collapsed" : ""}`}>
                     <button
                       type="button"
+                      ref={stepThreeRef}
                       className="hero-product-step-head"
                       onClick={() => {
-                        trackShopStep("configurator_step_toggle", "dimensions", { collapsed_after: !stepFiveCollapsed });
-                        setStepFiveCollapsed((prev) => !prev);
+                        trackShopStep("configurator_step_toggle", "fabric_color", { collapsed_after: !stepThreeCollapsed });
+                        setStepThreeCollapsed((prev) => !prev);
                       }}
-                      aria-expanded={stepFiveCollapsed ? "false" : "true"}
+                      aria-expanded={stepThreeCollapsed ? "false" : "true"}
                     >
                       <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                        <span className={`hero-product-step-check ${dimensionsValid ? "" : "is-muted"}`} aria-hidden="true">
-                          {dimensionsValid ? "✓" : String(5 + stepShift)}
+                        <span className={`hero-product-step-check ${fabricChosen ? "" : "is-muted"}`} aria-hidden="true">
+                          {fabricChosen ? "✓" : String(4 + stepShift)}
                         </span>
-                        Wymiary i ilość
+                        Wybierz kolor tkaniny
                       </span>
                       <span className="hero-product-step-head-meta">
-                        {dimensionsValid ? (
-                          <strong>
-                            {widthNum} × {heightNum} mm · {quantityNum} szt.
-                          </strong>
+                        {selectedFabric && stepThreeCollapsed ? (
+                          <span
+                            className="hero-product-step-head-swatch"
+                            style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl, selectedFabric.color)}
+                            aria-hidden="true"
+                          />
                         ) : null}
-                        {stepFiveCollapsed ? (
+                        {selectedFabric ? <strong>{selectedFabric.label}</strong> : null}
+                        {stepThreeCollapsed ? (
                           <span className="hero-product-step-head-change">Zmień</span>
                         ) : (
                           <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
@@ -1297,242 +1520,197 @@ export default function ConfiguratorPanel({
                       </span>
                     </button>
                     <div className="hero-product-step-body">
-                      <div className={`plisy-position-form ${editingPositionId ? "is-editing" : ""}`} ref={positionFormRef}>
-                        {editingPositionId ? (
-                          <p className="plisy-position-editing">
-                            Edytujesz pozycję {positions.findIndex((position) => position.id === editingPositionId) + 1} z zestawu.
-                            <button type="button" onClick={clearPositionForm}>
-                              Anuluj
-                            </button>
-                          </p>
-                        ) : null}
-                        <p className="hero-product-config-hint">
-                          {measureModeForMount(selectedMountId) === "bezinwazyjny"
-                            ? "Montaż bezinwazyjny: szerokość od kreseczki do kreseczki (szyba razem z listwami), wysokość całego skrzydła."
-                            : "Montaż STANDARD: szerokość i wysokość od połowy uszczelki do połowy uszczelki, nic nie odejmuj."}{" "}
-                          Podaj w {dimensionUnit === "cm" ? "centymetrach" : "milimetrach"} i ilość sztuk w tym rozmiarze.{" "}
+                      {swatchesForGroup.length ? (
+                        <div className="plisy-fabric-tools">
                           <button
                             type="button"
-                            className="plisy-measure-link"
+                            className="plisy-fabric-gallery-cta"
                             onClick={() => {
-                              setMeasureGuideOpen(true);
-                              trackShopStep("configurator_measure_guide", "open", { mount: measureModeForMount(selectedMountId) });
+                              const at = Math.max(0, swatchesForGroup.findIndex((swatch) => swatch.id === selectedFabricId));
+                              setFabricGalleryIndex(at);
+                              trackShopStep("fabric_gallery_open", selectedFabricGroup?.label || "", { source: "cta" });
                             }}
                           >
-                            📐 Jak mierzyć?
-                          </button>
-                        </p>
-                        <div className="plisy-dimensions-tools">
-                          <div className="hero-product-unit-toggle" role="group" aria-label="Jednostka wymiarów">
-                            <button
-                              type="button"
-                              className={dimensionUnit === "cm" ? "is-active" : ""}
-                              aria-pressed={dimensionUnit === "cm"}
-                              onClick={() => switchDimensionUnit("cm")}
-                            >
-                              cm
-                            </button>
-                            <button
-                              type="button"
-                              className={dimensionUnit === "mm" ? "is-active" : ""}
-                              aria-pressed={dimensionUnit === "mm"}
-                              onClick={() => switchDimensionUnit("mm")}
-                            >
-                              mm
-                            </button>
-                          </div>
-                          <button type="button" className="plisy-measure-later" onClick={openMeasureLater} disabled={measureSaveBusy}>
-                            <strong>Nie masz wymiarów?</strong>
-                            <span>Zapisz lub udostępnij link do tej konfiguracji i dokończ w dowolnym momencie</span>
+                            🔍 Zobacz duże zdjęcia tkanin
                           </button>
                         </div>
-                        {measureGuideOpen && typeof document !== "undefined"
-                          ? createPortal(
-                              <div
-                                className="instruction-modal instruction-modal--measure"
-                                role="dialog"
-                                aria-modal="true"
-                                aria-label="Jak mierzyć plisę"
-                                onClick={() => setMeasureGuideOpen(false)}
-                              >
-                                <div className="instruction-modal-shell instruction-modal-shell--measure" onClick={(event) => event.stopPropagation()}>
-                                  <button type="button" className="instruction-modal-close" aria-label="Zamknij instrukcję" onClick={() => setMeasureGuideOpen(false)}>
-                                    ×
-                                  </button>
-                                  <h3>Jak zmierzyć okno pod plisę</h3>
-                                  <PlisyMeasureGuide fixedMode={measureModeForMount(selectedMountId)} startDelayMs={700} unit={dimensionUnit} />
-                                </div>
-                              </div>,
-                              document.body,
-                            )
-                          : null}
-                        {measureSave ? (
-                          <PromoSaveModal
-                            variant="measure"
-                            quoteCode={measureSave.quoteCode}
-                            shareUrl={measureSave.shareUrl}
-                            remainingMs={measureSave.remainingMs}
-                            onClose={() => setMeasureSave(null)}
-                          />
-                        ) : null}
-                        <div className="hero-product-dimensions-grid">
-                          <label>
-                            Szerokość ({dimensionUnit})
-                            <input
-                              type="number"
-                              inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
-                              step={dimensionUnit === "cm" ? 0.1 : 1}
-                              min={dimensionUnit === "cm" ? profile.widthMinMm / 10 : profile.widthMinMm}
-                              max={dimensionUnit === "cm" ? profile.widthMaxMm / 10 : profile.widthMaxMm}
-                              placeholder={`np. ${mmToInput(profile.widthDefaultMm, dimensionUnit)}`}
-                              value={width}
-                              onChange={(event) => setWidth(event.target.value)}
-                              onBlur={handleDimensionBlur}
-                            />
-                          </label>
-                          <label>
-                            Wysokość ({dimensionUnit})
-                            <input
-                              type="number"
-                              inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
-                              step={dimensionUnit === "cm" ? 0.1 : 1}
-                              min={dimensionUnit === "cm" ? profile.heightMinMm / 10 : profile.heightMinMm}
-                              max={dimensionUnit === "cm" ? profile.heightMaxMm / 10 : profile.heightMaxMm}
-                              placeholder={`np. ${mmToInput(profile.heightDefaultMm, dimensionUnit)}`}
-                              value={height}
-                              onChange={(event) => setHeight(event.target.value)}
-                              onBlur={handleDimensionBlur}
-                            />
-                          </label>
-                          <label>
-                            Ilość
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              min={1}
-                              max={20}
-                              value={quantity}
-                              onChange={(event) => setQuantity(event.target.value)}
-                            />
-                          </label>
-                        </div>
-                        {(width || height) && !dimensionsValid ? (
-                          <div className="hero-product-dimensions-error">
-                            {looksLikeCm ? (
-                              <p className="plisy-dimensions-hint">
-                                {widthNum} × {heightNum} mm to tylko {widthNum / 10} × {heightNum / 10} cm — mniej niż najmniejsza plisa.
-                                Wygląda na centymetry.
-                                <button type="button" onClick={() => switchDimensionUnit("cm", false)}>
-                                  Tak, to centymetry
-                                </button>
-                              </p>
-                            ) : (
-                              <p>
-                                Szerokość {formatRange(profile.widthMinMm, profile.widthMaxMm)}, wysokość{" "}
-                                {formatRange(profile.heightMinMm, profile.heightMaxMm)}.
-                                {dimensionUnit === "mm" ? " Masz wymiar w centymetrach? Przełącz jednostkę powyżej." : ""}
-                              </p>
-                            )}
-                          </div>
-                        ) : null}
-                        {sagWarning ? (
-                          <div className={`plisy-sag-notice ${sagAccepted ? "is-accepted" : ""}`} role="note">
-                            <p>
-                              <strong>Szerokość powyżej {sagLimitMm / 10} cm.</strong> Przy tej szerokości profil aluminiowy może się
-                              lekko ugiąć pod ciężarem tkaniny (grawitacja). To naturalne zjawisko — nie wpływa na działanie plisy, jedynie na jej
-                              estetykę.
-                            </p>
-                            {sagAccepted ? (
-                              <span className="plisy-sag-accepted">✓ Zaakceptowano</span>
-                            ) : (
+                      ) : null}
+                      <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
+                        {swatchesForGroup.map((swatch, swatchIndex) => {
+                          const isActive = swatch.id === selectedFabricId;
+                          return (
+                            <div key={swatch.id} className="plisy-swatch-cell">
                               <button
                                 type="button"
-                                className="plisy-sag-accept"
+                                className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
+                                title={swatch.label}
                                 onClick={() => {
-                                  trackShopStep("accept_sag_notice", String(widthNum), { limit_mm: sagLimitMm });
-                                  setSagAccepted(true);
+                                  trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id });
+                                  setSelectedFabricId(swatch.id);
+                                  setStepThreeCollapsed(true);
+                                  window.setTimeout(() => {
+                                    scrollStepIntoView(stepFourRef.current);
+                                  }, 380);
                                 }}
                               >
-                                Akceptuję
+                                <span
+                                  className="hero-product-mesh-option-image"
+                                  style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)}
+                                />
+                                <strong>{swatch.label}</strong>
                               </button>
-                            )}
-                          </div>
-                        ) : null}
-                        {oversizeSurcharge > 0 ? (
-                          <p className="plisy-oversize-note">
-                            Szerokość powyżej {PLISY_OVERSIZE_WIDTH_MM / 10} cm: dopłata za przesyłkę dłużycową{" "}
-                            <strong>+{formatZl(oversizeSurcharge)}</strong> (jednorazowo dla całego zamówienia, doliczana w koszyku).
-                          </p>
-                        ) : null}
-                        <div className="plisy-position-form-footer">
-                          <span className="plisy-position-price">{totalPrice !== null ? renderPrice(totalPrice) : "--"}</span>
-                          <button
-                            type="button"
-                            className="plisy-position-add"
-                            onClick={handleAddPosition}
-                            disabled={!dimensionsValid || totalPrice === null || sagBlocked}
-                          >
-                            {editingPositionId ? "Zapisz zmiany" : "+ Dodaj kolejną"}
-                          </button>
-                        </div>
+                              <button
+                                type="button"
+                                className="plisy-swatch-zoom"
+                                aria-label={`Powiększ ${swatch.label}`}
+                                title="Powiększ"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setFabricGalleryIndex(swatchIndex);
+                                  trackShopStep("fabric_gallery_open", swatch.label, { source: "swatch", option_id: swatch.id });
+                                }}
+                              >
+                                🔍
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
+                      {fabricGalleryIndex !== null && swatchesForGroup.length ? (
+                        <PlisyFabricGallery
+                          swatches={swatchesForGroup}
+                          index={Math.min(fabricGalleryIndex, swatchesForGroup.length - 1)}
+                          collectionLabel={selectedFabricGroup?.label || "Tkaniny"}
+                          selectedId={selectedFabricId}
+                          onIndexChange={setFabricGalleryIndex}
+                          onClose={() => setFabricGalleryIndex(null)}
+                          onPick={(swatch) => {
+                            trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id, source: "gallery" });
+                            setSelectedFabricId(swatch.id);
+                            setFabricGalleryIndex(null);
+                            setStepThreeCollapsed(true);
+                            window.setTimeout(() => {
+                              scrollStepIntoView(stepFourRef.current);
+                            }, 380);
+                          }}
+                        />
+                      ) : null}
                     </div>
                   </section>
 
-                  {positions.length > 0 ? (
-                    <div className="plisy-positions-list">
-                      <h4>Twój zestaw</h4>
-                      {positions.map((position, index) => (
-                        <div key={position.id} className={`plisy-positions-row ${position.id === editingPositionId ? "is-editing" : ""}`}>
-                          <span className="plisy-positions-row-label">
-                            {index + 1}. {position.widthMm / 10} × {position.heightMm / 10} cm, {position.qty} szt.
-                          </span>
-                          <span className="plisy-positions-row-price">{renderPrice(position.totalPrice)}</span>
-                          <button
-                            type="button"
-                            className="plisy-positions-row-edit"
-                            onClick={() => handleEditPosition(position)}
-                            aria-label={`Edytuj pozycję ${index + 1}`}
-                          >
-                            Edytuj
-                          </button>
-                          <button
-                            type="button"
-                            className="plisy-positions-row-remove"
-                            onClick={() => handleRemovePosition(position.id)}
-                            aria-label={`Usuń pozycję ${index + 1}`}
-                          >
-                            ×
-                          </button>
+                  {/* Podsumowanie + koszyk */}
+                  {fabricChosen ? (
+                    <div ref={stepFourRef} className="hero-product-mini-summary is-revealed">
+                      <h3>Plisa</h3>
+                      <div className="hero-product-mini-summary-body">
+                        {/* Sama plisa (podbarwiona wybranymi kolorami) na
+                            spokojnym tle - zdjęcie pokoju odpuszczone
+                            2026-09-09: walka o kadr jednego zdjęcia nie
+                            dawała nic ponad czytelny podgląd samej plisy. */}
+                        <div className="plisa-preview-stage">
+                          <PlisaPreview
+                            fabricColor={selectedFabric?.color || ""}
+                            hardwareColor={selectedHardware?.color || ""}
+                            fabricLabel={selectedFabric?.label}
+                            hardwareLabel={selectedHardware?.label}
+                          />
                         </div>
-                      ))}
-                      <div className="plisy-positions-total">
-                        <span>Razem za cały zestaw</span>
-                        <strong>{renderPrice(positionsGrandTotal)}</strong>
+                        <dl>
+                          <div>
+                            <dt>Wymiary</dt>
+                            <dd>
+                              {sizeSummaryText || "--"}
+                              <button
+                                type="button"
+                                className="plisy-summary-edit"
+                                onClick={() => {
+                                  setStepDimsCollapsed(false);
+                                  window.setTimeout(() => scrollStepIntoView(positionFormRef.current), 160);
+                                }}
+                              >
+                                Zmień
+                              </button>
+                            </dd>
+                          </div>
+                          {selectedMount ? (
+                            <div>
+                              <dt>Rodzaj montażu</dt>
+                              <dd>{plisyMountLabel(selectedMount)}</dd>
+                            </div>
+                          ) : null}
+                          {selectedBracket ? (
+                            <div>
+                              <dt>Kolor uchwytów</dt>
+                              <dd>{selectedBracket.label}</dd>
+                            </div>
+                          ) : null}
+                          <div>
+                            <dt>Kolor mechanizmu</dt>
+                            <dd>{selectedHardware?.label || "--"}</dd>
+                          </div>
+                          <div>
+                            <dt>Kolekcja tkaniny</dt>
+                            <dd>{selectedFabricGroup?.label || "--"}</dd>
+                          </div>
+                          <div>
+                            <dt>Kolor tkaniny</dt>
+                            <dd>{selectedFabric?.label || "--"}</dd>
+                          </div>
+                        </dl>
                       </div>
+
+                      {sagWarning && stepDimsCollapsed ? (
+                        <div className={`plisy-sag-notice ${sagAccepted ? "is-accepted" : ""}`} role="note">
+                          <p>
+                            <strong>Szerokość powyżej {sagLimitMm / 10} cm.</strong> Przy tej szerokości profil aluminiowy może się
+                            lekko ugiąć pod ciężarem tkaniny. To naturalne zjawisko — nie wpływa na działanie plisy, jedynie na jej estetykę.
+                          </p>
+                          {sagAccepted ? (
+                            <span className="plisy-sag-accepted">✓ Zaakceptowano</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="plisy-sag-accept"
+                              onClick={() => {
+                                trackShopStep("accept_sag_notice", String(widestMm), { limit_mm: sagLimitMm, source: "summary" });
+                                setSagAccepted(true);
+                              }}
+                            >
+                              Akceptuję
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
+
+                      <div className="plisy-positions-total plisy-summary-total">
+                        <span>
+                          {effectivePositions.length > 1 ? `Razem za ${pozycjeLabel(effectivePositions.length)}` : "Cena"}
+                        </span>
+                        <strong>{setGrandTotal !== null ? renderPrice(setGrandTotal) : "--"}</strong>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="hero-product-add-to-cart"
+                        onClick={handleFinalSubmit}
+                        disabled={!canFinalSubmit}
+                      >
+                        {submitLabel}
+                      </button>
                     </div>
                   ) : null}
-
-                  <button
-                    type="button"
-                    className="hero-product-add-to-cart"
-                    onClick={handleFinalSubmit}
-                    disabled={!canFinalSubmit}
-                  >
-                    {submitLabel}
-                  </button>
-                </div>
+                </>
               ) : null}
             </>
           ) : null}
-        </>
-      ) : null}
-      {!stepOneChosen ? (
-        <p className="hero-product-config-hint">Wybierz kolor mechanizmu, aby przejść do kolejnego kroku.</p>
-      ) : null}
+          {!selectedHardwareId ? (
+            <p className="hero-product-config-hint">Wybierz kolor mechanizmu, aby przejść do kolejnego kroku.</p>
+          ) : null}
         </>
       ) : (
-        <p className="hero-product-config-hint">Wybierz sposób montażu, aby przejść do kolejnego kroku.</p>
+        <p className="hero-product-config-hint">
+          Podaj wymiary okna — przy wyborze kolekcji tkanin zobaczysz od razu cenę dla Twojego okna.
+        </p>
       )}
 
       {!onZoom && internalZoomPreview ? (

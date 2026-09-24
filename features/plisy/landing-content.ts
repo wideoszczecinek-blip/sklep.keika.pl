@@ -107,7 +107,7 @@ export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
   {
     label: "Montaż bez wiercenia lub z wierceniem",
     value:
-      "Uchwyty bezinwazyjne zakładane na skrzydło (bez śladów, łatwy demontaż, w kolorze białym, jasnym lub ciemnym brązie) albo montaż standardowy w listwach przyszybowych. Montaż zajmuje około 15 minut; wkręty, przymiar montażowy i instrukcja są w komplecie.",
+      "Uchwyty bezinwazyjne zakładane na skrzydło (bez śladów, łatwy demontaż, w kolorze białym, jasnym lub ciemnym brązie) albo montaż przykręcany do listew przyszybowych. Montaż zajmuje około 15 minut; wkręty, przymiar montażowy i instrukcja są w komplecie.",
   },
   {
     label: "5 lat gwarancji i 30 dni na zwrot",
@@ -228,7 +228,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Do jakich okien pasuje plisa?",
     answer:
-      "Do okien i drzwi balkonowych PCV, drewnianych i aluminiowych, w każdym kształcie prostokątnym. Do okien drewnianych i aluminiowych polecamy montaż STANDARD (wkręcany przy szybie) — uchwyty bezinwazyjne projektowane są pod skrzydła z PCV. Do okien dachowych mamy osobny produkt: rolety dachowe, dobierane pod model okna.",
+      "Do okien i drzwi balkonowych PCV, drewnianych i aluminiowych, w każdym kształcie prostokątnym. Do okien drewnianych i aluminiowych polecamy montaż przykręcany do listwy przyszybowej — uchwyty bezinwazyjne projektowane są pod skrzydła z PCV. Do okien dachowych mamy osobny produkt: rolety dachowe, dobierane pod model okna.",
   },
   {
     question: "Jakie wymiary plis wykonujecie?",
@@ -238,7 +238,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Czy muszę wiercić w oknie?",
     answer:
-      "Nie musisz. Montaż bezinwazyjny (+29,90 zł) to uchwyty zakładane na krawędź skrzydła — bez wiercenia i bez śladu, zdejmiesz je w każdej chwili. Idealne do wynajmowanego mieszkania i okien na gwarancji. Uchwyty wybierasz w kolorze białym, jasnym brązie lub ciemnym brązie. Montaż STANDARD to cztery wkręty w listwach przyszybowych: nic nie odstaje, plisa wygląda jak część okna. W obu wariantach w paczce są wkręty, specjalny przymiar montażowy i czytelna instrukcja.",
+      "Nie musisz. Montaż bezinwazyjny (+29,90 zł) to uchwyty zakładane na krawędź skrzydła — bez wiercenia i bez śladu, zdejmiesz je w każdej chwili. Idealne do wynajmowanego mieszkania i okien na gwarancji. Uchwyty wybierasz w kolorze białym, jasnym brązie lub ciemnym brązie. Montaż przykręcany do listwy to cztery wkręty w listwach przyszybowych: nic nie odstaje, plisa wygląda jak część okna. W obu wariantach w paczce są wkręty, specjalny przymiar montażowy i czytelna instrukcja.",
   },
   {
     question: "Ile uchwytów do przesuwania ma plisa?",
@@ -248,12 +248,12 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Jak zmierzyć okno?",
     answer:
-      "Zależy od montażu, dlatego najpierw wybierz sposób. STANDARD: szerokość i wysokość od połowy uszczelki do połowy uszczelki — nic nie odejmuj. Bezinwazyjny: szerokość od kreseczki do kreseczki (linii, w której listwa przyszybowa łączy się z ramą), wysokość całego skrzydła. Animowany przewodnik jest w zakładce Instrukcje; w konfiguratorze otworzysz go przyciskiem „Jak mierzyć?”.",
+      "Zależy od montażu, dlatego najpierw wybierz sposób. Przykręcany do listwy: szerokość i wysokość od połowy uszczelki do połowy uszczelki — nic nie odejmuj. Bezinwazyjny: szerokość od kreseczki do kreseczki (linii, w której listwa przyszybowa łączy się z ramą), wysokość całego skrzydła. Animowany przewodnik jest w zakładce Instrukcje; w konfiguratorze otworzysz go przyciskiem „Jak mierzyć?”.",
   },
   {
     question: "Mam kilka takich samych okien — mogę zmierzyć jedno?",
     answer:
-      "Lepiej nie. Okna z jednej serii potrafią różnić się o 2–5 mm, a przy montażu STANDARD profil musi wejść między listwy. Zmierz każde skrzydło osobno i wpisz każde jako osobną pozycję — w konfiguratorze robisz to jednym kliknięciem „Dodaj kolejną”.",
+      "Lepiej nie. Okna z jednej serii potrafią różnić się o 2–5 mm, a przy montażu przykręcanym profil musi wejść między listwy. Zmierz każde skrzydło osobno i wpisz każde jako osobną pozycję — w konfiguratorze robisz to jednym kliknięciem „Dodaj kolejną”.",
   },
   {
     question: "Czy plisa przeszkadza w otwieraniu i uchylaniu okna?",

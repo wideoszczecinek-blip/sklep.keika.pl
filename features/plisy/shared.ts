@@ -144,7 +144,33 @@ function toPriceDeltaType(value: string | undefined): PriceDeltaType {
  * steps yet (e.g. the placeholder was removed) - callers should show a
  * "przepraszamy, spróbuj ponownie" state rather than a broken configurator.
  * Never throws. */
+// Jedno zapytanie na stronę zamiast jednego na komponent: profil ciągnie
+// CAŁY katalog konfiguratorów z CRM (~170 kB), a proszą o niego i szybka
+// wycena na landingu, i panel konfiguratora. Na dławionym telefonie to były
+// dwa razy po ~1 s na łączu, które w tym momencie jest zapchane (pomiar
+// 2026-09-24). TTL, żeby zmiany właściciela w CRM nadal pojawiały się bez
+// wdrożenia - tylko nie kilka razy w ciągu jednego wejścia.
+const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
+let profileCache: { at: number; value: PlisyProfile | null } | null = null;
+let profileInFlight: Promise<PlisyProfile | null> | null = null;
+
 export async function fetchPlisyProfile(): Promise<PlisyProfile | null> {
+  if (profileCache && Date.now() - profileCache.at < PROFILE_CACHE_TTL_MS) return profileCache.value;
+  if (profileInFlight) return profileInFlight;
+  profileInFlight = fetchPlisyProfileUncached()
+    .then((value) => {
+      // Nieudanej odpowiedzi nie zapamiętujemy - kolejne wejście ma prawo
+      // spróbować jeszcze raz.
+      if (value) profileCache = { at: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      profileInFlight = null;
+    });
+  return profileInFlight;
+}
+
+async function fetchPlisyProfileUncached(): Promise<PlisyProfile | null> {
   try {
     const response = await fetch(CONFIGURATOR_PUBLIC_URL, { cache: "no-store" });
     const json = (await response.json()) as {
@@ -451,6 +477,68 @@ export function plisySagWarningWidthMm(fabricGroupId: string): number {
 }
 export function isPlisyMountNonInvasive(mountIdOrLabel: string | null | undefined): boolean {
   return /bezinwazyjn/i.test(String(mountIdOrLabel || ""));
+}
+
+// Nazwy montażu widoczne dla klienta (audyt landingu plis, P2 #9). W CRM
+// opcje nazywają się "STANDARD" i "Bezinwazyjny" - to skrót warsztatowy:
+// klientowi nie mówi nic o tym, co się dzieje z jego oknem, a "STANDARD"
+// nie pada ani w instrukcji montażu, ani w opisie produktu. Zmieniamy samą
+// ETYKIETĘ (konfigurator, koszyk, zlecenie produkcji); id opcji, cennik i
+// dane w CRM zostają nietknięte, a findPlisyMountByLabel() rozpoznaje
+// jeszcze starą nazwę, żeby "Edytuj pozycję" dla koszyka sprzed zmiany
+// dalej trafiało we właściwy montaż.
+type MountDisplay = { label: string; short: string; note: string };
+const PLISY_MOUNT_DISPLAY: Array<{ match: RegExp; display: MountDisplay }> = [
+  {
+    match: /bezinwazyjn/i,
+    display: {
+      label: "Bezinwazyjny (bez wiercenia)",
+      short: "bez wiercenia · inny pomiar",
+      note: "Uchwyty zakładane na krawędź skrzydła — bez wiercenia i bez śladu. Mierzysz inaczej niż przy montażu przykręcanym: szerokość od kreseczki do kreseczki, wysokość całego skrzydła.",
+    },
+  },
+  {
+    match: /.*/,
+    display: {
+      label: "Przykręcany do listwy przyszybowej",
+      short: "wkrętak wystarczy · bez wiertarki",
+      note: "Cztery uchwyty wkręcane w listwy przyszybowe — wkręty wchodzą w PCV, wiertarka nie jest potrzebna. Mierzysz w świetle szyby: od połowy uszczelki do połowy uszczelki.",
+    },
+  },
+];
+
+function plisyMountDisplay(option: { id?: string; label?: string } | null | undefined): MountDisplay | null {
+  if (!option) return null;
+  const key = `${option.id || ""} ${option.label || ""}`;
+  return PLISY_MOUNT_DISPLAY.find((entry) => entry.match.test(key))?.display || null;
+}
+
+/** Nazwa montażu pokazywana klientowi i zapisywana w koszyku/zamówieniu. */
+export function plisyMountLabel(option: { id?: string; label?: string } | null | undefined): string {
+  return plisyMountDisplay(option)?.label || String(option?.label || "");
+}
+
+/** Jedna linijka pod nazwą montażu na kafelku wyboru. */
+export function plisyMountShortNote(option: { id?: string; label?: string } | null | undefined): string {
+  return plisyMountDisplay(option)?.short || "";
+}
+
+/** Pełny opis montażu - własny, bo opis z CRM przy STANDARD straszy
+ * "wymaga wiercenia w ramie skrzydła", a wkręty wchodzą w listwę
+ * przyszybową i wiertarka nie jest potrzebna (instrukcja montażu). */
+export function plisyMountNote(option: (MountOption & { note?: string }) | null | undefined): string {
+  return plisyMountDisplay(option)?.note || String(option?.note || "");
+}
+
+/** Odnajduje montaż po etykiecie zapisanej w koszyku - nowej albo starej. */
+export function findPlisyMountByLabel(options: MountOption[], storedLabel: string): MountOption | null {
+  const wanted = String(storedLabel || "").trim().toLowerCase();
+  if (!wanted) return null;
+  return (
+    options.find((option) => option.label.trim().toLowerCase() === wanted) ||
+    options.find((option) => plisyMountLabel(option).trim().toLowerCase() === wanted) ||
+    null
+  );
 }
 export type BracketColor = { id: string; label: string; color: string };
 export const PLISY_BRACKET_COLORS: BracketColor[] = [
