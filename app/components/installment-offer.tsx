@@ -13,6 +13,7 @@
 // Pokazuje się tylko wtedy, gdy raty są realnie włączone na koncie P24
 // (CRM: checkout.p24_enabled + p24_installments_enabled) i kwota mieści się
 // w widełkach banku - inaczej obiecywalibyśmy metodę, której w koszyku nie ma.
+import { useState } from "react";
 import { useInstallmentCount, useInstallmentSettings } from "@/lib/installment-settings";
 import {
   DEFAULT_INSTALLMENT_COUNT,
@@ -21,6 +22,7 @@ import {
   installmentsTotal,
   INSTALLMENTS_REPRESENTATIVE_EXAMPLE,
   monthlyInstallment,
+  pickFriendlyInstallmentCount,
 } from "@/lib/installments";
 
 /** "3 raty" / "10 rat" - polska odmiana. */
@@ -38,20 +40,86 @@ function zl(value: number): string {
 export default function InstallmentOffer({
   amount,
   className = "",
-  /** "inline" - jedna linijka bez wyboru liczby rat (np. pod ceną pozycji). */
+  /** "inline" - sama linijka tekstu; "compact" - zajawka w konfiguratorze,
+   * która rozwija się dopiero po kliknięciu. */
   variant = "full",
 }: {
   amount: number | null;
   className?: string;
-  variant?: "full" | "inline";
+  variant?: "full" | "inline" | "compact";
 }) {
   const { enabled, apr } = useInstallmentSettings();
   const [count, setCount] = useInstallmentCount();
 
   const value = typeof amount === "number" ? amount : 0;
+  const [open, setOpen] = useState(false);
   if (!enabled || !installmentsAvailable(value)) return null;
-  const monthly = monthlyInstallment(value, count, apr);
+  // W zajawce pokazujemy ratę z "ładnego" okresu (20-50 zł), a nie z
+  // domyślnych 10 rat - dopiero po rozwinięciu klient wybiera sam.
+  const teaserCount = pickFriendlyInstallmentCount(value, apr);
+  const activeCount = variant === "compact" && !open ? teaserCount : count;
+  const monthly = monthlyInstallment(value, activeCount, apr);
   if (monthly <= 0) return null;
+
+  if (variant === "compact") {
+    return (
+      <div className={`installment-teaser ${open ? "is-open" : ""} ${className}`.trim()}>
+        <button
+          type="button"
+          className="installment-teaser-head"
+          aria-expanded={open ? "true" : "false"}
+          onClick={() => {
+            if (!open) setCount(teaserCount);
+            setOpen((prev: boolean) => !prev);
+          }}
+        >
+          <span className="installment-teaser-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="5" width="18" height="15" rx="3" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              <circle cx="8.5" cy="14.8" r="1.2" fill="currentColor" />
+              <circle cx="12" cy="14.8" r="1.2" fill="currentColor" />
+              <circle cx="15.5" cy="14.8" r="1.2" fill="currentColor" />
+            </svg>
+          </span>
+          <span className="installment-teaser-text">
+            Ten produkt możesz kupić na raty — już od <strong>{zl(monthly)}</strong> miesięcznie
+          </span>
+          <span className="installment-teaser-chevron" aria-hidden="true">
+            {open ? "▴" : "▾"}
+          </span>
+        </button>
+        {open ? (
+          <div className="installment-teaser-body">
+            <div className="installment-offer-counts" role="group" aria-label="Liczba rat">
+              {INSTALLMENT_COUNTS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={`installment-offer-count ${option === count ? "is-active" : ""}`}
+                  aria-pressed={option === count}
+                  onClick={() => setCount(option)}
+                >
+                  {option}×
+                </button>
+              ))}
+            </div>
+            <p className="installment-teaser-sum">
+              {ratyLabel(count)} × <strong>{zl(monthlyInstallment(value, count, apr))}</strong> ={" "}
+              {zl(installmentsTotal(value, count, apr))}
+            </p>
+            <p className="installment-teaser-note">
+              Liczbę rat wybierzesz w koszyku, przy płatności. Ostateczną ofertę i RRSO podaje bank we wniosku.
+            </p>
+            <details className="installment-offer-note">
+              <summary>Przykład reprezentatywny</summary>
+              <p>{INSTALLMENTS_REPRESENTATIVE_EXAMPLE}</p>
+            </details>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   if (variant === "inline") {
     return (

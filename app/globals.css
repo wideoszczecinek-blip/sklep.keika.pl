@@ -18142,3 +18142,68 @@ html[data-theme="light"] .cart-toggle-checkbox--inner {
 .cart-buyer-card {
   padding: 0.5rem 0.6rem;
 }
+
+
+/* Zajawka ratalna w konfiguratorze: jedna linijka, rozwijana dopiero po
+   kliknięciu (właściciel, 2026-09-24 - pełna karta była za duża obok
+   podsumowania ceny). */
+.installment-teaser {
+  margin: 0.5rem 0 0.2rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(19, 40, 67, 0.18);
+  background: rgba(19, 40, 67, 0.04);
+  overflow: hidden;
+}
+.installment-teaser-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.installment-teaser-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: #2b4a6f;
+}
+.installment-teaser-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.installment-teaser-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+.installment-teaser-text strong {
+  font-weight: 800;
+  color: #1d3b5c;
+}
+.installment-teaser-chevron {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+.installment-teaser-body {
+  padding: 0 0.65rem 0.6rem;
+}
+.installment-teaser-sum {
+  margin: 0.45rem 0 0;
+  font-size: 0.85rem;
+}
+.installment-teaser-note {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  opacity: 0.75;
+}
+.installment-teaser .installment-offer-note {
+  margin-top: 0.35rem;
+}

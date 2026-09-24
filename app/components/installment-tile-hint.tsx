@@ -21,10 +21,13 @@ export default function InstallmentTileHint({ amount }: { amount: number }) {
   }
   return (
     <span className="cart-pay-tile-instalments">
-      <span className="cart-pay-tile-lead">
-        {count}× <strong>{zl(monthlyInstallment(amount, count, apr))}</strong>
-      </span>
+      {/* Liczba rat JEST przyciskiem wyboru - wcześniej obok "5× 22,50 zł"
+          stał jeszcze osobny swatch "5×" i dublował tę samą informację
+          (właściciel, 2026-09-24). */}
       <InstallmentCountPicker />
+      <span className="cart-pay-tile-lead">
+        <strong>{zl(monthlyInstallment(amount, count, apr))}</strong>
+      </span>
     </span>
   );
 }

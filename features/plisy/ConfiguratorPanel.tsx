@@ -1718,10 +1718,14 @@ export default function ConfiguratorPanel({
                             )}
                           </div>
                         ) : null}
-                        <button type="button" className="plisy-measure-later" onClick={openMeasureLater} disabled={measureSaveBusy}>
-                          <strong>Nie masz jeszcze wymiarów?</strong>
-                          <span>Wyślij sobie link i dokończ później →</span>
-                        </button>
+                        {/* Po wpisaniu wymiarów baner nie ma już po co
+                            straszyć - klient je ma (właściciel, 2026-09-24). */}
+                        {!hasSizes ? (
+                          <button type="button" className="plisy-measure-later" onClick={openMeasureLater} disabled={measureSaveBusy}>
+                            <strong>Nie masz jeszcze wymiarów?</strong>
+                            <span>Wyślij sobie link i dokończ później →</span>
+                          </button>
+                        ) : null}
                         {sagWarning ? (
                           <div className={`plisy-sag-notice ${sagAccepted ? "is-accepted" : ""}`} role="note">
                             <p>
@@ -1811,7 +1815,7 @@ export default function ConfiguratorPanel({
                   {setGrandTotal !== null ? (
                     <div className="total-block">
                       <span className="total-block-left">
-                        <span className="total-block-label">Do zapłaty</span>
+                        <span className="total-block-label">Razem</span>
                         {promoSavings > 0 ? (
                           <span className="total-block-savings">Oszczędzasz {formatZl(promoSavings)}</span>
                         ) : null}
@@ -1825,7 +1829,7 @@ export default function ConfiguratorPanel({
 
                   {/* Ile to wyjdzie w ratach - liczone od kwoty, którą
                       klient faktycznie zapłaci (właściciel, 2026-09-24). */}
-                  <InstallmentOffer amount={payableGrandTotal} />
+                  <InstallmentOffer amount={payableGrandTotal} variant="compact" />
 
                   <button
                     type="button"

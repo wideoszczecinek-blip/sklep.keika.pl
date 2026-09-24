@@ -57,6 +57,26 @@ export function installmentsTotal(amount: number, count: number, aprPercent = DE
   return Math.round(monthlyInstallment(amount, count, aprPercent) * count * 100) / 100;
 }
 
+/** Liczba rat, przy której rata wygląda sensownie w zajawce na stronie
+ * produktu: celujemy w 20-50 zł miesięcznie (właściciel, 2026-09-24).
+ * Zasada: najkrótszy okres, który mieści się w widełkach; jeśli żaden nie
+ * mieści się od dołu (drogi produkt) - najdłuższy dostępny; jeśli wszystkie
+ * raty są niższe niż widełki (tani produkt) - najkrótszy, żeby nie kusić
+ * ratą 8 zł rozłożoną na trzy lata. */
+export function pickFriendlyInstallmentCount(
+  amount: number,
+  aprPercent = DEFAULT_INSTALLMENTS_APR_PERCENT,
+  minMonthly = 20,
+  maxMonthly = 50,
+): number {
+  const candidates = INSTALLMENT_COUNTS.map((count) => ({ count, monthly: monthlyInstallment(amount, count, aprPercent) }));
+  const inRange = candidates.filter((entry) => entry.monthly >= minMonthly && entry.monthly <= maxMonthly);
+  if (inRange.length) return inRange[0].count;
+  const affordable = candidates.filter((entry) => entry.monthly <= maxMonthly);
+  if (affordable.length) return affordable[0].count;
+  return candidates[candidates.length - 1].count;
+}
+
 export function installmentsAvailable(amount: number): boolean {
   return Number.isFinite(amount) && amount >= INSTALLMENTS_MIN_AMOUNT && amount <= INSTALLMENTS_MAX_AMOUNT;
 }
