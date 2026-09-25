@@ -1,12 +1,12 @@
 "use client";
 
 // The roof plisa itself, tinted live from the chosen fabric/hardware
-// colours: two side guide rails, the top rail, the pleated stack pulled
-// down to about two thirds, the bottom rail with its handle and the open
-// glass underneath - the "H" system of the old shop's swatches, as a
-// product-only graphic on the same plain backdrop features/plisy uses
-// (.plisa-preview-stage). Same gradient recipe as features/plisy/
-// PlisaPreview.tsx so the two products' previews read as one family.
+// colours: two side guide rails running the whole height, BOTH bars
+// movable (that is the point of a roof plisa - owner, 2026-09-25), the
+// pleated stack between them and open glass above and below, so the
+// picture says the same thing as the hero animation (PdHeroScene). Same
+// gradient recipe as features/plisy/PlisaPreview.tsx so the two products'
+// previews read as one family.
 import { plNormalizeHexColor, plShiftHex } from "@/features/plisy/shared";
 
 export default function PlisaDachowaPreview({
@@ -31,10 +31,13 @@ export default function PlisaDachowaPreview({
   const railDark = plShiftHex(hardware, -34);
   const railEdge = plShiftHex(hardware, -58);
 
-  // Geometry (viewBox 300 x 300): rails 14 wide, fabric down to y=196.
+  // Geometry (viewBox 300 x 300): rails 14 wide. Górna belka stoi kawałek
+  // od góry, dolna kawałek od dołu - widać, że obie jeżdżą w prowadnicach.
   const RAIL = 14;
-  const TOP = 16;
-  const BOTTOM_Y = 196;
+  const TOP_Y = 34;
+  const TOP_H = 16;
+  const FABRIC_Y = TOP_Y + TOP_H;
+  const BOTTOM_Y = 214;
   const BOTTOM_H = 20;
 
   return (
@@ -43,7 +46,7 @@ export default function PlisaDachowaPreview({
       preserveAspectRatio="none"
       className="plisa-preview-svg pd-preview-svg"
       role="img"
-      aria-label={`Podgląd plisy dachowej: tkanina ${fabricLabel || "--"}, osprzęt ${hardwareLabel || "--"}`}
+      aria-label={`Podgląd plisy dachowej w prowadnicach, obie belki ruchome: tkanina ${fabricLabel || "--"}, osprzęt ${hardwareLabel || "--"}`}
     >
       <defs>
         <linearGradient id="pdFold" x1="0" y1="0" x2="0" y2="1">
@@ -95,22 +98,25 @@ export default function PlisaDachowaPreview({
       <rect x={RAIL} y="0" width={300 - RAIL * 2} height="300" fill="url(#pdGlass)" />
       <rect x={RAIL} y="0" width={300 - RAIL * 2} height="300" fill="url(#pdGlassShine)" />
 
-      {/* fabric stack from the top rail down to the bottom rail */}
-      <rect x={RAIL} y={TOP} width={300 - RAIL * 2} height={BOTTOM_Y - TOP} fill={fabric} />
-      <rect x={RAIL} y={TOP} width={300 - RAIL * 2} height={BOTTOM_Y - TOP} fill="url(#pdPleats)" />
-      <rect x={RAIL} y={TOP} width={300 - RAIL * 2} height={BOTTOM_Y - TOP} fill="url(#pdDepth)" />
-      <rect x={RAIL} y={TOP} width={300 - RAIL * 2} height={BOTTOM_Y - TOP} fill="url(#pdSideLight)" />
+      {/* fabric stack between the two bars */}
+      <rect x={RAIL} y={FABRIC_Y} width={300 - RAIL * 2} height={BOTTOM_Y - FABRIC_Y} fill={fabric} />
+      <rect x={RAIL} y={FABRIC_Y} width={300 - RAIL * 2} height={BOTTOM_Y - FABRIC_Y} fill="url(#pdPleats)" />
+      <rect x={RAIL} y={FABRIC_Y} width={300 - RAIL * 2} height={BOTTOM_Y - FABRIC_Y} fill="url(#pdDepth)" />
+      <rect x={RAIL} y={FABRIC_Y} width={300 - RAIL * 2} height={BOTTOM_Y - FABRIC_Y} fill="url(#pdSideLight)" />
 
-      {/* top rail */}
-      <rect x={RAIL} y="0" width={300 - RAIL * 2} height={TOP} fill="url(#pdRail)" />
-      <rect x={RAIL} y="0" width={300 - RAIL * 2} height="2.5" fill={railLight} opacity="0.85" />
+      {/* górna belka - ruchoma, z uchwytem od góry */}
+      <rect x={RAIL} y={TOP_Y} width={300 - RAIL * 2} height={TOP_H} fill="url(#pdRail)" />
+      <rect x={RAIL} y={TOP_Y} width={300 - RAIL * 2} height="2.5" fill={railLight} opacity="0.85" />
+      <rect x={RAIL} y={TOP_Y + TOP_H - 2} width={300 - RAIL * 2} height="2" fill={railEdge} opacity="0.55" />
+      <rect x="136" y={TOP_Y - 7} width="28" height="8" rx="4" fill={railEdge} opacity="0.5" />
+      <rect x="138" y={TOP_Y - 6} width="24" height="4" rx="2" fill={railLight} opacity="0.7" />
 
-      {/* bottom rail with the pull handle */}
+      {/* dolna belka - ruchoma, z uchwytem od dołu */}
       <rect x={RAIL} y={BOTTOM_Y} width={300 - RAIL * 2} height={BOTTOM_H} fill="url(#pdRail)" />
       <rect x={RAIL} y={BOTTOM_Y} width={300 - RAIL * 2} height="2" fill={railLight} opacity="0.8" />
       <rect x={RAIL} y={BOTTOM_Y + BOTTOM_H - 2} width={300 - RAIL * 2} height="2" fill={railEdge} opacity="0.6" />
-      <rect x="138" y={BOTTOM_Y + 6} width="24" height="8" rx="4" fill={railEdge} opacity="0.55" />
-      <rect x="140" y={BOTTOM_Y + 7} width="20" height="4" rx="2" fill={railLight} opacity="0.7" />
+      <rect x="138" y={BOTTOM_Y + BOTTOM_H - 1} width="24" height="8" rx="4" fill={railEdge} opacity="0.55" />
+      <rect x="140" y={BOTTOM_Y + BOTTOM_H} width="20" height="4" rx="2" fill={railLight} opacity="0.7" />
 
       {/* side guide rails, full height */}
       <rect x="0" y="0" width={RAIL} height="300" fill="url(#pdRailSide)" />
