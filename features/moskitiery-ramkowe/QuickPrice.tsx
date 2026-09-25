@@ -6,10 +6,11 @@
 //
 // Liczy dokładnie tym samym kodem co konfigurator (moskPerimeterMeters ->
 // moskBilledMeters -> stawka za metr bieżący z korektą produktu), żeby
-// kwota tutaj nie mogła się rozejść z kwotą o ekran niżej. Dolicza też
-// jednorazową dopłatę dłużycową, bo inaczej przy dużym oknie pokazywalibyśmy
-// mniej, niż policzy koszyk.
-import { useEffect, useRef, useState } from "react";
+// kwota tutaj nie mogła się rozejść z kwotą o ekran niżej. Dopłata dłużycowa
+// jest pokazana osobno w nocie pod ceną, bo liczy się RAZ NA ZAMÓWIENIE (a nie
+// od sztuki) - doliczona do ceny pozycji zawyżałaby koszyk z dwoma dużymi
+// moskitierami.
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { trackShopStep } from "@/lib/track-step";
 import {
@@ -90,11 +91,27 @@ export default function MoskitieryQuickPrice({
     }
   }
 
-  // Gdy jeden bok już przekracza 160 cm, drugi suwak kończy się na 160 -
-  // dzięki temu klient nie ustawi ręcznie rozmiaru, którego nie umiemy
-  // zrobić (a nie zabieramy mu możliwości zrobienia jednego długiego boku).
-  const widthMaxCm = heightMm > OVERSIZE_TECHNICAL_LIMIT_MM ? Math.floor(OVERSIZE_TECHNICAL_LIMIT_MM / 10) : maxCm;
-  const heightMaxCm = widthMm > OVERSIZE_TECHNICAL_LIMIT_MM ? Math.floor(OVERSIZE_TECHNICAL_LIMIT_MM / 10) : maxCm;
+  // Gdy jeden bok już przekracza 160 cm, drugi może dojść najwyżej do 160 -
+  // takiej ramki nie zrobimy. Zakres suwaka ZOSTAJE pełny, żeby skala się nie
+  // zmieniała i uchwyt nie przeskakiwał (właściciel, 2026-09-25) - zamiast
+  // tego niedostępny kawałek toru jest czerwony, a uchwyt się na jego granicy
+  // zatrzymuje.
+  const technicalLimitCm = Math.floor(OVERSIZE_TECHNICAL_LIMIT_MM / 10);
+  const widthAllowedMaxCm = heightMm > OVERSIZE_TECHNICAL_LIMIT_MM ? technicalLimitCm : maxCm;
+  const heightAllowedMaxCm = widthMm > OVERSIZE_TECHNICAL_LIMIT_MM ? technicalLimitCm : maxCm;
+  /** Pozycja wymiaru na torze suwaka, w procentach. */
+  const trackPct = (cm: number) => ((clamp(cm, minCm, maxCm) - minCm) / (maxCm - minCm)) * 100;
+  /** Kolory toru: pomarańcz do wybranej wartości, czerwień od granicy produkcji. */
+  const rangeStyle = (valueCm: number, allowedMaxCm: number): CSSProperties => {
+    const blocked = allowedMaxCm >= maxCm ? 100 : trackPct(allowedMaxCm);
+    return {
+      "--blocked-from": `${blocked}%`,
+      "--value-pct": `${Math.min(trackPct(valueCm), blocked)}%`,
+    } as CSSProperties;
+  };
+
+  /** Czy któryś suwak ma dziś czerwony, niedostępny odcinek. */
+  const limitActive = widthAllowedMaxCm < maxCm || heightAllowedMaxCm < maxCm;
 
   const perimeter = moskPerimeterMeters(widthMm, heightMm);
   const billed = moskBilledMeters(perimeter);
@@ -132,7 +149,9 @@ export default function MoskitieryQuickPrice({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [widthMm, heightMm]);
 
-  const [open, setOpen] = useState(false);
+  // Otwarty od razu (właściciel, 2026-09-25) - po to klient tu wchodzi:
+  // ile będzie kosztować JEGO okno.
+  const [open, setOpen] = useState(true);
 
   return (
     <div className={`pl-quick pl-quick--acc ${open ? "is-open" : ""}`} role="group" aria-label="Szybka wycena moskitiery">
@@ -164,11 +183,13 @@ export default function MoskitieryQuickPrice({
           <div className="pl-quick-slider-row">
             <input
               type="range"
+              className="pl-quick-range"
+              style={rangeStyle(widthCm, widthAllowedMaxCm)}
               min={minCm}
-              max={widthMaxCm}
+              max={maxCm}
               step={1}
-              value={clamp(widthCm, minCm, widthMaxCm)}
-              onChange={(event) => onSizeChange(Number(event.target.value) * 10, heightMm)}
+              value={clamp(widthCm, minCm, maxCm)}
+              onChange={(event) => onSizeChange(Math.min(Number(event.target.value), widthAllowedMaxCm) * 10, heightMm)}
               aria-label="Szerokość moskitiery w centymetrach"
             />
             <span className="pl-quick-num">
@@ -192,11 +213,13 @@ export default function MoskitieryQuickPrice({
           <div className="pl-quick-slider-row">
             <input
               type="range"
+              className="pl-quick-range"
+              style={rangeStyle(heightCm, heightAllowedMaxCm)}
               min={minCm}
-              max={heightMaxCm}
+              max={maxCm}
               step={1}
-              value={clamp(heightCm, minCm, heightMaxCm)}
-              onChange={(event) => onSizeChange(widthMm, Number(event.target.value) * 10)}
+              value={clamp(heightCm, minCm, maxCm)}
+              onChange={(event) => onSizeChange(widthMm, Math.min(Number(event.target.value), heightAllowedMaxCm) * 10)}
               aria-label="Wysokość moskitiery w centymetrach"
             />
             <span className="pl-quick-num">
@@ -242,6 +265,11 @@ export default function MoskitieryQuickPrice({
                 {surcharge > 0 ? ` · dopłata dłużycowa ${zl(surcharge)} (raz na zamówienie)` : ""}
               </span>
             )}
+            {limitActive && !bothOverTechnicalLimit ? (
+              <span className="pl-quick-limit-note">
+                Czerwony odcinek suwaka jest niedostępny — oba boki nie mogą jednocześnie przekraczać 160 cm.
+              </span>
+            ) : null}
           </div>
           <button
             type="button"

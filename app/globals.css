@@ -18280,3 +18280,111 @@ html[data-theme="light"] .cart-toggle-checkbox--inner {
   color: #b3410a;
   font-weight: 700;
 }
+
+
+/* Suwak szybkiej wyceny z zaznaczonym obszarem niedostępnym (właściciel,
+   2026-09-25). Tor rysujemy sami, bo natywny (accent-color) nie da się
+   pomalować na dwa kolory: pomarańcz do wybranej wartości, czerwień tam,
+   gdzie ramki już nie zrobimy - uchwyt się w to miejsce nie wsunie. */
+.pl-quick-slider input[type="range"].pl-quick-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.25rem;
+  background: transparent;
+}
+.pl-quick-range::-webkit-slider-runnable-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #ff7b00 0,
+    #ff7b00 var(--value-pct, 0%),
+    rgba(19, 40, 67, 0.16) var(--value-pct, 0%),
+    rgba(19, 40, 67, 0.16) var(--blocked-from, 100%),
+    rgba(203, 58, 58, 0.55) var(--blocked-from, 100%),
+    rgba(203, 58, 58, 0.55) 100%
+  );
+}
+.pl-quick-range::-moz-range-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #ff7b00 0,
+    #ff7b00 var(--value-pct, 0%),
+    rgba(19, 40, 67, 0.16) var(--value-pct, 0%),
+    rgba(19, 40, 67, 0.16) var(--blocked-from, 100%),
+    rgba(203, 58, 58, 0.55) var(--blocked-from, 100%),
+    rgba(203, 58, 58, 0.55) 100%
+  );
+}
+.pl-quick-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: -0.33rem;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #16314e;
+  box-shadow: 0 2px 6px rgba(8, 20, 35, 0.32);
+  cursor: pointer;
+}
+.pl-quick-range::-moz-range-thumb {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #16314e;
+  box-shadow: 0 2px 6px rgba(8, 20, 35, 0.32);
+  cursor: pointer;
+}
+
+/* Akordeon szybkiej wyceny ma być niższy: etykieta, suwak i pole liczbowe
+   w jednym wierszu zamiast trzech (właściciel, 2026-09-25). */
+.pl-quick--acc .pl-quick-slider {
+  display: grid;
+  grid-template-columns: 4.4rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0 0.5rem;
+  margin: 0;
+}
+.pl-quick--acc .pl-quick-slider-label {
+  font-size: 0.75rem;
+}
+.pl-quick--acc .pl-quick-slider-row {
+  gap: 0.45rem;
+}
+.pl-quick--acc .pl-quick-num {
+  padding: 0.12rem 0.35rem;
+}
+.pl-quick--acc .pl-quick-num input {
+  width: 2.6rem;
+  font-size: 0.85rem;
+}
+.pl-quick--acc .pl-quick-body {
+  padding: 0 0.85rem 0.7rem;
+}
+.pl-quick--acc .pl-quick-row {
+  margin-top: 0.35rem;
+  gap: 0.35rem 0.7rem;
+}
+.pl-quick--acc .pl-quick-note {
+  line-height: 1.35;
+}
+.pl-quick--acc .pl-quick-cta {
+  padding: 0.5rem 0.9rem;
+}
+
+
+/* Wyjaśnienie czerwonego odcinka suwaka - pod suwakami, żeby nie skracać
+   toru (skrócony tor zmieniałby skalę, a tego właśnie unikamy). Widoczne
+   tylko wtedy, gdy granica faktycznie działa. */
+.pl-quick-limit-note {
+  display: block;
+  margin-top: 0.15rem;
+  color: #b3410a;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+}

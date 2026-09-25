@@ -3854,14 +3854,20 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               ))}
                             </ul>
 
-                            {/* Baner DIY: właściciel, 2026-09-24 - "wygląda,
-                                jakbyśmy chcieli go ukryć, i ma za dużo treści".
-                                Stąd plakietka, krótka obietnica w jednym zdaniu
-                                i trzy kroki zamiast akapitu. */}
+                            {/* Baner o samodzielnym złożeniu: właściciel,
+                                2026-09-24 - "wygląda, jakbyśmy chcieli go ukryć,
+                                i ma za dużo treści"; 2026-09-25 - "DIY zwykłemu
+                                klientowi nic nie mówi i może zadziałać źle, daj
+                                to miękko i łagodnie". Stąd pełne zdanie zamiast
+                                skrótu i wyraźna informacja, co jest w zestawie. */}
                             <div className="pl-callout pl-callout--diy">
-                              <span className="pl-callout-badge">Produkt DIY</span>
-                              <strong>Składasz sam w 15 minut</strong>
-                              <p>W komplecie wszystkie elementy i instrukcja — potrzebny tylko śrubokręt.</p>
+                              <span className="pl-callout-badge">Prosty montaż</span>
+                              <strong>Moskitierę wysyłamy przygotowaną do samodzielnego złożenia</strong>
+                              <p>
+                                Wystarczy złożyć ramkę, naciągnąć siatkę i przykręcić zaczepy. W zestawie otrzymasz
+                                wszystkie elementy — profile idealnie docięte na Twój wymiar i siatkę z odpowiednim
+                                zapasem.
+                              </p>
                               <ul className="pl-callout-steps">
                                 <li>Złóż ramkę</li>
                                 <li>Naciągnij siatkę</li>
