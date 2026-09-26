@@ -28,6 +28,7 @@ import PromoSaveModal from "@/app/components/promo-save-modal";
 import InstallmentOffer from "@/app/components/installment-offer";
 import PlisaPreview from "./PlisaPreview";
 import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
+import MeasureShare from "./MeasureShare";
 import PlisyFabricGallery from "./FabricGallery";
 import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyColorCountLabel } from "./CollectionVisual";
 import PlisyCollectionBackdrop from "./CollectionBackdrop";
@@ -1644,6 +1645,10 @@ export default function ConfiguratorPanel({
                                   </button>
                                   <h3>Jak zmierzyć okno pod plisę</h3>
                                   <PlisyMeasureGuide fixedMode={measureMode} startDelayMs={700} unit={dimensionUnit} />
+                                  {/* Okno bywa w drugim pokoju albo mierzy
+                                      ktoś inny - stąd wysyłka samej
+                                      instrukcji (właściciel, 2026-09-26). */}
+                                  <MeasureShare mode={measureMode} source="configurator" />
                                 </div>
                               </div>,
                               document.body,

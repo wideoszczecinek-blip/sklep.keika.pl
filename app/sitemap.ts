@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: SITE + "/plisy", lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: SITE + "/?produkt=rolety-dachowe", lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: SITE + "/?produkt=plisy-dachowe", lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: SITE + "/plisy/jak-mierzyc", lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: SITE + "/", lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: SITE + "/kontakt", lastModified: now, changeFrequency: "monthly", priority: 0.4 },
     { url: SITE + "/o-nas", lastModified: now, changeFrequency: "monthly", priority: 0.4 },

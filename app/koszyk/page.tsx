@@ -28,6 +28,26 @@ import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
+
+// Pusty koszyk (2026-09-26): CTA prowadzi do produktu, który klient ostatnio
+// oglądał (keika_last_page), a nie zawsze do moskitier - klient z reklamy
+// rolet dachowych czytał tu "Skonfiguruj moskitierę".
+const EMPTY_CART_TARGETS: Record<string, { href: string; label: string }> = {
+  "moskitiery-ramkowe": { href: "/moskitiery-ramkowe", label: "Skonfiguruj moskitierę" },
+  plisy: { href: "/plisy", label: "Skonfiguruj plisę" },
+  "rolety-dachowe": { href: "/?produkt=rolety-dachowe", label: "Skonfiguruj roletę dachową" },
+  "plisy-dachowe": { href: "/?produkt=plisy-dachowe", label: "Skonfiguruj plisę dachową" },
+};
+function emptyCartTarget(lastPage: string): { href: string; label: string } {
+  try {
+    const url = new URL(lastPage || "/", "https://sklep.keika.pl");
+    const slug = url.searchParams.get("produkt") || url.pathname.replace(/^\/+/, "").split("/")[0];
+    if (slug && EMPTY_CART_TARGETS[slug]) return EMPTY_CART_TARGETS[slug];
+  } catch {
+    // ignore - fall back below
+  }
+  return { href: "/", label: "Wybierz produkt" };
+}
 import PaczkomatPicker from "../components/paczkomat-picker";
 import PromoTopStrip from "../components/promo-top-strip";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
@@ -2326,8 +2346,8 @@ export default function CartPage() {
         ) : items.length === 0 && !orderState ? (
           <div className="cart-page-empty">
             <p>Twój koszyk jest jeszcze pusty.</p>
-            <Link href="/moskitiery-ramkowe" className="cart-page-empty-cta">
-              Skonfiguruj moskitierę
+            <Link href={emptyCartTarget(backHref).href} className="cart-page-empty-cta">
+              {emptyCartTarget(backHref).label}
             </Link>
           </div>
         ) : (

@@ -269,6 +269,7 @@ function Notepad({ opacity, wWrite, hWrite, wmm, hmm, clipId, k = 1 }: { opacity
 
 export default function PlisyMeasureGuide({
   fixedMode,
+  initialMode,
   startDelayMs = 900,
   unit = "mm",
 }: {
@@ -279,6 +280,10 @@ export default function PlisyMeasureGuide({
   /** Lock to one mounting system (the configurator already knows which one
    * the customer picked) - hides the mode switch. */
   fixedMode?: MeasureMode;
+  /** Wariant, od którego zaczyna przełącznik, gdy nic nie jest zablokowane -
+   * link wysłany z konfiguratora niesie montaż w adresie (?montaz=...), więc
+   * strona instrukcji otwiera się na tym, co klient wybrał. */
+  initialMode?: MeasureMode;
   /** Pause after the guide scrolls/opens into view before the tape moves,
    * so the eye finds the window first (owner, 2026-09-16). */
   startDelayMs?: number;
@@ -286,7 +291,7 @@ export default function PlisyMeasureGuide({
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ID = { clip: `plmgClip${uid}`, shadow: `plmgShadow${uid}`, sheen: `plmgSheen${uid}`, pad: `plmgPad${uid}` };
 
-  const [pickedMode, setPickedMode] = useState<Mode>("standard");
+  const [pickedMode, setPickedMode] = useState<Mode>(initialMode ?? "standard");
   const mode: Mode = fixedMode ?? pickedMode;
   const [run, setRun] = useState(0);
   const [t, setT] = useState(0);

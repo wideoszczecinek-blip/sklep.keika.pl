@@ -187,6 +187,7 @@ import PlisyHeroPhotos from "@/features/plisy/PlisyHeroPhotos";
 import PlisyVisualizer from "@/features/plisy/PlisyVisualizer";
 import PlisyReviews from "@/features/plisy/Reviews";
 import PlisyMeasureGuide from "@/features/plisy/MeasureGuide";
+import PlisyMeasureShare from "@/features/plisy/MeasureShare";
 import { PLISY_INSTRUCTION_STEPS } from "@/features/plisy/instructions";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
@@ -6129,6 +6130,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
             {activeInstructionSteps[instructionModalIndex].customMedia === "plisy-measure" ? (
               <div className="hero-product-instruction-media hero-product-instruction-media--guide">
                 <PlisyMeasureGuide />
+                {/* To samo, co w modalu konfiguratora: wyślij instrukcję
+                    tam, gdzie stoi okno (właściciel, 2026-09-26). */}
+                <PlisyMeasureShare source="landing" />
               </div>
             ) : activeInstructionSteps[instructionModalIndex].mediaUrl ? (
               <div className="instruction-modal-media">
