@@ -729,6 +729,9 @@ export default function CartPage() {
     const total = Math.round(items.reduce((sum, item) => sum + (Number(item.total) || 0), 0) * 100) / 100;
     trackCheckoutIssue("view_cart", String(items.length), {
       cart_total: total,
+      // Bez kwoty do zapłaty: view_cart leci zaraz po hydracji, zanim rabat
+      // zostanie policzony - realną kwotę podaje zdarzenie cart_amount
+      // sekundę później (właściciel, 2026-09-26).
       cart_positions: items.length,
       products: Array.from(new Set(items.map((item) => item.productSlug))).join(","),
     });
@@ -1101,6 +1104,27 @@ export default function CartPage() {
       expressFee +
       (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
   );
+
+  // Kwota do zapłaty zmienia się w koszyku (dostawa, pobranie, ekspres,
+  // kod rabatowy), a dashboard CRM pokazuje przy osobie online to, co klient
+  // ma przed oczami - więc po każdej zmianie (z sekundą wyciszenia, żeby nie
+  // strzelać przy każdym kliknięciu) leci jedno lekkie zdarzenie.
+  const lastReportedAmountRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!hydrated || items.length === 0) return;
+    const timer = window.setTimeout(() => {
+      if (lastReportedAmountRef.current === payableTotal) return;
+      lastReportedAmountRef.current = payableTotal;
+      trackCheckoutIssue("cart_amount", String(items.length), {
+        cart_total: summary.total,
+        cart_total_payable: payableTotal,
+        cart_positions: items.length,
+        delivery: deliveryMethod || null,
+        payment: paymentMethod || null,
+      });
+    }, 1100);
+    return () => window.clearTimeout(timer);
+  }, [hydrated, payableTotal, items.length, summary.total, deliveryMethod, paymentMethod]);
 
   // Mobile checkout "Dalej" (Next) buttons - real feedback: "Dużo osób nam
   // nie wybiera metody płatności" (lots of people never pick a payment

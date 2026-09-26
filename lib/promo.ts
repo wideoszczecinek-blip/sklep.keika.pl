@@ -201,6 +201,30 @@ export type PromoPreview = {
   amount: number;
 };
 
+const PROMO_PREVIEW_CACHE_KEY = "keika_shop_promo_preview";
+
+/** Ostatni rabat pobrany z CRM w tej sesji. Sam procent nie zmienia się w
+ * trakcie wizyty, więc miejsca, które muszą znać kwotę po rabacie "od ręki"
+ * (np. raportowanie koszyka do CRM), nie muszą czekać na fetchPromoPreview(). */
+export function readCachedPromoPreview(): PromoPreview | null {
+  try {
+    const raw = window.sessionStorage.getItem(PROMO_PREVIEW_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PromoPreview;
+    return parsed && typeof parsed.value === "number" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function cachePromoPreview(preview: PromoPreview | null): void {
+  try {
+    if (preview) window.sessionStorage.setItem(PROMO_PREVIEW_CACHE_KEY, JSON.stringify(preview));
+  } catch {
+    // sessionStorage niedostępny - trudno, po prostu nie mamy podręcznej kopii.
+  }
+}
+
 export function isPromoActive(code: string = PROMO_CODE): boolean {
   if (readPromoCookie() === code) return true;
   try {
@@ -252,7 +276,9 @@ export async function fetchPromoPreview(subtotal: number, code: string = PROMO_C
       body: JSON.stringify({ code, subtotal }),
     });
     const json = (await response.json()) as { ok: boolean; discount?: PromoPreview };
-    return json.ok && json.discount ? json.discount : null;
+    const preview = json.ok && json.discount ? json.discount : null;
+    cachePromoPreview(preview);
+    return preview;
   } catch {
     return null;
   }

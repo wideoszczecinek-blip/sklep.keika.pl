@@ -10,6 +10,8 @@
  * a real multi-item order endpoint exists.
  */
 
+import { applyPromoToPrice, isPromoActive, readCachedPromoPreview } from "@/lib/promo";
+
 /** product_slug values app/koszyk/page.tsx's buildQuotePayloadFromCart()
  * adds alongside the real product positions when it saves a quote (a
  * discount code, the oversized-parcel surcharge, cash-on-delivery fee, the
@@ -258,6 +260,13 @@ function trackCartEventToCrm(eventName: string, productSlug: string, item: CartL
   const cartSnapshot = Array.isArray(cartItems) ? cartItems : readCartItems();
   const cartTotal = Math.round(cartSnapshot.reduce((sum, entry) => sum + (Number(entry.total) || 0), 0) * 100) / 100;
   const cartPositions = cartSnapshot.length;
+  // Pozycje koszyka trzymają cenę regularną, a klient widzi cenę po SEZON20 -
+  // do CRM idą obie, żeby tooltip "osoby online" pokazywał tę, którą klient
+  // ma przed oczami (właściciel, 2026-09-26).
+  const promoPreview = isPromoActive() ? readCachedPromoPreview() : null;
+  const cartTotalPayable = promoPreview
+    ? Math.round((applyPromoToPrice(cartTotal, promoPreview) ?? cartTotal) * 100) / 100
+    : cartTotal;
   let sessionToken = "";
   try {
     sessionToken = window.sessionStorage.getItem("keika_shop_session_token") || "";
@@ -272,7 +281,14 @@ function trackCartEventToCrm(eventName: string, productSlug: string, item: CartL
         page_slug: window.location.pathname + window.location.search,
         session_token: sessionToken,
         device_type: window.innerWidth < 768 ? "mobile" : "desktop",
-        meta: { product_slug: productSlug, qty: item.qty, total: item.total, cart_total: cartTotal, cart_positions: cartPositions },
+        meta: {
+          product_slug: productSlug,
+          qty: item.qty,
+          total: item.total,
+          cart_total: cartTotal,
+          cart_total_payable: cartTotalPayable,
+          cart_positions: cartPositions,
+        },
       }),
     )
     .catch(() => {
