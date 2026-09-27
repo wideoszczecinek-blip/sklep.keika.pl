@@ -15,7 +15,7 @@ import type { SavedQuote } from "@/features/moskitiery/types";
 // gets resolved to somewhere the customer can actually land on.
 const FALLBACK_PRODUCT_SLUG = "moskitiery-ramkowe";
 
-export default function VisitResume({ quote }: { quote: SavedQuote }) {
+export default function VisitResume({ quote, landing }: { quote: SavedQuote; landing?: "koszyk" }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -57,6 +57,12 @@ export default function VisitResume({ quote }: { quote: SavedQuote }) {
       markPromoLinkSaved();
     }
 
+    // ?do=koszyk (2026-09-26): the "Twój koszyk" e-mail lands straight in the
+    // cart with the positions restored above, not on the product page.
+    if (landing === "koszyk" && resolved.items.length > 0) {
+      router.replace("/koszyk");
+      return;
+    }
     router.replace(slug === "moskitiery-ramkowe" ? "/moskitiery-ramkowe" : `/?produkt=${encodeURIComponent(slug)}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

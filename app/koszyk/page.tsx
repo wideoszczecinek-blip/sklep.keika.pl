@@ -28,6 +28,9 @@ import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
+import PromoSaveModal from "../components/promo-save-modal";
+import { useCartEmailNudge } from "@/lib/cart-email-nudge";
+import { captureCheckoutEmail, getCartEmailArm, getTrackedPromoQuoteCode, type CartEmailArm } from "@/lib/promo-save";
 
 // Pusty koszyk (2026-09-26): CTA prowadzi do produktu, który klient ostatnio
 // oglądał (keika_last_page), a nie zawsze do moskitier - klient z reklamy
@@ -716,6 +719,14 @@ export default function CartPage() {
   // payment method. Single link/document: "Regulamin sklepu i płatności"
   // (shop terms and payment terms live together, not as two documents).
   const [termsAccepted, setTermsAccepted] = useState(false);
+  // Zgody marketingowe (właściciel, 2026-09-27): jeden mały akordeon
+  // "Akceptuję regulaminy i zgody" - po rozwinięciu wymagany regulamin i
+  // OPCJONALNE, domyślnie odznaczone zgody. Zapisywane w zamówieniu
+  // (payload.consents + kolumny w CRM), bo od dziś to jedyna legalna
+  // podstawa do wysyłania ofert e-mailem/SMS-em.
+  const [marketingEmailConsent, setMarketingEmailConsent] = useState(false);
+  const [marketingSmsConsent, setMarketingSmsConsent] = useState(false);
+  const [consentsOpen, setConsentsOpen] = useState(false);
   // Które pola formularza klient już wypełnił - dla tooltipa "online w
   // sklepie" w CRM ("uzupełnia: telefon"). Tylko nazwa pola, nigdy wartość;
   // każde pole raz na wejście na stronę.
@@ -737,11 +748,28 @@ export default function CartPage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
+  // "Koszyk na e-mail" (2026-09-26): the offer fires only at leaving moments
+  // (40 s idle / desktop exit intent / tab return) and never once the
+  // customer has started the form - see lib/cart-email-nudge.ts.
+  const [checkoutFormStarted, setCheckoutFormStarted] = useState(false);
+  const cartEmailNudge = useCartEmailNudge({ context: "cart", hasItems: items.length > 0, formStarted: checkoutFormStarted });
+  // Which arm this device is in - read after mount so SSR and the first
+  // client render agree (the "control" copy), then the real arm takes over.
+  const [cartEmailArm, setCartEmailArm] = useState<CartEmailArm>("control");
+  useEffect(() => {
+    setCartEmailArm(getCartEmailArm());
+  }, []);
   function handleCheckoutFieldBlur(event: FocusEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement | null;
     if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLTextAreaElement)) return;
     if (target instanceof HTMLInputElement && (target.type === "radio" || target.type === "checkbox")) return;
     if (target.value.trim() === "") return;
+    setCheckoutFormStarted(true);
+    // Silent capture of a typed e-mail (2026-09-26) - the CRM mails "Twój
+    // koszyk" after 1 h only if no order followed; see captureCheckoutEmail().
+    if (target instanceof HTMLInputElement && target.type === "email") {
+      void captureCheckoutEmail(target.value, items[0]?.productSlug);
+    }
     const label = target.closest("label");
     let fieldName = "";
     if (label) {
@@ -1660,6 +1688,10 @@ export default function CartPage() {
         // way, this just makes it update the same row instead of a new one.
         quote_code: lastQuoteCodeRef.current || "",
         session_token: quoteSessionToken,
+        // The configurator-side quote that may carry a frozen 7-day price
+        // (2026-09-26) - quote_save.php honours its promo_deadline_at even
+        // when this checkout row is a different, fresh quote_code.
+        promo_quote_code: getTrackedPromoQuoteCode(),
       };
       const quoteResponse = await saveShopQuote(quotePayload);
       const quoteCode = quoteResponse.quote.quote_code;
@@ -1740,6 +1772,13 @@ export default function CartPage() {
           quote_code: quoteCode,
           session_token: checkoutSessionToken,
           customer: { name: `${form.firstName} ${form.lastName}`.trim(), phone: form.phone, email: form.email },
+          consents: {
+            terms: termsAccepted,
+            marketing_email: marketingEmailConsent,
+            marketing_sms: marketingSmsConsent,
+            accepted_at: new Date().toISOString(),
+            version: "2026-09-27",
+          },
           shipping: {
             // Paczkomat: adresem wysyłki jest punkt, nie dom klienta - od
             // 2026-09-24 nie prosimy go już o własny adres przy tej metodzie,
@@ -2190,34 +2229,84 @@ export default function CartPage() {
   };
   const termsCheckbox =
     !paymentConfirmed && items.length > 0 ? (
-      <label className={`cart-terms-checkbox ${termsAccepted ? "is-accepted" : ""}`}>
-        <input
-          type="checkbox"
-          checked={termsAccepted}
-          onChange={(event) => {
-            setTermsAccepted(event.target.checked);
-            trackCheckoutIssue("checkout_terms", event.target.checked ? "on" : "off");
-          }}
-          required
-        />
-        <span>
-          Przeczytałem i akceptuję{" "}
-          <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
-            regulamin sklepu i płatności
+      <div className={`cart-consents ${termsAccepted ? "is-accepted" : ""} ${consentsOpen ? "is-open" : ""}`}>
+        <div className="cart-consents-row">
+          <label className={`cart-terms-checkbox cart-consents-main ${termsAccepted ? "is-accepted" : ""}`}>
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(event) => {
+                setTermsAccepted(event.target.checked);
+                trackCheckoutIssue("checkout_terms", event.target.checked ? "on" : "off");
+              }}
+              required
+            />
+            <span>Akceptuję regulaminy i zgody</span>
+          </label>
+          <button
+            type="button"
+            className="cart-consents-toggle"
+            aria-expanded={consentsOpen ? "true" : "false"}
+            onClick={() => setConsentsOpen((open) => !open)}
+          >
+            {consentsOpen ? "Zwiń" : "Szczegóły i wybór"} <i aria-hidden="true">▾</i>
           </button>
-          {paymentMethod === "p24" ? (
-            <>
-              {" "}
-              oraz{" "}
-              <a className="cart-terms-link" href="https://www.przelewy24.pl/regulamin" target="_blank" rel="noopener noreferrer">
-                regulamin Przelewy24
-              </a>{" "}
-              (PayPro S.A.)
-            </>
-          ) : null}
-          .
-        </span>
-      </label>
+        </div>
+        {consentsOpen ? (
+          <div className="cart-consents-body">
+            <div className="cart-consents-group">
+              <strong>Wymagane do zamówienia</strong>
+              <p>
+                Przeczytałem i akceptuję{" "}
+                <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
+                  regulamin sklepu i płatności
+                </button>
+                {paymentMethod === "p24" ? (
+                  <>
+                    {" "}
+                    oraz{" "}
+                    <a className="cart-terms-link" href="https://www.przelewy24.pl/regulamin" target="_blank" rel="noopener noreferrer">
+                      regulamin Przelewy24
+                    </a>{" "}
+                    (PayPro S.A.)
+                  </>
+                ) : null}
+                . Dane przetwarzamy zgodnie z{" "}
+                <a className="cart-terms-link" href="/legal/prywatnosc" target="_blank" rel="noopener noreferrer">
+                  polityką prywatności
+                </a>
+                .
+              </p>
+            </div>
+            <div className="cart-consents-group cart-consents-optional">
+              <strong>Opcjonalne, Twój wybór</strong>
+              <label className="cart-consents-option">
+                <input
+                  type="checkbox"
+                  checked={marketingEmailConsent}
+                  onChange={(event) => {
+                    setMarketingEmailConsent(event.target.checked);
+                    trackCheckoutIssue("checkout_consent", event.target.checked ? "email_on" : "email_off");
+                  }}
+                />
+                <span>Chcę dostawać e-mailem informacje o promocjach i nowościach KEIKA.</span>
+              </label>
+              <label className="cart-consents-option">
+                <input
+                  type="checkbox"
+                  checked={marketingSmsConsent}
+                  onChange={(event) => {
+                    setMarketingSmsConsent(event.target.checked);
+                    trackCheckoutIssue("checkout_consent", event.target.checked ? "sms_on" : "sms_off");
+                  }}
+                />
+                <span>Zgadzam się na kontakt SMS-em lub telefonicznie w sprawie ofert KEIKA.</span>
+              </label>
+              <small>Zgody możesz wycofać w każdej chwili, pisząc na biuro@keika.pl.</small>
+            </div>
+          </div>
+        ) : null}
+      </div>
     ) : null;
   const handleStripePaid = (paidOrderCode: string) => {
     const current = orderStateRef.current;
@@ -2241,6 +2330,16 @@ export default function CartPage() {
     <div className="cart-page">
       <div className="cart-page-gradient-bg" aria-hidden="true" />
       <PromoTopStrip productSlug={cartPromoSlug} variant="static" />
+      {cartEmailNudge.open ? (
+        <PromoSaveModal
+          variant="cart"
+          quoteCode=""
+          shareUrl="https://sklep.keika.pl/koszyk"
+          productSlug={items[0]?.productSlug}
+          onClose={() => cartEmailNudge.close("dismiss")}
+          onSent={() => cartEmailNudge.markSent()}
+        />
+      ) : null}
       <header className="cart-page-header">
         <Link href="/" className="cart-page-brand">
           keika
@@ -3090,7 +3189,18 @@ export default function CartPage() {
 
               <aside className="cart-checkout-right">
                 <section className="cart-payment-card" ref={paymentSectionRef}>
-                  <h2>Płatność</h2>
+                  <div className="cart-payment-card-head">
+                    <h2>Płatność</h2>
+                    {/* Ta sama kwota, co w podsumowaniu i na pasku na dole -
+                        tu bez przekreśleń i oszczędności, żeby przy wyborze
+                        metody płatności była jedna liczba (właściciel,
+                        2026-09-27). Zawiera już rabat, dostawę i dopłaty,
+                        łącznie z pobraniem. */}
+                    <span className="cart-payment-due">
+                      <span className="cart-payment-due-label">Do zapłaty</span>
+                      <strong>{formatPln(payableTotal)}</strong>
+                    </span>
+                  </div>
                   {paymentMethod === "cod" ? (
                     <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
                       Płatność za pobraniem
@@ -3143,21 +3253,37 @@ export default function CartPage() {
                 </span>
                 <span className="cart-keep-copy">
                   <strong>Nie decydujesz dzisiaj?</strong>
-                  <span>
-                    Wyślij sobie link do tego koszyka —{" "}
-                    {appliedDiscount ? (
-                      <>
-                        wymiary i rabat <strong>{appliedDiscount.code}</strong> zostaną zapisane
-                      </>
-                    ) : (
-                      <>wymiary i wycena zostaną zapisane</>
-                    )}
-                    . Wrócisz, kiedy będziesz gotowy — na telefonie albo na komputerze, bez wpisywania czegokolwiek od
-                    nowa.
-                  </span>
+                  {cartEmailArm === "show" ? (
+                    <span>
+                      Wyślij sobie ten koszyk na e-mail — <strong>zamrozimy dzisiejszą cenę na 7 dni</strong>, nawet
+                      jeśli promocja wygaśnie wcześniej. Wrócisz jednym kliknięciem, na telefonie albo na komputerze.
+                    </span>
+                  ) : (
+                    <span>
+                      Wyślij sobie link do tego koszyka —{" "}
+                      {appliedDiscount ? (
+                        <>
+                          wymiary i rabat <strong>{appliedDiscount.code}</strong> zostaną zapisane
+                        </>
+                      ) : (
+                        <>wymiary i wycena zostaną zapisane</>
+                      )}
+                      . Wrócisz, kiedy będziesz gotowy — na telefonie albo na komputerze, bez wpisywania czegokolwiek od
+                      nowa.
+                    </span>
+                  )}
                 </span>
-                <button type="button" className="cart-keep-cta" onClick={openCartShareModal}>
-                  Wyślij mi link do koszyka
+                <button
+                  type="button"
+                  className="cart-keep-cta"
+                  onClick={() => {
+                    // "show" arm (2026-09-26): the explicit click opens the
+                    // e-mail-first freeze offer; control keeps the old share modal.
+                    if (cartEmailArm === "show" && cartEmailNudge.fireManual()) return;
+                    openCartShareModal();
+                  }}
+                >
+                  {cartEmailArm === "show" ? "Wyślij mi koszyk na e-mail" : "Wyślij mi link do koszyka"}
                 </button>
               </section>
             ) : null}

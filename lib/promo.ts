@@ -194,6 +194,45 @@ export function renewPromoActivationFromServer(deadlineAtMs: number): boolean {
   return true;
 }
 
+/** "Koszyk na e-mail, cena zamrożona na 7 dni" (2026-09-26): the CRM just
+ * moved this quote's promo_deadline_at 7 days out in exchange for the
+ * customer's e-mail (shop_cart_email_handle(), core/lib/shop_cart_email.php).
+ * Same trust posture as renewPromoActivationFromServer(): moves the local
+ * stamp LATER, but only to a value the server confirmed. Also remembers the
+ * frozen-until moment separately so the UI can say "cena zamrożona do
+ * 3.10" instead of a countdown. */
+const PROMO_FROZEN_UNTIL_KEY = "keika_shop_promo_frozen_until";
+
+export function freezePromoDeadlineFromServer(deadlineAtMs: number): boolean {
+  if (!Number.isFinite(deadlineAtMs) || deadlineAtMs <= Date.now()) return false;
+  const activatedAtMs = deadlineAtMs - PROMO_DEADLINE_WINDOW_HOURS * 60 * 60 * 1000;
+  writePromoCookie(PROMO_CODE);
+  writePromoActivatedAtCookie(activatedAtMs);
+  try {
+    window.localStorage.setItem(ACTIVE_PROMO_STORAGE_KEY, PROMO_CODE);
+    window.localStorage.setItem(PROMO_ACTIVATED_AT_STORAGE_KEY, String(activatedAtMs));
+    window.localStorage.setItem(PROMO_FROZEN_UNTIL_KEY, String(deadlineAtMs));
+  } catch {
+    // storage unavailable - the cookie stamp above still carries the deadline
+  }
+  window.dispatchEvent(new CustomEvent(PROMO_ACTIVATED_EVENT, { detail: { code: PROMO_CODE, frozen: true } }));
+  return true;
+}
+
+export function getPromoFrozenUntilMs(): number | null {
+  try {
+    const raw = window.localStorage.getItem(PROMO_FROZEN_UNTIL_KEY);
+    const ms = raw ? Number(raw) : NaN;
+    return Number.isFinite(ms) && ms > Date.now() ? ms : null;
+  } catch {
+    return null;
+  }
+}
+
+export function formatPromoFrozenUntil(ms: number): string {
+  return new Date(ms).toLocaleDateString("pl-PL", { day: "numeric", month: "long" });
+}
+
 export type PromoPreview = {
   code: string;
   type: "percent" | "amount";

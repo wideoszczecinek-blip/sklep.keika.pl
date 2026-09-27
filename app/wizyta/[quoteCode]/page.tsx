@@ -15,15 +15,18 @@ import { fetchPublicQuote } from "@/lib/shop-public";
 // (no separate token/table), just a different destination for it.
 type VisitPageProps = {
   params: Promise<{ quoteCode: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function VisitPage({ params }: VisitPageProps) {
+export default async function VisitPage({ params, searchParams }: VisitPageProps) {
   const { quoteCode } = await params;
+  const query = searchParams ? await searchParams : {};
+  const landing = query?.do === "koszyk" ? ("koszyk" as const) : undefined;
   const response = await fetchPublicQuote(quoteCode);
 
   if (!response.ok || !response.quote) {
     notFound();
   }
 
-  return <VisitResume quote={response.quote} />;
+  return <VisitResume quote={response.quote} landing={landing} />;
 }

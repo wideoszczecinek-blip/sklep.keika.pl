@@ -38,6 +38,8 @@ import {
   type PromoPreview,
 } from "@/lib/promo";
 import { ensurePromoQuoteCode } from "@/lib/promo-save";
+import PromoSaveModal from "./components/promo-save-modal";
+import { cartEmailOfferEligible, useCartEmailNudge } from "@/lib/cart-email-nudge";
 import PromoCountdownBanner from "./components/promo-countdown-banner";
 import PromoTopStrip from "./components/promo-top-strip";
 import {
@@ -1895,6 +1897,31 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   const [topPromoActive, setTopPromoActive] = useState(false);
   const [topPromoPreview, setTopPromoPreview] = useState<PromoPreview | null>(null);
   const [promoRenewToast, setPromoRenewToast] = useState(false);
+  // "Koszyk na e-mail, cena zamrożona na 7 dni" (2026-09-26): configurator
+  // rule = cart has items, first item older than 5 min, 60 s idle. Return
+  // visits (session starts with a saved cart, or ?wroc=1 from remarketing)
+  // get a soft bar instead of a modal. Control arm never sees either.
+  const [cartEmailBanner, setCartEmailBanner] = useState<"return_visit" | "rm_return" | null>(null);
+  const cartEmailNudge = useCartEmailNudge({ context: "configurator", hasItems: cartSummary.items > 0 });
+  useEffect(() => {
+    try {
+      if (window.sessionStorage.getItem("keika_session_seen")) return;
+      window.sessionStorage.setItem("keika_session_seen", "1");
+    } catch {
+      return;
+    }
+    let wroc = "";
+    try {
+      wroc = new URL(window.location.href).searchParams.get("wroc") || "";
+    } catch {
+      /* ignore */
+    }
+    if (wroc) return; // handled by the ?wroc=1 effect below
+    if (readCartItems().length === 0) return;
+    if (!cartEmailOfferEligible()) return;
+    setCartEmailBanner("return_visit");
+    trackShopStep("cart_email_banner", "return_visit", {});
+  }, []);
   // false until the first client-side read of the promo state - the banner
   // row below is held by a same-height placeholder in the meantime so the
   // price/CTA block never jumps down after hydration (CLS 2026-09-14).
@@ -1944,6 +1971,16 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       /* ignore */
     }
     if (!wroc) return;
+    // "show" arm of the cart-e-mail test (2026-09-26): the 24 h renewal
+    // (57 renewals, 0 orders) is replaced by the 7-day freeze offer.
+    if (cartEmailOfferEligible()) {
+      trackShopStep("rm_return", "cart_email_offer", { product: slug });
+      // Symetrycznie do cart_email_banner_dismiss - bez tego w statystykach
+      // były zamknięcia paska bez ani jednego pokazania (2026-09-26).
+      trackShopStep("cart_email_banner", "rm_return", { product: slug });
+      setCartEmailBanner("rm_return");
+      return;
+    }
     if (getPromoActivatedAt() !== null && !isPromoDeadlineExpired()) {
       trackShopStep("rm_return", "still_active", { product: slug });
       return;
@@ -3359,6 +3396,45 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
             <div className="promo-renew-toast" role="status">
               <strong>Witaj ponownie!</strong> Rabat SEZON20 wraca na 24 h — naliczy się w koszyku.
             </div>
+          ) : null}
+          {cartEmailBanner ? (
+            <div className="cart-email-bar" role="status">
+              <span>
+                {cartEmailBanner === "rm_return" ? "Witaj ponownie! " : "Masz zapisany koszyk. "}
+                Wyślij go na e-mail, a <strong>zamrozimy Twoją cenę na 7 dni</strong>.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const why = cartEmailBanner;
+                  setCartEmailBanner(null);
+                  cartEmailNudge.fire(why);
+                }}
+              >
+                Wyślij koszyk
+              </button>
+              <button
+                type="button"
+                className="cart-email-bar-close"
+                aria-label="Zamknij"
+                onClick={() => {
+                  trackShopStep("cart_email_banner_dismiss", cartEmailBanner, {});
+                  setCartEmailBanner(null);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ) : null}
+          {cartEmailNudge.open ? (
+            <PromoSaveModal
+              variant="cart"
+              quoteCode=""
+              shareUrl="https://sklep.keika.pl/"
+              productSlug={productSlugFromSelected(displayedProduct)}
+              onClose={() => cartEmailNudge.close("dismiss")}
+              onSent={() => cartEmailNudge.markSent()}
+            />
           ) : null}
           <ChatNudge productSlug={productSlugFromSelected(displayedProduct)} active={isProductView} />
           <button

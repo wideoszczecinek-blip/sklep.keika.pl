@@ -10,8 +10,8 @@
 import { useEffect, useState } from "react";
 import { trackShopStep } from "@/lib/track-step";
 import { createPortal } from "react-dom";
-import { formatPromoRemaining } from "@/lib/promo";
-import { savePromoContact, type PromoConsent } from "@/lib/promo-save";
+import { formatPromoFrozenUntil, formatPromoRemaining } from "@/lib/promo";
+import { freezeCartToEmail, savePromoContact, type PromoConsent } from "@/lib/promo-save";
 
 type Channel = "sms" | "email";
 
@@ -29,6 +29,8 @@ export default function PromoSaveModal({
   remainingMs,
   variant = "reminder",
   onClose,
+  onSent,
+  productSlug,
 }: {
   /** Empty while ensurePromoQuoteCode() (called by the banner right when it
    * mounts) hasn't resolved yet - SMS/e-mail submit stays disabled until
@@ -60,8 +62,14 @@ export default function PromoSaveModal({
    * reached that step just went quiet and left. Same save/share options,
    * copy framed around "come back once you've measured", never around the
    * discount. */
-  variant?: "reminder" | "activated" | "announcement" | "measure";
+  variant?: "reminder" | "activated" | "announcement" | "measure" | "cart";
   onClose: () => void;
+  /** "cart" (2026-09-26, "Wyślij koszyk na e-mail, cena zamrożona na 7 dni"):
+   * called right after a successful send so the caller can close the offer
+   * as "sent" rather than "dismissed". E-mail required, phone optional,
+   * no share/copy options - see lib/promo-save.ts freezeCartToEmail(). */
+  onSent?: () => void;
+  productSlug?: string;
 }) {
   const [introDismissed, setIntroDismissed] = useState(variant !== "activated");
   const [channel, setChannel] = useState<Channel | null>(null);
@@ -70,6 +78,11 @@ export default function PromoSaveModal({
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState("");
   const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+  // "cart" variant only.
+  const [cartPhone, setCartPhone] = useState("");
+  const [cartRemind, setCartRemind] = useState(true);
+  const [cartMarketing, setCartMarketing] = useState(false);
+  const [frozenUntilMs, setFrozenUntilMs] = useState<number | null>(null);
 
   // Escape closes (audit 2026-09-13) - the overlay click already did, the
   // keyboard didn't.
@@ -151,6 +164,36 @@ export default function PromoSaveModal({
     setStatus("sent");
   }
 
+  const cartEmailValid = looksLikeEmail(trimmedValue);
+  const cartPhoneValid = cartPhone.trim() === "" || looksLikePhone(cartPhone.trim());
+  const canCartSubmit = cartEmailValid && cartPhoneValid && status !== "sending";
+
+  async function handleCartSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!canCartSubmit) return;
+    setStatus("sending");
+    setError("");
+    const result = await freezeCartToEmail({
+      email: trimmedValue,
+      phone: cartPhone.trim() || undefined,
+      consent: cartMarketing ? "marketing" : "one_time",
+      remind: cartRemind,
+      productSlug,
+    });
+    if (!result.ok) {
+      setStatus("error");
+      setError(result.error || "Nie udało się zapisać. Spróbuj ponownie.");
+      return;
+    }
+    setFrozenUntilMs(result.frozenUntilMs);
+    trackShopStep("cart_email_sent", cartPhone.trim() ? "email_sms" : "email", {
+      remind: cartRemind,
+      marketing: cartMarketing,
+    });
+    setStatus("sent");
+    onSent?.();
+  }
+
   const modal = (
     <div className="promo-save-modal-overlay" role="presentation" onClick={onClose}>
       <div
@@ -170,7 +213,71 @@ export default function PromoSaveModal({
           </div>
         ) : null}
 
-        {variant === "announcement" ? (
+        {variant === "cart" ? (
+          status === "sent" ? (
+            <div className="promo-save-modal-done">
+              <span className="promo-save-modal-done-check" aria-hidden="true">✓</span>
+              <h3>Koszyk wysłany</h3>
+              <p>
+                Sprawdź skrzynkę e-mail.{" "}
+                {frozenUntilMs ? (
+                  <>
+                    Twoja cena jest zamrożona do <strong>{formatPromoFrozenUntil(frozenUntilMs)}</strong> - nawet jeśli
+                    promocja wygaśnie wcześniej.
+                  </>
+                ) : (
+                  <>Link zaprowadzi Cię prosto do koszyka, z tą samą ceną.</>
+                )}
+              </p>
+              <button type="button" className="promo-save-modal-done-cta" onClick={onClose}>
+                Zamknij
+              </button>
+            </div>
+          ) : (
+            <form className="promo-save-modal-form cart-email-form" onSubmit={handleCartSubmit}>
+              <h3>Wyślij koszyk na e-mail</h3>
+              <p className="promo-save-modal-lead">
+                Zapiszemy Twój koszyk i <strong>zamrozimy dzisiejszą cenę na 7 dni</strong>. Nawet jeśli promocja
+                wygaśnie, Twoja cena zostanie. Wrócisz jednym kliknięciem, także z innego urządzenia.
+              </p>
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="Twój e-mail"
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                autoFocus
+                required
+              />
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="Telefon (opcjonalnie - wyślemy też SMS z linkiem)"
+                value={cartPhone}
+                onChange={(event) => setCartPhone(event.target.value)}
+              />
+              <fieldset className="promo-save-modal-consent">
+                <label className="promo-save-modal-consent-option">
+                  <input type="checkbox" checked={cartRemind} onChange={(event) => setCartRemind(event.target.checked)} />
+                  <span>Przypomnijcie mi o tym koszyku, zanim cena się odmrozi.</span>
+                </label>
+                <label className="promo-save-modal-consent-option">
+                  <input type="checkbox" checked={cartMarketing} onChange={(event) => setCartMarketing(event.target.checked)} />
+                  <span>Chcę też dostawać informacje o promocjach KEIKA.</span>
+                </label>
+              </fieldset>
+              <button type="submit" disabled={!canCartSubmit}>
+                {status === "sending" ? "Wysyłam…" : "Wyślij koszyk i zamroź cenę"}
+              </button>
+              <button type="button" className="promo-save-modal-back cart-email-form-skip" onClick={onClose}>
+                Nie, dziękuję
+              </button>
+              {error ? <p className="promo-save-modal-error">{error}</p> : null}
+            </form>
+          )
+        ) : variant === "announcement" ? (
           <div className="promo-announce">
             <span className="promo-announce-badge" aria-hidden="true">🎉</span>
             <h3>Rabat -20% aktywny!</h3>

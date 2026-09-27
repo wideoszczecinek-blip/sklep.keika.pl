@@ -18556,3 +18556,74 @@ html[data-theme="light"] .cart-toggle-checkbox--inner {
   text-decoration: none;
   box-shadow: 0 10px 24px rgba(255, 123, 0, 0.28);
 }
+
+/* "Koszyk na e-mail, cena zamrożona na 7 dni" (2026-09-26) */
+.cart-email-bar{position:fixed;left:12px;right:12px;bottom:12px;z-index:1200;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:#16314e;color:#fff;box-shadow:0 12px 30px rgba(0,0,0,.28);font-size:14px;line-height:1.35}
+.cart-email-bar span{flex:1;min-width:0}
+.cart-email-bar button{border:0;border-radius:999px;padding:10px 14px;font-weight:800;background:#ff9f0a;color:#22150a;cursor:pointer;white-space:nowrap;font-size:14px}
+.cart-email-bar .cart-email-bar-close{background:transparent;color:#fff;opacity:.75;padding:6px 8px;font-weight:600}
+@media (min-width:720px){.cart-email-bar{left:auto;right:20px;bottom:20px;max-width:560px}}
+.cart-email-form .promo-save-modal-lead{margin:0 0 12px}
+.cart-email-form input + input{margin-top:8px}
+.cart-email-form .promo-save-modal-consent{margin-top:12px}
+.cart-email-form .cart-email-form-skip{margin-top:10px;background:transparent;border:0;color:inherit;opacity:.7;cursor:pointer;font-size:14px}
+
+/* Akordeon zgód w checkoucie (2026-09-27) */
+.cart-consents{border:1px solid #d5dee8;border-radius:12px;padding:10px 12px;background:#fff}
+.cart-consents.is-accepted{border-color:#9dd3b0;background:#f4fbf6}
+.cart-consents-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cart-consents-main{margin:0;flex:1}
+.cart-consents-main span{font-weight:700}
+.cart-consents-toggle{border:0;background:transparent;color:#35506b;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;padding:4px 6px;border-radius:8px}
+.cart-consents-toggle:hover{background:#eef3f8}
+.cart-consents-toggle i{display:inline-block;font-style:normal;transition:transform .15s}
+.cart-consents.is-open .cart-consents-toggle i{transform:rotate(180deg)}
+.cart-consents-body{margin-top:10px;padding-top:10px;border-top:1px dashed #d5dee8;display:grid;gap:12px;font-size:13px;line-height:1.45;color:#35506b}
+.cart-consents-group strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px}
+.cart-consents-group p{margin:0}
+.cart-consents-option{display:flex;align-items:flex-start;gap:8px;margin:0 0 6px;cursor:pointer}
+.cart-consents-option input{margin-top:3px;flex:none}
+.cart-consents-optional small{display:block;color:#94a3b8;font-size:12px;margin-top:2px}
+
+
+/* Kwota do zapłaty w nagłówku sekcji płatności - karta jest ciemna, więc
+   liczba świeci miętą, a etykieta jest wyciszona. */
+.cart-payment-card-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.cart-payment-card-head h2 {
+  margin: 0;
+}
+.cart-payment-due {
+  display: grid;
+  justify-items: end;
+  gap: 0.1rem;
+  line-height: 1.05;
+  text-align: right;
+}
+.cart-payment-due-label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 241, 255, 0.7);
+}
+.cart-payment-due strong {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #8ff0cd;
+  white-space: nowrap;
+}
+
+/* Sklep produkcyjnie chodzi w jasnym motywie - tam mięta na jasnej karcie
+   jest nieczytelna, więc etykieta i kwota dostają ciemne warianty. */
+html[data-theme="light"] .cart-payment-due-label {
+  color: rgba(15, 23, 42, 0.62);
+}
+html[data-theme="light"] .cart-payment-due strong {
+  color: #0b6647;
+}

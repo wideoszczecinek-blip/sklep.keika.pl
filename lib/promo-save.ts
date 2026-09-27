@@ -288,3 +288,151 @@ export async function savePromoContact(input: {
     return { ok: false, error: "Nie udało się zapisać. Spróbuj ponownie." };
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * "Koszyk na e-mail, cena zamrożona na 7 dni" (2026-09-26)
+ *
+ * Owner-approved recovery flow for warm/hot leads. E-mail is required,
+ * phone optional. The CRM (shop_cart_email_handle(), core/lib/
+ * shop_cart_email.php) moves THIS quote's promo_deadline_at 7 days out,
+ * sends the "Twój koszyk" e-mail (positions + frozen price + link straight
+ * to /koszyk) and schedules two reminders (day 3, day 6). Randomised 50/50
+ * per device (getCartEmailArm) so the effect on conversion is measurable -
+ * the "control" arm never sees the offer at all.
+ * ------------------------------------------------------------------ */
+import { freezePromoDeadlineFromServer } from "@/lib/promo";
+import { trackShopStep } from "@/lib/track-step";
+
+const CART_EMAIL_ARM_KEY = "keika_cart_email_arm";
+const CART_EMAIL_SAVED_KEY = "keika_cart_email_saved_at";
+const CART_EMAIL_CAPTURED_KEY = "keika_cart_email_captured";
+
+export type CartEmailArm = "show" | "control";
+
+/** Assigned once per device, 50/50. Sent with every quote save
+ * (ab_cart_email) so the CRM can report conversion per arm. */
+export function getCartEmailArm(): CartEmailArm {
+  if (typeof window === "undefined") return "control";
+  try {
+    const stored = window.localStorage.getItem(CART_EMAIL_ARM_KEY);
+    if (stored === "show" || stored === "control") return stored;
+    const arm: CartEmailArm = Math.random() < 0.5 ? "show" : "control";
+    window.localStorage.setItem(CART_EMAIL_ARM_KEY, arm);
+    return arm;
+  } catch {
+    return "control";
+  }
+}
+
+export function getTrackedPromoQuoteCode(): string {
+  return getTracked().quoteCode;
+}
+
+export function hasCartEmailSaved(): boolean {
+  try {
+    return Boolean(window.localStorage.getItem(CART_EMAIL_SAVED_KEY));
+  } catch {
+    return false;
+  }
+}
+
+function markCartEmailSaved(): void {
+  try {
+    window.localStorage.setItem(CART_EMAIL_SAVED_KEY, String(Date.now()));
+  } catch {
+    // storage unavailable - worst case the offer shows once more next visit
+  }
+}
+
+/** The modal's submit: freezes the price for 7 days and sends the cart to
+ * the given e-mail (+ optional SMS). Ensures the quote exists first and
+ * snapshots the current cart into it, so the e-mail lists exactly what the
+ * customer has right now. */
+export async function freezeCartToEmail(input: {
+  email: string;
+  phone?: string;
+  consent: PromoConsent;
+  /** false = only the cart e-mail now, no day-3/day-6 reminders. */
+  remind?: boolean;
+  productSlug?: string;
+}): Promise<{ ok: boolean; error?: string; frozenUntilMs: number | null }> {
+  const state = await ensurePromoQuoteCode(input.productSlug);
+  const tracked = getTracked();
+  const quoteCode = state?.quoteCode || tracked.quoteCode;
+  if (!quoteCode) return { ok: false, error: "Nie udało się zapisać koszyka. Spróbuj ponownie.", frozenUntilMs: null };
+  try {
+    const response = await fetch(QUOTE_SAVE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quote_code: quoteCode,
+        resume_token: tracked.resumeToken,
+        session_token: getSessionToken(),
+        promo_code: PROMO_CODE,
+        promo_activated_at_ms: getPromoActivatedAt() ?? undefined,
+        ...(tracked.productSlug || input.productSlug ? { product_slug: tracked.productSlug || input.productSlug } : {}),
+        ab_cart_email: getCartEmailArm(),
+        cart_freeze: 1,
+        cart_remind: input.remind === false ? 0 : 1,
+        promo_save_contact: { email: input.email.trim(), phone: (input.phone || "").trim(), consent: input.consent },
+      }),
+    });
+    const json = (await response.json()) as {
+      ok: boolean;
+      error?: string;
+      quote?: { promo_deadline_at_ms?: number; cart_frozen?: boolean; cart_frozen_until_ms?: number };
+    };
+    if (!json.ok) return { ok: false, error: json.error || "Nie udało się zapisać.", frozenUntilMs: null };
+    const until = json.quote?.cart_frozen_until_ms ?? json.quote?.promo_deadline_at_ms ?? null;
+    if (typeof until === "number") freezePromoDeadlineFromServer(until);
+    markCartEmailSaved();
+    markPromoLinkSaved();
+    return { ok: true, frozenUntilMs: typeof until === "number" ? until : null };
+  } catch {
+    return { ok: false, error: "Nie udało się zapisać. Spróbuj ponownie.", frozenUntilMs: null };
+  }
+}
+
+/** Silent capture of the e-mail a customer typed into the checkout form
+ * (2026-09-26): 36 sessions in 14 days typed an e-mail and never paid, and
+ * nothing kept it. Stored on the quote as a one-time consent to remind
+ * about THEIR OWN cart; the CRM cron sends "Twój koszyk" after 1 h if no
+ * order followed. Never sends anything itself, never shows UI. Once per
+ * e-mail value per session. */
+export async function captureCheckoutEmail(email: string, productSlug?: string): Promise<void> {
+  const value = email.trim().toLowerCase();
+  if (!/.+@.+\..+/.test(value)) return;
+  try {
+    if (window.sessionStorage.getItem(CART_EMAIL_CAPTURED_KEY) === value) return;
+  } catch {
+    // ignore
+  }
+  const state = await ensurePromoQuoteCode(productSlug);
+  const tracked = getTracked();
+  const quoteCode = state?.quoteCode || tracked.quoteCode;
+  if (!quoteCode) return;
+  try {
+    await fetch(QUOTE_SAVE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quote_code: quoteCode,
+        resume_token: tracked.resumeToken,
+        session_token: getSessionToken(),
+        promo_code: PROMO_CODE,
+        promo_activated_at_ms: getPromoActivatedAt() ?? undefined,
+        ...(tracked.productSlug || productSlug ? { product_slug: tracked.productSlug || productSlug } : {}),
+        ab_cart_email: getCartEmailArm(),
+        cart_capture: 1,
+        promo_save_contact: { email: value, phone: "", consent: "one_time" },
+      }),
+      keepalive: true,
+    });
+    window.sessionStorage.setItem(CART_EMAIL_CAPTURED_KEY, value);
+    // Ślad w zdarzeniach sesji - bez tego "cicho złapane" nie dało się
+    // policzyć obok "poproszono / zapisało się" (2026-09-26).
+    trackShopStep("cart_email_captured", productSlug || "koszyk", { quote_code: quoteCode }, quoteCode);
+  } catch {
+    // best effort only
+  }
+}
