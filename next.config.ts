@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
       { source: "/produkt/rolety-dachowe-dekolux", destination: "/?produkt=rolety-dachowe", permanent: false },
       { source: "/kategoria/rolety-dachowe", destination: "/?produkt=rolety-dachowe", permanent: false },
       { source: "/produkt/plisy-dachowe", destination: "/?produkt=plisy-dachowe", permanent: false },
+      // SMS po montażu wysyła klientów na keika.pl/opinia; stara strona
+      // firmowa odsyła to tu, a formularz opinii żyje na nowej stronie
+      // (keika-www). Po przełączeniu domeny keika.pl ten wpis zniknie.
+      { source: "/opinia", destination: "https://keika-www.vercel.app/opinia", permanent: false },
     ];
   },
   // /?produkt=moskitiery-ramkowe -> /moskitiery-ramkowe lives in proxy.ts
