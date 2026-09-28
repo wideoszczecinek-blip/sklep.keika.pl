@@ -18653,3 +18653,236 @@ html[data-theme="light"] .cart-payment-due strong {
   margin-top: 0.12rem;
   accent-color: #ff7b00;
 }
+
+/* Koszyk 2026-09-28: pozycje rozwinięte, kurier z góry, krótsza strona,
+   blok zaufania nad formularzem, kod pocztowy -> miasto, telefon +48. */
+.cart-page-add-more {
+  display: inline-block;
+  margin: 0.15rem 0.8rem 0.55rem;
+  color: #6fe3bf;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.cart-page-add-more:hover {
+  text-decoration: underline;
+}
+.cart-discount-code-toggle,
+.cart-checkout-note-toggle {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: rgba(240, 248, 255, 0.72);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-align: left;
+}
+.cart-discount-code-toggle:hover,
+.cart-checkout-note-toggle:hover {
+  color: #f2f7ff;
+}
+.cart-checkout-note-toggle {
+  margin-top: 0.7rem;
+}
+.cart-dispatch-static {
+  margin: 0.2rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: rgba(240, 248, 255, 0.78);
+}
+.cart-dispatch-static strong {
+  color: #f2f7ff;
+}
+.cart-field-hint {
+  font-weight: 500;
+  color: rgba(240, 248, 255, 0.5);
+  font-size: 0.78em;
+}
+.cart-trust {
+  margin: 0 0 0.7rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(111, 227, 191, 0.28);
+  background: rgba(44, 157, 130, 0.1);
+  padding: 0.7rem 0.9rem;
+}
+.cart-trust-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.42rem;
+}
+.cart-trust-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.83rem;
+  line-height: 1.4;
+  color: rgba(240, 248, 255, 0.82);
+}
+.cart-trust-list strong {
+  color: #f2f7ff;
+}
+.cart-trust-icon {
+  flex: 0 0 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(111, 227, 191, 0.18);
+  color: #6fe3bf;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-top: 0.05rem;
+}
+.cart-trust-phone {
+  color: #6fe3bf;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.cart-trust-phone:hover {
+  text-decoration: underline;
+}
+.cart-trust-live {
+  color: rgba(240, 248, 255, 0.7);
+}
+.cart-trust-dot {
+  flex: 0 0 0.6rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin: 0.35rem 0.33rem 0;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  animation: cart-trust-pulse 2s ease-out infinite;
+}
+@keyframes cart-trust-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 0.45rem rgba(52, 211, 153, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+  }
+}
+html[data-theme="light"] .cart-page-add-more,
+html[data-theme="light"] .cart-trust-phone {
+  color: #1f9d6e;
+}
+html[data-theme="light"] .cart-discount-code-toggle,
+html[data-theme="light"] .cart-checkout-note-toggle,
+html[data-theme="light"] .cart-dispatch-static,
+html[data-theme="light"] .cart-trust-list li,
+html[data-theme="light"] .cart-trust-live {
+  color: rgba(19, 40, 67, 0.78);
+}
+html[data-theme="light"] .cart-dispatch-static strong,
+html[data-theme="light"] .cart-trust-list strong {
+  color: #132843;
+}
+html[data-theme="light"] .cart-field-hint {
+  color: rgba(19, 40, 67, 0.5);
+}
+html[data-theme="light"] .cart-trust {
+  border-color: rgba(31, 157, 110, 0.3);
+  background: rgba(31, 157, 110, 0.07);
+}
+html[data-theme="light"] .cart-trust-icon {
+  background: rgba(31, 157, 110, 0.14);
+  color: #1f9d6e;
+}
+
+
+/* Ekspres portfelem (Apple Pay / Google Pay) na gorze koszyka, 2026-09-28. */
+.cart-express {
+  margin: 0 0 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(229, 241, 255, 0.16);
+  background: rgba(8, 20, 35, 0.5);
+  padding: 0.9rem 1rem 0.6rem;
+}
+.cart-express.is-loading {
+  min-height: 0;
+}
+.cart-express-head {
+  display: grid;
+  gap: 0.15rem;
+  margin-bottom: 0.7rem;
+}
+.cart-express-head strong {
+  font-size: 0.98rem;
+  color: #f2f7ff;
+}
+.cart-express-head span {
+  font-size: 0.8rem;
+  color: rgba(240, 248, 255, 0.68);
+}
+.cart-express-buttons {
+  min-height: 48px;
+}
+.cart-express-buttons.is-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.cart-express-error {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
+  background: rgba(196, 67, 44, 0.16);
+  border: 1px solid rgba(196, 67, 44, 0.4);
+  color: #ffd9d2;
+  font-size: 0.82rem;
+}
+.cart-express-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: rgba(240, 248, 255, 0.55);
+}
+.cart-express-note a {
+  color: inherit;
+  text-decoration: underline;
+}
+.cart-express-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.7rem 0 0.1rem;
+  font-size: 0.78rem;
+  color: rgba(240, 248, 255, 0.55);
+}
+.cart-express-divider::before,
+.cart-express-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(229, 241, 255, 0.16);
+}
+html[data-theme="light"] .cart-express {
+  border-color: rgba(26, 51, 82, 0.14);
+  background: rgba(255, 255, 255, 0.86);
+}
+html[data-theme="light"] .cart-express-head strong {
+  color: #132843;
+}
+html[data-theme="light"] .cart-express-head span,
+html[data-theme="light"] .cart-express-note,
+html[data-theme="light"] .cart-express-divider {
+  color: rgba(19, 40, 67, 0.62);
+}
+html[data-theme="light"] .cart-express-divider::before,
+html[data-theme="light"] .cart-express-divider::after {
+  background: rgba(26, 51, 82, 0.14);
+}
+html[data-theme="light"] .cart-express-error {
+  background: rgba(196, 67, 44, 0.08);
+  color: #8a2a1b;
+}
+

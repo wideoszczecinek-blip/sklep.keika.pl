@@ -77,6 +77,9 @@ import { useBackToClose } from "@/lib/use-back-to-close";
 import InstallmentOffer from "@/app/components/installment-offer";
 import { buildPaymentTiles } from "@/app/components/payment-methods";
 import InstallmentTileHint from "@/app/components/installment-tile-hint";
+import CartTrustBlock from "@/app/components/cart-trust-block";
+import ExpressWalletCheckout, { type WalletContact } from "@/app/components/express-wallet-checkout";
+import { formatPhoneInput } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
@@ -213,6 +216,10 @@ type P24Kind = "p24_transfer" | "p24_installments" | "p24_paypo";
 type PaymentKind = StripeMethod | P24Kind | "transfer";
 type P24Bank = { id: number; name: string; img: string };
 const STRIPE_PUBLISHABLE_KEY = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "").trim();
+// Apple Pay / Google Pay na górze koszyka: do czasu sprawdzenia na telefonie
+// właściciela włączane tylko flagą ?express=1 (localStorage). Po potwierdzeniu
+// przestawić na true (2026-09-28).
+const EXPRESS_WALLETS_DEFAULT = false;
 type P24Settings = { enabled: boolean; transfer: boolean; installments: boolean; paypo: boolean };
 const P24_KIND_LABELS: Record<P24Kind, { title: string; hint: string; note: string }> = {
   p24_transfer: {
@@ -602,6 +609,13 @@ export default function CartPage() {
   // nie doliczyła się po cichu.
   const expressEligible =
     EXPRESS_ENABLED && items.length > 0 && items.every((item) => item.productSlug === "moskitiery-ramkowe");
+  // Plisy: stały termin 5-7 dni roboczych (właściciel, 2026-09-28); koszyk
+  // z moskitierami i plisami jedzie razem, więc obowiązuje dłuższy termin.
+  // Rolety/plisy dachowe mają terminy ustalane ręcznie - bez deklaracji.
+  const plisyLeadTime =
+    items.length > 0 &&
+    items.some((item) => item.productSlug === "plisy") &&
+    items.every((item) => item.productSlug === "plisy" || item.productSlug === "moskitiery-ramkowe");
   useEffect(() => {
     if (!expressEligible && expressSelected) {
       setExpressSelected(false);
@@ -617,7 +631,12 @@ export default function CartPage() {
   // Lista pozycji startuje zwinięta - klient wie, co zamawia, a w koszyku
   // liczy się kwota i dane (właściciel, 2026-09-24). Rozwija ją kliknięcie
   // w nagłówek karty.
-  const [itemsOpen, setItemsOpen] = useState(false);
+  // Pozycje rozwinięte z góry (właściciel, 2026-09-28): przy zwiniętej liście
+  // klient widział tylko "1 pozycja, 95,68 zł" i wracał do konfiguratora
+  // sprawdzić wymiar i kolor (47 kliknięć "Wróć" w 14 dni na koszykach, które
+  // nie doszły do formularza).
+  const [itemsOpen, setItemsOpen] = useState(true);
+  const [noteOpen, setNoteOpen] = useState(false);
   const [buyerDifferent, setBuyerDifferent] = useState(false);
   const [buyer, setBuyer] = useState({
     name: "",
@@ -792,6 +811,9 @@ export default function CartPage() {
   // buildQuotePayloadFromCart/submitOrder below), so a stale or tampered
   // client-side amount here can never reduce what's actually charged.
   const [discountCodeInput, setDiscountCodeInput] = useState("");
+  // Pole kodu schowane za linkiem "Masz kod rabatowy?" - SEZON20 nalicza się
+  // sam, więc otwarte pole tylko wydłużało koszyk (2026-09-28).
+  const [discountOpen, setDiscountOpen] = useState(false);
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
   // Rescue discount (exit-intent modal on the homepage, see lib/rescue.ts) -
   // read once on mount; stacks additively alongside appliedDiscount above,
@@ -971,15 +993,56 @@ export default function CartPage() {
   const amountToFreeShipping = freeShippingPilot ? 0 : Math.max(0, FREE_SHIPPING_THRESHOLD - summary.total);
 
   useEffect(() => {
-    // Pusty wybór jest poprawnym stanem startowym - nie podstawiamy za
-    // klienta pierwszej metody z listy.
-    if (deliveryMethod === "") return;
+    // Kurier zaznaczony z góry (właściciel, 2026-09-28): 65% wchodzących do
+    // koszyka nie klikało żadnej metody i nigdy nie widziało pól formularza.
+    // Zapamiętany wybór z draftu (restore wyżej) i tak nadpisze ten domyślny.
+    if (deliveryMethod === "") {
+      const courier = availableDeliveryMethods.find((method) => method.id === COURIER_METHOD.id) || availableDeliveryMethods[0];
+      if (courier && items.length > 0) setDeliveryMethod(courier.id);
+      return;
+    }
     if (!availableDeliveryMethods.some((method) => method.id === deliveryMethod)) {
       setDeliveryMethod(availableDeliveryMethods[0].id);
     }
-    // Only re-check when the set of available methods actually changes.
+    // Re-check when the set of available methods changes - and once the cart
+    // has loaded from storage (items.length flips 0 -> 1), because the method
+    // ids alone stay identical and the default courier would never be set.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableDeliveryMethods.map((m) => m.id).join(",")]);
+  }, [availableDeliveryMethods.map((m) => m.id).join(","), items.length > 0]);
+
+  // Kod pocztowy: myślnik wstawia się sam po dwóch cyfrach, a po pełnym kodzie
+  // miasto uzupełnia się z bazy kodów (api.zippopotam.us, bez klucza, CORS).
+  // Miasta wpisanego ręcznie nigdy nie nadpisujemy (2026-09-28).
+  const cityAutoFilledRef = useRef("");
+  function handlePostcodeChange(raw: string) {
+    const digits = raw.replace(/\D+/g, "").slice(0, 5);
+    const formatted = digits.length > 2 ? `${digits.slice(0, 2)}-${digits.slice(2)}` : digits;
+    setForm((current) => ({ ...current, postcode: formatted }));
+    if (digits.length !== 5) return;
+    const code = formatted;
+    void fetch(`https://api.zippopotam.us/pl/${code}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: { places?: Array<{ "place name"?: string }> } | null) => {
+        const city = (json?.places?.[0]?.["place name"] || "").trim();
+        if (!city) return;
+        setForm((current) => {
+          if (current.postcode !== code) return current;
+          if (current.city.trim() !== "" && current.city !== cityAutoFilledRef.current) return current;
+          cityAutoFilledRef.current = city;
+          return { ...current, city };
+        });
+        trackCheckoutIssue("checkout_city_autofill", code, { city });
+      })
+      .catch(() => {});
+  }
+  // Telefon: prefiks +48 stoi przy etykiecie, więc wpisany "+48"/"0048"
+  // znika, a cyfry układają się w grupy po trzy.
+  function handlePhoneChange(raw: string) {
+    let digits = raw.replace(/\D+/g, "");
+    if (digits.startsWith("0048")) digits = digits.slice(4);
+    else if (digits.startsWith("48") && digits.length > 9) digits = digits.slice(2);
+    setForm((current) => ({ ...current, phone: formatPhoneInput(digits.slice(0, 9)) }));
+  }
 
   function handleQtyChange(id: string, nextQty: number) {
     setItems(updateCartItemQty(id, nextQty));
@@ -1640,10 +1703,24 @@ export default function CartPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary.total]);
 
-  const submitOrder = useCallback(async (opts?: { stripeMethod?: StripeMethod; p24MethodId?: number }): Promise<CreatedIntent | null> => {
+  const submitOrder = useCallback(async (opts?: { stripeMethod?: StripeMethod; p24MethodId?: number; wallet?: WalletContact }): Promise<CreatedIntent | null> => {
     if (submittedRef.current) return null;
     submittedRef.current = true;
-    draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod, appliedDiscount, expressSelected });
+    // Portfel (Apple Pay / Google Pay, 2026-09-28): dane odbiorcy z arkusza
+    // portfela, dostawa kurierem, płatność online, regulamin zaakceptowany
+    // kliknięciem w portfel (adnotacja pod przyciskami). Reszta ścieżki -
+    // wycena, zamówienie w CRM, PaymentIntent - identyczna jak dla karty.
+    const w = opts?.wallet;
+    const f = w
+      ? { ...form, firstName: w.firstName, lastName: w.lastName, email: w.email, phone: w.phone, address1: w.address1, postcode: w.postcode, city: w.city }
+      : form;
+    const dm = w ? COURIER_METHOD.id : deliveryMethod;
+    const pm = w ? "online" : paymentMethod;
+    const ta = w ? true : termsAccepted;
+    const bd = w ? false : buyerDifferent;
+    const wi = w ? false : wantsInvoice;
+    const sp = w ? null : selectedPaczkomat;
+    draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod: dm, appliedDiscount, expressSelected });
     setError("");
     setIsSubmitting(true);
     try {
@@ -1666,7 +1743,7 @@ export default function CartPage() {
           id: "position-cod-fee",
           slug: "doplata-platnosc-za-pobraniem",
           label: "Dopłata za płatność za pobraniem",
-          amount: paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0,
+          amount: pm === "cod" ? COD_SURCHARGE_AMOUNT : 0,
           summary: "Dopłata za płatność za pobraniem",
         },
         {
@@ -1702,18 +1779,18 @@ export default function CartPage() {
 
       const deliveryLabel =
         [COURIER_METHOD, PACZKOMAT_METHOD, COD_DELIVERY_METHOD, PICKUP_METHOD].find(
-          (method) => method.id === deliveryMethod,
+          (method) => method.id === dm,
         )?.label || "";
       const paczkomatLine =
-        deliveryMethod === PACZKOMAT_METHOD.id && selectedPaczkomat
-          ? `Paczkomat: ${selectedPaczkomat.id} - ${selectedPaczkomat.address}`
+        dm === PACZKOMAT_METHOD.id && sp
+          ? `Paczkomat: ${sp.id} - ${sp.address}`
           : "";
       const paymentLabel =
-        paymentMethod === "cod"
+        pm === "cod"
           ? "Za pobraniem"
-          : paymentMethod === "transfer"
+          : pm === "transfer"
             ? "Przelew tradycyjny"
-            : paymentMethod === "p24"
+            : pm === "p24"
               ? P24_KIND_LABELS[p24Kind].note
               : "Online (Stripe)";
       const noteWithDelivery = [
@@ -1722,14 +1799,14 @@ export default function CartPage() {
         `Metoda dostawy: ${deliveryLabel}`,
         paczkomatLine,
         `Metoda płatności: ${paymentLabel}`,
-        form.note.trim(),
+        f.note.trim(),
       ]
         .filter(Boolean)
         .join("\n\n");
 
       // Kupujący inny niż odbiorca ląduje też w notatce - biuro widzi to od
       // razu na zamówieniu, bez zaglądania w payload.
-      const noteWithBuyer = buyerDifferent
+      const noteWithBuyer = bd
         ? [
             noteWithDelivery,
             [
@@ -1774,14 +1851,14 @@ export default function CartPage() {
         body: JSON.stringify({
           quote_code: quoteCode,
           session_token: checkoutSessionToken,
-          customer: { name: `${form.firstName} ${form.lastName}`.trim(), phone: form.phone, email: form.email },
+          customer: { name: `${f.firstName} ${f.lastName}`.trim(), phone: f.phone, email: f.email },
           consents: (() => {
             // Marketing: decyzja z paska ciasteczek (jedno pytanie o oferty
             // e-mailem i SMS-em), razem ze śladem kiedy i gdzie padła.
             const marketing = readMarketingConsent();
             const marketingAccepted = marketing?.accepted === true;
             return {
-              terms: termsAccepted,
+              terms: ta,
               marketing_email: marketingAccepted,
               marketing_sms: marketingAccepted,
               marketing_source: marketing?.source || "",
@@ -1795,25 +1872,25 @@ export default function CartPage() {
             // 2026-09-24 nie prosimy go już o własny adres przy tej metodzie,
             // więc bierzemy adres punktu (kod i miasto wyciągamy z jego
             // opisu, np. "ul. Kwiatowa 1, 78-400 Szczecinek").
-            ...(deliveryMethod === PACZKOMAT_METHOD.id && selectedPaczkomat
+            ...(dm === PACZKOMAT_METHOD.id && sp
               ? (() => {
-                  const raw = String(selectedPaczkomat.address || "");
+                  const raw = String(sp.address || "");
                   const match = raw.match(/^(.*?),?\s*(\d{2}-\d{3})\s+(.*)$/);
                   return {
                     address_line_1: match ? match[1].trim() : raw,
-                    postcode: match ? match[2] : form.postcode,
-                    city: match ? match[3].trim() : form.city,
-                    paczkomat_id: selectedPaczkomat.id,
+                    postcode: match ? match[2] : f.postcode,
+                    city: match ? match[3].trim() : f.city,
+                    paczkomat_id: sp.id,
                     paczkomat_address: raw,
                   };
                 })()
               : {
-                  city: form.city,
-                  postcode: form.postcode,
-                  address_line_1: form.address1,
+                  city: f.city,
+                  postcode: f.postcode,
+                  address_line_1: f.address1,
                 }),
           },
-          buyer: buyerDifferent
+          buyer: bd
             ? {
                 name: buyer.name.trim(),
                 email: buyer.email.trim(),
@@ -1823,7 +1900,7 @@ export default function CartPage() {
                 city: buyer.city.trim(),
               }
             : null,
-          invoice: wantsInvoice
+          invoice: wi
             ? {
                 nip: invoice.nip,
                 company_name: invoice.companyName,
@@ -1834,14 +1911,14 @@ export default function CartPage() {
             : null,
           note_text: noteWithBuyer,
           payment_provider:
-            paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : paymentMethod === "p24" ? "p24" : "stripe",
+            pm === "cod" ? "cod" : pm === "transfer" ? "transfer" : pm === "p24" ? "p24" : "stripe",
           payment_method:
-            paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : paymentMethod === "p24" ? p24Kind : "",
+            pm === "cod" ? "cod" : pm === "transfer" ? "transfer" : pm === "p24" ? p24Kind : "",
           tracking,
-          ...(paymentMethod === "cod" ? { cod_sms_verification_token: codSms.token } : {}),
-          ...(paymentMethod === "online" ? { stripe_method: opts?.stripeMethod || stripeMethod } : {}),
-          ...(paymentMethod === "p24" && opts?.p24MethodId ? { p24_method_id: opts.p24MethodId } : {}),
-          ...(paymentMethod === "p24" ? { p24_regulation_accepted: termsAccepted } : {}),
+          ...(pm === "cod" ? { cod_sms_verification_token: codSms.token } : {}),
+          ...(pm === "online" ? { stripe_method: opts?.stripeMethod || stripeMethod } : {}),
+          ...(pm === "p24" && opts?.p24MethodId ? { p24_method_id: opts.p24MethodId } : {}),
+          ...(pm === "p24" ? { p24_regulation_accepted: ta } : {}),
         }),
       });
       const json = (await response.json()) as OrderCreateResponse;
@@ -1866,7 +1943,7 @@ export default function CartPage() {
         paymentEnabled: Boolean(json.payment_enabled && json.client_secret && json.publishable_key),
         paymentProvider:
           json.payment_provider ||
-          (paymentMethod === "cod" ? "cod" : paymentMethod === "transfer" ? "transfer" : paymentMethod === "p24" ? "p24" : "stripe"),
+          (pm === "cod" ? "cod" : pm === "transfer" ? "transfer" : pm === "p24" ? "p24" : "stripe"),
         accessToken: json.order.access_token,
         transfer: json.order.transfer || null,
         stripeMethod: opts?.stripeMethod || stripeMethod,
@@ -1876,8 +1953,8 @@ export default function CartPage() {
       // the cart only clears once StripePaymentStep reports success (or a
       // payment_enabled:false fallback, handled below).
       if (
-        paymentMethod === "cod" ||
-        paymentMethod === "transfer" ||
+        pm === "cod" ||
+        pm === "transfer" ||
         !Boolean(json.payment_enabled && json.client_secret && json.publishable_key)
       ) {
         clearCart();
@@ -1902,7 +1979,7 @@ export default function CartPage() {
       submittedRef.current = false;
       const message = submitError instanceof Error ? submitError.message : "Wystąpił błąd.";
       setError(message);
-      trackCheckoutIssue("checkout_error", "order_submit_failed", { message, payment_method: paymentMethod });
+      trackCheckoutIssue("checkout_error", "order_submit_failed", { message, payment_method: pm });
       throw submitError instanceof Error ? submitError : new Error(message);
     } finally {
       setIsSubmitting(false);
@@ -2301,6 +2378,35 @@ export default function CartPage() {
     setPaymentConfirmed(true);
   };
 
+  // Ekspres portfelem: ?express=1 zapisuje flagę testową w localStorage,
+  // ?express=0 ją zdejmuje. Blok pokazuje się tylko przy kurierze i płatności
+  // online, dopóki nie ma jeszcze draftu zamówienia.
+  const [expressWalletsOn, setExpressWalletsOn] = useState(EXPRESS_WALLETS_DEFAULT);
+  const [expressWalletsAvailable, setExpressWalletsAvailable] = useState<boolean | null>(null);
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("express") === "1") window.localStorage.setItem("keika_express_wallets", "1");
+      if (params.get("express") === "0") window.localStorage.removeItem("keika_express_wallets");
+      if (window.localStorage.getItem("keika_express_wallets") === "1") setExpressWalletsOn(true);
+    } catch {
+      /* localStorage niedostępny - zostaje domyślne */
+    }
+  }, []);
+  const handleWalletPaid = (paidOrderCode: string) => {
+    trackCheckoutIssue("checkout_pay_click", "wallet_express", { order_code: paidOrderCode });
+    handleStripePaid(paidOrderCode);
+  };
+  const showExpressWallets =
+    expressWalletsOn &&
+    STRIPE_PUBLISHABLE_KEY !== "" &&
+    items.length > 0 &&
+    !orderState &&
+    !paymentConfirmed &&
+    deliveryMethod === COURIER_METHOD.id &&
+    paymentMethod !== "cod" &&
+    expressWalletsAvailable !== false;
+
   return (
     <div className="cart-page">
       <div className="cart-page-gradient-bg" aria-hidden="true" />
@@ -2320,9 +2426,6 @@ export default function CartPage() {
           keika
         </Link>
         <h1>Koszyk</h1>
-        <Link href={backHref} className="cart-page-back">
-          ← Wróć do konfiguratora
-        </Link>
       </header>
 
       <main className="cart-page-main">
@@ -2584,9 +2687,16 @@ export default function CartPage() {
                 ))}
               </ul>
                 ) : null}
+                {!dataLocked ? (
+                  <Link href={backHref} className="cart-page-add-more">
+                    + Dodaj kolejną pozycję
+                  </Link>
+                ) : null}
                 <div className="cart-summary-card-body">
                   <div className="cart-discount-code">
-                    <span className="cart-discount-code-label">Kod rabatowy</span>
+                    {appliedDiscount || discountOpen || discountError ? (
+                      <span className="cart-discount-code-label">Kod rabatowy</span>
+                    ) : null}
                     {appliedDiscount ? (
                       <div className="cart-discount-code-applied">
                         <span>
@@ -2599,10 +2709,15 @@ export default function CartPage() {
                           Usuń
                         </button>
                       </div>
+                    ) : !discountOpen && !discountError ? (
+                      <button type="button" className="cart-discount-code-toggle" onClick={() => setDiscountOpen(true)}>
+                        Masz kod rabatowy?
+                      </button>
                     ) : (
                       <div className="cart-discount-code-row">
                         <input
                           type="text"
+                          autoFocus
                           value={discountCodeInput}
                           onChange={(event) => {
                             setDiscountCodeInput(event.target.value);
@@ -2743,6 +2858,15 @@ export default function CartPage() {
 
             <div className="cart-checkout-layout">
               <div className="cart-checkout-left" onBlurCapture={handleCheckoutFieldBlur}>
+                {showExpressWallets ? (
+                  <ExpressWalletCheckout
+                    publishableKey={STRIPE_PUBLISHABLE_KEY}
+                    amountGrosze={Math.round(payableTotal * 100)}
+                    onCreateOrder={(contact) => submitOrder({ stripeMethod: "wallets", wallet: contact })}
+                    onPaid={handleWalletPaid}
+                    onAvailability={setExpressWalletsAvailable}
+                  />
+                ) : null}
                 {expressEligible ? (
                   <section className="cart-delivery-card cart-dispatch-card">
                     <h2>Termin realizacji</h2>
@@ -2787,6 +2911,18 @@ export default function CartPage() {
                     </div>
                   </section>
                 ) : null}
+
+                {!expressEligible && plisyLeadTime ? (
+                  <section className="cart-delivery-card cart-dispatch-card">
+                    <h2>Termin realizacji</h2>
+                    <p className="cart-dispatch-static">
+                      <strong>Wysyłka w 5–7 dni roboczych</strong> od złożenia zamówienia. Plisy szyjemy na wymiar pod
+                      Twoje okno.
+                    </p>
+                  </section>
+                ) : null}
+
+                <CartTrustBlock onCall={() => trackCheckoutIssue("cart_trust_call", "phone")} />
 
                 {/* Dostawa jako akordeon (właściciel, 2026-09-24): wybór
                     metody od razu otwiera pola, których ta metoda wymaga -
@@ -2862,14 +2998,15 @@ export default function CartPage() {
                                       </CartFieldStatus>
                                     </label>
                                     <label>
-                                      Telefon
+                                      Telefon <span className="cart-field-hint">+48</span>
                                       <CartFieldStatus valid={phoneFieldValid}>
                                         <input
                                           type="tel"
                                           inputMode="tel"
-                                          autoComplete="tel"
+                                          autoComplete="tel-national"
+                                          placeholder="790 215 251"
                                           value={form.phone}
-                                          onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                                          onChange={(event) => handlePhoneChange(event.target.value)}
                                           required
                                         />
                                       </CartFieldStatus>
@@ -2920,9 +3057,7 @@ export default function CartPage() {
                                               inputMode="numeric"
                                               placeholder="00-000"
                                               value={form.postcode}
-                                              onChange={(event) =>
-                                                setForm((current) => ({ ...current, postcode: event.target.value }))
-                                              }
+                                              onChange={(event) => handlePostcodeChange(event.target.value)}
                                             />
                                           </CartFieldStatus>
                                         </label>
@@ -2948,14 +3083,26 @@ export default function CartPage() {
                     })}
                   </div>
 
-                  <label className="cart-checkout-note-field">
-                    Dodatkowe informacje
-                    <textarea
-                      value={form.note}
-                      onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+                  {noteOpen || form.note.trim() !== "" ? (
+                    <label className="cart-checkout-note-field">
+                      Dodatkowe informacje
+                      <textarea
+                        autoFocus={noteOpen}
+                        value={form.note}
+                        onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+                        disabled={dataLocked}
+                      />
+                    </label>
+                  ) : (
+                    <button
+                      type="button"
+                      className="cart-checkout-note-toggle"
+                      onClick={() => setNoteOpen(true)}
                       disabled={dataLocked}
-                    />
-                  </label>
+                    >
+                      + Dodaj uwagi do zamówienia
+                    </button>
+                  )}
                 </section>
 
                 {/* Dane kupującego i faktura w jednym, zwiniętym bloku
