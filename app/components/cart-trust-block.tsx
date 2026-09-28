@@ -3,8 +3,10 @@
 // Blok zaufania nad formularzem w koszyku (właściciel, 2026-09-28): przy
 // produkcie na wymiar największy strach to "a jak źle zmierzę", a 65% osób
 // wchodzących do koszyka wychodziło, nie zaczynając formularza. Same fakty,
-// które i tak są na stronie: ocena sprzedawcy z Allegro (snapshot jak na
-// landingu moskitier), 5 lat gwarancji, producent od 2015, telefon. Do tego
+// które i tak są na stronie: ocena i liczba opinii kupujących (snapshot jak
+// na landingu moskitier; bez słowa "Allegro" - właściciel, 2026-09-28: "nie
+// porównuj do Allegro, po prostu ilość opinii"), 5 lat gwarancji, producent
+// od 2015, telefon. Do tego
 // prawdziwy licznik osób w sklepie (CRM: shop-public/online_count, ta sama
 // definicja co "osoby online" na dashboardzie) - pokazywany od 2 osób,
 // żeby "1 osoba konfiguruje teraz" nie brzmiało pusto.
@@ -64,7 +66,7 @@ export default function CartTrustBlock({ onCall }: { onCall?: () => void }) {
               ★
             </span>
             <span>
-              <strong>{score}/5</strong> {responses ? `· ${responses} opinii kupujących na Allegro` : "ocena kupujących na Allegro"}
+              <strong>{score}/5</strong> {responses ? `· ${responses} opinii kupujących` : "ocena kupujących"}
             </span>
           </li>
         ) : null}
