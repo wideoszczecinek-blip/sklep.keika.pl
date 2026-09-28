@@ -15,7 +15,7 @@
 //      stripe.confirmPayment(...). Sukces = onPaid(orderCode), jak po BLIK-u.
 //   4. Błąd po otwarciu arkusza -> event.paymentFailed() (arkusz się zamyka)
 //      + komunikat pod przyciskami.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Elements, ExpressCheckoutElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, type StripeElementsOptions, type StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js";
 import { pollPaymentIntentUntilSettled } from "./payment-poll";
@@ -129,6 +129,18 @@ function ExpressWalletInner({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Bezpiecznik: jeśli element Stripe nie zgłosi gotowości w 8 s (błąd
+  // integracji, blokada skryptów, brak sieci), blok znika - koszyk nigdy nie
+  // może wisieć na "ładowaniu" portfela.
+  useEffect(() => {
+    if (available !== null) return;
+    const id = window.setTimeout(() => {
+      setAvailable((current) => (current === null ? false : current));
+      onAvailability?.(false);
+    }, 8000);
+    return () => window.clearTimeout(id);
+  }, [available, onAvailability]);
+
   async function handleConfirm(event: StripeExpressCheckoutElementConfirmEvent) {
     if (!stripe || !elements) {
       event.paymentFailed({ reason: "fail" });
@@ -216,7 +228,7 @@ function ExpressWalletInner({
             buttonType: { applePay: "buy", googlePay: "buy" },
             buttonTheme: { applePay: "black", googlePay: "black" },
             buttonHeight: 48,
-            layout: { maxColumns: 1, maxRows: 2, overflow: "never" },
+            layout: { maxColumns: 1, maxRows: 2, overflow: "auto" },
             paymentMethods: { applePay: "always", googlePay: "always", link: "never", amazonPay: "never", paypal: "never", klarna: "never" },
             emailRequired: true,
             phoneNumberRequired: true,
@@ -231,6 +243,10 @@ function ExpressWalletInner({
           }}
           onConfirm={(event) => {
             void handleConfirm(event);
+          }}
+          onLoadError={() => {
+            setAvailable(false);
+            onAvailability?.(false);
           }}
         />
       </div>
