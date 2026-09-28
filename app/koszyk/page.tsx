@@ -26,6 +26,7 @@ import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
+import { readMarketingConsent } from "@/lib/marketing-consent";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
 import PromoSaveModal from "../components/promo-save-modal";
@@ -719,14 +720,12 @@ export default function CartPage() {
   // payment method. Single link/document: "Regulamin sklepu i płatności"
   // (shop terms and payment terms live together, not as two documents).
   const [termsAccepted, setTermsAccepted] = useState(false);
-  // Zgody marketingowe (właściciel, 2026-09-27): jeden mały akordeon
-  // "Akceptuję regulaminy i zgody" - po rozwinięciu wymagany regulamin i
-  // OPCJONALNE, domyślnie odznaczone zgody. Zapisywane w zamówieniu
-  // (payload.consents + kolumny w CRM), bo od dziś to jedyna legalna
-  // podstawa do wysyłania ofert e-mailem/SMS-em.
-  const [marketingEmailConsent, setMarketingEmailConsent] = useState(false);
-  const [marketingSmsConsent, setMarketingSmsConsent] = useState(false);
-  const [consentsOpen, setConsentsOpen] = useState(false);
+  // O marketing pytamy w pasku ciasteczek, nie w koszyku (właściciel,
+  // 2026-09-28: "wracamy do prostego checkoutu ... strasznie spadła
+  // konwersja"). Poprzedni akordeon "Akceptuję regulaminy i zgody" z dwiema
+  // opcjonalnymi zgodami stał dokładnie tam, gdzie klient ma kliknąć
+  // "Zamawiam". Decyzję z paska (lib/marketing-consent.ts) dopinamy do
+  // zamówienia, więc CRM dalej wie, komu wolno wysyłać oferty.
   // Które pola formularza klient już wypełnił - dla tooltipa "online w
   // sklepie" w CRM ("uzupełnia: telefon"). Tylko nazwa pola, nigdy wartość;
   // każde pole raz na wejście na stronę.
@@ -1772,13 +1771,21 @@ export default function CartPage() {
           quote_code: quoteCode,
           session_token: checkoutSessionToken,
           customer: { name: `${form.firstName} ${form.lastName}`.trim(), phone: form.phone, email: form.email },
-          consents: {
-            terms: termsAccepted,
-            marketing_email: marketingEmailConsent,
-            marketing_sms: marketingSmsConsent,
-            accepted_at: new Date().toISOString(),
-            version: "2026-09-27",
-          },
+          consents: (() => {
+            // Marketing: decyzja z paska ciasteczek (jedno pytanie o oferty
+            // e-mailem i SMS-em), razem ze śladem kiedy i gdzie padła.
+            const marketing = readMarketingConsent();
+            const marketingAccepted = marketing?.accepted === true;
+            return {
+              terms: termsAccepted,
+              marketing_email: marketingAccepted,
+              marketing_sms: marketingAccepted,
+              marketing_source: marketing?.source || "",
+              marketing_decided_at: marketing?.decidedAt || "",
+              accepted_at: new Date().toISOString(),
+              version: "2026-09-28",
+            };
+          })(),
           shipping: {
             // Paczkomat: adresem wysyłki jest punkt, nie dom klienta - od
             // 2026-09-24 nie prosimy go już o własny adres przy tej metodzie,
@@ -2227,86 +2234,42 @@ export default function CartPage() {
     postcode: form.postcode,
     address1: form.address1,
   };
+  // Jeden checkbox, jedna linijka - regulamin sklepu i płatności (a przy
+  // Przelewy24 także regulamin operatora, bo to jego usługa).
   const termsCheckbox =
     !paymentConfirmed && items.length > 0 ? (
-      <div className={`cart-consents ${termsAccepted ? "is-accepted" : ""} ${consentsOpen ? "is-open" : ""}`}>
-        <div className="cart-consents-row">
-          <label className={`cart-terms-checkbox cart-consents-main ${termsAccepted ? "is-accepted" : ""}`}>
-            <input
-              type="checkbox"
-              checked={termsAccepted}
-              onChange={(event) => {
-                setTermsAccepted(event.target.checked);
-                trackCheckoutIssue("checkout_terms", event.target.checked ? "on" : "off");
-              }}
-              required
-            />
-            <span>Akceptuję regulaminy i zgody</span>
-          </label>
-          <button
-            type="button"
-            className="cart-consents-toggle"
-            aria-expanded={consentsOpen ? "true" : "false"}
-            onClick={() => setConsentsOpen((open) => !open)}
-          >
-            {consentsOpen ? "Zwiń" : "Szczegóły i wybór"} <i aria-hidden="true">▾</i>
+      <label className={`cart-terms-checkbox ${termsAccepted ? "is-accepted" : ""}`}>
+        <input
+          type="checkbox"
+          checked={termsAccepted}
+          onChange={(event) => {
+            setTermsAccepted(event.target.checked);
+            trackCheckoutIssue("checkout_terms", event.target.checked ? "on" : "off");
+          }}
+          required
+        />
+        <span>
+          Akceptuję{" "}
+          <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
+            regulamin sklepu i płatności
           </button>
-        </div>
-        {consentsOpen ? (
-          <div className="cart-consents-body">
-            <div className="cart-consents-group">
-              <strong>Wymagane do zamówienia</strong>
-              <p>
-                Przeczytałem i akceptuję{" "}
-                <button type="button" className="cart-terms-link" onClick={() => setLegalModalOpen(true)}>
-                  regulamin sklepu i płatności
-                </button>
-                {paymentMethod === "p24" ? (
-                  <>
-                    {" "}
-                    oraz{" "}
-                    <a className="cart-terms-link" href="https://www.przelewy24.pl/regulamin" target="_blank" rel="noopener noreferrer">
-                      regulamin Przelewy24
-                    </a>{" "}
-                    (PayPro S.A.)
-                  </>
-                ) : null}
-                . Dane przetwarzamy zgodnie z{" "}
-                <a className="cart-terms-link" href="/legal/prywatnosc" target="_blank" rel="noopener noreferrer">
-                  polityką prywatności
-                </a>
-                .
-              </p>
-            </div>
-            <div className="cart-consents-group cart-consents-optional">
-              <strong>Opcjonalne, Twój wybór</strong>
-              <label className="cart-consents-option">
-                <input
-                  type="checkbox"
-                  checked={marketingEmailConsent}
-                  onChange={(event) => {
-                    setMarketingEmailConsent(event.target.checked);
-                    trackCheckoutIssue("checkout_consent", event.target.checked ? "email_on" : "email_off");
-                  }}
-                />
-                <span>Chcę dostawać e-mailem informacje o promocjach i nowościach KEIKA.</span>
-              </label>
-              <label className="cart-consents-option">
-                <input
-                  type="checkbox"
-                  checked={marketingSmsConsent}
-                  onChange={(event) => {
-                    setMarketingSmsConsent(event.target.checked);
-                    trackCheckoutIssue("checkout_consent", event.target.checked ? "sms_on" : "sms_off");
-                  }}
-                />
-                <span>Zgadzam się na kontakt SMS-em lub telefonicznie w sprawie ofert KEIKA.</span>
-              </label>
-              <small>Zgody możesz wycofać w każdej chwili, pisząc na biuro@keika.pl.</small>
-            </div>
-          </div>
-        ) : null}
-      </div>
+          {paymentMethod === "p24" ? (
+            <>
+              {" "}
+              oraz{" "}
+              <a
+                className="cart-terms-link"
+                href="https://www.przelewy24.pl/regulamin"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                regulamin Przelewy24
+              </a>
+            </>
+          ) : null}
+          .
+        </span>
+      </label>
     ) : null;
   const handleStripePaid = (paidOrderCode: string) => {
     const current = orderStateRef.current;
