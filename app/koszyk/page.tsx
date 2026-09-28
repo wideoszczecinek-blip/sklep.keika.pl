@@ -1076,7 +1076,11 @@ export default function CartPage() {
   // address essentially always has a house/building number) makes a
   // genuinely unfinished fragment fail this check instead of quietly
   // "validating".
-  const address1FieldValid = form.address1.trim().length >= 5 && /\d/.test(form.address1);
+  // Numer BEZ nazwy ulicy też nie jest adresem: realne zamówienie z adresem
+  // "30" pojechało kurierem donikąd (2026-09-28), więc wymagamy również
+  // litery - czyli nazwy ulicy albo miejscowości.
+  const address1FieldValid =
+    form.address1.trim().length >= 5 && /\d/.test(form.address1) && /\p{L}/u.test(form.address1);
   const nipFieldValid = invoice.nip.trim().length === 10;
   const companyNameFieldValid = invoice.companyName.trim() !== "";
   const invoiceStreetFieldValid = invoice.street.trim() !== "";
