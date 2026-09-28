@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import InstallmentTileHint from "./installment-tile-hint";
 import { crmGetJson } from "@/lib/crm-get";
+import { installmentsAvailable } from "@/lib/installments";
 import type { StripeMethod } from "./stripe-method-step";
 
 // Jedno źródło kafelków płatności dla całego sklepu: koszyk (/koszyk) i
@@ -196,7 +197,12 @@ export function buildPaymentTiles(options: {
       logo: LOGO_PAYPO,
     });
   }
-  if (p24KindAvailable(p24Settings, "p24_installments")) {
+  // Raty pokazujemy dopiero od 100 zł (i do 50 000 zł) - to widełki
+  // Przelewy24. Poniżej 100 zł P24 nie ma rat w ofercie, więc klient, który
+  // kliknął "Raty", trafiał na listę metod BEZ rat i porzucał płatność
+  // (sprawdzone w API P24 dla 95,68 zł, 2026-09-28). amount = 0 znaczy
+  // "kwota nieznana" - panel klienta buduje kafelki raz, dla wielu zamówień.
+  if (p24KindAvailable(p24Settings, "p24_installments") && (amount <= 0 || installmentsAvailable(amount))) {
     tiles.push({
       kind: "p24_installments",
       title: "Raty",

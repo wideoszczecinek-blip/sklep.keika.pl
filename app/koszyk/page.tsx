@@ -2019,6 +2019,14 @@ export default function CartPage() {
     transferEnabled: transferSettings.enabled,
     amount: payableTotal,
   });
+  // Gdy kwota koszyka spadnie poniżej progu rat (klient usunął pozycję),
+  // kafelek "Raty" znika - wybór trzeba wyczyścić, żeby nie zostać z
+  // zaznaczoną metodą, której już nie widać (2026-09-28).
+  useEffect(() => {
+    if (!onlinePaymentKind) return;
+    if (paymentTiles.some((tile) => tile.kind === onlinePaymentKind)) return;
+    setOnlinePaymentKind("");
+  }, [paymentTiles, onlinePaymentKind]);
   // Opcje wybranej metody renderują się pod JEJ kafelkiem - klient widzi pole
   // BLIK-a dokładnie tam, gdzie kliknął, a nie na końcu listy metod.
   const renderMethodPanel = (kind: PaymentKind) => {
