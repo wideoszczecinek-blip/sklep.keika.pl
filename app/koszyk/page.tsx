@@ -1139,11 +1139,16 @@ export default function CartPage() {
   // address essentially always has a house/building number) makes a
   // genuinely unfinished fragment fail this check instead of quietly
   // "validating".
-  // Numer BEZ nazwy ulicy też nie jest adresem: realne zamówienie z adresem
-  // "30" pojechało kurierem donikąd (2026-09-28), więc wymagamy również
-  // litery - czyli nazwy ulicy albo miejscowości.
+  // Wieś bez nazw ulic: tam CAŁY adres to numer domu ("65", "12a", "13/4") i
+  // takiego zamówienia nie wolno blokować (zgłoszenie klientki, 2026-09-29 -
+  // poprzedniego dnia wymóg litery odciął jej checkout). Miejscowość jest w
+  // polu "Miasto", a na etykietę skleja ją CRM (_shipment_order_prefill.php).
+  // Wszystko inne musi wyglądać jak prawdziwy adres: długość, cyfra i litera.
+  const trimmedAddress1 = form.address1.trim();
+  const looksLikeHouseNumberOnly = /^\d+\s*[a-zA-Z]?(\s*[/-]\s*\d+\s*[a-zA-Z]?)?$/.test(trimmedAddress1);
   const address1FieldValid =
-    form.address1.trim().length >= 5 && /\d/.test(form.address1) && /\p{L}/u.test(form.address1);
+    looksLikeHouseNumberOnly ||
+    (trimmedAddress1.length >= 5 && /\d/.test(trimmedAddress1) && /\p{L}/u.test(trimmedAddress1));
   const nipFieldValid = invoice.nip.trim().length === 10;
   const companyNameFieldValid = invoice.companyName.trim() !== "";
   const invoiceStreetFieldValid = invoice.street.trim() !== "";
@@ -3040,6 +3045,7 @@ export default function CartPage() {
                                           <CartFieldStatus valid={address1FieldValid}>
                                             <input
                                               autoComplete="street-address"
+                                              placeholder="np. Kwiatowa 5 — albo sam numer, jeśli wieś bez ulic"
                                               value={form.address1}
                                               onChange={(event) =>
                                                 setForm((current) => ({ ...current, address1: event.target.value }))
