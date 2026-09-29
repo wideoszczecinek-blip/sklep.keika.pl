@@ -776,9 +776,10 @@ export default function CartPage() {
   // i nic nie wpisał. Dane z 14 dni: mobile, przewinięty koszyk bez ani
   // jednego pola - 71 sesji, 1 zamówienie; kto wypełnia dane - 113 sesji,
   // 65 zamówień. Tego drugiego nie wolno zaczepiać.
-  const cartKeepRef = useRef<HTMLElement | null>(null);
   const [cartKeepVisible, setCartKeepVisible] = useState(false);
   const cartKeepSeenRef = useRef(false);
+  const cartKeepObserverRef = useRef<IntersectionObserver | null>(null);
+  const cartKeepMetaRef = useRef<{ arm: string; slug: string }>({ arm: "", slug: "" });
   const cartEmailNudge = useCartEmailNudge({ context: "cart", hasItems: items.length > 0, formStarted: checkoutFormStarted });
   // Which arm this device is in - read after mount so SSR and the first
   // client render agree (the "control" copy), then the real arm takes over.
@@ -2393,7 +2394,14 @@ export default function CartPage() {
       </label>
     ) : null;
   useEffect(() => {
-    const node = cartKeepRef.current;
+    cartKeepMetaRef.current = { arm: cartEmailArm, slug: items[0]?.productSlug || "" };
+  }, [cartEmailArm, items]);
+  // Callback ref, nie useEffect: odpala się dokładnie wtedy, gdy węzeł trafia
+  // do DOM (koszyk renderuje się dopiero po hydracji, więc zwykły efekt
+  // zastawał pusty ref). Próg 0 + rootMargin -10% = "wjechał w kadr".
+  const cartKeepRef = useCallback((node: HTMLElement | null) => {
+    cartKeepObserverRef.current?.disconnect();
+    cartKeepObserverRef.current = null;
     if (!node || cartKeepSeenRef.current) return;
     if (typeof IntersectionObserver === "undefined") {
       setCartKeepVisible(true);
@@ -2401,19 +2409,18 @@ export default function CartPage() {
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        const entry = entries[0];
-        if (!entry || !entry.isIntersecting || cartKeepSeenRef.current) return;
+        if (!entries.some((entry) => entry.isIntersecting) || cartKeepSeenRef.current) return;
         cartKeepSeenRef.current = true;
         setCartKeepVisible(true);
-        trackCheckoutIssue("cart_keep_inview", cartEmailArm, { product: items[0]?.productSlug || "" });
+        trackCheckoutIssue("cart_keep_inview", cartKeepMetaRef.current.arm, { product: cartKeepMetaRef.current.slug });
         observer.disconnect();
+        cartKeepObserverRef.current = null;
       },
-      { threshold: 0.35 },
+      { threshold: 0, rootMargin: "0px 0px -10% 0px" },
     );
     observer.observe(node);
-    return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contactUntouched, items.length, orderState]);
+    cartKeepObserverRef.current = observer;
+  }, []);
 
   const handleStripePaid = (paidOrderCode: string) => {
     const current = orderStateRef.current;
