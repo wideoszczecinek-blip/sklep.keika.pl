@@ -3390,19 +3390,40 @@ html[data-theme="light"] .mhelp-cta-primary {
   padding: 0.28rem 0.62rem;
 }
 
+/* Ciało kroku NIE MOŻE ucinać treści. Wcześniej stało tu
+   "max-height: 560px; overflow: hidden" - limit był potrzebny animacji
+   rozwijania, ale każdą dłuższą listę obcinał bez paska przewijania, więc
+   reszta opcji znikała bez śladu (materiały rolet dachowych, 2026-09-29;
+   wcześniej kolory moskitier - patrz komentarz przy --mount niżej).
+   Teraz wysokość jest naturalna, a zwinięty krok znika z układu; miękkie
+   rozwinięcie robi animacja przezroczystości, której docelowa wysokość jest
+   obojętna. Kroki, które MAJĄ mieć własny pasek przewijania (kolory osprzętu,
+   kolory tkanin, wymiary), nadal to robią - patrz wyjątki niżej. */
 .hero-product-step-body {
-  max-height: 560px;
   min-height: 0;
-  overflow: hidden;
-  transition: max-height 0.34s ease, opacity 0.28s ease, transform 0.3s ease;
-  opacity: 1;
-  transform: translateY(0);
+  overflow: visible;
+  animation: heroStepBodyReveal 0.3s ease both;
 }
 
 .hero-product-step-accordion.is-collapsed .hero-product-step-body {
-  max-height: 0;
-  opacity: 0;
-  transform: translateY(-6px);
+  display: none;
+}
+
+@keyframes heroStepBodyReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-product-step-body {
+    animation: none;
+  }
 }
 
 .hero-product-config-step-title--muted {
@@ -3480,14 +3501,9 @@ html[data-theme="light"] .mhelp-cta-primary {
   aspect-ratio: 1 / 1;
 }
 
-/* The mount step's accordion needs a taller reveal cap than the shared
-   560px default (.hero-product-step-body) - square cards in a 2-column
-   grid run taller than the short rectangular swatches everyone else uses.
-   Scoped to this one step's accordion so it doesn't change the open/close
-   animation feel for hardware/fabric/dimensions elsewhere. */
-.hero-product-step-accordion--mount .hero-product-step-body {
-  max-height: 1000px;
-}
+/* (Krok montażu miał tu własny, wyższy limit - obejście wspólnego 560px.
+   Po tym, jak ciało kroku dostało naturalną wysokość, nie ma czego
+   podnosić.) */
 
 /* Plisy's hardware/mechanizm-color swatches are real 600x300 (2:1) photos,
    not the square-ish thumbnails the shared .hardware-card-image rule
