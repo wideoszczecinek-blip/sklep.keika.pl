@@ -283,20 +283,17 @@ function StripeMethodInner({
     trackPaymentIssue(result.paymentIntent?.status || "unknown_status", intent.orderCode, rejectedMessage);
   }
 
-  // codeOverride: kod prosto z pola/schowka (stan React może jeszcze nie
-  // być zaktualizowany, gdy 6. cyfra dopiero wpadła). source: "blik" =
-  // przycisk, "blik_auto" = automat po 6 cyfrach, "blik_paste" = "Wklej".
-  async function handlePayBlik(codeOverride?: string, source: "blik" | "blik_auto" | "blik_paste" = "blik") {
+  async function handlePayBlik() {
     if (!stripe || isSubmitting) return;
     if (disabledReason) {
       setError(disabledReason);
       return;
     }
     if (!termsAccepted) {
-      setError("Zaznacz akceptację regulaminu poniżej, a płatność ruszy od razu.");
+      setError("Zaznacz akceptację regulaminu poniżej, aby zapłacić.");
       return;
     }
-    const code = (codeOverride ?? blikCode).replace(/\D+/g, "");
+    const code = blikCode.replace(/\D+/g, "");
     if (code.length !== 6) {
       setError("Wpisz 6-cyfrowy kod BLIK z aplikacji swojego banku.");
       blikInputRef.current?.focus();
@@ -304,7 +301,7 @@ function StripeMethodInner({
     }
     setIsSubmitting(true);
     setError("");
-    trackPaymentChoice("checkout_pay_click", source, existingOrderCode || "");
+    trackPaymentChoice("checkout_pay_click", "blik", existingOrderCode || "");
     let intent: CreatedIntent | null = null;
     try {
       intent = await resolveIntent();
@@ -355,38 +352,19 @@ function StripeMethodInner({
     void pollUntilSettled(result.paymentIntent?.client_secret || intent.clientSecret, intent.orderCode);
   }
 
-  // BLIK bez klikania (właściciel, 2026-09-29): 6. cyfra od razu uruchamia
-  // płatność - kod BLIK żyje 2 minuty, a każda sekunda między wpisaniem a
-  // "Płacę" to szansa, że wygaśnie (17% prób BLIK w 14 dniach kończyło się
-  // "nieprawidłowy kod"). Gdy regulamin nie jest jeszcze zaznaczony, kod
-  // czeka (autoPayPendingRef) i rusza w chwili zaznaczenia.
+  // Kod BLIK: pole przyjmuje same cyfry, a płatność rusza dopiero po
+  // kliknięciu "Płacę" (właściciel, 2026-09-29: automat po 6. cyfrze
+  // wprowadzony rano i tego samego dnia wycofany - "wywal ten automat").
   const clipboardSupported =
     typeof navigator !== "undefined" && Boolean(navigator.clipboard && typeof navigator.clipboard.readText === "function");
-  const autoPayPendingRef = useRef(false);
-  function handleBlikInput(raw: string, source: "blik_auto" | "blik_paste" = "blik_auto") {
-    const next = raw.replace(/\D+/g, "").slice(0, 6);
-    setBlikCode(next);
+  function handleBlikInput(raw: string) {
+    setBlikCode(raw.replace(/\D+/g, "").slice(0, 6));
     if (error) setError("");
-    if (next.length !== 6 || isSubmitting) return;
-    if (termsAccepted && !disabledReason) {
-      void handlePayBlik(next, source);
-      return;
-    }
-    autoPayPendingRef.current = true;
-    if (!termsAccepted) setError("Zaznacz akceptację regulaminu poniżej, a płatność ruszy od razu.");
   }
-  useEffect(() => {
-    if (!autoPayPendingRef.current || !termsAccepted || disabledReason || isSubmitting) return;
-    const code = blikCode.replace(/\D+/g, "");
-    autoPayPendingRef.current = false;
-    if (code.length !== 6) return;
-    setError("");
-    void handlePayBlik(code, "blik_auto");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [termsAccepted, disabledReason]);
   // Schowek: przeglądarka nie pozwala czytać go bez gestu użytkownika (iOS
   // pokazuje własne "Wklej" po dotknięciu), więc automatycznego wklejania
-  // nie da się zrobić - ale jeden przycisk "Wklej" obok pola wystarczy.
+  // nie da się zrobić - przycisk "Wklej" obok pola wypełnia je jednym
+  // dotknięciem, a zapłatę i tak potwierdza klient przyciskiem.
   async function handleBlikPaste() {
     if (!clipboardSupported || isSubmitting) return;
     let text = "";
@@ -402,7 +380,8 @@ function StripeMethodInner({
       blikInputRef.current?.focus();
       return;
     }
-    handleBlikInput(code.slice(0, 6), "blik_paste");
+    handleBlikInput(code.slice(0, 6));
+    trackPaymentChoice("blik_paste", "filled", existingOrderCode || "");
   }
   async function resolveIntent(): Promise<CreatedIntent | null> {
     if (existingClientSecret && existingOrderCode) {
@@ -510,8 +489,7 @@ function StripeMethodInner({
               placeholder="000000"
               // Surowe cyfry w value (odstępy robi CSS letter-spacing):
               // formatowanie "123 456" w kontrolowanym polu przestawiało kursor
-              // na telefonie przed spacją. 6. cyfra od razu uruchamia płatność
-              // (handleBlikInput), przycisk zostaje do ponowienia.
+              // na telefonie przed spacją - dało się wpisać tylko 5 cyfr.
               value={digits}
               onChange={(event) => handleBlikInput(event.target.value)}
               onKeyDown={(event) => {
@@ -529,7 +507,7 @@ function StripeMethodInner({
               </button>
             ) : null}
           </div>
-          <small>Wygeneruj kod w aplikacji banku i wpisz go tutaj. Po 6. cyfrze sprawdzamy go od razu - potem potwierdź płatność w aplikacji.</small>
+          <small>Wygeneruj kod w aplikacji banku i wpisz go tutaj. Po kliknięciu „Płacę” potwierdź płatność w aplikacji.</small>
         </div>
         {error ? <div className="cart-checkout-error">{error}</div> : null}
         {termsSlot}
