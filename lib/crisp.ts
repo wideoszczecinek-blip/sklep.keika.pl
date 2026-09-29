@@ -37,6 +37,10 @@ export function openCrispChat(prefill?: string): void {
     // nic do zrobienia
   }
 
+  // Automat na długie oczekiwanie: po 3 minutach bez odpowiedzi klient
+  // dostaje prośbę o kontakt (lib/chat-follow-up.ts).
+  void import("@/lib/chat-follow-up").then(({ armChatFollowUp }) => armChatFollowUp()).catch(() => null);
+
   if (!injected) {
     injected = true;
     const s = document.createElement("script");
