@@ -10,11 +10,17 @@
  *   po 3 minutach - prosimy o kontakt, żeby rozmowa nie skończyła się ciszą,
  *                   nawet jeśli klient zamknie stronę.
  *
- * Kiedy automat MILCZY: jeśli konsultant odpowiedział niedawno (do 15 minut
- * wstecz), kolejna wiadomość klienta niczego nie uruchamia - rozmowa toczy
- * się na żywo i bot nie ma się po co wtrącać. Dopiero gdy od odpowiedzi
- * minęło więcej niż 15 minut, traktujemy to jak nowe podejście do tematu i
- * automat rusza od początku.
+ * Kiedy automat MILCZY:
+ *   - konsultant odpowiedział niedawno (do 15 minut wstecz) - kolejna
+ *     wiadomość klienta niczego nie uruchamia, bo rozmowa toczy się na żywo;
+ *     dopiero po tym oknie traktujemy wiadomość jak nowe podejście do tematu,
+ *   - konsultant właśnie pisze - Crisp przysyła wtedy "message:compose:
+ *     received" (wskaźnik "pisze"), a samo pisanie potrafi trwać dłużej niż
+ *     minuta; każdy taki sygnał odsuwa komunikat o 90 sekund, więc nie
+ *     wyskakuje w chwili, gdy odpowiedź już powstaje.
+ *
+ * Czego Crisp NIE daje: potwierdzenia, że konsultant PRZECZYTAŁ wiadomość -
+ * takiego zdarzenia nie ma w SDK chatboxa, więc na odczyt nie da się reagować.
  *
  * Odpowiedź konsultanta kasuje odliczanie i zeruje oba etapy, więc przy tym
  * nowym podejściu komunikaty mogą pojawić się ponownie. W obrębie jednej fali
@@ -25,6 +31,8 @@ const WAITING_MS = 60 * 1000;
 const CONTACT_MS = 3 * 60 * 1000;
 /** Jak świeża musi być odpowiedź konsultanta, żeby automat się nie odzywał. */
 const QUIET_AFTER_REPLY_MS = 15 * 60 * 1000;
+/** Ile czasu po ostatnim sygnale "konsultant pisze" automat jeszcze milczy. */
+const TYPING_GRACE_MS = 90 * 1000;
 
 const STAGE_KEYS = {
   waiting: "keika_chat_wait_notice",
@@ -42,6 +50,7 @@ type Stage = keyof typeof STAGE_KEYS;
 type CrispWindow = Window & { $crisp?: unknown[] };
 
 let armed = false;
+let typingAt = 0;
 const timers: Partial<Record<Stage, number>> = {};
 
 function readFlag(key: string): string | null {
@@ -84,6 +93,12 @@ function clearTimers(): void {
 function showStage(stage: Stage): void {
   const w = window as CrispWindow;
   if (!w.$crisp || alreadyShown(stage)) return;
+  // Gdy konsultant pisał długo, oba etapy stają się należne w tej samej
+  // chwili - wtedy informacja o kolejce musi pójść przed prośbą o kontakt,
+  // inaczej klient czyta je w odwrotnej kolejności.
+  if (stage === "contact" && !alreadyShown("waiting")) {
+    showStage("waiting");
+  }
   writeFlag(STAGE_KEYS[stage], "1");
   // "message:show" wstawia wiadomość do okna czatu tak, jakby napisał ją
   // konsultant - klient widzi ją od razu, bez czekania na kogokolwiek.
@@ -102,6 +117,17 @@ function replyIsFresh(): boolean {
   return Date.now() - at <= QUIET_AFTER_REPLY_MS;
 }
 
+/** Odpala etap, chyba że konsultant właśnie pisze - wtedy czeka dalej. */
+function fireStage(stage: Stage): void {
+  delete timers[stage];
+  const sinceTyping = typingAt > 0 ? Date.now() - typingAt : Number.POSITIVE_INFINITY;
+  if (sinceTyping < TYPING_GRACE_MS) {
+    timers[stage] = window.setTimeout(() => fireStage(stage), TYPING_GRACE_MS - sinceTyping);
+    return;
+  }
+  showStage(stage);
+}
+
 function onCustomerMessage(): void {
   clearTimers();
   // Rozmowa na żywo - konsultant odpisał przed chwilą, więc nie wtrącamy się.
@@ -112,15 +138,18 @@ function onCustomerMessage(): void {
   ];
   for (const [stage, delay] of plan) {
     if (alreadyShown(stage)) continue;
-    timers[stage] = window.setTimeout(() => {
-      delete timers[stage];
-      showStage(stage);
-    }, delay);
+    timers[stage] = window.setTimeout(() => fireStage(stage), delay);
   }
+}
+
+/** Konsultant zaczął pisać - odsuwamy komunikaty, aż skończy. */
+function onConsultantTyping(): void {
+  typingAt = Date.now();
 }
 
 function onConsultantReply(): void {
   clearTimers();
+  typingAt = 0;
   writeFlag(LAST_REPLY_KEY, String(Date.now()));
   // Nowa fala rozmowy zaczyna się z czystym kontem: gdy klient wróci do
   // tematu po dłuższej przerwie, komunikaty mogą pojawić się ponownie.
@@ -137,9 +166,17 @@ export function armChatFollowUp(): void {
   w.$crisp = w.$crisp || [];
   w.$crisp.push(["on", "message:sent", onCustomerMessage]);
   w.$crisp.push(["on", "message:received", onConsultantReply]);
+  // Wskaźnik "konsultant pisze" - jedyny sygnał obecności, jaki Crisp daje
+  // chatboxowi (potwierdzeń odczytu nie udostępnia).
+  w.$crisp.push(["on", "message:compose:received", onConsultantTyping]);
   // Zamknięcie okna nie przerywa odliczania: klient może wrócić, a jeśli nie,
   // i tak lepiej, żeby po powrocie zastał prośbę o kontakt.
 }
 
 /** Tylko do testów. */
-export const CHAT_WAIT_STAGES_MS = { waiting: WAITING_MS, contact: CONTACT_MS, quietAfterReply: QUIET_AFTER_REPLY_MS };
+export const CHAT_WAIT_STAGES_MS = {
+  waiting: WAITING_MS,
+  contact: CONTACT_MS,
+  quietAfterReply: QUIET_AFTER_REPLY_MS,
+  typingGrace: TYPING_GRACE_MS,
+};
