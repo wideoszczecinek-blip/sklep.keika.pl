@@ -21,6 +21,7 @@ import { trackShopStep } from "@/lib/track-step";
 import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configurator-state";
 import { activatePromoCode, applyPromoToPrice, getPromoRemainingMs, isPromoActive, type PromoPreview } from "@/lib/promo";
 import { ensurePromoQuoteCode, hasSavedPromoLink } from "@/lib/promo-save";
+import PlisyFabricGallery from "@/features/plisy/FabricGallery";
 import RoofWindowSearchSelector from "./RoofWindowSearchSelector";
 import MissingModelForm from "./MissingModelForm";
 import RoofBlindPreview from "./RoofBlindPreview";
@@ -160,6 +161,8 @@ export default function ConfiguratorPanel({
   const [stepTwoCollapsed, setStepTwoCollapsed] = useState(Boolean(seed.materialTypeId));
   const [selectedFabricId, setSelectedFabricId] = useState(seed.fabricId || "");
   const [stepThreeCollapsed, setStepThreeCollapsed] = useState(Boolean(seed.fabricId));
+  // Który kolor materiału ogląda teraz klient w dużej galerii (null = zamknięta).
+  const [fabricGalleryIndex, setFabricGalleryIndex] = useState<number | null>(null);
   const [labelsResolved, setLabelsResolved] = useState(false);
 
   // Step 4 - the window.
@@ -306,6 +309,15 @@ export default function ConfiguratorPanel({
   const fabricOptionsForMaterial = useMemo(() => (profile?.fabrics || []).filter((option) => option.materialTypeId === selectedMaterialTypeId), [profile, selectedMaterialTypeId]);
   const selectedFabric = useMemo(() => (profile?.fabrics || []).find((option) => option.id === selectedFabricId) || null, [profile, selectedFabricId]);
   const fabricChosen = Boolean(selectedFabricId);
+
+  /** Wybór koloru materiału - identyczny z kafelka i z dużej galerii. */
+  const pickFabricOption = useCallback((option: { id: string; label: string }, source = "swatch") => {
+    trackShopStep("select_fabric_color", option.label, { option_id: option.id, source });
+    setSelectedFabricId(option.id);
+    setStepThreeCollapsed(true);
+    window.setTimeout(() => scrollStepIntoView(stepFourRef.current), 380);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Switching material type invalidates a fabric picked under the other one.
   useEffect(() => {
@@ -742,28 +754,54 @@ export default function ConfiguratorPanel({
                 )}
                 <div className="hero-product-step-body">
                   <div className="hero-product-mesh-grid hero-product-mesh-grid--visual rd-fabric-grid">
-                    {fabricOptionsForMaterial.map((option) => {
+                    {fabricOptionsForMaterial.map((option, optionIndex) => {
                       const isActive = option.id === selectedFabricId;
                       return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
-                          title={option.subtitle ? `${option.label} — ${option.subtitle}` : option.label}
-                          onClick={() => {
-                            trackShopStep("select_fabric_color", option.label, { option_id: option.id });
-                            setSelectedFabricId(option.id);
-                            setStepThreeCollapsed(true);
-                            window.setTimeout(() => scrollStepIntoView(stepFourRef.current), 380);
-                          }}
-                        >
-                          <span className="hero-product-mesh-option-image" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 160)})` }} />
-                          <strong>{option.label}</strong>
-                          {option.subtitle ? <span className="rd-fabric-sub">{option.subtitle}</span> : null}
-                        </button>
+                        <div key={option.id} className="plisy-swatch-cell">
+                          <button
+                            type="button"
+                            className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
+                            title={option.subtitle ? `${option.label} — ${option.subtitle}` : option.label}
+                            onClick={() => pickFabricOption(option)}
+                          >
+                            <span className="hero-product-mesh-option-image" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 160)})` }} />
+                            <strong>{option.label}</strong>
+                            {option.subtitle ? <span className="rd-fabric-sub">{option.subtitle}</span> : null}
+                          </button>
+                          {/* Miniatura nie wystarcza, żeby ocenić kolor materiału -
+                              lupa otwiera duże zdjęcie z karuzelą po całej liście
+                              (właściciel, 2026-09-29). */}
+                          <button
+                            type="button"
+                            className="plisy-swatch-zoom"
+                            aria-label={`Powiększ ${option.label}`}
+                            title="Powiększ"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setFabricGalleryIndex(optionIndex);
+                              trackShopStep("fabric_gallery_open", option.label, { source: "swatch", option_id: option.id });
+                            }}
+                          >
+                            🔍
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
+                  {fabricGalleryIndex !== null && fabricOptionsForMaterial.length ? (
+                    <PlisyFabricGallery
+                      swatches={fabricOptionsForMaterial}
+                      index={Math.min(fabricGalleryIndex, fabricOptionsForMaterial.length - 1)}
+                      collectionLabel={selectedMaterialType?.label || "Materiały"}
+                      selectedId={selectedFabricId}
+                      onIndexChange={setFabricGalleryIndex}
+                      onClose={() => setFabricGalleryIndex(null)}
+                      onPick={(option) => {
+                        setFabricGalleryIndex(null);
+                        pickFabricOption(option, "gallery");
+                      }}
+                    />
+                  ) : null}
                 </div>
               </section>
 

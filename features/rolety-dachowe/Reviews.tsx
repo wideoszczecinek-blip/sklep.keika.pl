@@ -16,6 +16,9 @@ import { RD_REVIEWS, RD_REVIEWS_ARE_PLACEHOLDERS, RD_SHOW_PLACEHOLDER_REVIEWS, t
 
 // Three up front, three more per click - same as plisy and the FAQ.
 const PAGE = 3;
+/** Poniżej tylu ocen nie pokazujemy oceny SAMEGO produktu - "5,00 z jednej
+ * opinii" wygląda gorzej niż brak oceny (właściciel, 2026-09-29). */
+const MIN_PRODUCT_RATINGS = 5;
 const PRODUCT_RATING_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/allegro_offer_rating_public.php?slug=rolety-dachowe";
 const COMPANY_REVIEWS_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/company_reviews_public.php";
 const ROOF_KEYWORDS = /dachow|velux|fakro|roto|okpol|dakstra|poddasz|kaset|skos/i;
@@ -126,35 +129,54 @@ export default function RoofReviews({ crmReviews }: { crmReviews?: CrmReview[] }
 
   if (!total) {
     const shownCompany = companyReviews.slice(0, visible);
+    // Zbiorcza ocena wszystkich naszych produktów - tyle opinii, ile realnie
+    // mamy w feedzie z CRM.
+    const companyTotal = companyReviews.length;
+    const companyAverage = companyTotal ? companyReviews.reduce((sum, review) => sum + review.stars, 0) / companyTotal : 0;
+    const productHasSample = rating !== null && rating.total >= MIN_PRODUCT_RATINGS;
+    const opinii = (n: number) => (n === 1 ? "opinia" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "opinie" : "opinii");
     return (
       <div className="hero-product-allegro-reviews">
-        {rating ? (
-          <div className="allegro-rating-summary">
+        {companyTotal ? (
+          <div className="allegro-rating-summary rd-company-rating">
             <div className="allegro-rating-score">
-              <strong>{rating.average.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-              <Stars n={Math.round(rating.average)} />
-              <span className="allegro-rating-count">{rating.total.toLocaleString("pl-PL")} {rating.total === 1 ? "ocena" : rating.total % 10 >= 2 && rating.total % 10 <= 4 && (rating.total % 100 < 12 || rating.total % 100 > 14) ? "oceny" : "ocen"}</span>
-              <span className="allegro-rating-source">Ocena tej rolety dachowej od klientów, którzy kupili ją na Allegro</span>
+              <strong>{companyAverage.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+              <Stars n={Math.round(companyAverage)} />
+              <span className="allegro-rating-count">
+                {companyTotal.toLocaleString("pl-PL")} {opinii(companyTotal)} kupujących
+              </span>
+              <span className="allegro-rating-source">Oceny produktów KEIKA wystawione przez klientów</span>
             </div>
-            <div className="allegro-rating-distribution">
-              {rating.distribution.map((entry) => {
-                const pct = rating.total ? Math.round((entry.count / rating.total) * 100) : 0;
-                return (
-                  <div key={entry.stars} className="allegro-rating-bar-row">
-                    <span>{entry.stars}★</span>
-                    <span className="allegro-rating-bar-track">
-                      <span className="allegro-rating-bar-fill" style={{ width: `${pct}%` }} />
-                    </span>
-                    <span className="allegro-rating-bar-count">{entry.count}</span>
-                  </div>
-                );
-              })}
-            </div>
+            <ul className="rd-company-facts">
+              <li>
+                <strong>Od 2015</strong>
+                <span>własna produkcja osłon okiennych na wymiar</span>
+              </li>
+              <li>
+                <strong>5 lat</strong>
+                <span>gwarancji na mechanizm i wykonanie</span>
+              </li>
+              <li>
+                <strong>30 dni</strong>
+                <span>na zwrot</span>
+              </li>
+              {productHasSample ? (
+                <li>
+                  <strong>{rating.average.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                  <span>
+                    ocena tej rolety ({rating.total.toLocaleString("pl-PL")} {opinii(rating.total)})
+                  </span>
+                </li>
+              ) : null}
+            </ul>
           </div>
         ) : null}
         {companyReviews.length ? (
           <>
-            <p className="rd-reviews-lead">Opinie klientów KEIKA — o roletach dachowych i o naszej firmie w różnych kanałach sprzedaży.</p>
+            <p className="rd-reviews-lead">
+              Rolety dachowe są u nas nowym produktem, dlatego pokazujemy opinie o wszystkich osłonach KEIKA — te dotyczące rolet
+              dachowych są oznaczone.
+            </p>
             <ul className="hero-product-reviews">
               {shownCompany.map((review) => (
                 <li key={review.id}>

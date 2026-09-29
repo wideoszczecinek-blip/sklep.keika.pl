@@ -14,9 +14,20 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
-import type { FabricSwatch } from "./shared";
 
-export default function PlisyFabricGallery({
+/** Tyle galeria potrzebuje wiedzieć o próbce. Plisy mają jeszcze kod tkaniny
+ * i osobną miniaturę, rolety dachowe samą nazwę i zdjęcie - stąd pola
+ * opcjonalne i generyk, żeby onPick oddawał dokładnie ten typ, który
+ * konfigurator do niej przekazał. */
+export type GallerySwatch = {
+  id: string;
+  label: string;
+  code?: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+};
+
+export default function PlisyFabricGallery<T extends GallerySwatch>({
   swatches,
   index,
   collectionLabel,
@@ -25,12 +36,12 @@ export default function PlisyFabricGallery({
   onPick,
   onClose,
 }: {
-  swatches: FabricSwatch[];
+  swatches: T[];
   index: number;
   collectionLabel: string;
   selectedId: string;
   onIndexChange: (index: number) => void;
-  onPick: (swatch: FabricSwatch) => void;
+  onPick: (swatch: T) => void;
   onClose: () => void;
 }) {
   const total = swatches.length;
@@ -69,7 +80,7 @@ export default function PlisyFabricGallery({
 
   if (!current || typeof document === "undefined") return null;
 
-  const label = current.label || current.code;
+  const label = current.label || current.code || "";
   const code = current.code && current.label !== current.code ? current.code : "";
   const isSelected = current.id === selectedId;
 
@@ -106,7 +117,7 @@ export default function PlisyFabricGallery({
           <img
             key={current.id}
             className={`plisy-fg-img ${loaded ? "is-loaded" : ""}`}
-            src={optimizeImageUrl(current.imageUrl || current.thumbnailUrl, 1200, 80)}
+            src={optimizeImageUrl(current.imageUrl || current.thumbnailUrl || "", 1200, 80)}
             alt={`Tkanina ${label}${code ? ` (${code})` : ""}`}
             onLoad={() => setLoaded(true)}
           />
@@ -133,11 +144,11 @@ export default function PlisyFabricGallery({
               type="button"
               role="listitem"
               className={`plisy-fg-thumb ${i === index ? "is-active" : ""} ${swatch.id === selectedId ? "is-selected" : ""}`}
-              title={swatch.label || swatch.code}
-              aria-label={`Pokaż ${swatch.label || swatch.code}`}
+              title={swatch.label || swatch.code || ""}
+              aria-label={`Pokaż ${swatch.label || swatch.code || ""}`}
               onClick={() => onIndexChange(i)}
             >
-              <img src={optimizeImageUrl(swatch.thumbnailUrl || swatch.imageUrl, 160)} alt="" loading="lazy" />
+              <img src={optimizeImageUrl(swatch.thumbnailUrl || swatch.imageUrl || "", 160)} alt="" loading="lazy" />
             </button>
           ))}
         </div>
