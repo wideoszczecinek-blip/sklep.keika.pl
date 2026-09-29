@@ -76,7 +76,7 @@ export default function CartTrustBlock() {
             ✓
           </span>
           <span>
-            <strong>5 lat gwarancji</strong> · producent osłon okiennych na wymiar od 2015 roku
+            <strong>5 lat gwarancji</strong> · producent od 2015 roku
           </span>
         </li>
         <li>

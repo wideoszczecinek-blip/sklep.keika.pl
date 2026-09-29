@@ -79,7 +79,7 @@ import { buildPaymentTiles } from "@/app/components/payment-methods";
 import InstallmentTileHint from "@/app/components/installment-tile-hint";
 import CartTrustBlock from "@/app/components/cart-trust-block";
 import ExpressWalletCheckout, { type WalletContact } from "@/app/components/express-wallet-checkout";
-import { formatPhoneInput } from "@/lib/phone";
+import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
@@ -281,7 +281,7 @@ const PACZKOMAT_METHOD: DeliveryMethod = {
 const COD_DELIVERY_METHOD: DeliveryMethod = {
   id: COD_DELIVERY_METHOD_ID,
   label: "Kurier - płatność za pobraniem",
-  description: "Płacisz kurierowi gotówką lub kartą przy odbiorze",
+  description: "Płatność przy odbiorze, gotówką lub kartą",
 };
 
 function getAvailableDeliveryMethods(items: CartLineItem[], subtotal: number): DeliveryMethod[] {
@@ -335,9 +335,25 @@ type DiscountCheckResponse = {
 // correctly filled in. Purely visual - doesn't touch the field's own value/
 // onChange/validation logic, which stays exactly as each call site already
 // had it.
-function CartFieldStatus({ valid, children }: { valid: boolean; children: React.ReactNode }) {
+function CartFieldStatus({
+  valid,
+  children,
+  fieldKey,
+  error,
+}: {
+  valid: boolean;
+  children: React.ReactNode;
+  /** Klucz pola (data-checkout-field) - po nim "Brakuje: ..." przewija
+   * do pola i je podświetla (właściciel, 2026-09-30). */
+  fieldKey?: string;
+  /** Komunikat pod polem, gdy jest niepoprawne i klient już je dotknął. */
+  error?: string;
+}) {
   return (
-    <div className={`cart-field ${valid ? "is-valid" : "is-pending"}`}>
+    <div
+      className={`cart-field ${valid ? "is-valid" : error ? "is-invalid" : "is-pending"}`}
+      data-checkout-field={fieldKey || undefined}
+    >
       <span className="cart-field-input-wrap">
         {children}
         {valid ? (
@@ -346,6 +362,11 @@ function CartFieldStatus({ valid, children }: { valid: boolean; children: React.
           </span>
         ) : null}
       </span>
+      {error ? (
+        <span className="cart-field-error" role="alert">
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -770,6 +791,11 @@ export default function CartPage() {
   // (40 s idle / desktop exit intent / tab return) and never once the
   // customer has started the form - see lib/cart-email-nudge.ts.
   const [checkoutFormStarted, setCheckoutFormStarted] = useState(false);
+  // Pola, które klient już opuścił - tylko przy nich pokazujemy komunikat
+  // błędu (świeży formularz nie może być czerwony). Po dotknięciu
+  // zablokowanego przycisku płatności pokazujemy błędy wszędzie.
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(() => new Set());
+  const [showAllFieldErrors, setShowAllFieldErrors] = useState(false);
   // Baner "Nie decydujesz dzisiaj?" odsłania się płynnie dopiero wtedy, gdy
   // wjedzie w pole widzenia, a klient NIE tknął jeszcze danych kontaktowych
   // (właściciel, 2026-09-29). Na telefonie to znaczy: przewinął cały koszyk
@@ -791,6 +817,8 @@ export default function CartPage() {
     const target = event.target as HTMLElement | null;
     if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLTextAreaElement)) return;
     if (target instanceof HTMLInputElement && (target.type === "radio" || target.type === "checkbox")) return;
+    const touchedKey = target.closest("[data-checkout-field]")?.getAttribute("data-checkout-field") || "";
+    if (touchedKey) setTouchedFields((current) => (current.has(touchedKey) ? current : new Set(current).add(touchedKey)));
     if (target.value.trim() === "") return;
     setCheckoutFormStarted(true);
     // Silent capture of a typed e-mail (2026-09-26) - the CRM mails "Twój
@@ -1126,7 +1154,7 @@ export default function CartPage() {
   // gets pre-filled into the Stripe payment form and used for the receipt.
   const emailValid = /\S+@\S+\.\S+/.test(form.email.trim());
   const contactReady =
-    form.firstName.trim() !== "" && form.lastName.trim() !== "" && form.phone.trim() !== "" && emailValid;
+    form.firstName.trim() !== "" && form.lastName.trim() !== "" && isValidPhone(form.phone) && emailValid;
   // Per-field "is this one correctly filled in?" booleans - used both for
   // the subtle-accent/green-checkmark feedback on each input (see
   // CartFieldStatus) *and*, as of now, for the actual readiness gates right
@@ -1139,7 +1167,7 @@ export default function CartPage() {
   // company name but no street/postcode/city on an invoice.
   const firstNameFieldValid = form.firstName.trim() !== "";
   const lastNameFieldValid = form.lastName.trim() !== "";
-  const phoneFieldValid = form.phone.trim() !== "";
+  const phoneFieldValid = isValidPhone(form.phone);
   const cityFieldValid = form.city.trim() !== "";
   const postcodeFieldValid = /^\d{2}-?\d{3}$/.test(form.postcode.trim());
   // Real live bug 2026-09-11: multiple paid orders shipped with a truncated
@@ -2162,6 +2190,8 @@ export default function CartPage() {
           <StripeMethodStep
             key={stripeMethod}
             termsSlot={termsCheckbox}
+            blockedHint={missingFieldsHint}
+            onBlocked={jumpToFirstProblem}
             publishableKey={STRIPE_PUBLISHABLE_KEY}
             method={stripeMethod}
             amountGrosze={Math.round(payableTotal * 100)}
@@ -2227,21 +2257,22 @@ export default function CartPage() {
           ) : null}
           {thisKind === "p24_installments" ? <InstallmentOffer amount={payableTotal} /> : null}
           {error ? <div className="cart-checkout-error">{error}</div> : null}
-          {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
           {termsCheckbox}
           <button
             type="button"
-            className="cart-page-checkout-cta"
+            className={`cart-page-checkout-cta ${payBlockedReason ? "is-blocked" : ""}`}
             onClick={() => {
+              if (payBlockedReason) {
+                jumpToFirstProblem();
+                return;
+              }
               setError("");
               submittedRef.current = false;
               void submitOrder({ p24MethodId: thisKind === "p24_transfer" ? p24BankId : 0 }).catch(() => {});
             }}
             disabled={
-              !termsAccepted ||
               isSubmitting ||
-              Boolean(payBlockedReason) ||
-              (thisKind === "p24_transfer" && p24Banks.length > 0 && !p24BankId)
+              (!payBlockedReason && (!termsAccepted || (thisKind === "p24_transfer" && p24Banks.length > 0 && !p24BankId)))
             }
           >
             {isSubmitting
@@ -2254,15 +2285,16 @@ export default function CartPage() {
                   : "Wybierz bank, aby zapłacić"
                 : // Raty i PayPo kończą się wnioskiem u finansującego, nie
                   // zapłatą - CTA ma mówić dokładnie to (właściciel,
-                  // 2026-09-24).
-                  "Przechodzę do wniosku"}
+                  // 2026-09-24; brzmienie "online" - 2026-09-30).
+                  "Przechodzę do wniosku online"}
           </button>
+          {missingFieldsHint}
           <p className="cart-checkout-cta-hint">
             {thisKind === "p24_transfer"
-              ? "Przeniesiemy Cię bezpośrednio na stronę logowania wybranego banku (Przelewy24). Po zatwierdzeniu przelewu wrócisz do sklepu z potwierdzeniem."
+              ? "Zapłacisz na stronie swojego banku i wrócisz do sklepu."
               : thisKind === "p24_paypo"
-                ? "Przeniesiemy Cię do PayPo. Zamówienie przyjmujemy do realizacji po pozytywnej weryfikacji przez PayPo – za zakupy zapłacisz PayPo później (do 30 dni lub w ratach), bez dodatkowych opłat z naszej strony."
-                : "Przeniesiemy Cię do wniosku ratalnego Przelewy24. Bank podaje tam ostateczną wysokość rat i RRSO; zamówienie przyjmujemy do realizacji po pozytywnej decyzji."}
+                ? "Wniosek wypełnisz na stronie PayPo. Realizacja po pozytywnej decyzji."
+                : "Wniosek wypełnisz na stronie Przelewy24. Bank poda ostateczną ratę i RRSO."}
           </p>
         </>
       );
@@ -2272,24 +2304,25 @@ export default function CartPage() {
     return (
       <>
         {error ? <div className="cart-checkout-error">{error}</div> : null}
-        {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
         {termsCheckbox}
         <button
           type="button"
-          className="cart-page-checkout-cta"
+          className={`cart-page-checkout-cta ${payBlockedReason ? "is-blocked" : ""}`}
           onClick={() => {
+            if (payBlockedReason) {
+              jumpToFirstProblem();
+              return;
+            }
             setError("");
             submittedRef.current = false;
             void submitOrder().catch(() => {});
           }}
-          disabled={!termsAccepted || isSubmitting || Boolean(payBlockedReason)}
+          disabled={isSubmitting || (!payBlockedReason && !termsAccepted)}
         >
           {isSubmitting ? "Zapisujemy zamówienie…" : "Zamawiam i płacę przelewem"}
         </button>
-        <p className="cart-checkout-cta-hint">
-          Po kliknięciu pokażemy dane do przelewu z unikatowym tytułem i wyślemy je na Twój e-mail. Zamówienie ruszy do
-          realizacji po zaksięgowaniu wpłaty – zwykle do 2 dni roboczych.
-        </p>
+        {missingFieldsHint}
+        <p className="cart-checkout-cta-hint">Dane do przelewu pokażemy od razu i wyślemy e-mailem. Realizacja po zaksięgowaniu wpłaty.</p>
       </>
     );
   };
@@ -2348,6 +2381,83 @@ export default function CartPage() {
     form.address1.trim() === "" &&
     form.postcode.trim() === "" &&
     form.city.trim() === "";
+  // Które pola blokują płatność, w kolejności formularza: klucz
+  // (data-checkout-field), krótka nazwa do listy "Do zapłaty brakuje:" i
+  // komunikat pod polem. Właściciel, 2026-09-30: "zwracamy, które pole klient
+  // ma poprawić, po tapnięciu scroll do pola, pole pulsuje na czerwono" -
+  // wcześniej był tylko ogólnik "Uzupełnij dane powyżej", a 9 z 45
+  // porzucających doszło do płatności i nigdy nie kliknęło "Płacę".
+  const checkoutProblems: Array<{ key: string; chip: string; message: string }> = [];
+  if (!emailValid) {
+    checkoutProblems.push({ key: "email", chip: "e-mail", message: form.email.trim() === "" ? "Podaj adres e-mail." : "Sprawdź adres e-mail." });
+  }
+  if (!isValidPhone(form.phone)) {
+    checkoutProblems.push({ key: "phone", chip: "telefon", message: phoneError(form.phone) });
+  }
+  if (!firstNameFieldValid) checkoutProblems.push({ key: "firstName", chip: "imię", message: "Podaj imię." });
+  if (!lastNameFieldValid) checkoutProblems.push({ key: "lastName", chip: "nazwisko", message: "Podaj nazwisko." });
+  if (requiresAddress) {
+    if (!address1FieldValid) {
+      const street = form.address1.trim();
+      checkoutProblems.push({
+        key: "address1",
+        chip: street !== "" && !/\d/.test(street) ? "numer domu" : "ulica i numer",
+        message:
+          street === ""
+            ? "Podaj ulicę i numer domu."
+            : !/\d/.test(street)
+              ? "Dopisz numer domu."
+              : !/\p{L}/u.test(street)
+                ? "Podaj nazwę ulicy."
+                : "Podaj pełny adres: ulica i numer.",
+      });
+    }
+    if (!postcodeFieldValid) checkoutProblems.push({ key: "postcode", chip: "kod pocztowy", message: "Kod pocztowy w formacie 00-000." });
+    if (!cityFieldValid) checkoutProblems.push({ key: "city", chip: "miasto", message: "Podaj miasto." });
+  }
+  if (!paczkomatReady) checkoutProblems.push({ key: "paczkomat", chip: "paczkomat", message: "Wybierz paczkomat." });
+  if (buyerDifferent) {
+    if (!buyerNameValid) checkoutProblems.push({ key: "buyerName", chip: "kupujący", message: "Podaj imię i nazwisko albo nazwę firmy." });
+    if (!buyerEmailValid) checkoutProblems.push({ key: "buyerEmail", chip: "e-mail kupującego", message: "Podaj poprawny adres e-mail." });
+  }
+  if (wantsInvoice) {
+    if (!nipFieldValid) checkoutProblems.push({ key: "nip", chip: "NIP", message: "NIP to 10 cyfr." });
+    if (!companyNameFieldValid) checkoutProblems.push({ key: "companyName", chip: "nazwa firmy", message: "Podaj nazwę firmy." });
+    if (!invoiceStreetFieldValid) checkoutProblems.push({ key: "invoiceStreet", chip: "adres firmy", message: "Podaj ulicę i numer." });
+    if (!invoicePostcodeFieldValid) checkoutProblems.push({ key: "invoicePostcode", chip: "kod firmy", message: "Kod pocztowy w formacie 00-000." });
+    if (!invoiceCityFieldValid) checkoutProblems.push({ key: "invoiceCity", chip: "miasto firmy", message: "Podaj miasto." });
+  }
+  const fieldError = (key: string): string | undefined => {
+    if (!touchedFields.has(key) && !showAllFieldErrors) return undefined;
+    return checkoutProblems.find((problem) => problem.key === key)?.message;
+  };
+  const jumpToField = (key: string) => {
+    setTouchedFields((current) => (current.has(key) ? current : new Set(current).add(key)));
+    const wrap = document.querySelector<HTMLElement>(`[data-checkout-field="${key}"]`);
+    if (!wrap) return;
+    wrap.scrollIntoView({ behavior: "smooth", block: "center" });
+    wrap.classList.remove("is-pulse");
+    void wrap.offsetWidth;
+    wrap.classList.add("is-pulse");
+    window.setTimeout(() => wrap.classList.remove("is-pulse"), 2000);
+    const input = wrap.querySelector<HTMLElement>("input, select, textarea");
+    if (input) window.setTimeout(() => input.focus({ preventScroll: true }), 450);
+    trackCheckoutIssue("checkout_fix_field", key);
+  };
+  const jumpToFirstProblem = () => {
+    setShowAllFieldErrors(true);
+    if (checkoutProblems.length) jumpToField(checkoutProblems[0].key);
+  };
+  const missingFieldsHint = checkoutProblems.length ? (
+    <div className="cart-missing" role="status">
+      <span className="cart-missing-label">Do zapłaty brakuje:</span>
+      {checkoutProblems.map((problem) => (
+        <button key={problem.key} type="button" className="cart-missing-chip" onClick={() => jumpToField(problem.key)}>
+          {problem.chip}
+        </button>
+      ))}
+    </div>
+  ) : null;
   const checkoutContact: CheckoutContact = {
     name: `${form.firstName} ${form.lastName}`.trim(),
     phone: form.phone,
@@ -2945,9 +3055,7 @@ export default function CartPage() {
                         <span className="cart-delivery-option-copy">
                           <strong>Standard</strong>
                           <small>
-                            {dispatchInfo
-                              ? `Wysyłka ${dispatchInfo.standardLabel} - zgodnie z planem produkcji`
-                              : "Wysyłka zgodnie z planem produkcji (zwykle 3 dni robocze)"}
+                            {dispatchInfo ? `Wysyłka ${dispatchInfo.standardLabel}` : "Wysyłka zwykle w 3 dni robocze"}
                           </small>
                         </span>
                         <span className="cart-delivery-option-price">Gratis</span>
@@ -2964,8 +3072,8 @@ export default function CartPage() {
                         <span className="cart-delivery-option-copy">
                           <strong>⚡ Ekspres - priorytet produkcji</strong>
                           <small>
-                            Wysyłka {dispatchInfo ? dispatchInfo.expressLabel : "tego samego dnia roboczego"} (zamówienie do{" "}
-                            {dispatchInfo?.cutoffLabel || "12:00"} w dzień roboczy = wysyłka tego samego dnia)
+                            Wysyłka {dispatchInfo ? dispatchInfo.expressLabel : "jutro"}. Do {dispatchInfo?.cutoffLabel || "12:00"} w dzień
+                            roboczy wysyłamy tego samego dnia.
                           </small>
                         </span>
                         <span className="cart-delivery-option-price">+{formatPln(EXPRESS_FEE_AMOUNT)}</span>
@@ -2978,8 +3086,7 @@ export default function CartPage() {
                   <section className="cart-delivery-card cart-dispatch-card">
                     <h2>Termin realizacji</h2>
                     <p className="cart-dispatch-static">
-                      <strong>Wysyłka w 5–7 dni roboczych</strong> od złożenia zamówienia. Plisy szyjemy na wymiar pod
-                      Twoje okno.
+                      <strong>Wysyłka w 5–7 dni roboczych.</strong>
                     </p>
                   </section>
                 ) : null}
@@ -3026,13 +3133,15 @@ export default function CartPage() {
                             {isActive ? (
                               <div className="cart-delivery-accordion-inner">
                                 {isPaczkomat ? (
-                                  <PaczkomatPicker
-                                    value={selectedPaczkomat}
-                                    onChange={(point) => {
-                                      setSelectedPaczkomat(point);
-                                      if (point) trackCheckoutIssue("checkout_paczkomat", point.id, { address: point.address });
-                                    }}
-                                  />
+                                  <div data-checkout-field="paczkomat">
+                                    <PaczkomatPicker
+                                      value={selectedPaczkomat}
+                                      onChange={(point) => {
+                                        setSelectedPaczkomat(point);
+                                        if (point) trackCheckoutIssue("checkout_paczkomat", point.id, { address: point.address });
+                                      }}
+                                    />
+                                  </div>
                                 ) : null}
                                 <fieldset className="cart-checkout-form" disabled={dataLocked}>
                                   <legend className="cart-delivery-fields-legend">
@@ -3048,7 +3157,7 @@ export default function CartPage() {
                                   <div className="cart-checkout-form-grid">
                                     <label className="is-wide">
                                       E-mail
-                                      <CartFieldStatus valid={emailValid}>
+                                      <CartFieldStatus valid={emailValid} fieldKey="email" error={fieldError("email")}>
                                         <input
                                           type="email"
                                           inputMode="email"
@@ -3061,7 +3170,7 @@ export default function CartPage() {
                                     </label>
                                     <label>
                                       Telefon <span className="cart-field-hint">+48</span>
-                                      <CartFieldStatus valid={phoneFieldValid}>
+                                      <CartFieldStatus valid={phoneFieldValid} fieldKey="phone" error={fieldError("phone")}>
                                         <input
                                           type="tel"
                                           inputMode="tel"
@@ -3075,7 +3184,7 @@ export default function CartPage() {
                                     </label>
                                     <label>
                                       Imię
-                                      <CartFieldStatus valid={firstNameFieldValid}>
+                                      <CartFieldStatus valid={firstNameFieldValid} fieldKey="firstName" error={fieldError("firstName")}>
                                         <input
                                           autoComplete="given-name"
                                           value={form.firstName}
@@ -3086,7 +3195,7 @@ export default function CartPage() {
                                     </label>
                                     <label>
                                       Nazwisko
-                                      <CartFieldStatus valid={lastNameFieldValid}>
+                                      <CartFieldStatus valid={lastNameFieldValid} fieldKey="lastName" error={fieldError("lastName")}>
                                         <input
                                           autoComplete="family-name"
                                           value={form.lastName}
@@ -3099,7 +3208,7 @@ export default function CartPage() {
                                       <>
                                         <label className="is-wide">
                                           Ulica i numer
-                                          <CartFieldStatus valid={address1FieldValid}>
+                                          <CartFieldStatus valid={address1FieldValid} fieldKey="address1" error={fieldError("address1")}>
                                             <input
                                               autoComplete="street-address"
                                               placeholder="np. Kwiatowa 5 — albo sam numer, jeśli wieś bez ulic"
@@ -3114,7 +3223,7 @@ export default function CartPage() {
                                         </label>
                                         <label>
                                           Kod pocztowy
-                                          <CartFieldStatus valid={postcodeFieldValid}>
+                                          <CartFieldStatus valid={postcodeFieldValid} fieldKey="postcode" error={fieldError("postcode")}>
                                             <input
                                               autoComplete="postal-code"
                                               inputMode="numeric"
@@ -3126,7 +3235,7 @@ export default function CartPage() {
                                         </label>
                                         <label>
                                           Miasto
-                                          <CartFieldStatus valid={cityFieldValid}>
+                                          <CartFieldStatus valid={cityFieldValid} fieldKey="city" error={fieldError("city")}>
                                             <input
                                               autoComplete="address-level2"
                                               value={form.city}
@@ -3215,7 +3324,7 @@ export default function CartPage() {
                         <div className="cart-checkout-form-grid">
                           <label className="is-wide">
                             Imię i nazwisko / firma
-                            <CartFieldStatus valid={buyerNameValid}>
+                            <CartFieldStatus valid={buyerNameValid} fieldKey="buyerName" error={fieldError("buyerName")}>
                               <input
                                 value={buyer.name}
                                 onChange={(event) => setBuyer((current) => ({ ...current, name: event.target.value }))}
@@ -3224,7 +3333,7 @@ export default function CartPage() {
                           </label>
                           <label>
                             E-mail
-                            <CartFieldStatus valid={buyerEmailValid}>
+                            <CartFieldStatus valid={buyerEmailValid} fieldKey="buyerEmail" error={fieldError("buyerEmail")}>
                               <input
                                 type="email"
                                 inputMode="email"
@@ -3286,7 +3395,7 @@ export default function CartPage() {
                             <label className="cart-invoice-nip-field">
                               NIP
                               <div className="cart-invoice-nip-row">
-                                <CartFieldStatus valid={nipFieldValid && !nipLookupLoading}>
+                                <CartFieldStatus valid={nipFieldValid && !nipLookupLoading} fieldKey="nip" error={fieldError("nip")}>
                                   <input
                                     inputMode="numeric"
                                     placeholder="np. 1234567890"
@@ -3309,7 +3418,7 @@ export default function CartPage() {
                             <div className="cart-checkout-form-grid">
                               <label>
                                 Nazwa firmy
-                                <CartFieldStatus valid={companyNameFieldValid}>
+                                <CartFieldStatus valid={companyNameFieldValid} fieldKey="companyName" error={fieldError("companyName")}>
                                   <input
                                     value={invoice.companyName}
                                     onChange={(event) =>
@@ -3320,7 +3429,7 @@ export default function CartPage() {
                               </label>
                               <label>
                                 Ulica i numer
-                                <CartFieldStatus valid={invoiceStreetFieldValid}>
+                                <CartFieldStatus valid={invoiceStreetFieldValid} fieldKey="invoiceStreet" error={fieldError("invoiceStreet")}>
                                   <input
                                     value={invoice.street}
                                     onChange={(event) => setInvoice((current) => ({ ...current, street: event.target.value }))}
@@ -3329,7 +3438,7 @@ export default function CartPage() {
                               </label>
                               <label>
                                 Kod pocztowy
-                                <CartFieldStatus valid={invoicePostcodeFieldValid}>
+                                <CartFieldStatus valid={invoicePostcodeFieldValid} fieldKey="invoicePostcode" error={fieldError("invoicePostcode")}>
                                   <input
                                     value={invoice.postcode}
                                     onChange={(event) =>
@@ -3340,7 +3449,7 @@ export default function CartPage() {
                               </label>
                               <label>
                                 Miasto
-                                <CartFieldStatus valid={invoiceCityFieldValid}>
+                                <CartFieldStatus valid={invoiceCityFieldValid} fieldKey="invoiceCity" error={fieldError("invoiceCity")}>
                                   <input
                                     value={invoice.city}
                                     onChange={(event) => setInvoice((current) => ({ ...current, city: event.target.value }))}
@@ -3353,21 +3462,6 @@ export default function CartPage() {
                       </div>
                     ) : null}
 
-                    <div className="cart-section-next-wrap">
-                      <button
-                        type="button"
-                        className="cart-section-next-button"
-                        disabled={!(contactReady && addressReady && paczkomatReady && invoiceReady && buyerReady)}
-                        onClick={() => {
-                          trackCheckoutIssue("checkout_next", "platnosc");
-                          scrollToSection(paymentSectionRef);
-                        }}
-                        aria-label="Przejdź do płatności"
-                        title="Przejdź do płatności"
-                      >
-                        Do płatności <span aria-hidden="true">→</span>
-                      </button>
-                    </div>
                   </fieldset>
                 </section>
               </div>
@@ -3392,7 +3486,7 @@ export default function CartPage() {
                     </p>
                   ) : (
                     <>
-                      <p className="cart-payment-method-badge">Wybierz sposób płatności</p>
+                      <p className="cart-payment-method-badge">Sposób płatności</p>
                       {renderPaymentKindChooser()}
                     </>
                   )}
@@ -3400,19 +3494,23 @@ export default function CartPage() {
                   {paymentMethod === "cod" ? (
                     <>
                       {error ? <div className="cart-checkout-error">{error}</div> : null}
-                      {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
                       {termsCheckbox}
                       <button
                         type="button"
-                        className="cart-page-checkout-cta"
+                        className={`cart-page-checkout-cta ${payBlockedReason ? "is-blocked" : ""}`}
                         onClick={() => {
+                          if (payBlockedReason) {
+                            jumpToFirstProblem();
+                            return;
+                          }
                           setCodModalOpen(true);
                           void sendCodSms();
                         }}
-                        disabled={!termsAccepted || Boolean(payBlockedReason)}
+                        disabled={!payBlockedReason && !termsAccepted}
                       >
                         Zamawiam
                       </button>
+                      {missingFieldsHint}
                     </>
                   ) : null}
                 </section>
@@ -3443,8 +3541,7 @@ export default function CartPage() {
                   <strong>Nie decydujesz dzisiaj?</strong>
                   {cartEmailArm === "show" ? (
                     <span>
-                      Wyślij sobie ten koszyk na e-mail — <strong>zamrozimy dzisiejszą cenę na 7 dni</strong>, nawet
-                      jeśli promocja wygaśnie wcześniej. Wrócisz jednym kliknięciem, na telefonie albo na komputerze.
+                      Wyślemy Ci ten koszyk na e-mail i <strong>zamrozimy dzisiejszą cenę na 7 dni</strong>.
                     </span>
                   ) : (
                     <span>
@@ -3456,8 +3553,7 @@ export default function CartPage() {
                       ) : (
                         <>wymiary i wycena zostaną zapisane</>
                       )}
-                      . Wrócisz, kiedy będziesz gotowy — na telefonie albo na komputerze, bez wpisywania czegokolwiek od
-                      nowa.
+                      .
                     </span>
                   )}
                 </span>
@@ -3505,7 +3601,7 @@ export default function CartPage() {
             <button
               type="button"
               className="cart-sticky-bar-cta is-secondary"
-              onClick={() => scrollToSection(deliveryDataReady ? paymentSectionRef : shippingAddressSectionRef)}
+              onClick={() => (deliveryDataReady ? scrollToSection(paymentSectionRef) : jumpToFirstProblem())}
             >
               {deliveryDataReady ? "Do płatności ↓" : "Uzupełnij dane ↓"}
             </button>

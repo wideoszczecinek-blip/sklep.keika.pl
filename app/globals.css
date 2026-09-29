@@ -19057,3 +19057,90 @@ html[data-theme="light"] .rd-company-facts li {
   }
 }
 
+
+/* Checkout 2026-09-30: komunikat pod polem, "Do zaplaty brakuje: ..." z
+   przewinieciem do pola i czerwonym pulsowaniem, zablokowany przycisk klikalny. */
+.cart-field-error {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: #ffb4a6;
+}
+.cart-field.is-invalid input,
+.cart-field.is-invalid textarea {
+  border-color: rgba(255, 120, 96, 0.75);
+}
+@keyframes cart-field-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 96, 72, 0.7);
+    border-color: #ff6048;
+  }
+  60% {
+    box-shadow: 0 0 0 0.55rem rgba(255, 96, 72, 0);
+    border-color: #ff6048;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 96, 72, 0);
+  }
+}
+.cart-field.is-pulse input,
+.cart-field.is-pulse textarea,
+[data-checkout-field="paczkomat"].is-pulse {
+  animation: cart-field-pulse 0.65s ease-out 3;
+  border-radius: 0.6rem;
+}
+.cart-missing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: rgba(240, 248, 255, 0.78);
+}
+.cart-missing-label {
+  font-weight: 700;
+}
+.cart-missing-chip {
+  border: 1px solid rgba(255, 120, 96, 0.6);
+  background: rgba(255, 96, 72, 0.12);
+  color: #ffd0c7;
+  border-radius: 999px;
+  padding: 0.22rem 0.65rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cart-missing-chip:hover {
+  background: rgba(255, 96, 72, 0.24);
+}
+.cart-page-checkout-cta.is-blocked {
+  opacity: 0.6;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cart-field.is-pulse input,
+  .cart-field.is-pulse textarea,
+  [data-checkout-field="paczkomat"].is-pulse {
+    animation: none;
+    border-color: #ff6048;
+  }
+}
+html[data-theme="light"] .cart-field-error {
+  color: #c4432c;
+}
+html[data-theme="light"] .cart-field.is-invalid input,
+html[data-theme="light"] .cart-field.is-invalid textarea {
+  border-color: rgba(196, 67, 44, 0.7);
+}
+html[data-theme="light"] .cart-missing {
+  color: rgba(19, 40, 67, 0.78);
+}
+html[data-theme="light"] .cart-missing-chip {
+  border-color: rgba(196, 67, 44, 0.5);
+  background: rgba(196, 67, 44, 0.08);
+  color: #a3311f;
+}
+

@@ -107,6 +107,8 @@ export default function StripeMethodStep({
   onPaid,
   submitLabel = "Płacę",
   termsSlot,
+  blockedHint,
+  onBlocked,
 }: {
   publishableKey: string;
   method: StripeMethod;
@@ -117,6 +119,11 @@ export default function StripeMethodStep({
    * metody (właściciel, 2026-09-29: "akceptacja regulaminu wszędzie nad CTA,
    * jak najbliżej"). Koszyk podaje swój element; strona ponowienia nic. */
   termsSlot?: ReactNode;
+  /** Co pokazać pod zablokowanym przyciskiem zamiast samego disabledReason
+   * (koszyk podaje listę "Do zapłaty brakuje: ..."). */
+  blockedHint?: ReactNode;
+  /** Klik w zablokowany przycisk - koszyk przewija do pierwszego braku. */
+  onBlocked?: () => void;
   /** Pusty string = można płacić; inaczej powód (np. brakujące dane), który
    * blokuje przycisk i jest pokazywany pod polem. */
   disabledReason: string;
@@ -153,6 +160,8 @@ export default function StripeMethodStep({
         onPaid={onPaid}
         submitLabel={submitLabel}
         termsSlot={termsSlot}
+        blockedHint={blockedHint}
+        onBlocked={onBlocked}
       />
     </Elements>
   );
@@ -169,6 +178,8 @@ function StripeMethodInner({
   onPaid,
   submitLabel,
   termsSlot,
+  blockedHint,
+  onBlocked,
 }: {
   method: StripeMethod;
   contact: CheckoutContact;
@@ -180,6 +191,11 @@ function StripeMethodInner({
   onPaid: (orderCode: string) => void;
   submitLabel: string;
   termsSlot?: ReactNode;
+  /** Co pokazać pod zablokowanym przyciskiem zamiast samego disabledReason
+   * (koszyk podaje listę "Do zapłaty brakuje: ..."). */
+  blockedHint?: ReactNode;
+  /** Klik w zablokowany przycisk - koszyk przewija do pierwszego braku. */
+  onBlocked?: () => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -286,7 +302,8 @@ function StripeMethodInner({
   async function handlePayBlik() {
     if (!stripe || isSubmitting) return;
     if (disabledReason) {
-      setError(disabledReason);
+      if (onBlocked) onBlocked();
+      else setError(disabledReason);
       return;
     }
     if (!termsAccepted) {
@@ -393,7 +410,8 @@ function StripeMethodInner({
   async function handlePay() {
     if (!stripe || !elements || isSubmitting) return;
     if (disabledReason) {
-      setError(disabledReason);
+      if (onBlocked) onBlocked();
+      else setError(disabledReason);
       return;
     }
     if (!termsAccepted) {
@@ -507,19 +525,25 @@ function StripeMethodInner({
               </button>
             ) : null}
           </div>
-          <small>Wygeneruj kod w aplikacji banku i wpisz go tutaj. Po kliknięciu „Płacę” potwierdź płatność w aplikacji.</small>
         </div>
         {error ? <div className="cart-checkout-error">{error}</div> : null}
         {termsSlot}
         <button
           type="button"
-          className="cart-page-checkout-cta"
-          onClick={() => void handlePayBlik()}
-          disabled={isSubmitting || !termsAccepted || Boolean(disabledReason) || digits.length !== 6}
+          className={`cart-page-checkout-cta ${disabledReason ? "is-blocked" : ""}`}
+          onClick={() => {
+            if (disabledReason) {
+              if (onBlocked) onBlocked();
+              else setError(disabledReason);
+              return;
+            }
+            void handlePayBlik();
+          }}
+          disabled={isSubmitting || (!disabledReason && (!termsAccepted || digits.length !== 6))}
         >
           {isSubmitting ? "Przetwarzamy…" : submitLabel}
         </button>
-        {disabledReason ? <p className="cart-checkout-cta-hint">{disabledReason}</p> : null}
+        {disabledReason ? (blockedHint ?? <p className="cart-checkout-cta-hint">{disabledReason}</p>) : null}
       </div>
     );
   }
@@ -549,7 +573,8 @@ function StripeMethodInner({
             }}
             onClick={(event) => {
               if (disabledReason) {
-                setError(disabledReason);
+                if (onBlocked) onBlocked();
+                else setError(disabledReason);
                 return;
               }
               if (!termsAccepted) {
@@ -564,8 +589,7 @@ function StripeMethodInner({
         </div>
         {walletsAvailable === false ? (
           <p className="cart-checkout-cta-hint">
-            W tej przeglądarce Google Pay ani Apple Pay nie są dostępne (brak zapisanej karty lub nieobsługiwana
-            przeglądarka). Wybierz kartę płatniczą albo BLIK.
+            Ta przeglądarka nie obsługuje Google Pay ani Apple Pay. Wybierz BLIK albo kartę.
           </p>
         ) : null}
         {error ? <div className="cart-checkout-error">{error}</div> : null}
@@ -602,13 +626,20 @@ function StripeMethodInner({
       {termsSlot}
       <button
         type="button"
-        className="cart-page-checkout-cta"
-        onClick={handlePay}
-        disabled={isSubmitting || !elementReady || !termsAccepted || Boolean(disabledReason)}
+        className={`cart-page-checkout-cta ${disabledReason ? "is-blocked" : ""}`}
+        onClick={() => {
+          if (disabledReason) {
+            if (onBlocked) onBlocked();
+            else setError(disabledReason);
+            return;
+          }
+          void handlePay();
+        }}
+        disabled={isSubmitting || (!disabledReason && (!elementReady || !termsAccepted))}
       >
         {isSubmitting ? "Przetwarzamy…" : submitLabel}
       </button>
-      {disabledReason ? <p className="cart-checkout-cta-hint">{disabledReason}</p> : null}
+      {disabledReason ? (blockedHint ?? <p className="cart-checkout-cta-hint">{disabledReason}</p>) : null}
     </div>
   );
 }

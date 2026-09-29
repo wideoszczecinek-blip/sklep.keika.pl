@@ -176,7 +176,8 @@ export function buildPaymentTiles(options: {
   const { stripeAvailable, p24Settings, transferEnabled, allowTransfer = true, amount = 0 } = options;
   const tiles: PaymentTile[] = [];
   if (stripeAvailable) {
-    tiles.push({ kind: "blik", title: "BLIK", hint: "Wpisz 6-cyfrowy kod BLIK", logo: LOGO_BLIK });
+    // Bez podpisu - każdy wie, jak działa BLIK (właściciel, 2026-09-30).
+    tiles.push({ kind: "blik", title: "BLIK", hint: "", logo: LOGO_BLIK });
   }
   if (p24KindAvailable(p24Settings, "p24_transfer")) {
     tiles.push({ kind: "p24_transfer", title: "Przelew online", hint: "Wybierz swój bank", logo: LOGO_P24 });
@@ -214,7 +215,7 @@ export function buildPaymentTiles(options: {
     tiles.push({
       kind: "wallets",
       title: "Google Pay / Apple Pay",
-      hint: "Jednym dotknięciem - kartą zapisaną w telefonie",
+      hint: "Kartą zapisaną w telefonie",
       wide: true,
       logo: LOGO_WALLETS,
     });
@@ -223,7 +224,7 @@ export function buildPaymentTiles(options: {
     tiles.push({
       kind: "transfer",
       title: "Przelew tradycyjny",
-      hint: "Dane do przelewu dostaniesz od razu; realizacja po zaksięgowaniu",
+      hint: "Realizacja po zaksięgowaniu wpłaty",
       wide: true,
       logo: LOGO_BANK,
     });
@@ -262,7 +263,7 @@ export function PaymentMethodTiles({
             {tile.logo}
             <span className="cart-pay-tile-copy">
               <strong>{tile.title}</strong>
-              <small>{tile.hint}</small>
+              {tile.hint ? <small>{tile.hint}</small> : null}
             </span>
             <span className="cart-pay-tile-check" aria-hidden="true" />
           </label>
