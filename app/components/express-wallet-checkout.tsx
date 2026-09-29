@@ -222,6 +222,13 @@ function ExpressWalletInner({
         <strong>Zapłać jednym dotknięciem</strong>
         <span>Portfel poda adres i telefon za Ciebie - bez wypełniania formularza.</span>
       </div>
+      {/* Adnotacja o regulaminie NAD przyciskami portfela, jak najbliżej CTA
+          (właściciel, 2026-09-29). Arkusz portfela nie ma checkboxa, więc
+          akceptacja jest kliknięciem w przycisk. */}
+      <p className="cart-express-note">
+        Płacąc portfelem akceptujesz <a href="/regulamin" target="_blank" rel="noreferrer">regulamin sklepu i płatności</a>. Dostawa
+        kurierem, dane odbiorcy z portfela.
+      </p>
       <div className={`cart-express-buttons ${busy ? "is-busy" : ""}`}>
         <ExpressCheckoutElement
           options={{
@@ -251,10 +258,6 @@ function ExpressWalletInner({
         />
       </div>
       {error ? <p className="cart-express-error">{error}</p> : null}
-      <p className="cart-express-note">
-        Płacąc portfelem akceptujesz <a href="/regulamin" target="_blank" rel="noreferrer">regulamin sklepu i płatności</a>. Dostawa
-        kurierem, dane odbiorcy z portfela.
-      </p>
       <div className="cart-express-divider">
         <span>albo wypełnij dane poniżej</span>
       </div>

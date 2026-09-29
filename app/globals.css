@@ -18998,3 +18998,41 @@ html[data-theme="light"] .rd-company-facts li {
   border-color: rgba(19, 40, 67, 0.12);
   background: #f7fafd;
 }
+
+/* BLIK: pole + "Wklej" ze schowka; regulamin tuz nad CTA (2026-09-29). */
+.cart-blik-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.cart-blik-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cart-blik-paste {
+  flex: 0 0 auto;
+  padding: 0 0.95rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(217, 96, 10, 0.55);
+  background: rgba(217, 96, 10, 0.08);
+  color: #d9600a;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.cart-blik-paste:hover {
+  background: rgba(217, 96, 10, 0.16);
+}
+.cart-blik-paste:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cart-terms-checkbox + .cart-page-checkout-cta,
+.cart-terms-checkbox + .cart-wallets-hidden,
+.cart-terms-checkbox + div {
+  margin-top: 0.6rem;
+}
+.cart-checkout-payment .cart-terms-checkbox {
+  margin-top: 0.2rem;
+}
+

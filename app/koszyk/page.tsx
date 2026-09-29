@@ -2142,10 +2142,12 @@ export default function CartPage() {
               ← Zmień dane zamówienia
             </button>
           ) : null}
-          {termsCheckbox}
           {error ? <div className="cart-checkout-error">{error}</div> : null}
+          {/* Regulamin renderuje sam krok Stripe, tuż nad "Płacę" (właściciel,
+              2026-09-29: "akceptacja regulaminu wszędzie nad CTA, jak najbliżej"). */}
           <StripeMethodStep
             key={stripeMethod}
+            termsSlot={termsCheckbox}
             publishableKey={STRIPE_PUBLISHABLE_KEY}
             method={stripeMethod}
             amountGrosze={Math.round(payableTotal * 100)}
@@ -2210,9 +2212,9 @@ export default function CartPage() {
             </div>
           ) : null}
           {thisKind === "p24_installments" ? <InstallmentOffer amount={payableTotal} /> : null}
-          {termsCheckbox}
           {error ? <div className="cart-checkout-error">{error}</div> : null}
           {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
+          {termsCheckbox}
           <button
             type="button"
             className="cart-page-checkout-cta"
@@ -2255,9 +2257,9 @@ export default function CartPage() {
     // przelew tradycyjny
     return (
       <>
-        {termsCheckbox}
         {error ? <div className="cart-checkout-error">{error}</div> : null}
         {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
+        {termsCheckbox}
         <button
           type="button"
           className="cart-page-checkout-cta"
@@ -3342,9 +3344,9 @@ export default function CartPage() {
 
                   {paymentMethod === "cod" ? (
                     <>
-                      {termsCheckbox}
                       {error ? <div className="cart-checkout-error">{error}</div> : null}
                       {payBlockedReason ? <p className="cart-checkout-intro">{payBlockedReason}</p> : null}
+                      {termsCheckbox}
                       <button
                         type="button"
                         className="cart-page-checkout-cta"
