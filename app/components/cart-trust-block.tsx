@@ -6,7 +6,10 @@
 // które i tak są na stronie: ocena i liczba opinii kupujących (snapshot jak
 // na landingu moskitier; bez słowa "Allegro" - właściciel, 2026-09-28: "nie
 // porównuj do Allegro, po prostu ilość opinii"), 5 lat gwarancji, producent
-// od 2015, telefon. Do tego
+// od 2015 i 30 dni na zwrot. Telefonu z pytaniem "nie jesteś pewien
+// wymiaru?" już tu nie ma - w koszyku wymiary są za klientem, więc
+// podsuwanie mu wątpliwości działało przeciwko nam (właściciel,
+// 2026-09-29). Do tego
 // prawdziwy licznik osób w sklepie (CRM: shop-public/online_count, ta sama
 // definicja co "osoby online" na dashboardzie) - pokazywany od 2 osób,
 // żeby "1 osoba konfiguruje teraz" nie brzmiało pusto.
@@ -15,8 +18,6 @@ import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 import { crmGetJson } from "@/lib/crm-get";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
 
-const PHONE_DISPLAY = "+48 790 215 251";
-const PHONE_HREF = "tel:+48790215251";
 const ONLINE_MIN_TO_SHOW = 2;
 const ONLINE_REFRESH_MS = 60_000;
 
@@ -28,7 +29,7 @@ function plural(n: number, one: string, few: string, many: string): string {
   return many;
 }
 
-export default function CartTrustBlock({ onCall }: { onCall?: () => void }) {
+export default function CartTrustBlock() {
   const rating = ALLEGRO_RATING_SNAPSHOTS["moskitiery-ramkowe"];
   const [online, setOnline] = useState<number | null>(null);
 
@@ -80,13 +81,10 @@ export default function CartTrustBlock({ onCall }: { onCall?: () => void }) {
         </li>
         <li>
           <span className="cart-trust-icon" aria-hidden="true">
-            ☎
+            ↩
           </span>
           <span>
-            Nie jesteś pewien wymiaru? Zadzwoń, sprawdzimy przed produkcją:{" "}
-            <a href={PHONE_HREF} className="cart-trust-phone" onClick={onCall}>
-              {PHONE_DISPLAY}
-            </a>
+            <strong>30 dni na zwrot</strong> · odsyłasz, jeśli coś nie zagra
           </span>
         </li>
         {showOnline ? (

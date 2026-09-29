@@ -10,6 +10,11 @@
 // (nie lista rozwijana - na telefonie to jeden dotyk zamiast trzech), a cała
 // obowiązkowa drobnica prawna schowana pod "Szczegóły".
 //
+// 2026-09-29: w koszyku karta urosła i zaczęła konkurować z kwotą do
+// zapłaty, więc wariant "full" to teraz JEDNA linijka - propozycja raty i
+// obok niej małe pigułki okresów. Reszta (suma, przykład reprezentatywny,
+// kto udziela kredytu) siedzi pod "Szczegóły".
+//
 // Pokazuje się tylko wtedy, gdy raty są realnie włączone na koncie P24
 // (CRM: checkout.p24_enabled + p24_installments_enabled) i kwota mieści się
 // w widełkach banku - inaczej obiecywalibyśmy metodę, której w koszyku nie ma.
@@ -131,46 +136,39 @@ export default function InstallmentOffer({
   }
 
   return (
-    <div className={`installment-offer ${className}`.trim()}>
-      <div className="installment-offer-head">
+    <div className={`installment-offer installment-offer--slim ${className}`.trim()}>
+      <div className="installment-offer-line">
         <span className="installment-offer-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
             <rect x="3" y="5" width="18" height="15" rx="3" stroke="currentColor" strokeWidth="1.8" />
             <path d="M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            <path d="M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             <circle cx="8.5" cy="14.8" r="1.25" fill="currentColor" />
             <circle cx="12" cy="14.8" r="1.25" fill="currentColor" />
             <circle cx="15.5" cy="14.8" r="1.25" fill="currentColor" />
           </svg>
         </span>
-        <span className="installment-offer-title">
-          <strong>Rozłóż na raty</strong>
-          <small>Przelewy24 · decyzja online</small>
+        <span className="installment-offer-lead">
+          Na raty od <strong>{zl(monthly)}</strong> / mies.
         </span>
-        <span className="installment-offer-amount">
-          <strong>{zl(monthly)}</strong>
-          <em>/ mies.</em>
-        </span>
-      </div>
-
-      <div className="installment-offer-counts" role="group" aria-label="Liczba rat">
-        {INSTALLMENT_COUNTS.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`installment-offer-count ${option === count ? "is-active" : ""}`}
-            aria-pressed={option === count}
-            onClick={() => setCount(option)}
-          >
-            {option}×
-          </button>
-        ))}
+        <div className="installment-offer-counts" role="group" aria-label="Liczba rat">
+          {INSTALLMENT_COUNTS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={`installment-offer-count ${option === count ? "is-active" : ""}`}
+              aria-pressed={option === count}
+              onClick={() => setCount(option)}
+            >
+              {option}×
+            </button>
+          ))}
+        </div>
       </div>
 
       <details className="installment-offer-note">
         <summary>
-          {ratyLabel(count)} × {zl(monthly)} = {zl(installmentsTotal(value, count, apr))}. Ostateczną ofertę i RRSO
-          podaje bank we wniosku.
+          {ratyLabel(count)} × {zl(monthly)} = {zl(installmentsTotal(value, count, apr))} · Przelewy24, decyzja online.
+          Ostateczną ofertę i RRSO podaje bank we wniosku.
         </summary>
         <p>{INSTALLMENTS_REPRESENTATIVE_EXAMPLE}</p>
         <p>

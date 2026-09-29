@@ -2927,7 +2927,7 @@ export default function CartPage() {
                   </section>
                 ) : null}
 
-                <CartTrustBlock onCall={() => trackCheckoutIssue("cart_trust_call", "phone")} />
+                <CartTrustBlock />
 
                 {/* Dostawa jako akordeon (właściciel, 2026-09-24): wybór
                     metody od razu otwiera pola, których ta metoda wymaga -
