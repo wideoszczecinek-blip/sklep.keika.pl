@@ -19036,3 +19036,24 @@ html[data-theme="light"] .rd-company-facts li {
   margin-top: 0.2rem;
 }
 
+
+/* Baner "Nie decydujesz dzisiaj?" odsłania sie plynnie po wejsciu w kadr
+   (wlasciciel, 2026-09-29). Domyslnie niewidoczny, ale zajmuje miejsce w
+   ukladzie - inaczej przewijanie skakaloby w momencie pojawienia sie. */
+.cart-keep-card {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: opacity, transform;
+}
+.cart-keep-card.is-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cart-keep-card {
+    transition: opacity 0.01s linear;
+    transform: none;
+  }
+}
+

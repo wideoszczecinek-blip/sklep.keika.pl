@@ -770,6 +770,15 @@ export default function CartPage() {
   // (40 s idle / desktop exit intent / tab return) and never once the
   // customer has started the form - see lib/cart-email-nudge.ts.
   const [checkoutFormStarted, setCheckoutFormStarted] = useState(false);
+  // Baner "Nie decydujesz dzisiaj?" odsłania się płynnie dopiero wtedy, gdy
+  // wjedzie w pole widzenia, a klient NIE tknął jeszcze danych kontaktowych
+  // (właściciel, 2026-09-29). Na telefonie to znaczy: przewinął cały koszyk
+  // i nic nie wpisał. Dane z 14 dni: mobile, przewinięty koszyk bez ani
+  // jednego pola - 71 sesji, 1 zamówienie; kto wypełnia dane - 113 sesji,
+  // 65 zamówień. Tego drugiego nie wolno zaczepiać.
+  const cartKeepRef = useRef<HTMLElement | null>(null);
+  const [cartKeepVisible, setCartKeepVisible] = useState(false);
+  const cartKeepSeenRef = useRef(false);
   const cartEmailNudge = useCartEmailNudge({ context: "cart", hasItems: items.length > 0, formStarted: checkoutFormStarted });
   // Which arm this device is in - read after mount so SSR and the first
   // client render agree (the "control" copy), then the real arm takes over.
@@ -2326,6 +2335,18 @@ export default function CartPage() {
       : !deliveryDataReady
         ? "Uzupełnij dane powyżej (imię i nazwisko, kontakt, adres), aby zapłacić."
         : "";
+  // "Nie tknął danych" = żadne z pól kontaktowych/adresowych nie ma treści.
+  // Liczymy z wartości formularza, nie z blur - inaczej baner mrugałby jeszcze
+  // w trakcie wpisywania pierwszego pola.
+  const contactUntouched =
+    !checkoutFormStarted &&
+    form.email.trim() === "" &&
+    form.phone.trim() === "" &&
+    form.firstName.trim() === "" &&
+    form.lastName.trim() === "" &&
+    form.address1.trim() === "" &&
+    form.postcode.trim() === "" &&
+    form.city.trim() === "";
   const checkoutContact: CheckoutContact = {
     name: `${form.firstName} ${form.lastName}`.trim(),
     phone: form.phone,
@@ -2371,6 +2392,29 @@ export default function CartPage() {
         </span>
       </label>
     ) : null;
+  useEffect(() => {
+    const node = cartKeepRef.current;
+    if (!node || cartKeepSeenRef.current) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setCartKeepVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry || !entry.isIntersecting || cartKeepSeenRef.current) return;
+        cartKeepSeenRef.current = true;
+        setCartKeepVisible(true);
+        trackCheckoutIssue("cart_keep_inview", cartEmailArm, { product: items[0]?.productSlug || "" });
+        observer.disconnect();
+      },
+      { threshold: 0.35 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contactUntouched, items.length, orderState]);
+
   const handleStripePaid = (paidOrderCode: string) => {
     const current = orderStateRef.current;
     clearCart();
@@ -3368,12 +3412,15 @@ export default function CartPage() {
               </aside>
             </div>
 
-            {/* Ostatni blok koszyka: dla kogoś, kto doszedł do płatności i
-                jednak nie kliknął. Celowo TU, a nie nad formularzami -
+            {/* Ostatni blok koszyka: dla kogoś, kto przewinął całą stronę i
+                niczego nie wypełnił. Celowo TU, a nie nad formularzami -
                 wcześniej był wygodną furtką do odłożenia zakupu
-                (właściciel, 2026-09-24). */}
-            {items.length > 0 && !orderState ? (
-              <section className="cart-keep-card">
+                (właściciel, 2026-09-24). Od 2026-09-29 znika w chwili, gdy
+                klient tknie dane kontaktowe (jest zdecydowany - konwersja
+                58% na telefonie), i odsłania się płynnie dopiero po wejściu
+                w pole widzenia. */}
+            {items.length > 0 && !orderState && contactUntouched ? (
+              <section ref={cartKeepRef} className={`cart-keep-card ${cartKeepVisible ? "is-visible" : ""}`}>
                 <span className="cart-keep-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none">
                     <path
