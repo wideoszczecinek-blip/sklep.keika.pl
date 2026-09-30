@@ -14,6 +14,7 @@ import {
   PaymentMethodTiles,
   buildPaymentTiles,
   usePaymentSettings,
+  resolveProvider,
   type P24Kind,
   type PaymentKind,
 } from "@/app/components/payment-methods";
@@ -32,6 +33,8 @@ const P24_KIND_TO_CRM: Record<P24Kind, string> = {
 };
 const P24_POLL_ATTEMPTS = 24;
 const P24_POLL_INTERVAL_MS = 3000;
+const PAYNOW_POLL_ATTEMPTS = 24;
+const PAYNOW_POLL_INTERVAL_MS = 3000;
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   paid: "Opłacone",
@@ -59,7 +62,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   const [paymentKind, setPaymentKind] = useState<PaymentKind | null>(null);
   const [p24BankId, setP24BankId] = useState(0);
   const [transferSwitched, setTransferSwitched] = useState(false);
-  const { transferSettings, p24Settings, p24Banks } = usePaymentSettings();
+  const { transferSettings, p24Settings, p24Banks, paynowBanks, paymentRouting } = usePaymentSettings();
   const [retryError, setRetryError] = useState("");
   const [justPaid, setJustPaid] = useState(false);
   // Przelewy24: po powrocie (?p24=1) odpytujemy CRM, aż wpłata zostanie
@@ -68,6 +71,15 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   const [p24Polling, setP24Polling] = useState(false);
   const [p24Timeout, setP24Timeout] = useState(false);
   const p24PollStartedRef = useRef(false);
+  // PayNow (2026-09-30): siatka banków (przelew online routowany na
+  // paynow), kod BLIK (White Label - wpisywany tu, bez przekierowania) i
+  // polling po powrocie z przekierowania pbl/card (?paynow=1) - mirror P24.
+  const [paynowBankId, setPaynowBankId] = useState(0);
+  const [paynowBlikCode, setPaynowBlikCode] = useState("");
+  const paynowReturn = searchParams.get("paynow") === "1";
+  const [paynowPolling, setPaynowPolling] = useState(false);
+  const [paynowTimeout, setPaynowTimeout] = useState(false);
+  const paynowPollStartedRef = useRef(false);
   // Guards the redirect-success OpenAI tracking effect below so it can only
   // ever fire once per mount, even if `order`/searchParams re-trigger it
   // (e.g. a re-render after lookupOrder resolves).
@@ -207,6 +219,138 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p24Return, order?.order_code, order?.payment_provider, order?.payment_status]);
 
+  // Powrót z PayNow (pbl/card, po przekierowaniu) - mirror powyższego
+  // pollingu P24. BLIK PayNow (bez przekierowania) odpytuje analogicznie,
+  // ale startuje od razu po submit w handleStartPaynow, nie stąd.
+  useEffect(() => {
+    if (!paynowReturn || !order || paynowPollStartedRef.current) return;
+    if (order.payment_provider !== "paynow") return;
+    if (order.payment_status === "paid") {
+      clearCart();
+      return;
+    }
+    paynowPollStartedRef.current = true;
+    let cancelled = false;
+    let attempt = 0;
+    setPaynowPolling(true);
+    const tick = async () => {
+      if (cancelled) return;
+      attempt += 1;
+      try {
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/paynow-check`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(accessToken ? { access_token: accessToken } : { verifier }),
+        });
+        const json = (await res.json()) as { ok?: boolean; paid?: boolean };
+        if (!cancelled && json.ok && json.paid) {
+          setPaynowPolling(false);
+          setJustPaid(true);
+          clearCart();
+          trackShopStep("paynow_return", "paid", { order_code: orderCode, attempts: attempt });
+          if (order.amount_total) {
+            void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
+              trackOpenAiOrderCreated({
+                orderCode: order.order_code,
+                amountZl: Number(order.amount_total),
+                currency: order.currency,
+                items: [{ id: order.product_slug, name: order.product_label, quantity: 1 }],
+              });
+            });
+          }
+          void lookupOrder(verifier);
+          return;
+        }
+      } catch {
+        /* spróbuj ponownie */
+      }
+      if (cancelled) return;
+      if (attempt >= PAYNOW_POLL_ATTEMPTS) {
+        setPaynowPolling(false);
+        setPaynowTimeout(true);
+        trackShopStep("paynow_return", "timeout", { order_code: orderCode });
+        return;
+      }
+      window.setTimeout(tick, PAYNOW_POLL_INTERVAL_MS);
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paynowReturn, order?.order_code, order?.payment_provider, order?.payment_status]);
+
+  // PayNow BLIK: kod wpisany na tej stronie, bez przekierowania - start +
+  // poll w jednym (odpowiednik combined create+start w koszyku, tu
+  // zamówienie już istnieje więc to tylko "start").
+  async function pollPaynowAfterBlikStart() {
+    setPaynowPolling(true);
+    setPaynowTimeout(false);
+    let attempt = 0;
+    const tick = async (): Promise<void> => {
+      attempt += 1;
+      try {
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/paynow-check`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(accessToken ? { access_token: accessToken } : { verifier }),
+        });
+        const json = (await res.json()) as { ok?: boolean; paid?: boolean };
+        if (json.ok && json.paid) {
+          setPaynowPolling(false);
+          setJustPaid(true);
+          clearCart();
+          trackShopStep("paynow_blik_retry", "paid", { order_code: orderCode, attempts: attempt });
+          void lookupOrder(verifier);
+          return;
+        }
+      } catch {
+        /* spróbuj ponownie */
+      }
+      if (attempt >= PAYNOW_POLL_ATTEMPTS) {
+        setPaynowPolling(false);
+        setPaynowTimeout(true);
+        trackShopStep("paynow_blik_retry", "timeout", { order_code: orderCode });
+        return;
+      }
+      window.setTimeout(() => void tick(), PAYNOW_POLL_INTERVAL_MS);
+    };
+    void tick();
+  }
+
+  async function handleStartPaynow(kind: "pbl" | "blik" | "card") {
+    if (!order) return;
+    setRetryLoading(true);
+    setRetryError("");
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/paynow-start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(accessToken ? { access_token: accessToken } : { verifier }),
+          method_kind: kind,
+          ...(kind === "pbl" && paynowBankId ? { payment_method_id: paynowBankId } : {}),
+          ...(kind === "blik" ? { blik_code: paynowBlikCode.replace(/\D+/g, "").slice(0, 6) } : {}),
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; redirect_url?: string; kind?: string; error?: string };
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "Nie udało się uruchomić płatności PayNow.");
+      }
+      trackShopStep("paynow_retry", kind, { order_code: orderCode, bank_id: paynowBankId });
+      if (json.redirect_url) {
+        window.location.assign(json.redirect_url);
+        return;
+      }
+      // BLIK: brak przekierowania - czekamy na zatwierdzenie w aplikacji banku.
+      setRetryLoading(false);
+      void pollPaynowAfterBlikStart();
+    } catch (e) {
+      setRetryError(e instanceof Error ? e.message : "Wystąpił błąd.");
+      setRetryLoading(false);
+    }
+  }
+
   async function handleStartP24(kind: P24Kind) {
     if (!order) return;
     setRetryLoading(true);
@@ -295,6 +439,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     const canPayNow =
       !justPaid &&
       !p24Polling &&
+      !paynowPolling &&
       order.payment_status !== "paid" &&
       order.payment_provider !== "cod" &&
       order.payment_status !== "cod_pending" &&
@@ -308,7 +453,14 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
       amount: Number((order.amount_total || "0").replace(",", ".")) || 0,
       // Przelew tradycyjny tylko dopóki zamówienie nie jest już przelewem.
       allowTransfer: order.payment_provider !== "transfer",
+      routing: paymentRouting,
     });
+    const selectedProvider =
+      paymentKind === "blik" || paymentKind === "card" || paymentKind === "wallets"
+        ? resolveProvider(paymentRouting, paymentKind, "stripe")
+        : paymentKind === "p24_transfer"
+          ? resolveProvider(paymentRouting, "transfer", "p24")
+          : "stripe";
     // Nic nie jest zaznaczone z góry - tak samo jak w koszyku (właściciel,
     // 2026-09-24): klient sam wybiera metodę, a panel z polami otwiera się
     // dopiero wtedy.
@@ -432,6 +584,19 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
             skutku, możesz ją ponowić poniżej.
           </div>
         ) : null}
+        {paynowPolling ? (
+          <div className="order-p24-waiting">
+            <span className="order-p24-spinner" aria-hidden="true" />
+            <span>Czekamy na potwierdzenie płatności z PayNow… Nie zamykaj tej strony.</span>
+          </div>
+        ) : null}
+        {paynowTimeout && !justPaid && order.payment_status !== "paid" ? (
+          <div className={styles.noticeBox}>
+            Nie dostaliśmy jeszcze potwierdzenia z PayNow. Jeśli płatność została wykonana, zaksięgujemy ją
+            automatycznie, gdy tylko dotrze potwierdzenie – dostaniesz wtedy e-mail. Jeśli płatność nie doszła do
+            skutku, możesz ją ponowić poniżej.
+          </div>
+        ) : null}
 
         {justPaid ? (
           <div className={styles.successBox}>Płatność zakończona sukcesem - dziękujemy!</div>
@@ -457,15 +622,22 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
               disabled={retryLoading}
               name="order-payment-kind"
             />
-            {selectedKind === "p24_transfer" ? (
+            {selectedKind === "p24_transfer" && selectedProvider === "p24" ? (
               <P24BankPicker
                 banks={p24Banks}
                 selectedId={p24BankId}
                 onSelect={(bank) => setP24BankId(bank.id)}
               />
             ) : null}
+            {selectedKind === "p24_transfer" && selectedProvider === "paynow" ? (
+              <P24BankPicker
+                banks={paynowBanks}
+                selectedId={paynowBankId}
+                onSelect={(bank) => setPaynowBankId(bank.id)}
+              />
+            ) : null}
             {retryError ? <div className={styles.errorBox}>{retryError}</div> : null}
-            {selectedKind && STRIPE_KINDS.includes(selectedKind) ? (
+            {selectedKind && STRIPE_KINDS.includes(selectedKind) && selectedProvider === "stripe" ? (
               <StripeMethodStep
                 key={selectedKind}
                 publishableKey={STRIPE_PUBLISHABLE_KEY}
@@ -491,6 +663,64 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
                   }
                 }}
               />
+            ) : selectedKind === "blik" && selectedProvider === "paynow" ? (
+              (() => {
+                const digits = paynowBlikCode.replace(/\D+/g, "").slice(0, 6);
+                return (
+                  <>
+                    <div className="cart-blik-field">
+                      <label htmlFor="order-paynow-blik-code" className="cart-blik-label">
+                        Kod BLIK
+                      </label>
+                      <div className="cart-blik-row">
+                        <input
+                          id="order-paynow-blik-code"
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          placeholder="000000"
+                          value={digits}
+                          onChange={(event) => setPaynowBlikCode(event.target.value.replace(/\D+/g, "").slice(0, 6))}
+                          disabled={retryLoading}
+                          aria-label="6-cyfrowy kod BLIK"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.ctaButton}
+                      onClick={() => void handleStartPaynow("blik")}
+                      disabled={retryLoading || digits.length !== 6}
+                    >
+                      {retryLoading ? "Przetwarzamy…" : "Płacę BLIK-iem"}
+                    </button>
+                  </>
+                );
+              })()
+            ) : (selectedKind === "card" || selectedKind === "wallets") && selectedProvider === "paynow" ? (
+              <button
+                type="button"
+                className={styles.ctaButton}
+                onClick={() => void handleStartPaynow("card")}
+                disabled={retryLoading}
+              >
+                {retryLoading ? "Przekierowujemy…" : "Płacę – przejdź do PayNow"}
+              </button>
+            ) : selectedKind === "p24_transfer" && selectedProvider === "paynow" ? (
+              <button
+                type="button"
+                className={styles.ctaButton}
+                onClick={() => void handleStartPaynow("pbl")}
+                disabled={retryLoading || (paynowBanks.length > 0 && !paynowBankId)}
+              >
+                {retryLoading
+                  ? "Przekierowujemy…"
+                  : paynowBanks.length > 0 && !paynowBankId
+                    ? "Wybierz swój bank"
+                    : "Przejdź do płatności"}
+              </button>
             ) : selectedKind === "transfer" ? (
               <>
                 <p className={styles.sectionIntro}>

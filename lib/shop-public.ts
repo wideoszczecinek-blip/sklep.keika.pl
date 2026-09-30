@@ -143,6 +143,20 @@ export type CheckoutSettings = {
   p24_transfer_enabled?: boolean;
   p24_installments_enabled?: boolean;
   p24_paypo_enabled?: boolean;
+  /** PayNow (umowa bezpośrednia, 2026-09-30) - jak p24_enabled, ale dla
+   * PayNow (config/paynow.local.php po stronie CRM). */
+  paynow_enabled?: boolean;
+  /** Który operator obsługuje każdą metodę widoczną w koszyku - sterowane z
+   * CRM (Sklep WWW → Płatności), NIE zaszyte na sztywno. Kluczem jest
+   * logiczna metoda (blik/card/wallets/transfer/installments/paypo/
+   * bank_transfer), wartością {enabled, provider?}. `enabled` już uwzględnia
+   * po stronie CRM gotowość samej bramki (np. brak kluczy PayNow = false) -
+   * front nie musi tego dodatkowo sprawdzać. `provider` występuje tylko dla
+   * metod z wyborem operatora (blik/card/wallets/transfer); installments/
+   * paypo/bank_transfer go nie mają. */
+  payment_routing?: Record<string, { enabled: boolean; provider?: "stripe" | "p24" | "paynow" }>;
+  /** Metoda domyślnie zaznaczona w koszyku, albo null = brak domyślnej. */
+  default_payment_method?: string | null;
 };
 
 /** Dane do przelewu tradycyjnego zwracane przy zamówieniu z

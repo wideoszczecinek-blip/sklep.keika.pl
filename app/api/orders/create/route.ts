@@ -119,6 +119,60 @@ export async function POST(request: Request) {
       });
     }
 
+    // PayNow (umowa bezpośrednia, 2026-09-30) - operator dla BLIK/karty/
+    // przelewu online, sterowany z CRM (Sklep WWW → Płatności). Trzy
+    // rodzaje: "pbl" (przelew online, ew. z wybranym bankiem - jak P24,
+    // redirect_url), "card" (bez wyboru metody - PayNow pokazuje własną
+    // stronę, redirect_url), "blik" (White Label - kod 6-cyfrowy wpisany na
+    // NASZEJ stronie, BEZ przekierowania - payment_id+status zamiast
+    // redirect_url, klient odpytuje /paynow-check tak jak po powrocie z P24).
+    if (paymentProvider === "paynow") {
+      const kind =
+        typeof payload.payment_method === "string" && payload.payment_method.startsWith("paynow_")
+          ? payload.payment_method.slice("paynow_".length)
+          : "pbl";
+      const startResponse = await fetch(`${crmBaseUrl}/biuro/api/shop-public/payment_paynow_start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_code: crmJson.order.order_code,
+          access_token: crmJson.order.access_token || "",
+          method_kind: kind,
+          ...(Number.isFinite(Number(payload.paynow_method_id)) && Number(payload.paynow_method_id) > 0
+            ? { payment_method_id: Number(payload.paynow_method_id) }
+            : {}),
+          ...(typeof payload.paynow_blik_code === "string" && payload.paynow_blik_code
+            ? { blik_code: payload.paynow_blik_code }
+            : {}),
+        }),
+        cache: "no-store",
+      });
+      const startJson = (await startResponse.json().catch(() => ({}))) as {
+        ok?: boolean;
+        redirect_url?: string;
+        payment_id?: string;
+        status?: string;
+        kind?: string;
+        error?: string;
+      };
+      if (!startResponse.ok || !startJson.ok) {
+        return NextResponse.json(
+          { ok: false, error: startJson.error || "Nie udało się uruchomić płatności PayNow." },
+          { status: startResponse.status || 502 },
+        );
+      }
+      return NextResponse.json({
+        ok: true,
+        order: crmJson.order,
+        payment_enabled: false,
+        payment_provider: "paynow",
+        paynow_kind: startJson.kind || kind,
+        redirect_url: startJson.redirect_url || null,
+        payment_id: startJson.payment_id || null,
+        paynow_status: startJson.status || null,
+      });
+    }
+
     const stripe = getStripeServer();
     const publishableKey = getStripePublishableKey();
     if (!stripe || !publishableKey || !crmJson.order.amount_total) {

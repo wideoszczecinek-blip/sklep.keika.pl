@@ -17,6 +17,31 @@ export type P24Kind = "p24_transfer" | "p24_installments" | "p24_paypo";
 export type PaymentKind = StripeMethod | P24Kind | "transfer";
 export type P24Bank = { id: number; name: string; img: string };
 
+// Routing operatorów (CRM → Sklep WWW → Płatności, od 2026-09-30): dla
+// każdej "logicznej" metody CRM mówi, czy jest włączona i który operator ją
+// obsługuje. NIE zastępuje PaymentKind (etykiety/kafelki w koszyku zostają
+// identyczne) - to dodatkowa warstwa, która mówi call-siteom (koszyk,
+// ponowienie płatności) dokąd wysłać żądanie startu płatności. Metoda
+// "blik"/"card"/"wallets" może iść przez stripe ALBO paynow; "p24_transfer"
+// (kafelek "Przelew online") może iść przez p24 ALBO paynow mimo nazwy
+// kind - nazwa kind zostaje nietknięta (żeby nie robić masowej zmiany), tylko
+// faktyczny operator się zmienia.
+export type PaymentRoutingMethod = "blik" | "card" | "wallets" | "transfer" | "installments" | "paypo" | "bank_transfer";
+export type PaymentProvider = "stripe" | "p24" | "paynow";
+export type PaymentRouting = Partial<Record<PaymentRoutingMethod, { enabled: boolean; provider?: PaymentProvider }>>;
+
+/** Operator faktycznie obsługujący daną metodę, z bezpiecznym fallbackiem na
+ * "jak dziś" gdy CRM jeszcze nie zwraca routingu (starsza wersja configu) -
+ * dzięki temu front nigdy nie wysyła płatności donikąd. */
+export function resolveProvider(
+  routing: PaymentRouting | undefined,
+  method: PaymentRoutingMethod,
+  fallback: PaymentProvider,
+): PaymentProvider {
+  const row = routing?.[method];
+  return row?.provider ?? fallback;
+}
+
 export type TransferSettings = {
   enabled: boolean;
   accountHolder: string;
@@ -52,6 +77,10 @@ export function usePaymentSettings() {
     paypo: false,
   });
   const [p24Banks, setP24Banks] = useState<P24Bank[]>([]);
+  const [paynowBanks, setPaynowBanks] = useState<P24Bank[]>([]);
+  const [paynowEnabled, setPaynowEnabled] = useState(false);
+  const [paymentRouting, setPaymentRouting] = useState<PaymentRouting>({});
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<string | null>(null);
 
   useEffect(() => {
     crmGetJson<any>(`${CRM_PUBLIC_BASE}/site`)
@@ -73,6 +102,11 @@ export function usePaymentSettings() {
           installments: checkout.p24_installments_enabled === true,
           paypo: checkout.p24_paypo_enabled === true,
         });
+        setPaynowEnabled(checkout.paynow_enabled === true);
+        setPaymentRouting(
+          checkout.payment_routing && typeof checkout.payment_routing === "object" ? checkout.payment_routing : {},
+        );
+        setDefaultPaymentMethod(typeof checkout.default_payment_method === "string" ? checkout.default_payment_method : null);
       })
       .catch(() => {});
   }, []);
@@ -96,7 +130,34 @@ export function usePaymentSettings() {
       .catch(() => {});
   }, []);
 
-  return { transferSettings, p24Settings, p24Banks };
+  useEffect(() => {
+    fetch(`${CRM_PUBLIC_BASE}/paynow_banks`)
+      .then((response) => response.json())
+      .then((json) => {
+        if (json?.ok && Array.isArray(json.banks)) {
+          setPaynowBanks(
+            json.banks
+              .map((bank: Record<string, unknown>) => ({
+                id: Number(bank.id) || 0,
+                name: typeof bank.name === "string" ? bank.name : "",
+                img: typeof bank.img === "string" ? bank.img : "",
+              }))
+              .filter((bank: P24Bank) => bank.id > 0 && bank.name),
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  return {
+    transferSettings,
+    p24Settings,
+    p24Banks,
+    paynowBanks,
+    paynowEnabled,
+    paymentRouting,
+    defaultPaymentMethod,
+  };
 }
 
 export function p24KindAvailable(settings: P24Settings, kind: P24Kind): boolean {
@@ -113,6 +174,10 @@ export type PaymentTile = {
   hint: React.ReactNode;
   logo: React.ReactNode;
   wide?: boolean;
+  /** Operator faktycznie obsługujący ten kafelek (patrz resolveProvider) -
+   * tylko dla blik/card/wallets/p24_transfer; brak dla stałych metod
+   * (p24_installments/p24_paypo/transfer). */
+  provider?: PaymentProvider;
 };
 
 const LOGO_BLIK = <span className="cart-pay-logo cart-pay-logo--blik">blik</span>;
@@ -162,7 +227,12 @@ const LOGO_BANK = (
   </span>
 );
 
-/** Kolejność kafelków jest wspólna dla koszyka i ponowienia płatności. */
+/** Kolejność kafelków jest wspólna dla koszyka i ponowienia płatności.
+ * `routing` (opcjonalny, z CRM) mówi który operator faktycznie obsłuży
+ * blik/card/wallets/p24_transfer - kafelki, etykiety i kolejność zostają
+ * identyczne niezależnie od operatora (właściciel, 2026-09-30: "po stronie
+ * klienta nic nie zmieniamy"), tylko `PaymentTile.provider` się zmienia, żeby
+ * call-site wiedział dokąd wysłać żądanie startu płatności. */
 export function buildPaymentTiles(options: {
   stripeAvailable: boolean;
   p24Settings: P24Settings;
@@ -172,18 +242,38 @@ export function buildPaymentTiles(options: {
   /** Ponowienie płatności: przelew tradycyjny ma sens tylko zanim zamówienie
    * trafi do realizacji (CRM odrzuci zmianę przyjętego zamówienia). */
   allowTransfer?: boolean;
+  routing?: PaymentRouting;
 }): PaymentTile[] {
-  const { stripeAvailable, p24Settings, transferEnabled, allowTransfer = true, amount = 0 } = options;
+  const { stripeAvailable, p24Settings, transferEnabled, allowTransfer = true, amount = 0, routing } = options;
+  const blikRow = routing?.blik;
+  const cardRow = routing?.card;
+  const walletsRow = routing?.wallets;
+  const transferRow = routing?.transfer;
+  const blikEnabled = blikRow ? blikRow.enabled : stripeAvailable;
+  const cardEnabled = cardRow ? cardRow.enabled : stripeAvailable;
+  const walletsEnabled = walletsRow ? walletsRow.enabled : stripeAvailable;
+  const onlineTransferEnabled = transferRow ? transferRow.enabled : p24KindAvailable(p24Settings, "p24_transfer");
+  const blikProvider = resolveProvider(routing, "blik", "stripe");
+  const cardProvider = resolveProvider(routing, "card", "stripe");
+  const walletsProvider = resolveProvider(routing, "wallets", "stripe");
+  const transferProvider = resolveProvider(routing, "transfer", "p24");
+
   const tiles: PaymentTile[] = [];
-  if (stripeAvailable) {
+  if (blikEnabled) {
     // Bez podpisu - każdy wie, jak działa BLIK (właściciel, 2026-09-30).
-    tiles.push({ kind: "blik", title: "BLIK", hint: "", logo: LOGO_BLIK });
+    tiles.push({ kind: "blik", title: "BLIK", hint: "", logo: LOGO_BLIK, provider: blikProvider });
   }
-  if (p24KindAvailable(p24Settings, "p24_transfer")) {
-    tiles.push({ kind: "p24_transfer", title: "Przelew online", hint: "Wybierz swój bank", logo: LOGO_P24 });
+  if (onlineTransferEnabled) {
+    tiles.push({
+      kind: "p24_transfer",
+      title: "Przelew online",
+      hint: "Wybierz swój bank",
+      logo: LOGO_P24,
+      provider: transferProvider,
+    });
   }
-  if (stripeAvailable) {
-    tiles.push({ kind: "card", title: "Karta płatnicza", hint: "Visa, Mastercard", logo: LOGO_CARD });
+  if (cardEnabled) {
+    tiles.push({ kind: "card", title: "Karta płatnicza", hint: "Visa, Mastercard", logo: LOGO_CARD, provider: cardProvider });
   }
   if (p24KindAvailable(p24Settings, "p24_paypo")) {
     tiles.push({
@@ -211,13 +301,14 @@ export function buildPaymentTiles(options: {
       logo: LOGO_P24,
     });
   }
-  if (stripeAvailable) {
+  if (walletsEnabled) {
     tiles.push({
       kind: "wallets",
       title: "Google Pay / Apple Pay",
       hint: "Kartą zapisaną w telefonie",
       wide: true,
       logo: LOGO_WALLETS,
+      provider: walletsProvider,
     });
   }
   if (transferEnabled && allowTransfer) {

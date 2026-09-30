@@ -75,7 +75,7 @@ import {
 import { getRescueGrant, type RescueGrant } from "@/lib/rescue";
 import { useBackToClose } from "@/lib/use-back-to-close";
 import InstallmentOffer from "@/app/components/installment-offer";
-import { buildPaymentTiles } from "@/app/components/payment-methods";
+import { buildPaymentTiles, resolveProvider, type PaymentRouting, type PaymentProvider } from "@/app/components/payment-methods";
 import InstallmentTileHint from "@/app/components/installment-tile-hint";
 import CartTrustBlock from "@/app/components/cart-trust-block";
 import ExpressWalletCheckout, { type WalletContact } from "@/app/components/express-wallet-checkout";
@@ -117,8 +117,14 @@ type OrderCreateResponse = {
   payment_provider?: string;
   publishable_key?: string;
   client_secret?: string;
-  /** Przelewy24: adres strony płatności, na którą przekierowujemy klienta. */
+  /** Przelewy24 / PayNow (pbl, card): adres strony płatności, na którą
+   * przekierowujemy klienta. */
   redirect_url?: string;
+  /** PayNow: rodzaj faktycznie uruchomiony (pbl/blik/card). */
+  paynow_kind?: string;
+  /** PayNow BLIK: identyfikator płatności do odpytywania paynow-check. */
+  payment_id?: string;
+  paynow_status?: string;
   error?: string;
 };
 
@@ -949,6 +955,18 @@ export default function CartPage() {
   const [p24Banks, setP24Banks] = useState<P24Bank[]>([]);
   const [p24BankId, setP24BankId] = useState<number>(0);
   const [p24Settings, setP24Settings] = useState<P24Settings>({ enabled: true, transfer: true, installments: false, paypo: false });
+  // PayNow (umowa bezpośrednia, 2026-09-30): który operator obsługuje
+  // blik/card/wallets/p24_transfer (routing z CRM, patrz payment-methods.tsx
+  // -> resolveProvider) + siatka banków PayNow (dla "Przelew online", gdy
+  // routing.transfer.provider === "paynow") + stan kodu BLIK, gdy
+  // routing.blik.provider === "paynow" (White Label, wpisywane na naszej
+  // stronie, bez przekierowania).
+  const [paymentRouting, setPaymentRouting] = useState<PaymentRouting>({});
+  const [paynowBanks, setPaynowBanks] = useState<P24Bank[]>([]);
+  const [paynowBankId, setPaynowBankId] = useState<number>(0);
+  const [paynowBlikCode, setPaynowBlikCode] = useState("");
+  const [paynowPolling, setPaynowPolling] = useState(false);
+  const [paynowPollTimeout, setPaynowPollTimeout] = useState(false);
   // Domyślnie WŁĄCZONE (do czasu odpowiedzi CRM): gdyby pobranie ustawień
   // z CRM nie doszło do skutku, klient i tak widzi przelew tradycyjny /
   // Przelewy24 - CRM i tak weryfikuje metodę przy tworzeniu zamówienia.
@@ -1129,17 +1147,38 @@ export default function CartPage() {
     ((kind === "p24_transfer" && p24Settings.transfer) ||
       (kind === "p24_installments" && p24Settings.installments) ||
       (kind === "p24_paypo" && p24Settings.paypo));
-  const paymentMethod: "online" | "cod" | "transfer" | "p24" =
+  // PayNow (2026-09-30): dla blik/card/wallets/p24_transfer operator może
+  // być stripe/p24 (jak dziś) ALBO paynow - sterowane z CRM. installments/
+  // paypo nie mają wyboru operatora, zostają zawsze P24.
+  const selectedOnlineProvider: PaymentProvider =
+    onlinePaymentKind === "blik"
+      ? resolveProvider(paymentRouting, "blik", "stripe")
+      : onlinePaymentKind === "card" || onlinePaymentKind === "wallets"
+        ? resolveProvider(paymentRouting, onlinePaymentKind, "stripe")
+        : onlinePaymentKind === "p24_transfer"
+          ? resolveProvider(paymentRouting, "transfer", "p24")
+          : "stripe";
+  const paymentMethod: "online" | "cod" | "transfer" | "p24" | "paynow" =
     deliveryMethod === COD_DELIVERY_METHOD_ID
       ? "cod"
       : onlinePaymentKind === "transfer" && transferSettings.enabled
         ? "transfer"
-        : onlinePaymentKind.startsWith("p24_") && p24KindAvailable(onlinePaymentKind as P24Kind)
-          ? "p24"
-          : "online";
+        : (onlinePaymentKind === "blik" ||
+              onlinePaymentKind === "card" ||
+              onlinePaymentKind === "wallets" ||
+              onlinePaymentKind === "p24_transfer") &&
+            selectedOnlineProvider === "paynow"
+          ? "paynow"
+          : onlinePaymentKind.startsWith("p24_") && p24KindAvailable(onlinePaymentKind as P24Kind)
+            ? "p24"
+            : "online";
   const p24Kind: P24Kind = onlinePaymentKind.startsWith("p24_") ? (onlinePaymentKind as P24Kind) : "p24_transfer";
   const stripeMethod: StripeMethod =
     onlinePaymentKind === "card" || onlinePaymentKind === "wallets" ? onlinePaymentKind : "blik";
+  // Rodzaj płatności PayNow (bare kind dla CRM): blik/card wprost, wszystko
+  // inne (p24_transfer routowany na paynow) to "pbl".
+  const paynowKind: "pbl" | "blik" | "card" =
+    onlinePaymentKind === "blik" ? "blik" : onlinePaymentKind === "card" || onlinePaymentKind === "wallets" ? "card" : "pbl";
 
   const editingItem = editingItemId ? items.find((item) => item.id === editingItemId) || null : null;
 
@@ -1350,6 +1389,9 @@ export default function CartPage() {
             installments: checkout.p24_installments_enabled === true,
             paypo: checkout.p24_paypo_enabled === true,
           });
+          setPaymentRouting(
+            checkout.payment_routing && typeof checkout.payment_routing === "object" ? checkout.payment_routing : {},
+          );
         }
       })
       .catch(() => {});
@@ -1362,6 +1404,28 @@ export default function CartPage() {
       .then((json) => {
         if (json?.ok && Array.isArray(json.banks)) {
           setP24Banks(
+            json.banks
+              .filter((b: unknown) => b && typeof b === "object")
+              .map((b: { id?: unknown; name?: unknown; img?: unknown }) => ({
+                id: Number(b.id) || 0,
+                name: String(b.name || ""),
+                img: String(b.img || ""),
+              }))
+              .filter((b: P24Bank) => b.id > 0 && b.name),
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Banki PayNow do tej samej siatki "wybierz swój bank" - pokazana tylko
+  // gdy routing.transfer.provider === "paynow" (patrz renderMethodPanel).
+  useEffect(() => {
+    fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/paynow_banks")
+      .then((response) => response.json())
+      .then((json) => {
+        if (json?.ok && Array.isArray(json.banks)) {
+          setPaynowBanks(
             json.banks
               .filter((b: unknown) => b && typeof b === "object")
               .map((b: { id?: unknown; name?: unknown; img?: unknown }) => ({
@@ -1747,7 +1811,7 @@ export default function CartPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary.total]);
 
-  const submitOrder = useCallback(async (opts?: { stripeMethod?: StripeMethod; p24MethodId?: number; wallet?: WalletContact }): Promise<CreatedIntent | null> => {
+  const submitOrder = useCallback(async (opts?: { stripeMethod?: StripeMethod; p24MethodId?: number; paynowMethodId?: number; paynowBlikCode?: string; wallet?: WalletContact }): Promise<CreatedIntent | null> => {
     if (submittedRef.current) return null;
     submittedRef.current = true;
     // Portfel (Apple Pay / Google Pay, 2026-09-28): dane odbiorcy z arkusza
@@ -1836,7 +1900,9 @@ export default function CartPage() {
             ? "Przelew tradycyjny"
             : pm === "p24"
               ? P24_KIND_LABELS[p24Kind].note
-              : "Online (Stripe)";
+              : pm === "paynow"
+                ? "PayNow – " + (paynowKind === "blik" ? "BLIK" : paynowKind === "card" ? "karta" : "przelew online")
+                : "Online (Stripe)";
       const noteWithDelivery = [
         // First line on purpose - production reads the note top-down.
         expressEligible && expressSelected ? EXPRESS_NOTE_LINE : "",
@@ -1955,14 +2021,28 @@ export default function CartPage() {
             : null,
           note_text: noteWithBuyer,
           payment_provider:
-            pm === "cod" ? "cod" : pm === "transfer" ? "transfer" : pm === "p24" ? "p24" : "stripe",
+            pm === "cod" ? "cod" : pm === "transfer" ? "transfer" : pm === "p24" ? "p24" : pm === "paynow" ? "paynow" : "stripe",
           payment_method:
-            pm === "cod" ? "cod" : pm === "transfer" ? "transfer" : pm === "p24" ? p24Kind : "",
+            pm === "cod"
+              ? "cod"
+              : pm === "transfer"
+                ? "transfer"
+                : pm === "p24"
+                  ? p24Kind
+                  : pm === "paynow"
+                    ? "paynow_" + paynowKind
+                    : "",
           tracking,
           ...(pm === "cod" ? { cod_sms_verification_token: codSms.token } : {}),
           ...(pm === "online" ? { stripe_method: opts?.stripeMethod || stripeMethod } : {}),
           ...(pm === "p24" && opts?.p24MethodId ? { p24_method_id: opts.p24MethodId } : {}),
           ...(pm === "p24" ? { p24_regulation_accepted: ta } : {}),
+          ...(pm === "paynow" && (opts?.paynowMethodId || paynowBankId)
+            ? { paynow_method_id: opts?.paynowMethodId || paynowBankId }
+            : {}),
+          ...(pm === "paynow" && (opts?.paynowBlikCode || paynowBlikCode)
+            ? { paynow_blik_code: opts?.paynowBlikCode || paynowBlikCode }
+            : {}),
         }),
       });
       const json = (await response.json()) as OrderCreateResponse;
@@ -1976,6 +2056,77 @@ export default function CartPage() {
       if (json.payment_provider === "p24" && json.redirect_url) {
         trackCheckoutIssue("checkout_p24_redirect", p24Kind, { order_code: json.order.order_code });
         window.location.assign(json.redirect_url);
+        return null;
+      }
+
+      // PayNow - przelew online (pbl) / karta: ta sama logika co P24 -
+      // przekierowanie, powrót na /zamowienie/[kod]?paynow=1.
+      if (json.payment_provider === "paynow" && json.redirect_url) {
+        trackCheckoutIssue("checkout_paynow_redirect", json.paynow_kind || paynowKind, {
+          order_code: json.order.order_code,
+        });
+        window.location.assign(json.redirect_url);
+        return null;
+      }
+
+      // PayNow BLIK (White Label): kod już wysłany razem z zamówieniem, ale
+      // płatność NIE jest jeszcze faktem - klient musi ją zatwierdzić w
+      // aplikacji banku. Koszyk zostaje, odpytujemy paynow-check w pętli
+      // (jak strona statusu robi to dla P24), zamiast czekać na przekierowanie.
+      if (json.payment_provider === "paynow" && json.paynow_kind === "blik" && json.payment_id) {
+        const orderCode = json.order.order_code;
+        const accessToken = json.order.access_token || "";
+        setOrderState({
+          orderCode,
+          amountTotal: json.order.amount_total,
+          clientSecret: undefined,
+          publishableKey: undefined,
+          paymentEnabled: false,
+          paymentProvider: "paynow",
+          accessToken,
+          transfer: null,
+          stripeMethod: undefined,
+        });
+        setPaynowPolling(true);
+        setPaynowPollTimeout(false);
+        const PAYNOW_POLL_ATTEMPTS = 24;
+        const PAYNOW_POLL_INTERVAL_MS = 3000;
+        void (async () => {
+          for (let attempt = 1; attempt <= PAYNOW_POLL_ATTEMPTS; attempt += 1) {
+            await new Promise((resolve) => window.setTimeout(resolve, PAYNOW_POLL_INTERVAL_MS));
+            try {
+              const checkRes = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/paynow-check`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ access_token: accessToken }),
+              });
+              const checkJson = (await checkRes.json()) as { ok?: boolean; paid?: boolean };
+              if (checkJson.ok && checkJson.paid) {
+                setPaynowPolling(false);
+                setPaymentConfirmed(true);
+                clearCart();
+                setItems([]);
+                lastQuoteCodeRef.current = "";
+                trackCheckoutIssue("checkout_paynow_blik", "paid", { order_code: orderCode, attempts: attempt });
+                if (json.order?.amount_total) {
+                  void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
+                    trackOpenAiOrderCreated({
+                      orderCode,
+                      amountZl: Number(json.order!.amount_total),
+                      items: items.map((item) => ({ id: item.productSlug, name: item.productLabel, quantity: item.qty })),
+                    });
+                  });
+                }
+                return;
+              }
+            } catch {
+              /* spróbuj ponownie */
+            }
+          }
+          setPaynowPolling(false);
+          setPaynowPollTimeout(true);
+          trackCheckoutIssue("checkout_paynow_blik", "timeout", { order_code: orderCode });
+        })();
         return null;
       }
 
@@ -2039,6 +2190,9 @@ export default function CartPage() {
     invoice,
     paymentMethod,
     p24Kind,
+    paynowKind,
+    paynowBankId,
+    paynowBlikCode,
     stripeMethod,
     termsAccepted,
     codSms.token,
@@ -2143,6 +2297,7 @@ export default function CartPage() {
     p24Settings,
     transferEnabled: transferSettings.enabled,
     amount: payableTotal,
+    routing: paymentRouting,
   });
   // Gdy kwota koszyka spadnie poniżej progu rat (klient usunął pozycję),
   // kafelek "Raty" znika - wybór trzeba wyczyścić, żeby nie zostać z
@@ -2155,6 +2310,110 @@ export default function CartPage() {
   // Opcje wybranej metody renderują się pod JEJ kafelkiem - klient widzi pole
   // BLIK-a dokładnie tam, gdzie kliknął, a nie na końcu listy metod.
   const renderMethodPanel = (kind: PaymentKind) => {
+    // PayNow BLIK (White Label, 2026-09-30): kod 6-cyfrowy wpisywany TU, na
+    // naszej stronie (jak dziś przez Stripe) - bez przekierowania. Po kliku
+    // "Płacę" zamówienie + płatność powstają razem (jak P24), a potwierdzenie
+    // przychodzi przez polling (patrz submitOrder), nie przez powrót z
+    // przekierowania.
+    if (kind === "blik" && selectedOnlineProvider === "paynow") {
+      const digits = paynowBlikCode.replace(/\D+/g, "").slice(0, 6);
+      if (paynowPolling) {
+        return (
+          <div className="cart-payment-waiting">
+            <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+            Czekamy na potwierdzenie w aplikacji Twojego banku…
+          </div>
+        );
+      }
+      return (
+        <>
+          <div className="cart-blik-field">
+            <label htmlFor="cart-paynow-blik-code" className="cart-blik-label">
+              Kod BLIK
+            </label>
+            <div className="cart-blik-row">
+              <input
+                id="cart-paynow-blik-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="000000"
+                value={digits}
+                onChange={(event) => setPaynowBlikCode(event.target.value.replace(/\D+/g, "").slice(0, 6))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && digits.length === 6 && termsAccepted && !isSubmitting) {
+                    event.preventDefault();
+                    setError("");
+                    submittedRef.current = false;
+                    void submitOrder({ paynowBlikCode: digits }).catch(() => {});
+                  }
+                }}
+                disabled={isSubmitting}
+                aria-label="6-cyfrowy kod BLIK"
+              />
+            </div>
+          </div>
+          {paynowPollTimeout ? (
+            <div className="cart-checkout-error">
+              Nie otrzymaliśmy jeszcze potwierdzenia z banku. Sprawdź aplikację banku - jeśli zatwierdziłeś(-aś)
+              płatność, zamówienie i tak zostanie zaksięgowane. Nie płać drugi raz.
+            </div>
+          ) : null}
+          {error ? <div className="cart-checkout-error">{error}</div> : null}
+          {termsCheckbox}
+          <button
+            type="button"
+            className={`cart-page-checkout-cta ${payBlockedReason ? "is-blocked" : ""}`}
+            onClick={() => {
+              if (payBlockedReason) {
+                jumpToFirstProblem();
+                return;
+              }
+              setError("");
+              submittedRef.current = false;
+              void submitOrder({ paynowBlikCode: digits }).catch(() => {});
+            }}
+            disabled={isSubmitting || (!payBlockedReason && (!termsAccepted || digits.length !== 6))}
+          >
+            {isSubmitting ? "Przetwarzamy…" : "Płacę BLIK-iem"}
+          </button>
+          {missingFieldsHint}
+        </>
+      );
+    }
+
+    // PayNow - karta / Google Pay / Apple Pay: PayNow pokazuje własną stronę
+    // wyboru metody (bez wcześniejszego wyboru banku), tak jak "karta" u P24
+    // nigdy nie istniała - najbliższy istniejący wzorzec to redirect P24.
+    if ((kind === "card" || kind === "wallets") && selectedOnlineProvider === "paynow") {
+      return (
+        <>
+          {error ? <div className="cart-checkout-error">{error}</div> : null}
+          {termsCheckbox}
+          <button
+            type="button"
+            className={`cart-page-checkout-cta ${payBlockedReason ? "is-blocked" : ""}`}
+            onClick={() => {
+              if (payBlockedReason) {
+                jumpToFirstProblem();
+                return;
+              }
+              setError("");
+              submittedRef.current = false;
+              void submitOrder().catch(() => {});
+            }}
+            disabled={isSubmitting || (!payBlockedReason && !termsAccepted)}
+          >
+            {isSubmitting ? "Przekierowujemy do PayNow…" : "Płacę – przejdź do PayNow"}
+          </button>
+          {missingFieldsHint}
+          <p className="cart-checkout-cta-hint">Dokończysz płatność na stronie PayNow i wrócisz do sklepu.</p>
+        </>
+      );
+    }
+
     if (kind === "blik" || kind === "card" || kind === "wallets") {
       if (!stripeAvailable) {
         return (
@@ -2209,6 +2468,64 @@ export default function CartPage() {
             onPaid={handleStripePaid}
             submitLabel={stripeMethod === "blik" ? "Płacę BLIK-iem" : "Płacę kartą"}
           />
+        </>
+      );
+    }
+
+    // "Przelew online" routowany na PayNow: ta sama siatka banków co u P24,
+    // tylko lista z PayNow (paynowBanks) i osobny wybór (paynowBankId).
+    if (kind === "p24_transfer" && selectedOnlineProvider === "paynow") {
+      return (
+        <>
+          <div className="cart-p24-banks" role="radiogroup" aria-label="Wybierz swój bank">
+            {paynowBanks.length === 0 ? (
+              <div className="cart-payment-waiting">
+                <span className="cart-invoice-nip-spinner" aria-hidden="true" />
+                Wczytujemy listę banków…
+              </div>
+            ) : (
+              paynowBanks.map((bank) => (
+                <label key={bank.id} className={`cart-p24-bank ${paynowBankId === bank.id ? "is-active" : ""}`} title={bank.name}>
+                  <input
+                    type="radio"
+                    name="paynow-bank"
+                    value={bank.id}
+                    checked={paynowBankId === bank.id}
+                    onChange={() => {
+                      setPaynowBankId(bank.id);
+                      trackCheckoutIssue("checkout_paynow_bank", bank.name, { bank_id: bank.id });
+                    }}
+                  />
+                  {bank.img ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={bank.img} alt={bank.name} loading="lazy" />
+                  ) : (
+                    <span className="cart-p24-bank-name">{bank.name}</span>
+                  )}
+                </label>
+              ))
+            )}
+          </div>
+          {error ? <div className="cart-checkout-error">{error}</div> : null}
+          {termsCheckbox}
+          <button
+            type="button"
+            className={`cart-page-checkout-cta ${payBlockedReason ? "is-blocked" : ""}`}
+            onClick={() => {
+              if (payBlockedReason) {
+                jumpToFirstProblem();
+                return;
+              }
+              setError("");
+              submittedRef.current = false;
+              void submitOrder({ paynowMethodId: paynowBankId }).catch(() => {});
+            }}
+            disabled={isSubmitting || (!payBlockedReason && (!termsAccepted || (paynowBanks.length > 0 && !paynowBankId)))}
+          >
+            {isSubmitting ? "Przekierowujemy do PayNow…" : paynowBankId ? "Płacę – przejdź do banku" : "Wybierz bank, aby zapłacić"}
+          </button>
+          {missingFieldsHint}
+          <p className="cart-checkout-cta-hint">Zapłacisz na stronie swojego banku i wrócisz do sklepu.</p>
         </>
       );
     }
