@@ -1,17 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import InstallmentOffer from "@/app/components/installment-offer";
+import CartTrustBlock from "@/app/components/cart-trust-block";
 import { useSearchParams } from "next/navigation";
-import styles from "@/app/moskitiery/moskitiery-v2.module.css";
 import type { PublicOrder } from "@/lib/shop-public";
-import { clearCart } from "@/lib/cart";
+import { clearCart, formatPln, NON_PRODUCT_POSITION_SLUGS, readCartItems } from "@/lib/cart";
+import { crmGetJson } from "@/lib/crm-get";
 import { trackShopStep } from "@/lib/track-step";
 import type { CheckoutContact } from "@/app/components/stripe-payment-step";
 import StripeMethodStep, { type CreatedIntent, type StripeMethod } from "@/app/components/stripe-method-step";
 import {
+  CRM_PUBLIC_BASE,
   P24BankPicker,
-  PaymentMethodTiles,
   buildPaymentTiles,
   usePaymentSettings,
   resolveProvider,
@@ -36,16 +38,6 @@ const P24_POLL_INTERVAL_MS = 3000;
 const PAYNOW_POLL_ATTEMPTS = 24;
 const PAYNOW_POLL_INTERVAL_MS = 3000;
 
-const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  paid: "Opłacone",
-  cod_pending: "Za pobraniem (nieopłacone)",
-  transfer_pending: "Przelew tradycyjny – oczekujemy na wpłatę",
-  transfer_cancelled: "Anulowane – brak wpłaty",
-  requires_payment: "Oczekuje na płatność",
-  failed: "Nieudana płatność",
-  canceled: "Anulowana",
-  pending: "Oczekuje",
-};
 
 export default function OrderVerify({ orderCode }: { orderCode: string }) {
   const [verifier, setVerifier] = useState("");
@@ -84,6 +76,24 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   // ever fire once per mount, even if `order`/searchParams re-trigger it
   // (e.g. a re-render after lookupOrder resolves).
   const openAiTrackedRef = useRef(false);
+  // Ile pozycji ma jeszcze koszyk na tym urządzeniu - po nieudanej płatności
+  // nie jest czyszczony, więc "Zmień zamówienie" może wrócić wprost do niego.
+  const [localCartCount, setLocalCartCount] = useState(0);
+  const [siteContact, setSiteContact] = useState({ phone: "", email: "", hours: "" });
+
+  useEffect(() => {
+    setLocalCartCount(readCartItems().length);
+    crmGetJson<{ site?: { contact_phone?: string; contact_email?: string; contact_hours?: string } }>(`${CRM_PUBLIC_BASE}/site`)
+      .then((json) => {
+        const site = json?.site || {};
+        setSiteContact({
+          phone: typeof site.contact_phone === "string" ? site.contact_phone : "",
+          email: typeof site.contact_email === "string" ? site.contact_email : "",
+          hours: typeof site.contact_hours === "string" ? site.contact_hours : "",
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   const lookupOrder = useCallback(
     async (verifierValue: string) => {
@@ -433,9 +443,11 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   }
 
   if (order) {
+    const amountTotalNum = Number((order.amount_total || "0").replace(",", ".")) || 0;
     // Jeden warunek dla wszystkich metod: zamówienie nieopłacone, nie za
-    // pobraniem i nie w trakcie sprawdzania powrotu z P24. Dostawca pierwszej,
-    // nieudanej próby nie ogranicza już wyboru - klient może zapłacić czymkolwiek.
+    // pobraniem i nie w trakcie sprawdzania powrotu z P24/PayNow. Dostawca
+    // pierwszej, nieudanej próby nie ogranicza wyboru - klient może zapłacić
+    // czymkolwiek.
     const canPayNow =
       !justPaid &&
       !p24Polling &&
@@ -443,14 +455,15 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
       order.payment_status !== "paid" &&
       order.payment_provider !== "cod" &&
       order.payment_status !== "cod_pending" &&
+      order.status !== "cancelled" &&
       Boolean(order.amount_total);
-    const amountGrosze = Math.max(0, Math.round(Number((order.amount_total || "0").replace(",", ".")) * 100));
+    const amountGrosze = Math.max(0, Math.round(amountTotalNum * 100));
     const paymentTiles = buildPaymentTiles({
       stripeAvailable: STRIPE_PUBLISHABLE_KEY !== "",
       p24Settings,
       transferEnabled: transferSettings.enabled,
       // Ta sama rata co w koszyku - kafelek "Raty" pokazuje konkret.
-      amount: Number((order.amount_total || "0").replace(",", ".")) || 0,
+      amount: amountTotalNum,
       // Przelew tradycyjny tylko dopóki zamówienie nie jest już przelewem.
       allowTransfer: order.payment_provider !== "transfer",
       routing: paymentRouting,
@@ -463,10 +476,6 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
           : paymentKind === "p24_paypo"
             ? resolveProvider(paymentRouting, "paypo", "p24")
             : "stripe";
-    // Nic nie jest zaznaczone z góry - tak samo jak w koszyku (właściciel,
-    // 2026-09-24): klient sam wybiera metodę, a panel z polami otwiera się
-    // dopiero wtedy.
-    const selectedKind: PaymentKind | null = paymentKind;
     const retryContact: CheckoutContact = {
       name: order.customer_name || "",
       phone: order.customer_phone || "",
@@ -475,313 +484,590 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
       postcode: order.shipping_postcode || "",
       address1: order.shipping_address_line_1 || "",
     };
-    const paymentLabel = justPaid ? "Opłacone" : PAYMENT_STATUS_LABELS[order.payment_status] || order.payment_status;
+    const lines = splitOrderLines(order);
+    const note = parseOrderNote(order.note_text);
+    const isPaid = justPaid || order.payment_status === "paid";
+    const isFailed = !isPaid && ["failed", "canceled"].includes(order.payment_status);
+    const isTransferPending = !isPaid && order.payment_status === "transfer_pending";
+    const isCod = order.payment_provider === "cod" || order.payment_status === "cod_pending";
+    const waiting = p24Polling || paynowPolling;
+    const timedOut = !isPaid && (p24Timeout || paynowTimeout);
+    const freeDelivery = !lines.charges.some((c) => c.slug === "koszt-dostawy") && note.delivery !== "" && !/osobisty/i.test(note.delivery);
+    // "Zmień zamówienie": ten sam telefon/komputer ma jeszcze koszyk (nie
+    // czyścimy go przed udaną płatnością) - wtedy wprost do /koszyk. Na
+    // innym urządzeniu odtwarzamy pozycje z wyceny, ale tylko dla produktów,
+    // które przechodzą to bez strat (moskitiery, plisy) - dla reszty zostaje
+    // kontakt, żeby nie zgubić np. modelu okna dachowego.
+    const restoreSafe = lines.products.length > 0 && lines.products.every((p) => RESTORABLE_SLUGS.has(p.slug));
+    const editHref = !canPayNow ? "" : localCartCount > 0 ? "/koszyk" : restoreSafe && order.quote_code ? `/wizyta/${encodeURIComponent(order.quote_code)}?do=koszyk` : "";
+
+    const heroTone = isPaid ? "is-paid" : isFailed || timedOut ? "is-failed" : "";
+    const heroTitle = justPaid
+      ? "Dziękujemy, płatność doszła"
+      : isPaid
+        ? "Zamówienie opłacone"
+        : waiting
+          ? "Sprawdzamy płatność…"
+          : timedOut
+            ? "Nie mamy jeszcze potwierdzenia z banku"
+            : isTransferPending
+              ? "Czekamy na Twój przelew"
+              : isCod
+                ? "Zamówienie przyjęte, zapłacisz kurierowi"
+                : order.status === "cancelled"
+                  ? "Zamówienie anulowane"
+                  : isFailed
+                    ? "Płatność nie przeszła"
+                    : "Zostało tylko opłacić zamówienie";
+    const heroText = justPaid
+      ? "Potwierdzenie wysłaliśmy na Twój e-mail. Zamówienie idzie do realizacji - o każdym kolejnym kroku damy znać."
+      : isPaid
+        ? `Status: ${order.friendly_status}.`
+        : waiting
+          ? "Zwykle trwa to kilka sekund. Nie zamykaj tej strony."
+          : timedOut
+            ? "Jeśli płatność została zatwierdzona, zaksięgujemy ją sama, gdy bank ją potwierdzi, i wyślemy e-mail. Nie płać drugi raz - a jeśli nic nie zatwierdziłeś, wybierz metodę poniżej."
+            : isTransferPending
+              ? "Dane do przelewu masz poniżej. Tytuł przelewu to numer zamówienia - po zaksięgowaniu wpłaty przekażemy je do realizacji."
+              : isCod
+                ? `Kurier pobierze ${formatPln(amountTotalNum)} przy dostawie.`
+                : order.status === "cancelled"
+                  ? "To zamówienie zostało anulowane. Jeśli to pomyłka, zadzwoń - pomożemy."
+                  : isFailed
+                    ? "Zamówienie jest zapisane i cena się nie zmieniła. Spróbuj jeszcze raz - tą samą albo inną metodą."
+                    : "Wszystko jest zapisane. Po opłaceniu przekazujemy zamówienie do produkcji.";
+
+    const renderCta = (label: string, onClick: () => void, disabled: boolean, hint?: string) => (
+      <>
+        {retryError ? <div className="cart-checkout-error">{retryError}</div> : null}
+        <button type="button" className="cart-page-checkout-cta" onClick={onClick} disabled={disabled}>
+          {label}
+        </button>
+        {hint ? <p className="cart-checkout-cta-hint">{hint}</p> : null}
+      </>
+    );
+
+    // Opcje metody otwierają się pod JEJ kafelkiem - jak w koszyku.
+    const renderRetryPanel = (kind: PaymentKind) => {
+      if (STRIPE_KINDS.includes(kind) && selectedProvider === "stripe") {
+        return (
+          <>
+            {retryError ? <div className="cart-checkout-error">{retryError}</div> : null}
+            <StripeMethodStep
+              key={kind}
+              publishableKey={STRIPE_PUBLISHABLE_KEY}
+              method={kind as StripeMethod}
+              amountGrosze={amountGrosze}
+              contact={retryContact}
+              termsAccepted
+              disabledReason=""
+              createIntent={() => createRetryIntent(kind as StripeMethod)}
+              submitLabel={kind === "blik" ? "Płacę BLIK-iem" : `Płacę ${formatPln(amountTotalNum)}`}
+              onPaid={() => {
+                setJustPaid(true);
+                clearCart();
+                if (order.amount_total) {
+                  void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
+                    trackOpenAiOrderCreated({
+                      orderCode: order.order_code,
+                      amountZl: Number(order.amount_total),
+                      currency: order.currency,
+                      items: [{ id: order.product_slug, name: order.product_label, quantity: 1 }],
+                    });
+                  });
+                }
+              }}
+            />
+          </>
+        );
+      }
+      if (kind === "blik" && selectedProvider === "paynow") {
+        const digits = paynowBlikCode.replace(/\D+/g, "").slice(0, 6);
+        return (
+          <>
+            <div className="cart-blik-field">
+              <label htmlFor="order-paynow-blik-code" className="cart-blik-label">
+                Kod BLIK
+              </label>
+              <div className="cart-blik-row">
+                <input
+                  id="order-paynow-blik-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={digits}
+                  onChange={(event) => setPaynowBlikCode(event.target.value.replace(/\D+/g, "").slice(0, 6))}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && digits.length === 6 && !retryLoading) {
+                      event.preventDefault();
+                      void handleStartPaynow("blik");
+                    }
+                  }}
+                  disabled={retryLoading}
+                  aria-label="6-cyfrowy kod BLIK"
+                />
+              </div>
+            </div>
+            {renderCta(retryLoading ? "Przetwarzamy…" : "Płacę BLIK-iem", () => void handleStartPaynow("blik"), retryLoading || digits.length !== 6)}
+          </>
+        );
+      }
+      if ((kind === "card" || kind === "wallets") && selectedProvider === "paynow") {
+        return renderCta(
+          retryLoading ? "Przekierowujemy…" : `Płacę ${formatPln(amountTotalNum)}`,
+          () => void handleStartPaynow("card"),
+          retryLoading,
+          "Dane karty podasz na bezpiecznej stronie PayNow, potem wrócisz tutaj.",
+        );
+      }
+      if (kind === "p24_transfer") {
+        const viaPaynow = selectedProvider === "paynow";
+        const banks = viaPaynow ? paynowBanks : p24Banks;
+        const bankId = viaPaynow ? paynowBankId : p24BankId;
+        return (
+          <>
+            <P24BankPicker
+              banks={banks}
+              selectedId={bankId}
+              onSelect={(bank) => (viaPaynow ? setPaynowBankId(bank.id) : setP24BankId(bank.id))}
+            />
+            {renderCta(
+              retryLoading ? "Przekierowujemy do banku…" : banks.length > 0 && !bankId ? "Wybierz swój bank" : "Płacę - przejdź do banku",
+              () => void (viaPaynow ? handleStartPaynow("pbl") : handleStartP24("p24_transfer")),
+              retryLoading || (banks.length > 0 && !bankId),
+              "Zapłacisz na stronie swojego banku i wrócisz tutaj.",
+            )}
+          </>
+        );
+      }
+      if (kind === "transfer") {
+        return renderCta(
+          retryLoading ? "Przygotowujemy…" : "Wybieram przelew tradycyjny",
+          () => void handleSwitchTransfer(),
+          retryLoading,
+          "Dane do przelewu pokażemy tutaj i wyślemy e-mailem. Realizacja po zaksięgowaniu wpłaty.",
+        );
+      }
+      if (kind === "p24_paypo") {
+        return renderCta(
+          retryLoading ? "Przekierowujemy do PayPo…" : "Przechodzę do wniosku online",
+          () => void (selectedProvider === "paynow" ? handleStartPaynow("paypo") : handleStartP24("p24_paypo")),
+          retryLoading,
+          "Wniosek wypełnisz na stronie PayPo. Płacisz w ciągu 30 dni.",
+        );
+      }
+      return renderCta(
+        retryLoading ? "Przekierowujemy…" : "Przechodzę do wniosku online",
+        () => void handleStartP24(kind as P24Kind),
+        retryLoading,
+        "Wniosek wypełnisz na stronie Przelewy24. Bank poda ostateczną ratę i RRSO.",
+      );
+    };
 
     return (
-      <section className={styles.orderCard}>
-        <h2>
-          Zamówienie {order.order_code}
-          {order.crm_order_number ? ` (nr ${order.crm_order_number})` : ""}
-        </h2>
-        {!order.crm_order_number ? (
-          <p className={styles.sectionIntro}>
-            To numer tymczasowy - po przyjęciu zamówienia do realizacji otrzyma numer docelowy.
-          </p>
-        ) : null}
-        <div className={styles.orderMeta}>
-          <div>Status: <strong>{order.friendly_status}</strong></div>
-          <div>Płatność: <strong>{paymentLabel}</strong></div>
-          <div>Kwota: <strong>{order.amount_total ? `${order.amount_total} ${order.currency}` : "—"}</strong></div>
-          <div>Produkt: <strong>{order.product_label}</strong></div>
-          {order.customer_name ? <div>Odbiorca: <strong>{order.customer_name}</strong></div> : null}
-          <div>Adres: <strong>{order.shipping_address_line_1}</strong> {order.shipping_address_line_2}</div>
-          <div>Miasto: <strong>{order.shipping_postcode} {order.shipping_city}</strong></div>
-          {order.invoice_required ? (
-            <div>Faktura VAT: <strong>{order.invoice_issued ? "wystawiona" : "w przygotowaniu"}</strong></div>
+      <div className="order-page">
+        <section className={`order-hero ${heroTone}`}>
+          <div className="order-hero-icon" aria-hidden="true">
+            {isPaid ? "✓" : isFailed || timedOut ? "!" : waiting ? <span className="order-p24-spinner" /> : "→"}
+          </div>
+          <div className="order-hero-copy">
+            <p className="order-hero-code">
+              Zamówienie {order.order_code}
+              {order.crm_order_number ? ` · nr ${order.crm_order_number}` : ""}
+            </p>
+            <h2>{heroTitle}</h2>
+            <p>{heroText}</p>
+            {canPayNow && (lines.savings > 0 || freeDelivery) ? (
+              <div className="order-hero-chips">
+                {lines.discounts.map((d) => (
+                  <span key={d.label} className="order-hero-chip">
+                    {d.label} zachowany{d.amount > 0 ? ` · -${formatPln(d.amount)}` : ""}
+                  </span>
+                ))}
+                {freeDelivery ? <span className="order-hero-chip">Dostawa gratis</span> : null}
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="cart-basket-card order-items-card">
+          <div className="cart-basket-toggle order-items-head">
+            <span className="cart-basket-toggle-label">
+              Twoje zamówienie
+              <em>
+                {lines.pieces} {plural(lines.pieces, "produkt", "produkty", "produktów")}
+              </em>
+            </span>
+            {editHref ? (
+              <Link href={editHref} className="order-items-edit" onClick={() => trackShopStep("payment_retry_edit", localCartCount > 0 ? "cart" : "restore", { order_code: orderCode })}>
+                Zmień zamówienie
+              </Link>
+            ) : null}
+          </div>
+          {lines.products.length > 0 ? (
+            <ul className="cart-page-items">
+              {lines.products.map((item, index) => (
+                <li key={`${item.slug}-${index}`} className="cart-page-item order-item">
+                  <div className="cart-page-item-info">
+                    <strong>{item.label}</strong>
+                    {item.specs ? <span className="cart-page-item-specs">{item.specs}</span> : null}
+                    {item.qty > 1 && item.total !== null ? (
+                      <span className="cart-page-item-unit">{formatPln(item.total / item.qty)} / szt.</span>
+                    ) : null}
+                  </div>
+                  <span className="order-item-qty">{item.qty} szt.</span>
+                  <span className="cart-page-item-total">{item.total !== null ? formatPln(item.total) : "—"}</span>
+                </li>
+              ))}
+            </ul>
+          ) : order.summary_text ? (
+            <p className="order-items-fallback">{order.summary_text}</p>
+          ) : null}
+          <div className="cart-summary-card-body">
+            {lines.productsTotal > 0 && (lines.discounts.length > 0 || lines.charges.length > 0) ? (
+              <div className="cart-page-summary-row is-muted">
+                <span>Produkty</span>
+                <span>{formatPln(lines.productsTotal)}</span>
+              </div>
+            ) : null}
+            {lines.discounts.map((d) => (
+              <div key={d.label} className="cart-page-summary-row is-muted">
+                <span>{d.label}</span>
+                <span>{d.amount > 0 ? `-${formatPln(d.amount)}` : ""}</span>
+              </div>
+            ))}
+            {lines.charges.map((c) => (
+              <div key={c.slug} className="cart-page-summary-row is-muted">
+                <span>{c.label}</span>
+                <span>{formatPln(c.amount)}</span>
+              </div>
+            ))}
+            {freeDelivery ? (
+              <div className="cart-page-summary-row is-muted">
+                <span>Dostawa</span>
+                <span>Gratis</span>
+              </div>
+            ) : null}
+            <div className="total-block">
+              <span className="total-block-left">
+                <span className="total-block-label">{isPaid ? "Zapłacono" : "Do zapłaty"}</span>
+                {lines.savings > 0 ? <span className="total-block-savings">Oszczędzasz {formatPln(lines.savings)}</span> : null}
+              </span>
+              <span className="total-block-right">
+                {lines.savings > 0 ? <s>{formatPln(amountTotalNum + lines.savings)}</s> : null}
+                <strong>{formatPln(amountTotalNum)}</strong>
+              </span>
+            </div>
+            {canPayNow ? <InstallmentOffer amount={amountTotalNum} /> : null}
+          </div>
+        </section>
+
+        <div className={canPayNow || waiting ? "cart-checkout-layout" : "order-status-layout"}>
+          <div className="cart-checkout-left">
+            {order.transfer && isTransferPending ? (
+              <section className="cart-delivery-card order-transfer-card">
+                <h2>Dane do przelewu</h2>
+                <dl className="order-transfer-grid">
+                  <div>
+                    <dt>Odbiorca</dt>
+                    <dd>
+                      {order.transfer.account_holder}
+                      {order.transfer.holder_address ? <small>{order.transfer.holder_address}</small> : null}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Numer konta</dt>
+                    <dd className="order-transfer-iban">
+                      {order.transfer.account_number}
+                      {order.transfer.bank_name ? <small>{order.transfer.bank_name}</small> : null}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Kwota</dt>
+                    <dd>{order.transfer.amount ? `${order.transfer.amount.replace(".", ",")} ${order.transfer.currency || "PLN"}` : "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Tytuł przelewu</dt>
+                    <dd className="order-transfer-title">{order.transfer.title || order.order_code}</dd>
+                  </div>
+                </dl>
+                <p className="order-transfer-note">
+                  Przelew może iść do 2 dni roboczych. Kiedy do nas dotrze, wyślemy e-mail, że zamówienie jest w realizacji.
+                </p>
+              </section>
+            ) : null}
+
+            {order.estimated_completion || order.shipments.length > 0 ? (
+              <section className="cart-delivery-card">
+                <h2>Realizacja</h2>
+                <dl className="order-facts">
+                  {order.estimated_completion ? (
+                    <div>
+                      <dt>Planowany termin</dt>
+                      <dd>
+                        {order.estimated_completion}
+                        <small>Termin orientacyjny według planu produkcji - może się przesunąć.</small>
+                      </dd>
+                    </div>
+                  ) : null}
+                  {order.shipments.map((shipment, index) => (
+                    <div key={`${shipment.tracking_number}-${index}`}>
+                      <dt>Przesyłka{shipment.carrier ? ` · ${shipment.carrier}` : ""}</dt>
+                      <dd>
+                        {shipment.tracking_link ? (
+                          <a href={shipment.tracking_link} target="_blank" rel="noopener noreferrer">
+                            {shipment.tracking_number} - śledź przesyłkę
+                          </a>
+                        ) : (
+                          shipment.tracking_number
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ) : null}
+
+            <section className="cart-delivery-card">
+              <h2>Dostawa i dane</h2>
+              <dl className="order-facts">
+                {note.delivery ? (
+                  <div>
+                    <dt>Dostawa</dt>
+                    <dd>
+                      {note.delivery}
+                      {note.paczkomat ? <small>{note.paczkomat}</small> : null}
+                    </dd>
+                  </div>
+                ) : null}
+                {order.customer_name ? (
+                  <div>
+                    <dt>Odbiorca</dt>
+                    <dd>
+                      {order.customer_name}
+                      {order.customer_phone || order.customer_email ? (
+                        <small>{[order.customer_phone, order.customer_email].filter(Boolean).join(" · ")}</small>
+                      ) : null}
+                    </dd>
+                  </div>
+                ) : null}
+                {order.shipping_address_line_1 && !note.paczkomat ? (
+                  <div>
+                    <dt>Adres</dt>
+                    <dd>
+                      {[order.shipping_address_line_1, order.shipping_address_line_2].filter(Boolean).join(", ")}
+                      <small>{formatPostcode(order.shipping_postcode)} {order.shipping_city}</small>
+                    </dd>
+                  </div>
+                ) : null}
+                {isPaid && order.payment_method_label ? (
+                  <div>
+                    <dt>Płatność</dt>
+                    <dd>{order.payment_method_label}</dd>
+                  </div>
+                ) : null}
+                {order.invoice_required ? (
+                  <div>
+                    <dt>Faktura VAT</dt>
+                    <dd>{order.invoice_issued ? "wystawiona" : "w przygotowaniu"}</dd>
+                  </div>
+                ) : null}
+                {note.remark ? (
+                  <div>
+                    <dt>Uwagi</dt>
+                    <dd>{note.remark}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </section>
+
+            {canPayNow ? <CartTrustBlock /> : null}
+
+            <p className="order-help">
+              {canPayNow ? "Płatność nie chce przejść? " : "Pytania o zamówienie? "}
+              {siteContact.phone ? (
+                <>
+                  Zadzwoń: <a href={`tel:${siteContact.phone.replace(/\s+/g, "")}`}>{siteContact.phone}</a>
+                </>
+              ) : null}
+              {siteContact.phone && siteContact.email ? " albo napisz: " : null}
+              {siteContact.email ? <a href={`mailto:${siteContact.email}`}>{siteContact.email}</a> : null}
+              {siteContact.hours ? <span className="order-help-hours"> ({siteContact.hours})</span> : null}
+            </p>
+          </div>
+
+          {canPayNow || waiting ? (
+            <aside className="cart-checkout-right">
+              <section className="cart-payment-card">
+                <div className="cart-payment-card-head">
+                  <h2>Płatność</h2>
+                  <span className="cart-payment-due">
+                    <span className="cart-payment-due-label">Do zapłaty</span>
+                    <strong>{formatPln(amountTotalNum)}</strong>
+                  </span>
+                </div>
+                {waiting ? (
+                  <div className="order-p24-waiting">
+                    <span className="order-p24-spinner" aria-hidden="true" />
+                    <span>Czekamy na potwierdzenie z banku - zwykle kilka sekund.</span>
+                  </div>
+                ) : null}
+                {canPayNow ? (
+                  <>
+                    <p className="cart-payment-method-badge">Sposób płatności</p>
+                    <div className="cart-pay-tiles" role="radiogroup" aria-label="Sposób płatności">
+                      {paymentTiles.map((tile) => {
+                        const active = paymentKind === tile.kind;
+                        return (
+                          <div key={tile.kind} className={`cart-pay-tile-group ${active ? "is-active" : ""}`}>
+                            <label className={`cart-pay-tile ${active ? "is-active" : ""} ${tile.wide ? "is-wide" : ""}`}>
+                              <input
+                                type="radio"
+                                name="order-payment-kind"
+                                value={tile.kind}
+                                checked={active}
+                                onChange={() => {
+                                  setPaymentKind(tile.kind);
+                                  setRetryError("");
+                                  trackShopStep("payment_retry_kind", tile.kind, { order_code: orderCode });
+                                }}
+                                disabled={retryLoading}
+                              />
+                              {tile.logo}
+                              <span className="cart-pay-tile-copy">
+                                <strong>{tile.title}</strong>
+                                {tile.hint ? <small>{tile.hint}</small> : null}
+                              </span>
+                              <span className="cart-pay-tile-check" aria-hidden="true" />
+                            </label>
+                            {active ? <div className="cart-pay-tile-panel">{renderRetryPanel(tile.kind)}</div> : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : null}
+              </section>
+            </aside>
           ) : null}
         </div>
 
-        {order.transfer && order.payment_status === "transfer_pending" ? (
-          <div className="order-transfer-card">
-            <h3>Dane do przelewu</h3>
-            <dl className="order-transfer-grid">
-              <div>
-                <dt>Odbiorca</dt>
-                <dd>
-                  {order.transfer.account_holder}
-                  {order.transfer.holder_address ? <small>{order.transfer.holder_address}</small> : null}
-                </dd>
-              </div>
-              <div>
-                <dt>Numer konta</dt>
-                <dd className="order-transfer-iban">
-                  {order.transfer.account_number}
-                  {order.transfer.bank_name ? <small>{order.transfer.bank_name}</small> : null}
-                </dd>
-              </div>
-              <div>
-                <dt>Kwota</dt>
-                <dd>
-                  {order.transfer.amount ? `${order.transfer.amount.replace(".", ",")} ${order.transfer.currency || "PLN"}` : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt>Tytuł przelewu</dt>
-                <dd className="order-transfer-title">{order.transfer.title || order.order_code}</dd>
-              </div>
-            </dl>
-            <p className="order-transfer-note">
-              Zaksięgowanie przelewu może potrwać <strong>do 2 dni roboczych</strong>. Gdy wpłata do nas dotrze,
-              poinformujemy Cię e-mailem, że zamówienie zostało przekazane do realizacji. Te same dane wysłaliśmy
-              na Twój adres e-mail.
-            </p>
-          </div>
-        ) : null}
-
-        {order.estimated_completion ? (
-          <div className={styles.noticeBox}>
-            Szacowany termin realizacji: <strong>{order.estimated_completion}</strong>
-            <br />
-            <small>To termin orientacyjny, wyznaczony na podstawie aktualnego planu produkcji - może ulec zmianie.</small>
-          </div>
-        ) : null}
-
-        {order.shipments.length > 0 ? (
-          <div className={styles.orderMeta}>
-            <h3>Przesyłka</h3>
-            {order.shipments.map((shipment, index) => (
-              <div key={`${shipment.tracking_number}-${index}`}>
-                {shipment.carrier ? `${shipment.carrier} - ` : ""}
-                <strong>{shipment.tracking_number}</strong>
-                {shipment.tracking_link ? (
-                  <>
-                    {" "}
-                    (
-                    <a href={shipment.tracking_link} target="_blank" rel="noopener noreferrer">
-                      śledź przesyłkę
-                    </a>
-                    )
-                  </>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {order.note_text ? <div className={styles.noticeBox}>{order.note_text}</div> : null}
-        {order.summary_text ? <div className={styles.copyHtml}><p>{order.summary_text}</p></div> : null}
-
-        {p24Polling ? (
-          <div className="order-p24-waiting">
-            <span className="order-p24-spinner" aria-hidden="true" />
-            <span>
-              Czekamy na potwierdzenie płatności z Przelewy24… Zwykle trwa to kilka sekund. Nie zamykaj tej strony.
-            </span>
-          </div>
-        ) : null}
-        {p24Timeout && !justPaid && order.payment_status !== "paid" ? (
-          <div className={styles.noticeBox}>
-            Nie dostaliśmy jeszcze potwierdzenia z Przelewy24. Jeśli płatność została wykonana, zaksięgujemy ją
-            automatycznie, gdy tylko dotrze potwierdzenie – dostaniesz wtedy e-mail. Jeśli płatność nie doszła do
-            skutku, możesz ją ponowić poniżej.
-          </div>
-        ) : null}
-        {paynowPolling ? (
-          <div className="order-p24-waiting">
-            <span className="order-p24-spinner" aria-hidden="true" />
-            <span>Czekamy na potwierdzenie płatności z PayNow… Nie zamykaj tej strony.</span>
-          </div>
-        ) : null}
-        {paynowTimeout && !justPaid && order.payment_status !== "paid" ? (
-          <div className={styles.noticeBox}>
-            Nie dostaliśmy jeszcze potwierdzenia z PayNow. Jeśli płatność została wykonana, zaksięgujemy ją
-            automatycznie, gdy tylko dotrze potwierdzenie – dostaniesz wtedy e-mail. Jeśli płatność nie doszła do
-            skutku, możesz ją ponowić poniżej.
-          </div>
-        ) : null}
-
-        {justPaid ? (
-          <div className={styles.successBox}>Płatność zakończona sukcesem - dziękujemy!</div>
-        ) : transferSwitched && order.payment_provider === "transfer" ? (
-          <div className={styles.successBox}>
-            Zmieniliśmy płatność na przelew tradycyjny. Dane do przelewu masz powyżej i wysłaliśmy je też e-mailem.
-          </div>
-        ) : canPayNow ? (
-          <div className={styles.paymentShell}>
-            <p className={styles.sectionIntro}>
-              Płatność za to zamówienie nie została jeszcze zakończona. Wybierz sposób płatności - niczego nie
-              musisz wypełniać od nowa.
-            </p>
-            <InstallmentOffer amount={Number((order.amount_total || "0").replace(",", ".")) || 0} />
-            <PaymentMethodTiles
-              tiles={paymentTiles}
-              selected={selectedKind}
-              onSelect={(kind) => {
-                setPaymentKind(kind);
-                setRetryError("");
-                trackShopStep("payment_retry_kind", kind, { order_code: orderCode });
-              }}
-              disabled={retryLoading}
-              name="order-payment-kind"
-            />
-            {selectedKind === "p24_transfer" && selectedProvider === "p24" ? (
-              <P24BankPicker
-                banks={p24Banks}
-                selectedId={p24BankId}
-                onSelect={(bank) => setP24BankId(bank.id)}
-              />
-            ) : null}
-            {selectedKind === "p24_transfer" && selectedProvider === "paynow" ? (
-              <P24BankPicker
-                banks={paynowBanks}
-                selectedId={paynowBankId}
-                onSelect={(bank) => setPaynowBankId(bank.id)}
-              />
-            ) : null}
-            {retryError ? <div className={styles.errorBox}>{retryError}</div> : null}
-            {selectedKind && STRIPE_KINDS.includes(selectedKind) && selectedProvider === "stripe" ? (
-              <StripeMethodStep
-                key={selectedKind}
-                publishableKey={STRIPE_PUBLISHABLE_KEY}
-                method={selectedKind as StripeMethod}
-                amountGrosze={amountGrosze}
-                contact={retryContact}
-                termsAccepted
-                disabledReason=""
-                createIntent={() => createRetryIntent(selectedKind as StripeMethod)}
-                submitLabel="Zapłać"
-                onPaid={() => {
-                  setJustPaid(true);
-                  clearCart();
-                  if (order.amount_total) {
-                    void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
-                      trackOpenAiOrderCreated({
-                        orderCode: order.order_code,
-                        amountZl: Number(order.amount_total),
-                        currency: order.currency,
-                        items: [{ id: order.product_slug, name: order.product_label, quantity: 1 }],
-                      });
-                    });
-                  }
-                }}
-              />
-            ) : selectedKind === "blik" && selectedProvider === "paynow" ? (
-              (() => {
-                const digits = paynowBlikCode.replace(/\D+/g, "").slice(0, 6);
-                return (
-                  <>
-                    <div className="cart-blik-field">
-                      <label htmlFor="order-paynow-blik-code" className="cart-blik-label">
-                        Kod BLIK
-                      </label>
-                      <div className="cart-blik-row">
-                        <input
-                          id="order-paynow-blik-code"
-                          type="text"
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          pattern="[0-9]*"
-                          maxLength={6}
-                          placeholder="000000"
-                          value={digits}
-                          onChange={(event) => setPaynowBlikCode(event.target.value.replace(/\D+/g, "").slice(0, 6))}
-                          disabled={retryLoading}
-                          aria-label="6-cyfrowy kod BLIK"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.ctaButton}
-                      onClick={() => void handleStartPaynow("blik")}
-                      disabled={retryLoading || digits.length !== 6}
-                    >
-                      {retryLoading ? "Przetwarzamy…" : "Płacę BLIK-iem"}
-                    </button>
-                  </>
-                );
-              })()
-            ) : (selectedKind === "card" || selectedKind === "wallets") && selectedProvider === "paynow" ? (
-              <button
-                type="button"
-                className={styles.ctaButton}
-                onClick={() => void handleStartPaynow("card")}
-                disabled={retryLoading}
-              >
-                {retryLoading ? "Przekierowujemy…" : "Płacę – przejdź do PayNow"}
-              </button>
-            ) : selectedKind === "p24_transfer" && selectedProvider === "paynow" ? (
-              <button
-                type="button"
-                className={styles.ctaButton}
-                onClick={() => void handleStartPaynow("pbl")}
-                disabled={retryLoading || (paynowBanks.length > 0 && !paynowBankId)}
-              >
-                {retryLoading
-                  ? "Przekierowujemy…"
-                  : paynowBanks.length > 0 && !paynowBankId
-                    ? "Wybierz swój bank"
-                    : "Przejdź do płatności"}
-              </button>
-            ) : selectedKind === "p24_paypo" && selectedProvider === "paynow" ? (
-              <button
-                type="button"
-                className={styles.ctaButton}
-                onClick={() => void handleStartPaynow("paypo")}
-                disabled={retryLoading}
-              >
-                {retryLoading ? "Przekierowujemy do PayPo…" : "Przechodzę do wniosku"}
-              </button>
-            ) : selectedKind === "transfer" ? (
-              <>
-                <p className={styles.sectionIntro}>
-                  Dane do przelewu pokażemy tutaj i wyślemy e-mailem. Zamówienie trafi do realizacji po
-                  zaksięgowaniu wpłaty.
-                </p>
-                <button type="button" className={styles.ctaButton} onClick={handleSwitchTransfer} disabled={retryLoading}>
-                  {retryLoading ? "Przygotowujemy…" : "Wybieram przelew tradycyjny"}
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className={styles.ctaButton}
-                onClick={() => void handleStartP24(selectedKind as P24Kind)}
-                disabled={retryLoading || (selectedKind === "p24_transfer" && p24Banks.length > 0 && !p24BankId)}
-              >
-                {retryLoading
-                  ? "Przekierowujemy…"
-                  : selectedKind === "p24_transfer" && p24Banks.length > 0 && !p24BankId
-                    ? "Wybierz swój bank"
-                    : selectedKind === "p24_paypo" || selectedKind === "p24_installments"
-                      ? // Raty i PayPo kończą się wnioskiem u finansującego,
-                        // nie zapłatą - tak samo jak w koszyku.
-                        "Przechodzę do wniosku"
-                      : "Przejdź do płatności"}
-              </button>
-            )}
-          </div>
-        ) : null}
-      </section>
+        <Link href="/" className="cart-thankyou-back order-back">
+          ← Wróć do sklepu
+        </Link>
+      </div>
     );
   }
 
   return (
-    <section className={styles.verifyCard}>
-      <h2>Zweryfikuj dostęp do zamówienia</h2>
-      <p className={styles.sectionIntro}>
-        Link z e-maila nie wystarcza do podglądu danych. Wpisz telefon albo e-mail podany podczas składania zamówienia.
-      </p>
-      {error ? <div className={styles.errorBox}>{error}</div> : null}
-      <form className={styles.formGrid} onSubmit={handleSubmit}>
-        <label className={styles.field}>
+    <section className="cart-delivery-card order-verify">
+      <h2>Sprawdź swoje zamówienie</h2>
+      <p>Wpisz numer telefonu albo e-mail, które podałeś przy zamówieniu {orderCode}.</p>
+      {error ? <div className="cart-checkout-error">{error}</div> : null}
+      <form className="order-verify-form" onSubmit={handleSubmit}>
+        <label>
           Telefon lub e-mail
-          <input value={verifier} onChange={(event) => setVerifier(event.target.value)} required />
+          <input
+            value={verifier}
+            onChange={(event) => setVerifier(event.target.value)}
+            autoComplete="email"
+            required
+          />
         </label>
-        <button type="submit" className={styles.ctaButton} disabled={isSubmitting}>
+        <button type="submit" className="cart-page-checkout-cta" disabled={isSubmitting}>
           {isSubmitting ? "Sprawdzamy…" : "Pokaż zamówienie"}
         </button>
       </form>
     </section>
   );
+}
+
+// ----- pozycje zamówienia z zapisanej wyceny -----
+
+const DISCOUNT_SLUGS = new Set(["rabat", "rabat-ratunek", "oszczednosc-obwod-moskitiery"]);
+// Te produkty da się odtworzyć w koszyku z wyceny bez utraty danych
+// (lib/rescue.ts -> mapQuoteToResumeState).
+const RESTORABLE_SLUGS = new Set(["moskitiery-ramkowe", "plisy"]);
+
+type OrderProductLine = { slug: string; label: string; specs: string; qty: number; total: number | null };
+type OrderLines = {
+  products: OrderProductLine[];
+  discounts: { label: string; amount: number }[];
+  charges: { slug: string; label: string; amount: number }[];
+  productsTotal: number;
+  savings: number;
+  pieces: number;
+};
+
+function toNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(String(value).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function splitOrderLines(order: PublicOrder): OrderLines {
+  const payload = (order.payload || {}) as { quote?: { payload?: { positions?: unknown[] }; positions?: unknown[] } };
+  const nested = payload.quote?.payload?.positions;
+  const raw = (Array.isArray(nested) && nested.length ? nested : payload.quote?.positions || []) as Array<Record<string, unknown>>;
+  const out: OrderLines = { products: [], discounts: [], charges: [], productsTotal: 0, savings: 0, pieces: 0 };
+  for (const p of raw) {
+    if (!p || typeof p !== "object") continue;
+    const slug = String(p.product_slug || "");
+    const summary = String(p.summary || "").trim();
+    const total = toNumber(p.total_amount);
+    if (DISCOUNT_SLUGS.has(slug)) {
+      // "Kod rabatowy SEZON20 (-81,90 zł)" -> etykieta + kwota
+      const match = summary.match(/^(.*?)\s*\(\s*-?\s*([\d\s]+,\d{2})\s*zł\s*\)\s*$/);
+      const amount = match ? Number(match[2].replace(/\s+/g, "").replace(",", ".")) : 0;
+      out.discounts.push({ label: match ? match[1] : summary, amount });
+      out.savings += amount;
+      continue;
+    }
+    if (NON_PRODUCT_POSITION_SLUGS.has(slug)) {
+      if (total && total > 0) out.charges.push({ slug, label: String(p.product_label || summary), amount: total });
+      continue;
+    }
+    const rows = Array.isArray(p.summary_rows) ? (p.summary_rows as Array<{ label?: string; value?: string }>) : [];
+    const specs = rows
+      .filter((r) => r && r.label && r.value && r.label !== "Ilość")
+      .map((r) => (r.label === "Rozmiar" ? String(r.value) : `${r.label}: ${r.value}`))
+      .join(" · ");
+    const qty = Math.max(1, Number(p.quantity) || 1);
+    out.products.push({ slug, label: String(p.product_label || "Produkt"), specs, qty, total });
+    out.pieces += qty;
+    if (total) out.productsTotal += total;
+  }
+  return out;
+}
+
+/** note_text z koszyka: "Metoda dostawy: …", "Paczkomat: …", "Metoda płatności: …"
+ * i ewentualne uwagi klienta - każde w swoim akapicie. */
+function parseOrderNote(noteText: string): { delivery: string; paczkomat: string; remark: string } {
+  const result = { delivery: "", paczkomat: "", remark: "" };
+  const remarks: string[] = [];
+  for (const block of String(noteText || "").split(/\n{2,}/)) {
+    const text = block.trim();
+    if (!text) continue;
+    if (/^Metoda dostawy:/i.test(text)) result.delivery = text.replace(/^Metoda dostawy:\s*/i, "");
+    else if (/^Paczkomat:/i.test(text)) result.paczkomat = text;
+    else if (/^Metoda p[łl]atno[śs]ci:/i.test(text)) continue;
+    else remarks.push(text);
+  }
+  result.remark = remarks.join("\n");
+  return result;
+}
+
+function formatPostcode(postcode: string): string {
+  return String(postcode || "").replace(/^(\d{2})(\d{3})$/, "$1-$2");
+}
+
+function plural(n: number, one: string, few: string, many: string): string {
+  if (n === 1) return one;
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return few;
+  return many;
 }

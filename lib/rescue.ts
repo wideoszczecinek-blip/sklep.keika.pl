@@ -246,12 +246,14 @@ function extractSpecsFromSummaryRows(rows: SummaryRow[]): {
   hardwareLabel: string;
   meshLabel: string;
   modelLabel: string;
+  mountLabel: string;
   widthMm: number;
   heightMm: number;
 } {
   let hardwareLabel = "";
   let meshLabel = "";
   let modelLabel = "";
+  let mountLabel = "";
   let widthMm = 0;
   let heightMm = 0;
   for (const row of rows) {
@@ -260,6 +262,7 @@ function extractSpecsFromSummaryRows(rows: SummaryRow[]): {
     if (label === "Kolor profilu" || label === "Kolor kasety" || label === "Kolor mechanizmu" || label === "Kolor osprzętu") hardwareLabel = value;
     else if (label === "Kolor siatki" || label === "Kolor materiału" || label === "Kolekcja i kolor tkaniny") meshLabel = value;
     else if (label === "Model okna") modelLabel = value;
+    else if (label === "Rodzaj montażu") mountLabel = value;
     else if (label === "Rozmiar") {
       const match = value.match(/(\d+(?:[.,]\d+)?)\s*[×x]\s*(\d+(?:[.,]\d+)?)/);
       if (match) {
@@ -268,7 +271,7 @@ function extractSpecsFromSummaryRows(rows: SummaryRow[]): {
       }
     }
   }
-  return { hardwareLabel, meshLabel, modelLabel, widthMm, heightMm };
+  return { hardwareLabel, meshLabel, modelLabel, mountLabel, widthMm, heightMm };
 }
 
 type RawResumeQuote = {
@@ -331,6 +334,7 @@ export function mapQuoteToResumeState(quote: RawResumeQuote): ResumeState {
       hardwareLabel: specs.hardwareLabel,
       meshLabel: specs.meshLabel,
       modelLabel: specs.modelLabel || undefined,
+      mountLabel: specs.mountLabel || undefined,
       widthMm: specs.widthMm,
       heightMm: specs.heightMm,
       qty: quantity,

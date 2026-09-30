@@ -361,6 +361,9 @@ export type PublicOrder = {
   customer_name?: string;
   customer_phone?: string;
   customer_email?: string;
+  /** "BLIK (Stripe)", "PayPo (Przelewy24)" … - faktyczna metoda płatności
+   * z CRM; pusty, gdy nieznana. */
+  payment_method_label?: string;
 };
 
 export const fetchSiteContent = cache(async () => {

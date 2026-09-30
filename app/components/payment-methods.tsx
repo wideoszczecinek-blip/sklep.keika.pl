@@ -250,14 +250,17 @@ export function buildPaymentTiles(options: {
   const walletsRow = routing?.wallets;
   const transferRow = routing?.transfer;
   const paypoRow = routing?.paypo;
-  const blikEnabled = blikRow ? blikRow.enabled : stripeAvailable;
-  const cardEnabled = cardRow ? cardRow.enabled : stripeAvailable;
-  const walletsEnabled = walletsRow ? walletsRow.enabled : stripeAvailable;
-  const onlineTransferEnabled = transferRow ? transferRow.enabled : p24KindAvailable(p24Settings, "p24_transfer");
-  const paypoEnabled = paypoRow ? paypoRow.enabled : p24KindAvailable(p24Settings, "p24_paypo");
   const blikProvider = resolveProvider(routing, "blik", "stripe");
   const cardProvider = resolveProvider(routing, "card", "stripe");
   const walletsProvider = resolveProvider(routing, "wallets", "stripe");
+  // CRM nie widzi kluczy Stripe (żyją tutaj) - metoda przez Stripe tylko,
+  // gdy sklep faktycznie ma klucz publiczny.
+  const stripeOk = (provider: PaymentProvider) => provider !== "stripe" || stripeAvailable;
+  const blikEnabled = (blikRow ? blikRow.enabled : stripeAvailable) && stripeOk(blikProvider);
+  const cardEnabled = (cardRow ? cardRow.enabled : stripeAvailable) && stripeOk(cardProvider);
+  const walletsEnabled = (walletsRow ? walletsRow.enabled : stripeAvailable) && stripeOk(walletsProvider);
+  const onlineTransferEnabled = transferRow ? transferRow.enabled : p24KindAvailable(p24Settings, "p24_transfer");
+  const paypoEnabled = paypoRow ? paypoRow.enabled : p24KindAvailable(p24Settings, "p24_paypo");
   const transferProvider = resolveProvider(routing, "transfer", "p24");
   const paypoProvider = resolveProvider(routing, "paypo", "p24");
 

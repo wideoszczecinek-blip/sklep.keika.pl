@@ -19469,3 +19469,221 @@ html[data-theme="dark"] .product-cart-dock-badge {
 html[data-theme="dark"] .cart-pay-tile-count {
   color: rgba(238, 245, 255, 0.72);
 }
+
+/* ===== Strona zamówienia / ponowienia płatności (2026-10-01) - ta sama
+   oprawa co koszyk: karty koszyka, pozycje z cenami, "Do zapłaty",
+   blok zaufania i panel płatności. Nowe są tylko: pasek stanu na górze,
+   pozycje tylko do odczytu i lista danych dostawy. ===== */
+.order-page {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.order-hero {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(0, 168, 163, 0.35);
+  background: #f2fbfa;
+  padding: 1rem 1.1rem;
+  color: #132843;
+}
+.order-hero.is-failed {
+  border-color: rgba(214, 125, 20, 0.4);
+  background: #fff7ed;
+}
+.order-hero.is-paid {
+  border-color: rgba(22, 150, 90, 0.35);
+  background: #f0faf4;
+}
+.order-hero-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  background: #007f7b;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.order-hero.is-failed .order-hero-icon { background: #d67d14; }
+.order-hero.is-paid .order-hero-icon { background: #16965a; }
+.order-hero-icon .order-p24-spinner {
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+}
+.order-hero-copy {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.order-hero-code {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #4e6480;
+}
+.order-hero-copy h2 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.3rem;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.order-hero-copy p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #2b3f5a;
+}
+.order-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+.order-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(0, 127, 123, 0.3);
+  color: #007f7b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.order-items-card .order-items-head {
+  cursor: default;
+}
+.order-items-edit {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #007f7b;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.order-items-edit:hover { color: #132843; }
+.order-items-edit:focus-visible,
+.order-verify-form input:focus-visible {
+  outline: 2px solid #00a8a3;
+  outline-offset: 2px;
+}
+.cart-page-item.order-item {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.order-item-qty {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #4e6480;
+  white-space: nowrap;
+}
+.order-item .cart-page-item-total {
+  font-variant-numeric: tabular-nums;
+}
+.order-items-fallback {
+  margin: 0;
+  padding: 0.4rem 0.9rem 0.6rem;
+  font-size: 0.85rem;
+  color: #4e6480;
+}
+
+.order-status-layout {
+  display: grid;
+  gap: 0.8rem;
+}
+.order-status-layout .cart-checkout-left {
+  max-width: 760px;
+}
+
+.order-facts {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+.order-facts > div {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+.order-facts dt {
+  color: #4e6480;
+}
+.order-facts dd {
+  margin: 0;
+  color: #132843;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.order-facts dd small {
+  display: block;
+  font-weight: 400;
+  color: #4e6480;
+  margin-top: 0.1rem;
+}
+.order-facts a { color: #007f7b; }
+
+.order-help {
+  margin: 0;
+  padding: 0.2rem 0.2rem 0;
+  font-size: 0.88rem;
+  color: #4e6480;
+  line-height: 1.5;
+}
+.order-help a {
+  color: #007f7b;
+  font-weight: 700;
+}
+.order-back {
+  justify-self: start;
+}
+
+.order-verify {
+  max-width: 520px;
+  margin: 0 auto;
+}
+.order-verify p {
+  margin: 0 0 0.8rem;
+  color: #4e6480;
+  font-size: 0.92rem;
+}
+.order-verify-form {
+  display: grid;
+  gap: 0.7rem;
+}
+.order-verify-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #132843;
+}
+.order-verify-form input {
+  width: 100%;
+  border: 1px solid rgba(19, 40, 67, 0.22);
+  border-radius: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  font-size: 1rem;
+  background: #fff;
+  color: #132843;
+}
+
+@media (max-width: 760px) {
+  /* Na telefonie płatność zaraz pod pozycjami - dane są już wypełnione,
+     więc (inaczej niż w koszyku) nie ma po co przewijać przez nie. */
+  .order-page .cart-checkout-right { order: -1; }
+  .order-hero { padding: 0.85rem 0.9rem; }
+  .order-hero-copy h2 { font-size: 1.12rem; }
+  .cart-page-item.order-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.2rem;
+  }
+  .order-item .cart-page-item-info { grid-column: 1 / -1; }
+  .order-facts > div { grid-template-columns: 1fr; gap: 0.1rem; }
+}
