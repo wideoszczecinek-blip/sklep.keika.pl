@@ -318,7 +318,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     void tick();
   }
 
-  async function handleStartPaynow(kind: "pbl" | "blik" | "card") {
+  async function handleStartPaynow(kind: "pbl" | "blik" | "card" | "paypo") {
     if (!order) return;
     setRetryLoading(true);
     setRetryError("");
@@ -460,7 +460,9 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
         ? resolveProvider(paymentRouting, paymentKind, "stripe")
         : paymentKind === "p24_transfer"
           ? resolveProvider(paymentRouting, "transfer", "p24")
-          : "stripe";
+          : paymentKind === "p24_paypo"
+            ? resolveProvider(paymentRouting, "paypo", "p24")
+            : "stripe";
     // Nic nie jest zaznaczone z góry - tak samo jak w koszyku (właściciel,
     // 2026-09-24): klient sam wybiera metodę, a panel z polami otwiera się
     // dopiero wtedy.
@@ -720,6 +722,15 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
                   : paynowBanks.length > 0 && !paynowBankId
                     ? "Wybierz swój bank"
                     : "Przejdź do płatności"}
+              </button>
+            ) : selectedKind === "p24_paypo" && selectedProvider === "paynow" ? (
+              <button
+                type="button"
+                className={styles.ctaButton}
+                onClick={() => void handleStartPaynow("paypo")}
+                disabled={retryLoading}
+              >
+                {retryLoading ? "Przekierowujemy do PayPo…" : "Przechodzę do wniosku"}
               </button>
             ) : selectedKind === "transfer" ? (
               <>

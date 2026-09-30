@@ -1147,9 +1147,10 @@ export default function CartPage() {
     ((kind === "p24_transfer" && p24Settings.transfer) ||
       (kind === "p24_installments" && p24Settings.installments) ||
       (kind === "p24_paypo" && p24Settings.paypo));
-  // PayNow (2026-09-30): dla blik/card/wallets/p24_transfer operator może
-  // być stripe/p24 (jak dziś) ALBO paynow - sterowane z CRM. installments/
-  // paypo nie mają wyboru operatora, zostają zawsze P24.
+  // PayNow (2026-09-30): dla blik/card/wallets/p24_transfer/p24_paypo
+  // operator może być stripe/p24 (jak dziś) ALBO paynow - sterowane z CRM.
+  // installments nie ma wyboru operatora, zostaje zawsze P24 (jedyny
+  // dostawca rat w tym sklepie).
   const selectedOnlineProvider: PaymentProvider =
     onlinePaymentKind === "blik"
       ? resolveProvider(paymentRouting, "blik", "stripe")
@@ -1157,7 +1158,9 @@ export default function CartPage() {
         ? resolveProvider(paymentRouting, onlinePaymentKind, "stripe")
         : onlinePaymentKind === "p24_transfer"
           ? resolveProvider(paymentRouting, "transfer", "p24")
-          : "stripe";
+          : onlinePaymentKind === "p24_paypo"
+            ? resolveProvider(paymentRouting, "paypo", "p24")
+            : "stripe";
   const paymentMethod: "online" | "cod" | "transfer" | "p24" | "paynow" =
     deliveryMethod === COD_DELIVERY_METHOD_ID
       ? "cod"
@@ -1166,7 +1169,8 @@ export default function CartPage() {
         : (onlinePaymentKind === "blik" ||
               onlinePaymentKind === "card" ||
               onlinePaymentKind === "wallets" ||
-              onlinePaymentKind === "p24_transfer") &&
+              onlinePaymentKind === "p24_transfer" ||
+              onlinePaymentKind === "p24_paypo") &&
             selectedOnlineProvider === "paynow"
           ? "paynow"
           : onlinePaymentKind.startsWith("p24_") && p24KindAvailable(onlinePaymentKind as P24Kind)
@@ -1175,10 +1179,16 @@ export default function CartPage() {
   const p24Kind: P24Kind = onlinePaymentKind.startsWith("p24_") ? (onlinePaymentKind as P24Kind) : "p24_transfer";
   const stripeMethod: StripeMethod =
     onlinePaymentKind === "card" || onlinePaymentKind === "wallets" ? onlinePaymentKind : "blik";
-  // Rodzaj płatności PayNow (bare kind dla CRM): blik/card wprost, wszystko
-  // inne (p24_transfer routowany na paynow) to "pbl".
-  const paynowKind: "pbl" | "blik" | "card" =
-    onlinePaymentKind === "blik" ? "blik" : onlinePaymentKind === "card" || onlinePaymentKind === "wallets" ? "card" : "pbl";
+  // Rodzaj płatności PayNow (bare kind dla CRM): blik/card/paypo wprost,
+  // wszystko inne (p24_transfer routowany na paynow) to "pbl".
+  const paynowKind: "pbl" | "blik" | "card" | "paypo" =
+    onlinePaymentKind === "blik"
+      ? "blik"
+      : onlinePaymentKind === "card" || onlinePaymentKind === "wallets"
+        ? "card"
+        : onlinePaymentKind === "p24_paypo"
+          ? "paypo"
+          : "pbl";
 
   const editingItem = editingItemId ? items.find((item) => item.id === editingItemId) || null : null;
 
@@ -1901,7 +1911,14 @@ export default function CartPage() {
             : pm === "p24"
               ? P24_KIND_LABELS[p24Kind].note
               : pm === "paynow"
-                ? "PayNow – " + (paynowKind === "blik" ? "BLIK" : paynowKind === "card" ? "karta" : "przelew online")
+                ? "PayNow – " +
+                  (paynowKind === "blik"
+                    ? "BLIK"
+                    : paynowKind === "card"
+                      ? "karta"
+                      : paynowKind === "paypo"
+                        ? "PayPo"
+                        : "przelew online")
                 : "Online (Stripe)";
       const noteWithDelivery = [
         // First line on purpose - production reads the note top-down.
@@ -2468,6 +2485,35 @@ export default function CartPage() {
             onPaid={handleStripePaid}
             submitLabel={stripeMethod === "blik" ? "Płacę BLIK-iem" : "Płacę kartą"}
           />
+        </>
+      );
+    }
+
+    // PayPo routowane na PayNow: redirect jak pbl/card u PayNow (PayNow
+    // wymaga adresu dostawy, ale to sam uzupełnia CRM z danych zamówienia).
+    if (kind === "p24_paypo" && selectedOnlineProvider === "paynow") {
+      return (
+        <>
+          {error ? <div className="cart-checkout-error">{error}</div> : null}
+          {termsCheckbox}
+          <button
+            type="button"
+            className={`cart-page-checkout-cta ${payBlockedReason ? "is-blocked" : ""}`}
+            onClick={() => {
+              if (payBlockedReason) {
+                jumpToFirstProblem();
+                return;
+              }
+              setError("");
+              submittedRef.current = false;
+              void submitOrder().catch(() => {});
+            }}
+            disabled={isSubmitting || (!payBlockedReason && !termsAccepted)}
+          >
+            {isSubmitting ? "Przekierowujemy do PayPo…" : "Przechodzę do wniosku online"}
+          </button>
+          {missingFieldsHint}
+          <p className="cart-checkout-cta-hint">Wniosek wypełnisz na stronie PayPo. Realizacja po pozytywnej decyzji.</p>
         </>
       );
     }

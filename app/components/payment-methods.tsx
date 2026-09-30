@@ -249,14 +249,17 @@ export function buildPaymentTiles(options: {
   const cardRow = routing?.card;
   const walletsRow = routing?.wallets;
   const transferRow = routing?.transfer;
+  const paypoRow = routing?.paypo;
   const blikEnabled = blikRow ? blikRow.enabled : stripeAvailable;
   const cardEnabled = cardRow ? cardRow.enabled : stripeAvailable;
   const walletsEnabled = walletsRow ? walletsRow.enabled : stripeAvailable;
   const onlineTransferEnabled = transferRow ? transferRow.enabled : p24KindAvailable(p24Settings, "p24_transfer");
+  const paypoEnabled = paypoRow ? paypoRow.enabled : p24KindAvailable(p24Settings, "p24_paypo");
   const blikProvider = resolveProvider(routing, "blik", "stripe");
   const cardProvider = resolveProvider(routing, "card", "stripe");
   const walletsProvider = resolveProvider(routing, "wallets", "stripe");
   const transferProvider = resolveProvider(routing, "transfer", "p24");
+  const paypoProvider = resolveProvider(routing, "paypo", "p24");
 
   const tiles: PaymentTile[] = [];
   if (blikEnabled) {
@@ -275,7 +278,7 @@ export function buildPaymentTiles(options: {
   if (cardEnabled) {
     tiles.push({ kind: "card", title: "Karta płatnicza", hint: "Visa, Mastercard", logo: LOGO_CARD, provider: cardProvider });
   }
-  if (p24KindAvailable(p24Settings, "p24_paypo")) {
+  if (paypoEnabled) {
     tiles.push({
       kind: "p24_paypo",
       title: "PayPo",
@@ -286,6 +289,7 @@ export function buildPaymentTiles(options: {
         </span>
       ),
       logo: LOGO_PAYPO,
+      provider: paypoProvider,
     });
   }
   // Raty pokazujemy dopiero od 100 zł (i do 50 000 zł) - to widełki
