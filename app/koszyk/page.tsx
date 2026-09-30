@@ -2472,7 +2472,7 @@ export default function CartPage() {
         ))}
       </ul>
     </div>
-  ) : null;
+  );
   const checkoutContact: CheckoutContact = {
     name: `${form.firstName} ${form.lastName}`.trim(),
     phone: form.phone,
