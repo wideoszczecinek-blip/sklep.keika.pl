@@ -19339,6 +19339,16 @@ html[data-theme="light"] .cart-missing-link {
   .product-cart-dock {
     display: none;
   }
+  /* Pasek sekcji jest wysrodkowany przez left:50% - bez max-content przegladarka
+     ogranicza go do polowy okna i po dolozeniu przycisku koszyka etykiety
+     "Opis produktu"/"Galeria zdjec" lamaly sie na dwie linie. */
+  .hero-product-bottom-tabs.has-cart-dock {
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+  }
+  .hero-product-bottom-tabs.has-cart-dock button {
+    white-space: nowrap;
+  }
   .hero-product-bottom-tabs-cart {
     display: inline-flex;
     align-items: center;
