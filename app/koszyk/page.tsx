@@ -2451,7 +2451,15 @@ export default function CartPage() {
   // Spokojna forma (właściciel, 2026-09-30: "nie 'do zapłaty brakuje', tylko
   // 'uzupełnij dane dostawy' i lista, nie przyciski - za bardzo krzyczy"):
   // nagłówek + lista pól, każde pole to odnośnik przewijający do niego.
-  const missingFieldsHint = checkoutProblems.length ? (
+  // Przy nietkniętym formularzu tylko krótki dopisek, bez listy (właściciel,
+  // 2026-09-30: "jak żadne pole nie zostało wypełnione, nie pokazuj tych
+  // informacji od razu"). Lista pojawia się, gdy klient coś wpisze albo
+  // tapnie w zablokowany przycisk płatności.
+  const missingFieldsHint = !checkoutProblems.length ? null : contactUntouched && !showAllFieldErrors ? (
+    <div className="cart-missing" role="status">
+      <span className="cart-missing-label">Uzupełnij dane dostawy</span>
+    </div>
+  ) : (
     <div className="cart-missing" role="status">
       <span className="cart-missing-label">Uzupełnij dane dostawy:</span>
       <ul className="cart-missing-list">
