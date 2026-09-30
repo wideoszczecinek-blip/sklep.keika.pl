@@ -54,10 +54,9 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
 
   const [retryLoading, setRetryLoading] = useState(false);
   // Wybrany kafelek płatności (jak w koszyku) + bank dla przelewu online.
-  // BLIK zaznaczony z góry, tak samo jak w koszyku (właściciel, 2026-09-29).
-  const [paymentKind, setPaymentKind] = useState<PaymentKind | null>(
-    STRIPE_PUBLISHABLE_KEY !== "" ? "blik" : null,
-  );
+  // Nic nie jest zaznaczone z góry, tak samo jak w koszyku (właściciel,
+  // 2026-09-24, wrócone 2026-09-30).
+  const [paymentKind, setPaymentKind] = useState<PaymentKind | null>(null);
   const [p24BankId, setP24BankId] = useState(0);
   const [transferSwitched, setTransferSwitched] = useState(false);
   const { transferSettings, p24Settings, p24Banks } = usePaymentSettings();
@@ -310,8 +309,9 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
       // Przelew tradycyjny tylko dopóki zamówienie nie jest już przelewem.
       allowTransfer: order.payment_provider !== "transfer",
     });
-    // BLIK zaznaczony z góry - tak samo jak w koszyku (właściciel,
-    // 2026-09-29); pozostałe metody klient wybiera kafelkiem.
+    // Nic nie jest zaznaczone z góry - tak samo jak w koszyku (właściciel,
+    // 2026-09-24): klient sam wybiera metodę, a panel z polami otwiera się
+    // dopiero wtedy.
     const selectedKind: PaymentKind | null = paymentKind;
     const retryContact: CheckoutContact = {
       name: order.customer_name || "",
