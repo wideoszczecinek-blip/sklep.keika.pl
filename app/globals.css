@@ -19091,30 +19091,38 @@ html[data-theme="light"] .rd-company-facts li {
   border-radius: 0.6rem;
 }
 .cart-missing {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
   margin: 0.6rem 0 0;
   font-size: 0.8rem;
-  color: rgba(240, 248, 255, 0.78);
+  line-height: 1.5;
+  color: rgba(240, 248, 255, 0.72);
 }
 .cart-missing-label {
-  font-weight: 700;
+  display: block;
+  font-weight: 600;
 }
-.cart-missing-chip {
-  border: 1px solid rgba(255, 120, 96, 0.6);
-  background: rgba(255, 96, 72, 0.12);
-  color: #ffd0c7;
-  border-radius: 999px;
-  padding: 0.22rem 0.65rem;
+.cart-missing-list {
+  list-style: none;
+  margin: 0.1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.15rem;
+}
+.cart-missing-list li + li::before {
+  content: ", ";
+}
+.cart-missing-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #6fe3bf;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
   cursor: pointer;
 }
-.cart-missing-chip:hover {
-  background: rgba(255, 96, 72, 0.24);
+.cart-missing-link:hover {
+  color: #8ff0d1;
 }
 .cart-page-checkout-cta.is-blocked {
   opacity: 0.6;
@@ -19138,9 +19146,7 @@ html[data-theme="light"] .cart-field.is-invalid textarea {
 html[data-theme="light"] .cart-missing {
   color: rgba(19, 40, 67, 0.78);
 }
-html[data-theme="light"] .cart-missing-chip {
-  border-color: rgba(196, 67, 44, 0.5);
-  background: rgba(196, 67, 44, 0.08);
-  color: #a3311f;
+html[data-theme="light"] .cart-missing-link {
+  color: #1f9d6e;
 }
 

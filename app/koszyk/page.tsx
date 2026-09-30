@@ -2448,14 +2448,21 @@ export default function CartPage() {
     setShowAllFieldErrors(true);
     if (checkoutProblems.length) jumpToField(checkoutProblems[0].key);
   };
+  // Spokojna forma (właściciel, 2026-09-30: "nie 'do zapłaty brakuje', tylko
+  // 'uzupełnij dane dostawy' i lista, nie przyciski - za bardzo krzyczy"):
+  // nagłówek + lista pól, każde pole to odnośnik przewijający do niego.
   const missingFieldsHint = checkoutProblems.length ? (
     <div className="cart-missing" role="status">
-      <span className="cart-missing-label">Do zapłaty brakuje:</span>
-      {checkoutProblems.map((problem) => (
-        <button key={problem.key} type="button" className="cart-missing-chip" onClick={() => jumpToField(problem.key)}>
-          {problem.chip}
-        </button>
-      ))}
+      <span className="cart-missing-label">Uzupełnij dane dostawy:</span>
+      <ul className="cart-missing-list">
+        {checkoutProblems.map((problem) => (
+          <li key={problem.key}>
+            <button type="button" className="cart-missing-link" onClick={() => jumpToField(problem.key)}>
+              {problem.chip}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   ) : null;
   const checkoutContact: CheckoutContact = {
