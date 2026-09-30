@@ -1919,7 +1919,11 @@ export default function CartPage() {
                       : paynowKind === "paypo"
                         ? "PayPo"
                         : "przelew online")
-                : "Online (Stripe)";
+                : (opts?.stripeMethod || stripeMethod) === "blik"
+                  ? "BLIK (Stripe)"
+                  : (opts?.stripeMethod || stripeMethod) === "wallets"
+                    ? "Google Pay / Apple Pay (Stripe)"
+                    : "Karta płatnicza (Stripe)";
       const noteWithDelivery = [
         // First line on purpose - production reads the note top-down.
         expressEligible && expressSelected ? EXPRESS_NOTE_LINE : "",

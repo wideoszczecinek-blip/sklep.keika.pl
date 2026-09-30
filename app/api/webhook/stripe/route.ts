@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { crmBaseUrl } from "@/lib/shop-public";
 import { getStripeServer } from "@/lib/stripe";
+import { stripeChargedMethod } from "@/lib/stripe-method";
 
 export async function POST(request: Request) {
   const stripe = getStripeServer();
@@ -39,6 +40,17 @@ export async function POST(request: Request) {
     paymentStatus = "canceled";
   }
 
+  // BLIK / karta / Google-Apple Pay faktycznie obciążone - do maili i CRM.
+  // Błąd odczytu nigdy nie blokuje zaksięgowania płatności.
+  let paymentMethodType = "";
+  if (paymentStatus === "paid") {
+    try {
+      paymentMethodType = await stripeChargedMethod(stripe, paymentIntentId);
+    } catch {
+      paymentMethodType = "";
+    }
+  }
+
   if (paymentStatus) {
     // order_code_hint: real live incident 2026-09-13 - a since-removed
     // frontend bug (see koszyk/page.tsx's own comment on the removed resync
@@ -60,6 +72,7 @@ export async function POST(request: Request) {
         payment_status: paymentStatus,
         event_name: event.type,
         order_code_hint: typeof intent.metadata?.order_code === "string" ? intent.metadata.order_code : "",
+        payment_method_type: paymentMethodType,
       }),
       cache: "no-store",
     });

@@ -96,6 +96,7 @@ export async function POST(request: Request, context: RouteContext) {
         order_code: order.order_code,
         payment_intent_id: intent.id,
         payment_client_secret: intent.client_secret || "",
+        stripe_method: stripeMethod,
       }),
       cache: "no-store",
     });
