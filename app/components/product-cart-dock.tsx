@@ -11,8 +11,10 @@
 // Widoczny, gdy koszyk ma pozycje i nie ma otwartego okienka "Dodano do
 // koszyka" (to ma własny przycisk). Telefon: pełna szerokość przy dolnej
 // krawędzi, w tym samym stylu co pasek "Razem" w koszyku - klient widzi
-// ten sam element po obu stronach. Komputer/tablet: zwarta karta w prawym
-// dolnym rogu, nad paskiem sekcji produktu.
+// ten sam element po obu stronach. Tablet: ten sam pasek wyśrodkowany.
+// Komputer (od 1101 px): karta jest ukryta - zasłaniała przyklejony panel
+// konfiguratora; zamiast niej przycisk koszyka w dolnym pasku sekcji
+// (home-client.tsx, .hero-product-bottom-tabs-cart).
 import { useEffect, useRef, type CSSProperties } from "react";
 import { formatPln } from "@/lib/cart";
 import { trackShopStep } from "@/lib/track-step";
@@ -44,7 +46,11 @@ export default function ProductCartDock({
   useEffect(() => {
     if (!visible || shownRef.current) return;
     shownRef.current = true;
-    trackShopStep("cart_dock_shown", productSlug, { items: count, total });
+    trackShopStep("cart_dock_shown", productSlug, {
+      items: count,
+      total,
+      variant: window.innerWidth > 1100 ? "desktop_tabs" : window.innerWidth > 760 ? "tablet" : "mobile",
+    });
   }, [visible, productSlug, count, total]);
 
   const style = { "--dock-inapp-inset": `${Math.max(0, inAppBottomInset)}px` } as CSSProperties;

@@ -6046,6 +6046,39 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                   Instrukcje
                 </button>
               </div>
+              {cartDockVisible ? (
+                // Komputer: przycisk koszyka na końcu paska sekcji (CSS pokazuje
+                // go od 1101 px; na telefonie/tablecie robi to ProductCartDock).
+                <a
+                  href="/koszyk"
+                  className="hero-product-bottom-tabs-cart"
+                  aria-label={`Przejdź do koszyka: ${cartQtyLabel}, ${formatPln(cartTotalWithPromo)}`}
+                  onClick={() =>
+                    trackShopStep("cart_dock_click", productSlugFromSelected(displayedProduct), {
+                      items: cartSummary.items,
+                      total: cartTotalWithPromo,
+                      variant: "desktop_tabs",
+                    })
+                  }
+                >
+                  <span className="hero-product-bottom-tabs-cart-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M3 4h2l1.6 9.6a2 2 0 0 0 2 1.65h8.2a2 2 0 0 0 1.96-1.6L20 8H6"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <circle cx="9" cy="19.5" r="1.4" fill="currentColor" />
+                      <circle cx="17" cy="19.5" r="1.4" fill="currentColor" />
+                    </svg>
+                    <span className="hero-product-bottom-tabs-cart-badge">{cartSummary.items}</span>
+                  </span>
+                  <span className="hero-product-bottom-tabs-cart-sum">{formatPln(cartTotalWithPromo)}</span>
+                  <span className="hero-product-bottom-tabs-cart-go">Do koszyka →</span>
+                </a>
+              ) : null}
             </nav>
           ) : null}
           {displayedProduct ? (

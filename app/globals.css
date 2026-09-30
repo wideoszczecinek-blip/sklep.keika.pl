@@ -19303,6 +19303,117 @@ html[data-theme="light"] .cart-missing-link {
     pointer-events: none;
   }
 }
+/* Tablet: ten sam pasek, ale wysrodkowany i zaokraglony - na pelnej
+   szerokosci 1024 px wygladal na rozciagniety. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  .product-cart-dock {
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: min(560px, calc(100% - 2rem));
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem + var(--dock-inapp-inset, 0px));
+  }
+  .product-cart-dock-link {
+    justify-content: space-between;
+  }
+  .product-cart-dock-copy {
+    flex: 1 1 auto;
+  }
+  .product-cart-dock-spacer {
+    display: block;
+    height: calc(5.4rem + env(safe-area-inset-bottom, 0px));
+  }
+  .hero-product-bottom-tabs.has-cart-dock.is-visible {
+    opacity: 0;
+    transform: translate(-50%, 130%);
+    pointer-events: none;
+  }
+}
+/* Komputer: plywajaca karta zaslaniala przyklejony panel konfiguratora,
+   a naglowek i tak pokazuje duzy koszyk z kwota. Zamiast karty - przycisk
+   koszyka na koncu dolnego paska sekcji (na komputerze zawsze widoczny). */
+.hero-product-bottom-tabs-cart {
+  display: none;
+}
+@media (min-width: 1101px) {
+  .product-cart-dock {
+    display: none;
+  }
+  .hero-product-bottom-tabs-cart {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 0.3rem;
+    padding: 0.42rem 0.95rem 0.42rem 0.55rem;
+    border-radius: 999px;
+    background: #16314e;
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(22, 49, 78, 0.26);
+    animation: tabsCartIn 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .hero-product-bottom-tabs-cart:hover {
+    background: #1d3f63;
+  }
+  .hero-product-bottom-tabs-cart:focus-visible {
+    outline: 3px solid rgba(255, 123, 0, 0.45);
+    outline-offset: 2px;
+  }
+  .hero-product-bottom-tabs-cart-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .hero-product-bottom-tabs-cart-icon svg {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+  .hero-product-bottom-tabs-cart-badge {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.3rem;
+    min-width: 1.05rem;
+    height: 1.05rem;
+    padding: 0 0.25rem;
+    border-radius: 999px;
+    background: #ff7b00;
+    color: #ffffff;
+    font-size: 0.66rem;
+    line-height: 1.05rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-product-bottom-tabs-cart-sum {
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-product-bottom-tabs-cart-go {
+    font-weight: 700;
+    opacity: 0.86;
+  }
+}
+@keyframes tabsCartIn {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-product-bottom-tabs-cart {
+    animation: none;
+  }
+}
 @media (max-width: 360px) {
   .product-cart-dock-copy small {
     display: none;
