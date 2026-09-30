@@ -39,7 +39,7 @@ export default function VisitResume({ quote, landing }: { quote: SavedQuote; lan
       let items = readCartItems();
       for (const item of resolved.items) {
         if (findEquivalentCartItem(items, item)) continue;
-        items = addCartItem(item);
+        items = addCartItem(item, { source: "restore" });
       }
       if (resolved.rescueDiscountPercent > 0) {
         setRescueGrant({ quoteCode: resolved.quoteCode, percent: resolved.rescueDiscountPercent });

@@ -211,9 +211,19 @@ export function findEquivalentCartItem(items: CartLineItem[], candidate: CartLin
   );
 }
 
-export function addCartItem(item: CartLineItem): CartLineItem[] {
+/** source "restore" = pozycja wraca z zapisanego linku (?resume_token=,
+ * /wizyta/<kod>, mail "Twój koszyk"). To nie jest nowe dodanie do koszyka:
+ * nie leci Meta AddToCart, a do CRM idzie "cart_restore" zamiast
+ * "add_to_cart" - wcześniej każdy powrót z linku zawyżał lejek i uczył Metę
+ * na fałszywym sygnale (analiza 01.10: 22 z 82 "dodań" w 3 dni to powroty,
+ * kupiły z nich 2 osoby). */
+export function addCartItem(item: CartLineItem, options?: { source?: "add" | "restore" }): CartLineItem[] {
   const items = [...readCartItems(), item];
   writeCartItems(items);
+  if (options?.source === "restore") {
+    void trackCartEventToCrm("cart_restore", item.productSlug, item, items);
+    return items;
+  }
   // Meta AddToCart - jedyny wspólny punkt dodania pozycji (homepage +
   // "Edytuj pozycję" na /koszyk idzie przez updateCartItemConfig, nie tędy).
   void import("@/lib/tracking")

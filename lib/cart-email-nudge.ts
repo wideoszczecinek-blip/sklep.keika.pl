@@ -53,15 +53,6 @@ export function noteCartHasItems(hasItems: boolean): void {
   }
 }
 
-function cartAgeMs(): number {
-  try {
-    const raw = window.sessionStorage.getItem(CART_FIRST_ITEM_AT_KEY);
-    const at = raw ? Number(raw) : NaN;
-    return Number.isFinite(at) ? Date.now() - at : 0;
-  } catch {
-    return 0;
-  }
-}
 
 export function useCartEmailNudge(options: {
   context: "cart" | "configurator";
@@ -75,7 +66,6 @@ export function useCartEmailNudge(options: {
   const { context, hasItems, formStarted = false, enabled = true } = options;
   const [open, setOpen] = useState(false);
   const [trigger, setTrigger] = useState<CartEmailTrigger | null>(null);
-  const lastActivityRef = useRef<number>(Date.now());
   const firedRef = useRef(false);
   const sentRef = useRef(false);
 
@@ -124,22 +114,11 @@ export function useCartEmailNudge(options: {
     if (!enabled || !hasItems || formStarted || firedRef.current) return;
     if (!cartEmailOfferEligible()) return;
     noteCartHasItems(true);
-
-    const bump = () => {
-      lastActivityRef.current = Date.now();
-    };
-    const activityEvents: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "scroll", "touchstart", "input"];
-    for (const name of activityEvents) window.addEventListener(name, bump, { passive: true });
-
-    const idleLimit = context === "cart" ? 40_000 : 60_000;
-    const interval = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      const idle = Date.now() - lastActivityRef.current;
-      if (idle < idleLimit) return;
-      if (context === "configurator" && cartAgeMs() < 5 * 60_000) return;
-      fire(context === "cart" ? "cart_idle" : "configurator_idle");
-    }, 5_000);
-
+    // Od 2026-10-01 tylko próba wyjścia ze strony (komputer). Bezczynność i
+    // powrót do karty zdjęte (właściciel): od 28.09 okienko wyskakiwało 4×
+    // częściej, "Zamknij" stało się najczęstszym kliknięciem w koszyku,
+    // a spokojny baner na dole koszyka (tylko dla tych, co nie wpisali
+    // danych) robi tę samą robotę bez przerywania.
     // Desktop exit intent: pointer leaving through the top edge (toward the
     // tab bar / address bar) - the classic "I'm about to close this" signal.
     const onMouseOut = (event: MouseEvent) => {
@@ -148,24 +127,8 @@ export function useCartEmailNudge(options: {
       fire("cart_exit");
     };
     document.addEventListener("mouseout", onMouseOut);
-
-    // Mobile: the tab was hidden (switched app / went back to the ad) and
-    // came back - the "let me check that price again" moment.
-    let wasHidden = false;
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") {
-        wasHidden = true;
-        return;
-      }
-      if (wasHidden && context === "cart") fire("cart_tab_return");
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-
     return () => {
-      for (const name of activityEvents) window.removeEventListener(name, bump);
-      window.clearInterval(interval);
       document.removeEventListener("mouseout", onMouseOut);
-      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [context, enabled, hasItems, formStarted, fire]);
 

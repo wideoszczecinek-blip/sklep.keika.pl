@@ -4,7 +4,6 @@
 // zamiast ogólnika "decyzja online" (właściciel, 2026-09-24: "przy ratach
 // pokaż miesięczną ratę, np. 10× x zł"). Liczba rat jest wspólna z kartą
 // "Rozłóż na raty" w podsumowaniu - zmiana tutaj przelicza obie.
-import InstallmentCountPicker from "./installment-count-picker";
 import { installmentsAvailable, monthlyInstallment } from "@/lib/installments";
 import { useInstallmentCount, useInstallmentSettings } from "@/lib/installment-settings";
 
@@ -21,10 +20,10 @@ export default function InstallmentTileHint({ amount }: { amount: number }) {
   }
   return (
     <span className="cart-pay-tile-instalments">
-      {/* Liczba rat JEST przyciskiem wyboru - wcześniej obok "5× 22,50 zł"
-          stał jeszcze osobny swatch "5×" i dublował tę samą informację
-          (właściciel, 2026-09-24). */}
-      <InstallmentCountPicker />
+      {/* Bez przełącznika liczby rat (właściciel, 2026-10-01) - w kasie
+          klienci klikali 5×/10×/20×/30×, liczyli i wychodzili. Ostateczną
+          liczbę rat i tak wybiera się we wniosku u banku. */}
+      <span className="cart-pay-tile-count">{count}×</span>
       <span className="cart-pay-tile-lead">
         <strong>{zl(monthlyInstallment(amount, count, apr))}</strong>
       </span>

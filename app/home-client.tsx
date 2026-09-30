@@ -14,6 +14,7 @@ const SHOW_PRODUCT_SWITCHER_MENU = false;
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import { trackShopStep } from "@/lib/track-step";
+import ProductCartDock from "@/app/components/product-cart-dock";
 import {
   EXPRESS_CHANGED_EVENT,
   EXPRESS_CUTOFF,
@@ -2672,6 +2673,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     ];
   }, [config?.top_links]);
   const hasCartItems = cartSummary.items > 0;
+  // Pasek koszyka na stronie produktu: są pozycje, to widok produktu i nie
+  // ma otwartego okienka "Dodano do koszyka" (ono ma własny przycisk).
+  const cartDockVisible = Boolean(displayedProduct) && isProductView && hasCartItems && !addToCartToast;
   const cartQtyLabel = cartSummary.items === 1 ? "1 produkt" : `${cartSummary.items} produktów`;
 
   useEffect(() => {
@@ -3204,7 +3208,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
         let addedCount = 0;
         for (const item of resolved.items) {
           if (findEquivalentCartItem(items, item)) continue;
-          items = addCartItem(item);
+          items = addCartItem(item, { source: "restore" });
           addedCount += 1;
         }
         setCartItems(items);
@@ -5981,7 +5985,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           {displayedProduct ? <SiteFooter variant="landing" /> : null}
           {displayedProduct ? (
             <nav
-              className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""} ${hideBottomTabs ? "is-suppressed" : ""}`}
+              className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""} ${hideBottomTabs ? "is-suppressed" : ""} ${cartDockVisible ? "has-cart-dock" : ""}`}
               aria-label="Sekcje produktu"
               style={
                 inAppBrowserBottomInset > 0
@@ -6044,6 +6048,16 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
               </div>
             </nav>
           ) : null}
+          {displayedProduct ? (
+            <ProductCartDock
+              visible={cartDockVisible}
+              count={cartSummary.items}
+              total={cartTotalWithPromo}
+              productSlug={productSlugFromSelected(displayedProduct)}
+              inAppBottomInset={inAppBrowserBottomInset}
+            />
+          ) : null}
+          {cartDockVisible ? <div className="product-cart-dock-spacer" aria-hidden="true" /> : null}
         </section>
       </main>
       {surchargeModal ? (

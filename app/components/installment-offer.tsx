@@ -11,9 +11,10 @@
 // obowiązkowa drobnica prawna schowana pod "Szczegóły".
 //
 // 2026-09-29: w koszyku karta urosła i zaczęła konkurować z kwotą do
-// zapłaty, więc wariant "full" to teraz JEDNA linijka - propozycja raty i
-// obok niej małe pigułki okresów. Reszta (suma, przykład reprezentatywny,
-// kto udziela kredytu) siedzi pod "Szczegóły".
+// zapłaty, więc wariant "full" to teraz JEDNA linijka z propozycją raty.
+// 2026-10-01: bez pigułek 5×/10×/20×/30× (właściciel) - w koszyku 20
+// kliknięć w pigułki w 14 dni, 8 osób wyszło zaraz po nich. Reszta (suma,
+// przykład reprezentatywny, kto udziela kredytu) siedzi pod "Szczegóły".
 //
 // Pokazuje się tylko wtedy, gdy raty są realnie włączone na koncie P24
 // (CRM: checkout.p24_enabled + p24_installments_enabled) i kwota mieści się
@@ -150,19 +151,6 @@ export default function InstallmentOffer({
         <span className="installment-offer-lead">
           Na raty od <strong>{zl(monthly)}</strong> / mies.
         </span>
-        <div className="installment-offer-counts" role="group" aria-label="Liczba rat">
-          {INSTALLMENT_COUNTS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={`installment-offer-count ${option === count ? "is-active" : ""}`}
-              aria-pressed={option === count}
-              onClick={() => setCount(option)}
-            >
-              {option}×
-            </button>
-          ))}
-        </div>
       </div>
 
       <details className="installment-offer-note">

@@ -19150,3 +19150,201 @@ html[data-theme="light"] .cart-missing-link {
   color: #1f9d6e;
 }
 
+
+/* Staly pasek koszyka na stronie produktu (app/components/product-cart-dock.tsx,
+   2026-10-01). Telefon: pelna szerokosc przy dolnej krawedzi, jak pasek
+   "Razem" w koszyku. Komputer/tablet: zwarta karta w prawym dolnym rogu,
+   nad paskiem sekcji produktu. */
+.product-cart-dock {
+  position: fixed;
+  right: clamp(1rem, 2.4vw, 1.75rem);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 4.6rem + var(--dock-inapp-inset, 0px));
+  z-index: 65;
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.28s ease, transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.product-cart-dock.is-visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.product-cart-dock-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.6rem 0.55rem 0.85rem;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(19, 40, 67, 0.12);
+  box-shadow: 0 14px 34px rgba(16, 35, 54, 0.18), 0 2px 6px rgba(16, 35, 54, 0.08);
+  color: #16314e;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.product-cart-dock-link:focus-visible {
+  outline: 3px solid rgba(255, 123, 0, 0.45);
+  outline-offset: 3px;
+}
+.product-cart-dock-icon {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  background: rgba(22, 49, 78, 0.07);
+  color: #16314e;
+}
+.product-cart-dock-icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.product-cart-dock-badge {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.25rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #ff7b00;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.15rem;
+  text-align: center;
+  box-shadow: 0 0 0 2px #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+.product-cart-dock-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+.product-cart-dock-copy small {
+  font-size: 0.72rem;
+  color: rgba(22, 49, 78, 0.62);
+  white-space: nowrap;
+}
+.product-cart-dock-copy strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.product-cart-dock-cta {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1.05rem;
+  border-radius: 999px;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
+  color: #22150a;
+  font-weight: 800;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(255, 123, 0, 0.28);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.product-cart-dock-arrow {
+  transition: transform 0.18s ease;
+}
+.product-cart-dock-link:hover .product-cart-dock-cta {
+  box-shadow: 0 8px 20px rgba(255, 123, 0, 0.36);
+}
+.product-cart-dock-link:hover .product-cart-dock-arrow {
+  transform: translateX(3px);
+}
+.product-cart-dock-spacer {
+  display: none;
+}
+@media (max-width: 760px) {
+  .product-cart-dock {
+    left: 0;
+    right: 0;
+    bottom: var(--dock-inapp-inset, 0px);
+    transform: translateY(110%);
+  }
+  .product-cart-dock.is-visible {
+    transform: none;
+  }
+  .product-cart-dock-link {
+    justify-content: space-between;
+    gap: 0.7rem;
+    border-radius: 18px 18px 0 0;
+    border: none;
+    border-top: 1px solid #e2e6ec;
+    padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 24px rgba(16, 35, 54, 0.1);
+  }
+  .product-cart-dock-copy {
+    flex: 1 1 auto;
+  }
+  .product-cart-dock-cta {
+    padding: 0.75rem 1rem;
+    font-size: 0.93rem;
+  }
+  /* Miejsce na pasek pod stopka - nic na dole strony nie chowa sie pod nim. */
+  .product-cart-dock-spacer {
+    display: block;
+    height: calc(4.4rem + env(safe-area-inset-bottom, 0px));
+  }
+  /* Jeden element przy dolnej krawedzi naraz: gdy jest koszyk, pasek sekcji
+     produktu ustepuje (i tak chowa sie w konfiguratorze). */
+  .hero-product-bottom-tabs.has-cart-dock.is-visible {
+    opacity: 0;
+    transform: translateY(130%);
+    pointer-events: none;
+  }
+}
+@media (max-width: 360px) {
+  .product-cart-dock-copy small {
+    display: none;
+  }
+  .product-cart-dock-cta {
+    padding: 0.72rem 0.85rem;
+    font-size: 0.88rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-cart-dock,
+  .product-cart-dock-cta,
+  .product-cart-dock-arrow {
+    transition: opacity 0.01s linear;
+  }
+}
+html[data-theme="dark"] .product-cart-dock-link {
+  background: rgba(12, 26, 44, 0.94);
+  border-color: rgba(228, 240, 255, 0.18);
+  color: #eef5ff;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+}
+html[data-theme="dark"] .product-cart-dock-icon {
+  background: rgba(228, 240, 255, 0.1);
+  color: #eef5ff;
+}
+html[data-theme="dark"] .product-cart-dock-copy small {
+  color: rgba(238, 245, 255, 0.68);
+}
+html[data-theme="dark"] .product-cart-dock-badge {
+  box-shadow: 0 0 0 2px rgba(12, 26, 44, 0.94);
+}
+
+
+/* Kafelek Raty: liczba rat jako zwykly tekst, bez przelacznika (2026-10-01). */
+.cart-pay-tile-count {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: rgba(29, 59, 92, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+html[data-theme="dark"] .cart-pay-tile-count {
+  color: rgba(238, 245, 255, 0.72);
+}
