@@ -224,6 +224,7 @@ export function addCartItem(item: CartLineItem, options?: { source?: "add" | "re
     void trackCartEventToCrm("cart_restore", item.productSlug, item, items);
     return items;
   }
+  clearConfiguratorDraft(item.productSlug);
   // Meta AddToCart - jedyny wspólny punkt dodania pozycji (homepage +
   // "Edytuj pozycję" na /koszyk idzie przez updateCartItemConfig, nie tędy).
   void import("@/lib/tracking")
@@ -245,8 +246,35 @@ export function addCartItem(item: CartLineItem, options?: { source?: "add" | "re
   return items;
 }
 
+/** Szkice konfiguratorów (kroki zapamiętane na tydzień dla klienta, który
+ * wyszedł zmierzyć okno) - klucze jak DRAFT_STORAGE_KEY w
+ * features/{plisy,plisy-dachowe,rolety-dachowe}/ConfiguratorPanel.tsx.
+ * Właściciel, 2026-10-01: po usunięciu pozycji z koszyka i powrocie na kartę
+ * produktu konfigurator był wypełniony - szkic przetrwał dodanie do koszyka
+ * (a "Wyceń nową" też startowała z wypełnionymi krokami). Szkic ma sens
+ * tylko do chwili, gdy konfiguracja trafi do koszyka; potem go kasujemy.
+ * "Wyceń podobną" nie korzysta ze szkicu - dostaje ostatnią konfigurację
+ * wprost przez initialValues. */
+const CONFIGURATOR_DRAFT_KEYS: Record<string, string> = {
+  plisy: "keika_plisy_draft_v1",
+  "plisy-dachowe": "keika_pd_draft_v1",
+  "rolety-dachowe": "keika_rd_draft_v1",
+};
+
+function clearConfiguratorDraft(productSlug: string): void {
+  const key = CONFIGURATOR_DRAFT_KEYS[productSlug];
+  if (!key) return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* private mode - szkicu i tak nie było */
+  }
+}
+
 export function clearCart(): void {
+  const slugs = new Set(readCartItems().map((item) => item.productSlug));
   writeCartItems([]);
+  slugs.forEach((slug) => clearConfiguratorDraft(slug));
 }
 
 export function removeCartItem(id: string): CartLineItem[] {
@@ -254,6 +282,7 @@ export function removeCartItem(id: string): CartLineItem[] {
   const items = readCartItems().filter((item) => item.id !== id);
   writeCartItems(items);
   if (removed) {
+    clearConfiguratorDraft(removed.productSlug);
     void trackCartEventToCrm("remove_from_cart", removed.productSlug, removed, items);
   }
   return items;

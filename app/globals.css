@@ -19687,3 +19687,69 @@ html[data-theme="dark"] .cart-pay-tile-count {
   .order-item .cart-page-item-info { grid-column: 1 / -1; }
   .order-facts > div { grid-template-columns: 1fr; gap: 0.1rem; }
 }
+
+/* Okienko "Dodano do koszyka" na telefonie (wlasciciel, 2026-10-01: "na
+   ciemnym tle stopki kompletnie nieczytelny"). W jasnym motywie tlo nakladki
+   mialo 7% krycia, a sama karta byla polprzezroczysta - nad ciemna stopka
+   ciemny tekst ginal w tle. Teraz: przyciemnione tlo i pelna biala karta,
+   czytelna niezaleznie od tego, co jest pod spodem. Tylko telefon - na
+   komputerze okienko zostaje w swoim miejscu w sekcji konfiguratora. */
+@media (max-width: 760px) {
+  html .hero-product-added-toast-overlay,
+  html[data-theme="light"] .hero-product-added-toast-overlay {
+    background: rgba(8, 18, 32, 0.62);
+    border: 0;
+    border-radius: 0;
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+  html .hero-product-added-toast-overlay .hero-product-added-toast {
+    background: #ffffff;
+    border: 1px solid rgba(31, 157, 110, 0.3);
+    border-top: 4px solid #1fae6a;
+    border-radius: 1rem;
+    padding: 1.15rem 1.05rem 1.05rem;
+    gap: 0.7rem;
+    box-shadow: 0 24px 60px rgba(4, 12, 24, 0.4);
+  }
+  html .hero-product-added-toast-overlay .hero-product-added-toast p {
+    color: #16314e;
+    font-size: 0.98rem;
+    line-height: 1.4;
+  }
+  html .hero-product-added-toast-overlay .hero-product-added-toast p strong {
+    color: #0f2a45;
+  }
+  html .hero-product-added-toast-overlay .hero-product-added-toast-leftover {
+    background: #eefaf4;
+    border: 1px dashed rgba(31, 157, 110, 0.45);
+    color: #16314e;
+    font-size: 0.86rem;
+  }
+  html .hero-product-added-toast-overlay .hero-product-added-toast-leftover strong {
+    color: #147a52;
+  }
+  html .hero-product-added-toast-overlay .hero-product-added-toast-actions {
+    gap: 0.5rem;
+  }
+  html .hero-product-added-toast-overlay .hero-product-added-toast-actions button {
+    min-height: 2.9rem;
+    border: 1px solid rgba(19, 40, 67, 0.2);
+    background: #f3f5f8;
+    color: #16314e;
+    font-size: 0.9rem;
+  }
+  html .hero-product-added-toast-overlay .hero-product-added-toast-actions button:hover,
+  html .hero-product-added-toast-overlay .hero-product-added-toast-actions button:active {
+    border-color: rgba(19, 40, 67, 0.36);
+    background: #e8ecf2;
+  }
+  html .hero-product-added-toast-overlay .hero-product-added-toast-actions a.is-primary {
+    min-height: 2.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    box-shadow: 0 10px 20px rgba(255, 125, 19, 0.3);
+  }
+}
