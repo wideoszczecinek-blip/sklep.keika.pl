@@ -11,6 +11,7 @@ import { crmGetJson } from "@/lib/crm-get";
 import { trackShopStep } from "@/lib/track-step";
 import type { CheckoutContact } from "@/app/components/stripe-payment-step";
 import StripeMethodStep, { type CreatedIntent, type StripeMethod } from "@/app/components/stripe-method-step";
+import { PaynowGdprNotice } from "@/app/components/paynow-gdpr";
 import {
   CRM_PUBLIC_BASE,
   P24BankPicker,
@@ -611,6 +612,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
                 />
               </div>
             </div>
+            <PaynowGdprNotice />
             {renderCta(retryLoading ? "Przetwarzamy…" : "Płacę BLIK-iem", () => void handleStartPaynow("blik"), retryLoading || digits.length !== 6)}
           </>
         );
