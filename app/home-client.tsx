@@ -3992,6 +3992,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             <div id="pl-quick-price-anchor" />
                             <PlisyQuickPrice
                               collapsible
+                              defaultOpen
                               profile={plisyProfile}
                               promo={topPromoActive ? topPromoPreview : null}
                               widthMm={plisyQuickDims.widthMm}
@@ -5543,6 +5544,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           total: result.totalPrice,
                           createdAt: new Date().toISOString(),
                           oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
+                          splitFromWidthMm: result.splitFromWidthMm || undefined,
+                          sagNoticeShown: result.sagNoticeShown || undefined,
+                          sagLimitMm: result.sagNoticeShown ? result.sagLimitMm : undefined,
                         };
                         const items = addCartItem(item);
                         setCartItems(items);
@@ -5572,6 +5576,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           total: result.totalPrice,
                           createdAt: new Date().toISOString(),
                           oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
+                          splitFromWidthMm: result.splitFromWidthMm || undefined,
+                          sagNoticeShown: result.sagNoticeShown || undefined,
+                          sagLimitMm: result.sagNoticeShown ? result.sagLimitMm : undefined,
                         };
                         const items = addCartItem(item);
                         setCartItems(items);

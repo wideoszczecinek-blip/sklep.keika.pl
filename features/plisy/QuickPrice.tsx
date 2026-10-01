@@ -75,7 +75,10 @@ export default function PlisyQuickPrice({
   // Slider bounds = the production limits (20-150 x 20-230 cm), the same
   // ones the collection comparison and the configurator enforce.
   const minW = (profile ? profile.widthMinMm : PLISY_WIDTH_MIN_MM) / 10;
-  const maxW = (profile ? profile.widthMaxMm : PLISY_WIDTH_MAX_MM) / 10;
+  // Do dwóch szerokości plisy: szersze okno dzielimy na 2 plisy (właściciel,
+  // 2026-10-01) - konfigurator robi to samo z tą samą łączną szerokością.
+  const singleMaxW = (profile ? profile.widthMaxMm : PLISY_WIDTH_MAX_MM) / 10;
+  const maxW = singleMaxW * 2;
   const minH = (profile ? profile.heightMinMm : PLISY_HEIGHT_MIN_MM) / 10;
   const maxH = (profile ? profile.heightMaxMm : PLISY_HEIGHT_MAX_MM) / 10;
   const widthCm = Math.round(widthMm / 10);
@@ -83,22 +86,26 @@ export default function PlisyQuickPrice({
 
   const inRange = profile
     ? widthMm >= profile.widthMinMm &&
-      widthMm <= profile.widthMaxMm &&
+      widthMm <= profile.widthMaxMm * 2 &&
       heightMm >= profile.heightMinMm &&
       heightMm <= profile.heightMaxMm
     : false;
+  const split = profile ? widthMm > profile.widthMaxMm : false;
+  const pieceWidthMm = split ? Math.floor(widthMm / 2) : widthMm;
 
   const regular = useMemo(() => {
     if (!profile || !inRange) return null;
     const groupId = PLISY_COLLECTIONS[0]?.groupId || profile.fabricGroups[0]?.id || "";
-    return calcPlisyPrice(
+    const one = calcPlisyPrice(
       { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
-      widthMm,
+      pieceWidthMm,
       heightMm,
       profile.hardware[0]?.id || "",
       groupId,
     );
-  }, [profile, inRange, widthMm, heightMm, priceAdjustmentPercent]);
+    if (one === null) return null;
+    return split ? Math.round(one * 2 * 100) / 100 : one;
+  }, [profile, inRange, pieceWidthMm, split, heightMm, priceAdjustmentPercent]);
   const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
 
   // Pola liczbowe obok suwaków (właściciel, 2026-09-24): kto zna wymiar,
@@ -270,8 +277,11 @@ export default function PlisyQuickPrice({
               <strong>{zl(regular)}</strong>
             </span>
           )}
+          {split ? (
+            <span className="pl-quick-split">Okno {widthCm} cm zrobimy z 2 plis po {pieceWidthMm / 10} cm — cena za obie.</span>
+          ) : null}
           <span className="pl-quick-note">
-            Kolekcja Klasyczne, biały profil, montaż przykręcany do listwy · inne kolekcje w porównaniu poniżej
+            Kolekcja Klasyczne, biały profil, montaż przykręcany do listwy · w cenie 5 lat gwarancji i 30 dni na zwrot
           </span>
         </div>
         <button

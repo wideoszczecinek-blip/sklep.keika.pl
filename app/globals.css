@@ -19753,3 +19753,154 @@ html[data-theme="dark"] .cart-pay-tile-count {
     box-shadow: 0 10px 20px rgba(255, 125, 19, 0.3);
   }
 }
+
+/* Plisy 2026-10-01: cena po wymiarach (standardowa + w promocji + co jest w
+   cenie), podział szerokiego okna na 2 plisy, podpowiedzi przy wymiarach,
+   informacja o ugięciu bez przycisku zgody (też w koszyku). */
+.plisy-price-card {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.55rem 0 0.75rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(44, 157, 130, 0.38);
+  background: linear-gradient(135deg, rgba(44, 157, 130, 0.13), rgba(44, 157, 130, 0.04));
+  color: #16314e;
+}
+.plisy-price-card-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: rgba(22, 49, 78, 0.78);
+}
+.plisy-price-card-rows {
+  display: grid;
+  gap: 0.15rem;
+}
+.plisy-price-card-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.plisy-price-card-row em {
+  font-style: normal;
+  font-size: 0.86rem;
+  color: rgba(22, 49, 78, 0.72);
+}
+.plisy-price-card-row.is-regular s {
+  font-size: 0.95rem;
+  color: rgba(22, 49, 78, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+.plisy-price-card-row.is-promo strong {
+  margin-left: auto;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #147a52;
+  font-variant-numeric: tabular-nums;
+}
+.plisy-price-card-note {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: rgba(22, 49, 78, 0.7);
+}
+.plisy-price-card-perks {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #147a52;
+}
+.plisy-price-card-perks::before {
+  content: "✓";
+  display: inline-grid;
+  place-items: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: #1fae6a;
+  color: #ffffff;
+  font-size: 0.68rem;
+}
+.plisy-split-notice {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.55rem 0 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.07);
+  color: #16314e;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.plisy-split-notice strong {
+  font-size: 0.92rem;
+}
+.plisy-remeasure-hint {
+  margin: 0.55rem 0 0.2rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.09);
+  color: #16314e;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.plisy-remeasure-hint button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #b45309;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.plisy-sag-notice.is-info {
+  border-color: rgba(245, 158, 11, 0.42);
+  background: rgba(245, 158, 11, 0.07);
+}
+.plisy-missing-dims {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px dashed rgba(22, 49, 78, 0.35);
+  background: rgba(22, 49, 78, 0.04);
+  color: #16314e;
+  font-size: 0.86rem;
+}
+.plisy-missing-dims button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  background: #16314e;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+.cart-page-item-sag {
+  display: block;
+  margin: 0.25rem 0 0.15rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.55rem;
+  background: rgba(245, 158, 11, 0.09);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #16314e;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.pl-quick-split {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1d4ed8;
+}

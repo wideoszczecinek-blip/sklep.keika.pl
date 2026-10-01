@@ -51,6 +51,13 @@ export type CartLineItem = {
    * 0/undefined if none. Charged once per order, not once per item - see
    * app/koszyk/page.tsx. */
   oversizeSurchargeAmount?: number;
+  /** Plisy (2026-10-01): łączna szerokość okna podzielonego na dwie plisy -
+   * widthMm/qty to już same plisy (połowa szerokości, 2 szt. na okno). */
+  splitFromWidthMm?: number;
+  /** Plisy: klientowi wyświetliła się informacja o możliwym ugięciu profilu
+   * (nasze wewnętrzne potwierdzenie - trafia do wyceny/zamówienia w CRM). */
+  sagNoticeShown?: boolean;
+  sagLimitMm?: number;
   /** rolety-dachowe only: the chosen window model ("Velux MK04") or "Wymiar
    * własny" for a manual entry - undefined for other products. Additive/
    * optional so existing stored items from before this field existed still
@@ -164,6 +171,9 @@ export function readCartItems(): CartLineItem[] {
         oversizeSurchargeAmount: Number(row.oversizeSurchargeAmount ?? 0) || 0,
         modelLabel: row.modelLabel ? String(row.modelLabel) : undefined,
         mountLabel: row.mountLabel ? String(row.mountLabel) : undefined,
+        splitFromWidthMm: Number(row.splitFromWidthMm ?? 0) > 0 ? Number(row.splitFromWidthMm) : undefined,
+        sagNoticeShown: row.sagNoticeShown === true ? true : undefined,
+        sagLimitMm: Number(row.sagLimitMm ?? 0) > 0 ? Number(row.sagLimitMm) : undefined,
         fabricColor: row.fabricColor ? String(row.fabricColor) : undefined,
         hardwareColor: row.hardwareColor ? String(row.hardwareColor) : undefined,
         // rolety-dachowe extras (2026-09-18) - round-tripped as stored.

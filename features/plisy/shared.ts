@@ -584,4 +584,11 @@ export type ConfiguratorResult = {
    * blank icon. */
   fabricColor: string;
   hardwareColor: string;
+  /** Okno szersze niż jedna plisa (2026-10-01): łączna szerokość okna, które
+   * dzielimy na dwie plisy; widthMm/qty opisują już same plisy. */
+  splitFromWidthMm?: number;
+  /** Informacja o możliwym ugięciu profilu była wyświetlona klientowi dla tej
+   * pozycji (nasze wewnętrzne potwierdzenie, bez zgody klienta). */
+  sagNoticeShown?: boolean;
+  sagLimitMm?: number;
 };

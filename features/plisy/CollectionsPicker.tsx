@@ -176,16 +176,19 @@ export default function PlisyCollectionsPicker({
     () =>
       PLISY_COLLECTIONS.map((row) => {
         const group = profile?.fabricGroups.find((entry) => entry.id === row.groupId);
-        const regularBase =
+        // Okno szersze niż jedna plisa = 2 plisy po połowie (2026-10-01).
+        const split = profile ? widthCm * 10 > profile.widthMaxMm : false;
+        const pieceBase =
           profile && group
             ? calcPlisyPrice(
                 { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
-                widthCm * 10,
+                split ? Math.floor((widthCm * 10) / 2) : widthCm * 10,
                 heightCm * 10,
                 profile.hardware[0]?.id || "",
                 row.groupId,
               )
             : null;
+        const regularBase = pieceBase !== null && split ? pieceBase * 2 : pieceBase;
         const regular = regularBase !== null ? Math.round(regularBase * priceMultiplier * 100) / 100 : null;
         const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
         const swatches = (group?.swatches || []).filter((s) => s.thumbnailUrl || s.imageUrl);

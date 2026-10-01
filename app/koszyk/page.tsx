@@ -443,6 +443,20 @@ function buildQuotePayloadFromCart(
                   : "",
             }
           : null,
+        item.splitFromWidthMm
+          ? {
+              label: "Podział okna",
+              value: `okno ${item.splitFromWidthMm} mm → 2 plisy po ${item.widthMm} mm`,
+              note: "klient podał łączną szerokość, dzielimy na dwie równe plisy",
+            }
+          : null,
+        item.sagNoticeShown
+          ? {
+              label: "Ugięcie profilu",
+              value: "informacja wyświetlona klientowi",
+              note: `szerokość ${item.widthMm} mm > ${item.sagLimitMm || "?"} mm; konfigurator i koszyk (bez wymaganej zgody)`,
+            }
+          : null,
         item.bracketCount ? { label: "Uchwyty na belce dolnej", value: `${item.bracketCount} szt.`, note: "" } : null,
         item.notes ? { label: "Uwagi klienta", value: item.notes, note: "" } : null,
         [item.nameplateAttachmentId, ...(item.missingModelRequest?.attachmentIds || [])].filter((id): id is string => Boolean(id)).filter((id, i, arr) => arr.indexOf(id) === i).length
@@ -3155,12 +3169,22 @@ export default function CartPage() {
                           item.hardwareLabel ? `${cartItemFieldLabels(item.productSlug).hardware}: ${item.hardwareLabel}` : "",
                           item.meshLabel ? `${cartItemFieldLabels(item.productSlug).mesh}: ${item.meshLabel}` : "",
                           item.modelLabel ? `Model okna: ${item.modelLabel}` : "",
-                          item.widthMm && item.heightMm ? `${item.widthMm} × ${item.heightMm} mm` : "",
+                          item.widthMm && item.heightMm
+                            ? item.splitFromWidthMm
+                              ? `okno ${item.splitFromWidthMm} × ${item.heightMm} mm → 2 plisy po ${item.widthMm} mm`
+                              : `${item.widthMm} × ${item.heightMm} mm`
+                            : "",
                           item.productSlug === "rolety-dachowe" && item.bracketCount === 2 ? "2 uchwyty" : "",
                         ]
                           .filter(Boolean)
                           .join(" · ")}
                       </span>
+                      {item.productSlug === "plisy" && item.sagNoticeShown ? (
+                        <span className="cart-page-item-sag" role="note">
+                          Szerokość powyżej {(item.sagLimitMm || 1100) / 10} cm: profil aluminiowy może się lekko ugiąć pod ciężarem
+                          tkaniny. To naturalne — nie wpływa na działanie plisy, jedynie na estetykę.
+                        </span>
+                      ) : null}
                       <span className="cart-page-item-unit">
                         {combinedDiscountPercent > 0 ? (
                           <>
@@ -4298,9 +4322,9 @@ export default function CartPage() {
                   hardwareLabel: editingItem.hardwareLabel,
                   fabricGroupLabel: editingItem.meshLabel.split(" — ")[0],
                   fabricLabel: editingItem.meshLabel.split(" — ")[1],
-                  widthMm: editingItem.widthMm,
+                  widthMm: editingItem.splitFromWidthMm || editingItem.widthMm,
                   heightMm: editingItem.heightMm,
-                  qty: editingItem.qty,
+                  qty: editingItem.splitFromWidthMm ? Math.max(1, Math.round(editingItem.qty / 2)) : editingItem.qty,
                 }}
                 submitLabel="Zapisz zmiany"
                 onSubmit={(result) => {
@@ -4308,6 +4332,9 @@ export default function CartPage() {
                     hardwareLabel: result.hardwareLabel,
                     meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
                     mountLabel: result.mountLabel || undefined,
+                    splitFromWidthMm: result.splitFromWidthMm || undefined,
+                    sagNoticeShown: result.sagNoticeShown || undefined,
+                    sagLimitMm: result.sagNoticeShown ? result.sagLimitMm : undefined,
                     fabricColor: result.fabricColor || undefined,
                     hardwareColor: result.hardwareColor || undefined,
                     widthMm: result.widthMm,

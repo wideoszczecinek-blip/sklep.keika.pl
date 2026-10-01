@@ -69,10 +69,44 @@ type ZoomPreview = { title: string; urls: string[]; index: number };
 // wyborze kolekcji można pokazać cenę TYCH okien.
 type PlisyPosition = {
   id: string;
+  /** Szerokość JEDNEJ plisy (przy podziale - połowa okna). */
   widthMm: number;
   heightMm: number;
+  /** Liczba plis (przy podziale - 2 na każde okno). */
   qty: number;
+  /** Okno szersze niż jedna plisa (właściciel, 2026-10-01): klient podaje
+   * łączną szerokość, my dzielimy na dwie równe plisy. Tu łączna szerokość
+   * okna; widthMm/qty powyżej opisują już same plisy. */
+  splitFromMm?: number;
 };
+
+/** Okna na pozycję: przy podziale qty to plisy (2 na okno). */
+function windowsInPosition(position: PlisyPosition): number {
+  return position.splitFromMm ? Math.max(1, Math.round(position.qty / 2)) : position.qty;
+}
+
+/** "200 × 120 cm (2 plisy po 100 cm)" albo "60 × 120 cm". */
+function positionSizeLabel(position: PlisyPosition): string {
+  if (position.splitFromMm) {
+    return `${position.splitFromMm / 10} × ${position.heightMm / 10} cm (2 plisy po ${position.widthMm / 10} cm)`;
+  }
+  return `${position.widthMm / 10} × ${position.heightMm / 10} cm`;
+}
+
+/** Informacja o możliwym ugięciu profilu przy szerokich plisach - ten sam
+ * tekst, który klient do 2026-10-01 musiał zaakceptować przyciskiem. Teraz
+ * tylko informuje; jej wyświetlenie zapisujemy po naszej stronie
+ * (sag_notice_shown + flaga pozycji w koszyku). */
+function PlisySagNotice({ limitMm }: { limitMm: number }) {
+  return (
+    <div className="plisy-sag-notice is-info" role="note">
+      <p>
+        <strong>Szerokość powyżej {limitMm / 10} cm.</strong> Przy tej szerokości profil aluminiowy może się lekko ugiąć pod
+        ciężarem tkaniny (grawitacja). To naturalne zjawisko — nie wpływa na działanie plisy, jedynie na jej estetykę.
+      </p>
+    </div>
+  );
+}
 
 /** "1 pozycja" / "2 pozycje" / "5 pozycji" - nagłówek zwiniętego kroku 1. */
 function pozycjeLabel(count: number): string {
@@ -250,13 +284,17 @@ export default function ConfiguratorPanel({
   // Zmiana sposobu montażu po wpisaniu wymiarów = wymiary są do wyrzucenia,
   // bo bezinwazyjny mierzy się zupełnie inaczej niż przykręcany (właściciel,
   // 2026-09-24: "jak klient zmieni na bezinwazyjny to potrzebujemy INNYCH
-  // wymiarów (!)"). Dopóki klient tego nie rozstrzygnie, nic nie trafi do
-  // koszyka.
-  const [mountNotice, setMountNotice] = useState<{ previousMountId: string; previousLabel: string } | null>(null);
+  // wymiarów (!)"). Od 2026-10-01 bez blokującego alertu z dwoma
+  // przyciskami (18 z 22 osób wychodziło na nim ze strony): wymiary czyścimy
+  // od razu, a przy polach pokazujemy, jak mierzyć pod nowy montaż.
+  const [remeasureHint, setRemeasureHint] = useState<string | null>(null);
   // Krok 1 (montaż) startuje rozwinięty przy świeżej konfiguracji - montaż
   // przykręcany jest wybrany domyślnie, ale klient ma go widzieć. Edycja z
-  // koszyka otwiera wszystko zwinięte.
-  const [stepMountCollapsed, setStepMountCollapsed] = useState(Boolean(isCartEdit));
+  // koszyka, i wejście z szybkiej wyceny (wymiary już są), otwiera go
+  // zwiniętego - pod nim od razu wymiary i cena.
+  const [stepMountCollapsed, setStepMountCollapsed] = useState(
+    Boolean(isCartEdit || (initialValues?.widthMm && initialValues?.heightMm)),
+  );
   // Opis kolekcji przeniesiony z kafelka do modalu (właściciel, 2026-09-24:
   // "za dużo treści pod swatchami").
   const [collectionInfoId, setCollectionInfoId] = useState("");
@@ -274,10 +312,6 @@ export default function ConfiguratorPanel({
     return PLISY_BRACKET_COLORS.find((entry) => entry.label === bracketLabel)?.id || "";
   });
   const [stepBracketCollapsed, setStepBracketCollapsed] = useState(Boolean(selectedBracketId));
-  // "Profil może się ugiąć" acknowledgement for wide blinds - reset when
-  // the collection changes (different threshold) or the width drops back
-  // under it.
-  const [sagAccepted, setSagAccepted] = useState(false);
   const [stepOneChosen, setStepOneChosen] = useState(Boolean(seed.hardwareId));
   const [stepOneCollapsed, setStepOneCollapsed] = useState(Boolean(seed.hardwareId));
 
@@ -421,7 +455,7 @@ export default function ConfiguratorPanel({
   // Montaż przykręcany do listwy (w CRM: "STANDARD") jest domyślny. Wymiary
   // są krokiem 1, a to montaż decyduje, JAK klient mierzy okno - bez
   // domyślnego montażu krok 1 nie miałby instrukcji pomiaru. Klient może go
-  // zmienić w tym samym kroku; wtedy prosimy o nowy pomiar (mountNotice).
+  // zmienić; wtedy wymiary czyścimy i mówimy, jak mierzyć pod nowy montaż.
   useEffect(() => {
     if (!profile || selectedMountId) return;
     const standard = profile.mountOptions.find(
@@ -521,11 +555,17 @@ export default function ConfiguratorPanel({
 
   const widthNum = inputToMm(width, dimensionUnit);
   const heightNum = inputToMm(height, dimensionUnit);
+  const heightInRange = profile ? heightNum >= profile.heightMinMm && heightNum <= profile.heightMaxMm : false;
+  // Okno szersze niż największa plisa (150 cm), ale nie szersze niż dwie:
+  // dzielimy na dwie równe plisy (właściciel, 2026-10-01: "klient podaje
+  // łączną szerokość i my to dzielimy - cenę obliczasz z dwóch sztuk").
+  // Połowa zaokrąglona w dół do milimetra - plisa ma się zmieścić.
+  const splitActive = profile
+    ? widthNum > profile.widthMaxMm && widthNum <= profile.widthMaxMm * 2 && heightInRange
+    : false;
+  const pieceWidthMm = splitActive ? Math.floor(widthNum / 2) : widthNum;
   const dimensionsValid = profile
-    ? widthNum >= profile.widthMinMm &&
-      widthNum <= profile.widthMaxMm &&
-      heightNum >= profile.heightMinMm &&
-      heightNum <= profile.heightMaxMm
+    ? ((widthNum >= profile.widthMinMm && widthNum <= profile.widthMaxMm) || splitActive) && heightInRange
     : false;
   const quantityNum = Math.max(1, Number(quantity) || 1);
 
@@ -535,7 +575,13 @@ export default function ConfiguratorPanel({
   // Dzięki temu klient z jednym oknem nigdy nie musi klikać "+ Dodaj
   // kolejną", a ceny przy kolekcjach dotyczą całego zestawu.
   const typedPosition: PlisyPosition | null = dimensionsValid
-    ? { id: editingPositionId || "__typed", widthMm: widthNum, heightMm: heightNum, qty: quantityNum }
+    ? {
+        id: editingPositionId || "__typed",
+        widthMm: pieceWidthMm,
+        heightMm: heightNum,
+        qty: splitActive ? quantityNum * 2 : quantityNum,
+        ...(splitActive ? { splitFromMm: widthNum } : {}),
+      }
     : null;
   const effectivePositions: PlisyPosition[] = editingPositionId
     ? positions.map((position) => (position.id === editingPositionId && typedPosition ? typedPosition : position))
@@ -549,9 +595,25 @@ export default function ConfiguratorPanel({
   const widestMm = effectivePositions.reduce((max, position) => Math.max(max, position.widthMm), 0);
   const sagLimitMm = plisySagWarningWidthMm(selectedFabricGroupId);
   const sagWarning = widestMm > sagLimitMm;
-  const sagBlocked = sagWarning && !sagAccepted;
   const oversizeSurcharge = plisyOversizeSurcharge(widestMm);
-  const remeasureRequired = Boolean(mountNotice);
+  // Ugięcie profilu (właściciel, 2026-10-01): informacja zostaje, ale nie
+  // blokuje już "Dodaj do koszyka" (29 z 50 osób wychodziło na przycisku
+  // "Akceptuję"). Zamiast zgody klienta - nasze wewnętrzne potwierdzenie
+  // wyświetlenia: zdarzenie sag_notice_shown w logu wizyty i flaga przy
+  // pozycji w koszyku (wiersz "Ugięcie profilu" w wycenie/zamówieniu w CRM).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (dimensionsValid && remeasureHint) setRemeasureHint(null);
+  }, [dimensionsValid, remeasureHint]);
+  const sagTrackedRef = useRef("");
+  useEffect(() => {
+    if (!sagWarning) return;
+    const key = `${widestMm}:${sagLimitMm}`;
+    if (sagTrackedRef.current === key) return;
+    sagTrackedRef.current = key;
+    trackShopStep("sag_notice_shown", String(widestMm), { limit_mm: sagLimitMm, fabric_group: selectedFabricGroupId || "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sagWarning, widestMm, sagLimitMm]);
   // "60 x 120" typed while mm is on: both numbers under half the smallest
   // plisa - centimetres, almost certainly. Offer the switch instead of a
   // range nobody reads.
@@ -563,6 +625,24 @@ export default function ConfiguratorPanel({
     (profile ? widthNum < profile.widthMinMm / 2 && heightNum < profile.heightMinMm / 2 : false);
   const formatRange = (minMm: number, maxMm: number) =>
     dimensionUnit === "cm" ? `${minMm / 10}–${maxMm / 10} cm` : `${minMm}–${maxMm} mm`;
+  // "15 × 120" w centymetrach (audyt 2026-10-01: 6 osób wpisało 15 cm
+  // szerokości i odbiło się od zakresu): liczba za mała, ale razy 10 już
+  // pasuje - pytamy "czy chodziło o 150 cm?" zamiast pokazywać sam zakres.
+  const timesTenFix = (() => {
+    if (!profile || dimensionUnit !== "cm" || dimensionsValid || widthNum <= 0 || heightNum <= 0) return null;
+    const fixW = widthNum < profile.widthMinMm ? widthNum * 10 : widthNum;
+    const fixH = heightNum < profile.heightMinMm ? heightNum * 10 : heightNum;
+    if (fixW === widthNum && fixH === heightNum) return null;
+    const wOk = fixW >= profile.widthMinMm && fixW <= profile.widthMaxMm * 2;
+    const hOk = fixH >= profile.heightMinMm && fixH <= profile.heightMaxMm;
+    return wOk && hOk ? { widthMm: fixW, heightMm: fixH } : null;
+  })();
+  function applyTimesTenFix() {
+    if (!timesTenFix) return;
+    trackShopStep("dimensions_times_ten_fix", "plisy", { from_w: widthNum, from_h: heightNum, to_w: timesTenFix.widthMm, to_h: timesTenFix.heightMm });
+    setWidth(mmToInput(timesTenFix.widthMm, dimensionUnit));
+    setHeight(mmToInput(timesTenFix.heightMm, dimensionUnit));
+  }
 
   // Fired on blur, once per distinct pair - the first analytics signal
   // this step ever had for "typed something but it didn't validate".
@@ -587,11 +667,10 @@ export default function ConfiguratorPanel({
       });
     }
   }
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSagAccepted(false);
-  }, [selectedFabricGroupId]);
-
+  // Cena liczy się od chwili, gdy są wymiary (właściciel, 2026-10-01: "cena
+  // po wymiarach") - zanim klient wybierze kolor mechanizmu, liczymy dla
+  // pierwszego koloru z cennika (tak samo jak szybka wycena na landingu).
+  const pricingHardware = selectedHardware || profile?.hardware[0] || null;
   function priceForSize(
     widthMm: number,
     heightMm: number,
@@ -599,16 +678,16 @@ export default function ConfiguratorPanel({
     fabricGroupId: string,
     fabric: FabricSwatch | null,
   ): { unit: number; total: number } | null {
-    if (!profile || !selectedHardwareId || !fabricGroupId) return null;
+    if (!profile || !pricingHardware || !fabricGroupId) return null;
     const matrix = calcPlisyPrice(
       { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
       widthMm,
       heightMm,
-      selectedHardwareId,
+      pricingHardware.id,
       fabricGroupId,
     );
     if (matrix === null) return null;
-    const unit = applyPriceDeltas(matrix, [selectedMount, selectedHardware, fabric]);
+    const unit = applyPriceDeltas(matrix, [selectedMount, pricingHardware, fabric]);
     return { unit, total: Math.round(unit * Math.max(1, qty) * 100) / 100 };
   }
 
@@ -651,8 +730,19 @@ export default function ConfiguratorPanel({
   // matrix price first, then every flat-zł delta added, then every percent
   // delta combined into one multiplier applied last - see
   // applyPriceDeltas() in shared.ts.
-  const unitPrice = typedPrice ? typedPrice.unit : null;
   const totalPrice = typedPrice ? typedPrice.total : null;
+  // Cena "od" zaraz po wymiarach, zanim klient wybierze kolekcję: najtańsza
+  // kolekcja dla TYCH wymiarów (te same liczby co kafelki kolekcji niżej).
+  const cheapestSetPrice = useMemo(() => {
+    if (!profile || effectivePositions.length === 0) return null as { total: number; groupLabel: string } | null;
+    let best: { total: number; groupLabel: string } | null = null;
+    for (const group of profile.fabricGroups) {
+      const total = priceForSet(effectivePositions, group.id, null);
+      if (total !== null && (!best || total < best.total)) best = { total, groupLabel: group.label };
+    }
+    return best;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, effectivePositions.map((p) => `${p.widthMm}x${p.heightMm}x${p.qty}`).join("|"), selectedMountId, pricingHardware?.id, priceAdjustmentPercent]);
 
   // Zmiana ilości (poza pierwszym renderem) - do logu ruchu.
   const quantityTrackedRef = useRef(quantityNum);
@@ -689,9 +779,10 @@ export default function ConfiguratorPanel({
     dimensionsValid
       ? {
           id: editingPositionId || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          widthMm: widthNum,
+          widthMm: pieceWidthMm,
           heightMm: heightNum,
-          qty: quantityNum,
+          qty: splitActive ? quantityNum * 2 : quantityNum,
+          ...(splitActive ? { splitFromMm: widthNum } : {}),
         }
       : null;
 
@@ -712,66 +803,55 @@ export default function ConfiguratorPanel({
   }
 
   /** Klient zmienia sposób montażu. Jeśli ma już wymiary, to są wymiary do
-   * innego montażu - prosimy o nowy pomiar zamiast po cichu przeliczać coś,
-   * czego przeliczyć się nie da (bezinwazyjny: szerokość od kreseczki do
-   * kreseczki i cała wysokość skrzydła; przykręcany: światło szyby). */
+   * innego montażu (bezinwazyjny: szerokość od kreseczki do kreseczki i cała
+   * wysokość skrzydła; przykręcany: światło szyby). Od 2026-10-01 bez
+   * blokującego alertu: czyścimy wymiary od razu, a przy polach mówimy, jak
+   * zmierzyć okno pod nowy montaż (właściciel zatwierdził po audycie). */
   function handleMountChange(option: MountOption) {
     if (option.id === selectedMountId) return;
-    const previous = selectedMount;
     trackShopStep("select_mount_type", option.label, { option_id: option.id });
     setSelectedMountId(option.id);
-    if (isPlisyMountNonInvasive(option.id) || isPlisyMountNonInvasive(option.label)) {
+    const nonInvasive = isPlisyMountNonInvasive(option.id) || isPlisyMountNonInvasive(option.label);
+    if (nonInvasive) {
       setStepBracketCollapsed(false);
     } else {
       setSelectedBracketId("");
     }
     if (hasSizes || widthNum > 0 || heightNum > 0) {
-      setMountNotice({ previousMountId: previous?.id || "", previousLabel: plisyMountLabel(previous) });
-      setStepMountCollapsed(false);
+      trackShopStep("mount_change_remeasure", option.label, { positions: positions.length, cleared: true });
+      setPositions([]);
+      setWidth("");
+      setHeight("");
+      setQuantity("1");
+      setEditingPositionId(null);
+      setRemeasureHint(
+        nonInvasive
+          ? "Zmieniłeś montaż na bezinwazyjny, więc wymiary trzeba podać od nowa: szerokość mierzysz od kreseczki do kreseczki, a wysokość to całe skrzydło."
+          : "Zmieniłeś montaż na przykręcany, więc wymiary trzeba podać od nowa: mierzysz w świetle szyby, od połowy uszczelki do połowy uszczelki.",
+      );
       setStepDimsCollapsed(false);
-      trackShopStep("mount_change_remeasure", option.label, { positions: positions.length });
+      window.setTimeout(() => {
+        positionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 200);
     }
-  }
-
-  /** "Wpiszę nowe wymiary" - czyści cały zestaw, bo każdy zapisany rozmiar
-   * był mierzony pod poprzedni montaż. */
-  function acceptRemeasure() {
-    trackShopStep("mount_change_remeasure", "clear", { positions: positions.length });
-    setPositions([]);
-    setWidth("");
-    setHeight("");
-    setQuantity("1");
-    setSagAccepted(false);
-    setEditingPositionId(null);
-    setMountNotice(null);
-  }
-
-  /** "Zostaw poprzedni montaż" - wymiary zostają takie, jakie były. */
-  function cancelMountChange() {
-    if (!mountNotice) return;
-    trackShopStep("mount_change_remeasure", "revert", { positions: positions.length });
-    setSelectedMountId(mountNotice.previousMountId);
-    if (!isPlisyMountNonInvasive(mountNotice.previousMountId)) setSelectedBracketId("");
-    setMountNotice(null);
   }
 
   function clearPositionForm() {
     setWidth("");
     setHeight("");
     setQuantity("1");
-    setSagAccepted(false);
     setEditingPositionId(null);
   }
 
   function handleAddPosition() {
     const next = currentPosition();
-    if (!next || sagBlocked || remeasureRequired) return;
+    if (!next) return;
     if (editingPositionId) {
       setPositions((prev) => prev.map((position) => (position.id === editingPositionId ? next : position)));
-      trackShopStep("edit_position_save", "plisy", { width_mm: next.widthMm, height_mm: next.heightMm, qty: next.qty });
+      trackShopStep("edit_position_save", "plisy", { width_mm: next.widthMm, height_mm: next.heightMm, qty: next.qty, split_from_mm: next.splitFromMm || 0 });
     } else {
       setPositions((prev) => [...prev, next]);
-      trackShopStep("add_position", "plisy", { width_mm: next.widthMm, height_mm: next.heightMm, qty: next.qty, positions: positions.length + 1 });
+      trackShopStep("add_position", "plisy", { width_mm: next.widthMm, height_mm: next.heightMm, qty: next.qty, split_from_mm: next.splitFromMm || 0, positions: positions.length + 1 });
     }
     clearPositionForm();
   }
@@ -786,10 +866,9 @@ export default function ConfiguratorPanel({
   // opens the size step on it; "+ Dodaj kolejną" becomes "Zapisz zmiany".
   function handleEditPosition(position: PlisyPosition) {
     setEditingPositionId(position.id);
-    setWidth(mmToInput(position.widthMm, dimensionUnit));
+    setWidth(mmToInput(position.splitFromMm || position.widthMm, dimensionUnit));
     setHeight(mmToInput(position.heightMm, dimensionUnit));
-    setQuantity(String(position.qty));
-    setSagAccepted(true);
+    setQuantity(String(windowsInPosition(position)));
     setStepDimsCollapsed(false);
     trackShopStep("edit_position_open", "plisy", { width_mm: position.widthMm, height_mm: position.heightMm, qty: position.qty });
     window.setTimeout(() => {
@@ -798,7 +877,6 @@ export default function ConfiguratorPanel({
   }
   const positionFormRef = useRef<HTMLDivElement | null>(null);
 
-  const positionsGrandTotal = priceForSet(positions, selectedFabricGroupId, selectedFabric);
 
   // A customer who only ever wants one size never has to touch "+ Dodaj
   // kolejną" at all - the button is enabled off the currently-filled-in
@@ -806,7 +884,7 @@ export default function ConfiguratorPanel({
   // the set right before it's sent, so nothing typed-but-not-yet-added is
   // silently dropped.
   const canFinalSubmit =
-    bracketChosen && fabricChosen && !sagBlocked && !remeasureRequired && hasSizes && setGrandTotal !== null;
+    bracketChosen && fabricChosen && hasSizes && setGrandTotal !== null;
 
   // Stan formularza dla analityki "na czym stanął" (lib/configurator-state):
   // heartbeat i page_exit niosą, które kroki gotowe, czego brakuje i czy
@@ -821,13 +899,7 @@ export default function ConfiguratorPanel({
     (selectedFabricGroup ? done : missing).push("kolekcja");
     (selectedFabric ? done : missing).push("tkanina");
     const hasDims = widthNum > 0 || heightNum > 0;
-    const blockedReason = remeasureRequired
-      ? "zmiana montażu - potrzebny nowy pomiar"
-      : sagBlocked
-        ? "ugięcie profilu niezaakceptowane"
-        : hasDims && !dimensionsValid && positions.length === 0
-          ? "wymiary poza zakresem"
-          : "";
+    const blockedReason = hasDims && !dimensionsValid && positions.length === 0 ? "wymiary poza zakresem" : "";
     reportConfiguratorState({
       product: "plisy",
       done,
@@ -842,7 +914,7 @@ export default function ConfiguratorPanel({
       unit: dimensionUnit,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMount, bracketRequired, selectedBracket, selectedHardware, selectedFabricGroup, selectedFabric, hasSizes, effectivePositions.length, widthNum, heightNum, sagBlocked, remeasureRequired, canFinalSubmit, setGrandTotal, quantityNum, dimensionUnit]);
+  }, [selectedMount, bracketRequired, selectedBracket, selectedHardware, selectedFabricGroup, selectedFabric, hasSizes, effectivePositions.length, widthNum, heightNum, canFinalSubmit, setGrandTotal, quantityNum, dimensionUnit]);
   useEffect(() => () => clearConfiguratorState("plisy"), []);
 
   function handleFinalSubmit() {
@@ -881,6 +953,9 @@ export default function ConfiguratorPanel({
         unitPrice: price.unit,
         totalPrice: price.total,
         oversizeSurchargeAmount: plisyOversizeSurcharge(position.widthMm),
+        splitFromWidthMm: position.splitFromMm,
+        sagNoticeShown: position.widthMm > sagLimitMm,
+        sagLimitMm,
       };
       if (index < finalPositions.length - 1 && onAddVariant) {
         onAddVariant(result);
@@ -914,19 +989,18 @@ export default function ConfiguratorPanel({
     );
   }
 
-  // Kolejność kroków (właściciel, 2026-09-24, po obejrzeniu przebudowy):
-  // wracamy do sprawdzonej ścieżki - najpierw SPOSÓB MONTAŻU, potem kolor
-  // mechanizmu, uchwyty przy bezinwazyjnym, tkanina i WYMIARY NA KOŃCU.
-  // Z przebudowy zostaje to, co się obroniło: montaż przykręcany wybrany
-  // domyślnie, blokada przy zmianie montażu (bo wymiary mierzy się wtedy
-  // inaczej), ceny przy kolekcjach, gdy wymiary są już znane (np. z szybkiej
-  // wyceny na landingu), i cena liczona z bieżącego wyboru zamiast zapisanej
-  // w pozycji.
+  // Kolejność kroków: 24.09 właściciel cofnął "wymiary jako krok 1" (reszta
+  // kroków była nielogiczna). 2026-10-01, po audycie ruchu (60% osób, które
+  // wybierały kolory, nigdy nie wpisało wymiarów, więc nie zobaczyło ceny):
+  // "cena po wymiarach". Montaż zostaje krokiem 1 (od niego zależy pomiar),
+  // wymiary są krokiem 2, zaraz pod nimi cena - standardowa i promocyjna, z
+  // "W cenie: 5 lat gwarancji i 30 dni na zwrot" - a potem kolor
+  // mechanizmu, uchwyty, kolekcja i tkanina, które tę cenę tylko doprecyzowują.
   const measureMode = measureModeForMount(selectedMountId);
   const sizeSummaryText = !hasSizes
     ? ""
     : effectivePositions.length === 1
-      ? `${effectivePositions[0].widthMm / 10} × ${effectivePositions[0].heightMm / 10} cm · ${effectivePositions[0].qty} szt.`
+      ? `${positionSizeLabel(effectivePositions[0])} · ${effectivePositions[0].qty} szt.`
       : `${pozycjeLabel(effectivePositions.length)} · ${effectivePositions.reduce((sum, position) => sum + position.qty, 0)} szt.`;
   // Kwota, którą klient faktycznie zapłaci (po SEZON20, jeśli aktywny) i
   // ile na tym oszczędza - do bloku "Do zapłaty" i do oferty ratalnej.
@@ -937,7 +1011,7 @@ export default function ConfiguratorPanel({
       ? Math.round((setGrandTotal - payableGrandTotal) * 100) / 100
       : 0;
   const priceScopeLabel =
-    effectivePositions.length === 1 && effectivePositions[0].qty === 1 ? "za Twoje okno" : "za Twój zestaw";
+    effectivePositions.length === 1 && windowsInPosition(effectivePositions[0]) === 1 ? "za Twoje okno" : "za Twój zestaw";
 
   return (
     <>
@@ -1021,30 +1095,329 @@ export default function ConfiguratorPanel({
               </div>
             </div>
 
-            {mountNotice ? (
-              <div className="plisy-remeasure-notice" role="alert">
-                <strong>Inny montaż = inny pomiar</strong>
-                <p>
-                  {measureMode === "bezinwazyjny"
-                    ? "Przy montażu bezinwazyjnym plisa zasłania szybę razem z listwami: szerokość mierzysz od kreseczki do kreseczki, a wysokość to całe skrzydło."
-                    : "Przy montażu przykręcanym plisa siedzi między listwami przyszybowymi: mierzysz w świetle szyby, od połowy uszczelki do połowy uszczelki."}{" "}
-                  Wymiary, które już podałeś, były mierzone pod poprzedni montaż („{mountNotice.previousLabel}”) — tutaj nie zagrają.
-                </p>
-                <div className="plisy-remeasure-actions">
-                  <button type="button" className="plisy-remeasure-accept" onClick={acceptRemeasure}>
-                    Wpiszę nowe wymiary
-                  </button>
-                  <button type="button" className="plisy-remeasure-cancel" onClick={cancelMountChange}>
-                    Zostaw montaż: {mountNotice.previousLabel}
-                  </button>
-                </div>
-              </div>
-            ) : null}
           </div>
         </section>
       ) : null}
 
-      {/* KROK 2: kolor mechanizmu */}
+      {/* KROK 2: wymiary i ilość - zaraz po montażu (właściciel, 2026-10-01:
+          "cena po wymiarach"). Montaż zostaje krokiem 1, bo to on decyduje,
+          jak się mierzy okno. */}
+      <section
+        className={`hero-product-step-accordion hero-product-step-accordion--dimensions ${stepDimsCollapsed ? "is-collapsed" : ""}`}
+      >
+        <button
+          type="button"
+          className="hero-product-step-head"
+          onClick={() => {
+            trackShopStep("configurator_step_toggle", "dimensions", { collapsed_after: !stepDimsCollapsed });
+            setStepDimsCollapsed((prev) => !prev);
+          }}
+          aria-expanded={stepDimsCollapsed ? "false" : "true"}
+        >
+          <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+            <span className={`hero-product-step-check ${hasSizes ? "" : "is-muted"}`} aria-hidden="true">
+              {hasSizes ? "✓" : "2"}
+            </span>
+            Wymiary i ilość
+          </span>
+          <span className="hero-product-step-head-meta">
+            {sizeSummaryText ? <strong>{sizeSummaryText}</strong> : null}
+            {stepDimsCollapsed ? (
+              <span className="hero-product-step-head-change">Zmień</span>
+            ) : (
+              <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+            )}
+          </span>
+        </button>
+        <div
+          className="hero-product-step-body"
+          style={stepDimsCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}
+        >
+          <div className={`plisy-position-form ${editingPositionId ? "is-editing" : ""}`} ref={positionFormRef}>
+            {editingPositionId ? (
+              <p className="plisy-position-editing">
+                Edytujesz pozycję {positions.findIndex((position) => position.id === editingPositionId) + 1} z zestawu.
+                <button type="button" onClick={clearPositionForm}>
+                  Anuluj
+                </button>
+              </p>
+            ) : null}
+            {/* Bez ściany tekstu: same pola i przycisk do
+                instrukcji w modalu (właściciel, 2026-09-24). */}
+            <div className="plisy-dimensions-tools">
+              <div className="hero-product-unit-toggle" role="group" aria-label="Jednostka wymiarów">
+                <button
+                  type="button"
+                  className={dimensionUnit === "cm" ? "is-active" : ""}
+                  aria-pressed={dimensionUnit === "cm"}
+                  onClick={() => switchDimensionUnit("cm")}
+                >
+                  cm
+                </button>
+                <button
+                  type="button"
+                  className={dimensionUnit === "mm" ? "is-active" : ""}
+                  aria-pressed={dimensionUnit === "mm"}
+                  onClick={() => switchDimensionUnit("mm")}
+                >
+                  mm
+                </button>
+              </div>
+              <button
+                type="button"
+                className="plisy-measure-link plisy-measure-link--cta"
+                onClick={() => {
+                  setMeasureGuideOpen(true);
+                  trackShopStep("configurator_measure_guide", "open", { mount: measureMode });
+                }}
+              >
+                📐 Jak mierzyć?
+              </button>
+            </div>
+            {measureGuideOpen && typeof document !== "undefined"
+              ? createPortal(
+                  <div
+                    className="instruction-modal instruction-modal--measure"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Jak mierzyć plisę"
+                    onClick={() => setMeasureGuideOpen(false)}
+                  >
+                    <div className="instruction-modal-shell instruction-modal-shell--measure" onClick={(event) => event.stopPropagation()}>
+                      <button type="button" className="instruction-modal-close" aria-label="Zamknij instrukcję" onClick={() => setMeasureGuideOpen(false)}>
+                        ×
+                      </button>
+                      <h3>Jak zmierzyć okno pod plisę</h3>
+                      <PlisyMeasureGuide fixedMode={measureMode} startDelayMs={700} unit={dimensionUnit} />
+                      {/* Okno bywa w drugim pokoju albo mierzy
+                          ktoś inny - stąd wysyłka samej
+                          instrukcji (właściciel, 2026-09-26). */}
+                      <MeasureShare mode={measureMode} source="configurator" />
+                    </div>
+                  </div>,
+                  document.body,
+                )
+              : null}
+            {measureSave ? (
+              <PromoSaveModal
+                variant="measure"
+                quoteCode={measureSave.quoteCode}
+                shareUrl={measureSave.shareUrl}
+                remainingMs={measureSave.remainingMs}
+                onClose={() => setMeasureSave(null)}
+              />
+            ) : null}
+            <div className="hero-product-dimensions-grid">
+              <label>
+                Szerokość ({dimensionUnit})
+                <input
+                  type="number"
+                  inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                  step={dimensionUnit === "cm" ? 0.1 : 1}
+                  min={dimensionUnit === "cm" ? profile.widthMinMm / 10 : profile.widthMinMm}
+                  max={dimensionUnit === "cm" ? (profile.widthMaxMm * 2) / 10 : profile.widthMaxMm * 2}
+                  placeholder={`np. ${mmToInput(profile.widthDefaultMm, dimensionUnit)}`}
+                  value={width}
+                  onChange={(event) => setWidth(event.target.value)}
+                  onBlur={handleDimensionBlur}
+                />
+              </label>
+              <label>
+                Wysokość ({dimensionUnit})
+                <input
+                  type="number"
+                  inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                  step={dimensionUnit === "cm" ? 0.1 : 1}
+                  min={dimensionUnit === "cm" ? profile.heightMinMm / 10 : profile.heightMinMm}
+                  max={dimensionUnit === "cm" ? profile.heightMaxMm / 10 : profile.heightMaxMm}
+                  placeholder={`np. ${mmToInput(profile.heightDefaultMm, dimensionUnit)}`}
+                  value={height}
+                  onChange={(event) => setHeight(event.target.value)}
+                  onBlur={handleDimensionBlur}
+                />
+              </label>
+              <label>
+                Ilość
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={20}
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
+                />
+              </label>
+            </div>
+            {remeasureHint && !dimensionsValid ? (
+              <p className="plisy-remeasure-hint" role="status">
+                {remeasureHint}{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMeasureGuideOpen(true);
+                    trackShopStep("configurator_measure_guide", "open", { mount: measureMode, source: "remeasure_hint" });
+                  }}
+                >
+                  Jak mierzyć?
+                </button>
+              </p>
+            ) : null}
+            {splitActive ? (
+              <div className="plisy-split-notice" role="status">
+                <strong>
+                  Okno {widthNum / 10} cm — zrobimy je z 2 plis po {pieceWidthMm / 10} cm.
+                </strong>
+                <span>
+                  Jedna plisa ma najwyżej {profile.widthMaxMm / 10} cm, więc szersze okno dzielimy na dwie równe części. Cena jest za
+                  obie plisy{quantityNum > 1 ? ` (razem ${quantityNum * 2} szt.)` : ""}.
+                </span>
+              </div>
+            ) : null}
+            {(width || height) && !dimensionsValid ? (
+              <div className="hero-product-dimensions-error">
+                {timesTenFix ? (
+                  <p className="plisy-dimensions-hint">
+                    Czy chodziło Ci o {timesTenFix.widthMm / 10} × {timesTenFix.heightMm / 10} cm?
+                    <button type="button" onClick={applyTimesTenFix}>
+                      Tak, popraw
+                    </button>
+                  </p>
+                ) : looksLikeCm ? (
+                  <p className="plisy-dimensions-hint">
+                    {widthNum} × {heightNum} mm to tylko {widthNum / 10} × {heightNum / 10} cm — mniej niż najmniejsza plisa.
+                    Wygląda na centymetry.
+                    <button type="button" onClick={() => switchDimensionUnit("cm")}>
+                      Tak, to centymetry
+                    </button>
+                  </p>
+                ) : (
+                  <p>
+                    Szerokość {formatRange(profile.widthMinMm, profile.widthMaxMm)} (okno do{" "}
+                    {dimensionUnit === "cm" ? `${(profile.widthMaxMm * 2) / 10} cm` : `${profile.widthMaxMm * 2} mm`} podzielimy na 2 plisy),
+                    wysokość {formatRange(profile.heightMinMm, profile.heightMaxMm)}.
+                    {dimensionUnit === "mm" ? " Masz wymiar w centymetrach? Przełącz jednostkę powyżej." : ""}
+                  </p>
+                )}
+              </div>
+            ) : null}
+            {/* Po wpisaniu wymiarów baner nie ma już po co
+                straszyć - klient je ma (właściciel, 2026-09-24). */}
+            {!hasSizes ? (
+              <button type="button" className="plisy-measure-later" onClick={openMeasureLater} disabled={measureSaveBusy}>
+                <strong>Nie masz jeszcze wymiarów?</strong>
+                <span>Wyślij sobie link i dokończ później →</span>
+              </button>
+            ) : null}
+            {sagWarning ? <PlisySagNotice limitMm={sagLimitMm} /> : null}
+            {oversizeSurcharge > 0 ? (
+              <p className="plisy-oversize-note">
+                Szerokość powyżej {PLISY_OVERSIZE_WIDTH_MM / 10} cm: dopłata za przesyłkę dłużycową{" "}
+                <strong>+{formatZl(oversizeSurcharge)}</strong> (jednorazowo dla całego zamówienia, doliczana w koszyku).
+              </p>
+            ) : null}
+            <div className="plisy-position-form-footer">
+              <span className="plisy-position-price">{totalPrice !== null && positions.length > 0 ? renderPrice(totalPrice) : ""}</span>
+              <button
+                type="button"
+                className="plisy-position-add"
+                onClick={handleAddPosition}
+                disabled={!dimensionsValid}
+              >
+                {editingPositionId ? "Zapisz zmiany" : "+ Dodaj kolejne okno"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {positions.length > 0 ? (
+        <div className="plisy-positions-list">
+          <h4>Twój zestaw</h4>
+          {positions.map((position, index) => {
+            const rowPrice = priceForSize(position.widthMm, position.heightMm, position.qty, selectedFabricGroupId, selectedFabric);
+            return (
+              <div key={position.id} className={`plisy-positions-row ${position.id === editingPositionId ? "is-editing" : ""}`}>
+                <span className="plisy-positions-row-label">
+                  {index + 1}. {positionSizeLabel(position)}, {position.qty} szt.
+                </span>
+                <span className="plisy-positions-row-price">{rowPrice ? renderPrice(rowPrice.total) : "—"}</span>
+                <button
+                  type="button"
+                  className="plisy-positions-row-edit"
+                  onClick={() => handleEditPosition(position)}
+                  aria-label={`Edytuj pozycję ${index + 1}`}
+                >
+                  Edytuj
+                </button>
+                <button
+                  type="button"
+                  className="plisy-positions-row-remove"
+                  onClick={() => handleRemovePosition(position.id)}
+                  aria-label={`Usuń pozycję ${index + 1}`}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+          {setGrandTotal !== null ? (
+            <div className="plisy-positions-total">
+              <span>Razem za cały zestaw</span>
+              <strong>{renderPrice(setGrandTotal)}</strong>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Cena zaraz po wymiarach (właściciel, 2026-10-01): standardowa i
+          w promocji, z tym, co jest w cenie. Przed wyborem kolekcji - "od"
+          (najtańsza kolekcja dla TYCH wymiarów), potem dokładna. */}
+      {hasSizes ? (
+        <div className="plisy-price-card" aria-live="polite">
+          {(() => {
+            const exact = fabricGroupChosen && setGrandTotal !== null;
+            const amount = exact ? setGrandTotal : cheapestSetPrice ? cheapestSetPrice.total : null;
+            if (amount === null) {
+              return <span className="plisy-price-card-label">Cenę policzymy po wyborze kolekcji tkaniny.</span>;
+            }
+            const promoAmount = promo ? applyPromoToPrice(amount, promo) : null;
+            const hasPromo = promoAmount !== null && promoAmount < amount;
+            return (
+              <>
+                <span className="plisy-price-card-label">
+                  {exact ? `Cena ${priceScopeLabel}` : `Cena ${priceScopeLabel} — od`}
+                </span>
+                {hasPromo ? (
+                  <span className="plisy-price-card-rows">
+                    <span className="plisy-price-card-row is-regular">
+                      <em>Standardowo</em>
+                      <s>{formatZl(amount)}</s>
+                    </span>
+                    <span className="plisy-price-card-row is-promo">
+                      <em>W promocji ({PROMO_CODE})</em>
+                      <strong>{formatZl(promoAmount)}</strong>
+                    </span>
+                  </span>
+                ) : (
+                  <span className="plisy-price-card-rows">
+                    <span className="plisy-price-card-row is-promo">
+                      <strong>{formatZl(amount)}</strong>
+                    </span>
+                  </span>
+                )}
+                {!exact && cheapestSetPrice ? (
+                  <span className="plisy-price-card-note">
+                    Kolekcja {cheapestSetPrice.groupLabel}. Dokładną cenę zobaczysz po wyborze koloru i tkaniny.
+                  </span>
+                ) : null}
+                <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
+
+      {/* KROK 3: kolor mechanizmu */}
       <section className={`hero-product-step-accordion hero-product-step-accordion--hardware-color ${stepOneCollapsed ? "is-collapsed" : ""}`}>
         <button
           type="button"
@@ -1058,7 +1431,7 @@ export default function ConfiguratorPanel({
         >
           <span className="hero-product-config-step-title hero-product-config-step-title--muted">
             <span className={`hero-product-step-check ${selectedHardware ? "" : "is-muted"}`} aria-hidden="true">
-              {selectedHardware ? "✓" : "2"}
+              {selectedHardware ? "✓" : "3"}
             </span>
             Wybierz kolor mechanizmu
           </span>
@@ -1125,7 +1498,7 @@ export default function ConfiguratorPanel({
         </div>
       </section>
 
-      {/* KROK 3: kolor uchwytów - tylko montaż bezinwazyjny */}
+      {/* KROK 4: kolor uchwytów - tylko montaż bezinwazyjny */}
       {selectedHardwareId && bracketRequired ? (
         <section className={`hero-product-step-accordion hero-product-step-accordion--bracket ${stepBracketCollapsed ? "is-collapsed" : ""}`}>
           <button
@@ -1140,7 +1513,7 @@ export default function ConfiguratorPanel({
           >
             <span className="hero-product-config-step-title hero-product-config-step-title--muted">
               <span className={`hero-product-step-check ${selectedBracket ? "" : "is-muted"}`} aria-hidden="true">
-                {selectedBracket ? "✓" : "3"}
+                {selectedBracket ? "✓" : "4"}
               </span>
               Wybierz kolor uchwytów bezinwazyjnych
             </span>
@@ -1192,7 +1565,7 @@ export default function ConfiguratorPanel({
 
       {selectedHardwareId && bracketChosen ? (
         <>
-          {/* KROK 4: kolekcja tkanin */}
+          {/* KROK 4/5: kolekcja tkanin */}
           <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
             <button
               type="button"
@@ -1206,7 +1579,7 @@ export default function ConfiguratorPanel({
             >
               <span className="hero-product-config-step-title hero-product-config-step-title--muted">
                 <span className={`hero-product-step-check ${fabricGroupChosen ? "" : "is-muted"}`} aria-hidden="true">
-                  {fabricGroupChosen ? "✓" : String(3 + stepShift)}
+                  {fabricGroupChosen ? "✓" : String(4 + stepShift)}
                 </span>
                 Wybierz kolekcję tkaniny
               </span>
@@ -1351,7 +1724,7 @@ export default function ConfiguratorPanel({
 
           {fabricGroupChosen ? (
             <>
-              {/* KROK 5: kolor tkaniny */}
+              {/* KROK 5/6: kolor tkaniny */}
               <section className={`hero-product-step-accordion hero-product-step-accordion--fabric-color ${stepThreeCollapsed ? "is-collapsed" : ""}`}>
                 <button
                   type="button"
@@ -1365,7 +1738,7 @@ export default function ConfiguratorPanel({
                 >
                   <span className="hero-product-config-step-title hero-product-config-step-title--muted">
                     <span className={`hero-product-step-check ${fabricChosen ? "" : "is-muted"}`} aria-hidden="true">
-                      {fabricChosen ? "✓" : String(4 + stepShift)}
+                      {fabricChosen ? "✓" : String(5 + stepShift)}
                     </span>
                     Wybierz kolor tkaniny
                   </span>
@@ -1517,7 +1890,7 @@ export default function ConfiguratorPanel({
                 </div>
               </section>
 
-              {/* Podgląd + KROK 6: wymiary i ilość (na końcu) */}
+              {/* Podgląd, informacja o ugięciu, kwota i "Dodaj do koszyka" */}
               {fabricChosen ? (
                 <div ref={stepFourRef} className="hero-product-mini-summary is-revealed">
                   <h3>Plisa</h3>
@@ -1557,262 +1930,24 @@ export default function ConfiguratorPanel({
                       </div>
                     </dl>
                   </div>
-
-                  <section
-                    className={`hero-product-step-accordion hero-product-step-accordion--dimensions ${stepDimsCollapsed ? "is-collapsed" : ""}`}
-                  >
-                    <button
-                      type="button"
-                      className="hero-product-step-head"
-                      onClick={() => {
-                        trackShopStep("configurator_step_toggle", "dimensions", { collapsed_after: !stepDimsCollapsed });
-                        setStepDimsCollapsed((prev) => !prev);
-                      }}
-                      aria-expanded={stepDimsCollapsed ? "false" : "true"}
-                    >
-                      <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                        <span className={`hero-product-step-check ${hasSizes ? "" : "is-muted"}`} aria-hidden="true">
-                          {hasSizes ? "✓" : String(5 + stepShift)}
-                        </span>
-                        Wymiary i ilość
-                      </span>
-                      <span className="hero-product-step-head-meta">
-                        {sizeSummaryText ? <strong>{sizeSummaryText}</strong> : null}
-                        {stepDimsCollapsed ? (
-                          <span className="hero-product-step-head-change">Zmień</span>
-                        ) : (
-                          <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-                        )}
-                      </span>
-                    </button>
-                    <div
-                      className="hero-product-step-body"
-                      style={stepDimsCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}
-                    >
-                      <div className={`plisy-position-form ${editingPositionId ? "is-editing" : ""}`} ref={positionFormRef}>
-                        {editingPositionId ? (
-                          <p className="plisy-position-editing">
-                            Edytujesz pozycję {positions.findIndex((position) => position.id === editingPositionId) + 1} z zestawu.
-                            <button type="button" onClick={clearPositionForm}>
-                              Anuluj
-                            </button>
-                          </p>
-                        ) : null}
-                        {/* Bez ściany tekstu: same pola i przycisk do
-                            instrukcji w modalu (właściciel, 2026-09-24). */}
-                        <div className="plisy-dimensions-tools">
-                          <div className="hero-product-unit-toggle" role="group" aria-label="Jednostka wymiarów">
-                            <button
-                              type="button"
-                              className={dimensionUnit === "cm" ? "is-active" : ""}
-                              aria-pressed={dimensionUnit === "cm"}
-                              onClick={() => switchDimensionUnit("cm")}
-                            >
-                              cm
-                            </button>
-                            <button
-                              type="button"
-                              className={dimensionUnit === "mm" ? "is-active" : ""}
-                              aria-pressed={dimensionUnit === "mm"}
-                              onClick={() => switchDimensionUnit("mm")}
-                            >
-                              mm
-                            </button>
-                          </div>
-                          <button
-                            type="button"
-                            className="plisy-measure-link plisy-measure-link--cta"
-                            onClick={() => {
-                              setMeasureGuideOpen(true);
-                              trackShopStep("configurator_measure_guide", "open", { mount: measureMode });
-                            }}
-                          >
-                            📐 Jak mierzyć?
-                          </button>
-                        </div>
-                        {measureGuideOpen && typeof document !== "undefined"
-                          ? createPortal(
-                              <div
-                                className="instruction-modal instruction-modal--measure"
-                                role="dialog"
-                                aria-modal="true"
-                                aria-label="Jak mierzyć plisę"
-                                onClick={() => setMeasureGuideOpen(false)}
-                              >
-                                <div className="instruction-modal-shell instruction-modal-shell--measure" onClick={(event) => event.stopPropagation()}>
-                                  <button type="button" className="instruction-modal-close" aria-label="Zamknij instrukcję" onClick={() => setMeasureGuideOpen(false)}>
-                                    ×
-                                  </button>
-                                  <h3>Jak zmierzyć okno pod plisę</h3>
-                                  <PlisyMeasureGuide fixedMode={measureMode} startDelayMs={700} unit={dimensionUnit} />
-                                  {/* Okno bywa w drugim pokoju albo mierzy
-                                      ktoś inny - stąd wysyłka samej
-                                      instrukcji (właściciel, 2026-09-26). */}
-                                  <MeasureShare mode={measureMode} source="configurator" />
-                                </div>
-                              </div>,
-                              document.body,
-                            )
-                          : null}
-                        {measureSave ? (
-                          <PromoSaveModal
-                            variant="measure"
-                            quoteCode={measureSave.quoteCode}
-                            shareUrl={measureSave.shareUrl}
-                            remainingMs={measureSave.remainingMs}
-                            onClose={() => setMeasureSave(null)}
-                          />
-                        ) : null}
-                        <div className="hero-product-dimensions-grid">
-                          <label>
-                            Szerokość ({dimensionUnit})
-                            <input
-                              type="number"
-                              inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
-                              step={dimensionUnit === "cm" ? 0.1 : 1}
-                              min={dimensionUnit === "cm" ? profile.widthMinMm / 10 : profile.widthMinMm}
-                              max={dimensionUnit === "cm" ? profile.widthMaxMm / 10 : profile.widthMaxMm}
-                              placeholder={`np. ${mmToInput(profile.widthDefaultMm, dimensionUnit)}`}
-                              value={width}
-                              onChange={(event) => setWidth(event.target.value)}
-                              onBlur={handleDimensionBlur}
-                            />
-                          </label>
-                          <label>
-                            Wysokość ({dimensionUnit})
-                            <input
-                              type="number"
-                              inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
-                              step={dimensionUnit === "cm" ? 0.1 : 1}
-                              min={dimensionUnit === "cm" ? profile.heightMinMm / 10 : profile.heightMinMm}
-                              max={dimensionUnit === "cm" ? profile.heightMaxMm / 10 : profile.heightMaxMm}
-                              placeholder={`np. ${mmToInput(profile.heightDefaultMm, dimensionUnit)}`}
-                              value={height}
-                              onChange={(event) => setHeight(event.target.value)}
-                              onBlur={handleDimensionBlur}
-                            />
-                          </label>
-                          <label>
-                            Ilość
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              min={1}
-                              max={20}
-                              value={quantity}
-                              onChange={(event) => setQuantity(event.target.value)}
-                            />
-                          </label>
-                        </div>
-                        {(width || height) && !dimensionsValid ? (
-                          <div className="hero-product-dimensions-error">
-                            {looksLikeCm ? (
-                              <p className="plisy-dimensions-hint">
-                                {widthNum} × {heightNum} mm to tylko {widthNum / 10} × {heightNum / 10} cm — mniej niż najmniejsza plisa.
-                                Wygląda na centymetry.
-                                <button type="button" onClick={() => switchDimensionUnit("cm")}>
-                                  Tak, to centymetry
-                                </button>
-                              </p>
-                            ) : (
-                              <p>
-                                Szerokość {formatRange(profile.widthMinMm, profile.widthMaxMm)}, wysokość{" "}
-                                {formatRange(profile.heightMinMm, profile.heightMaxMm)}.
-                                {dimensionUnit === "mm" ? " Masz wymiar w centymetrach? Przełącz jednostkę powyżej." : ""}
-                              </p>
-                            )}
-                          </div>
-                        ) : null}
-                        {/* Po wpisaniu wymiarów baner nie ma już po co
-                            straszyć - klient je ma (właściciel, 2026-09-24). */}
-                        {!hasSizes ? (
-                          <button type="button" className="plisy-measure-later" onClick={openMeasureLater} disabled={measureSaveBusy}>
-                            <strong>Nie masz jeszcze wymiarów?</strong>
-                            <span>Wyślij sobie link i dokończ później →</span>
-                          </button>
-                        ) : null}
-                        {sagWarning ? (
-                          <div className={`plisy-sag-notice ${sagAccepted ? "is-accepted" : ""}`} role="note">
-                            <p>
-                              <strong>Szerokość powyżej {sagLimitMm / 10} cm.</strong> Przy tej szerokości profil aluminiowy może się
-                              lekko ugiąć pod ciężarem tkaniny (grawitacja). To naturalne zjawisko — nie wpływa na działanie plisy, jedynie na jej
-                              estetykę.
-                            </p>
-                            {sagAccepted ? (
-                              <span className="plisy-sag-accepted">✓ Zaakceptowano</span>
-                            ) : (
-                              <button
-                                type="button"
-                                className="plisy-sag-accept"
-                                onClick={() => {
-                                  trackShopStep("accept_sag_notice", String(widestMm), { limit_mm: sagLimitMm });
-                                  setSagAccepted(true);
-                                }}
-                              >
-                                Akceptuję
-                              </button>
-                            )}
-                          </div>
-                        ) : null}
-                        {oversizeSurcharge > 0 ? (
-                          <p className="plisy-oversize-note">
-                            Szerokość powyżej {PLISY_OVERSIZE_WIDTH_MM / 10} cm: dopłata za przesyłkę dłużycową{" "}
-                            <strong>+{formatZl(oversizeSurcharge)}</strong> (jednorazowo dla całego zamówienia, doliczana w koszyku).
-                          </p>
-                        ) : null}
-                        <div className="plisy-position-form-footer">
-                          <span className="plisy-position-price">{totalPrice !== null ? renderPrice(totalPrice) : "--"}</span>
-                          <button
-                            type="button"
-                            className="plisy-position-add"
-                            onClick={handleAddPosition}
-                            disabled={!dimensionsValid || sagBlocked || remeasureRequired}
-                          >
-                            {editingPositionId ? "Zapisz zmiany" : "+ Dodaj kolejne okno"}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
-                  {positions.length > 0 ? (
-                    <div className="plisy-positions-list">
-                      <h4>Twój zestaw</h4>
-                      {positions.map((position, index) => {
-                        const rowPrice = priceForSize(position.widthMm, position.heightMm, position.qty, selectedFabricGroupId, selectedFabric);
-                        return (
-                          <div key={position.id} className={`plisy-positions-row ${position.id === editingPositionId ? "is-editing" : ""}`}>
-                            <span className="plisy-positions-row-label">
-                              {index + 1}. {position.widthMm / 10} × {position.heightMm / 10} cm, {position.qty} szt.
-                            </span>
-                            <span className="plisy-positions-row-price">{rowPrice ? renderPrice(rowPrice.total) : "—"}</span>
-                            <button
-                              type="button"
-                              className="plisy-positions-row-edit"
-                              onClick={() => handleEditPosition(position)}
-                              aria-label={`Edytuj pozycję ${index + 1}`}
-                            >
-                              Edytuj
-                            </button>
-                            <button
-                              type="button"
-                              className="plisy-positions-row-remove"
-                              onClick={() => handleRemovePosition(position.id)}
-                              aria-label={`Usuń pozycję ${index + 1}`}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        );
-                      })}
-                      {setGrandTotal !== null ? (
-                        <div className="plisy-positions-total">
-                          <span>Razem za cały zestaw</span>
-                          <strong>{renderPrice(setGrandTotal)}</strong>
-                        </div>
-                      ) : null}
+                  {!hasSizes ? (
+                    <div className="plisy-missing-dims">
+                      <span>Brakuje wymiarów okna — bez nich nie policzymy ceny.</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStepDimsCollapsed(false);
+                          trackShopStep("configurator_jump_to_dims", "plisy", {});
+                          window.setTimeout(() => {
+                            positionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }, 80);
+                        }}
+                      >
+                        Wpisz wymiary (krok 2)
+                      </button>
                     </div>
                   ) : null}
+                  {sagWarning ? <PlisySagNotice limitMm={sagLimitMm} /> : null}
 
                   {/* Kwota do zapłaty jako blok, nie szary wiersz: przekreślona
                       cena sprzed rabatu i zielona plakietka oszczędności
