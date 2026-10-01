@@ -44,6 +44,10 @@ export type RoofWindowSearchResult = {
   item: RoofWindowLibraryItem;
   score: number;
   highlights: RoofWindowSearchHighlights;
+  /** Ścisłe wyszukiwanie dało zero - to wyniki dla złagodzonego zapytania
+   * (bez nieznanych słów albo sam producent + rozmiar). Lista pokazuje wtedy
+   * "nie mamy dokładnie tego - najbliższe pasujące". */
+  relaxedQuery?: string;
 };
 
 const CRM_ALLEGRO_API = "https://crm-keika.groovemedia.pl/biuro/api/allegro";
@@ -370,7 +374,80 @@ export function buildRoofWindowDisplayLabel(item: RoofWindowLibraryItem): string
 // Search - verbatim scoring from the Allegro configurator
 // ---------------------------------------------------------------------------
 
+// Audyt 2026-10-01: 11% wyszukiwań kończyło się zerem, bo każde słowo musi
+// pasować - typ okna, którego nie ma w bibliotece ("Velux GZL M08",
+// "Fakro FTS 78x140"), zapis "78/118" albo sklejone "u278x140" zabijały
+// całe zapytanie. Najpierw porządkujemy zapis, a gdy i tak jest zero -
+// szukamy bez słów nieznanych żadnemu oknu, potem samym producentem z
+// rozmiarem, samym producentem, samym rozmiarem.
 export function searchRoofWindowLibrary(items: RoofWindowLibraryItem[], query: string): RoofWindowSearchResult[] {
+  const prepared = prepareRoofWindowQuery(query);
+  const strict = searchRoofWindowLibraryStrict(items, prepared);
+  if (!items.length) return strict;
+  // Wpisany rozmiar/kod modelu ("mk04", "78x140", "304") musi być w wynikach -
+  // inaczej dopasowanie po literach potrafi podsunąć MK08 na "ggl mk04".
+  const sizeTokens = tokenizeRoofWindowsSearchQuery(prepared).filter(isRoofWindowSizeToken);
+  const strictHasSize = !sizeTokens.length || strict.some((result) => sizeTokens.every((token) => roofWindowHasToken(result.item, token)));
+  if (strict.length && strictHasSize) return strict;
+  const relaxed = relaxRoofWindowQuery(items, prepared);
+  if (!relaxed) return strict;
+  const relaxedResults = searchRoofWindowLibraryStrict(items, relaxed);
+  if (!relaxedResults.length) return strict;
+  return relaxedResults.map((result) => ({ ...result, relaxedQuery: relaxed }));
+}
+
+/** Rozmiar albo kod modelu: 78x140, mk08 / m08 / s04 / r45, 304. Kod
+ * szyby (u2, u4) i pojedyncze cyfry Roto ("7/14") się nie liczą. */
+function isRoofWindowSizeToken(token: string): boolean {
+  return /^\d{2,3}x\d{2,3}$/.test(token) || /^[a-z]{1,2}\d{2}$/.test(token) || /^\d{3}$/.test(token);
+}
+
+function roofWindowHasToken(item: RoofWindowLibraryItem, token: string): boolean {
+  const words = normalizeRoofWindowsSearchText(`${item.producer_name} ${item.window_model} ${item.alternate_window_model}`).split(/\s+/);
+  return words.includes(token);
+}
+
+function prepareRoofWindowQuery(query: string): string {
+  return String(query || "")
+    .replace(/×/g, "x")
+    // "78/118" -> "78x118" (oba wymiary w cm; "7/14" Roto zostaje)
+    .replace(/(\d{2,3})\s*[/\\]\s*(\d{2,3})/g, (match, a: string, b: string) => (Number(a) >= 40 && Number(b) >= 40 ? `${a}x${b}` : match))
+    // "78 x 118" -> "78x118"
+    .replace(/(\d{2,3})\s+[xX]\s+(\d{2,3})/g, "$1x$2")
+    // "u278x140" -> "u2 78x140" (pakiet szyb sklejony z rozmiarem)
+    .replace(/\b([uU]\d)(\d{2,3}[xX]\d{2,3})\b/g, "$1 $2")
+    // "fts78x140" -> "fts 78x140"
+    .replace(/([a-zA-Z])(\d{2,3}[xX]\d{2,3})/g, "$1 $2");
+}
+
+function relaxRoofWindowQuery(items: RoofWindowLibraryItem[], query: string): string | null {
+  const tokens = tokenizeRoofWindowsSearchQuery(query);
+  if (!tokens.length) return null;
+  const known = tokens.filter((token) => items.some((item) => scoreRoofWindowsSearchMatch(item, token).isMatch));
+  if (!known.length) return null;
+  const tried = new Set<string>([tokens.join(" ")]);
+  const tryQuery = (list: string[]): string | null => {
+    const candidate = list.join(" ");
+    if (!list.length || tried.has(candidate)) return null;
+    tried.add(candidate);
+    return searchRoofWindowLibraryStrict(items, candidate).length ? candidate : null;
+  };
+  const producerFirstWords = new Set(items.map((item) => normalizeRoofWindowsSearchText(item.producer_name).split(/\s+/)[0]).filter(Boolean));
+  const producers = known.filter((token) => producerFirstWords.has(token));
+  const sizes = known.filter(isRoofWindowSizeToken);
+  const digits = known.filter((token) => /\d/.test(token));
+  return (
+    tryQuery(known) ||
+    (sizes.length ? tryQuery([...producers, ...sizes]) : null) ||
+    tryQuery([...producers, ...digits]) ||
+    tryQuery(producers) ||
+    tryQuery(sizes) ||
+    tryQuery(digits) ||
+    null
+  );
+}
+
+function searchRoofWindowLibraryStrict(items: RoofWindowLibraryItem[], query: string): RoofWindowSearchResult[] {
   const normalizedQuery = normalizeRoofWindowsSearchText(query);
   const tokens = tokenizeRoofWindowsSearchQuery(normalizedQuery);
   if (!tokens.length) return [];

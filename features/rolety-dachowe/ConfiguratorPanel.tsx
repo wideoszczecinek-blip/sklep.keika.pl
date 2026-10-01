@@ -203,6 +203,7 @@ export default function ConfiguratorPanel({
   const stepThreeRef = useRef<HTMLButtonElement | null>(null);
   const stepFourRef = useRef<HTMLButtonElement | null>(null);
   const summaryRef = useRef<HTMLDivElement | null>(null);
+  const stepKasetaRef = useRef<HTMLButtonElement | null>(null);
 
   // /koszyk's "Edytuj pozycję" (and a resume link) only know the labels -
   // resolve them against the profile once it is loaded. A previously chosen
@@ -330,7 +331,7 @@ export default function ConfiguratorPanel({
     trackShopStep("select_fabric_color", option.label, { option_id: option.id, source });
     setSelectedFabricId(option.id);
     setStepThreeCollapsed(true);
-    window.setTimeout(() => scrollStepIntoView(stepFourRef.current), 380);
+    window.setTimeout(() => scrollStepIntoView(stepKasetaRef.current), 380);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -350,7 +351,7 @@ export default function ConfiguratorPanel({
     if (trimmed.length < 3 || trimmed === searchTrackedRef.current) return;
     const id = window.setTimeout(() => {
       searchTrackedRef.current = trimmed;
-      trackShopStep("window_search_query", trimmed.slice(0, 60), { results: searchResults.length });
+      trackShopStep("window_search_query", trimmed.slice(0, 60), { results: searchResults.length, relaxed: Boolean(searchResults[0]?.relaxedQuery) });
     }, 900);
     return () => window.clearTimeout(id);
   }, [windowQuery, searchResults.length]);
@@ -379,6 +380,21 @@ export default function ConfiguratorPanel({
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
   const promoUnit = unitPrice !== null ? applyPromoToPrice(unitPrice, promo) : null;
   const promoTotal = totalPrice !== null ? applyPromoToPrice(totalPrice, promo) : null;
+  // Najtańsza konfiguracja dla wybranego okna (z tym, co już wybrane) -
+  // cena "od" w karcie ceny zaraz po modelu okna.
+  const windowFromPrice = (() => {
+    if (!profile || !hasWindowInfo) return null;
+    const hardwareIds = selectedHardwareId ? [selectedHardwareId] : profile.hardware.map((option) => option.id);
+    const materialIds = selectedMaterialTypeId ? [selectedMaterialTypeId] : profile.materialTypes.map((option) => option.id);
+    let best: number | null = null;
+    for (const hardwareId of hardwareIds) {
+      for (const materialId of materialIds) {
+        const price = calcRoletyDachowePrice(profile.tables, resolvedDims.widthMm, resolvedDims.heightMm, hardwareId, materialId, priceAdjustmentPercent);
+        if (price !== null && (best === null || price < best)) best = price;
+      }
+    }
+    return best;
+  })();
   const priceOutOfRange = Boolean(windowChoice && hasWindowInfo && selectedHardwareId && selectedMaterialTypeId && profile && unitPrice === null);
 
   // Per-result "od X zł" in the search list - the cheapest configuration
@@ -415,10 +431,10 @@ export default function ConfiguratorPanel({
   useEffect(() => {
     const done: string[] = [];
     const missing: string[] = [];
-    (selectedHardwareId ? done : missing).push("kolor kasety");
+    (hasWindowInfo ? done : missing).push(windowChoice?.kind === "manual" ? "wymiary" : "model okna");
     (selectedMaterialTypeId ? done : missing).push("rodzaj materiału");
     (selectedFabricId ? done : missing).push("tkanina");
-    (hasWindowInfo ? done : missing).push(windowChoice?.kind === "manual" ? "wymiary" : "model okna");
+    (selectedHardwareId ? done : missing).push("kolor kasety");
     const blockedReason = priceOutOfRange
       ? "wymiary poza cennikiem"
       : !windowChoice && windowQuery.trim() !== "" && searchResults.length === 0
@@ -451,7 +467,7 @@ export default function ConfiguratorPanel({
     setHelpOpen(false);
     setMissingFormOpen(false);
     setNameplateOutcome(null);
-    window.setTimeout(() => scrollStepIntoView(summaryRef.current), 380);
+    window.setTimeout(() => scrollStepIntoView(stepTwoRef.current), 380);
   }
 
   async function handlePhotoUpload(file: File) {
@@ -526,7 +542,7 @@ export default function ConfiguratorPanel({
     setWindowQuery("");
     setMissingFormOpen(false);
     setStepFourCollapsed(true);
-    window.setTimeout(() => scrollStepIntoView(summaryRef.current), 380);
+    window.setTimeout(() => scrollStepIntoView(stepTwoRef.current), 380);
   }
 
   // ---- SEZON20 rescue / save-share (same three-case logic as moskitiery) --
@@ -648,61 +664,130 @@ export default function ConfiguratorPanel({
         <strong>Stwórz swoją roletę dachową</strong>
       </header>
 
-      <section className={`hero-product-step-accordion ${stepOneCollapsed ? "is-collapsed" : ""}`}>
+      {/* KROK 1: model okna (właściciel, 2026-10-01: po audycie ruchu - ci,
+          którzy szukali modelu, w 16,5% dodawali do koszyka; ci, którzy zaczynali
+          od koloru kasety - w 0,3%). Potem cena, materiał, kolor, kaseta. */}
+      <section className={`hero-product-step-accordion ${stepFourCollapsed ? "is-collapsed" : ""}`}>
         {stepHead(
-          null,
-          stepOneCollapsed,
+          stepFourRef,
+          stepFourCollapsed,
           () => {
-            trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed });
-            setStepOneCollapsed((prev) => !prev);
+            trackShopStep("configurator_step_toggle", "window_model", { collapsed_after: !stepFourCollapsed });
+            setStepFourCollapsed((prev) => !prev);
           },
-          Boolean(selectedHardware),
+          hasWindowInfo,
           "1",
-          "Wybierz kolor kasety i prowadnic",
+          "Dopasuj roletę do modelu okna",
           false,
-          <>
-            {selectedHardware && stepOneCollapsed ? (
-              <span className="hero-product-step-head-swatch" style={{ backgroundImage: `url(${optimizeImageUrl(selectedHardware.imageUrl, 64)})` }} aria-hidden="true" />
-            ) : null}
-            {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
-          </>,
+          windowChoice ? (
+            <strong>
+              {windowModelLabel}
+              {hasWindowInfo ? ` · ${resolvedDims.widthMm} × ${resolvedDims.heightMm} mm` : ""}
+            </strong>
+          ) : null,
         )}
         <div className="hero-product-step-body">
-          <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid">
-            {hardwareOptions.map((option, index) => {
-              const isActive = option.id === selectedHardwareId;
-              const isLastSolo = hardwareOptions.length % 3 === 1 && index === hardwareOptions.length - 1;
-              return (
-                <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""} ${isLastSolo ? "is-last-solo" : ""}`}>
-                  <button
-                    type="button"
-                    className="hardware-card-main"
-                    onClick={() => {
-                      trackShopStep("select_hardware_color", option.label, { option_id: option.id });
-                      setSelectedHardwareId(option.id);
-                      setStepOneCollapsed(true);
-                      if (!stepOneChosen) setStepOneChosen(true);
-                      window.setTimeout(() => scrollStepIntoView(stepTwoRef.current), 380);
-                    }}
-                  >
-                    <span className="hardware-card-image" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 220)})` }} />
-                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                    <span className="hardware-card-footer">
-                      <span className="hardware-dot" style={{ background: option.color }} />
-                      <strong>{option.label}</strong>
-                    </span>
-                  </button>
-                  <button type="button" className="config-option-zoom" aria-label={`Powiększ: ${option.label}`} onClick={() => openZoom({ title: option.label, urls: option.galleryUrls, index: 0 })}>
-                    🔍
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+          <RoofWindowSearchSelector
+            query={windowQuery}
+            results={searchResults}
+            selectedItem={windowChoice?.kind === "library" ? windowChoice.item : null}
+            isLoading={libraryLoading}
+            onQueryChange={(value) => {
+              setWindowQuery(value);
+              if (windowChoice) {
+                setWindowChoice(null);
+                setStepFourCollapsed(false);
+              }
+            }}
+            onSelect={(item) => chooseLibraryWindow(item, "search")}
+            onMissingModelClick={() => openMissingForm()}
+            resolvePriceLabel={resolvePriceLabel}
+            modelHelp={profile?.modelHelp || { eyebrow: "", title: "", body: "", imageUrl: "" }}
+            isHelpOpen={helpOpen}
+            onHelpOpenChange={setHelpOpen}
+            onPhotoUpload={(file) => void handlePhotoUpload(file)}
+            isRecognizing={isRecognizing}
+            nameplateOutcome={nameplateOutcome}
+            nameplateError={nameplateError}
+            assistantUnavailable={assistantUnavailable}
+            onNameplateConfirmMatch={() => {
+              if (nameplateOutcome?.kind !== "matched") return;
+              trackShopStep("nameplate_confirm_match", buildRoofWindowDisplayLabel(nameplateOutcome.item));
+              chooseLibraryWindow(nameplateOutcome.item, "nameplate", pendingNameplate?.attachmentId || "");
+            }}
+            onNameplateSelectCandidate={(item) => chooseLibraryWindow(item, "nameplate_candidate", pendingNameplate?.attachmentId || "")}
+            onNameplateRejectMatch={() => {
+              trackShopStep("nameplate_reject_match", PRODUCT_SLUG);
+              setNameplateOutcome(null);
+            }}
+            onNameplateReportMissing={() => openMissingForm("nameplate")}
+            autoFocus={Boolean(initialValues?.windowQuery)}
+          />
+          {windowChoice?.kind === "manual" ? (
+            <div className="rd-search-selected">
+              <span className="rd-search-selected-check" aria-hidden="true">
+                ✓
+              </span>
+              <span>
+                Okno spoza biblioteki: <strong>{windowModelLabel}</strong> · wymiar A/B {resolvedDims.widthMm} × {resolvedDims.heightMm} mm
+                {windowChoice.request.attachmentIds.length ? ` · zdjęć: ${windowChoice.request.attachmentIds.length}` : ""}
+              </span>
+              <button type="button" className="rd-link" onClick={() => openMissingForm()}>
+                Popraw
+              </button>
+            </div>
+          ) : null}
+          {priceOutOfRange ? (
+            <p className="hero-product-dimensions-error">
+              Ten wymiar wykracza poza nasz cennik (szerokość do {limits.maxWidthMm} mm, wysokość do {limits.maxHeightMm} mm). Napisz do nas z zakładki Kontakt — wycenimy indywidualnie.
+            </p>
+          ) : null}
         </div>
       </section>
 
-      {stepOneChosen ? (
+      {/* Cena zaraz po modelu okna (właściciel, 2026-10-01): standardowa i w
+          promocji, z tym, co jest w cenie. Przed wyborem materiału i kasety -
+          "od" (najtańsza konfiguracja dla TEGO okna), potem dokładna. */}
+      {hasWindowInfo && !priceOutOfRange ? (
+        <div className="plisy-price-card rd-price-card" aria-live="polite">
+          {(() => {
+            const exact = unitPrice !== null;
+            const amount = exact ? unitPrice : windowFromPrice;
+            if (amount === null) return <span className="plisy-price-card-label">Cenę policzymy po wyborze materiału.</span>;
+            const promoAmount = promo ? applyPromoToPrice(amount, promo) : null;
+            const hasPromo = promoAmount !== null && promoAmount < amount;
+            return (
+              <>
+                <span className="plisy-price-card-label">{exact ? "Cena za 1 roletę" : "Cena za 1 roletę — od"}</span>
+                {hasPromo ? (
+                  <span className="plisy-price-card-rows">
+                    <span className="plisy-price-card-row is-regular">
+                      <em>Standardowo</em>
+                      <s>{formatZl(amount)}</s>
+                    </span>
+                    <span className="plisy-price-card-row is-promo">
+                      <em>W promocji ({promo?.code || "SEZON20"})</em>
+                      <strong>{formatZl(promoAmount)}</strong>
+                    </span>
+                  </span>
+                ) : (
+                  <span className="plisy-price-card-rows">
+                    <span className="plisy-price-card-row is-promo">
+                      <strong>{formatZl(amount)}</strong>
+                    </span>
+                  </span>
+                )}
+                {!exact ? (
+                  <span className="plisy-price-card-note">Dokładną cenę zobaczysz po wyborze materiału i koloru kasety.</span>
+                ) : null}
+                <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
+
+      {hasWindowInfo ? (
         <>
           <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
             {stepHead(
@@ -821,129 +906,107 @@ export default function ConfiguratorPanel({
               </section>
 
               {fabricChosen ? (
-                <>
-                  <section className={`hero-product-step-accordion ${stepFourCollapsed ? "is-collapsed" : ""}`}>
-                    {stepHead(
-                      stepFourRef,
-                      stepFourCollapsed,
-                      () => {
-                        trackShopStep("configurator_step_toggle", "window_model", { collapsed_after: !stepFourCollapsed });
-                        setStepFourCollapsed((prev) => !prev);
-                      },
-                      hasWindowInfo,
-                      "4",
-                      "Dopasuj roletę do modelu okna",
-                      true,
-                      windowChoice ? (
-                        <strong>
-                          {windowModelLabel}
-                          {hasWindowInfo ? ` · ${resolvedDims.widthMm} × ${resolvedDims.heightMm} mm` : ""}
-                        </strong>
-                      ) : null,
-                    )}
-                    <div className="hero-product-step-body">
-                      <RoofWindowSearchSelector
-                        query={windowQuery}
-                        results={searchResults}
-                        selectedItem={windowChoice?.kind === "library" ? windowChoice.item : null}
-                        isLoading={libraryLoading}
-                        onQueryChange={(value) => {
-                          setWindowQuery(value);
-                          if (windowChoice) {
-                            setWindowChoice(null);
-                            setStepFourCollapsed(false);
-                          }
-                        }}
-                        onSelect={(item) => chooseLibraryWindow(item, "search")}
-                        onMissingModelClick={() => openMissingForm()}
-                        resolvePriceLabel={resolvePriceLabel}
-                        modelHelp={profile?.modelHelp || { eyebrow: "", title: "", body: "", imageUrl: "" }}
-                        isHelpOpen={helpOpen}
-                        onHelpOpenChange={setHelpOpen}
-                        onPhotoUpload={(file) => void handlePhotoUpload(file)}
-                        isRecognizing={isRecognizing}
-                        nameplateOutcome={nameplateOutcome}
-                        nameplateError={nameplateError}
-                        assistantUnavailable={assistantUnavailable}
-                        onNameplateConfirmMatch={() => {
-                          if (nameplateOutcome?.kind !== "matched") return;
-                          trackShopStep("nameplate_confirm_match", buildRoofWindowDisplayLabel(nameplateOutcome.item));
-                          chooseLibraryWindow(nameplateOutcome.item, "nameplate", pendingNameplate?.attachmentId || "");
-                        }}
-                        onNameplateSelectCandidate={(item) => chooseLibraryWindow(item, "nameplate_candidate", pendingNameplate?.attachmentId || "")}
-                        onNameplateRejectMatch={() => {
-                          trackShopStep("nameplate_reject_match", PRODUCT_SLUG);
-                          setNameplateOutcome(null);
-                        }}
-                        onNameplateReportMissing={() => openMissingForm("nameplate")}
-                        autoFocus={Boolean(initialValues?.windowQuery)}
-                      />
-                      {windowChoice?.kind === "manual" ? (
-                        <div className="rd-search-selected">
-                          <span className="rd-search-selected-check" aria-hidden="true">
-                            ✓
-                          </span>
-                          <span>
-                            Okno spoza biblioteki: <strong>{windowModelLabel}</strong> · wymiar A/B {resolvedDims.widthMm} × {resolvedDims.heightMm} mm
-                            {windowChoice.request.attachmentIds.length ? ` · zdjęć: ${windowChoice.request.attachmentIds.length}` : ""}
-                          </span>
-                          <button type="button" className="rd-link" onClick={() => openMissingForm()}>
-                            Popraw
-                          </button>
-                        </div>
+                <section className={`hero-product-step-accordion ${stepOneCollapsed ? "is-collapsed" : ""}`}>
+                  {stepHead(
+                    stepKasetaRef,
+                    stepOneCollapsed,
+                    () => {
+                      trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed });
+                      setStepOneCollapsed((prev) => !prev);
+                    },
+                    Boolean(selectedHardware),
+                    "4",
+                    "Wybierz kolor kasety i prowadnic",
+                    true,
+                    <>
+                      {selectedHardware && stepOneCollapsed ? (
+                        <span className="hero-product-step-head-swatch" style={{ backgroundImage: `url(${optimizeImageUrl(selectedHardware.imageUrl, 64)})` }} aria-hidden="true" />
                       ) : null}
-                      {priceOutOfRange ? (
-                        <p className="hero-product-dimensions-error">
-                          Ten wymiar wykracza poza nasz cennik (szerokość do {limits.maxWidthMm} mm, wysokość do {limits.maxHeightMm} mm). Napisz do nas z zakładki Kontakt — wycenimy indywidualnie.
-                        </p>
-                      ) : null}
+                      {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
+                    </>,
+                  )}
+                  <div className="hero-product-step-body">
+                    <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid">
+                      {hardwareOptions.map((option, index) => {
+                        const isActive = option.id === selectedHardwareId;
+                        const isLastSolo = hardwareOptions.length % 3 === 1 && index === hardwareOptions.length - 1;
+                        return (
+                          <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""} ${isLastSolo ? "is-last-solo" : ""}`}>
+                            <button
+                              type="button"
+                              className="hardware-card-main"
+                              onClick={() => {
+                                trackShopStep("select_hardware_color", option.label, { option_id: option.id });
+                                setSelectedHardwareId(option.id);
+                                setStepOneCollapsed(true);
+                                if (!stepOneChosen) setStepOneChosen(true);
+                                window.setTimeout(() => scrollStepIntoView(summaryRef.current), 380);
+                              }}
+                            >
+                              <span className="hardware-card-image" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 220)})` }} />
+                              {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                              <span className="hardware-card-footer">
+                                <span className="hardware-dot" style={{ background: option.color }} />
+                                <strong>{option.label}</strong>
+                              </span>
+                            </button>
+                            <button type="button" className="config-option-zoom" aria-label={`Powiększ: ${option.label}`} onClick={() => openZoom({ title: option.label, urls: option.galleryUrls, index: 0 })}>
+                              🔍
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </section>
+                  </div>
+                </section>
+              ) : null}
+            </>
+          ) : null}
 
-                  {hasWindowInfo && !priceOutOfRange ? (
-                    <section className="hero-product-step-accordion rd-extras">
-                      <div className="hero-product-step-head is-static">
-                        <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                          <span className="hero-product-step-check is-muted" aria-hidden="true">
-                            5
-                          </span>
-                          Opcje dodatkowe
-                        </span>
+          {selectedHardware && fabricChosen ? (
+            <>
+              {hasWindowInfo && !priceOutOfRange ? (
+                <section className="hero-product-step-accordion rd-extras">
+                  <div className="hero-product-step-head is-static">
+                    <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+                      <span className="hero-product-step-check is-muted" aria-hidden="true">
+                        5
+                      </span>
+                      Opcje dodatkowe
+                    </span>
+                  </div>
+                  <div className="hero-product-step-body">
+                    <div className="rd-extra-row">
+                      <div>
+                        <strong>Uchwyty na belce dolnej</strong>
+                        <p>
+                          Dwa uchwyty ułatwiają prowadzenie szerokiej rolety. Bez dopłaty.
+                          {windowChoice?.kind === "library" && resolveRoofWindowBracketCount(windowChoice.item) === 2
+                            ? " Do tego okna standardowo dajemy dwa."
+                            : ""}
+                        </p>
                       </div>
-                      <div className="hero-product-step-body">
-                        <div className="rd-extra-row">
-                          <div>
-                            <strong>Uchwyty na belce dolnej</strong>
-                            <p>
-                              Dwa uchwyty ułatwiają prowadzenie szerokiej rolety. Bez dopłaty.
-                              {windowChoice?.kind === "library" && resolveRoofWindowBracketCount(windowChoice.item) === 2
-                                ? " Do tego okna standardowo dajemy dwa."
-                                : ""}
-                            </p>
-                          </div>
-                          <div className="rd-unit-toggle" role="radiogroup" aria-label="Liczba uchwytów">
-                            {([1, 2] as const).map((count) => (
-                              <button
-                                key={count}
-                                type="button"
-                                role="radio"
-                                aria-checked={bracketCount === count}
-                                className={`rd-unit ${bracketCount === count ? "is-active" : ""}`}
-                                onClick={() => {
-                                  setBracketTouched(true);
-                                  setBracketCount(count);
-                                  trackShopStep("set_bracket_count", PRODUCT_SLUG, { count });
-                                }}
-                              >
-                                {count} {count === 1 ? "uchwyt" : "uchwyty"}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                      <div className="rd-unit-toggle" role="radiogroup" aria-label="Liczba uchwytów">
+                        {([1, 2] as const).map((count) => (
+                          <button
+                            key={count}
+                            type="button"
+                            role="radio"
+                            aria-checked={bracketCount === count}
+                            className={`rd-unit ${bracketCount === count ? "is-active" : ""}`}
+                            onClick={() => {
+                              setBracketTouched(true);
+                              setBracketCount(count);
+                              trackShopStep("set_bracket_count", PRODUCT_SLUG, { count });
+                            }}
+                          >
+                            {count} {count === 1 ? "uchwyt" : "uchwyty"}
+                          </button>
+                        ))}
                       </div>
-                    </section>
-                  ) : null}
-                </>
+                    </div>
+                  </div>
+                </section>
               ) : null}
 
               {hasWindowInfo && !priceOutOfRange ? (
@@ -1009,7 +1072,7 @@ export default function ConfiguratorPanel({
           ) : null}
         </>
       ) : (
-        <p className="hero-product-config-hint">Wybierz kolor kasety, aby przejść do kolejnego kroku.</p>
+        <p className="hero-product-config-hint">Znajdź model swojego okna (albo wgraj zdjęcie tabliczki) — zaraz pokażemy cenę.</p>
       )}
 
       {missingFormOpen ? (

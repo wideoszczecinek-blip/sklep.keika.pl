@@ -41,12 +41,11 @@ export default function ConsentBar() {
     <div className={`consent-bar ${pathname === "/koszyk" ? "is-above-cart-bar" : ""}`} role="region" aria-label="Zgoda na pliki cookies">
       <div className="consent-bar-copy">
         <p className="consent-bar-text">
-          Używamy plików cookies do statystyk i reklam (Meta), żeby lepiej dopasować oferty. Szczegóły w{" "}
-          <Link href="/legal/prywatnosc">polityce prywatności</Link>.
+          Cookies do statystyk i reklam (Meta) — szczegóły w <Link href="/legal/prywatnosc">polityce prywatności</Link>.
         </p>
         <label className="consent-bar-marketing">
           <input type="checkbox" checked={marketing} onChange={(event) => setMarketing(event.target.checked)} />
-          <span>Chcę dostawać oferty i promocje KEIKA e-mailem lub SMS-em (możesz zrezygnować w każdej chwili).</span>
+          <span>Chcę dostawać oferty KEIKA e-mailem lub SMS-em (rezygnacja w każdej chwili).</span>
         </label>
       </div>
       <div className="consent-bar-actions">

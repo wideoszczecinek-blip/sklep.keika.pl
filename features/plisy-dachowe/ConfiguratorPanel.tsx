@@ -191,6 +191,7 @@ export default function ConfiguratorPanel({
   const stepThreeRef = useRef<HTMLButtonElement | null>(null);
   const stepFourRef = useRef<HTMLButtonElement | null>(null);
   const summaryRef = useRef<HTMLDivElement | null>(null);
+  const stepKasetaRef = useRef<HTMLButtonElement | null>(null);
 
   // /koszyk's "Edytuj pozycję" only knows the labels - resolve the fabric
   // group/colour against the live profile once loaded (hardware is static,
@@ -321,7 +322,7 @@ export default function ConfiguratorPanel({
     if (trimmed.length < 3 || trimmed === searchTrackedRef.current) return;
     const id = window.setTimeout(() => {
       searchTrackedRef.current = trimmed;
-      trackShopStep("window_search_query", trimmed.slice(0, 60), { results: searchResults.length, product: PD_PRODUCT_SLUG });
+      trackShopStep("window_search_query", trimmed.slice(0, 60), { results: searchResults.length, relaxed: Boolean(searchResults[0]?.relaxedQuery), product: PD_PRODUCT_SLUG });
     }, 900);
     return () => window.clearTimeout(id);
   }, [windowQuery, searchResults.length]);
@@ -351,6 +352,21 @@ export default function ConfiguratorPanel({
   const promoUnit = unitPrice !== null ? applyPromoToPrice(unitPrice, promo) : null;
   const promoTotal = totalPrice !== null ? applyPromoToPrice(totalPrice, promo) : null;
   const oversizeSurcharge = hasWindowInfo ? pdOversizeSurcharge(resolvedDims.widthMm) : 0;
+  // Najtańsza konfiguracja dla wybranego okna (z tym, co już wybrane) - cena
+  // "od" w karcie ceny zaraz po modelu okna.
+  const windowFromPrice = (() => {
+    if (!profile || !hasWindowInfo) return null;
+    const hardwareList = selectedHardware ? [selectedHardware] : PD_HARDWARE;
+    const groupIds = selectedFabricGroupId ? [selectedFabricGroupId] : profile.fabricGroups.map((group) => group.id);
+    let best: number | null = null;
+    for (const hardware of hardwareList) {
+      for (const groupId of groupIds) {
+        const price = calcPlisyDachowePrice(profile, resolvedDims.widthMm, resolvedDims.heightMm, hardware, groupId, selectedFabric, priceAdjustmentPercent);
+        if (price !== null && (best === null || price < best)) best = price;
+      }
+    }
+    return best;
+  })();
   const priceOutOfRange = Boolean(windowChoice && hasWindowInfo && selectedHardware && selectedFabric && profile && unitPrice === null);
 
   // Per-result "od X zł" in the search list - the cheapest configuration
@@ -382,10 +398,10 @@ export default function ConfiguratorPanel({
   useEffect(() => {
     const done: string[] = [];
     const missing: string[] = [];
-    (selectedHardwareId ? done : missing).push("kolor osprzętu");
+    (hasWindowInfo ? done : missing).push(windowChoice?.kind === "manual" ? "wymiary" : "model okna");
     (selectedFabricGroupId ? done : missing).push("kolekcja tkaniny");
     (selectedFabricId ? done : missing).push("kolor tkaniny");
-    (hasWindowInfo ? done : missing).push(windowChoice?.kind === "manual" ? "wymiary" : "model okna");
+    (selectedHardwareId ? done : missing).push("kolor osprzętu");
     const blockedReason = priceOutOfRange
       ? "wymiary poza cennikiem"
       : !windowChoice && windowQuery.trim() !== "" && searchResults.length === 0
@@ -420,7 +436,7 @@ export default function ConfiguratorPanel({
     setHelpOpen(false);
     setMissingFormOpen(false);
     setNameplateOutcome(null);
-    window.setTimeout(() => scrollStepIntoView(summaryRef.current), 380);
+    window.setTimeout(() => scrollStepIntoView(stepTwoRef.current), 380);
   }
 
   async function handlePhotoUpload(file: File) {
@@ -496,7 +512,7 @@ export default function ConfiguratorPanel({
     setWindowQuery("");
     setMissingFormOpen(false);
     setStepFourCollapsed(true);
-    window.setTimeout(() => scrollStepIntoView(summaryRef.current), 380);
+    window.setTimeout(() => scrollStepIntoView(stepTwoRef.current), 380);
   }
 
   // ---- SEZON20 rescue / save-share (same three-case logic as moskitiery) --
@@ -628,64 +644,127 @@ export default function ConfiguratorPanel({
         <strong>Stwórz swoją plisę dachową</strong>
       </header>
 
-      <section className={`hero-product-step-accordion ${stepOneCollapsed ? "is-collapsed" : ""}`}>
+      {/* KROK 1: model okna (właściciel, 2026-10-01 - jak w roletach dachowych:
+          najpierw okno i cena, potem kolekcja, kolor tkaniny i osprzęt). */}
+      <section className={`hero-product-step-accordion ${stepFourCollapsed ? "is-collapsed" : ""}`}>
         {stepHead(
-          null,
-          stepOneCollapsed,
+          stepFourRef,
+          stepFourCollapsed,
           () => {
-            trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed, product: PD_PRODUCT_SLUG });
-            setStepOneCollapsed((prev) => !prev);
+            trackShopStep("configurator_step_toggle", "window_model", { collapsed_after: !stepFourCollapsed, product: PD_PRODUCT_SLUG });
+            setStepFourCollapsed((prev) => !prev);
           },
-          Boolean(selectedHardware),
+          hasWindowInfo,
           "1",
-          "Wybierz kolor osprzętu",
+          "Dopasuj plisę do modelu okna",
           false,
-          <>
-            {selectedHardware && stepOneCollapsed ? (
-              <span className="hero-product-step-head-swatch" style={{ backgroundImage: `url(${optimizeImageUrl(selectedHardware.imageUrl, 64)})` }} aria-hidden="true" />
-            ) : null}
-            {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
-          </>,
+          windowChoice ? (
+            <strong>
+              {windowModelLabel}
+              {hasWindowInfo ? ` · ${resolvedDims.widthMm} × ${resolvedDims.heightMm} mm` : ""}
+            </strong>
+          ) : null,
         )}
         <div className="hero-product-step-body">
-          <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid pd-hardware-grid">
-            {PD_HARDWARE.map((option) => {
-              const isActive = option.id === selectedHardwareId;
-              const delta = pdHardwarePriceDelta(profile, option);
-              const badge = formatPriceDeltaBadge(delta.priceDelta, delta.priceDeltaType);
-              return (
-                <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""}`}>
-                  <button
-                    type="button"
-                    className="hardware-card-main"
-                    onClick={() => {
-                      trackShopStep("select_hardware_color", option.label, { option_id: option.id, product: PD_PRODUCT_SLUG });
-                      setSelectedHardwareId(option.id);
-                      setStepOneCollapsed(true);
-                      if (!stepOneChosen) setStepOneChosen(true);
-                      window.setTimeout(() => scrollStepIntoView(stepTwoRef.current), 380);
-                    }}
-                  >
-                    <span className="hardware-card-image pd-hardware-card-image" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 220)})` }} />
-                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                    <span className="hardware-card-footer">
-                      <span className="hardware-dot" style={{ background: option.color }} />
-                      <strong>{option.label}</strong>
-                      {badge ? <span className="pd-delta-badge">{badge}</span> : null}
-                    </span>
-                  </button>
-                  <button type="button" className="config-option-zoom" aria-label={`Powiększ: ${option.label}`} onClick={() => openZoom({ title: `Osprzęt ${option.label}`, urls: [option.imageUrl, PD_HARDWARE_SHEET_URL], index: 0 })}>
-                    🔍
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <p className="hero-product-config-hint">Belki i prowadnice zawsze w jednym kolorze — dobierz do ramy okna.</p>
+          <RoofWindowSearchSelector
+            query={windowQuery}
+            results={searchResults}
+            selectedItem={windowChoice?.kind === "library" ? windowChoice.item : null}
+            isLoading={libraryLoading}
+            onQueryChange={(value) => {
+              setWindowQuery(value);
+              if (windowChoice) {
+                setWindowChoice(null);
+                setStepFourCollapsed(false);
+              }
+            }}
+            onSelect={(item) => chooseLibraryWindow(item, "search")}
+            onMissingModelClick={() => openMissingForm()}
+            resolvePriceLabel={resolvePriceLabel}
+            modelHelp={roofProfile?.modelHelp || { eyebrow: "", title: "", body: "", imageUrl: "" }}
+            isHelpOpen={helpOpen}
+            onHelpOpenChange={setHelpOpen}
+            onPhotoUpload={(file) => void handlePhotoUpload(file)}
+            isRecognizing={isRecognizing}
+            nameplateOutcome={nameplateOutcome}
+            nameplateError={nameplateError}
+            assistantUnavailable={assistantUnavailable}
+            onNameplateConfirmMatch={() => {
+              if (nameplateOutcome?.kind !== "matched") return;
+              trackShopStep("nameplate_confirm_match", buildRoofWindowDisplayLabel(nameplateOutcome.item), { product: PD_PRODUCT_SLUG });
+              chooseLibraryWindow(nameplateOutcome.item, "nameplate", pendingNameplate?.attachmentId || "");
+            }}
+            onNameplateSelectCandidate={(item) => chooseLibraryWindow(item, "nameplate_candidate", pendingNameplate?.attachmentId || "")}
+            onNameplateRejectMatch={() => {
+              trackShopStep("nameplate_reject_match", PD_PRODUCT_SLUG);
+              setNameplateOutcome(null);
+            }}
+            onNameplateReportMissing={() => openMissingForm("nameplate")}
+            autoFocus={Boolean(initialValues?.windowQuery)}
+          />
+          {windowChoice?.kind === "manual" ? (
+            <div className="rd-search-selected">
+              <span className="rd-search-selected-check" aria-hidden="true">
+                ✓
+              </span>
+              <span>
+                Okno spoza biblioteki: <strong>{windowModelLabel}</strong> · wymiar {resolvedDims.widthMm} × {resolvedDims.heightMm} mm
+                {windowChoice.request.attachmentIds.length ? ` · zdjęć: ${windowChoice.request.attachmentIds.length}` : ""}
+              </span>
+              <button type="button" className="rd-link" onClick={() => openMissingForm()}>
+                Popraw
+              </button>
+            </div>
+          ) : null}
+          {priceOutOfRange ? (
+            <p className="hero-product-dimensions-error">
+              Ten wymiar wykracza poza nasz cennik (szerokość do {limits.maxWidthMm} mm, wysokość do {limits.maxHeightMm} mm). Napisz do nas z zakładki Kontakt — wycenimy indywidualnie.
+            </p>
+          ) : null}
         </div>
       </section>
 
-      {stepOneChosen ? (
+      {/* Cena zaraz po modelu okna (właściciel, 2026-10-01) - jak w roletach. */}
+      {hasWindowInfo && !priceOutOfRange ? (
+        <div className="plisy-price-card rd-price-card" aria-live="polite">
+          {(() => {
+            const exact = unitPrice !== null;
+            const amount = exact ? unitPrice : windowFromPrice;
+            if (amount === null) return <span className="plisy-price-card-label">Cenę policzymy po wyborze kolekcji tkaniny.</span>;
+            const promoAmount = promo ? applyPromoToPrice(amount, promo) : null;
+            const hasPromo = promoAmount !== null && promoAmount < amount;
+            return (
+              <>
+                <span className="plisy-price-card-label">{exact ? "Cena za 1 plisę" : "Cena za 1 plisę — od"}</span>
+                {hasPromo ? (
+                  <span className="plisy-price-card-rows">
+                    <span className="plisy-price-card-row is-regular">
+                      <em>Standardowo</em>
+                      <s>{formatZl(amount)}</s>
+                    </span>
+                    <span className="plisy-price-card-row is-promo">
+                      <em>W promocji ({promo?.code || "SEZON20"})</em>
+                      <strong>{formatZl(promoAmount)}</strong>
+                    </span>
+                  </span>
+                ) : (
+                  <span className="plisy-price-card-rows">
+                    <span className="plisy-price-card-row is-promo">
+                      <strong>{formatZl(amount)}</strong>
+                    </span>
+                  </span>
+                )}
+                {!exact ? (
+                  <span className="plisy-price-card-note">Dokładną cenę zobaczysz po wyborze kolekcji, koloru tkaniny i osprzętu.</span>
+                ) : null}
+                <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
+
+      {hasWindowInfo ? (
         <>
           <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
             {stepHead(
@@ -800,7 +879,7 @@ export default function ConfiguratorPanel({
                               trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id, product: PD_PRODUCT_SLUG });
                               setSelectedFabricId(swatch.id);
                               setStepThreeCollapsed(true);
-                              window.setTimeout(() => scrollStepIntoView(stepFourRef.current), 380);
+                              window.setTimeout(() => scrollStepIntoView(stepKasetaRef.current), 380);
                             }}
                           >
                             <span className="hero-product-mesh-option-image" style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)} />
@@ -837,7 +916,7 @@ export default function ConfiguratorPanel({
                         setSelectedFabricId(swatch.id);
                         setFabricGalleryIndex(null);
                         setStepThreeCollapsed(true);
-                        window.setTimeout(() => scrollStepIntoView(stepFourRef.current), 380);
+                        window.setTimeout(() => scrollStepIntoView(stepKasetaRef.current), 380);
                       }}
                     />
                   ) : null}
@@ -845,155 +924,135 @@ export default function ConfiguratorPanel({
               </section>
 
               {fabricChosen ? (
-                <>
-                  <section className={`hero-product-step-accordion ${stepFourCollapsed ? "is-collapsed" : ""}`}>
-                    {stepHead(
-                      stepFourRef,
-                      stepFourCollapsed,
-                      () => {
-                        trackShopStep("configurator_step_toggle", "window_model", { collapsed_after: !stepFourCollapsed, product: PD_PRODUCT_SLUG });
-                        setStepFourCollapsed((prev) => !prev);
-                      },
-                      hasWindowInfo,
-                      "4",
-                      "Dopasuj plisę do modelu okna",
-                      true,
-                      windowChoice ? (
-                        <strong>
-                          {windowModelLabel}
-                          {hasWindowInfo ? ` · ${resolvedDims.widthMm} × ${resolvedDims.heightMm} mm` : ""}
-                        </strong>
-                      ) : null,
-                    )}
-                    <div className="hero-product-step-body">
-                      <RoofWindowSearchSelector
-                        query={windowQuery}
-                        results={searchResults}
-                        selectedItem={windowChoice?.kind === "library" ? windowChoice.item : null}
-                        isLoading={libraryLoading}
-                        onQueryChange={(value) => {
-                          setWindowQuery(value);
-                          if (windowChoice) {
-                            setWindowChoice(null);
-                            setStepFourCollapsed(false);
-                          }
-                        }}
-                        onSelect={(item) => chooseLibraryWindow(item, "search")}
-                        onMissingModelClick={() => openMissingForm()}
-                        resolvePriceLabel={resolvePriceLabel}
-                        modelHelp={roofProfile?.modelHelp || { eyebrow: "", title: "", body: "", imageUrl: "" }}
-                        isHelpOpen={helpOpen}
-                        onHelpOpenChange={setHelpOpen}
-                        onPhotoUpload={(file) => void handlePhotoUpload(file)}
-                        isRecognizing={isRecognizing}
-                        nameplateOutcome={nameplateOutcome}
-                        nameplateError={nameplateError}
-                        assistantUnavailable={assistantUnavailable}
-                        onNameplateConfirmMatch={() => {
-                          if (nameplateOutcome?.kind !== "matched") return;
-                          trackShopStep("nameplate_confirm_match", buildRoofWindowDisplayLabel(nameplateOutcome.item), { product: PD_PRODUCT_SLUG });
-                          chooseLibraryWindow(nameplateOutcome.item, "nameplate", pendingNameplate?.attachmentId || "");
-                        }}
-                        onNameplateSelectCandidate={(item) => chooseLibraryWindow(item, "nameplate_candidate", pendingNameplate?.attachmentId || "")}
-                        onNameplateRejectMatch={() => {
-                          trackShopStep("nameplate_reject_match", PD_PRODUCT_SLUG);
-                          setNameplateOutcome(null);
-                        }}
-                        onNameplateReportMissing={() => openMissingForm("nameplate")}
-                        autoFocus={Boolean(initialValues?.windowQuery)}
-                      />
-                      {windowChoice?.kind === "manual" ? (
-                        <div className="rd-search-selected">
-                          <span className="rd-search-selected-check" aria-hidden="true">
-                            ✓
-                          </span>
-                          <span>
-                            Okno spoza biblioteki: <strong>{windowModelLabel}</strong> · wymiar {resolvedDims.widthMm} × {resolvedDims.heightMm} mm
-                            {windowChoice.request.attachmentIds.length ? ` · zdjęć: ${windowChoice.request.attachmentIds.length}` : ""}
-                          </span>
-                          <button type="button" className="rd-link" onClick={() => openMissingForm()}>
-                            Popraw
-                          </button>
-                        </div>
+                <section className={`hero-product-step-accordion ${stepOneCollapsed ? "is-collapsed" : ""}`}>
+                  {stepHead(
+                    stepKasetaRef,
+                    stepOneCollapsed,
+                    () => {
+                      trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed, product: PD_PRODUCT_SLUG });
+                      setStepOneCollapsed((prev) => !prev);
+                    },
+                    Boolean(selectedHardware),
+                    "4",
+                    "Wybierz kolor osprzętu",
+                    true,
+                    <>
+                      {selectedHardware && stepOneCollapsed ? (
+                        <span className="hero-product-step-head-swatch" style={{ backgroundImage: `url(${optimizeImageUrl(selectedHardware.imageUrl, 64)})` }} aria-hidden="true" />
                       ) : null}
-                      {priceOutOfRange ? (
-                        <p className="hero-product-dimensions-error">
-                          Ten wymiar wykracza poza nasz cennik (szerokość do {limits.maxWidthMm} mm, wysokość do {limits.maxHeightMm} mm). Napisz do nas z zakładki Kontakt — wycenimy indywidualnie.
-                        </p>
-                      ) : null}
+                      {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
+                    </>,
+                  )}
+                  <div className="hero-product-step-body">
+                    <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid pd-hardware-grid">
+                      {PD_HARDWARE.map((option) => {
+                        const isActive = option.id === selectedHardwareId;
+                        const delta = pdHardwarePriceDelta(profile, option);
+                        const badge = formatPriceDeltaBadge(delta.priceDelta, delta.priceDeltaType);
+                        return (
+                          <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""}`}>
+                            <button
+                              type="button"
+                              className="hardware-card-main"
+                              onClick={() => {
+                                trackShopStep("select_hardware_color", option.label, { option_id: option.id, product: PD_PRODUCT_SLUG });
+                                setSelectedHardwareId(option.id);
+                                setStepOneCollapsed(true);
+                                if (!stepOneChosen) setStepOneChosen(true);
+                                window.setTimeout(() => scrollStepIntoView(summaryRef.current), 380);
+                              }}
+                            >
+                              <span className="hardware-card-image pd-hardware-card-image" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 220)})` }} />
+                              {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                              <span className="hardware-card-footer">
+                                <span className="hardware-dot" style={{ background: option.color }} />
+                                <strong>{option.label}</strong>
+                                {badge ? <span className="pd-delta-badge">{badge}</span> : null}
+                              </span>
+                            </button>
+                            <button type="button" className="config-option-zoom" aria-label={`Powiększ: ${option.label}`} onClick={() => openZoom({ title: `Osprzęt ${option.label}`, urls: [option.imageUrl, PD_HARDWARE_SHEET_URL], index: 0 })}>
+                              🔍
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </section>
-
-                </>
+                    <p className="hero-product-config-hint">Belki i prowadnice zawsze w jednym kolorze — dobierz do ramy okna.</p>
+                  </div>
+                </section>
               ) : null}
+            </>
+          ) : null}
 
-              {hasWindowInfo && !priceOutOfRange ? (
-                <div className="hero-product-mini-summary is-revealed" ref={summaryRef}>
-                  <h3>Plisa dachowa</h3>
-                  <div className="hero-product-mini-summary-body">
-                    <div className="plisa-preview-stage pd-preview-stage">
-                      <PlisaDachowaPreview fabricColor={selectedFabric?.color || ""} hardwareColor={selectedHardware?.color || ""} fabricLabel={selectedFabric?.label} hardwareLabel={selectedHardware?.label} />
-                    </div>
-                    <dl>
-                      <div>
-                        <dt>Kolor osprzętu</dt>
-                        <dd>{selectedHardware?.label || "--"}</dd>
-                      </div>
-                      <div>
-                        <dt>Kolekcja tkaniny</dt>
-                        <dd>{selectedFabricGroup?.label || "--"}</dd>
-                      </div>
-                      <div>
-                        <dt>Kolor tkaniny</dt>
-                        <dd>{selectedFabric?.label || "--"}</dd>
-                      </div>
-                      <div>
-                        <dt>Model okna</dt>
-                        <dd>{windowModelLabel}</dd>
-                      </div>
-                      <div>
-                        <dt>Rozmiar plisy</dt>
-                        <dd>
-                          {resolvedDims.widthMm} × {resolvedDims.heightMm} mm
-                          {windowChoice?.kind === "library" && !windowCertain ? <span className="rd-dd-note"> wymiar orientacyjny — potwierdzimy przed produkcją</span> : null}
-                        </dd>
-                      </div>
-                    </dl>
+          {selectedHardware && fabricChosen ? (
+            <>
+            {hasWindowInfo && !priceOutOfRange ? (
+              <div className="hero-product-mini-summary is-revealed" ref={summaryRef}>
+                <h3>Plisa dachowa</h3>
+                <div className="hero-product-mini-summary-body">
+                  <div className="plisa-preview-stage pd-preview-stage">
+                    <PlisaDachowaPreview fabricColor={selectedFabric?.color || ""} hardwareColor={selectedHardware?.color || ""} fabricLabel={selectedFabric?.label} hardwareLabel={selectedHardware?.label} />
                   </div>
-                  {oversizeSurcharge > 0 ? (
-                    <p className="plisy-oversize-note">
-                      Plisa szersza niż 150 cm jedzie jako przesyłka gabarytowa: <strong>+{formatZl(oversizeSurcharge)}</strong> (jednorazowo dla całego zamówienia, doliczana w koszyku).
-                    </p>
-                  ) : null}
-                  <div className="hero-product-mini-summary-price">
-                    <div className="hero-product-mini-summary-price-details">
-                      <div>
-                        <dt>Ilość</dt>
-                        <dd>
-                          <input type="number" inputMode="numeric" min={1} max={20} value={quantity} onChange={(event) => setQuantity(event.target.value)} className="rd-qty-input" />
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Cena za 1 szt.</dt>
-                        <dd>{unitPrice !== null ? priceLine(unitPrice, promoUnit) : "--"}</dd>
-                      </div>
+                  <dl>
+                    <div>
+                      <dt>Kolor osprzętu</dt>
+                      <dd>{selectedHardware?.label || "--"}</dd>
                     </div>
-                    <div className="hero-product-mini-summary-price-final">
-                      <strong>{totalPrice !== null ? priceLine(totalPrice, promoTotal) : "Cena niedostępna dla tej kombinacji"}</strong>
-                      {promo && promoTotal !== null ? <span className="rd-price-promo-note">z kodem {promo.code} w koszyku</span> : null}
+                    <div>
+                      <dt>Kolekcja tkaniny</dt>
+                      <dd>{selectedFabricGroup?.label || "--"}</dd>
                     </div>
-                  </div>
-                  <button type="button" className="hero-product-add-to-cart" onClick={handleSubmit} disabled={totalPrice === null}>
-                    {submitLabel}
-                  </button>
-                  <p className="rd-summary-note">Dobór modelu i wymiaru sprawdzamy przed produkcją. Plisa z prowadnicami dopasowana do skrzydła, gotowa do montażu — komplet w paczce.</p>
+                    <div>
+                      <dt>Kolor tkaniny</dt>
+                      <dd>{selectedFabric?.label || "--"}</dd>
+                    </div>
+                    <div>
+                      <dt>Model okna</dt>
+                      <dd>{windowModelLabel}</dd>
+                    </div>
+                    <div>
+                      <dt>Rozmiar plisy</dt>
+                      <dd>
+                        {resolvedDims.widthMm} × {resolvedDims.heightMm} mm
+                        {windowChoice?.kind === "library" && !windowCertain ? <span className="rd-dd-note"> wymiar orientacyjny — potwierdzimy przed produkcją</span> : null}
+                      </dd>
+                    </div>
+                  </dl>
                 </div>
-              ) : null}
+                {oversizeSurcharge > 0 ? (
+                  <p className="plisy-oversize-note">
+                    Plisa szersza niż 150 cm jedzie jako przesyłka gabarytowa: <strong>+{formatZl(oversizeSurcharge)}</strong> (jednorazowo dla całego zamówienia, doliczana w koszyku).
+                  </p>
+                ) : null}
+                <div className="hero-product-mini-summary-price">
+                  <div className="hero-product-mini-summary-price-details">
+                    <div>
+                      <dt>Ilość</dt>
+                      <dd>
+                        <input type="number" inputMode="numeric" min={1} max={20} value={quantity} onChange={(event) => setQuantity(event.target.value)} className="rd-qty-input" />
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Cena za 1 szt.</dt>
+                      <dd>{unitPrice !== null ? priceLine(unitPrice, promoUnit) : "--"}</dd>
+                    </div>
+                  </div>
+                  <div className="hero-product-mini-summary-price-final">
+                    <strong>{totalPrice !== null ? priceLine(totalPrice, promoTotal) : "Cena niedostępna dla tej kombinacji"}</strong>
+                    {promo && promoTotal !== null ? <span className="rd-price-promo-note">z kodem {promo.code} w koszyku</span> : null}
+                  </div>
+                </div>
+                <button type="button" className="hero-product-add-to-cart" onClick={handleSubmit} disabled={totalPrice === null}>
+                  {submitLabel}
+                </button>
+                <p className="rd-summary-note">Dobór modelu i wymiaru sprawdzamy przed produkcją. Plisa z prowadnicami dopasowana do skrzydła, gotowa do montażu — komplet w paczce.</p>
+              </div>
+            ) : null}
             </>
           ) : null}
         </>
       ) : (
-        <p className="hero-product-config-hint">Wybierz kolor osprzętu, aby przejść do kolejnego kroku.</p>
+        <p className="hero-product-config-hint">Znajdź model swojego okna (albo wgraj zdjęcie tabliczki) — zaraz pokażemy cenę.</p>
       )}
 
       {missingFormOpen ? (

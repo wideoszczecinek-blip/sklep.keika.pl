@@ -23,7 +23,9 @@ const TEASER_DISMISSED_KEY = "keika_chat_teaser_dismissed";
 
 export default function ChatBubble() {
   const pathname = usePathname();
-  const isProductPage = pathname === "/" || pathname === "/moskitiery-ramkowe";
+  // /plisy też (audyt 2026-10-01): pływający przycisk i dymek "Masz pytania?"
+  // zasłaniały tam nagłówki kroków konfiguratora, a czat jest w nagłówku.
+  const isProductPage = pathname === "/" || pathname === "/moskitiery-ramkowe" || pathname === "/plisy";
   const isCartPage = pathname === "/koszyk";
   const [isMobile, setIsMobile] = useState(false);
   const [teaserVisible, setTeaserVisible] = useState(false);

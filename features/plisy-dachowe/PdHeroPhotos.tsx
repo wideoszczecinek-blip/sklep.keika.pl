@@ -60,6 +60,17 @@ export default function PdHeroPhotos() {
 
   const all = photos;
   const alts = PD_HERO_PHOTO_ALT;
+  // Sąsiednie zdjęcia z wyprzedzeniem (audyt 2026-10-01: wielokrotne
+  // stukanie w "Następne zdjęcie" - pełne zdjęcie ładowało się dopiero po
+  // kliknięciu, więc przez chwilę nic się nie działo).
+  useEffect(() => {
+    if (lightbox === null || all.length < 2) return;
+    for (const offset of [1, -1]) {
+      const next = new Image();
+      next.decoding = "async";
+      next.src = all[(lightbox + offset + all.length) % all.length];
+    }
+  }, [lightbox, all]);
   useEffect(() => {
     if (lightbox === null) return;
     const onKey = (event: KeyboardEvent) => {

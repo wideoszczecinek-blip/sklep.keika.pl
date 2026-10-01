@@ -19904,3 +19904,158 @@ html[data-theme="dark"] .cart-pay-tile-count {
   font-weight: 700;
   color: #1d4ed8;
 }
+.rd-results-relaxed {
+  margin: 0.35rem 0 0.45rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.6rem;
+  background: rgba(37, 99, 235, 0.07);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  color: #16314e;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+/* Audyt 2026-10-01, punkty 7-8: nic nie zasłania konfiguratora.
+   Dymek czatu i dymek zapisu wysuwają się teraz jako napis WEWNĄTRZ paska
+   nagłówka (na lewo od ikony), a nie spod nagłówka na treść strony. */
+.chat-nudge {
+  top: 50%;
+  right: calc(100% + 0.45rem);
+  transform: translateY(-50%);
+  width: auto;
+  max-width: min(340px, calc(100vw - 9.5rem));
+  padding: 0.3rem 0.3rem 0.3rem 0.75rem;
+  border-radius: 999px;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(19, 40, 67, 0.18);
+  animation: chat-nudge-pill-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes chat-nudge-pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+}
+.chat-nudge-arrow,
+.chat-nudge > span:not(.chat-nudge-arrow) {
+  display: none;
+}
+.chat-nudge strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.82rem;
+}
+.chat-nudge-cta {
+  order: 2;
+  align-self: center;
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.chat-nudge-close {
+  order: 3;
+  position: static;
+  padding: 0 0.3rem;
+  font-size: 1rem;
+}
+.header-save-share-teaser {
+  top: 50%;
+  right: calc(100% + 0.45rem);
+  transform: translateY(-50%);
+  width: auto;
+  max-width: min(260px, calc(100vw - 9.5rem));
+  padding: 0.35rem 1.7rem 0.35rem 0.75rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  animation: chat-nudge-pill-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.header-save-share-teaser::before {
+  display: none;
+}
+.header-save-share-teaser-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header-save-share-teaser-close {
+  top: 50% !important;
+  transform: translateY(-50%);
+}
+
+/* PayPo pod konfiguratorem: oficjalna grafika i wymagana nota zostają, ale
+   w jednej zwartej linii zamiast pełnoszerokiego bloku (PayPo/raty: 0
+   dokończonych wniosków, a blok stał zaraz pod polem modelu okna). */
+.paypo-badge--strip {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 0.1rem;
+  margin: 0.8rem 0 4rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(19, 40, 67, 0.1);
+  background: #ffffff;
+}
+.paypo-badge--strip .paypo-badge-banner {
+  grid-row: span 2;
+  width: 108px;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0.35rem;
+}
+.paypo-badge--strip .paypo-badge-banner:hover {
+  transform: none;
+  box-shadow: none;
+}
+.paypo-badge--strip .paypo-badge-note {
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+.paypo-badge--strip .paypo-badge-legal {
+  margin: 0;
+  font-size: 0.6rem;
+}
+
+/* Baner cookies na telefonie: niższy (był ~1/3 pierwszego ekranu). */
+@media (max-width: 760px) {
+  .consent-bar {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    padding: 0.5rem 0.65rem;
+    gap: 0.35rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.74rem;
+    line-height: 1.3;
+  }
+  .consent-bar-copy {
+    gap: 0.25rem;
+  }
+  .consent-bar-text {
+    font-size: 0.74rem;
+  }
+  .consent-bar-marketing {
+    font-size: 0.7rem;
+    line-height: 1.25;
+  }
+  .consent-bar-actions {
+    width: 100%;
+    gap: 0.4rem;
+  }
+  .consent-bar-actions button {
+    flex: 1 1 0;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.8rem;
+  }
+}

@@ -301,6 +301,26 @@ export default function PlisyVisualizer() {
     dragRef.current = null;
   };
 
+  // Stuknięcie w okno (audyt 2026-10-01: 90 osób stukało w samą szybę i nic
+  // się nie działo): najbliższa listwa tego skrzydła przeskakuje w to miejsce
+  // i od razu da się ją ciągnąć. Uchwyty listew łapią zdarzenie pierwsze.
+  const onStagePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (dragRef.current) return;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return;
+    const vbX = ((e.clientX - rect.left) / rect.width) * VB_W;
+    const sash = SASHES.find((entry) => vbX >= entry.x && vbX <= entry.x + entry.w);
+    if (!sash) return;
+    const fraction = yToFraction(e.clientY, sash);
+    if (fraction < -0.05 || fraction > 1.05) return;
+    const cur = pos[sash.id];
+    const rail: "t" | "b" = Math.abs(fraction - cur.t) <= Math.abs(fraction - cur.b) ? "t" : "b";
+    moveRail(sash, rail, fraction);
+    dragRef.current = { sash, rail };
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    setTouched(true);
+  };
+
   const onKeyDown = (e: React.KeyboardEvent, sash: Sash, rail: "t" | "b") => {
     if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
     e.preventDefault();
@@ -331,6 +351,7 @@ export default function PlisyVisualizer() {
           ref={svgRef}
           viewBox={`0 0 ${VB_W} ${VB_H}`}
           className="plisy-viz-svg"
+          onPointerDown={onStagePointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}

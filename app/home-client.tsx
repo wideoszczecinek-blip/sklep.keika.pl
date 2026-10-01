@@ -2093,7 +2093,6 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     }
   }
 
-
   // Scroll-spy: highlights whichever section's top has most recently
   // crossed the "just under the header" line as the active nav pill.
   useEffect(() => {
@@ -3989,6 +3988,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 odpowiada na pytanie, z którym przychodzi ruch z
                                 reklam ("ile za MOJE okno?"). Rozmiar stąd trafia
                                 do porównania kolekcji niżej i do konfiguratora. */}
+                            {/* Pierwszy ekran (audyt 2026-10-01): start wyceny zaraz pod
+                                plakietkami, prawdziwe zdjęcia tuż pod nim, opis niżej - ci,
+                                którzy od razu wycenili okno, kupowali kilka razy częściej. */}
                             <div id="pl-quick-price-anchor" />
                             <PlisyQuickPrice
                               collapsible
@@ -4006,11 +4008,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               }}
                             />
 
+                            <PlisyHeroPhotos />
+
                             <p className="pl-subtitle">
                               {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
                             </p>
-
-                            <PlisyHeroPhotos />
 
                             <h2 className="hero-product-section-title">Opis produktu</h2>
                             <div
@@ -4091,32 +4093,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
 
-                            <p className="pl-subtitle">{productLanding?.subtitle?.trim() ? productLanding.subtitle : PD_SUBTITLE}</p>
-
-                            <PdHeroPhotos />
-
-                            <div className="pl-spec-grid">
-                              {(productLanding?.specItems?.length ? productLanding.specItems : PD_SPEC_ITEMS).map((item) => {
-                                const icon = rdSpecIcon(item.label);
-                                const withMeasureCta = /model/i.test(item.label);
-                                return (
-                                  <div className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`} key={item.label}>
-                                    {icon ? <span className="pl-spec-icon">{icon}</span> : null}
-                                    <div className="pl-spec-item-text">
-                                      <span className="pl-spec-label">{item.label}</span>
-                                      <span className="pl-spec-value">{item.value}</span>
-                                      {withMeasureCta ? (
-                                        <button type="button" className="pl-measure-cta" onClick={openMeasurementInstructions}>
-                                          <span aria-hidden="true">📐</span>
-                                          Okno spoza listy? Zobacz, jak zmierzyć
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
+                            {/* Pierwszy ekran (audyt 2026-10-01): start wyceny zaraz pod
+                                plakietkami, prawdziwe zdjęcia tuż pod nim, opis niżej - ci,
+                                którzy od razu wycenili okno, kupowali kilka razy częściej. */}
                             <PdQuickPrice
                               profile={plisyProfile}
                               library={rdLibrary}
@@ -4150,6 +4129,32 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 scrollToConfigPanel();
                               }}
                             />
+
+                            <PdHeroPhotos />
+
+                            <p className="pl-subtitle">{productLanding?.subtitle?.trim() ? productLanding.subtitle : PD_SUBTITLE}</p>
+
+                            <div className="pl-spec-grid">
+                              {(productLanding?.specItems?.length ? productLanding.specItems : PD_SPEC_ITEMS).map((item) => {
+                                const icon = rdSpecIcon(item.label);
+                                const withMeasureCta = /model/i.test(item.label);
+                                return (
+                                  <div className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`} key={item.label}>
+                                    {icon ? <span className="pl-spec-icon">{icon}</span> : null}
+                                    <div className="pl-spec-item-text">
+                                      <span className="pl-spec-label">{item.label}</span>
+                                      <span className="pl-spec-value">{item.value}</span>
+                                      {withMeasureCta ? (
+                                        <button type="button" className="pl-measure-cta" onClick={openMeasurementInstructions}>
+                                          <span aria-hidden="true">📐</span>
+                                          Okno spoza listy? Zobacz, jak zmierzyć
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
 
                             <h2 className="hero-product-section-title">Opis produktu</h2>
                             <div
@@ -4225,34 +4230,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
 
-                            <p className="pl-subtitle">
-                              {isRdPlaceholderCopy(productLanding?.subtitle) ? RD_SUBTITLE : productLanding!.subtitle}
-                            </p>
-
-                            <RoofHeroPhotos />
-
-                            <div className="pl-spec-grid">
-                              {(productLanding?.specItems?.length ? productLanding.specItems : RD_SPEC_ITEMS).map((item) => {
-                                const icon = rdSpecIcon(item.label);
-                                const withMeasureCta = /model/i.test(item.label);
-                                return (
-                                  <div className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`} key={item.label}>
-                                    {icon ? <span className="pl-spec-icon">{icon}</span> : null}
-                                    <div className="pl-spec-item-text">
-                                      <span className="pl-spec-label">{item.label}</span>
-                                      <span className="pl-spec-value">{item.value}</span>
-                                      {withMeasureCta ? (
-                                        <button type="button" className="pl-measure-cta" onClick={openMeasurementInstructions}>
-                                          <span aria-hidden="true">📐</span>
-                                          Okno spoza listy? Zobacz, jak zmierzyć
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
+                            {/* Pierwszy ekran (audyt 2026-10-01): start wyceny zaraz pod
+                                plakietkami, prawdziwe zdjęcia tuż pod nim, opis niżej - ci,
+                                którzy od razu wycenili okno, kupowali kilka razy częściej. */}
                             <RoofQuickPrice
                               profile={rdProfile}
                               library={rdLibrary}
@@ -4286,6 +4266,34 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 scrollToConfigPanel();
                               }}
                             />
+
+                            <RoofHeroPhotos />
+
+                            <p className="pl-subtitle">
+                              {isRdPlaceholderCopy(productLanding?.subtitle) ? RD_SUBTITLE : productLanding!.subtitle}
+                            </p>
+
+                            <div className="pl-spec-grid">
+                              {(productLanding?.specItems?.length ? productLanding.specItems : RD_SPEC_ITEMS).map((item) => {
+                                const icon = rdSpecIcon(item.label);
+                                const withMeasureCta = /model/i.test(item.label);
+                                return (
+                                  <div className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`} key={item.label}>
+                                    {icon ? <span className="pl-spec-icon">{icon}</span> : null}
+                                    <div className="pl-spec-item-text">
+                                      <span className="pl-spec-label">{item.label}</span>
+                                      <span className="pl-spec-value">{item.value}</span>
+                                      {withMeasureCta ? (
+                                        <button type="button" className="pl-measure-cta" onClick={openMeasurementInstructions}>
+                                          <span aria-hidden="true">📐</span>
+                                          Okno spoza listy? Zobacz, jak zmierzyć
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
 
                             <h2 className="hero-product-section-title">Opis produktu</h2>
                             <div
@@ -4619,7 +4627,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                             ? `${displayedProduct.label} - zdjęcie od klienta`
                                             : displayedProduct.label
                                         }
-                                        loading={isActive ? "eager" : "lazy"}
+                                        loading={Math.abs(distance) <= 1 ? "eager" : "lazy"}
                                       />
                                       {categoryByPhoto[galleryPhotos[index]]?.id === "klienci" ? (
                                         <span className="gallery-customer-badge">Zdjęcie klienta</span>
@@ -6122,6 +6130,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           </div>
         </div>
       ) : null}
+      {zoomPreview && zoomPreview.urls.length > 1 ? (
+        <ZoomNeighboursPreload urls={zoomPreview.urls} index={zoomPreview.index} />
+      ) : null}
       {zoomPreview ? (
         <div
           className="config-option-preview-modal"
@@ -6346,4 +6357,20 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       ) : null}
     </div>
   );
+}
+
+/** Wczytuje sąsiednie zdjęcia powiększonego podglądu z wyprzedzeniem (audyt
+ * 2026-10-01: wielokrotne stukanie w "Następne zdjęcie" - zdjęcie 1800 px
+ * zaczynało się ładować dopiero po kliknięciu). Nic nie renderuje. */
+function ZoomNeighboursPreload({ urls, index }: { urls: string[]; index: number }) {
+  useEffect(() => {
+    for (const offset of [1, -1]) {
+      const url = urls[(index + offset + urls.length) % urls.length];
+      if (!url) continue;
+      const next = new Image();
+      next.decoding = "async";
+      next.src = optimizeImageUrl(url, 1800, 80);
+    }
+  }, [urls, index]);
+  return null;
 }

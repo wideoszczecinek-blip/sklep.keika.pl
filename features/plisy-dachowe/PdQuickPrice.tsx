@@ -137,6 +137,9 @@ export default function PdQuickPrice({
               </button>
             ) : null}
           </label>
+          {results[0]?.relaxedQuery ? (
+            <p className="rd-results-relaxed">Nie mamy dokładnie tego modelu — pokazujemy najbliższe pasujące okna. Nie ma Twojego? Wgraj zdjęcie tabliczki albo podaj wymiar.</p>
+          ) : null}
           {results.length ? (
             <ul className="rd-quick-results">
               {results.map(({ item }) => {

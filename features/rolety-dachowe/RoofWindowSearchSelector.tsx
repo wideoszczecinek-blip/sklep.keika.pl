@@ -221,6 +221,9 @@ export default function RoofWindowSearchSelector({
           <div className="rd-search-note">Zacznij wpisywać producenta lub model okna — podpowiemy pasujące modele.</div>
         ) : (
           <div className="rd-results">
+            {visibleResults[0]?.relaxedQuery ? (
+              <p className="rd-results-relaxed">Nie mamy dokładnie tego modelu — pokazujemy najbliższe pasujące okna. Nie ma Twojego? Wgraj zdjęcie tabliczki albo podaj wymiar.</p>
+            ) : null}
             {visibleResults.length ? (
               <ul className="rd-results-list">
                 {visibleResults.map(({ item, highlights }) => {

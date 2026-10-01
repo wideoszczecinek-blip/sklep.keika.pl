@@ -330,8 +330,7 @@ export default function SaveShareWidget({
             ✕
           </button>
           <button type="button" className="header-save-share-teaser-text" onClick={openModal}>
-            Zapisujemy Twoje konfiguracje. W każdej chwili możesz do nich wrócić. Kliknij ikonę, aby zapisać lub
-            udostępnić stronę.
+            Zapisz stronę na później
           </button>
         </div>
       ) : null}

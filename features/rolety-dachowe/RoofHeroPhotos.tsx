@@ -57,6 +57,17 @@ export default function RoofHeroPhotos() {
     return () => window.clearTimeout(id);
   }, [reopenedAt]);
 
+  // Sąsiednie zdjęcia z wyprzedzeniem (audyt 2026-10-01: wielokrotne
+  // stukanie w "Następne zdjęcie" - pełne zdjęcie ładowało się dopiero po
+  // kliknięciu, więc przez chwilę nic się nie działo).
+  useEffect(() => {
+    if (lightbox === null || photos.length < 2) return;
+    for (const offset of [1, -1]) {
+      const next = new Image();
+      next.decoding = "async";
+      next.src = photos[(lightbox + offset + photos.length) % photos.length];
+    }
+  }, [lightbox, photos]);
   useEffect(() => {
     if (lightbox === null) return;
     const onKey = (event: KeyboardEvent) => {
