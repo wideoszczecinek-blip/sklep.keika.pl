@@ -26,6 +26,9 @@ export type RoofWindowLibraryItem = {
   notes: string;
   content_tokens: Record<string, string>;
   content_token_map: Record<string, string>;
+  /** Ile uchwytów na belce dolnej proponujemy dla tego okna - liczy CRM
+   * (Roto zawsze 2, reszta wg szerokości rolety). */
+  default_brackets?: number;
 };
 
 export type RoofWindowSearchRange = [number, number];
@@ -147,6 +150,23 @@ export function libraryProducerNames(items: RoofWindowLibraryItem[]): string[] {
     if (name) set.add(name);
   }
   return Array.from(set).sort((left, right) => left.localeCompare(right, "pl", { sensitivity: "base" }));
+}
+
+/**
+ * Ile uchwytów na belce dolnej zaznaczamy domyślnie dla danego okna.
+ *
+ * Właściciel 2026-10-01: „do Roto zawsze dajemy dwa uchwyty”. Liczbę podaje
+ * CRM w polu default_brackets (jedno źródło prawdy dla sklepu, biblioteki i
+ * zlecenia produkcyjnego); gdy starsza odpowiedź jej nie ma, powtarzamy tę
+ * samą regułę lokalnie. Klient może to zmienić jednym kliknięciem.
+ */
+export function resolveRoofWindowBracketCount(item: Pick<RoofWindowLibraryItem, "producer_name" | "blind_width" | "default_brackets"> | null | undefined): 1 | 2 {
+  if (!item) return 1;
+  const fromCrm = Number(item.default_brackets);
+  if (fromCrm === 1 || fromCrm === 2) return fromCrm;
+  if (/^roto/i.test(String(item.producer_name || "").trim())) return 2;
+  const width = Number(String(item.blind_width || "").replace(",", "."));
+  return Number.isFinite(width) && width > 700 ? 2 : 1;
 }
 
 /** Blind size for a library window - same precedence as the Allegro shell:

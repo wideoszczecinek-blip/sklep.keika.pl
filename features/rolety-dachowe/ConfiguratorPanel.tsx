@@ -36,6 +36,7 @@ import {
   type RoofBlindProfile,
 } from "./shared";
 import {
+  resolveRoofWindowBracketCount,
   classifyNameplateResult,
   fetchRoofWindowLibrary,
   libraryProducerNames,
@@ -181,8 +182,22 @@ export default function ConfiguratorPanel({
 
   // Step 5 - extras + quantity.
   const [bracketCount, setBracketCount] = useState<1 | 2>(initialValues?.bracketCount === 2 ? 2 : 1);
+  // Liczba uchwytów podpowiada się z okna (Roto = 2), ale tylko dopóki klient
+  // sam w nią nie kliknie - wtedy jego wybór jest święty (właściciel,
+  // 2026-10-01: „jak klient zmieni - to ok, robimy 1”).
+  const [bracketTouched, setBracketTouched] = useState(Boolean(initialValues?.bracketCount));
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const [internalZoomPreview, setInternalZoomPreview] = useState<ZoomPreview | null>(null);
+
+  // Okno z biblioteki podpowiada liczbę uchwytów (Roto zawsze 2 - CRM podaje
+  // to w default_brackets). Podpowiedź działa tylko dopóki klient sam nie
+  // wybierze innej liczby.
+  useEffect(() => {
+    if (bracketTouched) return;
+    if (!windowChoice || windowChoice.kind !== "library") return;
+    const suggested = resolveRoofWindowBracketCount(windowChoice.item);
+    setBracketCount((current) => (current === suggested ? current : suggested));
+  }, [windowChoice, bracketTouched]);
 
   const stepTwoRef = useRef<HTMLButtonElement | null>(null);
   const stepThreeRef = useRef<HTMLButtonElement | null>(null);
@@ -899,7 +914,12 @@ export default function ConfiguratorPanel({
                         <div className="rd-extra-row">
                           <div>
                             <strong>Uchwyty na belce dolnej</strong>
-                            <p>Dwa uchwyty ułatwiają prowadzenie szerokiej rolety. Bez dopłaty.</p>
+                            <p>
+                              Dwa uchwyty ułatwiają prowadzenie szerokiej rolety. Bez dopłaty.
+                              {windowChoice?.kind === "library" && resolveRoofWindowBracketCount(windowChoice.item) === 2
+                                ? " Do tego okna standardowo dajemy dwa."
+                                : ""}
+                            </p>
                           </div>
                           <div className="rd-unit-toggle" role="radiogroup" aria-label="Liczba uchwytów">
                             {([1, 2] as const).map((count) => (
@@ -910,6 +930,7 @@ export default function ConfiguratorPanel({
                                 aria-checked={bracketCount === count}
                                 className={`rd-unit ${bracketCount === count ? "is-active" : ""}`}
                                 onClick={() => {
+                                  setBracketTouched(true);
                                   setBracketCount(count);
                                   trackShopStep("set_bracket_count", PRODUCT_SLUG, { count });
                                 }}
