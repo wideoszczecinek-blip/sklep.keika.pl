@@ -253,7 +253,20 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(accessToken ? { access_token: accessToken } : { verifier }),
         });
-        const json = (await res.json()) as { ok?: boolean; paid?: boolean };
+        const json = (await res.json()) as { ok?: boolean; paid?: boolean; paynow_status?: string | null };
+        // Płatność zakończona niepowodzeniem po stronie PayNow - nie ma na
+        // co czekać, od razu pokazujemy możliwość ponowienia.
+        const pnStatus = String(json.paynow_status || "").toUpperCase();
+        if (!cancelled && json.ok && !json.paid && ["REJECTED", "ERROR", "EXPIRED", "ABANDONED"].includes(pnStatus)) {
+          setPaynowPolling(false);
+          setRetryError(
+            pnStatus === "EXPIRED"
+              ? "Czas na dokończenie płatności minął. Wybierz metodę i spróbuj jeszcze raz."
+              : "Płatność nie została zrealizowana - nic nie zostało pobrane. Wybierz metodę i spróbuj jeszcze raz.",
+          );
+          trackShopStep("paynow_return", pnStatus.toLowerCase(), { order_code: orderCode, attempts: attempt });
+          return;
+        }
         if (!cancelled && json.ok && json.paid) {
           setPaynowPolling(false);
           setJustPaid(true);
@@ -306,7 +319,19 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(accessToken ? { access_token: accessToken } : { verifier }),
         });
-        const json = (await res.json()) as { ok?: boolean; paid?: boolean };
+        const json = (await res.json()) as { ok?: boolean; paid?: boolean; paynow_status?: string | null };
+        const pnStatus = String(json.paynow_status || "").toUpperCase();
+        if (json.ok && !json.paid && ["REJECTED", "ERROR", "EXPIRED", "ABANDONED"].includes(pnStatus)) {
+          setPaynowPolling(false);
+          setPaynowBlikCode("");
+          setRetryError(
+            pnStatus === "EXPIRED"
+              ? "Czas na potwierdzenie płatności minął. Wygeneruj nowy kod BLIK w aplikacji banku i spróbuj jeszcze raz."
+              : "Płatność BLIK nie została potwierdzona w aplikacji banku. Wygeneruj nowy kod i spróbuj jeszcze raz - nic nie zostało pobrane.",
+          );
+          trackShopStep("paynow_blik_retry", pnStatus.toLowerCase(), { order_code: orderCode, attempts: attempt });
+          return;
+        }
         if (json.ok && json.paid) {
           setPaynowPolling(false);
           setJustPaid(true);

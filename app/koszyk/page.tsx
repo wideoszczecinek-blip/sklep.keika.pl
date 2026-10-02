@@ -2161,7 +2161,22 @@ export default function CartPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ access_token: accessToken }),
               });
-              const checkJson = (await checkRes.json()) as { ok?: boolean; paid?: boolean };
+              const checkJson = (await checkRes.json()) as { ok?: boolean; paid?: boolean; paynow_status?: string | null };
+              // Bank odrzucił albo kod wygasł - koniec tej próby, mówimy od
+              // razu, zamiast kręcić kółkiem do limitu czasu.
+              const pnStatus = String(checkJson.paynow_status || "").toUpperCase();
+              if (checkJson.ok && !checkJson.paid && ["REJECTED", "ERROR", "EXPIRED", "ABANDONED"].includes(pnStatus)) {
+                setPaynowPolling(false);
+                setPaynowBlikCode("");
+                submittedRef.current = false;
+                setError(
+                  pnStatus === "EXPIRED"
+                    ? "Czas na potwierdzenie płatności minął. Wygeneruj nowy kod BLIK w aplikacji banku i spróbuj jeszcze raz."
+                    : "Płatność BLIK nie została potwierdzona w aplikacji banku. Wygeneruj nowy kod i spróbuj jeszcze raz - nic nie zostało pobrane.",
+                );
+                trackCheckoutIssue("payment_failed_client", `paynow_blik_${pnStatus.toLowerCase()}`, { order_code: orderCode });
+                return;
+              }
               if (checkJson.ok && checkJson.paid) {
                 setPaynowPolling(false);
                 setPaymentConfirmed(true);
