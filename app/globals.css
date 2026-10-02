@@ -20059,3 +20059,83 @@ html[data-theme="dark"] .cart-pay-tile-count {
     font-size: 0.8rem;
   }
 }
+
+/* Kod SMS przy pobraniu, gdy klient zamknął okno (właściciel, 2026-10-02:
+   "jak go zamknie, to miejsce na kod musi nadal widnieć tam, gdzie metody
+   płatności - i na przykład pulsować, żeby wiedział, że tam ma go wpisać").
+   Pulsowanie gaśnie, gdy klient zacznie wpisywać, i nie włącza się wcale
+   przy prefers-reduced-motion. */
+.cart-cod-pending {
+  margin: 10px 0 12px;
+  padding: 12px 13px;
+  border: 2px solid var(--highlight, #f3b546);
+  border-radius: 14px;
+  background: rgba(243, 181, 70, 0.1);
+}
+
+.cart-cod-pending-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 9px;
+}
+
+.cart-cod-pending-head strong {
+  font-size: 0.98rem;
+  color: var(--ink, #132843);
+}
+
+.cart-cod-pending-head span {
+  font-size: 0.82rem;
+  color: var(--ink-soft, #4e6480);
+}
+
+.cart-cod-pending-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.cart-cod-pending-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 11px 13px;
+  border: 1px solid rgba(19, 40, 67, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink, #132843);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-align: center;
+}
+
+.cart-cod-pending-confirm {
+  flex: 0 0 auto;
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff9f0a, #ff7b00);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cart-cod-pending-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes cartCodPendingPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(243, 181, 70, 0.55); }
+  50% { box-shadow: 0 0 0 9px rgba(243, 181, 70, 0); }
+}
+
+.cart-cod-pending.is-pulsing {
+  animation: cartCodPendingPulse 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-cod-pending.is-pulsing { animation: none; }
+}

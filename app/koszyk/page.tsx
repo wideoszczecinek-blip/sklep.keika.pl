@@ -770,6 +770,10 @@ export default function CartPage() {
   // clicked - it's not shown/sent proactively just because that delivery
   // method is selected.
   const [codModalOpen, setCodModalOpen] = useState(false);
+  // Kod SMS poszedł, klient go jeszcze nie potwierdził, a okno jest
+  // zamknięte - wtedy pole na kod musi stać przy metodzie płatności.
+  const codPendingInline =
+    !codModalOpen && codSms.token !== "" && codSms.status !== "verified";
 
   // "Edytuj pozycję" - the same <ConfiguratorPanel> the product page uses,
   // seeded with this item's current config. moskitiery-ramkowe and plisy
@@ -1595,6 +1599,10 @@ export default function CartPage() {
         throw new Error(json.error || "Niepoprawny kod SMS.");
       }
       setCodSms((current) => ({ ...current, status: "verified", error: "" }));
+      // Kod wpisany przy metodzie płatności (okno zamknięte) - otwieramy je
+      // teraz, bo tylko ono pokazuje "Potwierdzamy zamówienie…" i ewentualny
+      // błąd składania. Przy wpisaniu w oknie to i tak nic nie zmienia.
+      setCodModalOpen(true);
       trackCheckoutIssue("checkout_cod_verified", "cod");
     } catch (smsError) {
       const message = smsError instanceof Error ? smsError.message : "Niepoprawny kod SMS.";
@@ -2854,6 +2862,23 @@ export default function CartPage() {
     setShowAllFieldErrors(true);
     if (checkoutProblems.length) jumpToField(checkoutProblems[0].key);
   };
+  // "Dane gotowe, ale nie wybrał płatności" to w CRM osobny etap lejka
+  // (właściciel, 2026-10-02) - a dotąd nie było po czym go rozpoznać.
+  // Dotarcie do regulaminu brało się za ten moment, co pod-raportowało:
+  // kto wypełnił wszystko i stanął, nigdzie nie był widoczny jako taki.
+  // Teraz mówimy to wprost, raz na wejście do koszyka: żadne wymagane pole
+  // nie zgłasza już problemu.
+  const checkoutReadyTrackedRef = useRef(false);
+  const checkoutProblemCount = checkoutProblems.length;
+  useEffect(() => {
+    if (!hydrated || items.length === 0) return;
+    if (checkoutProblemCount > 0 || checkoutReadyTrackedRef.current) return;
+    checkoutReadyTrackedRef.current = true;
+    trackCheckoutIssue("checkout_ready", deliveryMethod || "", {
+      cart_positions: items.length,
+      payment: paymentMethod || null,
+    });
+  }, [hydrated, items.length, checkoutProblemCount, deliveryMethod, paymentMethod]);
   // Spokojna forma (właściciel, 2026-09-30: "nie 'do zapłaty brakuje', tylko
   // 'uzupełnij dane dostawy' i lista, nie przyciski - za bardzo krzyczy"):
   // nagłówek + lista pól, każde pole to odnośnik przewijający do niego.
@@ -3925,6 +3950,47 @@ export default function CartPage() {
                   {paymentMethod === "cod" ? (
                     <>
                       {error ? <div className="cart-checkout-error">{error}</div> : null}
+                      {/* Kod SMS czeka na wpisanie, a okno jest zamknięte -
+                          pole musi być widoczne TU, przy metodzie płatności,
+                          i zwracać na siebie uwagę (właściciel, 2026-10-02).
+                          Pulsuje tylko do pierwszego dotknięcia pola, żeby
+                          nie migało klientowi pod palcami przy wpisywaniu. */}
+                      {codPendingInline ? (
+                        <div className={`cart-cod-pending ${codSms.code ? "" : "is-pulsing"}`}>
+                          <div className="cart-cod-pending-head">
+                            <strong>Wpisz kod z SMS-a</strong>
+                            <span>wysłany na {form.phone}</span>
+                          </div>
+                          {codSms.error ? <div className="cart-checkout-error">{codSms.error}</div> : null}
+                          <div className="cart-cod-pending-row">
+                            <input
+                              inputMode="numeric"
+                              className="cart-cod-pending-input"
+                              placeholder="123456"
+                              aria-label="Kod z SMS-a"
+                              value={codSms.code}
+                              onChange={(event) =>
+                                setCodSms((current) => ({
+                                  ...current,
+                                  code: event.target.value.replace(/\D/g, "").slice(0, 6),
+                                  error: "",
+                                }))
+                              }
+                            />
+                            <button
+                              type="button"
+                              className="cart-cod-pending-confirm"
+                              onClick={() => void verifyCodSms()}
+                              disabled={codSms.code.length !== 6 || codSms.status === "verifying"}
+                            >
+                              {codSms.status === "verifying" ? "Sprawdzamy…" : "Potwierdź"}
+                            </button>
+                          </div>
+                          <button type="button" className="cart-cod-resend" onClick={() => void sendCodSms()}>
+                            Wyślij nowy kod
+                          </button>
+                        </div>
+                      ) : null}
                       {termsCheckbox}
                       <button
                         type="button"
@@ -3935,11 +4001,15 @@ export default function CartPage() {
                             return;
                           }
                           setCodModalOpen(true);
-                          void sendCodSms();
+                          // Drugi klik w "Zamawiam" z kodem już w drodze nie
+                          // wysyła kolejnego SMS-a - otwiera to samo okno.
+                          if (!codPendingInline) {
+                            void sendCodSms();
+                          }
                         }}
                         disabled={!payBlockedReason && !termsAccepted}
                       >
-                        Zamawiam
+                        {codPendingInline ? "Wpisz kod z SMS-a" : "Zamawiam"}
                       </button>
                       {missingFieldsHint}
                     </>
@@ -4048,8 +4118,14 @@ export default function CartPage() {
               className="cod-sms-modal-close"
               aria-label="Zamknij"
               onClick={() => {
+                // Zamknięcie okna NIE wyrzuca wysłanego kodu. Właściciel
+                // 2026-10-02: "jak go zamknie, to miejsce na kod musi nadal
+                // widnieć tam, gdzie metody płatności, i na przykład
+                // pulsować". Wcześniej token przepadał i klient z SMS-em
+                // w ręku nie miał już gdzie go wpisać - musiał zamawiać od
+                // nowa, żeby dostać drugi kod.
                 setCodModalOpen(false);
-                setCodSms({ status: "idle", token: "", code: "", error: "" });
+                setCodSms((current) => ({ ...current, error: "" }));
               }}
             >
               ×
