@@ -1488,7 +1488,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // comparison below it (owner, 2026-09-17): one size, priced in both.
   const [plisyQuickDims, setPlisyQuickDims] = useState({ widthMm: PLISY_DEFAULT_WIDTH_MM, heightMm: PLISY_DEFAULT_HEIGHT_MM });
   // Szybka wycena moskitier: typowe okno na start, klient zmienia suwakami.
-  const [moskQuickDims, setMoskQuickDims] = useState({ widthMm: 900, heightMm: 1400 });
+  // Start od okna z reklam (2026-10-02): nowe kreacje moskitier mówią
+  // "65 × 130 cm — 95,68 zł z SEZON20", a wycena otwierała się na 90 × 140 /
+  // 119,60 zł - inna liczba niż ta, którą klient właśnie kliknął. Trzymać w
+  // zgodzie z reklamami.
+  const [moskQuickDims, setMoskQuickDims] = useState({ widthMm: 650, heightMm: 1300 });
   // Plisy landing copy prices itself from the live CRM matrix ("od 77 zł",
   // the per-collection examples) instead of the hand-typed CRM price_from,
   // which read "od 219 zł" against a 77 zł matrix minimum (audit
