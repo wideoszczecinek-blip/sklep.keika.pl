@@ -87,7 +87,10 @@ function pushContext(): void {
     ["Koszyk", cart.positions > 0 ? `${cart.positions} poz. · ${cart.total.toFixed(2)} zł` : "pusty"],
   ];
   if (token) {
-    rows.push(["Sesja w CRM", token.slice(0, 24)]);
+    // Dokładnie ta sama postać, w jakiej CRM pokazuje sesję (ostatnie 12
+    // znaków) - dzięki temu dopasowanie rozmowy do wiersza w "Odwiedzający"
+    // nie zależy od tego, czy identyfikator Crispa dojdzie do analityki.
+    rows.push(["Sesja w CRM", "…" + token.slice(-12)]);
   }
   try {
     w.$crisp.push(["set", "session:data", [rows]]);
@@ -131,6 +134,12 @@ export function armChatIdentity(): void {
       track("chat_message", "od nas", { crisp_session_id: lastReportedId, from: "operator" });
     },
   ]);
+
+  // Kontekst wrzucamy OD RAZU: Crisp odtwarza zakolejkowane polecenia po
+  // starcie, więc nie czekamy na session:loaded. Gdyby klient czatu nigdy
+  // się nie uruchomił (blokady, wolne łącze), identyfikator rozmowy nie
+  // dotrze do CRM - wtedy dopasowanie i tak działa po tokenie sesji.
+  pushContext();
 
   // Gdyby zdarzenie session:loaded już przeszło, zanim się podpięliśmy.
   try {
