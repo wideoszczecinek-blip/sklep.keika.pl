@@ -1328,7 +1328,7 @@ export default function CartPage() {
   const lastReportedAmountRef = useRef<number | null>(null);
   useEffect(() => {
     if (!hydrated || items.length === 0) return;
-    const timer = window.setTimeout(() => {
+    const report = () => {
       if (lastReportedAmountRef.current === payableTotal) return;
       lastReportedAmountRef.current = payableTotal;
       trackCheckoutIssue("cart_amount", String(items.length), {
@@ -1338,7 +1338,19 @@ export default function CartPage() {
         delivery: deliveryMethod || null,
         payment: paymentMethod || null,
       });
-    }, 1100);
+    };
+    // Pierwszy raport leci OD RAZU, bez wyciszenia. Wyciszenie ma sens
+    // dopiero przy kolejnych zmianach (klikanie dostawy/ekspresu), ale na
+    // wejściu kosztowało realną wiedzę: z 571 sesji, które weszły do
+    // koszyka w 30 dni, 311 nie dożyło tych 1,1 s i CRM nie dostał od nich
+    // ani jednej kwoty po rabacie. Zgłoszenie właściciela 2026-10-02:
+    // w tooltipie "osoby na stronie" widział kwotę sprzed rabatu - bo
+    // view_cart celowo jej nie nosi, a cart_amount nie zdążał polecieć.
+    if (lastReportedAmountRef.current === null) {
+      report();
+      return;
+    }
+    const timer = window.setTimeout(report, 1100);
     return () => window.clearTimeout(timer);
   }, [hydrated, payableTotal, items.length, summary.total, deliveryMethod, paymentMethod]);
 
