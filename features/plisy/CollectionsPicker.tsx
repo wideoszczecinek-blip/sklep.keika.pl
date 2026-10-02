@@ -148,9 +148,9 @@ export default function PlisyCollectionsPicker({
   const maxW = (profile ? profile.widthMaxMm : PLISY_WIDTH_MAX_MM) / 10;
   const maxH = (profile ? profile.heightMaxMm : PLISY_HEIGHT_MAX_MM) / 10;
 
-  // Starts on the ad's 60 x 120 cm window (2026-09-17), not the 40 x 60
-  // minimum - see PLISY_DEFAULT_*_MM. The sliders still go down to the
-  // smallest sash.
+  // Starts on the window the current ads advertise (50 x 110 cm since
+  // 2026-10-02), not the 40 x 60 minimum - see PLISY_DEFAULT_*_MM. The
+  // sliders still go down to the smallest sash.
   const [internalWidthCm, setInternalWidthCm] = useState(PLISY_DEFAULT_WIDTH_MM / 10);
   const [internalHeightCm, setInternalHeightCm] = useState(PLISY_DEFAULT_HEIGHT_MM / 10);
   const widthCm = widthCmProp ?? internalWidthCm;

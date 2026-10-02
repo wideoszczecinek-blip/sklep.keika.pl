@@ -49,12 +49,15 @@ export const PLISY_EXAMPLE_WIDTH_MM = 400;
 export const PLISY_EXAMPLE_HEIGHT_MM = 600;
 
 /** Where the top-of-page quick price (QuickPrice.tsx) and the collections
- * picker START (plisy landing analysis 2026-09-17): the ad's own 60 x 120
- * cm, not the smallest sash. A 40 x 60 anchor read "62 zł" while a real
- * window costs ~118 zł, and that gap looked like bait at the moment of
- * truth. The EXAMPLE_* pair above stays the sliders' minimum. */
-export const PLISY_DEFAULT_WIDTH_MM = 600;
-export const PLISY_DEFAULT_HEIGHT_MM = 1200;
+ * picker START: the size the CURRENT ads promise, so the first screen shows
+ * the same window and price the customer just clicked on (2026-09-17: a
+ * 40 x 60 anchor read "62 zł" while a real window costs ~118 zł, and that
+ * gap looked like bait). 2026-10-02: the new plisy campaign (9 creatives)
+ * says "50 × 110 cm — 110 zł z SEZON20"; the landing opened on 60 x 120
+ * / 144,32 zł, a different number than the ad. Keep this in step with the
+ * ads. The EXAMPLE_* pair above stays the sliders' minimum. */
+export const PLISY_DEFAULT_WIDTH_MM = 500;
+export const PLISY_DEFAULT_HEIGHT_MM = 1100;
 
 export const PLISY_LEAD_TIME_LABEL = "5–10 dni roboczych";
 
