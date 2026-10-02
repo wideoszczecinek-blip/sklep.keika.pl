@@ -986,18 +986,6 @@ export default function CartPage() {
   const [paynowBlikCode, setPaynowBlikCode] = useState("");
   const [paynowPolling, setPaynowPolling] = useState(false);
   const [paynowPollTimeout, setPaynowPollTimeout] = useState(false);
-  // Podgląd panelu BLIK przez PayNow (kod + klauzula RODO), zanim routing
-  // BLIK zostanie przestawiony na PayNow - tylko do zrzutu ekranu wymaganego
-  // przez PayNow do aktywacji White Label (?paynow-podglad=1). Płatność w tym
-  // trybie by się nie udała, ale parametr nie jest nigdzie linkowany.
-  const [paynowBlikPreview, setPaynowBlikPreview] = useState(false);
-  useEffect(() => {
-    try {
-      setPaynowBlikPreview(new URLSearchParams(window.location.search).has("paynow-podglad"));
-    } catch {
-      // ignore
-    }
-  }, []);
   // Domyślnie WŁĄCZONE (do czasu odpowiedzi CRM): gdyby pobranie ustawień
   // z CRM nie doszło do skutku, klient i tak widzi przelew tradycyjny /
   // Przelewy24 - CRM i tak weryfikuje metodę przy tworzeniu zamówienia.
@@ -1183,10 +1171,13 @@ export default function CartPage() {
   // installments nie ma wyboru operatora, zostaje zawsze P24 (jedyny
   // dostawca rat w tym sklepie).
   const selectedOnlineProvider: PaymentProvider =
+    // BLIK: operator wyłącznie z ustawień CRM. Do 2026-10-02 był tu jeszcze
+    // tryb podglądu (?paynow-podglad=1), który na siłę wskazywał PayNow -
+    // służył do zrzutu ekranu wymaganego przy aktywacji White Label.
+    // Aktywacja jest załatwiona, a tryb okazał się pułapką: wymuszał
+    // płatność, która nie mogła się udać, i kończył się błędem 502.
     onlinePaymentKind === "blik"
-      ? paynowBlikPreview
-        ? "paynow"
-        : resolveProvider(paymentRouting, "blik", "stripe")
+      ? resolveProvider(paymentRouting, "blik", "stripe")
       : onlinePaymentKind === "card" || onlinePaymentKind === "wallets"
         ? resolveProvider(paymentRouting, onlinePaymentKind, "stripe")
         : onlinePaymentKind === "p24_transfer"
