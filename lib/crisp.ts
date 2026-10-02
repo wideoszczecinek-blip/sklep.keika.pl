@@ -40,6 +40,10 @@ export function openCrispChat(prefill?: string): void {
   // Automat na długie oczekiwanie: po 3 minutach bez odpowiedzi klient
   // dostaje prośbę o kontakt (lib/chat-follow-up.ts).
   void import("@/lib/chat-follow-up").then(({ armChatFollowUp }) => armChatFollowUp()).catch(() => null);
+  // Powiązanie rozmowy z odwiedzającym w CRM (lib/chat-identity.ts):
+  // identyfikator sesji Crispa leci do analityki, a do samej rozmowy
+  // dokładamy kontekst klienta.
+  void import("@/lib/chat-identity").then(({ armChatIdentity }) => armChatIdentity()).catch(() => null);
 
   if (!injected) {
     injected = true;
