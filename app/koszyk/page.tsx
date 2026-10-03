@@ -31,7 +31,7 @@ import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
 import PromoSaveModal from "../components/promo-save-modal";
 import { useCartEmailNudge } from "@/lib/cart-email-nudge";
-import { captureCheckoutEmail, getCartEmailArm, getTrackedPromoQuoteCode, type CartEmailArm } from "@/lib/promo-save";
+import { captureCheckoutEmail, getCartEmailArm, getCartKeepArm, getTrackedPromoQuoteCode, type CartEmailArm, type CartKeepArm } from "@/lib/promo-save";
 
 // Pusty koszyk (2026-09-26): CTA prowadzi do produktu, który klient ostatnio
 // oglądał (keika_last_page), a nie zawsze do moskitier - klient z reklamy
@@ -877,6 +877,18 @@ export default function CartPage() {
   // Which arm this device is in - read after mount so SSR and the first
   // client render agree (the "control" copy), then the real arm takes over.
   const [cartEmailArm, setCartEmailArm] = useState<CartEmailArm>("control");
+  // Test banera na dole koszyka: null do czasu odczytu grupy, żeby baner nie
+  // mignął osobom z grupy "hidden" (patrz getCartKeepArm).
+  const [cartKeepArm, setCartKeepArm] = useState<CartKeepArm | null>(null);
+  const cartKeepArmTrackedRef = useRef(false);
+  useEffect(() => {
+    setCartKeepArm(getCartKeepArm());
+  }, []);
+  useEffect(() => {
+    if (!cartKeepArm || items.length === 0 || cartKeepArmTrackedRef.current) return;
+    cartKeepArmTrackedRef.current = true;
+    trackCheckoutIssue("cart_keep_ab", cartKeepArm, { product: items[0]?.productSlug || "" });
+  }, [cartKeepArm, items]);
   useEffect(() => {
     setCartEmailArm(getCartEmailArm());
   }, []);
@@ -4066,7 +4078,7 @@ export default function CartPage() {
                 klient tknie dane kontaktowe (jest zdecydowany - konwersja
                 58% na telefonie), i odsłania się płynnie dopiero po wejściu
                 w pole widzenia. */}
-            {items.length > 0 && !orderState && contactUntouched ? (
+            {items.length > 0 && !orderState && contactUntouched && cartKeepArm === "banner" ? (
               <section ref={cartKeepRef} className={`cart-keep-card ${cartKeepVisible ? "is-visible" : ""}`}>
                 <span className="cart-keep-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none">

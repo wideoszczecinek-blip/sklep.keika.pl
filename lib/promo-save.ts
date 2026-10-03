@@ -324,6 +324,29 @@ export function getCartEmailArm(): CartEmailArm {
   }
 }
 
+/* Test banera "Nie decydujesz dzisiaj?" na dole koszyka (2026-10-03).
+ * Właściciel podejrzewa, że baner obniża konwersję, a z samych statystyk nie
+ * da się tego rozstrzygnąć: baner widzą tylko ci, którzy przewinęli koszyk do
+ * końca i nie tknęli formularza, więc porównanie "widział / nie widział" jest
+ * z góry nierówne. Dlatego połowa urządzeń (los, raz na urządzenie) banera
+ * nie dostaje wcale, a koszyk zapisuje grupę zdarzeniem cart_keep_ab. */
+const CART_KEEP_ARM_KEY = "keika_cart_keep_arm";
+
+export type CartKeepArm = "banner" | "hidden";
+
+export function getCartKeepArm(): CartKeepArm {
+  if (typeof window === "undefined") return "banner";
+  try {
+    const stored = window.localStorage.getItem(CART_KEEP_ARM_KEY);
+    if (stored === "banner" || stored === "hidden") return stored;
+    const arm: CartKeepArm = Math.random() < 0.5 ? "banner" : "hidden";
+    window.localStorage.setItem(CART_KEEP_ARM_KEY, arm);
+    return arm;
+  } catch {
+    return "banner";
+  }
+}
+
 export function getTrackedPromoQuoteCode(): string {
   return getTracked().quoteCode;
 }
