@@ -20769,6 +20769,7 @@ html[data-theme="light"] .cart-page-summary-row.is-muted.is-escape-offer {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
+  white-space: nowrap;
 }
 .mosk-hero-dots {
   display: flex;
