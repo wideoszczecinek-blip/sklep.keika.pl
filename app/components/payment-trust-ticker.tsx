@@ -5,7 +5,7 @@
 // sięga po kartę albo BLIK. Jedna linijka wysokości - hasła zmieniają się
 // same, żeby nie zabierać miejsca metodom płatności. Rotacja staje, gdy
 // klient najedzie na pasek, a czytnik ekranu dostaje wszystkie cztery naraz.
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const ROTATE_MS = 3400;
 
@@ -65,9 +65,34 @@ export default function PaymentTrustTicker() {
   const [active, setActive] = useState(0);
   const [previous, setPrevious] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
+  // Karuzela rusza dopiero, gdy pasek jest na ekranie (właściciel,
+  // 2026-10-03) - klient ma zobaczyć ją od pierwszego hasła, "30 dni na
+  // zwrot", a nie trafić w środek obrotu, który kręcił się poza ekranem.
+  const [visible, setVisible] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (paused) return;
+    const node = rootRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[entries.length - 1];
+        if (entry) setVisible(entry.isIntersecting);
+      },
+      { threshold: 0.6 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  const running = visible && !paused;
+
+  useEffect(() => {
+    if (!running) return;
     const id = window.setInterval(() => {
       if (document.hidden) return;
       setActive((current) => {
@@ -76,11 +101,12 @@ export default function PaymentTrustTicker() {
       });
     }, ROTATE_MS);
     return () => window.clearInterval(id);
-  }, [paused]);
+  }, [running]);
 
   return (
     <div
-      className={`pay-trust${paused ? " is-paused" : ""}`}
+      ref={rootRef}
+      className={`pay-trust${running ? "" : " is-paused"}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
