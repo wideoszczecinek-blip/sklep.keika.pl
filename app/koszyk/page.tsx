@@ -80,6 +80,7 @@ import { PaynowGdprNotice } from "@/app/components/paynow-gdpr";
 import InstallmentTileHint from "@/app/components/installment-tile-hint";
 import CartTrustBlock from "@/app/components/cart-trust-block";
 import PaymentTrustTicker from "@/app/components/payment-trust-ticker";
+import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
 import ExpressWalletCheckout, { type WalletContact } from "@/app/components/express-wallet-checkout";
 import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
@@ -392,6 +393,44 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
     return { hardware: "Kolor osprzętu", mesh: "Kolekcja i kolor tkaniny" };
   }
   return { hardware: "Kolor profilu", mesh: "Kolor siatki" };
+}
+
+/** Parametry pozycji jako osobne pola "etykieta / wartość" zamiast jednego
+ * ciągu rozdzielonego kropkami (właściciel, 2026-10-03: "każda pozycja ma
+ * swatche ciągiem wymienione - można to zrobić ładniej i czytelniej").
+ * Wymiar idzie pierwszy, bo po nim klient rozpoznaje pozycję; przy kolorach
+ * stoi kropka w wybranym kolorze, jeśli go znamy. */
+function CartItemSpecs({ item }: { item: CartLineItem }) {
+  const labels = cartItemFieldLabels(item.productSlug);
+  const colors = resolveCartWindowThumb(item);
+  const rows: { label: string; value: string; dot?: string }[] = [];
+  if (item.widthMm && item.heightMm) {
+    rows.push({
+      label: "Wymiar",
+      value: item.splitFromWidthMm
+        ? `okno ${item.splitFromWidthMm} × ${item.heightMm} mm → 2 plisy po ${item.widthMm} mm`
+        : `${item.widthMm} × ${item.heightMm} mm`,
+    });
+  }
+  if (item.mountLabel) rows.push({ label: "Rodzaj montażu", value: item.mountLabel });
+  if (item.hardwareLabel) rows.push({ label: labels.hardware, value: item.hardwareLabel, dot: colors?.hardware });
+  if (item.meshLabel) rows.push({ label: labels.mesh, value: item.meshLabel, dot: colors?.fabric });
+  if (item.modelLabel) rows.push({ label: "Model okna", value: item.modelLabel });
+  if (item.productSlug === "rolety-dachowe" && item.bracketCount === 2) rows.push({ label: "Uchwyty", value: "2 szt." });
+  if (rows.length === 0) return null;
+  return (
+    <dl className="cart-item-specs">
+      {rows.map((row) => (
+        <div key={row.label} className={row.label === "Wymiar" ? "is-size" : undefined}>
+          <dt>{row.label}</dt>
+          <dd>
+            {row.dot ? <i className="cart-item-spec-dot" style={{ background: row.dot }} aria-hidden="true" /> : null}
+            {row.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 function buildQuotePayloadFromCart(
@@ -3205,7 +3244,14 @@ export default function CartPage() {
               <ul className="cart-page-items">
                 {items.map((item) => (
                   <li key={item.id} className="cart-page-item">
-                    {item.productSlug === "plisy" && item.fabricColor ? (
+                    {resolveCartWindowThumb(item) ? (
+                      // Okno z prawdziwym widokiem i produktem w wybranych
+                      // kolorach (app/components/cart-window-thumb.tsx);
+                      // gałęzie niżej zostają dla pozycji bez znanych kolorów.
+                      <div className="cart-page-item-thumb cart-page-item-thumb--window">
+                        <CartWindowThumb item={item} label={`${item.productLabel} na oknie, w wybranych kolorach`} />
+                      </div>
+                    ) : item.productSlug === "plisy" && item.fabricColor ? (
                       // Same tinted graphic as the configurator's own
                       // preview (features/plisy/PlisaPreview.tsx), just
                       // shrunk to thumbnail size - real fabric/hardware
@@ -3225,22 +3271,7 @@ export default function CartPage() {
                     )}
                     <div className="cart-page-item-info">
                       <strong>{item.productLabel}</strong>
-                      <span className="cart-page-item-specs">
-                        {[
-                          item.mountLabel ? `Rodzaj montażu: ${item.mountLabel}` : "",
-                          item.hardwareLabel ? `${cartItemFieldLabels(item.productSlug).hardware}: ${item.hardwareLabel}` : "",
-                          item.meshLabel ? `${cartItemFieldLabels(item.productSlug).mesh}: ${item.meshLabel}` : "",
-                          item.modelLabel ? `Model okna: ${item.modelLabel}` : "",
-                          item.widthMm && item.heightMm
-                            ? item.splitFromWidthMm
-                              ? `okno ${item.splitFromWidthMm} × ${item.heightMm} mm → 2 plisy po ${item.widthMm} mm`
-                              : `${item.widthMm} × ${item.heightMm} mm`
-                            : "",
-                          item.productSlug === "rolety-dachowe" && item.bracketCount === 2 ? "2 uchwyty" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
+                      <CartItemSpecs item={item} />
                       {item.productSlug === "plisy" && item.sagNoticeShown ? (
                         <span className="cart-page-item-sag" role="note">
                           Szerokość powyżej {(item.sagLimitMm || 1100) / 10} cm: profil aluminiowy może się lekko ugiąć pod ciężarem
