@@ -87,6 +87,8 @@ import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-w
 import ExpressWalletCheckout, { type WalletContact } from "@/app/components/express-wallet-checkout";
 import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
+import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
+import CartV2, { CartV2Boundary } from "./cart-v2";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
 // every validation error, failed discount code, and failed order/payment
@@ -663,6 +665,25 @@ export default function CartPage() {
   // head script (before first paint, no flash) - no longer needed here.
   const [items, setItems] = useState<CartLineItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  // Test nowego koszyka (lib/cart-design.ts): null do czasu odczytu grupy,
+  // żeby żaden z dwóch wyglądów nie mignął osobie z drugiej grupy.
+  const [cartDesign, setCartDesign] = useState<CartDesignArm | null>(null);
+  const cartDesignForcedRef = useRef(false);
+  const cartDesignTrackedRef = useRef(false);
+  useEffect(() => {
+    const picked = getCartDesignArm();
+    cartDesignForcedRef.current = picked.forced;
+    setCartDesign(picked.arm);
+  }, []);
+  useEffect(() => {
+    if (!cartDesign || !hydrated || items.length === 0 || cartDesignTrackedRef.current) return;
+    cartDesignTrackedRef.current = true;
+    trackCheckoutIssue("cart_design_ab", cartDesign, {
+      forced: cartDesignForcedRef.current,
+      bucket: cartDesignBucket(),
+      product: items[0]?.productSlug || "",
+    });
+  }, [cartDesign, hydrated, items]);
   // Where the customer actually was right before opening the cart (product +
   // step + query string) - "/" until we know better, filled in on mount.
   const [backHref, setBackHref] = useState("/");
@@ -911,10 +932,11 @@ export default function CartPage() {
     setCartKeepArm(getCartKeepArm());
   }, []);
   useEffect(() => {
-    if (!cartKeepArm || items.length === 0 || cartKeepArmTrackedRef.current) return;
+    // Nowy koszyk nie ma tego banera - jego wejścia nie należą do tego testu.
+    if (!cartKeepArm || items.length === 0 || cartKeepArmTrackedRef.current || cartDesign !== "classic") return;
     cartKeepArmTrackedRef.current = true;
     trackCheckoutIssue("cart_keep_ab", cartKeepArm, { product: items[0]?.productSlug || "" });
-  }, [cartKeepArm, items]);
+  }, [cartKeepArm, items, cartDesign]);
   useEffect(() => {
     setCartEmailArm(getCartEmailArm());
   }, []);
@@ -1543,6 +1565,11 @@ export default function CartPage() {
           setPaymentRouting(
             checkout.payment_routing && typeof checkout.payment_routing === "object" ? checkout.payment_routing : {},
           );
+          // Wyłącznik testu nowego koszyka: udział 0 = wszyscy stary koszyk.
+          if (typeof checkout.cart_v2_share === "number") {
+            const share = rememberCartV2Share(checkout.cart_v2_share);
+            if (share === 0 && !cartDesignForcedRef.current) setCartDesign((current) => (current === "v2" ? "classic" : current));
+          }
         }
       })
       .catch(() => {});
@@ -3156,8 +3183,202 @@ export default function CartPage() {
     paymentMethod !== "cod" &&
     expressWalletsAvailable !== false;
 
+  // Nowy koszyk zastępuje tylko widok koszyka z formularzem; pusty koszyk,
+  // podziękowanie i wszystkie okna (kod SMS, regulamin, edycja) są wspólne.
+  const isV2Body = cartDesign === "v2" && items.length > 0 && !(orderConfirmed && orderState);
+  const buildV2Props = () => ({
+    items,
+    backHref,
+    dataLocked,
+    track: trackCheckoutIssue,
+    itemFieldLabels: cartItemFieldLabels,
+    combinedDiscountPercent,
+    onQty: handleQtyChange,
+    onRemove: handleRemove,
+    onEdit: (id: string) => {
+      setEditingItemId(id);
+      trackCheckoutIssue("cart_edit_open", items.find((item) => item.id === id)?.productSlug || "");
+    },
+    oversizeThresholdMm: OVERSIZE_SURCHARGE_THRESHOLD_MM,
+    itemsCount: summary.items,
+    itemsTotal: summary.total,
+    combinedSavings,
+    appliedDiscount,
+    rescueRow:
+      rescueGrant && rescueAmount > 0
+        ? {
+            label:
+              rescueGrant.kind === "escape" && rescueGrant.expiresAtMs
+                ? `Dodatkowy rabat (-${rescueGrant.percent}%), ważny ${formatEscapeDeadline(rescueGrant.expiresAtMs)}`
+                : `Rabat za zapisanie wyceny (-${rescueGrant.percent}%)`,
+            amount: rescueAmount,
+          }
+        : null,
+    shippingFee,
+    expressFee,
+    orderSurcharge,
+    codSurcharge: COD_SURCHARGE_AMOUNT,
+    payableTotal,
+    totalSavings,
+    isPickup: deliveryMethod === PICKUP_METHOD.id,
+    amountToFreeShipping,
+    discountOpen,
+    setDiscountOpen,
+    discountCodeInput,
+    setDiscountCodeInput,
+    discountChecking,
+    discountError,
+    clearDiscountError: () => setDiscountError(""),
+    checkDiscountCode: () => void checkDiscountCode(),
+    removeDiscountCode,
+    expressEligible,
+    expressSelected,
+    chooseExpress,
+    expressFeeAmount: EXPRESS_FEE_AMOUNT,
+    dispatchStandardLabel: dispatchInfo?.standardLabel || "",
+    dispatchExpressLabel: dispatchInfo?.expressLabel || "",
+    dispatchCutoffLabel: dispatchInfo?.cutoffLabel || "",
+    plisyLeadTime: !expressEligible && plisyLeadTime,
+    deliveryMethods: availableDeliveryMethods,
+    deliveryMethod,
+    chooseDelivery: (method: { id: string; label: string }) => {
+      setDeliveryMethod(method.id);
+      trackCheckoutIssue("checkout_delivery", method.label, { method_id: method.id });
+    },
+    paczkomatMethodId: PACZKOMAT_METHOD.id,
+    pickupMethodId: PICKUP_METHOD.id,
+    selectedPaczkomat,
+    choosePaczkomat: (point: PaczkomatPoint | null) => {
+      setSelectedPaczkomat(point);
+      if (point) trackCheckoutIssue("checkout_paczkomat", point.id, { address: point.address });
+    },
+    form,
+    setForm,
+    onPostcode: handlePostcodeChange,
+    onPhone: handlePhoneChange,
+    setAddress1Focused,
+    onFieldBlur: handleCheckoutFieldBlur,
+    valid: {
+      email: emailValid,
+      phone: phoneFieldValid,
+      firstName: firstNameFieldValid,
+      lastName: lastNameFieldValid,
+      address1: address1FieldValid,
+      postcode: postcodeFieldValid,
+      city: cityFieldValid,
+      buyerName: buyerNameValid,
+      buyerEmail: buyerEmailValid,
+      nip: nipFieldValid,
+      companyName: companyNameFieldValid,
+      invoiceStreet: invoiceStreetFieldValid,
+      invoicePostcode: invoicePostcodeFieldValid,
+      invoiceCity: invoiceCityFieldValid,
+    },
+    fieldError,
+    requiresAddress,
+    contactUntouched,
+    deliveryDataReady,
+    jumpToFirstProblem,
+    noteOpen,
+    setNoteOpen,
+    buyerDifferent,
+    setBuyerDifferent: (on: boolean) => {
+      setBuyerDifferent(on);
+      if (!on) setWantsInvoice(false);
+      trackCheckoutIssue("checkout_buyer_other", on ? "on" : "off");
+    },
+    buyer,
+    setBuyer,
+    wantsInvoice,
+    setWantsInvoice: (on: boolean) => {
+      setWantsInvoice(on);
+      trackCheckoutIssue("checkout_invoice", on ? "on" : "off");
+    },
+    invoice,
+    setInvoice,
+    onNip: (digits: string) => {
+      setInvoice((current) => ({ ...current, nip: digits }));
+      setNipLookupError("");
+      if (digits.length === 10) void lookupNip(digits);
+    },
+    nipLookupLoading,
+    nipLookupError,
+    isCod: paymentMethod === "cod",
+    paymentChooser: renderPaymentKindChooser,
+    hasBlikTile: paymentTiles.some((tile) => tile.kind === "blik"),
+    onlinePaymentKind,
+    preselectPaymentKind: (kind: "blik") => setOnlinePaymentKind(kind),
+    codBlock: (
+      <>
+        {error ? <div className="cart-checkout-error">{error}</div> : null}
+        {codPendingInline ? (
+          <div className={`cart-cod-pending ${codSms.code ? "" : "is-pulsing"}`}>
+            <div className="cart-cod-pending-head">
+              <strong>Wpisz kod z SMS-a</strong>
+              <span>wysłany na {form.phone}</span>
+            </div>
+            {codSms.error ? <div className="cart-checkout-error">{codSms.error}</div> : null}
+            <div className="cart-cod-pending-row">
+              <input
+                inputMode="numeric"
+                className="cart-cod-pending-input"
+                placeholder="123456"
+                aria-label="Kod z SMS-a"
+                value={codSms.code}
+                onChange={(event) =>
+                  setCodSms((current) => ({ ...current, code: event.target.value.replace(/\D/g, "").slice(0, 6), error: "" }))
+                }
+              />
+              <button
+                type="button"
+                className="cart-cod-pending-confirm"
+                onClick={() => void verifyCodSms()}
+                disabled={codSms.code.length !== 6 || codSms.status === "verifying"}
+              >
+                {codSms.status === "verifying" ? "Sprawdzamy…" : "Potwierdź"}
+              </button>
+            </div>
+            <button type="button" className="cart-cod-resend" onClick={() => void sendCodSms()} disabled={codResendIn > 0}>
+              Wyślij nowy kod
+            </button>
+          </div>
+        ) : null}
+        <p className="cart-checkout-cta-hint">Płacisz kurierowi przy odbiorze, gotówką lub kartą. Zamówienie potwierdzasz kodem SMS.</p>
+        {termsCheckbox}
+        <button
+          type="button"
+          className={`cart-page-checkout-cta ${payBlockedReason ? "is-blocked" : ""}`}
+          onClick={() => {
+            if (payBlockedReason) {
+              jumpToFirstProblem();
+              return;
+            }
+            setCodModalOpen(true);
+            if (!codPendingInline) void sendCodSms();
+          }}
+          disabled={!payBlockedReason && !termsAccepted}
+        >
+          {codPendingInline ? "Wpisz kod z SMS-a" : "Zamawiam z obowiązkiem zapłaty"}
+        </button>
+        {missingFieldsHint}
+      </>
+    ),
+    transferReady: checkoutReady && paymentMethod === "transfer" && termsAccepted,
+    submitTransfer: () => {
+      setError("");
+      submittedRef.current = false;
+      void submitOrder().catch(() => {});
+    },
+    isSubmitting,
+    hasOrderDraft: orderState !== null,
+    escapeBottomRef: escapeOffer.bottomRef,
+    escapeChip: <EscapeOfferCountdownChip controller={escapeOffer} />,
+    hasEscapeOffer: Boolean(escapeOffer.offer),
+    contactPhone: siteContact.phone,
+  });
+
   return (
-    <div className="cart-page">
+    <div className={`cart-page${isV2Body ? " cart-page--v2" : ""}`}>
       <div className="cart-page-gradient-bg" aria-hidden="true" />
       <PromoTopStrip productSlug={cartPromoSlug} variant="static" />
       <EscapeOfferCartReveal controller={escapeOffer} payable={payableTotal} payableWithoutOffer={payableTotal + rescueAmount} />
@@ -3171,15 +3392,17 @@ export default function CartPage() {
           onSent={() => cartEmailNudge.markSent()}
         />
       ) : null}
+      {isV2Body ? null : (
       <header className="cart-page-header">
         <Link href="/" className="cart-page-brand">
           keika
         </Link>
         <h1>Koszyk</h1>
       </header>
+      )}
 
       <main className="cart-page-main">
-        {!hydrated ? null : orderConfirmed && orderState ? (
+        {!hydrated || cartDesign === null ? null : orderConfirmed && orderState ? (
           <div className="cart-thankyou">
             <div className="cart-thankyou-check" aria-hidden="true">
               ✓
@@ -3301,6 +3524,16 @@ export default function CartPage() {
               {emptyCartTarget(backHref).label}
             </Link>
           </div>
+        ) : isV2Body ? (
+          <CartV2Boundary
+            onCrash={(message) => {
+              markCartV2Crashed();
+              trackCheckoutIssue("cart_v2_crash", message.slice(0, 120));
+              setCartDesign("classic");
+            }}
+          >
+            <CartV2 {...buildV2Props()} />
+          </CartV2Boundary>
         ) : (
           <>
             {items.length > 0 ? (
@@ -4214,7 +4447,7 @@ export default function CartPage() {
       {/* Mobile-only sticky total + next step (audit 2026-09-13): on a phone
           the summary sat below eight form fields, so the total and the way
           forward were both off-screen for most of the checkout. */}
-      {hydrated && items.length > 0 && !orderConfirmed ? (
+      {hydrated && cartDesign !== null && items.length > 0 && !orderConfirmed && !isV2Body ? (
         <div
           className={`cart-sticky-bar${escapeOffer.offer ? " has-escape-offer" : ""}`}
           role="region"
