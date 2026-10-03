@@ -14,6 +14,7 @@ import {
   summarizeCartItems,
   updateCartItemConfig,
   updateCartItemQty,
+  roundMoney,
 } from "@/lib/cart";
 import ConfiguratorPanel from "@/features/moskitiery-ramkowe/ConfiguratorPanel";
 import {
@@ -72,7 +73,9 @@ import {
   setExpressSelected,
   type DispatchInfo,
 } from "@/lib/express";
-import { getRescueGrant, type RescueGrant } from "@/lib/rescue";
+import { getRescueGrant, RESCUE_GRANT_EVENT, type RescueGrant } from "@/lib/rescue";
+import { formatEscapeDeadline } from "@/lib/escape-offer";
+import { EscapeOfferCartReveal, EscapeOfferCountdownChip, useCartEscapeOffer } from "../components/escape-offer";
 import { useBackToClose } from "@/lib/use-back-to-close";
 import InstallmentOffer from "@/app/components/installment-offer";
 import { buildPaymentTiles, resolveProvider, type PaymentRouting, type PaymentProvider } from "@/app/components/payment-methods";
@@ -610,7 +613,7 @@ function buildQuotePayloadFromCart(
   // pre-correction subtotal" fix as the discount code above (real live bug
   // 2026-09-11).
   const rescueAmount = rescueGrant
-    ? Math.max(0, (itemsSubtotal - combinedSavings) * (rescueGrant.percent / 100))
+    ? roundMoney(Math.max(0, (itemsSubtotal - combinedSavings) * (rescueGrant.percent / 100)))
     : 0;
   if (rescueGrant && rescueAmount > 0) {
     positions.push({
@@ -937,11 +940,34 @@ export default function CartPage() {
   // never replaces it (business decision: during SEZON20, a rescued
   // customer gets -25% total, not just -20% or just -5%).
   const [rescueGrant, setRescueGrantState] = useState<RescueGrant | null>(null);
+  // Rabat może się zmienić w trakcie wizyty (oferta "dodatkowe 5% dla
+  // wychodzących" przyznana przy wyjściu, koniec jej terminu) - stąd nasłuch
+  // i odświeżanie co 30 s. Zamówienie już w trakcie płacenia dostaje 15 min
+  // zapasu po terminie (CRM ma 20), żeby kwota nie skoczyła klientowi
+  // z kodem BLIK w ręku.
+  const rescueDraftGraceRef = useRef(false);
   useEffect(() => {
-    setRescueGrantState(getRescueGrant());
+    const syncRescueGrant = () => {
+      const next = getRescueGrant({ graceMs: rescueDraftGraceRef.current ? 15 * 60 * 1000 : 0 });
+      setRescueGrantState((current) =>
+        current?.quoteCode === next?.quoteCode && current?.percent === next?.percent && current?.expiresAtMs === next?.expiresAtMs
+          ? current
+          : next,
+      );
+    };
+    syncRescueGrant();
+    window.addEventListener(RESCUE_GRANT_EVENT, syncRescueGrant);
+    const timer = window.setInterval(syncRescueGrant, 30000);
+    return () => {
+      window.removeEventListener(RESCUE_GRANT_EVENT, syncRescueGrant);
+      window.clearInterval(timer);
+    };
   }, []);
   const combinedDiscountPercent =
     (appliedDiscount?.type === "percent" ? appliedDiscount.value : 0) + (rescueGrant?.percent || 0);
+  // Wchodzi do "odcisku" zamówienia w toku: zmiana rabatu (przyznanie, koniec
+  // terminu) to zmiana kwoty, więc szkic zamówienia musi powstać od nowa.
+  const rescueSnapshotKey = rescueGrant ? `${rescueGrant.quoteCode}:${rescueGrant.percent}` : "";
   const [discountChecking, setDiscountChecking] = useState(false);
   const [discountError, setDiscountError] = useState("");
 
@@ -1104,8 +1130,10 @@ export default function CartPage() {
   // left net of this, not the higher pre-correction subtotal (real live bug
   // 2026-09-11).
   const combinedSavings = calcMoskitieryCombinedSavings(items);
+  // Do groszy, tak jak liczy CRM - inaczej "Razem" różniło się o grosz od
+  // kwoty zamówienia (lib/cart.ts roundMoney).
   const rescueAmount = rescueGrant
-    ? Math.max(0, (summary.total - combinedSavings) * (rescueGrant.percent / 100))
+    ? roundMoney(Math.max(0, (summary.total - combinedSavings) * (rescueGrant.percent / 100)))
     : 0;
   const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
@@ -1558,6 +1586,7 @@ export default function CartPage() {
   const orderStateRef = useRef(orderState);
   useEffect(() => {
     orderStateRef.current = orderState;
+    rescueDraftGraceRef.current = orderState !== null;
   }, [orderState]);
   // Only re-create the order/PaymentIntent when something that actually
   // changes the *charged amount* changes (items, delivery method, an
@@ -1575,7 +1604,7 @@ export default function CartPage() {
   // fix shouldn't require starting over") - this brings the code in line
   // with it instead of contradicting it.
   useEffect(() => {
-    const snapshot = JSON.stringify({ items, deliveryMethod, appliedDiscount, expressSelected });
+    const snapshot = JSON.stringify({ items, deliveryMethod, appliedDiscount, expressSelected, rescue: rescueSnapshotKey });
     const current = orderStateRef.current;
     if (
       current &&
@@ -1590,7 +1619,7 @@ export default function CartPage() {
       submittedRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, deliveryMethod, appliedDiscount, expressSelected, paymentConfirmed]);
+  }, [items, deliveryMethod, appliedDiscount, expressSelected, paymentConfirmed, rescueSnapshotKey]);
 
   async function sendCodSms() {
     setCodSms({ status: "sending", token: "", code: "", error: "" });
@@ -1932,7 +1961,7 @@ export default function CartPage() {
     const bd = w ? false : buyerDifferent;
     const wi = w ? false : wantsInvoice;
     const sp = w ? null : selectedPaczkomat;
-    draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod: dm, appliedDiscount, expressSelected });
+    draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod: dm, appliedDiscount, expressSelected, rescue: rescueSnapshotKey });
     setError("");
     setIsSubmitting(true);
     try {
@@ -3012,6 +3041,17 @@ export default function CartPage() {
   useEffect(() => {
     cartKeepMetaRef.current = { arm: cartEmailArm, slug: items[0]?.productSlug || "" };
   }, [cartEmailArm, items]);
+  // "Dodatkowe 5% dla wychodzących" (test od 2026-10-03, lib/escape-offer.ts):
+  // wyzwalacze i stan oferty. Ma własny znacznik końca koszyka - niezależny
+  // od banera "Nie decydujesz dzisiaj?" i jego testu.
+  const escapeOffer = useCartEscapeOffer({
+    items,
+    hydrated,
+    contactUntouched,
+    hasOrderDraft: orderState !== null,
+    orderConfirmed,
+    foreignCode: Boolean(appliedDiscount && appliedDiscount.code !== PROMO_CODE),
+  });
   // Callback ref, nie useEffect: odpala się dokładnie wtedy, gdy węzeł trafia
   // do DOM (koszyk renderuje się dopiero po hydracji, więc zwykły efekt
   // zastawał pusty ref). Próg 0 + rootMargin -10% = "wjechał w kadr".
@@ -3089,6 +3129,7 @@ export default function CartPage() {
     <div className="cart-page">
       <div className="cart-page-gradient-bg" aria-hidden="true" />
       <PromoTopStrip productSlug={cartPromoSlug} variant="static" />
+      <EscapeOfferCartReveal controller={escapeOffer} payable={payableTotal} payableWithoutOffer={payableTotal + rescueAmount} />
       {cartEmailNudge.open ? (
         <PromoSaveModal
           variant="cart"
@@ -3443,8 +3484,12 @@ export default function CartPage() {
                     </div>
                   ) : null}
                   {rescueGrant && rescueAmount > 0 ? (
-                    <div className="cart-page-summary-row is-muted">
-                      <span>Rabat za zapisanie wyceny (-{rescueGrant.percent}%)</span>
+                    <div className={`cart-page-summary-row is-muted${rescueGrant.kind === "escape" ? " is-escape-offer" : ""}`}>
+                      <span>
+                        {rescueGrant.kind === "escape" && rescueGrant.expiresAtMs
+                          ? `Dodatkowy rabat (-${rescueGrant.percent}%), ważny ${formatEscapeDeadline(rescueGrant.expiresAtMs)}`
+                          : `Rabat za zapisanie wyceny (-${rescueGrant.percent}%)`}
+                      </span>
                       <span>-{formatPln(rescueAmount)}</span>
                     </div>
                   ) : null}
@@ -4071,6 +4116,12 @@ export default function CartPage() {
               </aside>
             </div>
 
+            {/* Koniec koszyka: dojście tutaj bez tknięcia formularza to chwila
+                na ofertę "dodatkowe 5%" (app/components/escape-offer.tsx). */}
+            {items.length > 0 && !orderState ? (
+              <div ref={escapeOffer.bottomRef} className="escape-offer-sentinel" aria-hidden="true" />
+            ) : null}
+
             {/* Ostatni blok koszyka: dla kogoś, kto przewinął całą stronę i
                 niczego nie wypełnił. Celowo TU, a nie nad formularzami -
                 wcześniej był wygodną furtką do odłożenia zakupu
@@ -4133,7 +4184,12 @@ export default function CartPage() {
           the summary sat below eight form fields, so the total and the way
           forward were both off-screen for most of the checkout. */}
       {hydrated && items.length > 0 && !orderConfirmed ? (
-        <div className="cart-sticky-bar" role="region" aria-label="Podsumowanie zamówienia">
+        <div
+          className={`cart-sticky-bar${escapeOffer.offer ? " has-escape-offer" : ""}`}
+          role="region"
+          aria-label="Podsumowanie zamówienia"
+        >
+          <EscapeOfferCountdownChip controller={escapeOffer} />
           <div className="cart-sticky-bar-total">
             <span>Razem</span>
             <strong>{formatPln(payableTotal)}</strong>

@@ -43,6 +43,7 @@ import PromoSaveModal from "./components/promo-save-modal";
 import { cartEmailOfferEligible, useCartEmailNudge } from "@/lib/cart-email-nudge";
 import PromoCountdownBanner from "./components/promo-countdown-banner";
 import PromoTopStrip from "./components/promo-top-strip";
+import { EscapeOfferReturnBar } from "./components/escape-offer";
 import {
   applyPriceAdjustment,
   setProductPriceAdjustmentsFromConfig,
@@ -65,6 +66,7 @@ import { openCrispChat } from "@/lib/crisp";
 import ChatNudge from "@/app/components/chat-nudge";
 import {
   getRescueGrant,
+  RESCUE_GRANT_EVENT,
   resolveResumeToken,
   setRescueGrant,
 } from "@/lib/rescue";
@@ -1907,6 +1909,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // visits (session starts with a saved cart, or ?wroc=1 from remarketing)
   // get a soft bar instead of a modal. Control arm never sees either.
   const [cartEmailBanner, setCartEmailBanner] = useState<"return_visit" | "rm_return" | null>(null);
+  // Pasek "dodatkowe 5%" (EscapeOfferReturnBar, test od 2026-10-03) ma
+  // pierwszeństwo przed paskiem "koszyk na e-mail": pyta CRM i pojawia się
+  // po ułamku sekundy, więc tamten czeka 1,5 s i rezygnuje, jeśli ten już
+  // jest (jeden pasek naraz). Grupa kontrolna dostaje pasek e-mail jak dotąd.
+  const escapeBarShownRef = useRef(false);
   const cartEmailNudge = useCartEmailNudge({ context: "configurator", hasItems: cartSummary.items > 0 });
   useEffect(() => {
     try {
@@ -1924,8 +1931,12 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     if (wroc) return; // handled by the ?wroc=1 effect below
     if (readCartItems().length === 0) return;
     if (!cartEmailOfferEligible()) return;
-    setCartEmailBanner("return_visit");
-    trackShopStep("cart_email_banner", "return_visit", {});
+    const timer = window.setTimeout(() => {
+      if (escapeBarShownRef.current) return;
+      setCartEmailBanner("return_visit");
+      trackShopStep("cart_email_banner", "return_visit", {});
+    }, 1500);
+    return () => window.clearTimeout(timer);
   }, []);
   // false until the first client-side read of the promo state - the banner
   // row below is held by a same-height placeholder in the meantime so the
@@ -1939,7 +1950,15 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // the single-product price topPromoPreview was originally fetched for.
   const [activeRescuePercent, setActiveRescuePercent] = useState(0);
   useEffect(() => {
-    setActiveRescuePercent(getRescueGrant()?.percent || 0);
+    // Rabat może dojść albo wygasnąć w trakcie wizyty (oferta "dodatkowe 5%").
+    const syncRescuePercent = () => setActiveRescuePercent(getRescueGrant()?.percent || 0);
+    syncRescuePercent();
+    window.addEventListener(RESCUE_GRANT_EVENT, syncRescuePercent);
+    const timer = window.setInterval(syncRescuePercent, 60000);
+    return () => {
+      window.removeEventListener(RESCUE_GRANT_EVENT, syncRescuePercent);
+      window.clearInterval(timer);
+    };
   }, []);
   const headerCartDiscountPercent =
     (topPromoActive && topPromoPreview?.type === "percent" ? topPromoPreview.value : 0) + activeRescuePercent;
@@ -1982,8 +2001,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       trackShopStep("rm_return", "cart_email_offer", { product: slug });
       // Symetrycznie do cart_email_banner_dismiss - bez tego w statystykach
       // były zamknięcia paska bez ani jednego pokazania (2026-09-26).
-      trackShopStep("cart_email_banner", "rm_return", { product: slug });
-      setCartEmailBanner("rm_return");
+      window.setTimeout(() => {
+        if (escapeBarShownRef.current) return;
+        trackShopStep("cart_email_banner", "rm_return", { product: slug });
+        setCartEmailBanner("rm_return");
+      }, 1500);
       return;
     }
     if (getPromoActivatedAt() !== null && !isPromoDeadlineExpired()) {
@@ -3404,6 +3426,12 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
               <strong>Witaj ponownie!</strong> Rabat SEZON20 wraca na 24 h — naliczy się w koszyku.
             </div>
           ) : null}
+          <EscapeOfferReturnBar
+            onVisible={() => {
+              escapeBarShownRef.current = true;
+              setCartEmailBanner(null);
+            }}
+          />
           {cartEmailBanner ? (
             <div className="cart-email-bar" role="status">
               <span>

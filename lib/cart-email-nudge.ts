@@ -11,6 +11,7 @@
 // Randomised 50/50 per device (getCartEmailArm) - the control arm never sees
 // it, which is what makes the conversion effect measurable in the CRM.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { runCartExitGate } from "@/lib/escape-offer";
 import { getCartEmailArm, hasCartEmailSaved } from "@/lib/promo-save";
 import { trackShopStep } from "@/lib/track-step";
 
@@ -124,7 +125,12 @@ export function useCartEmailNudge(options: {
     const onMouseOut = (event: MouseEvent) => {
       if (context !== "cart") return;
       if (event.relatedTarget || event.clientY > 8) return;
-      fire("cart_exit");
+      // Test "dodatkowe 5% dla wychodzących" (lib/escape-offer.ts): jeśli to
+      // wyjście obsłużyła tamta oferta, okno e-mail milczy. Grupa kontrolna
+      // i koszyki poza zasadami dostają je jak dotąd.
+      void runCartExitGate().then((handled) => {
+        if (!handled) fire("cart_exit");
+      });
     };
     document.addEventListener("mouseout", onMouseOut);
     return () => {

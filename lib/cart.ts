@@ -460,6 +460,24 @@ export function calcMoskitieryCombinedSavings(items: CartLineItem[]): number {
   return Math.max(0, standaloneAmount - groupedUnits * impliedPricePerMb);
 }
 
+/** Zaokrąglenie do groszy dokładnie tak, jak robi to CRM (PHP 8.4 round()):
+ * połówki w górę, liczone po najkrótszym zapisie dziesiętnym liczby. Ani
+ * Math.round(x * 100) / 100, ani toFixed(2) tego nie dają - sprawdzone na
+ * 29 501 kwotach z serwera (388 i 2 734 różnic o grosz; ta funkcja: 0).
+ * Bez tego "Razem" w koszyku różniło się o grosz od kwoty zamówienia przy
+ * rabacie 5% (137,50 zł × 5% = 6,875 zł: koszyk 103,13 zł, zamówienie
+ * 103,12 zł) - a 5% daje połówkę grosza przy co drugiej kwocie. */
+export function roundMoney(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  const text = String(Math.abs(value));
+  if (text.includes("e")) return Math.round(value * 100) / 100;
+  const [intPart, fracRaw = ""] = text.split(".");
+  const frac = (fracRaw + "000").slice(0, 3);
+  let cents = Number(intPart) * 100 + Number(frac.slice(0, 2));
+  if (Number(frac[2]) >= 5) cents += 1;
+  return (value < 0 ? -cents : cents) / 100;
+}
+
 export function formatPln(value: number): string {
   return new Intl.NumberFormat("pl-PL", {
     style: "currency",

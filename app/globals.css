@@ -20499,3 +20499,200 @@ html[data-theme="light"] .cart-item-specs dd { color: #132843; }
   .cart-item-specs { gap: 0.35rem 0.9rem; }
 }
 .cart-page-item-edit { white-space: nowrap; }
+
+/* =========================================================================
+   "Dodatkowe 5% dla wychodzących z koszykiem" (test od 2026-10-03,
+   app/components/escape-offer.tsx). Okno przy wyjściu korzysta ze stylów
+   .rescue-modal-*; tu jest reszta.
+   ========================================================================= */
+.escape-offer-sentinel {
+  height: 1px;
+}
+
+/* Wiersz rabatu w podsumowaniu koszyka. */
+.cart-page-summary-row.is-muted.is-escape-offer {
+  color: #ffb347;
+  font-weight: 700;
+}
+html[data-theme="light"] .cart-page-summary-row.is-muted.is-escape-offer {
+  color: #b45309;
+}
+
+/* Informacja u góry ekranu - nie zasłania strony, zamykana krzyżykiem. U góry,
+   bo dół telefonu zajmują pasek "Razem" i (u nowych klientów) zgoda na cookies. */
+.escape-offer-note {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: calc(env(safe-area-inset-top, 0px) + 0.6rem);
+  z-index: 120;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 0.8rem;
+  border-radius: 0.9rem;
+  border: 2px solid #ff9f0a;
+  background: #ffffff;
+  color: #16314e;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  box-shadow: 0 14px 34px rgba(16, 35, 54, 0.3);
+  animation: escape-offer-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (min-width: 761px) {
+  .escape-offer-note {
+    left: auto;
+    right: 1.25rem;
+    top: 1rem;
+    max-width: 420px;
+  }
+}
+.escape-offer-note-badge {
+  flex: 0 0 auto;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff9f0a, #ff6b00);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1.1;
+}
+.escape-offer-note-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.escape-offer-note-copy strong,
+.escape-offer-bar-copy strong {
+  color: #b45309;
+}
+.escape-offer-note-close {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: #16314e;
+  opacity: 0.7;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.25rem 0.35rem;
+  cursor: pointer;
+}
+
+/* Odliczanie w mobilnym pasku "Razem" (osobny wiersz nad kwotą). */
+.cart-sticky-bar.has-escape-offer {
+  flex-wrap: wrap;
+  row-gap: 0.45rem;
+}
+.escape-offer-chip {
+  flex: 0 0 100%;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.55rem;
+  background: #fff4e0;
+  color: #8a4b00;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  text-align: center;
+}
+.escape-offer-chip strong {
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 760px) {
+  .cart-page:has(.cart-sticky-bar.has-escape-offer) .cart-page-main {
+    padding-bottom: 7.8rem;
+  }
+}
+
+/* Okno przy wyjściu z koszyka (komputer). */
+.escape-offer-modal .rescue-modal-lead {
+  margin-bottom: 1rem;
+}
+.escape-offer-modal-cta {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0.8rem;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(120deg, #ff9f0a, #ff7b00);
+  color: #22150a;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* Karta pod nagłówkiem na stronach produktów (powrót z zapisanym koszykiem). */
+.escape-offer-bar {
+  position: fixed;
+  top: 4.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 96;
+  width: min(560px, calc(100vw - 1.5rem));
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.9rem;
+  border: 2px solid #ff9f0a;
+  background: #ffffff;
+  color: #16314e;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  box-shadow: 0 14px 34px rgba(16, 35, 54, 0.32);
+  animation: escape-offer-bar-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.escape-offer-bar-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.escape-offer-bar-cta {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  background: #ff9f0a;
+  color: #22150a;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+/* Telefon: nagłówek ma dwa rzędy, więc karta schodzi niżej, a przycisk
+   dostaje własny wiersz - tekst nie łamie się wtedy w wąską kolumnę. */
+@media (max-width: 760px) {
+  .escape-offer-bar {
+    top: 9.4rem;
+    flex-wrap: wrap;
+  }
+  .escape-offer-bar-copy {
+    flex: 1 1 0;
+  }
+  .escape-offer-bar-cta {
+    order: 5;
+    flex: 1 1 100%;
+    text-align: center;
+  }
+}
+@keyframes escape-offer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes escape-offer-bar-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .escape-offer-note,
+  .escape-offer-bar {
+    animation: none;
+  }
+}

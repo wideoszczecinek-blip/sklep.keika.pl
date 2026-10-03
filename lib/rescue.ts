@@ -22,14 +22,42 @@ const RESCUE_DISMISSED_KEY = "keika_shop_rescue_dismissed";
 export type RescueGrant = {
   quoteCode: string;
   percent: number;
+  /** "Dodatkowe 5% dla wychodzących" (lib/escape-offer.ts, 2026-10-03): ta
+   * sama pozycja rabatu, ale z terminem (zegar tej przeglądarki). Po terminie
+   * CRM i tak jej nie naliczy, więc sklep też przestaje ją pokazywać. Brak
+   * pola = dawny rabat za zapisanie wyceny (12 h pilnuje tylko CRM). */
+  expiresAtMs?: number;
+  kind?: "escape";
 };
 
-export function getRescueGrant(): RescueGrant | null {
+/** Leci po każdej zmianie rabatu (przyznanie, wykorzystanie) - koszyk i
+ * nagłówek przeliczają kwoty bez przeładowania strony. */
+export const RESCUE_GRANT_EVENT = "keika:rescue-grant-changed";
+
+function notifyRescueGrantChanged(): void {
+  try {
+    window.dispatchEvent(new Event(RESCUE_GRANT_EVENT));
+  } catch {
+    // brak window (SSR) - nie ma kogo powiadamiać
+  }
+}
+
+/** graceMs: ile po terminie rabat jeszcze "żyje" dla pytającego. Koszyk daje
+ * zapas tylko wtedy, gdy zamówienie jest już w trakcie płacenia (CRM ma na
+ * to własny, dłuższy zapas) - wszędzie indziej termin jest twardy. */
+export function getRescueGrant(options?: { graceMs?: number }): RescueGrant | null {
   try {
     const raw = window.localStorage.getItem(RESCUE_GRANT_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as RescueGrant;
     if (!parsed?.quoteCode || !parsed?.percent) return null;
+    if (
+      typeof parsed.expiresAtMs === "number" &&
+      parsed.expiresAtMs > 0 &&
+      Date.now() >= parsed.expiresAtMs + (options?.graceMs || 0)
+    ) {
+      return null;
+    }
     return parsed;
   } catch {
     return null;
@@ -42,6 +70,7 @@ export function setRescueGrant(grant: RescueGrant): void {
   } catch {
     // localStorage niedostępny - rabat ratunkowy widoczny tylko do końca wizyty.
   }
+  notifyRescueGrantChanged();
 }
 
 export function clearRescueGrant(): void {
@@ -50,6 +79,7 @@ export function clearRescueGrant(): void {
   } catch {
     // nic do zrobienia
   }
+  notifyRescueGrantChanged();
 }
 
 /** Once per browser tab - the modal only ever gets one shot per visit,
