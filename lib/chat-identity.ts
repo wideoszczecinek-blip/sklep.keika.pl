@@ -84,15 +84,17 @@ function pushContext(): void {
   if (!w.$crisp) return;
   const cart = cartSummary();
   const token = sessionToken();
+  // Klucze tylko z małych liter, cyfr, _ i - : inne Crisp odrzuca po cichu
+  // ("Invalid data" w konsoli, 02-03.10 - kontekst nie docierał do panelu).
   const rows: Array<[string, string]> = [
-    ["Ogląda", currentProduct() || "—"],
-    ["Koszyk", cart.positions > 0 ? `${cart.positions} poz. · ${cart.total.toFixed(2)} zł` : "pusty"],
+    ["oglada", currentProduct() || "—"],
+    ["koszyk", cart.positions > 0 ? `${cart.positions} poz. · ${cart.total.toFixed(2)} zł` : "pusty"],
   ];
   if (token) {
     // Dokładnie ta sama postać, w jakiej CRM pokazuje sesję (ostatnie 12
     // znaków) - dzięki temu dopasowanie rozmowy do wiersza w "Odwiedzający"
     // nie zależy od tego, czy identyfikator Crispa dojdzie do analityki.
-    rows.push(["Sesja w CRM", "…" + token.slice(-12)]);
+    rows.push(["sesja_crm", "…" + token.slice(-12)]);
   }
   try {
     w.$crisp.push(["set", "session:data", [rows]]);
