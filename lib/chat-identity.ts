@@ -1,5 +1,7 @@
 "use client";
 
+import { onCrispEvent } from "@/lib/crisp-events";
+
 /**
  * Powiązanie rozmowy na Crispie z konkretnym odwiedzającym w CRM
  * (właściciel, 2026-10-02: "chcę w tooltipie i w odwiedzających widzieć,
@@ -108,32 +110,23 @@ export function armChatIdentity(): void {
 
   // Crisp woła to z identyfikatorem sesji - ten sam, który obsługa widzi
   // przy rozmowie w swoim panelu.
-  w.$crisp.push([
-    "on",
-    "session:loaded",
-    (id: string) => {
-      reportSession(id);
-      pushContext();
-    },
-  ]);
+  onCrispEvent("session:loaded", (id) => {
+    if (typeof id === "string") reportSession(id);
+    pushContext();
+  });
 
   // "Pisze TERAZ" to coś innego niż "kiedyś kliknął w dymek" - meldujemy
   // każdą wiadomość, żeby CRM mógł pokazać świeżość rozmowy.
-  w.$crisp.push([
-    "on",
-    "message:sent",
-    () => {
-      track("chat_message", "od klienta", { crisp_session_id: lastReportedId, from: "customer" });
-      pushContext();
-    },
-  ]);
-  w.$crisp.push([
-    "on",
-    "message:received",
-    () => {
-      track("chat_message", "od nas", { crisp_session_id: lastReportedId, from: "operator" });
-    },
-  ]);
+  // Przez lib/crisp-events.ts - te same zdarzenia słucha automat
+  // oczekiwania (lib/chat-follow-up.ts), a Crisp trzyma jedną funkcję na
+  // zdarzenie.
+  onCrispEvent("message:sent", () => {
+    track("chat_message", "od klienta", { crisp_session_id: lastReportedId, from: "customer" });
+    pushContext();
+  });
+  onCrispEvent("message:received", () => {
+    track("chat_message", "od nas", { crisp_session_id: lastReportedId, from: "operator" });
+  });
 
   // Kontekst wrzucamy OD RAZU: Crisp odtwarza zakolejkowane polecenia po
   // starcie, więc nie czekamy na session:loaded. Gdyby klient czatu nigdy

@@ -27,6 +27,8 @@
  * każdy etap pokazuje się tylko raz.
  */
 
+import { onCrispEvent } from "@/lib/crisp-events";
+
 const WAITING_MS = 60 * 1000;
 const CONTACT_MS = 3 * 60 * 1000;
 /** Jak świeża musi być odpowiedź konsultanta, żeby automat się nie odzywał. */
@@ -164,11 +166,13 @@ export function armChatFollowUp(): void {
   armed = true;
   const w = window as CrispWindow;
   w.$crisp = w.$crisp || [];
-  w.$crisp.push(["on", "message:sent", onCustomerMessage]);
-  w.$crisp.push(["on", "message:received", onConsultantReply]);
+  // Przez lib/crisp-events.ts, nie bezpośrednio "on": Crisp trzyma jedną
+  // funkcję na zdarzenie i most czat↔CRM nadpisywał te poniżej (03.10).
+  onCrispEvent("message:sent", onCustomerMessage);
+  onCrispEvent("message:received", onConsultantReply);
   // Wskaźnik "konsultant pisze" - jedyny sygnał obecności, jaki Crisp daje
   // chatboxowi (potwierdzeń odczytu nie udostępnia).
-  w.$crisp.push(["on", "message:compose:received", onConsultantTyping]);
+  onCrispEvent("message:compose:received", onConsultantTyping);
   // Zamknięcie okna nie przerywa odliczania: klient może wrócić, a jeśli nie,
   // i tak lepiej, żeby po powrocie zastał prośbę o kontakt.
 }
