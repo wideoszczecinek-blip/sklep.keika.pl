@@ -9,6 +9,15 @@ import type { PublicOrder } from "@/lib/shop-public";
 import { clearCart, formatPln, NON_PRODUCT_POSITION_SLUGS, readCartItems } from "@/lib/cart";
 import { crmGetJson } from "@/lib/crm-get";
 import { trackShopStep } from "@/lib/track-step";
+import {
+  POST_PURCHASE_DEFAULTS,
+  POST_PURCHASE_EXAMPLE_CODE,
+  examplePostPurchaseOrder,
+  fillPostPurchaseText,
+  normalizePostPurchasePages,
+  type PostPurchasePages,
+  type PostPurchaseStateKey,
+} from "@/lib/post-purchase-pages";
 import type { CheckoutContact } from "@/app/components/stripe-payment-step";
 import StripeMethodStep, { type CreatedIntent, type StripeMethod } from "@/app/components/stripe-method-step";
 import { PaynowGdprNotice } from "@/app/components/paynow-gdpr";
@@ -81,11 +90,22 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   // nie jest czyszczony, więc "Zmień zamówienie" może wrócić wprost do niego.
   const [localCartCount, setLocalCartCount] = useState(0);
   const [siteContact, setSiteContact] = useState({ phone: "", email: "", hours: "" });
+  // Treści tej strony przychodzą z CRM (Sklep WWW → Strony); do czasu
+  // odpowiedzi i przy jej braku - wbudowane domyślne.
+  const [pages, setPages] = useState<PostPurchasePages>(POST_PURCHASE_DEFAULTS);
+  // Strona przykładowa (/zamowienie/przyklad?stan=…): właściciel ogląda z CRM
+  // każdy stan na sztucznym zamówieniu, bez prawdziwej transakcji.
+  const isExample = orderCode === POST_PURCHASE_EXAMPLE_CODE;
+  const exampleStateRaw = searchParams.get("stan") || "paid_now";
+  const exampleState: PostPurchaseStateKey = (
+    Object.keys(POST_PURCHASE_DEFAULTS.states).includes(exampleStateRaw) ? exampleStateRaw : "paid_now"
+  ) as PostPurchaseStateKey;
 
   useEffect(() => {
     setLocalCartCount(readCartItems().length);
-    crmGetJson<{ site?: { contact_phone?: string; contact_email?: string; contact_hours?: string } }>(`${CRM_PUBLIC_BASE}/site`)
+    crmGetJson<{ site?: { contact_phone?: string; contact_email?: string; contact_hours?: string }; pages?: unknown }>(`${CRM_PUBLIC_BASE}/site`)
       .then((json) => {
+        setPages(normalizePostPurchasePages(json?.pages));
         const site = json?.site || {};
         setSiteContact({
           phone: typeof site.contact_phone === "string" ? site.contact_phone : "",
@@ -125,9 +145,14 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
   // access_token - skip the phone/email prompt entirely and look the order
   // up straight away.
   useEffect(() => {
+    if (isExample) {
+      setOrder(examplePostPurchaseOrder(exampleState));
+      setJustPaid(exampleState === "paid_now");
+      return;
+    }
     if (accessToken) void lookupOrder("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken]);
+  }, [accessToken, isExample, exampleState]);
 
   // Landing here straight from Stripe's redirect (BLIK, wallets, ... - any
   // method that couldn't confirm inline on /koszyk) is the actual "payment
@@ -516,8 +541,8 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     const isFailed = !isPaid && ["failed", "canceled"].includes(order.payment_status);
     const isTransferPending = !isPaid && order.payment_status === "transfer_pending";
     const isCod = order.payment_provider === "cod" || order.payment_status === "cod_pending";
-    const waiting = p24Polling || paynowPolling;
-    const timedOut = !isPaid && (p24Timeout || paynowTimeout);
+    const waiting = p24Polling || paynowPolling || (isExample && exampleState === "waiting");
+    const timedOut = !isPaid && (p24Timeout || paynowTimeout || (isExample && exampleState === "timed_out"));
     const freeDelivery = !lines.charges.some((c) => c.slug === "koszt-dostawy") && note.delivery !== "" && !/osobisty/i.test(note.delivery);
     // "Zmień zamówienie": ten sam telefon/komputer ma jeszcze koszyk (nie
     // czyścimy go przed udaną płatnością) - wtedy wprost do /koszyk. Na
@@ -528,40 +553,31 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     const editHref = !canPayNow ? "" : localCartCount > 0 ? "/koszyk" : restoreSafe && order.quote_code ? `/wizyta/${encodeURIComponent(order.quote_code)}?do=koszyk` : "";
 
     const heroTone = isPaid ? "is-paid" : isFailed || timedOut ? "is-failed" : "";
-    const heroTitle = justPaid
-      ? "Dziękujemy, płatność doszła"
+    // Jeden klucz stanu -> treść z CRM (Sklep WWW → Strony). Kolejność
+    // warunków ta sama, co dotąd; zmieniło się tylko to, skąd bierzemy słowa.
+    const pageStateKey: PostPurchaseStateKey = justPaid
+      ? "paid_now"
       : isPaid
-        ? "Zamówienie opłacone"
+        ? "paid"
         : waiting
-          ? "Sprawdzamy płatność…"
+          ? "waiting"
           : timedOut
-            ? "Nie mamy jeszcze potwierdzenia z banku"
+            ? "timed_out"
             : isTransferPending
-              ? "Czekamy na Twój przelew"
+              ? "transfer_pending"
               : isCod
-                ? "Zamówienie przyjęte, zapłacisz kurierowi"
+                ? "cod"
                 : order.status === "cancelled"
-                  ? "Zamówienie anulowane"
+                  ? "cancelled"
                   : isFailed
-                    ? "Płatność nie przeszła"
-                    : "Zostało tylko opłacić zamówienie";
-    const heroText = justPaid
-      ? "Potwierdzenie wysłaliśmy na Twój e-mail. Zamówienie idzie do realizacji - o każdym kolejnym kroku damy znać."
-      : isPaid
-        ? `Status: ${order.friendly_status}.`
-        : waiting
-          ? "Zwykle trwa to kilka sekund. Nie zamykaj tej strony."
-          : timedOut
-            ? "Jeśli płatność została zatwierdzona, zaksięgujemy ją sama, gdy bank ją potwierdzi, i wyślemy e-mail. Nie płać drugi raz - a jeśli nic nie zatwierdziłeś, wybierz metodę poniżej."
-            : isTransferPending
-              ? "Dane do przelewu masz poniżej. Tytuł przelewu to numer zamówienia - po zaksięgowaniu wpłaty przekażemy je do realizacji."
-              : isCod
-                ? `Kurier pobierze ${formatPln(amountTotalNum)} przy dostawie.`
-                : order.status === "cancelled"
-                  ? "To zamówienie zostało anulowane. Jeśli to pomyłka, zadzwoń - pomożemy."
-                  : isFailed
-                    ? "Zamówienie jest zapisane i cena się nie zmieniła. Spróbuj jeszcze raz - tą samą albo inną metodą."
-                    : "Wszystko jest zapisane. Po opłaceniu przekazujemy zamówienie do produkcji.";
+                    ? "failed"
+                    : "unpaid";
+    const pageState = pages.states[pageStateKey];
+    const pageVars = { amount: formatPln(amountTotalNum), status: order.friendly_status, phone: siteContact.phone };
+    const heroTitle = fillPostPurchaseText(pageState.title, pageVars);
+    const heroText = fillPostPurchaseText(pageState.text, pageVars);
+    // Kroki "co dalej" - a gdy paczka już wyszła, nie opowiadamy o produkcji.
+    const nextSteps = order.shipments.length > 0 ? [] : pageState.steps;
 
     const renderCta = (label: string, onClick: () => void, disabled: boolean, hint?: string) => (
       <>
@@ -695,7 +711,12 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     };
 
     return (
-      <div className="order-page">
+      <div className={`order-page${isExample ? " is-example" : ""}`}>
+        {isExample ? (
+          <div className="order-example-banner" role="note">
+            Strona przykładowa - sztuczne zamówienie, nic tu nie jest prawdziwe. Treści edytujesz w CRM: Sklep WWW → Strony.
+          </div>
+        ) : null}
         <section className={`order-hero ${heroTone}`}>
           <div className="order-hero-icon" aria-hidden="true">
             {isPaid ? "✓" : isFailed || timedOut ? "!" : waiting ? <span className="order-p24-spinner" /> : "→"}
@@ -719,6 +740,23 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
             ) : null}
           </div>
         </section>
+
+        {nextSteps.length > 0 ? (
+          <section className="order-next-steps" aria-label="Co dalej">
+            <h2>Co dalej</h2>
+            <ol>
+              {nextSteps.map((step, index) => (
+                <li key={`${step.label}-${index}`}>
+                  <span className="order-next-step-n" aria-hidden="true">{index + 1}</span>
+                  <div>
+                    <strong>{step.label}</strong>
+                    {step.note ? <p>{step.note}</p> : null}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
 
         <section className="cart-basket-card order-items-card">
           <div className="cart-basket-toggle order-items-head">
@@ -913,17 +951,45 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
 
             {canPayNow ? <CartTrustBlock /> : null}
 
-            <p className="order-help">
-              {canPayNow ? "Płatność nie chce przejść? " : "Pytania o zamówienie? "}
-              {siteContact.phone ? (
-                <>
-                  Zadzwoń: <a href={`tel:${siteContact.phone.replace(/\s+/g, "")}`}>{siteContact.phone}</a>
-                </>
-              ) : null}
-              {siteContact.phone && siteContact.email ? " albo napisz: " : null}
-              {siteContact.email ? <a href={`mailto:${siteContact.email}`}>{siteContact.email}</a> : null}
-              {siteContact.hours ? <span className="order-help-hours"> ({siteContact.hours})</span> : null}
-            </p>
+            {/* Blok kontaktu (treść z CRM): klient po zakupie ma czuć, że po
+                drugiej stronie jest człowiek - telefon, e-mail i czat pod
+                ręką, z numerem zamówienia do podania. */}
+            <section className="order-contact-card">
+              <h2>{pages.contact.title}</h2>
+              <p>{fillPostPurchaseText(pages.contact.text, pageVars)}</p>
+              <div className="order-contact-actions">
+                {siteContact.phone ? (
+                  <a className="order-contact-btn" href={`tel:${siteContact.phone.replace(/\s+/g, "")}`} onClick={() => trackShopStep("order_contact", "tel", { order_code: orderCode })}>
+                    Zadzwoń: {siteContact.phone}
+                  </a>
+                ) : null}
+                {siteContact.email ? (
+                  <a
+                    className="order-contact-btn is-quiet"
+                    href={`mailto:${siteContact.email}?subject=${encodeURIComponent("Zamówienie " + (order.crm_order_number || order.order_code))}`}
+                    onClick={() => trackShopStep("order_contact", "mail", { order_code: orderCode })}
+                  >
+                    Napisz e-mail
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  className="order-contact-btn is-quiet"
+                  onClick={() => {
+                    trackShopStep("order_contact", "chat", { order_code: orderCode });
+                    void import("@/lib/crisp").then(({ openCrispChat }) =>
+                      openCrispChat(`Dzień dobry, piszę w sprawie zamówienia ${order.crm_order_number || order.order_code}`),
+                    );
+                  }}
+                >
+                  Napisz na czacie
+                </button>
+              </div>
+              <p className="order-contact-meta">
+                Numer zamówienia: <strong>{order.crm_order_number || order.order_code}</strong>
+                {siteContact.hours ? <span> · {siteContact.hours}</span> : null}
+              </p>
+            </section>
           </div>
 
           {canPayNow || waiting ? (

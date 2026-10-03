@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { POST_PURCHASE_DEFAULTS, normalizePostPurchasePages } from "@/lib/post-purchase-pages";
+import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
+import { crmGetJson } from "@/lib/crm-get";
 import Link from "next/link";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
 import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
@@ -91,6 +94,53 @@ export default function AccountPanel() {
   const codeInputRef = useRef<HTMLInputElement | null>(null);
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
   const { p24Settings, p24Banks } = usePaymentSettings();
+  // Treści panelu z CRM (Sklep WWW → Strony) + strona przykładowa
+  // (?przyklad=1), którą właściciel otwiera z CRM bez logowania.
+  const [pageCopy, setPageCopy] = useState(POST_PURCHASE_DEFAULTS.my_orders);
+  const [isExample, setIsExample] = useState(false);
+  useEffect(() => {
+    crmGetJson<{ pages?: unknown }>(`${CRM_PUBLIC_BASE}/site`)
+      .then((json) => setPageCopy(normalizePostPurchasePages(json?.pages).my_orders))
+      .catch(() => {});
+    try {
+      if (new URLSearchParams(window.location.search).has("przyklad")) {
+        setIsExample(true);
+        setPhoneMasked("600 *** 200");
+        setOrders([
+          {
+            order_code: "ZPRZYKLAD02",
+            crm_order_number: "131/10/2026",
+            product_label: "Plisa okienna",
+            friendly_status: "W realizacji",
+            payment_status: "paid",
+            amount_total: "289.00",
+            currency: "PLN",
+            created_at: "2026-10-02 09:40:00",
+            paid_at: "2026-10-02 09:41:00",
+            summary_text: "Plisa okienna 600 × 1200 mm - 2 szt.",
+            estimated_completion: "do 9 października",
+            shipments: [],
+          },
+          {
+            order_code: "ZPRZYKLAD01",
+            crm_order_number: "123/10/2026",
+            product_label: "Moskitiera ramkowa",
+            friendly_status: "Wysłane",
+            payment_status: "paid",
+            amount_total: "119.60",
+            currency: "PLN",
+            created_at: "2026-09-24 10:15:00",
+            paid_at: "2026-09-24 10:16:00",
+            summary_text: "Moskitiera ramkowa 650 × 1300 mm - 1 szt.",
+            shipments: [{ carrier: "DPD Kurier", tracking_number: "1052124944988U", tracking_link: "https://tracktrace.dpd.com.pl/parcelDetails?p1=1052124944988U" }],
+          },
+        ]);
+        setStep("panel");
+      }
+    } catch {
+      // brak window.location - zostaje zwykły panel
+    }
+  }, []);
 
   // Płatność z panelu idzie przez Przelewy24 (niższa prowizja niż karty) -
   // pokazujemy tylko kafelki P24 włączone w CRM.
@@ -299,11 +349,17 @@ export default function AccountPanel() {
             </button>
           </div>
         </div>
-        <h2>Twoje zamówienia ({orders.length})</h2>
-        {error ? <div className={styles.errorBox}>{error}</div> : null}
-        {orders.length === 0 ? (
-          <p className={styles.sectionIntro}>Nie mamy jeszcze zamówień przypisanych do tego numeru.</p>
+        {isExample ? (
+          <div className="order-example-banner" role="note" style={{ marginBlock: "0.8rem" }}>
+            Strona przykładowa - sztuczne zamówienia. Treści edytujesz w CRM: Sklep WWW → Strony.
+          </div>
         ) : null}
+        <h2>
+          {pageCopy.title} ({orders.length})
+        </h2>
+        <p className={styles.sectionIntro}>{pageCopy.text}</p>
+        {error ? <div className={styles.errorBox}>{error}</div> : null}
+        {orders.length === 0 ? <p className={styles.sectionIntro}>{pageCopy.empty_text}</p> : null}
 
         <div className="account-orders">
           {orders.map((order) => {
@@ -429,7 +485,7 @@ export default function AccountPanel() {
 
   return (
     <section className={styles.verifyCard}>
-      <h2>Moje zamówienia</h2>
+      <h2>{pageCopy.title}</h2>
       <p className={styles.sectionIntro}>
         {step === "phone"
           ? "Podaj numer telefonu, na który składałeś zamówienie - resztę podpowiemy."
