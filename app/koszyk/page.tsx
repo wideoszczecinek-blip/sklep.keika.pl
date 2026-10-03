@@ -133,6 +133,8 @@ type CodSmsStartResponse = {
   ok: boolean;
   verification_token?: string;
   error?: string;
+  /** Serwer nie wysłał drugiego SMS-a (kod sprzed chwili nadal ważny). */
+  notice?: string;
 };
 
 type CodSmsVerifyResponse = {
@@ -1568,7 +1570,7 @@ export default function CartPage() {
       if (!json.ok || !json.verification_token) {
         throw new Error(json.error || "Nie udało się wysłać kodu SMS.");
       }
-      setCodSms({ status: "sent", token: json.verification_token, code: "", error: "" });
+      setCodSms({ status: "sent", token: json.verification_token, code: "", error: json.notice || "" });
       trackCheckoutIssue("checkout_cod_sms_sent", "cod");
     } catch (smsError) {
       const message = smsError instanceof Error ? smsError.message : "Nie udało się wysłać kodu SMS.";
