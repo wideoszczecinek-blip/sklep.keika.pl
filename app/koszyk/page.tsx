@@ -134,12 +134,16 @@ type OrderCreateResponse = {
   error?: string;
 };
 
+/** Tyle samo, co bezpiecznik w CRM (cod_sms_start.php). */
+const COD_RESEND_WAIT_MS = 60 * 1000;
+
 type CodSmsStartResponse = {
   ok: boolean;
   verification_token?: string;
   error?: string;
   /** Serwer nie wysłał drugiego SMS-a (kod sprzed chwili nadal ważny). */
   notice?: string;
+  reused?: boolean;
 };
 
 type CodSmsVerifyResponse = {
@@ -805,6 +809,25 @@ export default function CartPage() {
   const [nipLookupError, setNipLookupError] = useState("");
   const lastLookedUpNip = useRef("");
 
+  // Okno kodu (2026-10-03): kiedy wyszedł ostatni kod (odliczanie do
+  // "Wyślij nowy kod" - serwer i tak nie wyśle drugiego w ciągu minuty)
+  // i poprawa numeru bez zamykania okna. Dane z 02-03.10: SMS dochodził
+  // w 4-6 s, a klienci i tak go nie mieli - najpewniej literówka w numerze,
+  // której w oknie nie było jak poprawić.
+  const [codSentAt, setCodSentAt] = useState(0);
+  const [codNow, setCodNow] = useState(0);
+  const [codPhoneEdit, setCodPhoneEdit] = useState<string | null>(null);
+  useEffect(() => {
+    if (!codSentAt) return;
+    setCodNow(Date.now());
+    const id = window.setInterval(() => {
+      const now = Date.now();
+      setCodNow(now);
+      if (now - codSentAt > COD_RESEND_WAIT_MS) window.clearInterval(id);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [codSentAt]);
+  const codResendIn = codSentAt ? Math.max(0, Math.ceil((COD_RESEND_WAIT_MS - (codNow - codSentAt)) / 1000)) : 0;
   const [codSms, setCodSms] = useState<{
     status: "idle" | "sending" | "sent" | "verifying" | "verified" | "error";
     token: string;
@@ -1621,7 +1644,8 @@ export default function CartPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, deliveryMethod, appliedDiscount, expressSelected, paymentConfirmed, rescueSnapshotKey]);
 
-  async function sendCodSms() {
+  async function sendCodSms(phoneOverride?: string) {
+    const phone = phoneOverride ?? form.phone;
     setCodSms({ status: "sending", token: "", code: "", error: "" });
     try {
       // Same total the "Razem" row shows once cash-on-delivery is picked -
@@ -1642,7 +1666,7 @@ export default function CartPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: form.phone,
+          phone,
           name: form.firstName,
           amount: codTotal.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         }),
@@ -1652,7 +1676,14 @@ export default function CartPage() {
         throw new Error(json.error || "Nie udało się wysłać kodu SMS.");
       }
       setCodSms({ status: "sent", token: json.verification_token, code: "", error: json.notice || "" });
-      trackCheckoutIssue("checkout_cod_sms_sent", "cod");
+      if (json.reused) {
+        // Serwer nie wysłał nowego SMS-a - liczymy to osobno, żeby
+        // statystyki nie pokazywały trzech SMS-ów tam, gdzie poszedł jeden.
+        trackCheckoutIssue("checkout_cod_sms_reused", "cod");
+      } else {
+        setCodSentAt(Date.now());
+        trackCheckoutIssue("checkout_cod_sms_sent", "cod");
+      }
     } catch (smsError) {
       const message = smsError instanceof Error ? smsError.message : "Nie udało się wysłać kodu SMS.";
       setCodSms({ status: "error", token: "", code: "", error: message });
@@ -4084,7 +4115,7 @@ export default function CartPage() {
                               {codSms.status === "verifying" ? "Sprawdzamy…" : "Potwierdź"}
                             </button>
                           </div>
-                          <button type="button" className="cart-cod-resend" onClick={() => void sendCodSms()}>
+                          <button type="button" className="cart-cod-resend" onClick={() => void sendCodSms()} disabled={codResendIn > 0}>
                             Wyślij nowy kod
                           </button>
                         </div>
@@ -4269,9 +4300,54 @@ export default function CartPage() {
               )
             ) : (
               <>
-                <p>
-                  Wpisz kod SMS wysłany na numer <strong>{form.phone}</strong>.
-                </p>
+                {codPhoneEdit === null ? (
+                  <p className="cod-sms-phone-line">
+                    Wpisz kod SMS wysłany na numer <strong>{form.phone}</strong>.{" "}
+                    <button
+                      type="button"
+                      className="cod-sms-phone-fix"
+                      onClick={() => {
+                        setCodPhoneEdit(form.phone);
+                        trackCheckoutIssue("checkout_cod_phone_fix", "open");
+                      }}
+                    >
+                      Zły numer? Popraw
+                    </button>
+                  </p>
+                ) : (
+                  <form
+                    className="cod-sms-phone-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const next = codPhoneEdit.trim();
+                      if (next.replace(/\D/g, "").length < 9) return;
+                      setForm((current) => ({ ...current, phone: next }));
+                      setCodPhoneEdit(null);
+                      setCodSentAt(0);
+                      trackCheckoutIssue("checkout_cod_phone_fix", next === form.phone ? "same" : "changed");
+                      void sendCodSms(next);
+                    }}
+                  >
+                    <label htmlFor="cod-sms-phone-input">Numer telefonu</label>
+                    <div className="cod-sms-phone-row">
+                      <input
+                        id="cod-sms-phone-input"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        autoFocus
+                        value={codPhoneEdit}
+                        onChange={(event) => setCodPhoneEdit(event.target.value)}
+                      />
+                      <button type="submit" className="cart-page-checkout-cta" disabled={codPhoneEdit.replace(/\D/g, "").length < 9}>
+                        Wyślij kod
+                      </button>
+                    </div>
+                    <button type="button" className="cart-cod-resend" onClick={() => setCodPhoneEdit(null)}>
+                      Anuluj
+                    </button>
+                  </form>
+                )}
                 {codSms.error ? <div className="cart-checkout-error">{codSms.error}</div> : null}
                 <input
                   inputMode="numeric"
@@ -4293,8 +4369,8 @@ export default function CartPage() {
                 >
                   {codSms.status === "verifying" ? "Sprawdzamy…" : "Potwierdź kod"}
                 </button>
-                <button type="button" className="cart-cod-resend" onClick={() => void sendCodSms()}>
-                  Wyślij nowy kod
+                <button type="button" className="cart-cod-resend" onClick={() => void sendCodSms()} disabled={codResendIn > 0}>
+                  {codResendIn > 0 ? `Nowy kod możesz wysłać za ${codResendIn} s` : "Wyślij nowy kod"}
                 </button>
               </>
             )}
