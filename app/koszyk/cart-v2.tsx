@@ -19,6 +19,7 @@ import Link from "next/link";
 import { Component, useEffect, useRef, useState, type Dispatch, type FocusEvent, type ReactNode, type SetStateAction } from "react";
 import { formatPln, type CartLineItem } from "@/lib/cart";
 import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
+import PaymentTrustTicker from "@/app/components/payment-trust-ticker";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
@@ -781,6 +782,9 @@ export default function CartV2(props: CartV2Props) {
           <p className="cv2-pay-due">
             Do zapłaty <strong>{formatPln(p.payableTotal)}</strong>
           </p>
+          {/* Pasek zaufania pod kwotą (właściciel, 2026-10-03) - ten sam co
+              w starym koszyku, żeby obie grupy testu go miały. */}
+          <PaymentTrustTicker />
           {p.isCod ? p.codBlock : p.paymentChooser()}
         </>
       ) : (
