@@ -198,6 +198,7 @@ import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 import MoskitieryQuickPrice from "@/features/moskitiery-ramkowe/QuickPrice";
+import MoskitieryHeroPhotos from "@/features/moskitiery-ramkowe/HeroPhotos";
 
 type HeroMedia = {
   type: "image" | "video";
@@ -3788,6 +3789,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 // whole block below (CLS 2026-09-14). Edit the copy in the CRM.
                                 "Moskitiera okienna na aluminiowej ramie. Produkowana na wymiar - idealnie pod Twoje okno. Cena za 1 metr bieżący obwodu."}
                             </p>
+
+                            {/* Zdjęcia zaraz pod pierwszym akapitem (właściciel,
+                                2026-10-03): wcześniej pierwsze zdjęcie produktu
+                                było dopiero pod opisem, prawie dwa ekrany niżej. */}
+                            <MoskitieryHeroPhotos />
                             {/* Mobile-only primary CTA (audit 2026-09-13): on a
                                 phone the configurator sits below the whole
                                 description, and the only strong button above

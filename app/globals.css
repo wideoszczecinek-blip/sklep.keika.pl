@@ -20696,3 +20696,147 @@ html[data-theme="light"] .cart-page-summary-row.is-muted.is-escape-offer {
     animation: none;
   }
 }
+
+/* Karuzela zdjęć moskitier pod pierwszym akapitem (2026-10-03). Przewijanie
+   palcem z podglądem następnego zdjęcia, kropki i licznik. */
+.mosk-hero-photos {
+  position: relative;
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.2rem 0 0.4rem;
+}
+.mosk-hero-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 88%;
+  column-gap: 0.55rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.mosk-hero-track::-webkit-scrollbar { display: none; }
+.mosk-hero-slide {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 0;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #eef2f6;
+  scroll-snap-align: start;
+  cursor: zoom-in;
+  box-shadow: 0 10px 24px -16px rgba(19, 40, 67, 0.55);
+}
+.mosk-hero-slide img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}
+.mosk-hero-slide.is-contain { background: #fff; }
+.mosk-hero-slide.is-contain img { object-fit: contain; }
+.mosk-hero-slide:focus-visible {
+  outline: 3px solid rgba(243, 181, 70, 0.9);
+  outline-offset: 2px;
+}
+.mosk-hero-tag {
+  position: absolute;
+  left: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(15, 36, 64, 0.78);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.mosk-hero-count {
+  position: absolute;
+  top: 0.6rem;
+  left: calc(88% - 0.6rem);
+  transform: translateX(-100%);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #132843;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.mosk-hero-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.mosk-hero-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(19, 40, 67, 0.2);
+  cursor: pointer;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.mosk-hero-dot.is-active {
+  width: 1.2rem;
+  background: #007f7b;
+}
+@media (min-width: 761px) {
+  .mosk-hero-track { grid-auto-columns: calc(50% - 0.3rem); }
+  .mosk-hero-count { left: calc(100% - 0.6rem); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mosk-hero-dot { transition: none; }
+}
+
+/* Okno kodu SMS: poprawa numeru i odliczanie do ponownej wysyłki (2026-10-03). */
+.cod-sms-phone-fix {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #6fe3bf;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+html[data-theme="light"] .cod-sms-phone-fix { color: #007f7b; }
+.cod-sms-phone-form {
+  display: grid;
+  gap: 0.45rem;
+}
+.cod-sms-phone-form label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: inherit;
+  opacity: 0.8;
+}
+.cod-sms-phone-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+}
+.cod-sms-modal-shell .cod-sms-phone-row input {
+  letter-spacing: 0.02em;
+  text-align: left;
+  font-size: 1rem;
+}
+.cod-sms-phone-row .cart-page-checkout-cta {
+  margin: 0;
+  padding-inline: 1rem;
+  white-space: nowrap;
+}
+.cart-cod-resend:disabled {
+  text-decoration: none;
+  cursor: default;
+  opacity: 0.75;
+}
