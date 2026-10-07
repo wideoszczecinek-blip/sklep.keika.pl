@@ -1432,6 +1432,58 @@ export default function ConfiguratorPanel({
       ) : null}
 
       {/* KROK 3: kolor mechanizmu */}
+      {/* Alert zmiany montażu - na najwyższym poziomie, bo montaż można zmienić
+          na każdym etapie (wcześniej siedział w gałęzi po wyborze koloru). */}
+      {pendingMount && typeof document !== "undefined"
+        ? (() => {
+            const toNonInvasive = isPlisyMountNonInvasive(pendingMount.id) || isPlisyMountNonInvasive(pendingMount.label);
+            const cancel = () => {
+              trackShopStep("mount_change_cancel", pendingMount.label, { positions: positions.length });
+              setPendingMount(null);
+            };
+            return createPortal(
+              <div className="instruction-modal plisy-mount-alert" role="alertdialog" aria-modal="true" aria-labelledby="plisy-mount-alert-title" onClick={cancel}>
+                <div className="instruction-modal-shell plisy-mount-alert-shell" onClick={(event) => event.stopPropagation()}>
+                  <span className="plisy-mount-alert-icon" aria-hidden="true">!</span>
+                  <h3 id="plisy-mount-alert-title">Inny montaż = inne wymiary</h3>
+                  <p>
+                    Wpisane wymiary są do montażu <strong>{selectedMount ? plisyMountLabel(selectedMount) : "poprzedniego"}</strong>.
+                    Przy montażu <strong>{plisyMountLabel(pendingMount)}</strong> okno mierzy się inaczej:
+                  </p>
+                  <p className="plisy-mount-alert-how">
+                    {toNonInvasive
+                      ? "szerokość od kreseczki do kreseczki na skrzydle, a wysokość to całe skrzydło."
+                      : "w świetle szyby, od połowy uszczelki do połowy uszczelki."}
+                  </p>
+                  <p>
+                    Po zmianie usuniemy wpisane wymiary
+                    {positions.length === 2 ? " obu okien" : positions.length > 2 ? ` wszystkich ${positions.length} okien` : ""} – trzeba je
+                    zmierzyć i wpisać od nowa.
+                  </p>
+                  <div className="plisy-mount-alert-actions">
+                    <button
+                      type="button"
+                      className="plisy-mount-alert-confirm"
+                      onClick={() => {
+                        trackShopStep("mount_change_confirm", pendingMount.label, { positions: positions.length });
+                        const option = pendingMount;
+                        setPendingMount(null);
+                        applyMountChange(option);
+                      }}
+                    >
+                      Zmieniam montaż, wpiszę nowe wymiary
+                    </button>
+                    <button type="button" className="plisy-mount-alert-cancel" onClick={cancel}>
+                      Zostaję przy obecnym montażu
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            );
+          })()
+        : null}
+
       <section className={`hero-product-step-accordion hero-product-step-accordion--hardware-color ${stepOneCollapsed ? "is-collapsed" : ""}`}>
         <button
           type="button"
@@ -1690,56 +1742,6 @@ export default function ConfiguratorPanel({
               </div>
             </div>
           </section>
-
-          {pendingMount && typeof document !== "undefined"
-            ? (() => {
-                const toNonInvasive = isPlisyMountNonInvasive(pendingMount.id) || isPlisyMountNonInvasive(pendingMount.label);
-                const cancel = () => {
-                  trackShopStep("mount_change_cancel", pendingMount.label, { positions: positions.length });
-                  setPendingMount(null);
-                };
-                return createPortal(
-                  <div className="instruction-modal plisy-mount-alert" role="alertdialog" aria-modal="true" aria-labelledby="plisy-mount-alert-title" onClick={cancel}>
-                    <div className="instruction-modal-shell plisy-mount-alert-shell" onClick={(event) => event.stopPropagation()}>
-                      <span className="plisy-mount-alert-icon" aria-hidden="true">!</span>
-                      <h3 id="plisy-mount-alert-title">Inny montaż = inne wymiary</h3>
-                      <p>
-                        Wpisane wymiary są do montażu <strong>{selectedMount ? plisyMountLabel(selectedMount) : "poprzedniego"}</strong>.
-                        Przy montażu <strong>{plisyMountLabel(pendingMount)}</strong> okno mierzy się inaczej:
-                      </p>
-                      <p className="plisy-mount-alert-how">
-                        {toNonInvasive
-                          ? "szerokość od kreseczki do kreseczki na skrzydle, a wysokość to całe skrzydło."
-                          : "w świetle szyby, od połowy uszczelki do połowy uszczelki."}
-                      </p>
-                      <p>
-                        Po zmianie usuniemy wpisane wymiary
-                        {positions.length === 2 ? " obu okien" : positions.length > 2 ? ` wszystkich ${positions.length} okien` : ""} – trzeba je
-                        zmierzyć i wpisać od nowa.
-                      </p>
-                      <div className="plisy-mount-alert-actions">
-                        <button
-                          type="button"
-                          className="plisy-mount-alert-confirm"
-                          onClick={() => {
-                            trackShopStep("mount_change_confirm", pendingMount.label, { positions: positions.length });
-                            const option = pendingMount;
-                            setPendingMount(null);
-                            applyMountChange(option);
-                          }}
-                        >
-                          Zmieniam montaż, wpiszę nowe wymiary
-                        </button>
-                        <button type="button" className="plisy-mount-alert-cancel" onClick={cancel}>
-                          Zostaję przy obecnym montażu
-                        </button>
-                      </div>
-                    </div>
-                  </div>,
-                  document.body,
-                );
-              })()
-            : null}
 
           {collectionInfoGroup && typeof document !== "undefined"
             ? createPortal(
