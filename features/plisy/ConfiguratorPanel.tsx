@@ -288,6 +288,9 @@ export default function ConfiguratorPanel({
   // przyciskami (18 z 22 osób wychodziło na nim ze strony): wymiary czyścimy
   // od razu, a przy polach pokazujemy, jak mierzyć pod nowy montaż.
   const [remeasureHint, setRemeasureHint] = useState<string | null>(null);
+  // Montaż, na który klient chce przejść, mając już wpisane wymiary - czeka
+  // na potwierdzenie w alercie (handleMountChange).
+  const [pendingMount, setPendingMount] = useState<MountOption | null>(null);
   // Krok 1 (montaż) startuje rozwinięty przy świeżej konfiguracji - montaż
   // przykręcany jest wybrany domyślnie, ale klient ma go widzieć. Edycja z
   // koszyka, i wejście z szybkiej wyceny (wymiary już są), otwiera go
@@ -804,11 +807,22 @@ export default function ConfiguratorPanel({
 
   /** Klient zmienia sposób montażu. Jeśli ma już wymiary, to są wymiary do
    * innego montażu (bezinwazyjny: szerokość od kreseczki do kreseczki i cała
-   * wysokość skrzydła; przykręcany: światło szyby). Od 2026-10-01 bez
-   * blokującego alertu: czyścimy wymiary od razu, a przy polach mówimy, jak
-   * zmierzyć okno pod nowy montaż (właściciel zatwierdził po audycie). */
+   * wysokość skrzydła; przykręcany: światło szyby). Od 2026-10-07 znowu
+   * wyraźny alert PRZED zmianą (właściciel: "musi dostać wyraźny alert, że
+   * przy zmianie montażu potrzebujemy innych wymiarów") - od 01.10 wymiary
+   * znikały po cichu, z samą podpowiedzią przy polach, której klient
+   * stojący przy kroku montażu nie widział. Bez wymiarów zmiana od razu. */
   function handleMountChange(option: MountOption) {
     if (option.id === selectedMountId) return;
+    if (hasSizes || widthNum > 0 || heightNum > 0) {
+      trackShopStep("mount_change_prompt", option.label, { positions: positions.length });
+      setPendingMount(option);
+      return;
+    }
+    applyMountChange(option);
+  }
+
+  function applyMountChange(option: MountOption) {
     trackShopStep("select_mount_type", option.label, { option_id: option.id });
     setSelectedMountId(option.id);
     const nonInvasive = isPlisyMountNonInvasive(option.id) || isPlisyMountNonInvasive(option.label);
@@ -1452,6 +1466,12 @@ export default function ConfiguratorPanel({
           </span>
         </button>
         <div className="hero-product-step-body">
+          {/* Na tym kroku stawało najwięcej osób zaraz po cenie (audyt 1-7.10)
+              - wybór był bez żadnej wskazówki. */}
+          <p className="hero-product-config-hint">
+            To kolor listew na górze i na dole plisy. Najlepiej dobrać go do ramy okna: do białego okna biel, do drewnopodobnego
+            złoty dąb, orzech albo winchester, do grafitowego antracyt.
+          </p>
           <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid hero-product-hardware-color-grid">
             {profile.hardware.map((option, index) => {
               const isActive = option.id === selectedHardwareId;
@@ -1670,6 +1690,56 @@ export default function ConfiguratorPanel({
               </div>
             </div>
           </section>
+
+          {pendingMount && typeof document !== "undefined"
+            ? (() => {
+                const toNonInvasive = isPlisyMountNonInvasive(pendingMount.id) || isPlisyMountNonInvasive(pendingMount.label);
+                const cancel = () => {
+                  trackShopStep("mount_change_cancel", pendingMount.label, { positions: positions.length });
+                  setPendingMount(null);
+                };
+                return createPortal(
+                  <div className="instruction-modal plisy-mount-alert" role="alertdialog" aria-modal="true" aria-labelledby="plisy-mount-alert-title" onClick={cancel}>
+                    <div className="instruction-modal-shell plisy-mount-alert-shell" onClick={(event) => event.stopPropagation()}>
+                      <span className="plisy-mount-alert-icon" aria-hidden="true">!</span>
+                      <h3 id="plisy-mount-alert-title">Inny montaż = inne wymiary</h3>
+                      <p>
+                        Wpisane wymiary są do montażu <strong>{selectedMount ? plisyMountLabel(selectedMount) : "poprzedniego"}</strong>.
+                        Przy montażu <strong>{plisyMountLabel(pendingMount)}</strong> okno mierzy się inaczej:
+                      </p>
+                      <p className="plisy-mount-alert-how">
+                        {toNonInvasive
+                          ? "szerokość od kreseczki do kreseczki na skrzydle, a wysokość to całe skrzydło."
+                          : "w świetle szyby, od połowy uszczelki do połowy uszczelki."}
+                      </p>
+                      <p>
+                        Po zmianie usuniemy wpisane wymiary
+                        {positions.length === 2 ? " obu okien" : positions.length > 2 ? ` wszystkich ${positions.length} okien` : ""} – trzeba je
+                        zmierzyć i wpisać od nowa.
+                      </p>
+                      <div className="plisy-mount-alert-actions">
+                        <button
+                          type="button"
+                          className="plisy-mount-alert-confirm"
+                          onClick={() => {
+                            trackShopStep("mount_change_confirm", pendingMount.label, { positions: positions.length });
+                            const option = pendingMount;
+                            setPendingMount(null);
+                            applyMountChange(option);
+                          }}
+                        >
+                          Zmieniam montaż, wpiszę nowe wymiary
+                        </button>
+                        <button type="button" className="plisy-mount-alert-cancel" onClick={cancel}>
+                          Zostaję przy obecnym montażu
+                        </button>
+                      </div>
+                    </div>
+                  </div>,
+                  document.body,
+                );
+              })()
+            : null}
 
           {collectionInfoGroup && typeof document !== "undefined"
             ? createPortal(

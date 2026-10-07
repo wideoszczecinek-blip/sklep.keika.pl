@@ -19858,6 +19858,66 @@ html[data-theme="dark"] .cart-pay-tile-count {
   text-decoration: underline;
   cursor: pointer;
 }
+/* Alert przy zmianie montażu z wpisanymi wymiarami (2026-10-07). Ta sama
+   oprawa co okno instrukcji pomiaru, akcent ostrzegawczy (bursztyn). */
+.plisy-mount-alert { z-index: 120; }
+.plisy-mount-alert-shell {
+  width: min(94vw, 460px);
+  border-color: rgba(245, 158, 11, 0.6);
+  text-align: left;
+}
+.plisy-mount-alert-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  margin-bottom: 0.6rem;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #1c1203;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+.plisy-mount-alert-shell p {
+  margin: 0 0 0.6rem;
+  color: rgba(240, 248, 255, 0.9);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.plisy-mount-alert-shell strong { color: #fff; }
+.plisy-mount-alert-shell .plisy-mount-alert-how {
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde8c2;
+}
+.plisy-mount-alert-actions {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+.plisy-mount-alert-actions button {
+  min-height: 2.9rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0.75rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.plisy-mount-alert-confirm {
+  border: 0;
+  background: #f59e0b;
+  color: #1c1203;
+}
+.plisy-mount-alert-cancel {
+  border: 1px solid rgba(194, 228, 255, 0.46);
+  background: transparent;
+  color: #eef8ff;
+}
+.plisy-mount-alert-actions button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
 .plisy-sag-notice.is-info {
   border-color: rgba(245, 158, 11, 0.42);
   background: rgba(245, 158, 11, 0.07);
