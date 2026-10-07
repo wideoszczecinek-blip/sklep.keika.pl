@@ -19863,9 +19863,12 @@ html[data-theme="dark"] .cart-pay-tile-count {
 .plisy-mount-alert { z-index: 120; }
 .plisy-mount-alert-shell {
   width: min(94vw, 460px);
-  border-color: rgba(245, 158, 11, 0.6);
+  border: 2px solid #f59e0b;
+  background: #ffffff;
+  color: #16314e;
   text-align: left;
 }
+.plisy-mount-alert-shell h3 { color: #0f172a; }
 .plisy-mount-alert-icon {
   display: inline-grid;
   place-items: center;
@@ -19880,17 +19883,18 @@ html[data-theme="dark"] .cart-pay-tile-count {
 }
 .plisy-mount-alert-shell p {
   margin: 0 0 0.6rem;
-  color: rgba(240, 248, 255, 0.9);
+  color: #334155;
   font-size: 0.95rem;
   line-height: 1.5;
 }
-.plisy-mount-alert-shell strong { color: #fff; }
+.plisy-mount-alert-shell strong { color: #0f172a; }
 .plisy-mount-alert-shell .plisy-mount-alert-how {
   padding: 0.6rem 0.75rem;
   border-radius: 0.6rem;
   border: 1px solid rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.12);
-  color: #fde8c2;
+  background: #fff7e6;
+  color: #7a4a05;
+  font-weight: 600;
 }
 .plisy-mount-alert-actions {
   display: grid;
@@ -19912,11 +19916,11 @@ html[data-theme="dark"] .cart-pay-tile-count {
   color: #1c1203;
 }
 .plisy-mount-alert-cancel {
-  border: 1px solid rgba(194, 228, 255, 0.46);
-  background: transparent;
-  color: #eef8ff;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #16314e;
 }
-.plisy-mount-alert-actions button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.plisy-mount-alert-actions button:focus-visible { outline: 3px solid #16314e; outline-offset: 2px; }
 
 .plisy-sag-notice.is-info {
   border-color: rgba(245, 158, 11, 0.42);
