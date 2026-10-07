@@ -19862,7 +19862,9 @@ html[data-theme="dark"] .cart-pay-tile-count {
    oprawa co okno instrukcji pomiaru, akcent ostrzegawczy (bursztyn). */
 .plisy-mount-alert { z-index: 120; }
 .plisy-mount-alert-shell {
-  width: min(94vw, 460px);
+  width: min(96vw, 620px);
+  max-height: 94vh;
+  padding-bottom: 0;
   border: 2px solid #f59e0b;
   background: #ffffff;
   color: #16314e;
@@ -19896,10 +19898,19 @@ html[data-theme="dark"] .cart-pay-tile-count {
   color: #7a4a05;
   font-weight: 600;
 }
+.plisy-mount-alert-guide {
+  margin: 0.4rem 0 0.2rem;
+}
+/* Przyciski zawsze widoczne pod instrukcją - przyklejone do dołu okna. */
 .plisy-mount-alert-actions {
+  position: sticky;
+  bottom: 0;
   display: grid;
   gap: 0.5rem;
-  margin-top: 0.9rem;
+  margin: 0.6rem -1.3rem 0;
+  padding: 0.75rem 1.3rem 1rem;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
 }
 .plisy-mount-alert-actions button {
   min-height: 2.9rem;

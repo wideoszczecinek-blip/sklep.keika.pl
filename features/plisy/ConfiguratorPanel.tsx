@@ -1460,6 +1460,11 @@ export default function ConfiguratorPanel({
                     {positions.length === 2 ? " obu okien" : positions.length > 2 ? ` wszystkich ${positions.length} okien` : ""} – trzeba je
                     zmierzyć i wpisać od nowa.
                   </p>
+                  {/* Instrukcja pomiaru pod NOWY montaż od razu w alercie
+                      (właściciel, 07.10) - nie trzeba jej szukać po zmianie. */}
+                  <div className="plisy-mount-alert-guide">
+                    <PlisyMeasureGuide fixedMode={toNonInvasive ? "bezinwazyjny" : "standard"} startDelayMs={500} unit={dimensionUnit} />
+                  </div>
                   <div className="plisy-mount-alert-actions">
                     <button
                       type="button"
@@ -1520,10 +1525,7 @@ export default function ConfiguratorPanel({
         <div className="hero-product-step-body">
           {/* Na tym kroku stawało najwięcej osób zaraz po cenie (audyt 1-7.10)
               - wybór był bez żadnej wskazówki. */}
-          <p className="hero-product-config-hint">
-            To kolor listew na górze i na dole plisy. Najlepiej dobrać go do ramy okna: do białego okna biel, do drewnopodobnego
-            złoty dąb, orzech albo winchester, do grafitowego antracyt.
-          </p>
+          <p className="hero-product-config-hint">Wybierz kolor najbliższy ramie okna – listwy plisy zleją się wtedy z oknem.</p>
           <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid hero-product-hardware-color-grid">
             {profile.hardware.map((option, index) => {
               const isActive = option.id === selectedHardwareId;
