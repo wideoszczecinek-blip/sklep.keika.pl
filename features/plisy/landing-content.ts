@@ -82,6 +82,17 @@ export function isPlisyPlaceholderCopy(text: string | null | undefined): boolean
  * it from the default "Plisy". */
 export const PLISY_H1 = "Solidne plisy na wymiar";
 
+/** Landing v2 (2026-10-11, audyt 11 konkurentów: Allegro nr 1 Stelge, Karnix,
+ * Dekoria, Lestore, Blinds2go, Jaloustore): zdjęcie → ocena → karta oferty →
+ * wycena z polami i montażem → kolekcje z ceną → opinie → pomiar → FAQ,
+ * stały dolny przycisk zamiast czterech zakładek, bez paska PayPo/SEZON20
+ * na górze i bez okruszka. Decyzja: 100% ruchu bez testu A/B (mało
+ * zamówień na rozstrzygnięcie, równolegle trwa test koszyka), ocena na
+ * wymiarach/koszykach tydzień po tygodniu. Powrót: false tutaj albo
+ * ?landing=v1 w adresie (podgląd starej wersji). */
+export const PLISY_LANDING_V2 = true;
+export const PLISY_H1_V2 = "Plisy na wymiar";
+
 export const PLISY_SUBTITLE =
   "Plisy okienne na wymiar od polskiego producenta. Regulacja z góry i z dołu, montaż bez wiercenia lub z wierceniem, 150 tkanin i 10 kolorów profili do wyboru. Cenę dla swojego okna sprawdzisz od razu w konfiguratorze.";
 

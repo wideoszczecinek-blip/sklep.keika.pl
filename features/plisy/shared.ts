@@ -388,6 +388,43 @@ export function calcPlisyPrice(
   );
 }
 
+/**
+ * Cena "za Twoje okno" z landingu (szybka wycena, karta oferty, dolny pasek):
+ * najtańszy sensowny zestaw - pierwsza kolekcja (Klasyczne), pierwszy kolor
+ * listew, wybrany montaż (jego dopłata wchodzi do ceny, bo wybór montażu
+ * jest już przy wymiarach - landing v2, 2026-10-11). Okno szersze niż jedna
+ * plisa dzielimy na dwie równe (ta sama reguła co w konfiguratorze); cena
+ * jest wtedy za obie. null = poza zakresem produkcji albo brak cennika.
+ */
+export function plisyQuickPrice(
+  profile: PlisyProfile,
+  widthMm: number,
+  heightMm: number,
+  extraAdjustPercent = 0,
+  mount: MountOption | null = null,
+  fabricGroupId = "",
+): number | null {
+  const inRange =
+    widthMm >= profile.widthMinMm &&
+    widthMm <= profile.widthMaxMm * 2 &&
+    heightMm >= profile.heightMinMm &&
+    heightMm <= profile.heightMaxMm;
+  if (!inRange) return null;
+  const split = widthMm > profile.widthMaxMm;
+  const pieceWidthMm = split ? Math.floor(widthMm / 2) : widthMm;
+  const groupId = fabricGroupId || profile.fabricGroups[0]?.id || "";
+  const one = calcPlisyPrice(
+    { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + extraAdjustPercent },
+    pieceWidthMm,
+    heightMm,
+    profile.hardware[0]?.id || "",
+    groupId,
+  );
+  if (one === null) return null;
+  const withMount = mount ? applyPriceDeltas(one, [mount]) : one;
+  return split ? plRoundMoney(withMount * 2) : withMount;
+}
+
 type PriceDeltaLike = { priceDelta: number; priceDeltaType: PriceDeltaType } | null | undefined;
 
 /**

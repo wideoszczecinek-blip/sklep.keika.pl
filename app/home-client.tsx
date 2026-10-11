@@ -150,6 +150,8 @@ import { PD_PRICE_MULTIPLIER, PD_STARTING_PRICE_FALLBACK, pdStartingPrice, type 
 import {
   isPlisyPlaceholderCopy,
   PLISY_H1,
+  PLISY_H1_V2,
+  PLISY_LANDING_V2,
   PLISY_DEFAULT_HEIGHT_MM,
   PLISY_DEFAULT_WIDTH_MM,
   PLISY_LEAD_TIME_LABEL,
@@ -197,6 +199,9 @@ import { PLISY_INSTRUCTION_STEPS } from "@/features/plisy/instructions";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
+import { PlisyHeroGallery, PlisyOfferCard, PlisyProofLine, PlisyStickyBar, PlisyWhyGrid, usePaypoEnabled } from "@/features/plisy/LandingV2";
+import { useCompanyRating } from "@/features/plisy/Reviews";
+import { plisyQuickPrice } from "@/features/plisy/shared";
 import MoskitieryQuickPrice from "@/features/moskitiery-ramkowe/QuickPrice";
 import MoskitieryHeroPhotos from "@/features/moskitiery-ramkowe/HeroPhotos";
 
@@ -1490,6 +1495,26 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // The window size shared by "Ile za Twoje okno?" and the fabric-collection
   // comparison below it (owner, 2026-09-17): one size, priced in both.
   const [plisyQuickDims, setPlisyQuickDims] = useState({ widthMm: PLISY_DEFAULT_WIDTH_MM, heightMm: PLISY_DEFAULT_HEIGHT_MM });
+  // Landing plis v2 (2026-10-11, features/plisy/LandingV2.tsx): włączony dla
+  // całego ruchu (PLISY_LANDING_V2); ?landing=v1 pokazuje starą wersję do
+  // porównania, ?landing=v2 wymusza nową, gdy flaga będzie wyłączona.
+  const [plisyLandingV2, setPlisyLandingV2] = useState(PLISY_LANDING_V2);
+  useEffect(() => {
+    try {
+      const forced = new URLSearchParams(window.location.search).get("landing");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (forced === "v1") setPlisyLandingV2(false);
+      if (forced === "v2") setPlisyLandingV2(true);
+    } catch {
+      // ignore
+    }
+  }, []);
+  // Montaż wybrany przy wymiarach w wycenie v2 (id z profilu; pusty =
+  // pierwsza opcja) i to, co z wyceny wchodzi do konfiguratora.
+  const [plisyQuickMountId, setPlisyQuickMountId] = useState("");
+  const [plisyPrefillMountId, setPlisyPrefillMountId] = useState("");
+  const plisyCompanyRating = useCompanyRating();
+  const plisyPaypoEnabled = usePaypoEnabled();
   // Szybka wycena moskitier: typowe okno na start, klient zmienia suwakami.
   // Start od okna z reklam (2026-10-02): nowe kreacje moskitier mówią
   // "65 × 130 cm — 95,68 zł z SEZON20", a wycena otwierała się na 90 × 140 /
@@ -2702,6 +2727,41 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // Pasek koszyka na stronie produktu: są pozycje, to widok produktu i nie
   // ma otwartego okienka "Dodano do koszyka" (ono ma własny przycisk).
   const cartDockVisible = Boolean(displayedProduct) && isProductView && hasCartItems && !addToCartToast;
+  // Landing plis v2 - wartości dla karty oferty, wyceny i dolnego paska
+  // (jedna cena liczona jednym sposobem: plisyQuickPrice).
+  const plisyV2 = Boolean(displayedProduct) && productSlugFromSelected(displayedProduct) === "plisy" && plisyLandingV2;
+  const plisyQuickMount = plisyProfile
+    ? plisyProfile.mountOptions.find((option) => option.id === plisyQuickMountId) || plisyProfile.mountOptions[0] || null
+    : null;
+  const plisyQuickRegular = plisyProfile
+    ? plisyQuickPrice(plisyProfile, plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyPriceAdjustmentPercent, plisyV2 ? plisyQuickMount : null)
+    : null;
+  const plisyQuickWithPromo = plisyQuickRegular !== null ? applyPromoToPrice(plisyQuickRegular, topPromoActive ? topPromoPreview : null) : null;
+  function openPlisyConfiguratorFromQuote(widthMm: number, heightMm: number, mountId: string) {
+    setPlisyLastResult(null);
+    setPlisyPrefillDims({ widthMm, heightMm });
+    setPlisyPrefillMountId(mountId);
+    setPlisyConfigKey((key) => key + 1);
+    scrollToConfigPanel();
+  }
+  // "Wyceń swoje okno" z karty oferty: do pól wymiarów (ten sam kontener
+  // przewijania co w scrollToConfigPanel - .hero-full, nie okno).
+  function scrollToPlisyQuote() {
+    const target = document.querySelector<HTMLElement>("#pl-quick-price-anchor");
+    const container = target?.closest<HTMLElement>(".hero-full");
+    if (target && container && container.scrollHeight > container.clientHeight) {
+      const delta = target.getBoundingClientRect().top - container.getBoundingClientRect().top - 72;
+      container.scrollTo({ top: Math.max(0, container.scrollTop + delta), behavior: "smooth" });
+    } else {
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    window.setTimeout(() => {
+      document.querySelector<HTMLInputElement>(".pl-quick--v2 input")?.focus({ preventScroll: true });
+    }, 500);
+  }
+  useEffect(() => {
+    if (plisyV2) trackShopStep("landing_variant", "plisy", { variant: "v2" });
+  }, [plisyV2]);
   const cartQtyLabel = cartSummary.items === 1 ? "1 produkt" : `${cartSummary.items} produktów`;
 
   useEffect(() => {
@@ -3277,7 +3337,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
 
   return (
     <div
-      className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${displayedProduct ? "product-focus-active" : ""}`}
+      className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${displayedProduct ? "product-focus-active" : ""} ${plisyV2 ? "plisy-v2" : ""}`}
     >
       <div className={`boot-overlay ${bootPhase === "ready" ? "is-hidden" : ""}`} aria-hidden={bootPhase === "ready" ? "true" : "false"}>
         <div className="boot-overlay-core">
@@ -3289,7 +3349,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           see promo-top-strip.tsx). Must stay a direct child of .home-root:
           globals.css offsets .hero-header/.hero-inner via
           .home-root:has(> .promo-top-strip). */}
-      <PromoTopStrip productSlug={productSlugFromSelected(displayedProduct) || "moskitiery-ramkowe"} />
+      {/* Landing plis v2: bez paska na górze - rabat i płatności są w karcie
+          oferty przy cenie (paski zasłaniały 21% ekranu telefonu). */}
+      {!plisyV2 ? <PromoTopStrip productSlug={productSlugFromSelected(displayedProduct) || "moskitiery-ramkowe"} /> : null}
       <header className={`hero-header${isHeaderCompact ? " is-compact" : ""}`}>
         <div className="header-left">
           <a className="brand" href="/" aria-label="KEIKA strona główna">
@@ -3671,7 +3733,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                   {/* Pasek SEZON20 NAD tytułem i w jednej linii (właściciel,
                       2026-09-24): dwuwierszowa ramka pod tytułem spychała na
                       mobile wszystko poniżej ekranu. */}
+                  {plisyV2 ? <PlisyHeroGallery /> : null}
                   {displayedProduct &&
+                  !plisyV2 &&
                   (productSlugFromSelected(displayedProduct) === "plisy" ||
                     productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe") &&
                   (topPromoPreview || topPromoActive) ? (
@@ -3708,9 +3772,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                   {displayedProduct ? (
                     <h1>
                       {productSlugFromSelected(displayedProduct) === "plisy"
-                        ? productLanding?.title && productLanding.title.toLowerCase() !== "plisy"
+                        ? productLanding?.title && productLanding.title.toLowerCase() !== "plisy" && !plisyV2
                           ? productLanding.title
-                          : PLISY_H1
+                          : plisyV2
+                            ? PLISY_H1_V2
+                            : PLISY_H1
                         : productSlugFromSelected(displayedProduct) === "rolety-dachowe"
                           ? productLanding?.title && !/dekolux/i.test(productLanding.title) && productLanding.title.toLowerCase() !== "rolety do okien dachowych"
                             ? productLanding.title
@@ -3721,6 +3787,32 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               : PD_H1
                             : displayedProduct.label}
                     </h1>
+                  ) : null}
+                  {plisyV2 ? (
+                    <>
+                      {plisyCompanyRating ? (
+                        <PlisyProofLine
+                          average={plisyCompanyRating.average}
+                          total={plisyCompanyRating.total}
+                          onClick={() => scrollToProductSection("opinie")}
+                        />
+                      ) : null}
+                      <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
+                        {(promo) => (
+                          <PlisyOfferCard
+                            regular={plisyQuickRegular}
+                            withPromo={plisyQuickWithPromo}
+                            promoRemainingText={promo && topPromoActive ? promo.remainingText : null}
+                            widthCm={Math.round(plisyQuickDims.widthMm / 10)}
+                            heightCm={Math.round(plisyQuickDims.heightMm / 10)}
+                            leadTime={PLISY_LEAD_TIME_LABEL}
+                            paypoEnabled={plisyPaypoEnabled}
+                            phone={contactPhone}
+                            onQuote={scrollToPlisyQuote}
+                          />
+                        )}
+                      </PromoCountdownBanner>
+                    </>
                   ) : null}
                     <div className="hero-product-content">
                       <section id="product-section-opis" ref={opisSectionRef} className="hero-product-section">
@@ -4015,12 +4107,14 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 wycena zaraz pod spodem. "Darmowa dostawa od 1
                                 sztuki" to pilotaż na plisach: bez progu
                                 kwotowego (patrz lib/shipping.ts). */}
-                            <div className="pl-trust-row">
-                              <span className="pl-chip">5 lat gwarancji</span>
-                              <span className="pl-chip">30 dni na zwrot</span>
-                              <span className="pl-chip">Polski producent</span>
-                              <span className="pl-chip pl-chip--accent">Darmowa dostawa od 1 sztuki</span>
-                            </div>
+                            {!plisyV2 ? (
+                              <div className="pl-trust-row">
+                                <span className="pl-chip">5 lat gwarancji</span>
+                                <span className="pl-chip">30 dni na zwrot</span>
+                                <span className="pl-chip">Polski producent</span>
+                                <span className="pl-chip pl-chip--accent">Darmowa dostawa od 1 sztuki</span>
+                              </div>
+                            ) : null}
 
                             {/* Szybka wycena jako akordeon, wysoko - to ona
                                 odpowiada na pytanie, z którym przychodzi ruch z
@@ -4029,25 +4123,65 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             {/* Pierwszy ekran (audyt 2026-10-01): start wyceny zaraz pod
                                 plakietkami, prawdziwe zdjęcia tuż pod nim, opis niżej - ci,
                                 którzy od razu wycenili okno, kupowali kilka razy częściej. */}
+                            {/* Landing v2 (2026-10-11): wycena z polami i montażem
+                                (features/plisy/QuickPrice.tsx variant="v2"), zapis
+                                wyceny na później = ten sam modal co "Zapisz link". */}
                             <div id="pl-quick-price-anchor" />
-                            <PlisyQuickPrice
-                              collapsible
-                              defaultOpen
-                              profile={plisyProfile}
-                              promo={topPromoActive ? topPromoPreview : null}
-                              widthMm={plisyQuickDims.widthMm}
-                              heightMm={plisyQuickDims.heightMm}
-                              onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
-                              onConfigure={(widthMm, heightMm) => {
-                                setPlisyLastResult(null);
-                                setPlisyPrefillDims({ widthMm, heightMm });
-                                setPlisyConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
-                              }}
-                            />
+                            {plisyV2 ? (
+                              <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
+                                {(promo) => (
+                                  <PlisyQuickPrice
+                                    variant="v2"
+                                    profile={plisyProfile}
+                                    promo={topPromoActive ? topPromoPreview : null}
+                                    widthMm={plisyQuickDims.widthMm}
+                                    heightMm={plisyQuickDims.heightMm}
+                                    onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
+                                    mountId={plisyQuickMount?.id || ""}
+                                    onMountChange={setPlisyQuickMountId}
+                                    onMeasureGuide={openMeasurementInstructions}
+                                    onSaveLater={promo ? promo.openModal : undefined}
+                                    onConfigure={openPlisyConfiguratorFromQuote}
+                                  />
+                                )}
+                              </PromoCountdownBanner>
+                            ) : (
+                              <PlisyQuickPrice
+                                collapsible
+                                defaultOpen
+                                profile={plisyProfile}
+                                promo={topPromoActive ? topPromoPreview : null}
+                                widthMm={plisyQuickDims.widthMm}
+                                heightMm={plisyQuickDims.heightMm}
+                                onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
+                                onConfigure={(widthMm, heightMm) => {
+                                  setPlisyLastResult(null);
+                                  setPlisyPrefillDims({ widthMm, heightMm });
+                                  setPlisyConfigKey((key) => key + 1);
+                                  scrollToConfigPanel();
+                                }}
+                              />
+                            )}
 
-                            <PlisyHeroPhotos />
+                            {!plisyV2 ? <PlisyHeroPhotos /> : null}
 
+                            {(() => {
+                              // v1: opis → parametry → kolekcje. v2: kolekcje z ceną dla
+                              // wymiaru klienta → "Dlaczego KEIKA" → opis zwinięty
+                              // (liderzy: Dekoria 4,4 ekranu, Karnix "Pokaż opis").
+                              const collections = (
+                                <PlisyCollectionsPicker
+                                  profile={plisyProfile}
+                                  promo={topPromoPreview}
+                                  widthCm={plisyQuickDims.widthMm / 10}
+                                  heightCm={plisyQuickDims.heightMm / 10}
+                                  onSizeChange={(widthCm, heightCm) => setPlisyQuickDims({ widthMm: widthCm * 10, heightMm: heightCm * 10 })}
+                                  onQuote={plisyV2 ? () => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "") : scrollToConfigPanel}
+                                  onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
+                                />
+                              );
+                              const details = (
+                                <>
                             <p className="pl-subtitle">
                               {isPlisyPlaceholderCopy(productLanding?.subtitle) ? PLISY_SUBTITLE : productLanding!.subtitle}
                             </p>
@@ -4099,16 +4233,32 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 ),
                               )}
                             </ul>
-
-                            <PlisyCollectionsPicker
-                              profile={plisyProfile}
-                              promo={topPromoPreview}
-                              widthCm={plisyQuickDims.widthMm / 10}
-                              heightCm={plisyQuickDims.heightMm / 10}
-                              onSizeChange={(widthCm, heightCm) => setPlisyQuickDims({ widthMm: widthCm * 10, heightMm: heightCm * 10 })}
-                              onQuote={scrollToConfigPanel}
-                              onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
-                            />
+                                </>
+                              );
+                              if (!plisyV2) {
+                                return (
+                                  <>
+                                    {details}
+                                    {collections}
+                                  </>
+                                );
+                              }
+                              return (
+                                <>
+                                  {collections}
+                                  <PlisyWhyGrid phone={contactPhone} />
+                                  <details
+                                    className="plv2-more"
+                                    onToggle={(event) => {
+                                      if (event.currentTarget.open) trackShopStep("landing_more_open", "plisy", {});
+                                    }}
+                                  >
+                                    <summary>Więcej o plisach KEIKA</summary>
+                                    {details}
+                                  </details>
+                                </>
+                              );
+                            })()}
 
                           </div>
                         ) : productSlugFromSelected(displayedProduct) === "plisy-dachowe" ? (
@@ -5552,7 +5702,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                     <PlisyConfiguratorPanel
                       key={plisyConfigKey}
                       initialValues={
-                        plisyLastResult || plisyPrefillDims
+                        plisyLastResult || plisyPrefillDims || plisyPrefillMountId
                           ? {
                               ...(plisyLastResult
                                 ? {
@@ -5565,6 +5715,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               ...(plisyPrefillDims
                                 ? { widthMm: plisyPrefillDims.widthMm, heightMm: plisyPrefillDims.heightMm }
                                 : {}),
+                              // Montaż z wyceny v2 - klient nie wybiera go drugi raz.
+                              ...(plisyPrefillMountId ? { mountId: plisyPrefillMountId } : {}),
                             }
                           : undefined
                       }
@@ -5574,6 +5726,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                       onSubmit={(result) => {
                         setPlisyLastResult(result);
                         setPlisyPrefillDims(null);
+                        setPlisyPrefillMountId("");
                         const item: CartLineItem = {
                           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                           productSlug: "plisy",
@@ -6036,7 +6189,20 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
             ) : null}
           </div>
           {displayedProduct ? <SiteFooter variant="landing" /> : null}
-          {displayedProduct ? (
+          {/* Landing plis v2: jeden stały przycisk z ceną zamiast czterech
+              zakładek (chowa się, gdy konfigurator albo dok koszyka są na
+              ekranie - ta sama reguła co dla zakładek). */}
+          {plisyV2 ? (
+            <PlisyStickyBar
+              visible={isProductView && !hideBottomTabs && !cartDockVisible}
+              widthCm={Math.round(plisyQuickDims.widthMm / 10)}
+              heightCm={Math.round(plisyQuickDims.heightMm / 10)}
+              price={plisyQuickWithPromo ?? plisyQuickRegular}
+              bottomInset={inAppBrowserBottomInset}
+              onClick={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")}
+            />
+          ) : null}
+          {displayedProduct && !plisyV2 ? (
             <nav
               className={`hero-product-bottom-tabs ${isProductView ? "is-visible" : ""} ${hideBottomTabs ? "is-suppressed" : ""} ${cartDockVisible ? "has-cart-dock" : ""}`}
               aria-label="Sekcje produktu"

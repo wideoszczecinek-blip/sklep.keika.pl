@@ -69,9 +69,11 @@ function useCompanyReviews(): CompanyReview[] {
   }, []);
   return rows;
 }
-type CompanyRating = { average: number; total: number; distribution: { stars: number; count: number }[] };
+export type CompanyRating = { average: number; total: number; distribution: { stars: number; count: number }[] };
 
-function CompanyRatingBlock() {
+/** Ocena firmy (4,8 · 433 opinie) - wspólna dla sekcji Opinie i wiersza
+ * dowodu pod tytułem landingu v2 (jedno źródło, jeden fetch, cache HTTP). */
+export function useCompanyRating(): CompanyRating | null {
   const [rating, setRating] = useState<CompanyRating | null>(null);
   useEffect(() => {
     let alive = true;
@@ -90,6 +92,11 @@ function CompanyRatingBlock() {
       alive = false;
     };
   }, []);
+  return rating;
+}
+
+function CompanyRatingBlock() {
+  const rating = useCompanyRating();
   if (!rating) return null;
   return (
     <div className="allegro-rating-summary">

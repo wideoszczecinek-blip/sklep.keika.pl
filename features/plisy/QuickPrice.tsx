@@ -23,17 +23,27 @@
 // - the cheapest sensible build: Klasyczne, first hardware colour, STANDARD
 // mount. Nothing hardcoded, so the number here can't drift from the number
 // the configurator shows a screen later.
+//
+// variant="v2" (landing v2, 2026-10-11, wzorzec Blinds2go/Karnix): pola do
+// wpisania zamiast suwaków (żaden z liderów nie używa suwaków; 93% ruchu to
+// telefon), wybór montażu obok wymiarów (od niego zależy, jak mierzyć - i
+// jego dopłata wchodzi do ceny), link do animacji pomiaru, przycisk
+// "Wybierz tkaninę i kolor" i "zapisz wycenę na później" dla 2/3 wejść bez
+// miarki pod ręką. Wersja v1 zostaje nietknięta (powrót jednym przełącznikiem).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import { PLISY_COLLECTIONS } from "./landing-content";
 import {
-  calcPlisyPrice,
+  isPlisyMountNonInvasive,
+  plisyMountLabel,
+  plisyQuickPrice,
   PLISY_HEIGHT_MAX_MM,
   PLISY_HEIGHT_MIN_MM,
   PLISY_WIDTH_MAX_MM,
   PLISY_WIDTH_MIN_MM,
+  type MountOption,
   type PlisyProfile,
 } from "./shared";
 
@@ -54,6 +64,11 @@ export default function PlisyQuickPrice({
   onConfigure,
   collapsible = false,
   defaultOpen = false,
+  variant = "v1",
+  mountId = "",
+  onMountChange,
+  onMeasureGuide,
+  onSaveLater,
 }: {
   /** Akordeon: nagłówek "Szybka wycena" z rozmiarem i ceną, suwaki pod
    * spodem. Na landingu plis blok siedzi wysoko, zaraz pod plakietkami,
@@ -68,9 +83,17 @@ export default function PlisyQuickPrice({
   widthMm: number;
   heightMm: number;
   onSizeChange: (widthMm: number, heightMm: number) => void;
-  onConfigure: (widthMm: number, heightMm: number) => void;
+  /** v2 przekazuje też wybrany montaż (id z profilu), v1 - pusty string. */
+  onConfigure: (widthMm: number, heightMm: number, mountId: string) => void;
+  variant?: "v1" | "v2";
+  /** v2: wybrany montaż (id opcji z profilu); pusty = pierwsza opcja. */
+  mountId?: string;
+  onMountChange?: (mountId: string) => void;
+  onMeasureGuide?: () => void;
+  onSaveLater?: () => void;
 }) {
   const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
+  const isV2 = variant === "v2";
 
   // Slider bounds = the production limits (20-150 x 20-230 cm), the same
   // ones the collection comparison and the configurator enforce.
@@ -93,19 +116,16 @@ export default function PlisyQuickPrice({
   const split = profile ? widthMm > profile.widthMaxMm : false;
   const pieceWidthMm = split ? Math.floor(widthMm / 2) : widthMm;
 
+  const mountOptions: MountOption[] = isV2 && profile ? profile.mountOptions : [];
+  const selectedMount: MountOption | null = isV2
+    ? mountOptions.find((option) => option.id === mountId) || mountOptions[0] || null
+    : null;
+
   const regular = useMemo(() => {
     if (!profile || !inRange) return null;
     const groupId = PLISY_COLLECTIONS[0]?.groupId || profile.fabricGroups[0]?.id || "";
-    const one = calcPlisyPrice(
-      { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
-      pieceWidthMm,
-      heightMm,
-      profile.hardware[0]?.id || "",
-      groupId,
-    );
-    if (one === null) return null;
-    return split ? Math.round(one * 2 * 100) / 100 : one;
-  }, [profile, inRange, pieceWidthMm, split, heightMm, priceAdjustmentPercent]);
+    return plisyQuickPrice(profile, widthMm, heightMm, priceAdjustmentPercent, selectedMount, groupId);
+  }, [profile, inRange, widthMm, heightMm, priceAdjustmentPercent, selectedMount]);
   const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
 
   // Pola liczbowe obok suwaków (właściciel, 2026-09-24): kto zna wymiar,
@@ -172,6 +192,121 @@ export default function PlisyQuickPrice({
   const headPrice =
     regular === null ? null : withPromo !== null && withPromo < regular ? withPromo : regular;
 
+  const configure = () => {
+    trackShopStep("quick_price_configure", "plisy", { width_mm: widthMm, height_mm: heightMm, price: regular ?? 0, mount: selectedMount?.id || "" });
+    onConfigure(widthMm, heightMm, selectedMount?.id || "");
+  };
+
+  const numberField = (axis: "w" | "h") => (
+    <input
+      type="number"
+      inputMode="numeric"
+      min={axis === "w" ? minW : minH}
+      max={axis === "w" ? maxW : maxH}
+      step={1}
+      value={axis === "w" ? widthText : heightText}
+      onChange={(event) => typeSize(event.target.value, axis)}
+      onBlur={() => commitSize(axis)}
+      aria-label={axis === "w" ? "Szerokość okna w centymetrach - wpisz" : "Wysokość okna w centymetrach - wpisz"}
+    />
+  );
+
+  if (isV2) {
+    return (
+      <div className="pl-quick pl-quick--v2" role="group" aria-label="Wyceń swoje okno">
+        <div className="pl-quick-head">
+          <span className="pl-quick-title">Wyceń swoje okno</span>
+          <span className="pl-quick-size">wpisz wymiary w cm</span>
+        </div>
+        <div className="pl-quick-fields">
+          <label className="pl-quick-field">
+            <span>Szerokość</span>
+            <span className="pl-quick-num">
+              {numberField("w")}
+              <em>cm</em>
+            </span>
+          </label>
+          <label className="pl-quick-field">
+            <span>Wysokość</span>
+            <span className="pl-quick-num">
+              {numberField("h")}
+              <em>cm</em>
+            </span>
+          </label>
+        </div>
+        {mountOptions.length ? (
+          <div className="pl-quick-mounts" role="radiogroup" aria-label="Sposób montażu">
+            {mountOptions.map((option) => {
+              const isActive = selectedMount?.id === option.id;
+              const nonInvasive = isPlisyMountNonInvasive(option.id) || isPlisyMountNonInvasive(option.label);
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={isActive ? "true" : "false"}
+                  className={`pl-quick-mount ${isActive ? "is-active" : ""}`}
+                  onClick={() => {
+                    if (isActive) return;
+                    trackShopStep("quick_price_mount", "plisy", { option_id: option.id });
+                    onMountChange?.(option.id);
+                  }}
+                >
+                  {option.imageUrl ? <img src={option.imageUrl} alt="" loading="lazy" decoding="async" /> : null}
+                  <strong>{plisyMountLabel(option)}</strong>
+                  <small>{nonInvasive ? "uchwyty na skrzydło, bez śladów" : "wkręty do listwy, najpewniejszy"}</small>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        {onMeasureGuide ? (
+          <button type="button" className="pl-quick-measure" onClick={onMeasureGuide}>
+            <span aria-hidden="true">📐</span> Jak zmierzyć okno? Animacja, 2 minuty
+          </button>
+        ) : null}
+        <div className="pl-quick-priceline" aria-live="polite">
+          <span className="pl-quick-priceline-label">
+            {widthCm} × {heightCm} cm · Klasyczne
+            {selectedMount ? ` · ${isPlisyMountNonInvasive(selectedMount.id) || isPlisyMountNonInvasive(selectedMount.label) ? "bezinwazyjny" : "przykręcany"}` : ""}
+          </span>
+          {regular === null ? (
+            <span className="pl-quick-na">{profile ? "Ten wymiar wyceni konfigurator" : "Ładuję cennik…"}</span>
+          ) : withPromo !== null && withPromo < regular ? (
+            <span className="pl-quick-amounts">
+              <strong>{zl(withPromo)}</strong>
+              <s>{zl(regular)}</s>
+              <small>z kodem {PROMO_CODE}</small>
+            </span>
+          ) : (
+            <span className="pl-quick-amounts">
+              <strong>{zl(regular)}</strong>
+            </span>
+          )}
+        </div>
+        {split ? (
+          <span className="pl-quick-split">Okno {widthCm} cm zrobimy z 2 plis po {pieceWidthMm / 10} cm — cena za obie.</span>
+        ) : null}
+        <button type="button" className="pl-quick-cta pl-quick-cta--v2" disabled={!inRange} onClick={configure}>
+          Wybierz tkaninę i kolor →
+        </button>
+        <span className="pl-quick-note">W cenie 5 lat gwarancji i 30 dni na zwrot. 150 tkanin i 10 kolorów listew wybierzesz w następnym kroku.</span>
+        {onSaveLater ? (
+          <button
+            type="button"
+            className="pl-quick-later"
+            onClick={() => {
+              trackShopStep("quick_price_save_later", "plisy", { width_mm: widthMm, height_mm: heightMm });
+              onSaveLater();
+            }}
+          >
+            Nie masz miarki pod ręką? Zapisz wycenę na później
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className={`pl-quick ${collapsible ? "pl-quick--acc" : ""} ${open ? "is-open" : ""}`} role="group" aria-label="Szybka wycena plisy dla Twojego okna">
       {collapsible ? (
@@ -219,17 +354,7 @@ export default function PlisyQuickPrice({
             aria-label="Szerokość okna w centymetrach"
           />
           <span className="pl-quick-num">
-            <input
-              type="number"
-              inputMode="numeric"
-              min={minW}
-              max={maxW}
-              step={1}
-              value={widthText}
-              onChange={(event) => typeSize(event.target.value, "w")}
-              onBlur={() => commitSize("w")}
-              aria-label="Szerokość okna w centymetrach - wpisz"
-            />
+            {numberField("w")}
             <em>cm</em>
           </span>
         </div>
@@ -247,17 +372,7 @@ export default function PlisyQuickPrice({
             aria-label="Wysokość okna w centymetrach"
           />
           <span className="pl-quick-num">
-            <input
-              type="number"
-              inputMode="numeric"
-              min={minH}
-              max={maxH}
-              step={1}
-              value={heightText}
-              onChange={(event) => typeSize(event.target.value, "h")}
-              onBlur={() => commitSize("h")}
-              aria-label="Wysokość okna w centymetrach - wpisz"
-            />
+            {numberField("h")}
             <em>cm</em>
           </span>
         </div>
@@ -284,15 +399,7 @@ export default function PlisyQuickPrice({
             Kolekcja Klasyczne, biały profil, montaż przykręcany do listwy · w cenie 5 lat gwarancji i 30 dni na zwrot
           </span>
         </div>
-        <button
-          type="button"
-          className="pl-quick-cta"
-          disabled={!inRange}
-          onClick={() => {
-            trackShopStep("quick_price_configure", "plisy", { width_mm: widthMm, height_mm: heightMm, price: regular ?? 0 });
-            onConfigure(widthMm, heightMm);
-          }}
-        >
+        <button type="button" className="pl-quick-cta" disabled={!inRange} onClick={configure}>
           Przejdź do konfiguratora →
         </button>
         </div>
