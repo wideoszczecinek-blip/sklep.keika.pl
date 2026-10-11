@@ -205,23 +205,26 @@ export function PlisyOfferCard({
           <i aria-hidden="true">💳</i>BLIK, karta, {paypoEnabled ? "PayPo (zapłać za 30 dni), " : ""}za pobraniem
         </li>
       </ul>
-      <button
-        type="button"
-        className="plv2-btn"
-        onClick={() => {
-          trackShopStep("offer_cta", "plisy", { price: withPromo ?? regular ?? 0 });
-          onQuote();
-        }}
-      >
-        Wyceń swoje okno
-      </button>
-      <a
-        className="plv2-btn plv2-btn--sec"
-        href={phoneHref}
-        onClick={() => trackShopStep("call_click", "plisy", { source: "offer_card" })}
-      >
-        <span aria-hidden="true">📞</span> Zadzwoń: {phone}
-      </a>
+      {/* Na komputerze (≥1101px) oba przyciski w jednym rzędzie - patrz CSS. */}
+      <div className="plv2-offer-actions">
+        <button
+          type="button"
+          className="plv2-btn"
+          onClick={() => {
+            trackShopStep("offer_cta", "plisy", { price: withPromo ?? regular ?? 0 });
+            onQuote();
+          }}
+        >
+          Wyceń swoje okno
+        </button>
+        <a
+          className="plv2-btn plv2-btn--sec"
+          href={phoneHref}
+          onClick={() => trackShopStep("call_click", "plisy", { source: "offer_card" })}
+        >
+          <span aria-hidden="true">📞</span> Zadzwoń: {phone}
+        </a>
+      </div>
     </div>
   );
 }

@@ -2747,6 +2747,18 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // "Wyceń swoje okno" z karty oferty: do pól wymiarów (ten sam kontener
   // przewijania co w scrollToConfigPanel - .hero-full, nie okno).
   function scrollToPlisyQuote() {
+    // Na komputerze wycena v2 jest schowana (konfigurator stoi obok i sam ma
+    // pola wymiarów) - wtedy przycisk prowadzi prosto do pola szerokości.
+    const quick = document.querySelector<HTMLElement>(".pl-quick--v2");
+    if (!quick || quick.offsetParent === null) {
+      scrollToConfigPanel();
+      window.setTimeout(() => {
+        document
+          .querySelector<HTMLInputElement>(".hero-product-config-panel input[type=number]")
+          ?.focus({ preventScroll: true });
+      }, 400);
+      return;
+    }
     const target = document.querySelector<HTMLElement>("#pl-quick-price-anchor");
     const container = target?.closest<HTMLElement>(".hero-full");
     if (target && container && container.scrollHeight > container.clientHeight) {

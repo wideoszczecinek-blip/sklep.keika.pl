@@ -22084,3 +22084,25 @@ body:has(.cart-page--v2) .site-footer {
 @media (min-width: 1101px) { .plv2-bar { display: none; } }
 .home-root.plisy-v2 .hero-full { scroll-padding-bottom: 5rem; }
 @media (max-width: 1100px) { .home-root.plisy-v2 .hero-product-content { padding-bottom: 4.5rem; } }
+
+/* ===== Landing plis v2 - komputer (2026-10-11) ============================
+   Na szerokim ekranie konfigurator stoi obok w prawej kolumnie, więc wycena
+   z polami i montażem byłaby jego kopią - chowamy ją, a "Wyceń swoje okno"
+   prowadzi do pola szerokości w konfiguratorze. Bloki lewej kolumny
+   rozciągają się na jej całą szerokość (768px) zamiast 560px z pustką. */
+@media (min-width: 1101px) {
+  .home-root.plisy-v2 .pl-quick--v2 { display: none; }
+  .home-root.plisy-v2 .plv2-gallery,
+  .home-root.plisy-v2 .plv2-offer,
+  .home-root.plisy-v2 .plv2-why { max-width: none; }
+  .home-root.plisy-v2 .plv2-slide { aspect-ratio: 16 / 9; }
+  .home-root.plisy-v2 .hero-product-panel h1 { font-size: clamp(2.2rem, 2.6vw, 3rem); }
+  .home-root.plisy-v2 .plv2-proof { font-size: 1rem; }
+  .home-root.plisy-v2 .plv2-offer { padding: 1.1rem 1.25rem 1.2rem; }
+  .home-root.plisy-v2 .plv2-offer-price b { font-size: 2.4rem; }
+  .home-root.plisy-v2 .plv2-offer-lines { grid-template-columns: 1fr 1fr; gap: 0.4rem 1rem; font-size: 0.9rem; }
+  .home-root.plisy-v2 .plv2-offer-actions { display: grid; grid-template-columns: 1.3fr 1fr; gap: 0.6rem; align-items: stretch; margin-top: 0.9rem; }
+  .home-root.plisy-v2 .plv2-offer-actions .plv2-btn { margin-top: 0; }
+  .home-root.plisy-v2 .plv2-why-grid { grid-template-columns: repeat(4, 1fr); }
+  .home-root.plisy-v2 .plv2-more { max-width: none; }
+}
