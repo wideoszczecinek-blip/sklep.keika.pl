@@ -146,7 +146,7 @@ import {
   PD_SPEC_ITEMS,
   PD_SUBTITLE,
 } from "@/features/plisy-dachowe/landing-content";
-import { PD_PRICE_MULTIPLIER, PD_STARTING_PRICE_FALLBACK, pdStartingPrice, type ConfiguratorResult as PlisyDachoweConfiguratorResult } from "@/features/plisy-dachowe/shared";
+import { PD_STARTING_PRICE_FALLBACK, pdPriceMultiplier, pdStartingPrice, type ConfiguratorResult as PlisyDachoweConfiguratorResult } from "@/features/plisy-dachowe/shared";
 import {
   isPlisyPlaceholderCopy,
   PLISY_H1,
@@ -4383,7 +4383,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               onSizeChange={(widthCm, heightCm) => setPdQuickDims({ widthMm: widthCm * 10, heightMm: heightCm * 10, label: `${widthCm * 10} × ${heightCm * 10} mm` })}
                               onQuote={scrollToConfigPanel}
                               onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
-                              priceMultiplier={PD_PRICE_MULTIPLIER}
+                              priceMultiplier={pdPriceMultiplier}
                               adjustmentSlug="plisy-dachowe"
                               title="Którą kolekcję tkanin wybrać?"
                               lead={`Te same pięć kolekcji co w plisach okiennych. Ceny poglądowe dla plisy dachowej ${pdQuickDims.label ? `do okna ${pdQuickDims.label}` : "78 × 118 cm (typowe okno dachowe)"} z białym osprzętem — dokładną cenę z kolorem osprzętu i tkaniny policzy konfigurator.`}

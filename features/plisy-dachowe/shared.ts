@@ -32,6 +32,23 @@ export const PD_PRODUCT_SLUG = "plisy-dachowe";
 export const PD_PRODUCT_LABEL = "Plisy dachowe";
 /** Roof-window plisa = window plisa price + 25 % (owner, 2026-09-19). */
 export const PD_PRICE_MULTIPLIER = 1.25;
+// Kolekcje DUO (plaster miodu i DUO TERMO) dziela jeden cennik plisy
+// okiennej, ktory po x1,25 dawal 402,50 zl na typowym oknie 78x118 - nad
+// nasza wlasna oferta Allegro (309,90 zl) i mocno nad rynkiem plis
+// plaster miodu (215-242 zl). Wlasciciel 13.10.2026: obnizyc o ~13 %.
+// Mnoznik 1,09 daje 350,98 zl. Obie kolekcje DUO schodza razem, bo maja
+// ten sam cennik - inaczej plaster miodu wyszedlby DROZSZY od DUO TERMO.
+const PD_MULTIPLIER_BY_FABRIC_GROUP: Record<string, number> = {
+  duo: 1.09,
+  "duo-blackout": 1.09,
+};
+
+/** Mnoznik ceny plisy dachowej dla danej kolekcji tkanin. */
+export function pdPriceMultiplier(fabricGroupId: string): number {
+  const key = String(fabricGroupId || "").trim();
+  const hit = PD_MULTIPLIER_BY_FABRIC_GROUP[key];
+  return typeof hit === "number" && hit > 0 ? hit : PD_PRICE_MULTIPLIER;
+}
 /** Manual "Wymiar A / B" floor; the ceiling is the plisy price matrix. */
 export const PD_MIN_DIMENSION_MM = 200;
 
@@ -109,7 +126,7 @@ export function calcPlisyDachowePrice(
   );
   if (matrix === null) return null;
   const withDeltas = applyPriceDeltas(matrix, [pdHardwarePriceDelta(profile, hardware), fabric]);
-  return pdRoundMoney(withDeltas * PD_PRICE_MULTIPLIER);
+  return pdRoundMoney(withDeltas * pdPriceMultiplier(fabricGroupId));
 }
 
 /** Cheapest configuration for a size: white finish, the cheapest collection

@@ -132,7 +132,9 @@ export default function PlisyCollectionsPicker({
   onSizeChange?: (widthCm: number, heightCm: number) => void;
   /** Plisy dachowe (2026-09-19) reuse this block: the same five collections
    * priced x1,25, with this product's own CRM Korekta and its own copy. */
-  priceMultiplier?: number;
+  /** Liczba albo funkcja (kolekcja -> mnoznik) - plisy dachowe maja
+   * tanszy mnoznik dla kolekcji DUO. */
+  priceMultiplier?: number | ((fabricGroupId: string) => number);
   adjustmentSlug?: string;
   title?: string;
   lead?: string;
@@ -189,7 +191,8 @@ export default function PlisyCollectionsPicker({
               )
             : null;
         const regularBase = pieceBase !== null && split ? pieceBase * 2 : pieceBase;
-        const regular = regularBase !== null ? Math.round(regularBase * priceMultiplier * 100) / 100 : null;
+        const resolveMultiplier = typeof priceMultiplier === "function" ? priceMultiplier(row.groupId) : priceMultiplier;
+        const regular = regularBase !== null ? Math.round(regularBase * resolveMultiplier * 100) / 100 : null;
         const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
         const swatches = (group?.swatches || []).filter((s) => s.thumbnailUrl || s.imageUrl);
         return { ...row, regular, withPromo, swatches };
