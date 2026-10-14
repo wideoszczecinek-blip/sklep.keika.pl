@@ -5,7 +5,20 @@ import { PD_HARDWARE, PD_PRODUCT_SLUG, calcPlisyDachowePrice } from "@/features/
 import { applyPriceDeltas, calcPlisyPrice, fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
 import { ROOF_WINDOW_MODELS } from "@/features/rolety-dachowe/roof-windows-data";
 import { calcRoletyDachowePrice, fetchRoofBlindProfile } from "@/features/rolety-dachowe/shared";
-import { applyPriceAdjustment, normalizePriceAdjustmentPercent } from "@/lib/price-adjustment";
+
+// Te same reguły co lib/price-adjustment.ts (normalizePriceAdjustmentPercent /
+// applyPriceAdjustment) - skopiowane, bo tamten plik importuje hook Reacta
+// i nie wchodzi do trasy serwerowej (build Vercel 14.10).
+function normalizePriceAdjustmentPercent(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(String(value ?? "").replace(",", "."));
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(-95, Math.min(500, Math.round(parsed * 100) / 100));
+}
+
+function applyPriceAdjustment(amount: number, percent: number): number {
+  if (!Number.isFinite(amount) || !percent) return amount;
+  return Math.round(Math.max(0, amount * (1 + percent / 100)) * 100) / 100;
+}
 
 // Cennik wzorcowy dla kontroli cen konkurencji (CRM → Zespół AI → analityk
 // cen, właściciel 14.10.2026: „porównywać produkt do produktu - wymiar,
