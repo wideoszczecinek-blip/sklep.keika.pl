@@ -27,6 +27,7 @@ import { applyPromoToPrice, isPromoActive, readCachedPromoPreview } from "@/lib/
 export const NON_PRODUCT_POSITION_SLUGS: ReadonlySet<string> = new Set([
   "rabat",
   "rabat-ratunek",
+  "rabat-pakiet",
   "doplata-przesylka-dlugosciowa",
   "koszt-dostawy",
   "doplata-platnosc-za-pobraniem",

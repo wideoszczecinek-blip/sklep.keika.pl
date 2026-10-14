@@ -74,6 +74,8 @@ export type CartV2Props = {
   combinedSavings: number;
   appliedDiscount: AppliedDiscount | null;
   rescueRow: { label: string; amount: number } | null;
+  bundleRow: { label: string; amount: number } | null;
+  bundleHint: string;
   shippingFee: number;
   expressFee: number;
   orderSurcharge: number;
@@ -479,6 +481,18 @@ export default function CartV2(props: CartV2Props) {
         <div className="cv2-row">
           <span>Wspólne rozliczenie obwodu moskitier</span>
           <span className="is-minus">-{formatPln(p.combinedSavings)}</span>
+        </div>
+      ) : null}
+      {p.bundleRow ? (
+        <div className="cv2-row">
+          <span>{p.bundleRow.label}</span>
+          <span className="is-minus">-{formatPln(p.bundleRow.amount)}</span>
+        </div>
+      ) : null}
+      {p.bundleHint ? (
+        <div className="cv2-row cv2-row-hint">
+          <span>{p.bundleHint}</span>
+          <span />
         </div>
       ) : null}
       {p.appliedDiscount ? (

@@ -27,6 +27,7 @@ import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
+import { bundleDiscountHintText, bundleDiscountSummary, calcBundleDiscount, setBundleDiscountsFromConfig, useBundleDiscountRules } from "@/lib/bundle-discount";
 import { readMarketingConsent } from "@/lib/marketing-consent";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
@@ -572,6 +573,22 @@ function buildQuotePayloadFromCart(
   // position's own declared size/quantity before persisting anything (a
   // tampered/stale amount here can't reduce what's actually charged).
   const combinedSavings = calcMoskitieryCombinedSavings(items);
+  // Rabat pakietowy (decyzja #36) - podgląd; CRM liczy wiążąco w quote_save.php
+  // (shop_bundle_discount_reapply_to_quote_input) tym samym algorytmem.
+  const bundle = calcBundleDiscount(items);
+  if (bundle.savings > 0) {
+    positions.push({
+      id: "position-bundle-discount",
+      product_slug: "rabat-pakiet",
+      product_label: "Rabat pakietowy",
+      quantity: 1,
+      purchase_units: null,
+      total_amount: (-bundle.savings).toFixed(2),
+      currency: "PLN",
+      summary: bundleDiscountSummary(bundle),
+      summary_rows: [],
+    });
+  }
   if (combinedSavings > 0) {
     positions.push({
       id: "position-moskitiery-combined-savings",
@@ -619,7 +636,7 @@ function buildQuotePayloadFromCart(
   // pre-correction subtotal" fix as the discount code above (real live bug
   // 2026-09-11).
   const rescueAmount = rescueGrant
-    ? roundMoney(Math.max(0, (itemsSubtotal - combinedSavings) * (rescueGrant.percent / 100)))
+    ? roundMoney(Math.max(0, (itemsSubtotal - combinedSavings - bundle.discountedBase) * (rescueGrant.percent / 100)))
     : 0;
   if (rescueGrant && rescueAmount > 0) {
     positions.push({
@@ -637,7 +654,7 @@ function buildQuotePayloadFromCart(
 
   const extraTotal = extraCharges.reduce((sum, extra) => sum + (extra.amount > 0 ? extra.amount : 0), 0);
   const discountTotal = discount && discount.amount > 0 ? discount.amount : 0;
-  const totalAmount = itemsSubtotal - combinedSavings + extraTotal - discountTotal - rescueAmount;
+  const totalAmount = itemsSubtotal - combinedSavings - bundle.savings + extraTotal - discountTotal - rescueAmount;
 
   return {
     quote_code: "",
@@ -1175,10 +1192,14 @@ export default function CartPage() {
   // left net of this, not the higher pre-correction subtotal (real live bug
   // 2026-09-11).
   const combinedSavings = calcMoskitieryCombinedSavings(items);
+  // Rabat pakietowy (decyzja #36): najtańsze sztuki ponad limit -X %; te sztuki
+  // nie wchodzą do podstawy kodu ani rabatu ratunkowego (bez kumulowania).
+  const bundleRules = useBundleDiscountRules();
+  const bundle = calcBundleDiscount(items, bundleRules);
   // Do groszy, tak jak liczy CRM - inaczej "Razem" różniło się o grosz od
   // kwoty zamówienia (lib/cart.ts roundMoney).
   const rescueAmount = rescueGrant
-    ? roundMoney(Math.max(0, (summary.total - combinedSavings) * (rescueGrant.percent / 100)))
+    ? roundMoney(Math.max(0, (summary.total - combinedSavings - bundle.discountedBase) * (rescueGrant.percent / 100)))
     : 0;
   const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
@@ -1187,7 +1208,7 @@ export default function CartPage() {
   // (kod, wspólne rozliczenie obwodu moskitier, rabat za zapisanie wyceny).
   // Pokazujemy to przy kwocie do zapłaty, bo inaczej rabat ginie w wierszach.
   const totalSavings =
-    Math.round((combinedSavings + (appliedDiscount ? appliedDiscount.amount : 0) + rescueAmount) * 100) / 100;
+    Math.round((combinedSavings + bundle.savings + (appliedDiscount ? appliedDiscount.amount : 0) + rescueAmount) * 100) / 100;
   const freeShippingPilot = cartHasFreeShippingPilot(items);
   const shippingFee =
     deliveryMethod === PICKUP_METHOD.id || freeShippingPilot || summary.total >= FREE_SHIPPING_THRESHOLD
@@ -1435,6 +1456,7 @@ export default function CartPage() {
     0,
     summary.total -
       combinedSavings -
+      bundle.savings -
       (appliedDiscount?.amount || 0) -
       rescueAmount +
       shippingFee +
@@ -1533,7 +1555,10 @@ export default function CartPage() {
     fetch(`https://crm-keika.groovemedia.pl/biuro/api/shop/homepage_public?_ts=${Date.now()}`, { cache: "no-store" })
       .then((response) => response.json())
       .then((json) => {
-        if (json?.ok && json.config && typeof json.config === "object") setProductPriceAdjustmentsFromConfig(json.config);
+        if (json?.ok && json.config && typeof json.config === "object") {
+          setProductPriceAdjustmentsFromConfig(json.config);
+          setBundleDiscountsFromConfig(json.config);
+        }
       })
       .catch(() => {});
   }, []);
@@ -1758,7 +1783,7 @@ export default function CartPage() {
         // discount, not the higher pre-correction subtotal (real live bug
         // 2026-09-11 - see quote_save.php's own fix for the authoritative
         // half of this).
-        body: JSON.stringify({ code, subtotal: Math.max(0, summary.total - combinedSavings) }),
+        body: JSON.stringify({ code, subtotal: Math.max(0, summary.total - combinedSavings - bundle.discountedBase) }),
       });
       const json = (await response.json()) as DiscountCheckResponse;
       if (!json.ok || !json.discount) {
@@ -1787,7 +1812,7 @@ export default function CartPage() {
       appliedDiscountSubtotalRef.current = null;
       return;
     }
-    const subtotal = Math.round(Math.max(0, summary.total - combinedSavings) * 100) / 100;
+    const subtotal = Math.round(Math.max(0, summary.total - combinedSavings - bundle.discountedBase) * 100) / 100;
     if (appliedDiscountSubtotalRef.current === null) {
       appliedDiscountSubtotalRef.current = subtotal;
       return;
@@ -1800,7 +1825,7 @@ export default function CartPage() {
     }
     void checkDiscountCode(appliedDiscount.code);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedDiscount, summary.total, combinedSavings]);
+  }, [appliedDiscount, summary.total, combinedSavings, bundle.discountedBase]);
 
   // Silent, error-swallowing preview of the standing SEZON20 promo (distinct
   // from checkDiscountCode above, which is user-triggered and surfaces
@@ -1819,7 +1844,7 @@ export default function CartPage() {
     fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/discount_code_check.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: "SEZON20", subtotal: Math.max(0, summary.total - combinedSavings) }),
+      body: JSON.stringify({ code: "SEZON20", subtotal: Math.max(0, summary.total - combinedSavings - bundle.discountedBase) }),
     })
       .then((response) => response.json())
       .then((json: DiscountCheckResponse) => {
@@ -1832,7 +1857,7 @@ export default function CartPage() {
     return () => {
       cancelled = true;
     };
-  }, [appliedDiscount, summary.total, combinedSavings]);
+  }, [appliedDiscount, summary.total, combinedSavings, bundle.discountedBase]);
 
   function applySezon20Promo() {
     setDiscountCodeInput("SEZON20");
@@ -3203,6 +3228,8 @@ export default function CartPage() {
     itemsCount: summary.items,
     itemsTotal: summary.total,
     combinedSavings,
+    bundleRow: bundle.savings > 0 ? { label: bundle.lines.map((line) => line.label).join(", "), amount: bundle.savings } : null,
+    bundleHint: bundleDiscountHintText(bundle),
     appliedDiscount,
     rescueRow:
       rescueGrant && rescueAmount > 0
@@ -3739,6 +3766,18 @@ export default function CartPage() {
                     <div className="cart-page-summary-row is-muted">
                       <span>Wspólne rozliczenie obwodu moskitier</span>
                       <span>-{formatPln(combinedSavings)}</span>
+                    </div>
+                  ) : null}
+                  {bundle.savings > 0 ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>Rabat pakietowy: {bundle.lines.map((line) => line.label).join(", ")}</span>
+                      <span>-{formatPln(bundle.savings)}</span>
+                    </div>
+                  ) : null}
+                  {bundle.hint ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>{bundleDiscountHintText(bundle)}</span>
+                      <span />
                     </div>
                   ) : null}
                   {appliedDiscount ? (

@@ -44,6 +44,7 @@ import { cartEmailOfferEligible, useCartEmailNudge } from "@/lib/cart-email-nudg
 import PromoCountdownBanner from "./components/promo-countdown-banner";
 import PromoTopStrip from "./components/promo-top-strip";
 import { EscapeOfferReturnBar } from "./components/escape-offer";
+import { setBundleDiscountsFromConfig } from "@/lib/bundle-discount";
 import {
   applyPriceAdjustment,
   setProductPriceAdjustmentsFromConfig,
@@ -2546,6 +2547,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       configHashRef.current = nextHash;
       if (!mounted) return;
       setProductPriceAdjustmentsFromConfig(nextConfig);
+      setBundleDiscountsFromConfig(nextConfig);
       setConfig(nextConfig);
     };
 

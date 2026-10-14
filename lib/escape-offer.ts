@@ -26,6 +26,7 @@
 
 import { getSessionToken, getVisitorId } from "@/lib/analytics-context";
 import { calcMoskitieryCombinedSavings, readCartItems, type CartLineItem } from "@/lib/cart";
+import { calcBundleDiscount } from "@/lib/bundle-discount";
 import { PROMO_CODE, isPromoActive, readCachedPromoPreview } from "@/lib/promo";
 import { buildRescuePosition, clearRescueGrant, setRescueGrant } from "@/lib/rescue";
 import { trackShopStep } from "@/lib/track-step";
@@ -109,7 +110,7 @@ export function getActiveEscapeOffer(): EscapeOfferState | null {
  * po promocji sezonowej, bez dostawy i dopłat. */
 export function escapeCartValue(items: CartLineItem[]): number {
   const subtotal = items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
-  const base = Math.max(0, subtotal - calcMoskitieryCombinedSavings(items));
+  const base = Math.max(0, subtotal - calcMoskitieryCombinedSavings(items) - calcBundleDiscount(items).savings);
   const preview = isPromoActive() ? readCachedPromoPreview() : null;
   if (preview?.type === "percent") return Math.max(0, base * (1 - preview.value / 100));
   return base;
