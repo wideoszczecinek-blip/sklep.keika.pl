@@ -22135,3 +22135,6 @@ body:has(.cart-page--v2) .site-footer {
 @keyframes unit-ask-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes unit-ask-pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .unit-ask-overlay, .unit-ask-card { animation: none; } }
+
+/* Moskitiery: brak koloru siatki przy "Dodaj do koszyka" (2026-10-15) */
+.mosk-missing-choice { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid #f3b546; background: #fff8e8; color: #6b4a10; font-size: 0.88rem; font-weight: 700; line-height: 1.4; }

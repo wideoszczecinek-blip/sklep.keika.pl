@@ -526,9 +526,31 @@ export default function ConfiguratorPanel({
     setSurchargeModal(null);
   }
 
+  // Bezpiecznik (2026-10-15, 251/10/2026 i 3 wcześniejsze): wymiary z
+  // szybkiej wyceny pokazują cenę i "Dodaj do koszyka" zanim klient
+  // wybierze siatkę - kilka osób dodało moskitierę bez koloru siatki i tak
+  // poszła na produkcję. Bez kompletu kolorów nie dodajemy - otwieramy
+  // brakujący krok i mówimy, czego brakuje.
+  const [missingChoice, setMissingChoice] = useState<"" | "hardware" | "mesh">("");
+  useEffect(() => {
+    if (missingChoice === "mesh" && selectedMeshId) setMissingChoice("");
+    if (missingChoice === "hardware" && selectedHardwareId) setMissingChoice("");
+  }, [missingChoice, selectedMeshId, selectedHardwareId]);
   function handleSubmit() {
     if (dimensionUnitPrice === null || dimensionTotalPrice === null) return;
     if (dimensionsBlocked) return;
+    if (!selectedHardwareOption || !selectedMesh) {
+      const missing = !selectedHardwareOption ? "hardware" : "mesh";
+      setMissingChoice(missing);
+      trackShopStep("add_to_cart_blocked", missing === "mesh" ? "brak koloru siatki" : "brak koloru profilu", { product: "moskitiery-ramkowe" });
+      if (missing === "mesh") {
+        setStepTwoCollapsed(false);
+        window.setTimeout(() => scrollStepIntoView(stepTwoRef.current), 60);
+      } else {
+        setStepOneCollapsed(false);
+      }
+      return;
+    }
     onSubmit({
       hardwareId: selectedHardwareOption?.id || "",
       hardwareLabel: selectedHardwareOption?.label || "",
@@ -1080,13 +1102,20 @@ export default function ConfiguratorPanel({
                   )}
                 </PromoCountdownBanner>
               ) : null}
+              {missingChoice ? (
+                <p className="mosk-missing-choice" role="alert">
+                  {missingChoice === "mesh"
+                    ? "Wybierz jeszcze kolor siatki (krok 2) - bez niego nie zrobimy moskitiery."
+                    : "Wybierz jeszcze kolor profilu (krok 1)."}
+                </p>
+              ) : null}
               <button
                 type="button"
                 className="hero-product-add-to-cart"
                 onClick={handleSubmit}
                 disabled={isCalculatingPrice || dimensionTotalPrice === null || dimensionsBlocked}
               >
-                {submitLabel}
+                {selectedMesh ? submitLabel : "Wybierz kolor siatki"}
               </button>
             </div>
           ) : null}
