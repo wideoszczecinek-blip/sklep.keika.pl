@@ -32,6 +32,7 @@ import MeasureShare from "./MeasureShare";
 import PlisyFabricGallery from "./FabricGallery";
 import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyColorCountLabel } from "./CollectionVisual";
 import PlisyCollectionBackdrop from "./CollectionBackdrop";
+import UnitAskModal from "./UnitAskModal";
 import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
@@ -653,8 +654,17 @@ export default function ConfiguratorPanel({
 
   // Fired on blur, once per distinct pair - the first analytics signal
   // this step ever had for "typed something but it didn't validate".
+  // Mini-okno z pytaniem o jednostkę (2026-10-15) - po wyjściu z pola, raz
+  // dla danej pary liczb; podpowiedź pod polami zostaje jako zapas.
+  const [unitAskOpen, setUnitAskOpen] = useState(false);
+  const unitAskSeenRef = useRef<Set<string>>(new Set());
   function handleDimensionBlur() {
     if (!profile || widthNum <= 0 || heightNum <= 0) return;
+    const askKey = `${dimensionUnit}:${widthNum}x${heightNum}`;
+    if (!dimensionsValid && (timesTenFix || looksLikeCm) && !unitAskSeenRef.current.has(askKey)) {
+      unitAskSeenRef.current.add(askKey);
+      window.setTimeout(() => setUnitAskOpen(true), 80);
+    }
     const key = `${widthNum}x${heightNum}:${dimensionsValid ? 1 : 0}`;
     if (key === lastTrackedDimsRef.current) return;
     lastTrackedDimsRef.current = key;
@@ -894,6 +904,38 @@ export default function ConfiguratorPanel({
     }, 120);
   }
   const positionFormRef = useRef<HTMLDivElement | null>(null);
+  const unitAskModal = unitAskOpen && profile && (timesTenFix || looksLikeCm) ? (
+    timesTenFix ? (
+      <UnitAskModal
+        title={timesTenFix.fromMm ? "Wpisujesz w milimetrach?" : "Czy chodziło o taki wymiar?"}
+        detail={`Wpisane ${widthNum / 10} × ${heightNum / 10} cm ${timesTenFix.fromMm ? "to kilka metrów" : "to mniej niż najmniejsza plisa"}. Czy chodziło Ci o ${timesTenFix.widthMm / 10} × ${timesTenFix.heightMm / 10} cm?`}
+        yesLabel={timesTenFix.fromMm ? "Tak, przelicz na cm" : "Tak, popraw"}
+        onYes={() => {
+          applyTimesTenFix();
+          setUnitAskOpen(false);
+        }}
+        onNo={() => {
+          trackShopStep("dimensions_unit_fix", "plisy", { place: "configurator", accepted: false });
+          setUnitAskOpen(false);
+        }}
+      />
+    ) : (
+      <UnitAskModal
+        title="Wpisujesz w centymetrach?"
+        detail={`${widthNum} × ${heightNum} mm to tylko ${widthNum / 10} × ${heightNum / 10} cm - mniej niż najmniejsza plisa.`}
+        yesLabel="Tak, to centymetry"
+        onYes={() => {
+          switchDimensionUnit("cm");
+          trackShopStep("dimensions_unit_fix", "plisy", { place: "configurator", accepted: true, kinds: "cm" });
+          setUnitAskOpen(false);
+        }}
+        onNo={() => {
+          trackShopStep("dimensions_unit_fix", "plisy", { place: "configurator", accepted: false, kinds: "cm" });
+          setUnitAskOpen(false);
+        }}
+      />
+    )
+  ) : null;
 
   // "Dodaj drugą podobną" przy przycisku koszyka (właściciel, 2026-10-15):
   // te same kolory, montaż i tkanina - klient wpisuje tylko inny wymiar.
@@ -1309,6 +1351,7 @@ export default function ConfiguratorPanel({
                 </span>
               </div>
             ) : null}
+            {unitAskModal}
             {(width || height) && !dimensionsValid ? (
               <div className="hero-product-dimensions-error">
                 {timesTenFix ? (

@@ -35,6 +35,7 @@ import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import { PLISY_COLLECTIONS } from "./landing-content";
+import UnitAskModal from "./UnitAskModal";
 import {
   isPlisyMountNonInvasive,
   plisyMountLabel,
@@ -289,19 +290,13 @@ export default function PlisyQuickPrice({
       )
       .join(", ");
     return (
-      <div className="pl-quick-unit-ask" role="alert">
-        <p>
-          <strong>{question}</strong> Pola są w centymetrach: {detail}.
-        </p>
-        <div className="pl-quick-unit-actions">
-          <button type="button" className="is-yes" onClick={acceptGuess}>
-            {unit === "x10" ? "Tak, popraw" : "Tak, przelicz na cm"}
-          </button>
-          <button type="button" onClick={rejectGuess}>
-            Nie, zostaw
-          </button>
-        </div>
-      </div>
+      <UnitAskModal
+        title={question}
+        detail={`Wymiary wpisujemy w centymetrach: ${detail}.`}
+        yesLabel={unit === "x10" ? "Tak, popraw" : "Tak, przelicz na cm"}
+        onYes={acceptGuess}
+        onNo={rejectGuess}
+      />
     );
   })() : null;
 
