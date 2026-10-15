@@ -631,14 +631,18 @@ export default function ConfiguratorPanel({
   // "15 × 120" w centymetrach (audyt 2026-10-01: 6 osób wpisało 15 cm
   // szerokości i odbiło się od zakresu): liczba za mała, ale razy 10 już
   // pasuje - pytamy "czy chodziło o 150 cm?" zamiast pokazywać sam zakres.
+  // 2026-10-15: także w drugą stronę - "1200 × 1500" przy centymetrach to
+  // milimetry (12 × 15 metrów nikt nie ma), więc dzielimy przez 10.
   const timesTenFix = (() => {
     if (!profile || dimensionUnit !== "cm" || dimensionsValid || widthNum <= 0 || heightNum <= 0) return null;
-    const fixW = widthNum < profile.widthMinMm ? widthNum * 10 : widthNum;
-    const fixH = heightNum < profile.heightMinMm ? heightNum * 10 : heightNum;
+    const fixAxis = (v: number, min: number, max: number) => (v < min ? v * 10 : v > max ? v / 10 : v);
+    const fixW = fixAxis(widthNum, profile.widthMinMm, profile.widthMaxMm * 2);
+    const fixH = fixAxis(heightNum, profile.heightMinMm, profile.heightMaxMm);
     if (fixW === widthNum && fixH === heightNum) return null;
     const wOk = fixW >= profile.widthMinMm && fixW <= profile.widthMaxMm * 2;
     const hOk = fixH >= profile.heightMinMm && fixH <= profile.heightMaxMm;
-    return wOk && hOk ? { widthMm: fixW, heightMm: fixH } : null;
+    const fromMm = fixW < widthNum || fixH < heightNum;
+    return wOk && hOk ? { widthMm: Math.round(fixW), heightMm: Math.round(fixH), fromMm } : null;
   })();
   function applyTimesTenFix() {
     if (!timesTenFix) return;
@@ -890,6 +894,24 @@ export default function ConfiguratorPanel({
     }, 120);
   }
   const positionFormRef = useRef<HTMLDivElement | null>(null);
+
+  // "Dodaj drugą podobną" przy przycisku koszyka (właściciel, 2026-10-15):
+  // te same kolory, montaż i tkanina - klient wpisuje tylko inny wymiar.
+  // Wpisany wymiar trafia do zestawu, pola wymiarów czyszczą się i dostają
+  // kursor; do koszyka cały zestaw idzie potem jednym "Dodaj do koszyka".
+  const [similarHint, setSimilarHint] = useState(false);
+  function handleAddSimilar() {
+    if (!canFinalSubmit) return;
+    if (currentPosition()) handleAddPosition();
+    setEditingPositionId(null);
+    setStepDimsCollapsed(false);
+    setSimilarHint(true);
+    trackShopStep("add_similar", "plisy", { positions: effectivePositions.length });
+    window.setTimeout(() => {
+      positionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      positionFormRef.current?.querySelector<HTMLInputElement>("input[type='number'], input")?.focus({ preventScroll: true });
+    }, 180);
+  }
 
 
   // A customer who only ever wants one size never has to touch "+ Dodaj
@@ -1291,9 +1313,10 @@ export default function ConfiguratorPanel({
               <div className="hero-product-dimensions-error">
                 {timesTenFix ? (
                   <p className="plisy-dimensions-hint">
+                    {timesTenFix.fromMm ? "Wpisujesz w milimetrach? " : ""}
                     Czy chodziło Ci o {timesTenFix.widthMm / 10} × {timesTenFix.heightMm / 10} cm?
                     <button type="button" onClick={applyTimesTenFix}>
-                      Tak, popraw
+                      {timesTenFix.fromMm ? "Tak, przelicz na cm" : "Tak, popraw"}
                     </button>
                   </p>
                 ) : looksLikeCm ? (
@@ -1327,6 +1350,11 @@ export default function ConfiguratorPanel({
               <p className="plisy-oversize-note">
                 Szerokość powyżej {PLISY_OVERSIZE_WIDTH_MM / 10} cm: dopłata za przesyłkę dłużycową{" "}
                 <strong>+{formatZl(oversizeSurcharge)}</strong> (jednorazowo dla całego zamówienia, doliczana w koszyku).
+              </p>
+            ) : null}
+            {similarHint && !width && !height ? (
+              <p className="plisy-similar-hint" role="status">
+                Kolejna plisa w tych samych kolorach i tkaninie - wpisz tylko jej wymiar.
               </p>
             ) : null}
             <div className="plisy-position-form-footer">
@@ -2053,6 +2081,21 @@ export default function ConfiguratorPanel({
                   >
                     {submitLabel}
                   </button>
+                  {/* Tylko na stronie produktu (jest onAddVariant) - edycja pozycji
+                      w koszyku zmienia jedną sztukę i nie ma zestawu. isCartEdit
+                      się tu nie nadaje: montaż z szybkiej wyceny też go włącza. */}
+                  {onAddVariant ? (
+                    <button
+                      type="button"
+                      className="plisy-add-similar"
+                      onClick={handleAddSimilar}
+                      disabled={!canFinalSubmit}
+                      title="Te same kolory i tkanina, inny wymiar"
+                    >
+                      <span>{effectivePositions.length > 1 ? "+ Dodaj kolejną podobną" : "+ Dodaj drugą podobną"}</span>
+                      <small>te same kolory, inny wymiar</small>
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </>

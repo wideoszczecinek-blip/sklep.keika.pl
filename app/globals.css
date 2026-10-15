@@ -22106,3 +22106,17 @@ body:has(.cart-page--v2) .site-footer {
   .home-root.plisy-v2 .plv2-why-grid { grid-template-columns: repeat(4, 1fr); }
   .home-root.plisy-v2 .plv2-more { max-width: none; }
 }
+
+/* Plisy - szybka wycena: pytanie o jednostkę (2026-10-15) */
+.pl-quick-unit-ask { display: grid; gap: 8px; margin: 2px 0 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid #f3b546; background: #fff8e8; color: #4a3410; font-size: 0.86rem; line-height: 1.4; }
+.pl-quick-unit-ask p { margin: 0; }
+.pl-quick-unit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pl-quick-unit-actions button { min-height: 2.4rem; padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid rgba(74, 52, 16, 0.3); background: #fff; color: #4a3410; font: inherit; font-weight: 700; cursor: pointer; }
+.pl-quick-unit-actions button.is-yes { background: #132843; border-color: #132843; color: #fff; }
+
+/* Plisy: „Dodaj drugą podobną” pod przyciskiem koszyka (2026-10-15) */
+.plisy-add-similar { width: 100%; margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0.6rem 1rem; border-radius: 999px; border: 1.5px solid #007f7b; background: #fff; color: #007f7b; font: inherit; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: background 0.16s ease; }
+.plisy-add-similar small { font-size: 0.74rem; font-weight: 600; color: #4e6480; }
+.plisy-add-similar:hover:not(:disabled) { background: #e3f5f4; }
+.plisy-add-similar:disabled { opacity: 0.45; cursor: not-allowed; }
+.plisy-similar-hint { margin: 6px 0 0; padding: 7px 10px; border-radius: 10px; background: #e3f5f4; color: #0b4f4c; font-size: 0.86rem; font-weight: 600; }

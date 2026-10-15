@@ -142,9 +142,62 @@ export default function PlisyQuickPrice({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHeightText(String(heightCm));
   }, [heightCm]);
+  // Pomyłka jednostek (właściciel, 2026-10-15: "wyczuć, że klient wpisuje
+  // milimetry zamiast centymetrów i odwrotnie, i zapytać"). Pola są w cm;
+  // liczba spoza zakresu, która po przeliczeniu z mm (÷10) albo z metrów
+  // (×100) mieści się w produkcji, to prawie na pewno inna jednostka -
+  // pytamy, zamiast po cichu ucinać do maksimum (tak było do dziś: 1200
+  // stawało się 300 cm bez słowa).
+  type UnitGuess = { axis: "w" | "h"; raw: number; cm: number; unit: "mm" | "m" | "x10" };
+  const [unitGuess, setUnitGuess] = useState<UnitGuess[]>([]);
+  const dismissedGuessRef = useRef<Set<string>>(new Set());
+  function guessUnit(raw: string, axis: "w" | "h"): UnitGuess | null {
+    const value = Number(String(raw).replace(",", "."));
+    if (!Number.isFinite(value) || value <= 0) return null;
+    const min = axis === "w" ? minW : minH;
+    const max = axis === "w" ? maxW : maxH;
+    if (value >= min && value <= max) return null;
+    const fits = (cm: number) => cm >= min && cm <= max;
+    let guess: UnitGuess | null = null;
+    if (value > max && fits(value / 10)) guess = { axis, raw: value, cm: Math.round(value / 10), unit: "mm" };
+    else if (value < min && value < 10 && fits(value * 100)) guess = { axis, raw: value, cm: Math.round(value * 100), unit: "m" };
+    else if (value < min && fits(value * 10)) guess = { axis, raw: value, cm: Math.round(value * 10), unit: "x10" };
+    if (guess && dismissedGuessRef.current.has(`${axis}:${value}`)) return null;
+    return guess;
+  }
+  function refreshGuess(axis: "w" | "h", raw: string) {
+    const g = guessUnit(raw, axis);
+    setUnitGuess((list) => {
+      const rest = list.filter((x) => x.axis !== axis);
+      return g ? [...rest, g].sort((a) => (a.axis === "w" ? -1 : 1)) : rest;
+    });
+    return g;
+  }
+  function acceptGuess() {
+    let w = widthMm;
+    let h = heightMm;
+    for (const g of unitGuess) {
+      if (g.axis === "w") { w = g.cm * 10; setWidthText(String(g.cm)); }
+      else { h = g.cm * 10; setHeightText(String(g.cm)); }
+    }
+    trackShopStep("dimensions_unit_fix", "plisy", { place: "quick_price", accepted: true, kinds: unitGuess.map((g) => g.unit).join(","), to_w: w, to_h: h });
+    setUnitGuess([]);
+    onSizeChange(w, h);
+  }
+  function rejectGuess() {
+    for (const g of unitGuess) dismissedGuessRef.current.add(`${g.axis}:${g.raw}`);
+    trackShopStep("dimensions_unit_fix", "plisy", { place: "quick_price", accepted: false, kinds: unitGuess.map((g) => g.unit).join(",") });
+    const pending = unitGuess;
+    setUnitGuess([]);
+    // "Nie, to centymetry" - wtedy zwykła ścieżka: dociągamy do zakresu.
+    for (const g of pending) commitSize(g.axis, String(g.raw), true);
+  }
   function typeSize(raw: string, axis: "w" | "h") {
     if (axis === "w") setWidthText(raw);
     else setHeightText(raw);
+    // Pytanie o jednostkę dopiero po wyjściu z pola (commitSize) - w trakcie
+    // pisania "1200" przechodzi przez "1" i "12", które też są poza zakresem.
+    setUnitGuess((list) => list.filter((x) => x.axis !== axis));
     const value = Number(String(raw).replace(",", "."));
     if (!Number.isFinite(value) || value <= 0) return;
     const min = axis === "w" ? minW : minH;
@@ -154,8 +207,13 @@ export default function PlisyQuickPrice({
     if (axis === "w") onSizeChange(mm, heightMm);
     else onSizeChange(widthMm, mm);
   }
-  function commitSize(axis: "w" | "h") {
-    const raw = axis === "w" ? widthText : heightText;
+  function commitSize(axis: "w" | "h", rawOverride?: string, force = false) {
+    const raw = rawOverride ?? (axis === "w" ? widthText : heightText);
+    // Czekamy na odpowiedź "mm czy cm?" - nie ucinamy liczby pod spodem.
+    if (!force && guessUnit(raw, axis)) {
+      refreshGuess(axis, raw);
+      return;
+    }
     const value = Number(String(raw).replace(",", "."));
     const min = axis === "w" ? minW : minH;
     const max = axis === "w" ? maxW : maxH;
@@ -211,6 +269,42 @@ export default function PlisyQuickPrice({
     />
   );
 
+  const unitGuessNotice = unitGuess.length ? (() => {
+    const unit = unitGuess[0].unit;
+    const axisLabel = (g: UnitGuess) => (g.axis === "w" ? "szerokość" : "wysokość");
+    const fmt = (n: number) => String(n).replace(".", ",");
+    const question =
+      unit === "mm"
+        ? "Wpisujesz w milimetrach?"
+        : unit === "m"
+          ? "Wpisujesz w metrach?"
+          : "Czy chodziło o taki wymiar?";
+    const detail = unitGuess
+      .map((g) =>
+        g.unit === "mm"
+          ? `${axisLabel(g)} ${fmt(g.raw)} mm = ${g.cm} cm`
+          : g.unit === "m"
+            ? `${axisLabel(g)} ${fmt(g.raw)} m = ${g.cm} cm`
+            : `${axisLabel(g)} ${g.cm} cm zamiast ${fmt(g.raw)} cm`,
+      )
+      .join(", ");
+    return (
+      <div className="pl-quick-unit-ask" role="alert">
+        <p>
+          <strong>{question}</strong> Pola są w centymetrach: {detail}.
+        </p>
+        <div className="pl-quick-unit-actions">
+          <button type="button" className="is-yes" onClick={acceptGuess}>
+            {unit === "x10" ? "Tak, popraw" : "Tak, przelicz na cm"}
+          </button>
+          <button type="button" onClick={rejectGuess}>
+            Nie, zostaw
+          </button>
+        </div>
+      </div>
+    );
+  })() : null;
+
   if (isV2) {
     return (
       <div className="pl-quick pl-quick--v2" role="group" aria-label="Wyceń swoje okno">
@@ -234,6 +328,7 @@ export default function PlisyQuickPrice({
             </span>
           </label>
         </div>
+        {unitGuessNotice}
         {mountOptions.length ? (
           <div className="pl-quick-mounts" role="radiogroup" aria-label="Sposób montażu">
             {mountOptions.map((option) => {
@@ -377,6 +472,7 @@ export default function PlisyQuickPrice({
           </span>
         </div>
       </div>
+      {unitGuessNotice}
       <div className="pl-quick-row">
         <div className="pl-quick-result" aria-live="polite">
           {regular === null ? (
