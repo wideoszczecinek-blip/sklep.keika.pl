@@ -188,6 +188,11 @@ export function PlisyOfferCard({
           </>
         )}
       </div>
+      {/* Obietnica z reklam „jakość” widoczna od razu pod ceną (właściciel 16.10, #87). */}
+      <div className="plv2-offer-badge">
+        <span>🛡 5 lat gwarancji</span>
+        <span>🇵🇱 polska produkcja</span>
+      </div>
       <div className="plv2-offer-size">
         plisa {widthCm} × {heightCm} cm, kolekcja Klasyczne · cena rośnie z wymiarem
       </div>
@@ -199,7 +204,7 @@ export function PlisyOfferCard({
           <i aria-hidden="true">🏭</i>Produkcja {leadTime}, u nas w Polsce
         </li>
         <li>
-          <i aria-hidden="true">↩</i>30 dni na zwrot · 5 lat gwarancji
+          <i aria-hidden="true">↩</i>30 dni na zwrot, także plisy na wymiar
         </li>
         <li>
           <i aria-hidden="true">💳</i>BLIK, karta, {paypoEnabled ? "PayPo (zapłać za 30 dni), " : ""}za pobraniem

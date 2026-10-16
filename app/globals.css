@@ -18396,6 +18396,8 @@ html[data-theme="light"] .cart-toggle-checkbox--inner {
 /* Wyjaśnienie czerwonego odcinka suwaka - pod suwakami, żeby nie skracać
    toru (skrócony tor zmieniałby skalę, a tego właśnie unikamy). Widoczne
    tylko wtedy, gdy granica faktycznie działa. */
+/* 16.10: koniec sezonu moskitier przy cenie szybkiej wyceny */
+.pl-quick-season { display: block; margin-top: 0.4rem; padding: 0.35rem 0.6rem; border-radius: 10px; background: #fff4e6; color: #9a3412; font-size: 0.8rem; font-weight: 700; line-height: 1.35; }
 .pl-quick-limit-note {
   display: block;
   margin-top: 0.15rem;
@@ -22028,6 +22030,9 @@ body:has(.cart-page--v2) .site-footer {
 .plv2-offer-code { font-size: 0.74rem; font-weight: 800; color: #d94d00; background: #fff1e8; padding: 0.2rem 0.55rem; border-radius: 999px; }
 .plv2-offer-loading { font-size: 1rem; color: #4a5b6e; }
 .plv2-offer-size { margin-top: 0.25rem; font-size: 0.78rem; color: #4a5b6e; }
+/* 16.10: obietnica z reklam „jakość” zaraz pod ceną */
+.plv2-offer-badge { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }
+.plv2-offer-badge span { font-size: 0.78rem; font-weight: 800; color: #0f5132; background: #e7f6ec; border: 1px solid #b7e1c4; padding: 0.22rem 0.6rem; border-radius: 999px; white-space: nowrap; }
 .plv2-offer-lines { list-style: none; margin: 0.65rem 0 0; padding: 0; display: grid; gap: 0.3rem; font-size: 0.86rem; color: #16314e; }
 .plv2-offer-lines li { display: flex; gap: 0.5rem; align-items: flex-start; line-height: 1.35; }
 .plv2-offer-lines i { font-style: normal; width: 1.2rem; text-align: center; flex: 0 0 auto; }

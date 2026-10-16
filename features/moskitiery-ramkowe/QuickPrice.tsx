@@ -265,6 +265,13 @@ export default function MoskitieryQuickPrice({
                 {surcharge > 0 ? ` · dopłata dłużycowa ${zl(surcharge)} (raz na zamówienie)` : ""}
               </span>
             )}
+            {/* Właściciel 16.10 (#49): koniec sezonu moskitier to prawdziwa presja -
+                mówimy o nim przy cenie, bez wymyślonej daty. */}
+            {withPromo !== null && regular !== null && withPromo < regular && !bothOverTechnicalLimit ? (
+              <span className="pl-quick-season">
+                🍂 Koniec sezonu moskitier - ostatnie zamówienia z rabatem −20% ({PROMO_CODE}).
+              </span>
+            ) : null}
             {limitActive && !bothOverTechnicalLimit ? (
               <span className="pl-quick-limit-note">
                 Czerwony odcinek suwaka jest niedostępny — oba boki nie mogą jednocześnie przekraczać 160 cm.
