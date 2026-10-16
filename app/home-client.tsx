@@ -139,6 +139,7 @@ import { PD_ALL_PHOTOS, buildPdGalleryCategories } from "@/features/plisy-dachow
 import {
   PD_CALLOUT,
   PD_DESCRIPTION_HTML,
+  isPdPlaceholderCopy,
   PD_FAQ,
   PD_FEATURE_BULLETS,
   PD_H1,
@@ -4334,7 +4335,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
 
                             <PdHeroPhotos />
 
-                            <p className="pl-subtitle">{productLanding?.subtitle?.trim() ? productLanding.subtitle : PD_SUBTITLE}</p>
+                            <p className="pl-subtitle">{productLanding?.subtitle && !isPdPlaceholderCopy(productLanding.subtitle) ? productLanding.subtitle : PD_SUBTITLE}</p>
 
                             <div className="pl-spec-grid">
                               {(productLanding?.specItems?.length ? productLanding.specItems : PD_SPEC_ITEMS).map((item) => {
@@ -4362,7 +4363,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             <div
                               className="pl-description"
                               dangerouslySetInnerHTML={{
-                                __html: demoteHeadings(productLanding?.description?.trim() ? productLanding.description : PD_DESCRIPTION_HTML),
+                                __html: demoteHeadings(productLanding?.description && !isPdPlaceholderCopy(productLanding.description) ? productLanding.description : PD_DESCRIPTION_HTML),
                               }}
                             />
 

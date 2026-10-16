@@ -21,6 +21,24 @@ export type PdFeatureBullet = { lead: string; detail?: string };
 export type PdFaqEntry = { question: string; answer: string };
 export type PdHowItWorksTile = { id: "belki" | "prowadnice" | "model" | "montaz"; title: string; body: string };
 
+// Opisy techniczne z rekordu CRM (opis konfiguratora dla biura) nie mogą
+// trafiać do klienta - wtedy pokazujemy opis wbudowany niżej (16.10.2026:
+// strona pokazywała „cena liczona z cennika plis”). Tak samo jak RD_CRM_PLACEHOLDERS.
+export const PD_CRM_PLACEHOLDERS = [
+  "Plisa do okna dachowego na wymiar - obie belki ruchome, boczne prowadnice.",
+  "Konfigurator plisy do okna dachowego: model okna albo własne wymiary, kolor osprzętu, kolekcja i kolor tkaniny. Te same tkaniny co w plisach okiennych, cena liczona z cennika plis.",
+];
+
+export function isPdPlaceholderCopy(text: string | null | undefined): boolean {
+  const normalized = String(text || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  if (!normalized) return true;
+  return PD_CRM_PLACEHOLDERS.some((entry) => entry.toLowerCase() === normalized);
+}
+
 export const PD_H1 = "Plisy do okien dachowych na wymiar";
 
 export const PD_SUBTITLE =
