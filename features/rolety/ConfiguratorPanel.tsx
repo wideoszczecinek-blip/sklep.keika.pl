@@ -2,16 +2,24 @@
 
 // Konfigurator rolet mini (dzień-noc i tradycyjne) oraz żaluzji poziomych -
 // jedna implementacja sparametryzowana slugiem (reguły i nazwy kroków w
-// ROLETY_COPY, shared.ts). Kroki (właściciel, 17.10.2026): 1) montaż,
-// 2) wymiary i ilość (z instrukcją pomiaru pod wybrany montaż), 3) kolor
-// mechanizmu (pomijany, gdy produkt go nie ma - żaluzje), 4) kolekcja
-// tkaniny / model żaluzji -> kolor, 5) strona łańcuszka / sterowania, na końcu
-// karta ceny i "Dodaj do koszyka". Bez pola uwag (zasada właściciela), bez
-// powiększeń na najechanie - tylko lupa na kliknięcie. Układ, klasy CSS i
-// zachowanie akordeonów skopiowane z plis (features/plisy/ConfiguratorPanel.tsx);
-// dane i cennik z CRM. Komórka cennika = 0 oznacza wymiar niedostępny dla
-// danego modelu - pokazujemy komunikat i blokujemy dodanie do koszyka.
-import { useEffect, useMemo, useRef, useState } from "react";
+// ROLETY_COPY, shared.ts).
+//
+// Rolety (właściciel, 17.10.2026): 1) montaż, 2) wymiary i ilość (z
+// instrukcją pomiaru pod wybrany montaż), 3) kolor mechanizmu, 4) kolekcja
+// tkaniny -> kolor, 5) strona łańcuszka, na końcu karta ceny i "Dodaj do
+// koszyka".
+//
+// Żaluzje (model wybrany wcześniej w ProductPanel.tsx: rodzaj -> szerokość
+// lameli -> wariant): okruszek z "zmień", potem 1) kolor lameli, 2) wymiary
+// i ilość, 3) klamry montażowe, 4) strona sterowania, cena, koszyk. Bez
+// onChangeModel (edycja z koszyka) krok modelu zostaje jako zwinięty akordeon.
+//
+// Bez pola uwag (zasada właściciela), bez powiększeń na najechanie - tylko
+// lupa na kliknięcie. Układ, klasy CSS i akordeony skopiowane z plis
+// (features/plisy/ConfiguratorPanel.tsx); dane i cennik z CRM. Komórka
+// cennika = 0 oznacza wymiar niedostępny dla danego modelu - komunikat i
+// blokada dodania do koszyka.
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
@@ -127,14 +135,26 @@ export default function RoletyConfiguratorPanel({
   submitLabel,
   onSubmit,
   onZoom,
+  breadcrumb,
+  onChangeModel,
 }: {
   slug: RoletySlug;
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
   onSubmit: (result: ConfiguratorResult) => void;
   onZoom?: (preview: ZoomPreview) => void;
+  /** Żaluzje: "Drewniane basswood › 50 mm › RETRO" nad krokami. */
+  breadcrumb?: string[];
+  /** Żaluzje: powrót do bloków kategorii (ProductPanel). Bez niego krok
+   * modelu zostaje w panelu (edycja z koszyka). */
+  onChangeModel?: () => void;
 }) {
   const copy = ROLETY_COPY[slug];
+  // Żaluzje: model wybrany wcześniej, kolor jako krok 1, wymiary 2, klamry 3,
+  // sterowanie 4. Rolety: montaż 1, wymiary 2, mechanizm 3, kolekcja/kolor 4,
+  // łańcuszek 5.
+  const modelFirst = slug === "zaluzje";
+  const showGroupStep = !modelFirst || !onChangeModel;
   // Korekta procentowa ceny produktu z CRM (lib/price-adjustment.ts).
   const priceAdjustmentPercent = useProductPriceAdjustment(slug);
   const [profile, setProfile] = useState<RoletyProfile | null>(null);
@@ -160,12 +180,18 @@ export default function RoletyConfiguratorPanel({
   }, [slug]);
 
   // Edycja z koszyka niesie własne wybory (id albo etykiety); świeża
-  // konfiguracja startuje ze szkicu sprzed maksymalnie tygodnia.
+  // konfiguracja startuje ze szkicu sprzed maksymalnie tygodnia. Przy
+  // żaluzjach sam wybór modelu (fabricGroupId z ProductPanel) nie jest edycją.
   const isCartEdit = Boolean(
-    initialValues && Object.keys(initialValues).some((key) => key !== "widthMm" && key !== "heightMm" && key !== "qty"),
+    initialValues &&
+      Object.keys(initialValues).some((key) => key !== "widthMm" && key !== "heightMm" && key !== "qty" && !(modelFirst && key === "fabricGroupId")),
   );
   const [draftSeed] = useState<RoletyDraft | null>(() => (isCartEdit ? null : readDraft(slug)));
   const seed: RoletyDraft & ConfiguratorInitialValues = { ...(draftSeed ?? {}), ...(initialValues ?? {}) };
+  // Szkic koloru z innego modelu żaluzji nie ma sensu.
+  if (modelFirst && initialValues?.fabricGroupId && draftSeed && draftSeed.fabricGroupId !== initialValues.fabricGroupId) {
+    seed.fabricId = initialValues.fabricId;
+  }
 
   const [selectedMountId, setSelectedMountId] = useState(seed.mountId || "");
   const [stepMountCollapsed, setStepMountCollapsed] = useState(Boolean(seed.mountId));
@@ -228,6 +254,7 @@ export default function RoletyConfiguratorPanel({
   const stepHardwareRef = useRef<HTMLButtonElement | null>(null);
   const stepGroupRef = useRef<HTMLButtonElement | null>(null);
   const stepFabricRef = useRef<HTMLButtonElement | null>(null);
+  const stepMountRef = useRef<HTMLButtonElement | null>(null);
   const stepChainRef = useRef<HTMLButtonElement | null>(null);
   const summaryRef = useRef<HTMLDivElement | null>(null);
 
@@ -266,8 +293,8 @@ export default function RoletyConfiguratorPanel({
   }
 
   // Montaż domyślny = pierwsza opcja z CRM: od niego zależy instrukcja
-  // pomiaru w kroku 2. Krok zostaje otwarty, żeby klient go zobaczył i mógł
-  // zmienić.
+  // pomiaru w kroku wymiarów. Krok zostaje otwarty, żeby klient go zobaczył
+  // i mógł zmienić.
   useEffect(() => {
     if (!profile || selectedMountId) return;
     const fallback = profile.mountOptions[0];
@@ -452,14 +479,18 @@ export default function RoletyConfiguratorPanel({
     if ((widthNum > 0 || heightNum > 0) && hintBefore !== hintAfter) {
       setRemeasureHint(
         slug === "zaluzje"
-          ? "Zmieniłeś sposób montażu - sprawdź wymiary według instrukcji powyżej."
+          ? "Zmieniłeś sposób montażu - sprawdź wymiary według instrukcji przy polach."
           : isRoletyCassetteMount(option.id) || isRoletyCassetteMount(option.label)
             ? "Zmieniłeś montaż na kasetę: podaj dokładny wymiar szyby między uszczelkami, bez dodawania 15 mm."
             : "Zmieniłeś montaż: do wymiaru szyby między uszczelkami dodaj po 15 mm z każdej strony.",
       );
     }
-    setStepDimsCollapsed(false);
-    window.setTimeout(() => scrollStepIntoView(stepDimsRef.current), 380);
+    if (modelFirst) {
+      window.setTimeout(() => scrollStepIntoView(stepChainRef.current), 380);
+    } else {
+      setStepDimsCollapsed(false);
+      window.setTimeout(() => scrollStepIntoView(stepDimsRef.current), 380);
+    }
   }
 
   function pickFabricGroup(groupId: string) {
@@ -471,6 +502,15 @@ export default function RoletyConfiguratorPanel({
       setStepFabricCollapsed(false);
     }
     window.setTimeout(() => scrollStepIntoView(stepFabricRef.current), 380);
+  }
+
+  function pickFabric(id: string, source?: string) {
+    const swatch = swatchesForGroup.find((entry) => entry.id === id);
+    trackShopStep("select_fabric_color", swatch?.label || id, { option_id: id, product: slug, ...(source ? { source } : {}) });
+    setSelectedFabricId(id);
+    setFabricGalleryIndex(null);
+    setStepFabricCollapsed(true);
+    window.setTimeout(() => scrollStepIntoView(modelFirst ? stepDimsRef.current : stepChainRef.current), 380);
   }
 
   const canSubmit = Boolean(selectedMount && hardwareChosen && selectedFabricGroup && selectedFabric && chainSide && dimensionsValid && unitPrice !== null && !selectedUnavailable);
@@ -556,8 +596,6 @@ export default function RoletyConfiguratorPanel({
   const sizeSummaryText = dimensionsValid ? `${widthNum / 10} × ${heightNum / 10} cm · ${quantityNum} szt.` : "";
   const measureHint = roletyMeasureHint(slug, selectedMount);
   const dimsOpenStyle = stepDimsCollapsed ? undefined : { maxHeight: "none", overflow: "visible" as const };
-  const groupStepNo = hasHardwareStep ? 4 : 3;
-  const controlStepNo = hasHardwareStep ? 5 : 4;
   const chainLabel = CHAIN_SIDES.find((entry) => entry.id === chainSide)?.label || "";
 
   const unitAskModal = unitAskOpen && (timesTenFix || looksLikeCm) ? (
@@ -592,6 +630,278 @@ export default function RoletyConfiguratorPanel({
       />
     )
   ) : null;
+
+  /** Nagłówek akordeonu kroku: numer/✓, tytuł, wybrana wartość, Zmień/▴. */
+  function stepHead(
+    key: string,
+    stepNo: number,
+    title: string,
+    done: boolean,
+    collapsed: boolean,
+    toggle: () => void,
+    meta: ReactNode,
+    ref?: React.RefObject<HTMLButtonElement | null>,
+    muted = true,
+  ) {
+    return (
+      <button
+        type="button"
+        ref={ref}
+        className="hero-product-step-head"
+        onClick={() => {
+          trackShopStep("configurator_step_toggle", key, { collapsed_after: !collapsed, product: slug });
+          toggle();
+        }}
+        aria-expanded={collapsed ? "false" : "true"}
+      >
+        <span className={`hero-product-config-step-title ${muted ? "hero-product-config-step-title--muted" : ""}`}>
+          <span className={`hero-product-step-check ${done ? "" : "is-muted"}`} aria-hidden="true">
+            {done ? "✓" : String(stepNo)}
+          </span>
+          {title}
+        </span>
+        <span className="hero-product-step-head-meta">
+          {meta}
+          {collapsed ? <span className="hero-product-step-head-change">Zmień</span> : <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>}
+        </span>
+      </button>
+    );
+  }
+
+  function renderMountSection(stepNo: number) {
+    return (
+      <section className={`hero-product-step-accordion hero-product-step-accordion--mount ${stepMountCollapsed ? "is-collapsed" : ""}`}>
+        {stepHead(
+          "mount_type",
+          stepNo,
+          "Wybierz sposób montażu",
+          Boolean(selectedMount),
+          stepMountCollapsed,
+          () => setStepMountCollapsed((prev) => !prev),
+          selectedMount ? <strong>{selectedMount.label}</strong> : null,
+          stepMountRef,
+          modelFirst,
+        )}
+        <div className="hero-product-step-body">
+          <div className="plisy-mount-pick" role="group" aria-label="Sposób montażu">
+            <div className="plisy-mount-pick-grid">
+              {profile!.mountOptions.map((option) => {
+                const isActive = option.id === selectedMountId;
+                const delta = formatPriceDeltaBadge(option.priceDelta, option.priceDeltaType);
+                return (
+                  <div key={option.id} className={`plisy-mount-pick-cell ${isActive ? "is-active" : ""}`}>
+                    <button type="button" className={`plisy-mount-pick-option ${isActive ? "is-active" : ""}`} aria-pressed={isActive} onClick={() => handleMountChange(option)}>
+                      {option.imageUrl ? (
+                        <span className="plisy-mount-pick-thumb" aria-hidden="true" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 160)})` }} />
+                      ) : null}
+                      <span className="plisy-mount-pick-text">
+                        <strong>{option.label}</strong>
+                        <span>{option.note}</span>
+                      </span>
+                      {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                      {delta ? <span className="plisy-mount-pick-delta">{delta}</span> : null}
+                    </button>
+                    {option.imageUrl ? (
+                      <button type="button" className="config-option-zoom" aria-label={`Powiększ: ${option.label}`} onClick={() => openZoom({ title: option.label, urls: [option.imageUrl], index: 0 })}>
+                        🔍
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderDimsSection(stepNo: number) {
+    const p = profile!;
+    return (
+      <section className={`hero-product-step-accordion hero-product-step-accordion--dimensions ${stepDimsCollapsed ? "is-collapsed" : ""}`}>
+        {stepHead(
+          "dimensions",
+          stepNo,
+          "Wymiary i ilość",
+          dimensionsValid,
+          stepDimsCollapsed,
+          () => setStepDimsCollapsed((prev) => !prev),
+          sizeSummaryText ? <strong>{sizeSummaryText}</strong> : null,
+        )}
+        <div className="hero-product-step-body" style={dimsOpenStyle}>
+          <div className="plisy-position-form" ref={stepDimsRef}>
+            <p className="hero-product-config-hint">{measureHint}</p>
+            <div className="plisy-dimensions-tools">
+              <div className="hero-product-unit-toggle" role="group" aria-label="Jednostka wymiarów">
+                <button type="button" className={dimensionUnit === "cm" ? "is-active" : ""} aria-pressed={dimensionUnit === "cm"} onClick={() => switchDimensionUnit("cm")}>
+                  cm
+                </button>
+                <button type="button" className={dimensionUnit === "mm" ? "is-active" : ""} aria-pressed={dimensionUnit === "mm"} onClick={() => switchDimensionUnit("mm")}>
+                  mm
+                </button>
+              </div>
+            </div>
+            <div className="hero-product-dimensions-grid">
+              <label>
+                Szerokość ({dimensionUnit})
+                <input
+                  type="number"
+                  inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                  step={dimensionUnit === "cm" ? 0.1 : 1}
+                  min={dimensionUnit === "cm" ? p.widthMinMm / 10 : p.widthMinMm}
+                  max={dimensionUnit === "cm" ? p.widthMaxMm / 10 : p.widthMaxMm}
+                  placeholder={`np. ${mmToInput(p.widthDefaultMm, dimensionUnit)}`}
+                  value={width}
+                  onChange={(event) => setWidth(event.target.value)}
+                  onBlur={handleDimensionBlur}
+                />
+              </label>
+              <label>
+                Wysokość ({dimensionUnit})
+                <input
+                  type="number"
+                  inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
+                  step={dimensionUnit === "cm" ? 0.1 : 1}
+                  min={dimensionUnit === "cm" ? p.heightMinMm / 10 : p.heightMinMm}
+                  max={dimensionUnit === "cm" ? p.heightMaxMm / 10 : p.heightMaxMm}
+                  placeholder={`np. ${mmToInput(p.heightDefaultMm, dimensionUnit)}`}
+                  value={height}
+                  onChange={(event) => setHeight(event.target.value)}
+                  onBlur={handleDimensionBlur}
+                />
+              </label>
+              <label>
+                Ilość
+                <input type="number" inputMode="numeric" min={1} max={ROLETY_QTY_MAX} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+              </label>
+            </div>
+            {remeasureHint ? (
+              <p className="plisy-remeasure-hint" role="status">
+                {remeasureHint}{" "}
+                <button type="button" onClick={() => setRemeasureHint(null)}>
+                  Rozumiem
+                </button>
+              </p>
+            ) : null}
+            {unitAskModal}
+            {(width || height) && !dimensionsValid ? (
+              <div className="hero-product-dimensions-error">
+                {timesTenFix ? (
+                  <p className="plisy-dimensions-hint">
+                    {timesTenFix.fromMm ? "Wpisujesz w milimetrach? " : ""}
+                    Czy chodziło Ci o {timesTenFix.widthMm / 10} × {timesTenFix.heightMm / 10} cm?
+                    <button type="button" onClick={applyTimesTenFix}>
+                      {timesTenFix.fromMm ? "Tak, przelicz na cm" : "Tak, popraw"}
+                    </button>
+                  </p>
+                ) : looksLikeCm ? (
+                  <p className="plisy-dimensions-hint">
+                    {widthNum} × {heightNum} mm to tylko {widthNum / 10} × {heightNum / 10} cm — mniej niż najmniejszy produkowany wymiar. Wygląda na centymetry.
+                    <button type="button" onClick={() => switchDimensionUnit("cm")}>
+                      Tak, to centymetry
+                    </button>
+                  </p>
+                ) : (
+                  <p>
+                    Szerokość {formatRange(p.widthMinMm, p.widthMaxMm)}, wysokość {formatRange(p.heightMinMm, p.heightMaxMm)}.
+                    {dimensionUnit === "mm" ? " Masz wymiar w centymetrach? Przełącz jednostkę powyżej." : ""}
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderPriceCard() {
+    if (!dimensionsValid) return null;
+    return (
+      <div className="plisy-price-card" aria-live="polite">
+        {(() => {
+          if (selectedUnavailable) {
+            return <span className="rolety-unavailable-note">{copy.unavailableMessage}</span>;
+          }
+          const exact = Boolean(selectedFabricGroup) && unitPrice !== null && totalPrice !== null;
+          const unitAmount = exact ? unitPrice : cheapest ? cheapest.unit : null;
+          if (unitAmount === null) {
+            return <span className="plisy-price-card-label">Cenę policzymy po wyborze {copy.groupUnit === "model" ? "modelu" : "kolekcji tkaniny"}.</span>;
+          }
+          const total = Math.round(unitAmount * quantityNum * 100) / 100;
+          return (
+            <>
+              <span className="plisy-price-card-label">{exact ? "Cena za sztukę" : "Cena za sztukę — od"}</span>
+              <span className="plisy-price-card-rows">
+                <span className="plisy-price-card-row is-promo">
+                  <strong>{formatZl(unitAmount)}</strong>
+                </span>
+                {quantityNum > 1 ? (
+                  <span className="plisy-price-card-row">
+                    <em>Razem za {quantityNum} szt.</em>
+                    <strong style={{ fontSize: "1.05rem" }}>{formatZl(total)}</strong>
+                  </span>
+                ) : null}
+              </span>
+              {!exact && cheapest ? (
+                <span className="plisy-price-card-note">
+                  {copy.groupUnit === "model" ? "Model" : "Kolekcja"} {cheapest.groupLabel}. Dokładną cenę zobaczysz po wyborze {copy.groupUnit === "model" ? "modelu" : "kolekcji"} i koloru.
+                </span>
+              ) : null}
+              <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+            </>
+          );
+        })()}
+      </div>
+    );
+  }
+
+  function renderHardwareSection(stepNo: number) {
+    return (
+      <section className={`hero-product-step-accordion hero-product-step-accordion--hardware-color ${stepHardwareCollapsed ? "is-collapsed" : ""}`}>
+        {stepHead(
+          "hardware_color",
+          stepNo,
+          "Wybierz kolor mechanizmu",
+          Boolean(selectedHardware),
+          stepHardwareCollapsed,
+          () => setStepHardwareCollapsed((prev) => !prev),
+          <>
+            {selectedHardware && stepHardwareCollapsed ? <span className="hero-product-step-head-swatch is-color-only" style={{ background: selectedHardware.color }} aria-hidden="true" /> : null}
+            {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
+          </>,
+          stepHardwareRef,
+        )}
+        <div className="hero-product-step-body">
+          <p className="hero-product-config-hint">Kolor rury, uchwytów i łańcuszka. Wybierz najbliższy ramie okna.</p>
+          <div className="plisy-bracket-grid">
+            {profile!.hardware.map((option) => {
+              const isActive = option.id === selectedHardwareId;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`plisy-bracket-option ${isActive ? "is-active" : ""}`}
+                  aria-pressed={isActive}
+                  onClick={() => {
+                    trackShopStep("select_hardware_color", option.label, { option_id: option.id, product: slug });
+                    setSelectedHardwareId(option.id);
+                    setStepHardwareCollapsed(true);
+                    window.setTimeout(() => scrollStepIntoView(stepGroupRef.current), 380);
+                  }}
+                >
+                  <span className="plisy-bracket-dot" style={{ background: option.color }} aria-hidden="true" />
+                  <strong>{option.label}</strong>
+                  {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   function renderGroupCard(group: FabricGroup) {
     const isActive = group.id === selectedFabricGroupId;
@@ -649,651 +959,370 @@ export default function RoletyConfiguratorPanel({
     );
   }
 
+  function renderGroupSection(stepNo: number) {
+    return (
+      <section className={`hero-product-step-accordion ${stepGroupCollapsed ? "is-collapsed" : ""}`}>
+        {stepHead(
+          "fabric_group",
+          stepNo,
+          copy.groupStepTitle,
+          Boolean(selectedFabricGroup),
+          stepGroupCollapsed,
+          () => setStepGroupCollapsed((prev) => !prev),
+          selectedFabricGroup ? <strong>{selectedFabricGroup.label}</strong> : null,
+          stepGroupRef,
+        )}
+        <div className="hero-product-step-body" style={stepGroupCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}>
+          {dimensionsValid ? <p className="hero-product-config-hint">Ceny policzone dla Twojego wymiaru ({sizeSummaryText}).</p> : null}
+          {groupSections.length > 1 ? (
+            groupSections.map((section) => (
+              <div key={section.category || "_"} className="rolety-group-section">
+                {section.category ? <h4 className="rolety-group-section-title">{section.category}</h4> : null}
+                <div className="plisy-coll-grid">{section.groups.map(renderGroupCard)}</div>
+              </div>
+            ))
+          ) : (
+            <div className="plisy-coll-grid">{profile!.fabricGroups.map(renderGroupCard)}</div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  const collectionInfoModal =
+    collectionInfoGroup && typeof document !== "undefined"
+      ? createPortal(
+          <div className="instruction-modal instruction-modal--collection" role="dialog" aria-modal="true" aria-label={collectionInfoGroup.label} onClick={() => setCollectionInfoId("")}>
+            <div className="instruction-modal-shell instruction-modal-shell--collection" onClick={(event) => event.stopPropagation()}>
+              <button type="button" className="instruction-modal-close" aria-label="Zamknij" onClick={() => setCollectionInfoId("")}>
+                ×
+              </button>
+              {copy.groupCardPhoto && collectionInfoGroup.imageUrl ? (
+                <img className="rolety-group-modal-photo" src={optimizeImageUrl(collectionInfoGroup.imageUrl, 700)} alt={collectionInfoGroup.label} loading="lazy" />
+              ) : null}
+              <div className="plisy-coll-modal-head">
+                <div>
+                  <h3>{collectionInfoGroup.label}</h3>
+                </div>
+              </div>
+              {collectionInfoGroup.note ? <p>{collectionInfoGroup.note}</p> : null}
+              <p className="plisy-coll-modal-count">{colorCountLabel(collectionInfoGroup.swatches.length)} do wyboru.</p>
+              <button
+                type="button"
+                className="plisy-coll-modal-cta"
+                onClick={() => {
+                  const group = collectionInfoGroup;
+                  trackShopStep(copy.groupUnit === "model" ? "select_model" : "select_fabric_group", group.label, { option_id: group.id, source: "info_modal", product: slug });
+                  setCollectionInfoId("");
+                  pickFabricGroup(group.id);
+                }}
+              >
+                {copy.groupUnit === "model" ? "Wybieram ten model" : "Wybieram tę kolekcję"}
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  function renderColorSection(stepNo: number) {
+    const group = selectedFabricGroup!;
+    return (
+      <section className={`hero-product-step-accordion hero-product-step-accordion--fabric-color ${stepFabricCollapsed ? "is-collapsed" : ""}`}>
+        {stepHead(
+          "fabric_color",
+          stepNo,
+          copy.colorStepTitle,
+          Boolean(selectedFabric),
+          stepFabricCollapsed,
+          () => setStepFabricCollapsed((prev) => !prev),
+          <>
+            {selectedFabric && stepFabricCollapsed ? (
+              <span className="hero-product-step-head-swatch" style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl, selectedFabric.color)} aria-hidden="true" />
+            ) : null}
+            {selectedFabric ? <strong>{selectedFabric.label}</strong> : null}
+          </>,
+          stepFabricRef,
+          !modelFirst,
+        )}
+        <div className="hero-product-step-body">
+          {gallerySwatches.length ? (
+            <div className="plisy-fabric-tools">
+              <button
+                type="button"
+                className="plisy-fabric-gallery-cta"
+                onClick={() => {
+                  const at = Math.max(0, gallerySwatches.findIndex((swatch) => swatch.id === selectedFabricId));
+                  setFabricGalleryIndex(at);
+                  trackShopStep("fabric_gallery_open", group.label, { source: "cta", product: slug });
+                }}
+              >
+                🔍 Zobacz duże zdjęcia
+              </button>
+            </div>
+          ) : null}
+          <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
+            {swatchesForGroup.map((swatch) => {
+              const isActive = swatch.id === selectedFabricId;
+              const galleryAt = gallerySwatches.findIndex((entry) => entry.id === swatch.id);
+              return (
+                <div key={swatch.id} className="plisy-swatch-cell">
+                  <button type="button" className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`} title={swatch.label} onClick={() => pickFabric(swatch.id)}>
+                    {/* Próbka bez zdjęcia (część kolorów żaluzji) = kafelek w kolorze z CRM i nazwą. */}
+                    <span className="hero-product-mesh-option-image" style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)} />
+                    <strong>{swatch.label}</strong>
+                  </button>
+                  {galleryAt >= 0 ? (
+                    <button
+                      type="button"
+                      className="plisy-swatch-zoom"
+                      aria-label={`Powiększ ${swatch.label}`}
+                      title="Powiększ"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setFabricGalleryIndex(galleryAt);
+                        trackShopStep("fabric_gallery_open", swatch.label, { source: "swatch", option_id: swatch.id, product: slug });
+                      }}
+                    >
+                      🔍
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          {fabricGalleryIndex !== null && gallerySwatches.length ? (
+            <PlisyFabricGallery
+              swatches={gallerySwatches}
+              index={Math.min(fabricGalleryIndex, gallerySwatches.length - 1)}
+              collectionLabel={group.label}
+              selectedId={selectedFabricId}
+              onIndexChange={setFabricGalleryIndex}
+              onClose={() => setFabricGalleryIndex(null)}
+              onPick={(swatch) => pickFabric(swatch.id, "gallery")}
+            />
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
+  function renderControlSection(stepNo: number) {
+    return (
+      <section className={`hero-product-step-accordion hero-product-step-accordion--chain ${stepChainCollapsed ? "is-collapsed" : ""}`}>
+        {stepHead(
+          "chain_side",
+          stepNo,
+          copy.controlStepTitle,
+          Boolean(chainSide),
+          stepChainCollapsed,
+          () => setStepChainCollapsed((prev) => !prev),
+          chainSide ? <strong>{chainLabel}</strong> : null,
+          stepChainRef,
+        )}
+        <div className="hero-product-step-body">
+          <p className="hero-product-config-hint">{copy.controlStepHint}</p>
+          <div className="plisy-bracket-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+            {CHAIN_SIDES.map((entry) => {
+              const isActive = entry.id === chainSide;
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className={`plisy-bracket-option ${isActive ? "is-active" : ""}`}
+                  aria-pressed={isActive}
+                  onClick={() => {
+                    trackShopStep("select_chain_side", entry.label, { option_id: entry.id, product: slug });
+                    setChainSide(entry.id);
+                    setStepChainCollapsed(true);
+                    window.setTimeout(() => scrollStepIntoView(summaryRef.current), 380);
+                  }}
+                >
+                  <span className="rolety-chain-icon" aria-hidden="true" data-side={entry.id}>
+                    {entry.id === "lewa" ? "◧" : "◨"}
+                  </span>
+                  <strong>{entry.label}</strong>
+                  {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderSummary() {
+    if (!selectedFabricGroup || !selectedFabric || !chainSide) return null;
+    return (
+      <div ref={summaryRef} className="hero-product-mini-summary is-revealed">
+        <h3>{profile!.productName}</h3>
+        <div className="hero-product-mini-summary-body">
+          <div className="rolety-summary-swatch" aria-hidden="true" style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl || selectedFabricGroup.imageUrl, selectedFabric.color)} />
+          <dl>
+            <div>
+              <dt>Montaż</dt>
+              <dd>{selectedMount?.label || "--"}</dd>
+            </div>
+            {hasHardwareStep ? (
+              <div>
+                <dt>Kolor mechanizmu</dt>
+                <dd>{selectedHardware?.label || "--"}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt>{copy.groupUnit === "model" ? "Model i kolor" : "Tkanina"}</dt>
+              <dd>
+                {selectedFabricGroup.label} — {selectedFabric.label}
+              </dd>
+            </div>
+            <div>
+              <dt>{copy.groupUnit === "model" ? "Sterowanie" : "Łańcuszek"}</dt>
+              <dd>{chainLabel || "--"}</dd>
+            </div>
+            {dimensionsValid ? (
+              <div>
+                <dt>Wymiar</dt>
+                <dd>
+                  {widthNum} × {heightNum} mm · {quantityNum} szt.
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </div>
+        {!dimensionsValid ? (
+          <div className="plisy-missing-dims">
+            <span>Brakuje wymiarów — bez nich nie policzymy ceny.</span>
+            <button
+              type="button"
+              onClick={() => {
+                setStepDimsCollapsed(false);
+                trackShopStep("configurator_jump_to_dims", slug, {});
+                window.setTimeout(() => scrollStepIntoView(stepDimsRef.current), 80);
+              }}
+            >
+              Wpisz wymiary (krok 2)
+            </button>
+          </div>
+        ) : null}
+        {selectedUnavailable ? (
+          <div className="plisy-missing-dims rolety-unavailable-block" role="alert">
+            <span>{copy.unavailableMessage}</span>
+            <button
+              type="button"
+              onClick={() => {
+                if (onChangeModel && modelFirst) {
+                  onChangeModel();
+                  return;
+                }
+                setStepGroupCollapsed(false);
+                window.setTimeout(() => scrollStepIntoView(stepGroupRef.current), 80);
+              }}
+            >
+              Zmień {copy.groupUnit === "model" ? "model" : "kolekcję"}
+            </button>
+          </div>
+        ) : null}
+        {unitPrice !== null && totalPrice !== null ? (
+          <div className="total-block">
+            <span className="total-block-left">
+              <span className="total-block-label">Razem</span>
+              {quantityNum > 1 ? <span className="total-block-savings">{quantityNum} szt. × {formatZl(unitPrice)}</span> : null}
+            </span>
+            <span className="total-block-right">
+              <strong>{formatZl(totalPrice)}</strong>
+            </span>
+          </div>
+        ) : null}
+        <button type="button" className="hero-product-add-to-cart" onClick={handleSubmit} disabled={!canSubmit}>
+          {submitLabel}
+        </button>
+      </div>
+    );
+  }
+
+  const zoomModal =
+    !onZoom && internalZoomPreview ? (
+      <div className="config-option-preview-modal" role="dialog" aria-modal="true" aria-label={internalZoomPreview.title} onClick={() => setInternalZoomPreview(null)}>
+        <div className="config-option-preview-shell" onClick={(event) => event.stopPropagation()}>
+          <button type="button" className="config-option-preview-close" onClick={() => setInternalZoomPreview(null)} aria-label="Zamknij podgląd">
+            ×
+          </button>
+          <img src={optimizeImageUrl(internalZoomPreview.urls[internalZoomPreview.index], 1200, 80)} alt={internalZoomPreview.title} className="config-option-preview-image" loading="eager" />
+          <p>{internalZoomPreview.title}</p>
+        </div>
+      </div>
+    ) : null;
+
+  if (modelFirst) {
+    // Żaluzje: model już wybrany (okruszek), kolor -> wymiary -> klamry -> sterowanie.
+    const crumbParts = breadcrumb && breadcrumb.length ? breadcrumb : selectedFabricGroup ? [selectedFabricGroup.label] : [];
+    return (
+      <>
+        <header>
+          <strong>{headerTitle}</strong>
+        </header>
+        {!showGroupStep && crumbParts.length ? (
+          <p className="zl-crumb" aria-label="Wybrany model">
+            {crumbParts.map((part, index) => (
+              <span key={`${part}-${index}`}>{part}</span>
+            ))}
+            {onChangeModel ? (
+              <button type="button" onClick={onChangeModel}>
+                zmień
+              </button>
+            ) : null}
+          </p>
+        ) : null}
+        {showGroupStep ? renderGroupSection(0) : null}
+        {collectionInfoModal}
+        {selectedFabricGroup ? (
+          <>
+            {renderColorSection(1)}
+            {renderDimsSection(2)}
+            {renderPriceCard()}
+            {renderMountSection(3)}
+            {selectedFabric ? renderControlSection(4) : <p className="hero-product-config-hint">Wybierz kolor lameli, aby przejść do strony sterowania.</p>}
+            {renderSummary()}
+          </>
+        ) : (
+          <p className="hero-product-config-hint">Wybierz model, aby przejść do koloru lameli.</p>
+        )}
+        {zoomModal}
+      </>
+    );
+  }
+
+  const groupStepNo = hasHardwareStep ? 4 : 3;
+  const controlStepNo = hasHardwareStep ? 5 : 4;
   return (
     <>
       <header>
         <strong>{headerTitle}</strong>
       </header>
-
-      {/* KROK 1: sposób montażu */}
-      <section className={`hero-product-step-accordion hero-product-step-accordion--mount ${stepMountCollapsed ? "is-collapsed" : ""}`}>
-        <button
-          type="button"
-          className="hero-product-step-head"
-          onClick={() => {
-            trackShopStep("configurator_step_toggle", "mount_type", { collapsed_after: !stepMountCollapsed, product: slug });
-            setStepMountCollapsed((prev) => !prev);
-          }}
-          aria-expanded={stepMountCollapsed ? "false" : "true"}
-        >
-          <span className="hero-product-config-step-title">
-            <span className={`hero-product-step-check ${selectedMount ? "" : "is-muted"}`} aria-hidden="true">
-              {selectedMount ? "✓" : "1"}
-            </span>
-            Wybierz sposób montażu
-          </span>
-          <span className="hero-product-step-head-meta">
-            {selectedMount ? <strong>{selectedMount.label}</strong> : null}
-            {stepMountCollapsed ? (
-              <span className="hero-product-step-head-change">Zmień</span>
-            ) : (
-              <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-            )}
-          </span>
-        </button>
-        <div className="hero-product-step-body">
-          <div className="plisy-mount-pick" role="group" aria-label="Sposób montażu">
-            <div className="plisy-mount-pick-grid">
-              {profile.mountOptions.map((option) => {
-                const isActive = option.id === selectedMountId;
-                const delta = formatPriceDeltaBadge(option.priceDelta, option.priceDeltaType);
-                return (
-                  <div key={option.id} className={`plisy-mount-pick-cell ${isActive ? "is-active" : ""}`}>
-                    <button
-                      type="button"
-                      className={`plisy-mount-pick-option ${isActive ? "is-active" : ""}`}
-                      aria-pressed={isActive}
-                      onClick={() => handleMountChange(option)}
-                    >
-                      {option.imageUrl ? (
-                        <span className="plisy-mount-pick-thumb" aria-hidden="true" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 160)})` }} />
-                      ) : null}
-                      <span className="plisy-mount-pick-text">
-                        <strong>{option.label}</strong>
-                        <span>{option.note}</span>
-                      </span>
-                      {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                      {delta ? <span className="plisy-mount-pick-delta">{delta}</span> : null}
-                    </button>
-                    {option.imageUrl ? (
-                      <button
-                        type="button"
-                        className="config-option-zoom"
-                        aria-label={`Powiększ: ${option.label}`}
-                        onClick={() => openZoom({ title: option.label, urls: [option.imageUrl], index: 0 })}
-                      >
-                        🔍
-                      </button>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* KROK 2: wymiary i ilość */}
-      <section className={`hero-product-step-accordion hero-product-step-accordion--dimensions ${stepDimsCollapsed ? "is-collapsed" : ""}`}>
-        <button
-          type="button"
-          className="hero-product-step-head"
-          onClick={() => {
-            trackShopStep("configurator_step_toggle", "dimensions", { collapsed_after: !stepDimsCollapsed, product: slug });
-            setStepDimsCollapsed((prev) => !prev);
-          }}
-          aria-expanded={stepDimsCollapsed ? "false" : "true"}
-        >
-          <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-            <span className={`hero-product-step-check ${dimensionsValid ? "" : "is-muted"}`} aria-hidden="true">
-              {dimensionsValid ? "✓" : "2"}
-            </span>
-            Wymiary i ilość
-          </span>
-          <span className="hero-product-step-head-meta">
-            {sizeSummaryText ? <strong>{sizeSummaryText}</strong> : null}
-            {stepDimsCollapsed ? (
-              <span className="hero-product-step-head-change">Zmień</span>
-            ) : (
-              <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-            )}
-          </span>
-        </button>
-        <div className="hero-product-step-body" style={dimsOpenStyle}>
-          <div className="plisy-position-form" ref={stepDimsRef}>
-            <p className="hero-product-config-hint">{measureHint}</p>
-            <div className="plisy-dimensions-tools">
-              <div className="hero-product-unit-toggle" role="group" aria-label="Jednostka wymiarów">
-                <button type="button" className={dimensionUnit === "cm" ? "is-active" : ""} aria-pressed={dimensionUnit === "cm"} onClick={() => switchDimensionUnit("cm")}>
-                  cm
-                </button>
-                <button type="button" className={dimensionUnit === "mm" ? "is-active" : ""} aria-pressed={dimensionUnit === "mm"} onClick={() => switchDimensionUnit("mm")}>
-                  mm
-                </button>
-              </div>
-            </div>
-            <div className="hero-product-dimensions-grid">
-              <label>
-                Szerokość ({dimensionUnit})
-                <input
-                  type="number"
-                  inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
-                  step={dimensionUnit === "cm" ? 0.1 : 1}
-                  min={dimensionUnit === "cm" ? profile.widthMinMm / 10 : profile.widthMinMm}
-                  max={dimensionUnit === "cm" ? profile.widthMaxMm / 10 : profile.widthMaxMm}
-                  placeholder={`np. ${mmToInput(profile.widthDefaultMm, dimensionUnit)}`}
-                  value={width}
-                  onChange={(event) => setWidth(event.target.value)}
-                  onBlur={handleDimensionBlur}
-                />
-              </label>
-              <label>
-                Wysokość ({dimensionUnit})
-                <input
-                  type="number"
-                  inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
-                  step={dimensionUnit === "cm" ? 0.1 : 1}
-                  min={dimensionUnit === "cm" ? profile.heightMinMm / 10 : profile.heightMinMm}
-                  max={dimensionUnit === "cm" ? profile.heightMaxMm / 10 : profile.heightMaxMm}
-                  placeholder={`np. ${mmToInput(profile.heightDefaultMm, dimensionUnit)}`}
-                  value={height}
-                  onChange={(event) => setHeight(event.target.value)}
-                  onBlur={handleDimensionBlur}
-                />
-              </label>
-              <label>
-                Ilość
-                <input type="number" inputMode="numeric" min={1} max={ROLETY_QTY_MAX} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
-              </label>
-            </div>
-            {remeasureHint ? (
-              <p className="plisy-remeasure-hint" role="status">
-                {remeasureHint}{" "}
-                <button type="button" onClick={() => setRemeasureHint(null)}>
-                  Rozumiem
-                </button>
-              </p>
-            ) : null}
-            {unitAskModal}
-            {(width || height) && !dimensionsValid ? (
-              <div className="hero-product-dimensions-error">
-                {timesTenFix ? (
-                  <p className="plisy-dimensions-hint">
-                    {timesTenFix.fromMm ? "Wpisujesz w milimetrach? " : ""}
-                    Czy chodziło Ci o {timesTenFix.widthMm / 10} × {timesTenFix.heightMm / 10} cm?
-                    <button type="button" onClick={applyTimesTenFix}>
-                      {timesTenFix.fromMm ? "Tak, przelicz na cm" : "Tak, popraw"}
-                    </button>
-                  </p>
-                ) : looksLikeCm ? (
-                  <p className="plisy-dimensions-hint">
-                    {widthNum} × {heightNum} mm to tylko {widthNum / 10} × {heightNum / 10} cm — mniej niż najmniejszy produkowany wymiar. Wygląda na centymetry.
-                    <button type="button" onClick={() => switchDimensionUnit("cm")}>
-                      Tak, to centymetry
-                    </button>
-                  </p>
-                ) : (
-                  <p>
-                    Szerokość {formatRange(profile.widthMinMm, profile.widthMaxMm)}, wysokość {formatRange(profile.heightMinMm, profile.heightMaxMm)}.
-                    {dimensionUnit === "mm" ? " Masz wymiar w centymetrach? Przełącz jednostkę powyżej." : ""}
-                  </p>
-                )}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      {/* Cena zaraz po wymiarach: "od" przed wyborem grupy, potem dokładna. */}
-      {dimensionsValid ? (
-        <div className="plisy-price-card" aria-live="polite">
-          {(() => {
-            if (selectedUnavailable) {
-              return <span className="rolety-unavailable-note">{copy.unavailableMessage}</span>;
-            }
-            const exact = Boolean(selectedFabricGroup) && unitPrice !== null && totalPrice !== null;
-            const unitAmount = exact ? unitPrice : cheapest ? cheapest.unit : null;
-            if (unitAmount === null) {
-              return <span className="plisy-price-card-label">Cenę policzymy po wyborze {copy.groupUnit === "model" ? "modelu" : "kolekcji tkaniny"}.</span>;
-            }
-            const total = Math.round(unitAmount * quantityNum * 100) / 100;
-            return (
-              <>
-                <span className="plisy-price-card-label">{exact ? "Cena za sztukę" : "Cena za sztukę — od"}</span>
-                <span className="plisy-price-card-rows">
-                  <span className="plisy-price-card-row is-promo">
-                    <strong>{formatZl(unitAmount)}</strong>
-                  </span>
-                  {quantityNum > 1 ? (
-                    <span className="plisy-price-card-row">
-                      <em>Razem za {quantityNum} szt.</em>
-                      <strong style={{ fontSize: "1.05rem" }}>{formatZl(total)}</strong>
-                    </span>
-                  ) : null}
-                </span>
-                {!exact && cheapest ? (
-                  <span className="plisy-price-card-note">
-                    {copy.groupUnit === "model" ? "Model" : "Kolekcja"} {cheapest.groupLabel}. Dokładną cenę zobaczysz po wyborze {copy.groupUnit === "model" ? "modelu" : "kolekcji"} i koloru.
-                  </span>
-                ) : null}
-                <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
-              </>
-            );
-          })()}
-        </div>
-      ) : null}
-
-      {/* KROK 3: kolor mechanizmu (tylko produkty, które go mają) */}
-      {hasHardwareStep ? (
-        <section className={`hero-product-step-accordion hero-product-step-accordion--hardware-color ${stepHardwareCollapsed ? "is-collapsed" : ""}`}>
-          <button
-            type="button"
-            ref={stepHardwareRef}
-            className="hero-product-step-head"
-            onClick={() => {
-              trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepHardwareCollapsed, product: slug });
-              setStepHardwareCollapsed((prev) => !prev);
-            }}
-            aria-expanded={stepHardwareCollapsed ? "false" : "true"}
-          >
-            <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-              <span className={`hero-product-step-check ${selectedHardware ? "" : "is-muted"}`} aria-hidden="true">
-                {selectedHardware ? "✓" : "3"}
-              </span>
-              Wybierz kolor mechanizmu
-            </span>
-            <span className="hero-product-step-head-meta">
-              {selectedHardware && stepHardwareCollapsed ? (
-                <span className="hero-product-step-head-swatch is-color-only" style={{ background: selectedHardware.color }} aria-hidden="true" />
-              ) : null}
-              {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
-              {stepHardwareCollapsed ? (
-                <span className="hero-product-step-head-change">Zmień</span>
-              ) : (
-                <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-              )}
-            </span>
-          </button>
-          <div className="hero-product-step-body">
-            <p className="hero-product-config-hint">Kolor rury, uchwytów i łańcuszka. Wybierz najbliższy ramie okna.</p>
-            <div className="plisy-bracket-grid">
-              {profile.hardware.map((option) => {
-                const isActive = option.id === selectedHardwareId;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={`plisy-bracket-option ${isActive ? "is-active" : ""}`}
-                    aria-pressed={isActive}
-                    onClick={() => {
-                      trackShopStep("select_hardware_color", option.label, { option_id: option.id, product: slug });
-                      setSelectedHardwareId(option.id);
-                      setStepHardwareCollapsed(true);
-                      window.setTimeout(() => scrollStepIntoView(stepGroupRef.current), 380);
-                    }}
-                  >
-                    <span className="plisy-bracket-dot" style={{ background: option.color }} aria-hidden="true" />
-                    <strong>{option.label}</strong>
-                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
+      {renderMountSection(1)}
+      {renderDimsSection(2)}
+      {renderPriceCard()}
+      {hasHardwareStep ? renderHardwareSection(3) : null}
       {hasHardwareStep && !selectedHardwareId ? <p className="hero-product-config-hint">Wybierz kolor mechanizmu, aby przejść do kolejnego kroku.</p> : null}
-
       {hardwareChosen ? (
         <>
-          {/* KROK 3/4: kolekcja tkanin albo model żaluzji */}
-          <section className={`hero-product-step-accordion ${stepGroupCollapsed ? "is-collapsed" : ""}`}>
-            <button
-              type="button"
-              ref={stepGroupRef}
-              className="hero-product-step-head"
-              onClick={() => {
-                trackShopStep("configurator_step_toggle", "fabric_group", { collapsed_after: !stepGroupCollapsed, product: slug });
-                setStepGroupCollapsed((prev) => !prev);
-              }}
-              aria-expanded={stepGroupCollapsed ? "false" : "true"}
-            >
-              <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                <span className={`hero-product-step-check ${selectedFabricGroup ? "" : "is-muted"}`} aria-hidden="true">
-                  {selectedFabricGroup ? "✓" : String(groupStepNo)}
-                </span>
-                {copy.groupStepTitle}
-              </span>
-              <span className="hero-product-step-head-meta">
-                {selectedFabricGroup ? <strong>{selectedFabricGroup.label}</strong> : null}
-                {stepGroupCollapsed ? (
-                  <span className="hero-product-step-head-change">Zmień</span>
-                ) : (
-                  <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-                )}
-              </span>
-            </button>
-            <div className="hero-product-step-body" style={stepGroupCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}>
-              {dimensionsValid ? <p className="hero-product-config-hint">Ceny policzone dla Twojego wymiaru ({sizeSummaryText}).</p> : null}
-              {groupSections.length > 1 ? (
-                groupSections.map((section) => (
-                  <div key={section.category || "_"} className="rolety-group-section">
-                    {section.category ? <h4 className="rolety-group-section-title">{section.category}</h4> : null}
-                    <div className="plisy-coll-grid">{section.groups.map(renderGroupCard)}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="plisy-coll-grid">{profile.fabricGroups.map(renderGroupCard)}</div>
-              )}
-            </div>
-          </section>
-
-          {collectionInfoGroup && typeof document !== "undefined"
-            ? createPortal(
-                <div
-                  className="instruction-modal instruction-modal--collection"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label={collectionInfoGroup.label}
-                  onClick={() => setCollectionInfoId("")}
-                >
-                  <div className="instruction-modal-shell instruction-modal-shell--collection" onClick={(event) => event.stopPropagation()}>
-                    <button type="button" className="instruction-modal-close" aria-label="Zamknij" onClick={() => setCollectionInfoId("")}>
-                      ×
-                    </button>
-                    {copy.groupCardPhoto && collectionInfoGroup.imageUrl ? (
-                      <img className="rolety-group-modal-photo" src={optimizeImageUrl(collectionInfoGroup.imageUrl, 700)} alt={collectionInfoGroup.label} loading="lazy" />
-                    ) : null}
-                    <div className="plisy-coll-modal-head">
-                      <div>
-                        <h3>{collectionInfoGroup.label}</h3>
-                      </div>
-                    </div>
-                    {collectionInfoGroup.note ? <p>{collectionInfoGroup.note}</p> : null}
-                    <p className="plisy-coll-modal-count">{colorCountLabel(collectionInfoGroup.swatches.length)} do wyboru.</p>
-                    <button
-                      type="button"
-                      className="plisy-coll-modal-cta"
-                      onClick={() => {
-                        const group = collectionInfoGroup;
-                        trackShopStep(copy.groupUnit === "model" ? "select_model" : "select_fabric_group", group.label, { option_id: group.id, source: "info_modal", product: slug });
-                        setCollectionInfoId("");
-                        pickFabricGroup(group.id);
-                      }}
-                    >
-                      {copy.groupUnit === "model" ? "Wybieram ten model" : "Wybieram tę kolekcję"}
-                    </button>
-                  </div>
-                </div>,
-                document.body,
-              )
-            : null}
-
+          {renderGroupSection(groupStepNo)}
+          {collectionInfoModal}
           {selectedFabricGroup ? (
             <>
-              {/* KROK 4b: kolor tkaniny / lameli */}
-              <section className={`hero-product-step-accordion hero-product-step-accordion--fabric-color ${stepFabricCollapsed ? "is-collapsed" : ""}`}>
-                <button
-                  type="button"
-                  ref={stepFabricRef}
-                  className="hero-product-step-head"
-                  onClick={() => {
-                    trackShopStep("configurator_step_toggle", "fabric_color", { collapsed_after: !stepFabricCollapsed, product: slug });
-                    setStepFabricCollapsed((prev) => !prev);
-                  }}
-                  aria-expanded={stepFabricCollapsed ? "false" : "true"}
-                >
-                  <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                    <span className={`hero-product-step-check ${selectedFabric ? "" : "is-muted"}`} aria-hidden="true">
-                      {selectedFabric ? "✓" : String(groupStepNo)}
-                    </span>
-                    {copy.colorStepTitle}
-                  </span>
-                  <span className="hero-product-step-head-meta">
-                    {selectedFabric && stepFabricCollapsed ? (
-                      <span
-                        className="hero-product-step-head-swatch"
-                        style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl, selectedFabric.color)}
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    {selectedFabric ? <strong>{selectedFabric.label}</strong> : null}
-                    {stepFabricCollapsed ? (
-                      <span className="hero-product-step-head-change">Zmień</span>
-                    ) : (
-                      <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-                    )}
-                  </span>
-                </button>
-                <div className="hero-product-step-body">
-                  {gallerySwatches.length ? (
-                    <div className="plisy-fabric-tools">
-                      <button
-                        type="button"
-                        className="plisy-fabric-gallery-cta"
-                        onClick={() => {
-                          const at = Math.max(0, gallerySwatches.findIndex((swatch) => swatch.id === selectedFabricId));
-                          setFabricGalleryIndex(at);
-                          trackShopStep("fabric_gallery_open", selectedFabricGroup.label, { source: "cta", product: slug });
-                        }}
-                      >
-                        🔍 Zobacz duże zdjęcia
-                      </button>
-                    </div>
-                  ) : null}
-                  <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
-                    {swatchesForGroup.map((swatch) => {
-                      const isActive = swatch.id === selectedFabricId;
-                      const galleryAt = gallerySwatches.findIndex((entry) => entry.id === swatch.id);
-                      return (
-                        <div key={swatch.id} className="plisy-swatch-cell">
-                          <button
-                            type="button"
-                            className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
-                            title={swatch.label}
-                            onClick={() => {
-                              trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id, product: slug });
-                              setSelectedFabricId(swatch.id);
-                              setStepFabricCollapsed(true);
-                              window.setTimeout(() => scrollStepIntoView(stepChainRef.current), 380);
-                            }}
-                          >
-                            {/* Próbka bez zdjęcia (część kolorów żaluzji) = kafelek w kolorze z CRM i nazwą. */}
-                            <span className="hero-product-mesh-option-image" style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)} />
-                            <strong>{swatch.label}</strong>
-                          </button>
-                          {galleryAt >= 0 ? (
-                            <button
-                              type="button"
-                              className="plisy-swatch-zoom"
-                              aria-label={`Powiększ ${swatch.label}`}
-                              title="Powiększ"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setFabricGalleryIndex(galleryAt);
-                                trackShopStep("fabric_gallery_open", swatch.label, { source: "swatch", option_id: swatch.id, product: slug });
-                              }}
-                            >
-                              🔍
-                            </button>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {fabricGalleryIndex !== null && gallerySwatches.length ? (
-                    <PlisyFabricGallery
-                      swatches={gallerySwatches}
-                      index={Math.min(fabricGalleryIndex, gallerySwatches.length - 1)}
-                      collectionLabel={selectedFabricGroup.label}
-                      selectedId={selectedFabricId}
-                      onIndexChange={setFabricGalleryIndex}
-                      onClose={() => setFabricGalleryIndex(null)}
-                      onPick={(swatch) => {
-                        trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id, source: "gallery", product: slug });
-                        setSelectedFabricId(swatch.id);
-                        setFabricGalleryIndex(null);
-                        setStepFabricCollapsed(true);
-                        window.setTimeout(() => scrollStepIntoView(stepChainRef.current), 380);
-                      }}
-                    />
-                  ) : null}
-                </div>
-              </section>
-
+              {renderColorSection(groupStepNo)}
               {selectedFabric ? (
                 <>
-                  {/* KROK 4/5: strona łańcuszka / sterowania */}
-                  <section className={`hero-product-step-accordion hero-product-step-accordion--chain ${stepChainCollapsed ? "is-collapsed" : ""}`}>
-                    <button
-                      type="button"
-                      ref={stepChainRef}
-                      className="hero-product-step-head"
-                      onClick={() => {
-                        trackShopStep("configurator_step_toggle", "chain_side", { collapsed_after: !stepChainCollapsed, product: slug });
-                        setStepChainCollapsed((prev) => !prev);
-                      }}
-                      aria-expanded={stepChainCollapsed ? "false" : "true"}
-                    >
-                      <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                        <span className={`hero-product-step-check ${chainSide ? "" : "is-muted"}`} aria-hidden="true">
-                          {chainSide ? "✓" : String(controlStepNo)}
-                        </span>
-                        {copy.controlStepTitle}
-                      </span>
-                      <span className="hero-product-step-head-meta">
-                        {chainSide ? <strong>{chainLabel}</strong> : null}
-                        {stepChainCollapsed ? (
-                          <span className="hero-product-step-head-change">Zmień</span>
-                        ) : (
-                          <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-                        )}
-                      </span>
-                    </button>
-                    <div className="hero-product-step-body">
-                      <p className="hero-product-config-hint">{copy.controlStepHint}</p>
-                      <div className="plisy-bracket-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-                        {CHAIN_SIDES.map((entry) => {
-                          const isActive = entry.id === chainSide;
-                          return (
-                            <button
-                              key={entry.id}
-                              type="button"
-                              className={`plisy-bracket-option ${isActive ? "is-active" : ""}`}
-                              aria-pressed={isActive}
-                              onClick={() => {
-                                trackShopStep("select_chain_side", entry.label, { option_id: entry.id, product: slug });
-                                setChainSide(entry.id);
-                                setStepChainCollapsed(true);
-                                window.setTimeout(() => scrollStepIntoView(summaryRef.current), 380);
-                              }}
-                            >
-                              <span className="rolety-chain-icon" aria-hidden="true" data-side={entry.id}>
-                                {entry.id === "lewa" ? "◧" : "◨"}
-                              </span>
-                              <strong>{entry.label}</strong>
-                              {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </section>
-
-                  {chainSide ? (
-                    <div ref={summaryRef} className="hero-product-mini-summary is-revealed">
-                      <h3>{profile.productName}</h3>
-                      <div className="hero-product-mini-summary-body">
-                        <div
-                          className="rolety-summary-swatch"
-                          aria-hidden="true"
-                          style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl || selectedFabricGroup.imageUrl, selectedFabric.color)}
-                        />
-                        <dl>
-                          <div>
-                            <dt>Montaż</dt>
-                            <dd>{selectedMount?.label || "--"}</dd>
-                          </div>
-                          {hasHardwareStep ? (
-                            <div>
-                              <dt>Kolor mechanizmu</dt>
-                              <dd>{selectedHardware?.label || "--"}</dd>
-                            </div>
-                          ) : null}
-                          <div>
-                            <dt>{copy.groupUnit === "model" ? "Model i kolor" : "Tkanina"}</dt>
-                            <dd>
-                              {selectedFabricGroup.label} — {selectedFabric.label}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>{copy.groupUnit === "model" ? "Sterowanie" : "Łańcuszek"}</dt>
-                            <dd>{chainLabel || "--"}</dd>
-                          </div>
-                          {dimensionsValid ? (
-                            <div>
-                              <dt>Wymiar</dt>
-                              <dd>
-                                {widthNum} × {heightNum} mm · {quantityNum} szt.
-                              </dd>
-                            </div>
-                          ) : null}
-                        </dl>
-                      </div>
-                      {!dimensionsValid ? (
-                        <div className="plisy-missing-dims">
-                          <span>Brakuje wymiarów — bez nich nie policzymy ceny.</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setStepDimsCollapsed(false);
-                              trackShopStep("configurator_jump_to_dims", slug, {});
-                              window.setTimeout(() => scrollStepIntoView(stepDimsRef.current), 80);
-                            }}
-                          >
-                            Wpisz wymiary (krok 2)
-                          </button>
-                        </div>
-                      ) : null}
-                      {selectedUnavailable ? (
-                        <div className="plisy-missing-dims rolety-unavailable-block" role="alert">
-                          <span>{copy.unavailableMessage}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setStepGroupCollapsed(false);
-                              window.setTimeout(() => scrollStepIntoView(stepGroupRef.current), 80);
-                            }}
-                          >
-                            Zmień {copy.groupUnit === "model" ? "model" : "kolekcję"}
-                          </button>
-                        </div>
-                      ) : null}
-                      {unitPrice !== null && totalPrice !== null ? (
-                        <div className="total-block">
-                          <span className="total-block-left">
-                            <span className="total-block-label">Razem</span>
-                            {quantityNum > 1 ? <span className="total-block-savings">{quantityNum} szt. × {formatZl(unitPrice)}</span> : null}
-                          </span>
-                          <span className="total-block-right">
-                            <strong>{formatZl(totalPrice)}</strong>
-                          </span>
-                        </div>
-                      ) : null}
-                      <button type="button" className="hero-product-add-to-cart" onClick={handleSubmit} disabled={!canSubmit}>
-                        {submitLabel}
-                      </button>
-                    </div>
-                  ) : null}
+                  {renderControlSection(controlStepNo)}
+                  {renderSummary()}
                 </>
               ) : null}
             </>
           ) : null}
         </>
       ) : null}
-
-      {!onZoom && internalZoomPreview ? (
-        <div className="config-option-preview-modal" role="dialog" aria-modal="true" aria-label={internalZoomPreview.title} onClick={() => setInternalZoomPreview(null)}>
-          <div className="config-option-preview-shell" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="config-option-preview-close" onClick={() => setInternalZoomPreview(null)} aria-label="Zamknij podgląd">
-              ×
-            </button>
-            <img src={optimizeImageUrl(internalZoomPreview.urls[internalZoomPreview.index], 1200, 80)} alt={internalZoomPreview.title} className="config-option-preview-image" loading="eager" />
-            <p>{internalZoomPreview.title}</p>
-          </div>
-        </div>
-      ) : null}
+      {zoomModal}
     </>
   );
 }

@@ -200,7 +200,10 @@ const RoletyDachoweConfiguratorPanel = dynamic(() => import("@/features/rolety-d
 });
 const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/ConfiguratorPanel"), { ssr: false });
 // Rolety mini (dzień-noc i tradycyjne, 2026-10-17) - jeden panel dla obu slugów.
-const RoletyConfiguratorPanel = dynamic(() => import("@/features/rolety/ConfiguratorPanel"), { ssr: false });
+// Żaluzje (2026-10-17): przed konfiguratorem bloki kategorii -> szerokość
+// lameli -> wariant (features/rolety/ProductPanel.tsx); rolety przechodzą
+// przez ten sam wrapper prosto do panelu.
+const RoletyConfiguratorPanel = dynamic(() => import("@/features/rolety/ProductPanel"), { ssr: false });
 const PlisyDachoweConfiguratorPanel = dynamic(() => import("@/features/plisy-dachowe/ConfiguratorPanel"), { ssr: false });
 // Statycznie, nie przez dynamic(): to jest hero, więc ma się pojawić od razu
 // razem z resztą sekcji, a nie doładować po hydratacji (LCP).
@@ -2428,7 +2431,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           : slug === "plisy"
             ? import("@/features/plisy/ConfiguratorPanel")
             : isRoletySlug(slug)
-              ? import("@/features/rolety/ConfiguratorPanel")
+              ? import("@/features/rolety/ProductPanel")
               : import("@/features/moskitiery-ramkowe/ConfiguratorPanel");
     load
       .then(() => {

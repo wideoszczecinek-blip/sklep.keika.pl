@@ -588,3 +588,130 @@ export type ConfiguratorResult = {
   unitPrice: number;
   totalPrice: number;
 };
+
+// ---------------------------------------------------------------------------
+// Żaluzje: przepływ "rodzaj -> szerokość lameli -> wariant -> konfigurator"
+// (właściciel, 17.10.2026: "najpierw duże bloki produktów, później szerokość,
+// dopiero konfigurator"). Kategoria = pierwsze zdanie opisu grupy w CRM,
+// szerokość = "NN mm" z nazwy grupy, wariant = reszta nazwy (RETRO, LUX...).
+// ---------------------------------------------------------------------------
+
+/** Slug kategorii do adresu (?kategoria=drewniane-basswood). */
+export function zaluzjeCategorySlug(category: string): string {
+  return String(category || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Krótki, rzeczowy opis kategorii żaluzji (materiał, wnętrza, cecha). */
+export const ZALUZJE_CATEGORY_COPY: Record<string, string> = {
+  "drewniane-basswood":
+    "Lekkie drewno lipowe o równym rysunku słojów, lakierowane lub bejcowane. Do salonu, sypialni i gabinetu; nie zalecane do łazienki.",
+  "drewniane-abachi": "Afrykańskie drewno abachi, lżejsze od basswood, o wyraźniejszej strukturze. Do dużych okien, gdzie liczy się mniejsza waga.",
+  bambusowe: "Lamele z prasowanego bambusa o naturalnym, nieregularnym rysunku. Do wnętrz w stylu naturalnym i skandynawskim.",
+  "prime-wood": "Lamele drewniane z selekcjonowanego surowca, stabilne i proste. Do dużych przeszkleń i wnętrz nowoczesnych.",
+  "drewnopodobne-pcv": "Lamele z PCV z fakturą drewna, odporne na wilgoć i łatwe w czyszczeniu. Do kuchni i łazienki.",
+  aluminiowe: "Cienkie lamele aluminiowe 16-50 mm, najwięcej kolorów, odporne na wilgoć. Do biura, kuchni i łazienki.",
+  drewnopodobne: "Lamele z tworzywa w kolorach drewna, lżejsze i tańsze od drewnianych. Do pomieszczeń wilgotnych.",
+};
+
+export function zaluzjeCategoryDescription(category: string): string {
+  return ZALUZJE_CATEGORY_COPY[zaluzjeCategorySlug(category)] || "";
+}
+
+/** Szerokość lameli z nazwy grupy ("Drewniane basswood 50 mm RETRO" -> 50). 0 = brak. */
+export function zaluzjeSlatWidthMm(label: string): number {
+  const match = String(label || "").match(/(\d+)\s*mm/i);
+  return match ? Number(match[1]) : 0;
+}
+
+/** Nazwa wariantu bez kategorii i szerokości ("Drewniane basswood 50 mm RETRO" -> "RETRO"),
+ * pusta dla wariantu podstawowego. */
+export function zaluzjeVariantTag(label: string, category: string): string {
+  let rest = String(label || "");
+  rest = rest.replace(new RegExp(category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), " ");
+  rest = rest.replace(/\b(drewniane|bambusowe|aluminiowe|drewnopodobne|prime wood|pcv|abachi|basswood)\b/gi, " ");
+  rest = rest.replace(/\d+\s*mm/i, " ");
+  return rest.replace(/\s+/g, " ").trim();
+}
+
+/** Ostrożny opis różnic wariantów - tylko to, co wynika z nazwy. */
+export function zaluzjeVariantNote(tag: string): string {
+  const key = tag.toUpperCase();
+  if (!key) return "Wariant podstawowy.";
+  if (/RETRO/.test(key)) return "Z ozdobną taśmą (drabinką) zamiast sznurka między lamelami.";
+  if (/LUX/.test(key)) return "Lamele lakierowane wyższej klasy.";
+  if (/SELECT/.test(key)) return "Selekcjonowane drewno o równym rysunku.";
+  if (/GLOSS/.test(key)) return "Lamele z połyskiem.";
+  if (/CEDRO/.test(key)) return "Lamele z wyczuwalną strukturą drewna.";
+  if (/EXPRESS/.test(key)) return "Wariant w szybszej realizacji.";
+  if (/STARZONE/.test(key)) return "Wykończenie postarzane.";
+  if (/SUNSET|ELEGANCE|DESIGN/.test(key)) return "Osobna paleta kolorów lameli.";
+  return "";
+}
+
+/** Najniższa niezerowa cena w tabeli grupy (z korektami) - "od X zł" dla modelu. */
+export function roletyGroupStartingPrice(profile: RoletyProfile, fabricGroupId: string, extraAdjustPercent = 0): number | null {
+  const table = findRoletyPricingTable(profile.tables, fabricGroupId);
+  if (!table) return null;
+  let min = Number.POSITIVE_INFINITY;
+  for (const row of table.prices) {
+    for (const cell of row) {
+      if (typeof cell === "number" && Number.isFinite(cell) && cell > 0 && cell < min) min = cell;
+    }
+  }
+  if (!Number.isFinite(min)) return null;
+  const percent = profile.priceAdjustmentPercent + extraAdjustPercent;
+  return roundMoney(Math.max(0, min * (1 + percent / 100) + profile.priceAdjustmentAmount));
+}
+
+export type ZaluzjeVariant = { group: FabricGroup; widthMm: number; tag: string; startingPrice: number | null };
+export type ZaluzjeWidth = { widthMm: number; variants: ZaluzjeVariant[] };
+export type ZaluzjeCategory = {
+  category: string;
+  slug: string;
+  imageUrl: string;
+  description: string;
+  startingPrice: number | null;
+  modelCount: number;
+  colorCount: number;
+  widths: ZaluzjeWidth[];
+};
+
+/** Drzewo kategoria -> szerokość lameli -> warianty, w kolejności profilu. */
+export function buildZaluzjeTree(profile: RoletyProfile, extraAdjustPercent = 0): ZaluzjeCategory[] {
+  const out: ZaluzjeCategory[] = [];
+  for (const section of roletyGroupSections(profile.fabricGroups)) {
+    const category = section.category || "Inne";
+    const widths: ZaluzjeWidth[] = [];
+    let min: number | null = null;
+    let colorCount = 0;
+    for (const group of section.groups) {
+      const widthMm = zaluzjeSlatWidthMm(group.label);
+      const startingPrice = roletyGroupStartingPrice(profile, group.id, extraAdjustPercent);
+      if (startingPrice !== null && (min === null || startingPrice < min)) min = startingPrice;
+      colorCount += group.swatches.length;
+      let width = widths.find((entry) => entry.widthMm === widthMm);
+      if (!width) {
+        width = { widthMm, variants: [] };
+        widths.push(width);
+      }
+      width.variants.push({ group, widthMm, tag: zaluzjeVariantTag(group.label, category), startingPrice });
+    }
+    widths.sort((a, b) => a.widthMm - b.widthMm);
+    out.push({
+      category,
+      slug: zaluzjeCategorySlug(category),
+      imageUrl: section.groups[0]?.imageUrl || "",
+      description: zaluzjeCategoryDescription(category),
+      startingPrice: min,
+      modelCount: section.groups.length,
+      colorCount,
+      widths,
+    });
+  }
+  return out;
+}
