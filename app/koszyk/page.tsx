@@ -1593,7 +1593,11 @@ export default function CartPage() {
           // Wyłącznik testu nowego koszyka: udział 0 = wszyscy stary koszyk.
           if (typeof checkout.cart_v2_share === "number") {
             const share = rememberCartV2Share(checkout.cart_v2_share);
-            if (share === 0 && !cartDesignForcedRef.current) setCartDesign((current) => (current === "v2" ? "classic" : current));
+            // Udział 0 = test zakończony: stary koszyk dla wszystkich, także dla
+            // osób z dawnym podglądem ?koszyk=nowy zapamiętanym w przeglądarce
+            // (podgląd nowego tylko z parametrem w adresie tego wejścia).
+            const previewNow = new URLSearchParams(window.location.search).get("koszyk") === "nowy";
+            if (share === 0 && !previewNow) setCartDesign((current) => (current === "v2" ? "classic" : current));
           }
         }
       })

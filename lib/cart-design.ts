@@ -76,6 +76,15 @@ export function getCartDesignArm(): { arm: CartDesignArm; forced: boolean } {
     }
     const forced = window.localStorage.getItem(FORCED_KEY) === "1";
     const stored = window.localStorage.getItem(ARM_KEY);
+    // Test zakończony (udział 0): wymuszony podgląd nowego koszyka z dawnego
+    // ?koszyk=nowy nie ma już trzymać nikogo przy v2 (właściciel 17.10 widział
+    // nowy koszyk na komputerze mimo wyłączenia testu). Podgląd działa tylko
+    // z parametrem w adresie tego wejścia.
+    if (forced && stored === "v2" && readShare() === 0) {
+      window.localStorage.removeItem(ARM_KEY);
+      window.localStorage.removeItem(FORCED_KEY);
+      return { arm: "classic", forced: false };
+    }
     if (forced && (stored === "classic" || stored === "v2")) return { arm: stored, forced: true };
     // Nowy koszyk wywrócił się w tej karcie - do końca wizyty stary.
     if (window.sessionStorage.getItem(CRASH_KEY) === "1") return { arm: "classic", forced: false };
