@@ -440,6 +440,7 @@ function CartItemSpecs({ item }: { item: CartLineItem }) {
   if (item.hardwareLabel) rows.push({ label: labels.hardware, value: item.hardwareLabel, dot: colors?.hardware });
   if (item.meshLabel) rows.push({ label: labels.mesh, value: item.meshLabel, dot: colors?.fabric });
   if (item.modelLabel) rows.push({ label: "Model okna", value: item.modelLabel });
+  if (item.measureNote) rows.push({ label: "Pomiar", value: item.measureNote });
   if (item.productSlug === "rolety-dachowe" && item.bracketCount === 2) rows.push({ label: "Uchwyty", value: "2 szt." });
   if (rows.length === 0) return null;
   return (
@@ -470,6 +471,7 @@ function buildQuotePayloadFromCart(
       item.hardwareLabel ? `${fieldLabels.hardware.toLowerCase()} ${item.hardwareLabel}` : "",
       item.meshLabel ? `${fieldLabels.mesh.toLowerCase()} ${item.meshLabel}` : "",
       item.modelLabel ? `model okna ${item.modelLabel}` : "",
+      item.measureNote ? item.measureNote : "",
       item.widthMm && item.heightMm ? `${item.widthMm} × ${item.heightMm} mm` : "",
     ]
       .filter(Boolean)
@@ -498,8 +500,13 @@ function buildQuotePayloadFromCart(
             }
           : null,
         item.widthMm && item.heightMm
-          ? { label: "Rozmiar", value: `${item.widthMm} × ${item.heightMm} mm`, note: item.missingModelRequest ? "wymiar A/B podany przez klienta" : "" }
+          ? {
+              label: "Rozmiar",
+              value: `${item.widthMm} × ${item.heightMm} mm`,
+              note: item.missingModelRequest ? "wymiar A/B podany przez klienta" : item.productSlug === "zaluzje" ? "wymiar żaluzji" : "",
+            }
           : null,
+        item.measureNote ? { label: "Pomiar", value: item.measureNote, note: "przeliczenie w konfiguratorze - reguły do potwierdzenia" } : null,
         item.missingModelRequest
           ? {
               label: "Okno spoza biblioteki",
@@ -4917,6 +4924,8 @@ export default function CartPage() {
                   fabricLabel: editingItem.meshLabel.split(" — ")[1],
                   widthMm: editingItem.widthMm,
                   heightMm: editingItem.heightMm,
+                  measuredWidthMm: editingItem.measuredWidthMm,
+                  measuredHeightMm: editingItem.measuredHeightMm,
                   qty: editingItem.qty,
                 }}
                 submitLabel="Zapisz zmiany"
@@ -4925,6 +4934,9 @@ export default function CartPage() {
                     hardwareLabel: result.hardwareLabel,
                     meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
                     mountLabel: result.mountLabel,
+                    measuredWidthMm: result.measuredWidthMm || undefined,
+                    measuredHeightMm: result.measuredHeightMm || undefined,
+                    measureNote: result.measureNote || undefined,
                     fabricColor: result.fabricColor || undefined,
                     hardwareColor: result.hardwareColor || undefined,
                     imageUrl: result.fabricThumbnailUrl || undefined,

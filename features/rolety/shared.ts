@@ -567,6 +567,10 @@ export type ConfiguratorInitialValues = {
   chainSide?: ChainSide;
   widthMm?: number;
   heightMm?: number;
+  /** Żaluzje: to, co klient zmierzył (szyba / skrzydło / wnęka); brak =
+   * wymiar żaluzji podany wprost. */
+  measuredWidthMm?: number;
+  measuredHeightMm?: number;
   qty?: number;
   /** Edycja z koszyka: pozycja ma tylko etykiety, id dobieramy po
    * wczytaniu profilu (jak w plisach). */
@@ -594,8 +598,14 @@ export type ConfiguratorResult = {
   hardwareColor: string;
   /** Miniatura do koszyka: próbka albo zdjęcie modelu. */
   fabricThumbnailUrl: string;
+  /** Wymiar wyrobu (żaluzje: wymiar żaluzji po przeliczeniu pomiaru). */
   widthMm: number;
   heightMm: number;
+  /** Żaluzje: zmierzony wymiar (0 = klient podał wymiar żaluzji wprost). */
+  measuredWidthMm: number;
+  measuredHeightMm: number;
+  /** Żaluzje: notatka produkcyjna "pomiar: szybę ... → żaluzja ...". */
+  measureNote: string;
   qty: number;
   unitPrice: number;
   totalPrice: number;
@@ -843,4 +853,126 @@ export function zaluzjeModelDescription(model: ZaluzjeModel): string[] {
   if (facts.length) out.push(`${facts.join(", ")}.`);
   out.push("Sterowanie sznurkiem z przekładnią po wybranej stronie, klamry montażowe w cenie.");
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Żaluzje: sposób montażu, pomiar i przeliczenie na wymiar żaluzji
+// (właściciel, 17.10.2026: "w świetle szyby, na skrzydło albo na ścianę -
+// klient zaznacza, jak chce zamontować"). Klient wpisuje to, co zmierzył,
+// konfigurator liczy wymiar żaluzji (cena i produkcja = wymiar żaluzji).
+// WSZYSTKIE NADDATKI W JEDNYM MIEJSCU - do potwierdzenia przez właściciela.
+// Klucz = id opcji montażu w CRM (step-mount).
+// ---------------------------------------------------------------------------
+
+export type ZaluzjeMountId = "w-swietle-szyby" | "na-skrzydlo" | "na-sciane";
+
+export type ZaluzjeMountRule = {
+  id: ZaluzjeMountId;
+  /** Co mierzy klient - nagłówek pól i podpis animacji ("Zmierz ..."). */
+  measureWhat: string;
+  /** To samo w mianowniku - podsumowanie i notatka produkcyjna. */
+  measureNoun: string;
+  widthLabel: string;
+  heightLabel: string;
+  /** Wymiar żaluzji = zmierzony + naddatek (mm, może być ujemny). */
+  addWidthMm: number;
+  addHeightMm: number;
+  /** Jedno zdanie: jak liczymy wymiar żaluzji. */
+  ruleText: string;
+  pros: string[];
+  cons: string[];
+  /** Montaż na skrzydle - lamele odstają od szyby, uwaga na klamkę. */
+  onSash: boolean;
+  /** Kroki instrukcji pomiaru (modal "Jak zmierzyć?"). */
+  steps: string[];
+};
+
+export const ZALUZJE_MOUNT_RULES: Record<ZaluzjeMountId, ZaluzjeMountRule> = {
+  "w-swietle-szyby": {
+    id: "w-swietle-szyby",
+    measureWhat: "szybę między uszczelkami",
+    measureNoun: "szyba między uszczelkami",
+    widthLabel: "Szerokość szyby",
+    heightLabel: "Wysokość szyby",
+    addWidthMm: 20,
+    addHeightMm: 20,
+    ruleText: "Żaluzja = szyba + 2 cm na szerokość i + 2 cm na wysokość (zachodzi po 1 cm na listwy przyszybowe).",
+    pros: ["Okno otwiera się i uchyla razem z żaluzją", "Nie zabiera miejsca na parapecie"],
+    cons: ["Lamele 35-65 mm odstają od szyby o ok. 4-7 cm - sprawdź klamkę"],
+    onSash: true,
+    steps: [
+      "Zmierz szerokość szyby od uszczelki do uszczelki, w najszerszym miejscu.",
+      "Zmierz wysokość szyby od górnej do dolnej uszczelki.",
+      "Wpisz oba wymiary. Doliczymy po 1 cm z każdej strony - żaluzja zachodzi na listwy przyszybowe.",
+    ],
+  },
+  "na-skrzydlo": {
+    id: "na-skrzydlo",
+    measureWhat: "skrzydło po zewnętrznych krawędziach",
+    measureNoun: "skrzydło po zewnętrznych krawędziach",
+    widthLabel: "Szerokość skrzydła",
+    heightLabel: "Wysokość skrzydła",
+    addWidthMm: -10,
+    addHeightMm: 0,
+    ruleText: "Żaluzja = szerokość skrzydła − 1 cm, wysokość skrzydła bez zmian.",
+    pros: ["Okno otwiera się i uchyla razem z żaluzją", "Zakrywa też ramę skrzydła - mniej szczelin światła"],
+    cons: ["Lamele odstają od skrzydła - sprawdź klamkę"],
+    onSash: true,
+    steps: [
+      "Zmierz szerokość skrzydła po zewnętrznych krawędziach ramy, widocznych od pokoju.",
+      "Zmierz wysokość skrzydła od górnej do dolnej krawędzi ramy.",
+      "Wpisz oba wymiary. Odejmiemy 1 cm od szerokości, żeby żaluzja nie wystawała poza skrzydło.",
+    ],
+  },
+  "na-sciane": {
+    id: "na-sciane",
+    measureWhat: "wnękę okienną",
+    measureNoun: "wnęka okienna",
+    widthLabel: "Szerokość wnęki",
+    heightLabel: "Wysokość wnęki",
+    addWidthMm: 100,
+    addHeightMm: 50,
+    ruleText: "Żaluzja = szerokość wnęki + 10 cm (po 5 cm z każdej strony), wysokość wnęki + 5 cm (klamry ok. 5 cm nad wnęką).",
+    pros: ["Najlepsze zaciemnienie - zasłania całe okno", "Nie dotyka okna"],
+    cons: ["Przed otwarciem okna trzeba podciągnąć żaluzję"],
+    onSash: false,
+    steps: [
+      "Zmierz szerokość wnęki okiennej od ściany do ściany.",
+      "Zmierz wysokość wnęki od górnej krawędzi do parapetu.",
+      "Wpisz oba wymiary. Doliczymy po 5 cm z każdej strony i 5 cm u góry na klamry - żaluzja zasłoni okno z zapasem.",
+    ],
+  },
+};
+
+export function zaluzjeMountRule(mountId: string | null | undefined): ZaluzjeMountRule | null {
+  return (ZALUZJE_MOUNT_RULES as Record<string, ZaluzjeMountRule>)[String(mountId || "")] || null;
+}
+
+/** Wymiar żaluzji z tego, co klient zmierzył przy danym montażu. */
+export function zaluzjeBlindSize(mountId: string, measuredWidthMm: number, measuredHeightMm: number): { widthMm: number; heightMm: number } {
+  const rule = zaluzjeMountRule(mountId);
+  if (!rule) return { widthMm: measuredWidthMm, heightMm: measuredHeightMm };
+  return {
+    widthMm: measuredWidthMm > 0 ? measuredWidthMm + rule.addWidthMm : 0,
+    heightMm: measuredHeightMm > 0 ? measuredHeightMm + rule.addHeightMm : 0,
+  };
+}
+
+/** Odległość lameli od szyby przy montażu na skrzydle (mm) - ostrzeżenie o klamce. */
+export const ZALUZJE_SLAT_OFFSET_MM: Record<number, number> = { 35: 40, 50: 55, 65: 70 };
+
+export function zaluzjeHandleWarning(mountId: string, slatWidthMm: number): string {
+  const rule = zaluzjeMountRule(mountId);
+  const offset = ZALUZJE_SLAT_OFFSET_MM[slatWidthMm];
+  if (!rule || !rule.onSash || !offset) return "";
+  const cm = (offset / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+  return `Lamele ${slatWidthMm} mm odstają od szyby o ok. ${cm} cm - sprawdź, czy klamka nie będzie przeszkadzać.`;
+}
+
+/** Notatka produkcyjna do pozycji koszyka / wyceny. */
+export function zaluzjeMeasureNote(mountId: string, measuredWidthMm: number, measuredHeightMm: number, blindWidthMm: number, blindHeightMm: number): string {
+  const rule = zaluzjeMountRule(mountId);
+  const cm = (mm: number) => (mm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+  if (!rule || !measuredWidthMm || !measuredHeightMm) return `wymiar żaluzji podany przez klienta ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`;
+  return `${rule.measureNoun} ${cm(measuredWidthMm)} × ${cm(measuredHeightMm)} cm → żaluzja ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`;
 }

@@ -22620,3 +22620,255 @@ html[data-theme="dark"] .zl-product-card {
   background: rgba(240, 248, 255, 0.05);
   border-color: rgba(194, 228, 255, 0.25);
 }
+
+/* Żaluzje: sposób montażu z miniaturą, pomiar z przeliczeniem, animacje
+   pomiaru (features/rolety/ZaluzjeMeasure.tsx), 2026-10-17. */
+.zl-mount-pick {
+  display: grid;
+  gap: 0.55rem;
+}
+.zl-mount-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 5.6rem minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.95rem;
+  border: 2px solid rgba(19, 40, 67, 0.14);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.zl-mount-card.is-active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #d97706;
+}
+.zl-mount-thumb {
+  display: block;
+  width: 5.6rem;
+  height: auto;
+  border-radius: 0.6rem;
+  background: #eef1f4;
+}
+.zl-mt-blind {
+  animation: zlBlindDrop 3.6s ease-in-out infinite alternate;
+}
+@keyframes zlBlindDrop {
+  0%,
+  15% {
+    transform: scaleY(0.12);
+  }
+  85%,
+  100% {
+    transform: scaleY(1);
+  }
+}
+.zl-mount-card-body {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.zl-mount-card-body strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.zl-mount-card-note {
+  font-size: 0.76rem;
+  line-height: 1.3;
+  opacity: 0.8;
+}
+.zl-mount-card-pros {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.15rem;
+}
+.zl-mount-card-pros span {
+  font-size: 0.74rem;
+  line-height: 1.3;
+  padding-left: 1.05rem;
+  position: relative;
+}
+.zl-mount-card-pros .is-pro::before,
+.zl-mount-card-pros .is-con::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 900;
+}
+.zl-mount-card-pros .is-pro::before {
+  content: "+";
+  color: #147a52;
+}
+.zl-mount-card-pros .is-con::before {
+  content: "–";
+  color: #b45309;
+}
+.zl-mount-pick > .plisy-measure-link {
+  justify-self: start;
+}
+.zl-measure-intro {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.4rem;
+}
+.zl-measure-intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.zl-exact-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.zl-exact-toggle input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: #f59e0b;
+}
+.zl-blind-size {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0.55rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(44, 157, 130, 0.1);
+  border: 1px solid rgba(44, 157, 130, 0.35);
+  font-size: 0.9rem;
+}
+.zl-blind-size strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #147a52;
+}
+.zl-blind-size small {
+  font-size: 0.74rem;
+  opacity: 0.8;
+}
+.zl-blind-size.is-invalid {
+  background: #fff4ec;
+  border-color: #f6c7a3;
+}
+.zl-blind-size.is-invalid strong {
+  color: #a1470c;
+}
+.zl-handle-warning {
+  margin: 0.5rem 0 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.7rem;
+  background: #fff7e6;
+  border: 1px solid #f6d58c;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #7a4b00;
+}
+.zl-measure-anim {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.zl-measure-anim svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(19, 40, 67, 0.12);
+}
+.zl-measure-anim.is-compact svg {
+  max-width: 300px;
+}
+.zl-anim-label {
+  font: 700 10px/1 system-ui, sans-serif;
+  fill: #1f2a37;
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 3px;
+}
+.zl-anim-label.is-extra {
+  fill: #a1470c;
+}
+.zl-measure-anim-caption {
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+.zl-measure-steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.zl-measure-steps li {
+  opacity: 0.6;
+  transition: opacity 0.25s ease;
+}
+.zl-measure-steps li.is-active {
+  opacity: 1;
+  font-weight: 700;
+}
+.zl-measure-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0.7rem;
+}
+.zl-measure-tabs button {
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 2px solid rgba(19, 40, 67, 0.18);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.zl-measure-tabs button.is-active {
+  border-color: #f59e0b;
+  background: #fff4e0;
+}
+.zl-measure-rule {
+  margin: 0.6rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #147a52;
+}
+.zl-measure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+.zl-measure-close {
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(19, 40, 67, 0.3);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .zl-mt-blind {
+    animation: none;
+  }
+}
+@media (max-width: 480px) {
+  .zl-mount-card {
+    grid-template-columns: 4.6rem minmax(0, 1fr);
+  }
+  .zl-mount-thumb {
+    width: 4.6rem;
+  }
+}

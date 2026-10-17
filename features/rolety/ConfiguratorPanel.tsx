@@ -12,8 +12,11 @@
 // Żaluzje: każdy model to osobny produkt (strona /zaluzje/<slug>, katalog
 // /zaluzje). Panel dostaje model z zewnątrz (modelSlug ze strony produktu
 // albo lockModel + etykieta przy edycji z koszyka) i nie pozwala go zmienić:
-// 1) kolor lameli, 2) wymiary i ilość, 3) klamry montażowe, 4) strona
-// sterowania, cena, koszyk.
+// 1) sposób montażu (w świetle szyby / na skrzydło / na ścianę),
+// 2) pomiar - klient wpisuje to, co zmierzył, a panel liczy wymiar żaluzji
+// (ZALUZJE_MOUNT_RULES w shared.ts; albo "Znam dokładny wymiar żaluzji"),
+// 3) kolor lameli, 4) strona sterowania, cena, koszyk. Animacje pomiaru:
+// ZaluzjeMeasure.tsx.
 //
 // Bez pola uwag (zasada właściciela), bez powiększeń na najechanie - tylko
 // lupa na kliknięcie. Układ, klasy CSS i akordeony skopiowane z plis
@@ -32,12 +35,17 @@ import { buildPlisyHardwareSwatchStyle, formatPriceDeltaBadge } from "@/features
 import PlisyFabricGallery from "@/features/plisy/FabricGallery";
 import PlisyCollectionBackdrop from "@/features/plisy/CollectionBackdrop";
 import UnitAskModal from "@/features/plisy/UnitAskModal";
+import { ZaluzjeMeasureAnimation, ZaluzjeMeasureModal, ZaluzjeMountThumb } from "./ZaluzjeMeasure";
 import {
   CHAIN_SIDES,
   calcRoletyPrice,
   fetchRoletyProfile,
   findZaluzjeModel,
+  zaluzjeBlindSize,
+  zaluzjeHandleWarning,
+  zaluzjeMeasureNote,
   zaluzjeModelForGroup,
+  zaluzjeMountRule,
   isRoletyCassetteMount,
   joinRoletyMountLabel,
   ROLETY_COPY,
@@ -53,6 +61,7 @@ import {
   type MountOption,
   type RoletyProfile,
   type RoletySlug,
+  type ZaluzjeMountId,
 } from "./shared";
 
 type ZoomPreview = { title: string; urls: string[]; index: number };
@@ -214,8 +223,21 @@ export default function RoletyConfiguratorPanel({
   const [stepChainCollapsed, setStepChainCollapsed] = useState(Boolean(seed.chainSide || splitRoletyMountLabel(seed.mountLabel).chainSide));
 
   const [dimensionUnit, setDimensionUnit] = useState<DimensionUnit>(readStoredUnit);
-  const [width, setWidth] = useState(() => (initialValues?.widthMm ? mmToInput(initialValues.widthMm, readStoredUnit()) : ""));
-  const [height, setHeight] = useState(() => (initialValues?.heightMm ? mmToInput(initialValues.heightMm, readStoredUnit()) : ""));
+  const [width, setWidth] = useState(() => {
+    const mm = initialValues?.measuredWidthMm || initialValues?.widthMm;
+    return mm ? mmToInput(mm, readStoredUnit()) : "";
+  });
+  const [height, setHeight] = useState(() => {
+    const mm = initialValues?.measuredHeightMm || initialValues?.heightMm;
+    return mm ? mmToInput(mm, readStoredUnit()) : "";
+  });
+  // Żaluzje: "Znam dokładny wymiar żaluzji" - pola przyjmują wymiar żaluzji
+  // bez przeliczeń. Pozycja z koszyka bez zapisanego pomiaru (stara albo
+  // wpisana wprost) wraca w tym trybie.
+  const [exactBlindSize, setExactBlindSize] = useState(() =>
+    Boolean(modelFirst && initialValues?.widthMm && !initialValues?.measuredWidthMm),
+  );
+  const [measureGuideOpen, setMeasureGuideOpen] = useState(false);
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const [stepDimsCollapsed, setStepDimsCollapsed] = useState(Boolean(isCartEdit && initialValues?.widthMm && initialValues?.heightMm));
   const lastTrackedDimsRef = useRef("");
@@ -301,8 +323,19 @@ export default function RoletyConfiguratorPanel({
   // Montaż domyślny = pierwsza opcja z CRM: od niego zależy instrukcja
   // pomiaru w kroku wymiarów. Krok zostaje otwarty, żeby klient go zobaczył
   // i mógł zmienić.
+  // Żaluzje: bez domyślnego montażu - klient zaznacza, jak chce zamontować
+  // (właściciel, 17.10.2026). Montaż ze szkicu / starej pozycji koszyka,
+  // którego już nie ma w CRM (dawne "Klamry ..."), czyścimy - wybór od nowa.
   useEffect(() => {
-    if (!profile || selectedMountId) return;
+    if (!profile) return;
+    if (modelFirst) {
+      if (selectedMountId && !profile.mountOptions.some((option) => option.id === selectedMountId)) {
+        setSelectedMountId("");
+        setStepMountCollapsed(false);
+      }
+      return;
+    }
+    if (selectedMountId) return;
     const fallback = profile.mountOptions[0];
     if (fallback) setSelectedMountId(fallback.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -390,8 +423,14 @@ export default function RoletyConfiguratorPanel({
     setStepFabricCollapsed(false);
   }, [selectedFabricGroupId, swatchesForGroup, selectedFabricId]);
 
-  const widthNum = inputToMm(width, dimensionUnit);
-  const heightNum = inputToMm(height, dimensionUnit);
+  // Co klient wpisał (pomiar albo wymiar żaluzji) i wymiar żaluzji, z którego
+  // liczymy cenę i który idzie do produkcji (widthNum/heightNum).
+  const inputWidthMm = inputToMm(width, dimensionUnit);
+  const inputHeightMm = inputToMm(height, dimensionUnit);
+  const zaluzjeRule = modelFirst ? zaluzjeMountRule(selectedMountId) : null;
+  const measuring = Boolean(zaluzjeRule) && !exactBlindSize;
+  const blindFromInput = (w: number, h: number) => (measuring ? zaluzjeBlindSize(selectedMountId, w, h) : { widthMm: w, heightMm: h });
+  const { widthMm: widthNum, heightMm: heightNum } = blindFromInput(inputWidthMm, inputHeightMm);
   const widthInRange = profile ? widthNum >= profile.widthMinMm && widthNum <= profile.widthMaxMm : false;
   const heightInRange = profile ? heightNum >= profile.heightMinMm && heightNum <= profile.heightMaxMm : false;
   const dimensionsValid = widthInRange && heightInRange;
@@ -400,18 +439,21 @@ export default function RoletyConfiguratorPanel({
   const looksLikeCm =
     dimensionUnit === "mm" &&
     !dimensionsValid &&
-    widthNum > 0 &&
-    heightNum > 0 &&
-    (profile ? widthNum < profile.widthMinMm / 2 && heightNum < profile.heightMinMm / 2 : false);
+    inputWidthMm > 0 &&
+    inputHeightMm > 0 &&
+    (profile ? inputWidthMm < profile.widthMinMm / 2 && inputHeightMm < profile.heightMinMm / 2 : false);
+  // Podpowiedź "×10 / ÷10" liczona na wpisanych liczbach, sprawdzana na
+  // wymiarze żaluzji po przeliczeniu.
   const timesTenFix = (() => {
-    if (!profile || dimensionUnit !== "cm" || dimensionsValid || widthNum <= 0 || heightNum <= 0) return null;
+    if (!profile || dimensionUnit !== "cm" || dimensionsValid || inputWidthMm <= 0 || inputHeightMm <= 0) return null;
     const fixAxis = (v: number, min: number, max: number) => (v < min ? v * 10 : v > max ? v / 10 : v);
-    const fixW = fixAxis(widthNum, profile.widthMinMm, profile.widthMaxMm);
-    const fixH = fixAxis(heightNum, profile.heightMinMm, profile.heightMaxMm);
-    if (fixW === widthNum && fixH === heightNum) return null;
-    const wOk = fixW >= profile.widthMinMm && fixW <= profile.widthMaxMm;
-    const hOk = fixH >= profile.heightMinMm && fixH <= profile.heightMaxMm;
-    const fromMm = fixW < widthNum || fixH < heightNum;
+    const fixW = fixAxis(inputWidthMm, profile.widthMinMm, profile.widthMaxMm);
+    const fixH = fixAxis(inputHeightMm, profile.heightMinMm, profile.heightMaxMm);
+    if (fixW === inputWidthMm && fixH === inputHeightMm) return null;
+    const fixedBlind = blindFromInput(Math.round(fixW), Math.round(fixH));
+    const wOk = fixedBlind.widthMm >= profile.widthMinMm && fixedBlind.widthMm <= profile.widthMaxMm;
+    const hOk = fixedBlind.heightMm >= profile.heightMinMm && fixedBlind.heightMm <= profile.heightMaxMm;
+    const fromMm = fixW < inputWidthMm || fixH < inputHeightMm;
     return wOk && hOk ? { widthMm: Math.round(fixW), heightMm: Math.round(fixH), fromMm } : null;
   })();
   function applyTimesTenFix() {
@@ -491,13 +533,21 @@ export default function RoletyConfiguratorPanel({
     const hintAfter = roletyMeasureHint(slug, option);
     setSelectedMountId(option.id);
     setStepMountCollapsed(true);
+    if (modelFirst) {
+      // Żaluzje: inny montaż = inny pomiar; wymiar żaluzji przelicza się sam.
+      const nextRule = zaluzjeMountRule(option.id);
+      if ((inputWidthMm > 0 || inputHeightMm > 0) && !exactBlindSize && selectedMountId && nextRule) {
+        setRemeasureHint(`Zmieniłeś sposób montażu - teraz mierzysz ${nextRule.measureWhat}. Sprawdź wpisane wymiary.`);
+      }
+      setStepDimsCollapsed(false);
+      window.setTimeout(() => scrollStepIntoView(stepDimsRef.current), 380);
+      return;
+    }
     if ((widthNum > 0 || heightNum > 0) && hintBefore !== hintAfter) {
       setRemeasureHint(
-        slug === "zaluzje"
-          ? "Zmieniłeś sposób montażu - sprawdź wymiary według instrukcji przy polach."
-          : isRoletyCassetteMount(option.id) || isRoletyCassetteMount(option.label)
-            ? "Zmieniłeś montaż na kasetę: podaj dokładny wymiar szyby między uszczelkami, bez dodawania 15 mm."
-            : "Zmieniłeś montaż: do wymiaru szyby między uszczelkami dodaj po 15 mm z każdej strony.",
+        isRoletyCassetteMount(option.id) || isRoletyCassetteMount(option.label)
+          ? "Zmieniłeś montaż na kasetę: podaj dokładny wymiar szyby między uszczelkami, bez dodawania 15 mm."
+          : "Zmieniłeś montaż: do wymiaru szyby między uszczelkami dodaj po 15 mm z każdej strony.",
       );
     }
     if (modelFirst) {
@@ -525,7 +575,7 @@ export default function RoletyConfiguratorPanel({
     setSelectedFabricId(id);
     setFabricGalleryIndex(null);
     setStepFabricCollapsed(true);
-    window.setTimeout(() => scrollStepIntoView(modelFirst ? stepDimsRef.current : stepChainRef.current), 380);
+    window.setTimeout(() => scrollStepIntoView(stepChainRef.current), 380);
   }
 
   const canSubmit = Boolean(selectedMount && hardwareChosen && selectedFabricGroup && selectedFabric && chainSide && dimensionsValid && unitPrice !== null && !selectedUnavailable);
@@ -575,6 +625,9 @@ export default function RoletyConfiguratorPanel({
       fabricThumbnailUrl: selectedFabric.thumbnailUrl || selectedFabric.imageUrl || selectedFabricGroup.imageUrl || "",
       widthMm: widthNum,
       heightMm: heightNum,
+      measuredWidthMm: measuring ? inputWidthMm : 0,
+      measuredHeightMm: measuring ? inputHeightMm : 0,
+      measureNote: modelFirst ? zaluzjeMeasureNote(selectedMount.id, measuring ? inputWidthMm : 0, measuring ? inputHeightMm : 0, widthNum, heightNum) : "",
       qty: quantityNum,
       unitPrice,
       totalPrice,
@@ -697,9 +750,58 @@ export default function RoletyConfiguratorPanel({
           () => setStepMountCollapsed((prev) => !prev),
           selectedMount ? <strong>{selectedMount.label}</strong> : null,
           stepMountRef,
-          modelFirst,
+          false,
         )}
         <div className="hero-product-step-body">
+          {modelFirst ? (
+            <div className="zl-mount-pick" role="group" aria-label="Sposób montażu">
+              <p className="hero-product-config-hint">Zaznacz, jak chcesz zamontować żaluzję - od tego zależy, co zmierzysz.</p>
+              {profile!.mountOptions.map((option) => {
+                const isActive = option.id === selectedMountId;
+                const rule = zaluzjeMountRule(option.id);
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={`zl-mount-card ${isActive ? "is-active" : ""}`}
+                    aria-pressed={isActive}
+                    onClick={() => handleMountChange(option)}
+                  >
+                    {rule ? <ZaluzjeMountThumb mountId={rule.id} /> : null}
+                    <span className="zl-mount-card-body">
+                      <strong>{option.label}</strong>
+                      {option.note ? <span className="zl-mount-card-note">{option.note}</span> : null}
+                      {rule ? (
+                        <span className="zl-mount-card-pros">
+                          {rule.pros.map((text) => (
+                            <span key={text} className="is-pro">
+                              {text}
+                            </span>
+                          ))}
+                          {rule.cons.map((text) => (
+                            <span key={text} className="is-con">
+                              {text}
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </span>
+                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className="plisy-measure-link plisy-measure-link--cta"
+                onClick={() => {
+                  setMeasureGuideOpen(true);
+                  trackShopStep("configurator_measure_guide", "open", { mount: selectedMountId || "", product: slug, source: "mount_step" });
+                }}
+              >
+                📐 Jak zmierzyć? Zobacz wszystkie sposoby
+              </button>
+            </div>
+          ) : (
           <div className="plisy-mount-pick" role="group" aria-label="Sposób montażu">
             <div className="plisy-mount-pick-grid">
               {profile!.mountOptions.map((option) => {
@@ -728,6 +830,7 @@ export default function RoletyConfiguratorPanel({
               })}
             </div>
           </div>
+          )}
         </div>
       </section>
     );
@@ -735,12 +838,18 @@ export default function RoletyConfiguratorPanel({
 
   function renderDimsSection(stepNo: number) {
     const p = profile!;
+    // Żaluzje: bez montażu nie wiadomo, co mierzyć (chyba że klient zna wymiar żaluzji).
+    const blockedByMount = modelFirst && !selectedMount && !exactBlindSize;
+    const cmText = (mm: number) => (mm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+    const handleWarning = modelFirst && selectedModelInfo ? zaluzjeHandleWarning(selectedMountId, selectedModelInfo.widthMm) : "";
+    const widthFieldLabel = measuring && zaluzjeRule ? zaluzjeRule.widthLabel : modelFirst ? "Szerokość żaluzji" : "Szerokość";
+    const heightFieldLabel = measuring && zaluzjeRule ? zaluzjeRule.heightLabel : modelFirst ? "Wysokość żaluzji" : "Wysokość";
     return (
       <section className={`hero-product-step-accordion hero-product-step-accordion--dimensions ${stepDimsCollapsed ? "is-collapsed" : ""}`}>
         {stepHead(
           "dimensions",
           stepNo,
-          "Wymiary i ilość",
+          modelFirst ? "Pomiar i wymiary" : "Wymiary i ilość",
           dimensionsValid,
           stepDimsCollapsed,
           () => setStepDimsCollapsed((prev) => !prev),
@@ -748,7 +857,53 @@ export default function RoletyConfiguratorPanel({
         )}
         <div className="hero-product-step-body" style={dimsOpenStyle}>
           <div className="plisy-position-form" ref={stepDimsRef}>
-            <p className="hero-product-config-hint">{measureHint}</p>
+            {blockedByMount ? (
+              <>
+                <p className="hero-product-config-hint">Najpierw wybierz sposób montażu (krok 1) - od niego zależy, co mierzysz.</p>
+                <label className="zl-exact-toggle">
+                  <input type="checkbox" checked={exactBlindSize} onChange={(event) => setExactBlindSize(event.target.checked)} />
+                  Znam dokładny wymiar żaluzji
+                </label>
+              </>
+            ) : (
+            <>
+            {modelFirst ? (
+              <div className="zl-measure-intro">
+                {measuring && zaluzjeRule ? <ZaluzjeMeasureAnimation key={zaluzjeRule.id} mountId={zaluzjeRule.id} compact /> : null}
+                <p className="hero-product-config-hint">
+                  {measuring && zaluzjeRule
+                    ? `Zmierz ${zaluzjeRule.measureWhat} i wpisz wynik. Wymiar żaluzji policzymy sami.`
+                    : "Wpisz gotowy wymiar żaluzji (szerokość × wysokość). Nic nie doliczamy."}
+                </p>
+                <div className="zl-measure-intro-actions">
+                  {selectedMount ? (
+                    <button
+                      type="button"
+                      className="plisy-measure-link plisy-measure-link--cta"
+                      onClick={() => {
+                        setMeasureGuideOpen(true);
+                        trackShopStep("configurator_measure_guide", "open", { mount: selectedMountId, product: slug, source: "dims_step" });
+                      }}
+                    >
+                      📐 Jak zmierzyć?
+                    </button>
+                  ) : null}
+                  <label className="zl-exact-toggle">
+                    <input
+                      type="checkbox"
+                      checked={exactBlindSize}
+                      onChange={(event) => {
+                        setExactBlindSize(event.target.checked);
+                        trackShopStep("zaluzje_exact_size", event.target.checked ? "on" : "off", { mount: selectedMountId });
+                      }}
+                    />
+                    Znam dokładny wymiar żaluzji
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <p className="hero-product-config-hint">{measureHint}</p>
+            )}
             <div className="plisy-dimensions-tools">
               <div className="hero-product-unit-toggle" role="group" aria-label="Jednostka wymiarów">
                 <button type="button" className={dimensionUnit === "cm" ? "is-active" : ""} aria-pressed={dimensionUnit === "cm"} onClick={() => switchDimensionUnit("cm")}>
@@ -761,7 +916,7 @@ export default function RoletyConfiguratorPanel({
             </div>
             <div className="hero-product-dimensions-grid">
               <label>
-                Szerokość ({dimensionUnit})
+                {widthFieldLabel} ({dimensionUnit})
                 <input
                   type="number"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
@@ -775,7 +930,7 @@ export default function RoletyConfiguratorPanel({
                 />
               </label>
               <label>
-                Wysokość ({dimensionUnit})
+                {heightFieldLabel} ({dimensionUnit})
                 <input
                   type="number"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
@@ -793,6 +948,19 @@ export default function RoletyConfiguratorPanel({
                 <input type="number" inputMode="numeric" min={1} max={ROLETY_QTY_MAX} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
               </label>
             </div>
+            {measuring && zaluzjeRule && inputWidthMm > 0 && inputHeightMm > 0 ? (
+              <p className={`zl-blind-size ${dimensionsValid ? "" : "is-invalid"}`} aria-live="polite">
+                <span>
+                  Wymiar żaluzji: <strong>{cmText(widthNum)} × {cmText(heightNum)} cm</strong>
+                </span>
+                <small>{zaluzjeRule.ruleText}</small>
+              </p>
+            ) : null}
+            {handleWarning ? (
+              <p className="zl-handle-warning" role="note">
+                {handleWarning}
+              </p>
+            ) : null}
             {remeasureHint ? (
               <p className="plisy-remeasure-hint" role="status">
                 {remeasureHint}{" "}
@@ -814,19 +982,22 @@ export default function RoletyConfiguratorPanel({
                   </p>
                 ) : looksLikeCm ? (
                   <p className="plisy-dimensions-hint">
-                    {widthNum} × {heightNum} mm to tylko {widthNum / 10} × {heightNum / 10} cm — mniej niż najmniejszy produkowany wymiar. Wygląda na centymetry.
+                    {inputWidthMm} × {inputHeightMm} mm to tylko {inputWidthMm / 10} × {inputHeightMm / 10} cm — mniej niż najmniejszy produkowany wymiar. Wygląda na centymetry.
                     <button type="button" onClick={() => switchDimensionUnit("cm")}>
                       Tak, to centymetry
                     </button>
                   </p>
                 ) : (
                   <p>
-                    Szerokość {formatRange(p.widthMinMm, p.widthMaxMm)}, wysokość {formatRange(p.heightMinMm, p.heightMaxMm)}.
+                    {measuring ? `Wymiar żaluzji po przeliczeniu: ${cmText(widthNum)} × ${cmText(heightNum)} cm. Produkujemy: ` : ""}
+                    {measuring ? "szerokość" : "Szerokość"} {formatRange(p.widthMinMm, p.widthMaxMm)}, wysokość {formatRange(p.heightMinMm, p.heightMaxMm)}.
                     {dimensionUnit === "mm" ? " Masz wymiar w centymetrach? Przełącz jednostkę powyżej." : ""}
                   </p>
                 )}
               </div>
             ) : null}
+            </>
+            )}
           </div>
         </div>
       </section>
@@ -1060,7 +1231,7 @@ export default function RoletyConfiguratorPanel({
             {selectedFabric ? <strong>{selectedFabric.label}</strong> : null}
           </>,
           stepFabricRef,
-          !modelFirst,
+          true,
         )}
         <div className="hero-product-step-body">
           {gallerySwatches.length ? (
@@ -1199,9 +1370,17 @@ export default function RoletyConfiguratorPanel({
             </div>
             {dimensionsValid ? (
               <div>
-                <dt>Wymiar</dt>
+                <dt>{modelFirst ? "Wymiar żaluzji" : "Wymiar"}</dt>
                 <dd>
                   {widthNum} × {heightNum} mm · {quantityNum} szt.
+                </dd>
+              </div>
+            ) : null}
+            {modelFirst && measuring && zaluzjeRule && dimensionsValid ? (
+              <div>
+                <dt>Pomiar</dt>
+                <dd>
+                  {zaluzjeRule.measureNoun}: {inputWidthMm} × {inputHeightMm} mm
                 </dd>
               </div>
             ) : null}
@@ -1307,16 +1486,27 @@ export default function RoletyConfiguratorPanel({
         {collectionInfoModal}
         {selectedFabricGroup ? (
           <>
-            {renderColorSection(1)}
+            {renderMountSection(1)}
             {renderDimsSection(2)}
             {renderPriceCard()}
-            {renderMountSection(3)}
+            {renderColorSection(3)}
             {selectedFabric ? renderControlSection(4) : <p className="hero-product-config-hint">Wybierz kolor lameli, aby przejść do strony sterowania.</p>}
             {renderSummary()}
           </>
         ) : (
           <p className="hero-product-config-hint">Wybierz model, aby przejść do koloru lameli.</p>
         )}
+        {measureGuideOpen ? (
+          <ZaluzjeMeasureModal
+            mountId={(zaluzjeMountRule(selectedMountId)?.id || "w-swietle-szyby") as ZaluzjeMountId}
+            onClose={() => setMeasureGuideOpen(false)}
+            onPick={(id) => {
+              const option = profile?.mountOptions.find((entry) => entry.id === id);
+              setMeasureGuideOpen(false);
+              if (option) handleMountChange(option);
+            }}
+          />
+        ) : null}
         {zoomModal}
       </>
     );

@@ -624,6 +624,12 @@ export default function CartV2(props: CartV2Props) {
                     <dd>{item.modelLabel}</dd>
                   </div>
                 ) : null}
+                {item.measureNote ? (
+                  <div>
+                    <dt>Pomiar</dt>
+                    <dd>{item.measureNote}</dd>
+                  </div>
+                ) : null}
                 {item.productSlug === "rolety-dachowe" && item.bracketCount === 2 ? (
                   <div>
                     <dt>Uchwyty</dt>

@@ -59,6 +59,12 @@ export type CartLineItem = {
    * (nasze wewnętrzne potwierdzenie - trafia do wyceny/zamówienia w CRM). */
   sagNoticeShown?: boolean;
   sagLimitMm?: number;
+  /** Żaluzje (2026-10-17): zmierzony wymiar (szyba / skrzydło / wnęka) -
+   * widthMm/heightMm to już wymiar żaluzji - i notatka produkcyjna z
+   * przeliczeniem. Brak = wymiar żaluzji podany wprost (albo stara pozycja). */
+  measuredWidthMm?: number;
+  measuredHeightMm?: number;
+  measureNote?: string;
   /** rolety-dachowe only: the chosen window model ("Velux MK04") or "Wymiar
    * własny" for a manual entry - undefined for other products. Additive/
    * optional so existing stored items from before this field existed still
@@ -172,6 +178,9 @@ export function readCartItems(): CartLineItem[] {
         oversizeSurchargeAmount: Number(row.oversizeSurchargeAmount ?? 0) || 0,
         modelLabel: row.modelLabel ? String(row.modelLabel) : undefined,
         mountLabel: row.mountLabel ? String(row.mountLabel) : undefined,
+        measuredWidthMm: Number(row.measuredWidthMm ?? 0) > 0 ? Number(row.measuredWidthMm) : undefined,
+        measuredHeightMm: Number(row.measuredHeightMm ?? 0) > 0 ? Number(row.measuredHeightMm) : undefined,
+        measureNote: row.measureNote ? String(row.measureNote).slice(0, 300) : undefined,
         splitFromWidthMm: Number(row.splitFromWidthMm ?? 0) > 0 ? Number(row.splitFromWidthMm) : undefined,
         sagNoticeShown: row.sagNoticeShown === true ? true : undefined,
         sagLimitMm: Number(row.sagLimitMm ?? 0) > 0 ? Number(row.sagLimitMm) : undefined,
