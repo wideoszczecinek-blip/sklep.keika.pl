@@ -1,22 +1,9 @@
 "use client";
 
-// Bloki rodzajów żaluzji (drewniane basswood, bambusowe...) - ten sam
-// komponent w panelu produktu (ProductPanel) i na górze landingu na telefonie
-// (Landing), gdzie panel konfiguratora jest dopiero pod opisem. Kliknięcie na
-// landingu wysyła zdarzenie ZALUZJE_CATEGORY_EVENT, które ProductPanel
-// zamienia na wybór kategorii, i przewija do panelu.
+// Duże bloki rodzajów żaluzji (drewniane basswood, bambusowe...) w katalogu
+// /zaluzje (features/rolety/ZaluzjeCatalog.tsx).
 import { optimizeImageUrl } from "@/lib/image-optim";
 import type { ZaluzjeCategory } from "./shared";
-
-export const ZALUZJE_CATEGORY_EVENT = "keika:zaluzje-category";
-
-export function dispatchZaluzjeCategory(slug: string) {
-  try {
-    window.dispatchEvent(new CustomEvent(ZALUZJE_CATEGORY_EVENT, { detail: { slug } }));
-  } catch {
-    /* ignore */
-  }
-}
 
 function formatZl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
@@ -50,7 +37,13 @@ export default function ZaluzjeCategoryGrid({
   return (
     <div className="zl-cat-grid">
       {tree.map((entry) => (
-        <button key={entry.slug} type="button" className={`zl-cat-card ${entry.slug === activeSlug ? "is-active" : ""}`} onClick={() => onPick(entry)}>
+        <button
+          key={entry.slug}
+          type="button"
+          className={`zl-cat-card ${entry.slug === activeSlug ? "is-active" : ""}`}
+          aria-pressed={entry.slug === activeSlug}
+          onClick={() => onPick(entry)}
+        >
           <span className="zl-cat-photo" aria-hidden="true" style={entry.imageUrl ? { backgroundImage: `url(${optimizeImageUrl(entry.imageUrl, 360)})` } : undefined} />
           <span className="zl-cat-body">
             <strong>{entry.category}</strong>

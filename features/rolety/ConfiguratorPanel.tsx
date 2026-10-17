@@ -9,16 +9,18 @@
 // tkaniny -> kolor, 5) strona łańcuszka, na końcu karta ceny i "Dodaj do
 // koszyka".
 //
-// Żaluzje (model wybrany wcześniej w ProductPanel.tsx: rodzaj -> szerokość
-// lameli -> wariant): okruszek z "zmień", potem 1) kolor lameli, 2) wymiary
-// i ilość, 3) klamry montażowe, 4) strona sterowania, cena, koszyk. Bez
-// onChangeModel (edycja z koszyka) krok modelu zostaje jako zwinięty akordeon.
+// Żaluzje: każdy model to osobny produkt (strona /zaluzje/<slug>, katalog
+// /zaluzje). Panel dostaje model z zewnątrz (modelSlug ze strony produktu
+// albo lockModel + etykieta przy edycji z koszyka) i nie pozwala go zmienić:
+// 1) kolor lameli, 2) wymiary i ilość, 3) klamry montażowe, 4) strona
+// sterowania, cena, koszyk.
 //
 // Bez pola uwag (zasada właściciela), bez powiększeń na najechanie - tylko
 // lupa na kliknięcie. Układ, klasy CSS i akordeony skopiowane z plis
 // (features/plisy/ConfiguratorPanel.tsx); dane i cennik z CRM. Komórka
 // cennika = 0 oznacza wymiar niedostępny dla danego modelu - komunikat i
 // blokada dodania do koszyka.
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
@@ -34,6 +36,8 @@ import {
   CHAIN_SIDES,
   calcRoletyPrice,
   fetchRoletyProfile,
+  findZaluzjeModel,
+  zaluzjeModelForGroup,
   isRoletyCassetteMount,
   joinRoletyMountLabel,
   ROLETY_COPY,
@@ -135,26 +139,26 @@ export default function RoletyConfiguratorPanel({
   submitLabel,
   onSubmit,
   onZoom,
-  breadcrumb,
-  onChangeModel,
+  modelSlug,
+  lockModel = false,
 }: {
   slug: RoletySlug;
   initialValues?: ConfiguratorInitialValues;
   submitLabel: string;
   onSubmit: (result: ConfiguratorResult) => void;
   onZoom?: (preview: ZoomPreview) => void;
-  /** Żaluzje: "Drewniane basswood › 50 mm › RETRO" nad krokami. */
-  breadcrumb?: string[];
-  /** Żaluzje: powrót do bloków kategorii (ProductPanel). Bez niego krok
-   * modelu zostaje w panelu (edycja z koszyka). */
-  onChangeModel?: () => void;
+  /** Żaluzje: slug modelu ze strony produktu (/zaluzje/<slug>) - model na sztywno. */
+  modelSlug?: string;
+  /** Żaluzje: model z pozycji koszyka (etykieta) na sztywno - edycja w koszyku. */
+  lockModel?: boolean;
 }) {
   const copy = ROLETY_COPY[slug];
   // Żaluzje: model wybrany wcześniej, kolor jako krok 1, wymiary 2, klamry 3,
   // sterowanie 4. Rolety: montaż 1, wymiary 2, mechanizm 3, kolekcja/kolor 4,
   // łańcuszek 5.
   const modelFirst = slug === "zaluzje";
-  const showGroupStep = !modelFirst || !onChangeModel;
+  const modelLocked = modelFirst && (Boolean(modelSlug) || lockModel);
+  const showGroupStep = !modelLocked;
   // Korekta procentowa ceny produktu z CRM (lib/price-adjustment.ts).
   const priceAdjustmentPercent = useProductPriceAdjustment(slug);
   const [profile, setProfile] = useState<RoletyProfile | null>(null);
@@ -188,9 +192,11 @@ export default function RoletyConfiguratorPanel({
   );
   const [draftSeed] = useState<RoletyDraft | null>(() => (isCartEdit ? null : readDraft(slug)));
   const seed: RoletyDraft & ConfiguratorInitialValues = { ...(draftSeed ?? {}), ...(initialValues ?? {}) };
-  // Szkic koloru z innego modelu żaluzji nie ma sensu.
-  if (modelFirst && initialValues?.fabricGroupId && draftSeed && draftSeed.fabricGroupId !== initialValues.fabricGroupId) {
-    seed.fabricId = initialValues.fabricId;
+  // Żaluzje: model i kolor nigdy ze szkicu - model wyznacza strona produktu
+  // (albo pozycja koszyka), a kolor ze szkicu mógł dotyczyć innego modelu.
+  if (modelFirst && draftSeed) {
+    seed.fabricGroupId = initialValues?.fabricGroupId;
+    seed.fabricId = initialValues?.fabricId;
   }
 
   const [selectedMountId, setSelectedMountId] = useState(seed.mountId || "");
@@ -329,6 +335,15 @@ export default function RoletyConfiguratorPanel({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
+
+  // Żaluzje: model ze strony produktu (slug albo id grupy) - po wczytaniu profilu.
+  const modelFromSlug = useMemo(() => (profile && modelSlug ? findZaluzjeModel(profile, modelSlug) : null), [profile, modelSlug]);
+  useEffect(() => {
+    if (!modelFromSlug || selectedFabricGroupId === modelFromSlug.id) return;
+    setSelectedFabricGroupId(modelFromSlug.id);
+    setStepGroupCollapsed(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelFromSlug]);
 
   const hasHardwareStep = Boolean(profile && profile.hardware.length > 0);
   const selectedMount = useMemo(
@@ -545,6 +560,7 @@ export default function RoletyConfiguratorPanel({
   function handleSubmit() {
     if (!canSubmit || !selectedMount || !selectedFabricGroup || !selectedFabric || !chainSide || unitPrice === null || totalPrice === null) return;
     onSubmit({
+      productLabel: modelFirst && profile ? zaluzjeModelForGroup(profile, selectedFabricGroup.id)?.name || "" : "",
       mountId: selectedMount.id,
       mountLabel: joinRoletyMountLabel(selectedMount.label, chainSide, slug),
       chainSide,
@@ -566,6 +582,7 @@ export default function RoletyConfiguratorPanel({
   }
 
   const headerTitle = `Wyceń ${copy.shortName} do swojego okna`;
+  const selectedModelInfo = modelFirst && profile && selectedFabricGroup ? zaluzjeModelForGroup(profile, selectedFabricGroup.id) : null;
 
   if (loadState === "loading") {
     return (
@@ -1211,16 +1228,27 @@ export default function RoletyConfiguratorPanel({
             <button
               type="button"
               onClick={() => {
-                if (onChangeModel && modelFirst) {
-                  onChangeModel();
-                  return;
-                }
-                setStepGroupCollapsed(false);
-                window.setTimeout(() => scrollStepIntoView(stepGroupRef.current), 80);
+                setStepDimsCollapsed(false);
+                window.setTimeout(() => scrollStepIntoView(stepDimsRef.current), 80);
               }}
             >
-              Zmień {copy.groupUnit === "model" ? "model" : "kolekcję"}
+              Zmień wymiar
             </button>
+            {modelLocked ? (
+              <Link href={selectedModelInfo ? `/zaluzje?kategoria=${selectedModelInfo.categorySlug}` : "/zaluzje"} className="rolety-unavailable-link">
+                Wybierz inny model
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setStepGroupCollapsed(false);
+                  window.setTimeout(() => scrollStepIntoView(stepGroupRef.current), 80);
+                }}
+              >
+                Zmień {copy.groupUnit === "model" ? "model" : "kolekcję"}
+              </button>
+            )}
           </div>
         ) : null}
         {unitPrice !== null && totalPrice !== null ? (
@@ -1255,25 +1283,26 @@ export default function RoletyConfiguratorPanel({
     ) : null;
 
   if (modelFirst) {
-    // Żaluzje: model już wybrany (okruszek), kolor -> wymiary -> klamry -> sterowanie.
-    const crumbParts = breadcrumb && breadcrumb.length ? breadcrumb : selectedFabricGroup ? [selectedFabricGroup.label] : [];
+    // Żaluzje: model na sztywno (strona produktu / edycja z koszyka), kolor ->
+    // wymiary -> klamry -> sterowanie. Zmiana modelu tylko przez katalog.
+    if (modelSlug && profile && !modelFromSlug) {
+      return (
+        <>
+          <header>
+            <strong>{headerTitle}</strong>
+          </header>
+          <p className="hero-product-config-hint">Nie znaleźliśmy tego modelu żaluzji.</p>
+          <Link href="/zaluzje" className="plisy-position-add">
+            Zobacz wszystkie żaluzje
+          </Link>
+        </>
+      );
+    }
     return (
       <>
         <header>
-          <strong>{headerTitle}</strong>
+          <strong>{modelLocked && selectedModelInfo ? `Wyceń: ${selectedModelInfo.name}` : headerTitle}</strong>
         </header>
-        {!showGroupStep && crumbParts.length ? (
-          <p className="zl-crumb" aria-label="Wybrany model">
-            {crumbParts.map((part, index) => (
-              <span key={`${part}-${index}`}>{part}</span>
-            ))}
-            {onChangeModel ? (
-              <button type="button" onClick={onChangeModel}>
-                zmień
-              </button>
-            ) : null}
-          </p>
-        ) : null}
         {showGroupStep ? renderGroupSection(0) : null}
         {collectionInfoModal}
         {selectedFabricGroup ? (

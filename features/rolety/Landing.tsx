@@ -1,15 +1,14 @@
 "use client";
 
-// Landing rolet mini (dzień-noc / tradycyjne) w widoku produktu home-client.
-// Treść w całości z CRM (product_groups: podtytuł, opis, parametry, atuty,
-// sekcje, wyróżnik, galeria) - tu tylko układ w klasach landingu plis
-// (pl-*), cena "od" z żywego cennika i przycisk do konfiguratora.
-import { useMemo } from "react";
+// Landing rolet mini (dzień-noc / tradycyjne) i katalogu żaluzji w widoku
+// produktu home-client. Treść w całości z CRM (product_groups: podtytuł,
+// opis, parametry, atuty, sekcje, wyróżnik, galeria) - tu tylko układ w
+// klasach landingu plis (pl-*), cena "od" z żywego cennika i przycisk do
+// konfiguratora. Żaluzje: pod podtytułem katalog modeli (catalogSlot).
+import type { ReactNode } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
-import { trackShopStep } from "@/lib/track-step";
-import { buildZaluzjeTree, ROLETY_COPY, roletyStartingPrice, type RoletyProfile, type RoletySlug } from "./shared";
-import ZaluzjeCategoryGrid, { dispatchZaluzjeCategory } from "./ZaluzjeCategoryGrid";
+import { ROLETY_COPY, roletyStartingPrice, type RoletyProfile, type RoletySlug } from "./shared";
 
 export type RoletyLandingContent = {
   subtitle: string;
@@ -33,6 +32,8 @@ export default function RoletyLanding({
   productLabel,
   onConfigure,
   onZoom,
+  catalogSlot,
+  ctaLabel,
 }: {
   slug: RoletySlug;
   profile: RoletyProfile | null;
@@ -41,14 +42,15 @@ export default function RoletyLanding({
   productLabel: string;
   onConfigure: () => void;
   onZoom: (preview: { title: string; urls: string[]; index: number }) => void;
+  /** Żaluzje: katalog modeli zaraz pod podtytułem, przed zdjęciami. */
+  catalogSlot?: ReactNode;
+  /** Etykieta przycisków CTA (domyślnie z ROLETY_COPY). */
+  ctaLabel?: string;
 }) {
   const copy = ROLETY_COPY[slug];
+  const cta = ctaLabel || copy.ctaLabel;
   const adjustPercent = useProductPriceAdjustment(slug);
   const startingPrice = roletyStartingPrice(profile, slug, adjustPercent);
-  // Żaluzje na telefonie: bloki rodzajów od razu pod nagłówkiem (panel
-  // konfiguratora jest dopiero pod opisem); na komputerze ukryte przez CSS,
-  // bo te same bloki stoją w panelu po prawej.
-  const zaluzjeTree = useMemo(() => (slug === "zaluzje" && profile ? buildZaluzjeTree(profile, adjustPercent) : []), [slug, profile, adjustPercent]);
   const photos = (landing?.gallery?.length ? landing.gallery : fallbackGallery).filter(Boolean).slice(0, 4);
   const description = String(landing?.description || "").trim();
   const paragraphs = description && !/<[a-z][\s\S]*>/i.test(description) ? description.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean) : [];
@@ -68,19 +70,7 @@ export default function RoletyLanding({
 
       {landing?.subtitle ? <p className="pl-subtitle">{landing.subtitle}</p> : null}
 
-      {zaluzjeTree.length ? (
-        <section className="zl-landing-blocks" aria-label="Rodzaje żaluzji">
-          <h2 className="hero-product-section-title">Wybierz rodzaj żaluzji</h2>
-          <ZaluzjeCategoryGrid
-            tree={zaluzjeTree}
-            onPick={(entry) => {
-              trackShopStep("zaluzje_category", entry.category, { models: entry.modelCount, source: "landing" });
-              dispatchZaluzjeCategory(entry.slug);
-              onConfigure();
-            }}
-          />
-        </section>
-      ) : null}
+      {catalogSlot}
 
       {photos.length ? (
         <div className={`rl-photos rl-photos--${Math.min(photos.length, 4)}`}>
@@ -100,7 +90,7 @@ export default function RoletyLanding({
 
       <div className="pl-cta-row">
         <button type="button" className="pl-cta-button" onClick={onConfigure}>
-          {copy.ctaLabel}
+          {cta}
         </button>
       </div>
 
@@ -161,7 +151,7 @@ export default function RoletyLanding({
           <strong>{landing.callout.title}</strong>
           <p>{landing.callout.body}</p>
           <button type="button" className="pl-inline-cta-button pl-callout-cta" onClick={onConfigure}>
-            {copy.ctaLabel}
+            {cta}
           </button>
         </div>
       ) : null}

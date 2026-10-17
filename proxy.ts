@@ -37,6 +37,8 @@ function previewAllowed(request: NextRequest): boolean {
 
 function previewRoutePath(url: URL): string | null {
   if (PREVIEW_ONLY_ROUTES.has(url.pathname)) return url.pathname;
+  // Strony modeli żaluzji (/zaluzje/<model>) - ta sama bramka co katalog.
+  if (url.pathname.startsWith("/zaluzje/")) return url.pathname;
   const match = url.pathname.match(/^\/(?:produkt|kategoria)\/([a-z0-9-]+)\/?$/);
   if (match && PREVIEW_ONLY_SLUGS.has(match[1])) return `/${match[1]}`;
   if (url.pathname === "/" && PREVIEW_ONLY_SLUGS.has((url.searchParams.get("produkt") || "").trim().toLowerCase())) {
@@ -82,5 +84,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/produkt/:slug", "/kategoria/:slug"],
+  matcher: ["/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/zaluzje/:path*", "/produkt/:slug", "/kategoria/:slug"],
 };

@@ -21,7 +21,7 @@ import {
 
 export type { FabricGroup, FabricSwatch, HardwareOption, MountOption, PriceTable };
 
-const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
+export const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 
 export type RoletySlug = "rolety-dzien-noc" | "rolety-tradycyjne" | "zaluzje";
 
@@ -303,11 +303,21 @@ export async function fetchRoletyProfile(slug: RoletySlug): Promise<RoletyProfil
 async function fetchRoletyProfileUncached(slug: RoletySlug): Promise<RoletyProfile | null> {
   try {
     const response = await fetch(`${CONFIGURATOR_PUBLIC_URL}?slug=${encodeURIComponent(slug)}`, { cache: "no-store" });
-    const json = (await response.json()) as {
+    return roletyProfileFromCatalogJson(await response.json(), slug);
+  } catch {
+    return null;
+  }
+}
+
+/** Profil z odpowiedzi configurator_public.php - czysta funkcja, używana też
+ * po stronie serwera (strony modeli żaluzji: metadane, generateStaticParams). */
+export function roletyProfileFromCatalogJson(raw: unknown, slug: RoletySlug): RoletyProfile | null {
+  try {
+    const json = raw as {
       ok: boolean;
       config?: { catalog?: { categories?: Array<{ products?: RawProduct[] }> } };
     };
-    if (!json.ok || !json.config) return null;
+    if (!json || !json.ok || !json.config) return null;
     const categories = json.config.catalog?.categories || [];
     const product = categories.flatMap((category) => category.products || []).find((entry) => entry.slug === slug);
     if (!product) return null;
@@ -567,6 +577,8 @@ export type ConfiguratorInitialValues = {
 };
 
 export type ConfiguratorResult = {
+  /** Nazwa produktu do koszyka (żaluzje: nazwa modelu); puste = nazwa z menu. */
+  productLabel: string;
   mountId: string;
   /** Pełna etykieta do koszyka: montaż + strona łańcuszka / sterowania. */
   mountLabel: string;
@@ -713,5 +725,122 @@ export function buildZaluzjeTree(profile: RoletyProfile, extraAdjustPercent = 0)
       widths,
     });
   }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Żaluzje: każdy model (grupa ss-<pid> w CRM) to osobny produkt ze stroną
+// /zaluzje/<slug> (właściciel, 17.10.2026: "te różne opcje żaluzji nie mają
+// być w konfiguratorze - to są produkty"). Slug i nazwa liczone z etykiety i
+// kategorii grupy, np. "Bambusowe 50 mm RETRO" -> "bambusowe-50-mm-retro",
+// "Żaluzje bambusowe 50 mm RETRO". Strona przyjmuje też id grupy (ss-39).
+// ---------------------------------------------------------------------------
+
+/** Przymiotnik rodzaju do nazwy produktu ("Żaluzje bambusowe ..."). */
+const ZALUZJE_CATEGORY_ADJ: Record<string, string> = {
+  "drewniane-basswood": "drewniane basswood",
+  "drewniane-abachi": "drewniane abachi",
+  bambusowe: "bambusowe",
+  "prime-wood": "Prime wood",
+  "drewnopodobne-pcv": "drewnopodobne PCV",
+  aluminiowe: "aluminiowe",
+  drewnopodobne: "drewnopodobne",
+};
+
+export type ZaluzjeModel = {
+  id: string;
+  slug: string;
+  /** "Żaluzje bambusowe 50 mm RETRO" - nazwa produktu (H1, koszyk). */
+  name: string;
+  /** "50 mm RETRO" - do okruszka i kart w katalogu. */
+  shortName: string;
+  category: string;
+  categorySlug: string;
+  widthMm: number;
+  tag: string;
+  note: string;
+  /** "do 180 × 240 cm" albo "" gdy opis w CRM nie podaje. */
+  maxSizeText: string;
+  imageUrl: string;
+  colorCount: number;
+  startingPrice: number | null;
+  group: FabricGroup;
+};
+
+function slugifyPl(text: string): string {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/ł/g, "l")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function zaluzjeModelBase(group: FabricGroup): { category: string; categorySlug: string; widthMm: number; tag: string; adj: string } {
+  const category = roletyGroupCategory(group) || "Żaluzje";
+  const categorySlug = zaluzjeCategorySlug(category);
+  const widthMm = zaluzjeSlatWidthMm(group.label);
+  const tag = zaluzjeVariantTag(group.label, category);
+  const adj = ZALUZJE_CATEGORY_ADJ[categorySlug] || category.charAt(0).toLowerCase() + category.slice(1);
+  return { category, categorySlug, widthMm, tag, adj };
+}
+
+/** Wszystkie modele żaluzji z profilu, w kolejności CRM, z unikalnymi slugami. */
+export function zaluzjeModels(profile: RoletyProfile, extraAdjustPercent = 0): ZaluzjeModel[] {
+  const used = new Set<string>();
+  return profile.fabricGroups.map((group) => {
+    const { category, categorySlug, widthMm, tag, adj } = zaluzjeModelBase(group);
+    const shortName = [widthMm ? `${widthMm} mm` : "", tag].filter(Boolean).join(" ");
+    let slug = slugifyPl([adj, shortName].filter(Boolean).join(" ")) || slugifyPl(group.id);
+    if (used.has(slug)) slug = `${slug}-${slugifyPl(group.id)}`;
+    used.add(slug);
+    const size = String(group.note || "").match(/Szeroko\S*\s+do\s+(\d+)\s*cm,\s*wysoko\S*\s+do\s+(\d+)\s*cm/i);
+    return {
+      id: group.id,
+      slug,
+      name: `Żaluzje ${adj}${shortName ? ` ${shortName}` : ""}`,
+      shortName: shortName || group.label,
+      category,
+      categorySlug,
+      widthMm,
+      tag,
+      note: group.note,
+      maxSizeText: size ? `do ${size[1]} × ${size[2]} cm` : "",
+      imageUrl: group.imageUrl,
+      colorCount: group.swatches.length,
+      startingPrice: roletyGroupStartingPrice(profile, group.id, extraAdjustPercent),
+      group,
+    };
+  });
+}
+
+/** Model po slugu strony albo po id grupy (stare linki ?model=ss-39). */
+export function findZaluzjeModel(profile: RoletyProfile, slugOrId: string, extraAdjustPercent = 0): ZaluzjeModel | null {
+  const wanted = String(slugOrId || "").trim().toLowerCase();
+  if (!wanted) return null;
+  const models = zaluzjeModels(profile, extraAdjustPercent);
+  return models.find((model) => model.slug === wanted) || models.find((model) => model.id.toLowerCase() === wanted) || null;
+}
+
+/** Model dla grupy (nazwa produktu w koszyku po wyborze w konfiguratorze). */
+export function zaluzjeModelForGroup(profile: RoletyProfile, groupId: string): ZaluzjeModel | null {
+  return zaluzjeModels(profile).find((model) => model.id === groupId) || null;
+}
+
+/** Opis modelu na stronie produktu: rodzaj + wariant + kolory + wymiar. */
+export function zaluzjeModelDescription(model: ZaluzjeModel): string[] {
+  const out: string[] = [];
+  const categoryText = zaluzjeCategoryDescription(model.category);
+  if (categoryText) out.push(categoryText);
+  const variant = model.tag ? zaluzjeVariantNote(model.tag) : "";
+  if (variant) out.push(`Wariant ${model.tag}: ${variant.charAt(0).toLowerCase()}${variant.slice(1)}`);
+  const facts = [
+    model.widthMm ? `Lamele ${model.widthMm} mm` : "",
+    model.colorCount ? `${model.colorCount} kolorów lameli` : "",
+    model.maxSizeText ? `wymiar ${model.maxSizeText}` : "",
+  ].filter(Boolean);
+  if (facts.length) out.push(`${facts.join(", ")}.`);
+  out.push("Sterowanie sznurkiem z przekładnią po wybranej stronie, klamry montażowe w cenie.");
   return out;
 }

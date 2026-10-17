@@ -410,6 +410,9 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
   if (productSlug === "plisy-dachowe") {
     return { hardware: "Kolor osprzętu", mesh: "Kolekcja i kolor tkaniny" };
   }
+  if (productSlug === "zaluzje") {
+    return { hardware: "Kolor mechanizmu", mesh: "Model i kolor lameli" };
+  }
   if (isRoletySlug(productSlug)) {
     return { hardware: "Kolor mechanizmu", mesh: "Kolekcja i kolor tkaniny" };
   }
@@ -4902,6 +4905,8 @@ export default function CartPage() {
               <RoletyConfiguratorPanel
                 key={editingItem.id}
                 slug={editingItem.productSlug as RoletySlug}
+                // Żaluzje: model to produkt - w edycji pozycji zostaje ten sam.
+                lockModel={editingItem.productSlug === "zaluzje"}
                 initialValues={{
                   // Dane opcji żyją w CRM (features/rolety/shared.ts) - etykiety
                   // z pozycji dopasowuje sam panel po wczytaniu profilu;

@@ -138,6 +138,9 @@ import {
   type RoletySlug,
 } from "@/features/rolety/shared";
 import RoletyLanding from "@/features/rolety/Landing";
+import ZaluzjeCatalog, { ZALUZJE_CATALOG_ID } from "@/features/rolety/ZaluzjeCatalog";
+import ZaluzjeModelLanding from "@/features/rolety/ZaluzjeModelLanding";
+import { findZaluzjeModel } from "@/features/rolety/shared";
 import { crmGetJson } from "@/lib/crm-get";
 import { useBackToClose } from "@/lib/use-back-to-close";
 import PdHeroPhotos from "@/features/plisy-dachowe/PdHeroPhotos";
@@ -200,10 +203,9 @@ const RoletyDachoweConfiguratorPanel = dynamic(() => import("@/features/rolety-d
 });
 const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/ConfiguratorPanel"), { ssr: false });
 // Rolety mini (dzień-noc i tradycyjne, 2026-10-17) - jeden panel dla obu slugów.
-// Żaluzje (2026-10-17): przed konfiguratorem bloki kategorii -> szerokość
-// lameli -> wariant (features/rolety/ProductPanel.tsx); rolety przechodzą
-// przez ten sam wrapper prosto do panelu.
-const RoletyConfiguratorPanel = dynamic(() => import("@/features/rolety/ProductPanel"), { ssr: false });
+// Żaluzje (2026-10-17): /zaluzje to katalog modeli bez konfiguratora, każdy
+// model ma własną stronę /zaluzje/<slug> z tym panelem (model na sztywno).
+const RoletyConfiguratorPanel = dynamic(() => import("@/features/rolety/ConfiguratorPanel"), { ssr: false });
 const PlisyDachoweConfiguratorPanel = dynamic(() => import("@/features/plisy-dachowe/ConfiguratorPanel"), { ssr: false });
 // Statycznie, nie przez dynamic(): to jest hero, więc ma się pojawić od razu
 // razem z resztą sekcji, a nie doładować po hydratacji (LCP).
@@ -1437,7 +1439,14 @@ function ConfiguratorPanelSkeleton() {
   );
 }
 
-export default function Home({ initialProductSlug = "" }: { initialProductSlug?: string }) {
+export default function Home({
+  initialProductSlug = "",
+  zaluzjeModel = null,
+}: {
+  initialProductSlug?: string;
+  /** Strona jednego modelu żaluzji (/zaluzje/<slug>): slug i nazwa z serwera. */
+  zaluzjeModel?: { slug: string; name: string } | null;
+}) {
   // Direct product entry (/moskitiery-ramkowe) starts with the product view
   // already resolved from the build-time snapshot - server-rendered HTML
   // carries the real H1/price/chips and the boot overlay is skipped
@@ -1844,6 +1853,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // holds the banner's row so the video/description below don't jump.
   const [shippingBannerPending, setShippingBannerPending] = useState(true);
   const displayedProductSlugForPlisy = productSlugFromSelected(displayedProduct);
+  // Żaluzje: /zaluzje = katalog (bez panelu konfiguratora), /zaluzje/<slug> = model.
+  const zaluzjeCatalogMode = displayedProductSlugForPlisy === "zaluzje" && !zaluzjeModel;
+  const zaluzjeModelMode = displayedProductSlugForPlisy === "zaluzje" && Boolean(zaluzjeModel);
   useEffect(() => {
     if ((displayedProductSlugForPlisy !== "plisy" && displayedProductSlugForPlisy !== "plisy-dachowe") || plisyProfile) return;
     let cancelled = false;
@@ -2193,7 +2205,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // as scrollToProductSection above (mobile: .hero-full scrolls internally,
   // so a plain scrollIntoView on the target isn't reliable).
   function scrollToConfigPanel() {
-    const target = document.querySelector<HTMLElement>(".hero-product-config-panel");
+    // Katalog żaluzji nie ma panelu - przyciski "Konfiguruj" prowadzą do modeli.
+    const target = document.querySelector<HTMLElement>(zaluzjeCatalogMode ? `#${ZALUZJE_CATALOG_ID}` : ".hero-product-config-panel");
     const container = target?.closest<HTMLElement>(".hero-full");
     if (target && container && container.scrollHeight > container.clientHeight) {
       const containerRect = container.getBoundingClientRect();
@@ -2431,7 +2444,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           : slug === "plisy"
             ? import("@/features/plisy/ConfiguratorPanel")
             : isRoletySlug(slug)
-              ? import("@/features/rolety/ProductPanel")
+              ? import("@/features/rolety/ConfiguratorPanel")
               : import("@/features/moskitiery-ramkowe/ConfiguratorPanel");
     load
       .then(() => {
@@ -3119,6 +3132,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       window.location.assign(subItem.linkUrl);
       return;
     }
+    // Ze strony modelu żaluzji pozycja "Żaluzje" w menu prowadzi do katalogu.
+    if (options?.updateUrl !== false && zaluzjeModel && shareSlug === "zaluzje") {
+      window.location.assign("/zaluzje");
+      return;
+    }
     // options.updateUrl === false uniquely identifies the mount-time
     // "?produkt=..." URL resolution (activateFromUrl() below) rather than
     // an actual menu click - a direct/bookmarked link must keep working for
@@ -3762,7 +3780,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
               flip back if it doesn't work out). Pure CSS, no state. */}
           <div className="hero-product-gradient-bg" aria-hidden="true" />
 
-          <div className={`hero-inner ${displayedProduct ? "product-mode" : ""}`}>
+          <div className={`hero-inner ${displayedProduct ? "product-mode" : ""} ${zaluzjeCatalogMode ? "is-catalog" : ""}`}>
             <div className="hero-copy">
               <div className="hero-copy-content">
                 <section className={`hero-home-content ${isProductView ? "is-hidden" : ""}`} aria-hidden={isProductView ? "true" : "false"}>
@@ -3870,9 +3888,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             ? productLanding?.title && productLanding.title.toLowerCase() !== "plisy do okien dachowych"
                               ? productLanding.title
                               : PD_H1
-                            : isRoletySlug(productSlugFromSelected(displayedProduct))
-                              ? ROLETY_COPY[productSlugFromSelected(displayedProduct) as RoletySlug].h1
-                              : displayedProduct.label}
+                            : zaluzjeModelMode && zaluzjeModel
+                              ? (roletyProfiles.zaluzje ? findZaluzjeModel(roletyProfiles.zaluzje, zaluzjeModel.slug)?.name : "") || zaluzjeModel.name || ROLETY_COPY.zaluzje.h1
+                              : isRoletySlug(productSlugFromSelected(displayedProduct))
+                                ? ROLETY_COPY[productSlugFromSelected(displayedProduct) as RoletySlug].h1
+                                : displayedProduct.label}
                     </h1>
                   ) : null}
                   {plisyV2 ? (
@@ -4630,6 +4650,14 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               </button>
                             </div>
                           </div>
+                        ) : zaluzjeModelMode && zaluzjeModel ? (
+                          <ZaluzjeModelLanding
+                            profile={roletyProfiles.zaluzje || null}
+                            modelSlug={zaluzjeModel.slug}
+                            fallbackName={zaluzjeModel.name}
+                            onConfigure={scrollToConfigPanel}
+                            onZoom={(preview) => setZoomPreview(preview)}
+                          />
                         ) : isRoletySlug(productSlugFromSelected(displayedProduct)) ? (
                           <RoletyLanding
                             slug={productSlugFromSelected(displayedProduct) as RoletySlug}
@@ -4639,6 +4667,8 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             productLabel={displayedProduct.label}
                             onConfigure={scrollToConfigPanel}
                             onZoom={(preview) => setZoomPreview(preview)}
+                            catalogSlot={zaluzjeCatalogMode ? <ZaluzjeCatalog profile={roletyProfiles.zaluzje || null} /> : undefined}
+                            ctaLabel={zaluzjeCatalogMode ? "Zobacz modele żaluzji" : undefined}
                           />
                         ) : productLanding && productLanding.sections.length > 0 ? (
                           <div className="pl-landing">
@@ -5390,7 +5420,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                 </article>
               ))}
             </aside>
-            {displayedProduct ? (
+            {displayedProduct && !zaluzjeCatalogMode ? (
               <aside
                 ref={configPanelRef}
                 className={`hero-product-config-panel ${isProductView ? "is-visible" : ""} ${
@@ -5787,6 +5817,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               onClick={() => {
                                 setAddToCartToast(null);
                                 setRoletyLastResult(null);
+                                // Żaluzje: nowa = inny model, czyli katalog.
+                                if (zaluzjeModelMode) {
+                                  window.location.assign("/zaluzje");
+                                  return;
+                                }
                                 setRoletyConfigKey((key) => key + 1);
                               }}
                             >
@@ -5802,8 +5837,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                     </MobileOverlayPortal>
                   ) : (
                     <RoletyConfiguratorPanel
-                      key={`${productSlugFromSelected(displayedProduct)}-${roletyConfigKey}`}
+                      key={`${productSlugFromSelected(displayedProduct)}-${zaluzjeModel?.slug || ""}-${roletyConfigKey}`}
                       slug={productSlugFromSelected(displayedProduct) as RoletySlug}
+                      modelSlug={zaluzjeModelMode ? zaluzjeModel?.slug : undefined}
                       initialValues={
                         roletyLastResult
                           ? {
@@ -5822,7 +5858,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         const item: CartLineItem = {
                           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                           productSlug: productSlugFromSelected(displayedProduct),
-                          productLabel: displayedProduct.label,
+                          productLabel: result.productLabel || displayedProduct.label,
                           hardwareLabel: result.hardwareLabel,
                           meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
                           mountLabel: result.mountLabel,
@@ -5841,7 +5877,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         setCartSummary(cartSummaryWithSurcharge(items));
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
-                        setAddToCartToast({ productSlug: productSlugFromSelected(displayedProduct), productLabel: displayedProduct.label });
+                        setAddToCartToast({ productSlug: productSlugFromSelected(displayedProduct), productLabel: result.productLabel || displayedProduct.label });
                       }}
                     />
                   )
@@ -6402,7 +6438,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                 className="hero-product-bottom-tabs-configure"
                 onClick={scrollToConfigPanel}
               >
-                Konfiguruj
+                {zaluzjeCatalogMode ? "Modele" : "Konfiguruj"}
               </button>
               <div className="hero-product-bottom-tabs-scroll">
                 <button
