@@ -6,7 +6,7 @@
 // (pl-*), cena "od" z żywego cennika i przycisk do konfiguratora.
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
-import { ROLETY_LEAD_TIME_LABEL, roletyStartingPrice, type RoletyProfile, type RoletySlug } from "./shared";
+import { ROLETY_COPY, roletyStartingPrice, type RoletyProfile, type RoletySlug } from "./shared";
 
 export type RoletyLandingContent = {
   subtitle: string;
@@ -39,6 +39,7 @@ export default function RoletyLanding({
   onConfigure: () => void;
   onZoom: (preview: { title: string; urls: string[]; index: number }) => void;
 }) {
+  const copy = ROLETY_COPY[slug];
   const adjustPercent = useProductPriceAdjustment(slug);
   const startingPrice = roletyStartingPrice(profile, slug, adjustPercent);
   const photos = (landing?.gallery?.length ? landing.gallery : fallbackGallery).filter(Boolean).slice(0, 4);
@@ -52,7 +53,7 @@ export default function RoletyLanding({
           od {formatPrice(startingPrice)} zł
           <span className="pl-price-unit"> / szt.</span>
         </span>
-        <span className="pl-chip">Realizacja {ROLETY_LEAD_TIME_LABEL}</span>
+        <span className="pl-chip">Realizacja {copy.leadTimeLabel}</span>
         <span className="pl-chip">5 lat gwarancji</span>
         <span className="pl-chip">30 dni na zwrot</span>
         <span className="pl-chip">Darmowa dostawa od 79 zł</span>
@@ -78,7 +79,7 @@ export default function RoletyLanding({
 
       <div className="pl-cta-row">
         <button type="button" className="pl-cta-button" onClick={onConfigure}>
-          Wyceń swoją roletę
+          {copy.ctaLabel}
         </button>
       </div>
 
@@ -139,7 +140,7 @@ export default function RoletyLanding({
           <strong>{landing.callout.title}</strong>
           <p>{landing.callout.body}</p>
           <button type="button" className="pl-inline-cta-button pl-callout-cta" onClick={onConfigure}>
-            Wyceń swoją roletę
+            {copy.ctaLabel}
           </button>
         </div>
       ) : null}

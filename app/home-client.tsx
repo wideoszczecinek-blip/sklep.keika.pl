@@ -133,7 +133,6 @@ import {
   fetchRoletyProfile,
   isRoletySlug,
   ROLETY_COPY,
-  ROLETY_INSTRUCTION_STEPS,
   type ConfiguratorResult as RoletyConfiguratorResult,
   type RoletyProfile,
   type RoletySlug,
@@ -713,8 +712,14 @@ function productInstructionSteps(label: string): ProductInstructionStep[] {
   }
   // Rolety mini (dzień-noc / tradycyjne): pomiar szyby + 15 mm, montaż na
   // skrzydle - generyczne "otwór montażowy" nie pasuje do rolety.
-  if (normalized.includes("rolet") && (normalized.includes("dzien") || normalized.includes("tradycyjn"))) {
-    return ROLETY_INSTRUCTION_STEPS;
+  if (normalized.includes("rolet") && normalized.includes("dzien")) {
+    return ROLETY_COPY["rolety-dzien-noc"].instructionSteps;
+  }
+  if (normalized.includes("rolet") && normalized.includes("tradycyjn")) {
+    return ROLETY_COPY["rolety-tradycyjne"].instructionSteps;
+  }
+  if (/^zaluzje( poziome)?$/.test(normalized)) {
+    return ROLETY_COPY.zaluzje.instructionSteps;
   }
   return GENERIC_INSTRUCTION_STEPS;
 }
@@ -809,7 +814,7 @@ function productSectionCtaLabel(product: SelectedProductView | null): string {
   if (slug === "rolety-dachowe") return RD_PRIMARY_CTA;
   if (slug === "plisy-dachowe") return PD_PRIMARY_CTA;
   if (slug === "plisy") return PLISY_PRIMARY_CTA;
-  if (isRoletySlug(slug)) return "Wyceń swoją roletę";
+  if (isRoletySlug(slug)) return ROLETY_COPY[slug].ctaLabel;
   return "Skonfiguruj i zobacz cenę";
 }
 
@@ -1035,7 +1040,8 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
   }
 
   if (groupSlug === "oslony-wewnetrzne" && /^zaluzje$/.test(label)) {
-    return "/kategoria/zaluzje";
+    // Żaluzje poziome (2026-10-17): własna strona produktu z konfiguratorem.
+    return "/produkt/zaluzje";
   }
 
   if (groupSlug === "oslony-wewnetrzne" && /^rolety rzymskie$/.test(label)) {
@@ -5771,7 +5777,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 setRoletyConfigKey((key) => key + 1);
                               }}
                             >
-                              Wyceń podobną roletę
+                              {ROLETY_COPY[productSlugFromSelected(displayedProduct) as RoletySlug].similarLabel}
                             </button>
                             <button
                               type="button"
@@ -5781,7 +5787,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                                 setRoletyConfigKey((key) => key + 1);
                               }}
                             >
-                              Wyceń nową roletę
+                              {ROLETY_COPY[productSlugFromSelected(displayedProduct) as RoletySlug].newLabel}
                             </button>
                             <a href="/koszyk" className="is-primary">
                               Przejdź do koszyka

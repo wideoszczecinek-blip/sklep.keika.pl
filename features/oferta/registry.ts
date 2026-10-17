@@ -1,6 +1,5 @@
 import type { OfertaContent } from "./types";
 import { ROLETY_RZYMSKIE } from "./content/rolety-rzymskie";
-import { ZALUZJE } from "./content/zaluzje";
 import { ZALUZJE_PIONOWE } from "./content/zaluzje-pionowe";
 import { SCREENY } from "./content/screeny";
 import { ROLETY_ZEWNETRZNE } from "./content/rolety-zewnetrzne";
@@ -15,7 +14,6 @@ import { MOSKITIERY_PLISOWANE } from "./content/moskitiery-plisowane";
  * ich dawna treść informacyjna została w content/, ale nie jest używana. */
 export const OFERTA_LANDINGS: OfertaContent[] = [
   ROLETY_RZYMSKIE,
-  ZALUZJE,
   ZALUZJE_PIONOWE,
   ROLETY_ZEWNETRZNE,
   ZALUZJE_FASADOWE,

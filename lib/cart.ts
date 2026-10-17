@@ -272,6 +272,7 @@ const CONFIGURATOR_DRAFT_KEYS: Record<string, string> = {
   "rolety-dachowe": "keika_rd_draft_v1",
   "rolety-dzien-noc": "keika_rolety_dn_draft_v1",
   "rolety-tradycyjne": "keika_rolety_trad_draft_v1",
+  zaluzje: "keika_zaluzje_draft_v1",
 };
 
 function clearConfiguratorDraft(productSlug: string): void {

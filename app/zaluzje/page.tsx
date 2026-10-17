@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { buildOfertaMetadata, OfertaPage } from "@/features/oferta/page-factory";
+import { buildRoletyMetadata, RoletyProductPage } from "@/features/rolety/page-factory";
 
-// Informacyjny landing produktowy (bez konfiguratora) - treść w
-// features/oferta/content/zaluzje.ts, włącznik w lib/info-landings.ts.
+// Strona produktu "Żaluzje poziome na wymiar" (konfigurator + koszyk) na
+// mechanizmie rolet mini (features/rolety/). Treść landingu z CRM
+// (product_groups), modele, kolory i cennik z configurator_public.
+// Do akceptacji właściciela widoczna tylko w podglądzie (proxy.ts).
 const SLUG = "zaluzje";
 
-export function generateMetadata(): Metadata {
-  return buildOfertaMetadata(SLUG);
-}
+export const metadata: Metadata = buildRoletyMetadata(SLUG);
 
 export default function Page() {
-  return <OfertaPage slug={SLUG} />;
+  return <RoletyProductPage slug={SLUG} />;
 }

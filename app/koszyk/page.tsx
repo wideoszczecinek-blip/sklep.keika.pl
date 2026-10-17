@@ -25,7 +25,7 @@ import {
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import RoletyConfiguratorPanel from "@/features/rolety/ConfiguratorPanel";
-import { isRoletySlug, ROLETY_LEAD_TIME_LABEL, ROLETY_PACZKOMAT_MAX_WIDTH_MM, type RoletySlug } from "@/features/rolety/shared";
+import { isRoletySlug, roletyCartLeadTimeLabel, roletyFitsPaczkomat, type RoletySlug } from "@/features/rolety/shared";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
@@ -47,6 +47,7 @@ const EMPTY_CART_TARGETS: Record<string, { href: string; label: string }> = {
   "plisy-dachowe": { href: "/?produkt=plisy-dachowe", label: "Skonfiguruj plisę dachową" },
   "rolety-dzien-noc": { href: "/rolety-dzien-noc", label: "Skonfiguruj roletę dzień-noc" },
   "rolety-tradycyjne": { href: "/rolety-tradycyjne", label: "Skonfiguruj roletę" },
+  zaluzje: { href: "/zaluzje", label: "Skonfiguruj żaluzję" },
 };
 function emptyCartTarget(lastPage: string): { href: string; label: string } {
   try {
@@ -193,8 +194,9 @@ const PLISY_PACZKOMAT_MAX_WIDTH_MM = 600;
 // item (see getAvailableDeliveryMethods' items.every() below).
 function itemFitsPaczkomat(item: CartLineItem): boolean {
   if (item.productSlug === "plisy") return item.widthMm <= PLISY_PACZKOMAT_MAX_WIDTH_MM;
-  // Rolety mini: sztywna rura - do paczkomatu tylko szerokość do 60 cm.
-  if (isRoletySlug(item.productSlug)) return item.widthMm <= ROLETY_PACZKOMAT_MAX_WIDTH_MM;
+  // Rolety mini: sztywna rura - do paczkomatu tylko szerokość do 60 cm;
+  // żaluzje nigdy (tylko kurier).
+  if (isRoletySlug(item.productSlug)) return roletyFitsPaczkomat(item.productSlug, item.widthMm);
   return item.widthMm <= PACZKOMAT_MAX_DIMENSION_MM && item.heightMm <= PACZKOMAT_MAX_DIMENSION_MM;
 }
 
@@ -754,9 +756,10 @@ export default function CartPage() {
     items.length > 0 &&
     items.some((item) => item.productSlug === "plisy") &&
     items.every((item) => item.productSlug === "plisy" || item.productSlug === "moskitiery-ramkowe");
-  // Rolety mini (2026-10-17): realizacja do 10 dni roboczych. Koszyk z
-  // roletami i plisami/moskitierami dostaje ten dłuższy termin; dachowe
-  // nadal bez deklaracji.
+  // Rolety mini (2026-10-17): realizacja do 10 dni roboczych, żaluzje do
+  // 15 (najdłuższy wygrywa). Koszyk z roletami i plisami/moskitierami
+  // dostaje ten dłuższy termin; dachowe nadal bez deklaracji.
+  const roletyLeadTimeLabel = roletyCartLeadTimeLabel(items.map((item) => item.productSlug));
   const roletyLeadTime =
     items.length > 0 &&
     items.some((item) => isRoletySlug(item.productSlug)) &&
@@ -3287,6 +3290,7 @@ export default function CartPage() {
     dispatchCutoffLabel: dispatchInfo?.cutoffLabel || "",
     plisyLeadTime: !expressEligible && plisyLeadTime,
     roletyLeadTime: !expressEligible && roletyLeadTime,
+    roletyLeadTimeLabel,
     deliveryMethods: availableDeliveryMethods,
     deliveryMethod,
     chooseDelivery: (method: { id: string; label: string }) => {
@@ -3971,7 +3975,7 @@ export default function CartPage() {
                   <section className="cart-delivery-card cart-dispatch-card">
                     <h2>Termin realizacji</h2>
                     <p className="cart-dispatch-static">
-                      <strong>Realizacja {ROLETY_LEAD_TIME_LABEL}.</strong>
+                      <strong>Realizacja {roletyLeadTimeLabel}.</strong>
                     </p>
                   </section>
                 ) : null}

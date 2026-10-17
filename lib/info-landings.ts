@@ -1,5 +1,6 @@
 // Informacyjne strony produktowe ("landingi ofertowe") bez konfiguratora:
-// rolety rzymskie, żaluzje pionowe, rolety
+// rolety rzymskie, żaluzje pionowe (żaluzje poziome od 2026-10-17 to pełny
+// produkt - features/rolety/, trasa /zaluzje), rolety
 // zewnętrzne, żaluzje fasadowe, markizy, moskitiery drzwiowe / przesuwne /
 // plisowane. Zamiast ceny - prośba o wycenę (lead w CRM) albo rozmowa.
 //
@@ -15,8 +16,6 @@ export const INFO_LANDINGS_ENABLED = process.env.NEXT_PUBLIC_INFO_LANDINGS === "
 // już landingami informacyjnymi.
 export const INFO_LANDING_ROUTES: Record<string, string> = {
   "rolety-rzymskie": "/rolety-rzymskie",
-  zaluzje: "/zaluzje",
-  "zaluzje-poziome": "/zaluzje",
   "zaluzje-pionowe": "/zaluzje-pionowe",
   verticale: "/zaluzje-pionowe",
   screeny: "/screeny",
@@ -50,7 +49,6 @@ export function resolveInfoLandingMenuLink(groupSlugRaw: string, labelRaw: strin
   const group = String(groupSlugRaw || "").trim().toLowerCase();
   const label = normalizeLabel(labelRaw);
   if (group === "oslony-wewnetrzne") {
-    if (/^(zaluzje|zaluzje poziome)$/.test(label)) return "/zaluzje";
     if (/^(zaluzje pionowe|verticale)$/.test(label)) return "/zaluzje-pionowe";
     if (/^rolety rzymskie$/.test(label)) return "/rolety-rzymskie";
   }

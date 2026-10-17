@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
       { source: "/kategoria/rolety-dzien-noc", destination: "/rolety-dzien-noc", permanent: false },
       { source: "/produkt/rolety-tradycyjne", destination: "/rolety-tradycyjne", permanent: false },
       { source: "/kategoria/rolety-tradycyjne", destination: "/rolety-tradycyjne", permanent: false },
+      { source: "/produkt/zaluzje", destination: "/zaluzje", permanent: false },
+      { source: "/kategoria/zaluzje", destination: "/zaluzje", permanent: false },
       // Formularz opinii żyje na stronie firmowej. Ten wpis został z czasu,
       // gdy keika.pl stało jeszcze na starym serwerze i odsyłało tu SMS-y po
       // montażu - zostawiamy go, żeby stare linki nie kończyły się pustą

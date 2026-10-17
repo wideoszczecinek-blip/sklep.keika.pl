@@ -9,14 +9,15 @@ const STATIC_PRODUCT_ROUTES: Record<string, string> = {
   plisy: "/plisy",
   "rolety-dzien-noc": "/rolety-dzien-noc",
   "rolety-tradycyjne": "/rolety-tradycyjne",
+  zaluzje: "/zaluzje",
 };
 
 // Podgląd tylko dla właściciela (2026-10-17): nowe produkty do czasu
 // akceptacji widzi wyłącznie ruch z dozwolonych adresów IP albo z ciasteczkiem
 // podglądu (ustawianym adresem ...?podglad=<token>). Reszta trafia na stronę
 // główną. Zdjęcie bramki = usunięcie slugu z PREVIEW_ONLY_ROUTES.
-const PREVIEW_ONLY_ROUTES = new Set(["/rolety-dzien-noc", "/rolety-tradycyjne"]);
-const PREVIEW_ONLY_SLUGS = new Set(["rolety-dzien-noc", "rolety-tradycyjne"]);
+const PREVIEW_ONLY_ROUTES = new Set(["/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje"]);
+const PREVIEW_ONLY_SLUGS = new Set(["rolety-dzien-noc", "rolety-tradycyjne", "zaluzje"]);
 const PREVIEW_ALLOWED_IPS = new Set(
   (process.env.PREVIEW_ALLOWED_IPS || "164.127.253.116").split(",").map((ip) => ip.trim()).filter(Boolean),
 );
@@ -81,5 +82,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/produkt/:slug", "/kategoria/:slug"],
+  matcher: ["/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/produkt/:slug", "/kategoria/:slug"],
 };

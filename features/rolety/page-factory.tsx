@@ -8,17 +8,10 @@ import { ROLETY_COPY, type RoletySlug } from "./shared";
 // przekierowuje tu 308 (proxy.ts) z zachowaniem fbclid/utm.
 const SITE = "https://sklep.keika.pl";
 
-/** Zdjęcie do metadanych i danych strukturalnych - główne zdjęcie produktu
- * z CRM (gallery_urls[0]); adresy stałe, bo metadata liczy się na serwerze. */
-const IMAGE_BY_SLUG: Record<RoletySlug, string> = {
-  "rolety-dzien-noc": "https://crm-keika.groovemedia.pl/storage/shop/media/bamar_sys_b1dn_1200.jpg",
-  "rolety-tradycyjne": "https://crm-keika.groovemedia.pl/storage/shop/media/bamar_sys_b1minilux_1200.jpg",
-};
-
 export function buildRoletyMetadata(slug: RoletySlug): Metadata {
   const copy = ROLETY_COPY[slug];
   const url = SITE + copy.path;
-  const image = IMAGE_BY_SLUG[slug];
+  const image = copy.seoImage;
   return {
     title: copy.seoTitle,
     description: copy.seoDescription,
@@ -46,7 +39,7 @@ function buildJsonLd(slug: RoletySlug) {
     "@type": "Product",
     name: copy.h1,
     description: copy.seoDescription,
-    image: [IMAGE_BY_SLUG[slug]],
+    image: [copy.seoImage],
     brand: { "@type": "Brand", name: "KEIKA" },
     sku: copy.sku,
     category: copy.category,

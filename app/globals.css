@@ -22188,3 +22188,54 @@ body:has(.cart-page--v2) .site-footer {
   line-height: 1;
   color: #16314e;
 }
+
+/* Żaluzje (2026-10-17): kafelki modeli ze zdjęciem, sekcje kategorii,
+   wymiar niedostępny dla modelu (komórka cennika = 0). */
+.rolety-group-photo {
+  flex: 0 0 auto;
+  width: 4.4rem;
+  min-height: 3.6rem;
+  border-radius: 0.6rem;
+  background-color: #f3f6f9;
+  background-size: cover;
+  background-position: center;
+}
+.rolety-group-section + .rolety-group-section {
+  margin-top: 0.9rem;
+}
+.rolety-group-section-title {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.rolety-group-modal-photo {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+.plisy-coll-cell.is-unavailable > .plisy-coll-card {
+  opacity: 0.55;
+}
+.rolety-unavailable-badge {
+  display: inline-block;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  background: #ffe3cf;
+  color: #a1470c;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.rolety-unavailable-note,
+.rolety-unavailable-block span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #a1470c;
+  line-height: 1.35;
+}
