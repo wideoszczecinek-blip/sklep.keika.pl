@@ -172,7 +172,7 @@ export async function fetchPlisyProfile(): Promise<PlisyProfile | null> {
 
 async function fetchPlisyProfileUncached(): Promise<PlisyProfile | null> {
   try {
-    const response = await fetch(CONFIGURATOR_PUBLIC_URL, { cache: "no-store" });
+    const response = await fetch(`${CONFIGURATOR_PUBLIC_URL}?slug=${PLISY_PRODUCT_SLUG}`, { cache: "no-store" });
     const json = (await response.json()) as {
       ok: boolean;
       config?: { catalog?: { categories?: Array<{ products?: RawProduct[] }> } };

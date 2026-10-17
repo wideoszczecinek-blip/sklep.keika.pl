@@ -545,6 +545,9 @@ export default function RoletyConfiguratorPanel({
           <strong>{headerTitle}</strong>
         </header>
         <p className="hero-product-config-hint">Nie udało się wczytać konfiguratora. Odśwież stronę lub spróbuj ponownie za chwilę.</p>
+        <button type="button" className="plisy-position-add" onClick={() => window.location.reload()}>
+          Spróbuj ponownie
+        </button>
       </>
     );
   }

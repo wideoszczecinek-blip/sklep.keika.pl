@@ -302,7 +302,7 @@ export async function fetchRoletyProfile(slug: RoletySlug): Promise<RoletyProfil
 
 async function fetchRoletyProfileUncached(slug: RoletySlug): Promise<RoletyProfile | null> {
   try {
-    const response = await fetch(CONFIGURATOR_PUBLIC_URL, { cache: "no-store" });
+    const response = await fetch(`${CONFIGURATOR_PUBLIC_URL}?slug=${encodeURIComponent(slug)}`, { cache: "no-store" });
     const json = (await response.json()) as {
       ok: boolean;
       config?: { catalog?: { categories?: Array<{ products?: RawProduct[] }> } };
