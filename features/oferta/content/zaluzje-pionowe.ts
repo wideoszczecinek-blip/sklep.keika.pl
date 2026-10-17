@@ -6,7 +6,7 @@ export const ZALUZJE_PIONOWE: OfertaContent = {
   slug: "zaluzje-pionowe",
   path: "/zaluzje-pionowe",
   group: "wewnetrzne",
-  menuLabel: "Żaluzje",
+  menuLabel: "Verticale",
   seoTitle: "Żaluzje pionowe (verticale) na wymiar - biuro i dom | KEIKA",
   seoDescription:
     "Żaluzje pionowe na wymiar: pasy 89 i 127 mm, tkaniny jednolite, dzień-noc i Bahama Vertical z efektem firany. Do dużych przeszkleń, biur, skosów. Montaż do sufitu lub ściany. Bezpłatna wycena.",
@@ -89,6 +89,6 @@ export const ZALUZJE_PIONOWE: OfertaContent = {
     { q: "Co z dolnymi obciążnikami i łańcuszkiem łączącym?", a: "Standardowo pasy mają obciążniki i łańcuszek dolny, który trzyma je w równym rytmie. Na życzenie montujemy pasy bez łańcuszka dolnego (np. przy dzieciach)." },
     { q: "Czy żaluzję pionową można zamontować w oknie skośnym?", a: "Tak, wykonujemy żaluzje ze skośną szyną - pasy mają wtedy różne długości i rozsuwają się w stronę wyższego boku." },
   ],
-  related: ["rolety-dzien-noc", "rolety-tradycyjne", "rolety-rzymskie"],
+  related: ["zaluzje", "rolety-dzien-noc", "rolety-rzymskie"],
   ownerNote: "Zdjęcia aranżacyjne z Pexels (18306897, 13972523, 12082933, 15669913, 19837082, 239854 - licencja Pexels). Szerokości pasów 89/127 mm to standard rynkowy - potwierdzić u BAMAR-POL.",
 };

@@ -2,7 +2,9 @@ import type { OfertaContent } from "./types";
 import { ROLETY_TRADYCYJNE } from "./content/rolety-tradycyjne";
 import { ROLETY_DZIEN_NOC } from "./content/rolety-dzien-noc";
 import { ROLETY_RZYMSKIE } from "./content/rolety-rzymskie";
+import { ZALUZJE } from "./content/zaluzje";
 import { ZALUZJE_PIONOWE } from "./content/zaluzje-pionowe";
+import { SCREENY } from "./content/screeny";
 import { ROLETY_ZEWNETRZNE } from "./content/rolety-zewnetrzne";
 import { ZALUZJE_FASADOWE } from "./content/zaluzje-fasadowe";
 import { MARKIZY } from "./content/markizy";
@@ -15,9 +17,11 @@ export const OFERTA_LANDINGS: OfertaContent[] = [
   ROLETY_TRADYCYJNE,
   ROLETY_DZIEN_NOC,
   ROLETY_RZYMSKIE,
+  ZALUZJE,
   ZALUZJE_PIONOWE,
   ROLETY_ZEWNETRZNE,
   ZALUZJE_FASADOWE,
+  SCREENY,
   MARKIZY,
   MOSKITIERY_DRZWIOWE,
   MOSKITIERY_PRZESUWNE,

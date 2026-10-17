@@ -15,9 +15,12 @@ export const INFO_LANDING_ROUTES: Record<string, string> = {
   "oslony-wewnetrzne": "/rolety-tradycyjne",
   "rolety-dzien-noc": "/rolety-dzien-noc",
   "rolety-rzymskie": "/rolety-rzymskie",
-  zaluzje: "/zaluzje-pionowe",
+  zaluzje: "/zaluzje",
+  "zaluzje-poziome": "/zaluzje",
   "zaluzje-pionowe": "/zaluzje-pionowe",
   verticale: "/zaluzje-pionowe",
+  screeny: "/screeny",
+  "screen-system": "/screeny",
   "rolety-zewnetrzne": "/rolety-zewnetrzne",
   "zaluzje-fasadowe": "/zaluzje-fasadowe",
   markizy: "/markizy",
@@ -49,12 +52,14 @@ export function resolveInfoLandingMenuLink(groupSlugRaw: string, labelRaw: strin
   if (group === "oslony-wewnetrzne") {
     if (/^rolety tradycyjne$/.test(label)) return "/rolety-tradycyjne";
     if (/^rolety dzien ?-? ?noc$/.test(label)) return "/rolety-dzien-noc";
-    if (/^(zaluzje|zaluzje pionowe|verticale)$/.test(label)) return "/zaluzje-pionowe";
+    if (/^(zaluzje|zaluzje poziome)$/.test(label)) return "/zaluzje";
+    if (/^(zaluzje pionowe|verticale)$/.test(label)) return "/zaluzje-pionowe";
     if (/^rolety rzymskie$/.test(label)) return "/rolety-rzymskie";
   }
   if (group === "oslony-zewnetrzne") {
     if (/^rolety zewnetrzne$/.test(label)) return "/rolety-zewnetrzne";
     if (/^zaluzje fasadowe$/.test(label)) return "/zaluzje-fasadowe";
+    if (/^(screeny|screen system|screen)$/.test(label)) return "/screeny";
   }
   if (group === "taras" && /^markizy$/.test(label)) return "/markizy";
   if (group === "moskitiery") {
