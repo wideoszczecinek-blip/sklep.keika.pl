@@ -12,7 +12,10 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNod
 import { createPortal } from "react-dom";
 import { trackShopStep } from "@/lib/track-step";
 import { useBackToClose } from "@/lib/use-back-to-close";
-import { ZALUZJE_MOUNT_RULES, ZALUZJE_WALL_INFO, type ZaluzjeMountId } from "./shared";
+import { ZALUZJE_MOUNT_RULES, ZALUZJE_WALL_INFO, zaluzjeStackAboveMm, zaluzjeStackMm, type ZaluzjeMountId } from "./shared";
+
+/** Model, którego dane pakietu bierzemy, gdy panel nie poda swojego (basswood 50 mm). */
+const DEFAULT_SPEC_PID = "39";
 
 /* ---- geometria sceny (viewBox 0 0 1000 800), okno od strony pokoju ---- */
 const RECESS = { x: 150, y: 60, w: 700, h: 600 }; // wnęka (otwór w ścianie)
@@ -81,9 +84,14 @@ const T = {
   hMove: [5400, 5900],
   hPull: [5900, 7500],
   blind: [8100, 9200],
-  end: [9200, 10600],
+  raise: [9900, 12400], // żaluzja się podnosi - lamele zbierają się w pakiet
+  top: [12400, 13600], // chwila w górze
+  lower: [13600, 16100], // opuszcza się z powrotem
+  end: [16100, 16900],
 } as const;
-const TOTAL = 10600;
+const TOTAL = 16900;
+/** Pauza na stanie końcowym między cyklami pętli. */
+const LOOP_PAUSE = 1000;
 
 function seg(t: number, [a, b]: readonly [number, number]): number {
   if (t <= a) return 0;
@@ -195,22 +203,25 @@ function Scene({ hasVent, sheenId }: { hasVent: boolean; sheenId: string }) {
   );
 }
 
-function Blind({ rect, progress, label }: { rect: Rect; progress: number; label?: string }) {
+/** Żaluzja: progress = opuszczanie przy pierwszym pojawieniu się (0..1),
+ * raise = podniesienie (0 = opuszczona, 1 = zebrana w pakiet packH u góry). */
+function Blind({ rect, progress, raise = 0, packH = 0 }: { rect: Rect; progress: number; raise?: number; packH?: number }) {
   if (progress <= 0) return null;
-  const h = rect.h * progress;
-  const slats = Math.floor(h / 14);
+  const dropped = rect.h * progress;
+  const lifted = rect.h - raise * Math.max(0, rect.h - packH);
+  const h = Math.max(4, Math.min(dropped, lifted));
+  // Rozstaw lameli maleje wraz z podnoszeniem - zbierają się w pakiet.
+  const pitch = Math.max(3.4, 14 * (raise > 0 ? lifted / rect.h : 1));
+  const slats = Math.floor(h / pitch);
   return (
     <g>
       <rect x={rect.x - 3} y={rect.y - 10} width={rect.w + 6} height="12" rx="3" fill="#5d4c39" />
-      <rect x={rect.x} y={rect.y} width={rect.w} height={h} fill="#c9a77c" opacity="0.82" />
+      <rect x={rect.x} y={rect.y} width={rect.w} height={h} fill="#c9a77c" opacity={raise > 0.5 ? 0.95 : 0.82} />
       {Array.from({ length: slats }, (_, i) => (
-        <line key={i} x1={rect.x} x2={rect.x + rect.w} y1={rect.y + 14 * (i + 1)} y2={rect.y + 14 * (i + 1)} stroke="#a8875e" strokeWidth="2" />
+        <line key={i} x1={rect.x} x2={rect.x + rect.w} y1={rect.y + pitch * (i + 1)} y2={rect.y + pitch * (i + 1)} stroke="#a8875e" strokeWidth={pitch < 6 ? 1.4 : 2} />
       ))}
-      {label && progress >= 1 ? (
-        <text x={rect.x + rect.w / 2} y={rect.y + h / 2} textAnchor="middle" fontSize="20" fontWeight="900" fill="#3b2a16" paintOrder="stroke" stroke="#fff" strokeWidth="5">
-          {label}
-        </text>
-      ) : null}
+      {/* belka dolna */}
+      <rect x={rect.x - 2} y={rect.y + h - 5} width={rect.w + 4} height="7" rx="2" fill="#8a6a45" />
     </g>
   );
 }
@@ -237,7 +248,20 @@ export function ZaluzjeMountThumb({ mountId }: { mountId: ZaluzjeMountId }) {
 
 /** Animacja pomiaru dla jednego sposobu montażu. compact = wersja nad polami
  * (bez listy kroków), pełna w modalu. */
-export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = false }: { mountId: ZaluzjeMountId; hasVent?: boolean; compact?: boolean }) {
+export function ZaluzjeMeasureAnimation({
+  mountId,
+  hasVent = false,
+  compact = false,
+  pid,
+  withTape = false,
+}: {
+  mountId: ZaluzjeMountId;
+  hasVent?: boolean;
+  compact?: boolean;
+  /** Model S&S (pid) - wysokość pakietu z _specs.json; brak = basswood 50 mm. */
+  pid?: number | string;
+  withTape?: boolean;
+}) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ID = { clip: `zlmClip${uid}`, sheen: `zlmSheen${uid}` };
   const reduced = useReducedMotion();
@@ -263,10 +287,10 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
     const start = performance.now() + (run > 0 ? 200 : 600);
     const tick = (now: number) => {
       const elapsed = now - start;
+      // Pętla bez końca (właściciel, 17.10.2026); między cyklami ~1 s pauzy
+      // na stanie końcowym z opuszczoną żaluzją.
       if (elapsed < 0) setProgress(0);
-      // Koniec animacji zostaje na ekranie (nakładka żaluzji nie znika); mała
-      // wersja też - do ponownego odtworzenia służy przycisk.
-      else setProgress(Math.min(TOTAL, elapsed));
+      else setProgress(Math.min(TOTAL, elapsed % (TOTAL + LOOP_PAUSE)));
       frame = window.requestAnimationFrame(tick);
     };
     frame = window.requestAnimationFrame(tick);
@@ -284,7 +308,22 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
   const hP = pull(seg(t, T.hPull));
   const hReading = t >= T.hPull[0] ? Math.round(m.height.mm * Math.min(1, hP)) : null;
   const bP = easeInOut(seg(t, T.blind));
-  const stepIndex = t < T.wHook[0] ? 0 : t < T.hMove[0] ? 1 : t < T.blind[0] ? 2 : 3;
+  // Podnoszenie i opuszczanie po pojawieniu się żaluzji.
+  const raiseP = easeInOut(seg(t, T.raise)) * (1 - easeInOut(seg(t, T.lower)));
+  // Pakiet po podniesieniu wg _specs.json dla wymiaru z animacji: na ścianę
+  // dla wysokości całkowitej (chowa się nad wnęką), w pozostałych montażach
+  // dla wysokości żaluzji (zasłania górę szyby / skrzydła).
+  const specPid = pid || DEFAULT_SPEC_PID;
+  const stackMm = mountId === "na-sciane" ? zaluzjeStackAboveMm(specPid, m.height.mm, withTape) : zaluzjeStackMm(specPid, m.height.mm, withTape);
+  const unitsPerMm = hLen / m.height.mm;
+  const packH = Math.max(18, Math.min(mountId === "na-sciane" ? 86 : m.blind.h * 0.5, stackMm * unitsPerMm));
+  const blindRect: Rect = mountId === "na-sciane" ? { x: m.blind.x, y: RECESS.y - packH, w: m.blind.w, h: RECESS.h + packH } : m.blind;
+  const stackCm = (Math.ceil(stackMm / 10) || 0).toLocaleString("pl-PL");
+  const packCaption = mountId === "na-sciane" ? `Po podniesieniu pakiet zajmuje ok. ${stackCm} cm i mieści się nad wnęką` : `Po podniesieniu pakiet zajmuje ok. ${stackCm} cm u góry ${mountId === "na-skrzydlo" ? "skrzydła" : "szyby"}`;
+  const showPackCaption = reduced || t >= T.raise[0];
+  const keyLabel = m.margins[0] !== "0" ? `${m.margins[0]} z każdej strony, światło = wnęka` : "= zmierzony wymiar";
+  const showKeyLabel = t >= T.blind[1];
+  const stepIndex = t < T.wHook[0] ? 0 : t < T.hMove[0] ? 1 : t < T.blind[0] ? 2 : t < T.raise[0] ? 3 : 4;
   const tapeWY = m.height.from + Math.min(hLen * 0.3, 160);
   const tapeHX = m.width.from + Math.min(wLen * 0.28, 170);
   const highlightO = t < T.blind[0] ? 1 : 0.35;
@@ -304,6 +343,7 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
     rule.steps[0],
     hasVent && mountId === "na-skrzydlo" ? "Wysokość: od dolnej krawędzi nawiewnika do dołu ramy skrzydła - żaluzja wisi pod nawiewnikiem." : rule.steps[1],
     rule.steps[2],
+    `${packCaption}.`,
   ];
 
   return (
@@ -314,7 +354,7 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
         </p>
       ) : null}
       <div className="zl-measure-stage" ref={stageRef}>
-        <svg viewBox="90 30 820 680" role="img" aria-label={`Pomiar: ${rule.measureWhat}`}>
+        <svg viewBox="90 -40 820 750" role="img" aria-label={`Pomiar: ${rule.measureWhat}`}>
           <defs>
             <clipPath id={ID.clip}>
               <circle cx={LUPA.cx} cy={LUPA.cy} r={LUPA.r} />
@@ -353,9 +393,23 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
               <Tape x={tapeHX} y={m.height.from} len={hLen * hP} vertical reading={hReading} opacity={hO} k={k} />
             </>
           ) : null}
-          {/* żaluzja - jak będzie wisieć; obrys mierzonego elementu zostaje na wierzchu */}
-          <Blind rect={m.blind} progress={bP} label={m.margins[0] !== "0" ? `${m.margins[0]} z każdej strony, ${m.margins[1]}` : "= zmierzony wymiar"} />
+          {/* żaluzja - jak będzie wisieć; potem podnosi się i opuszcza */}
+          <Blind rect={blindRect} progress={bP} raise={raiseP} packH={packH} />
           <rect x={m.width.from} y={m.height.from} width={wLen} height={hLen} fill="none" stroke="#f59e0b" strokeWidth="3.5" strokeDasharray="9 6" opacity={highlightO * Math.min(1, t / 400)} />
+          {/* napisy kluczowe - od pojawienia się do końca cyklu, nie znikają przy kolejnych fazach */}
+          {showKeyLabel ? (
+            <text x={blindRect.x + blindRect.w / 2} y={RECESS.y + RECESS.h * 0.62} textAnchor="middle" fontSize="21" fontWeight="900" fill="#3b2a16" paintOrder="stroke" stroke="#fff" strokeWidth="6">
+              {keyLabel}
+            </text>
+          ) : null}
+          {showPackCaption ? (
+            <g>
+              <line x1={blindRect.x + blindRect.w + 6} x2={blindRect.x + blindRect.w + 6} y1={blindRect.y} y2={blindRect.y + packH} stroke="#ef4444" strokeWidth="3" />
+              <text x={blindRect.x + blindRect.w / 2} y={blindRect.y + packH + 30} textAnchor="middle" fontSize="19" fontWeight="900" fill="#0e1a2a" paintOrder="stroke" stroke="#fff" strokeWidth="6">
+                {packCaption}
+              </text>
+            </g>
+          ) : null}
           {/* lupa na punkt pomiaru (krok 1) */}
           {lupaS > 0.01 ? (
             <g opacity={lupaS}>
@@ -412,14 +466,14 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
             </g>
           ) : null}
         </svg>
-        {!reduced && t >= TOTAL ? (
-          <button type="button" className="zl-replay" onClick={() => setRun((r) => r + 1)} aria-label="Odtwórz animację ponownie">
-            ↻ Odtwórz
+        {!reduced ? (
+          <button type="button" className="zl-replay" onClick={() => setRun((r) => r + 1)} aria-label="Odtwórz animację od początku">
+            ↻ Od początku
           </button>
         ) : null}
       </div>
       {compact ? (
-        <figcaption className="zl-measure-anim-caption">{steps[Math.min(stepIndex, 3)]}</figcaption>
+        <figcaption className="zl-measure-anim-caption">{steps[Math.min(stepIndex, steps.length - 1)]}</figcaption>
       ) : (
         <ol className="zl-measure-steps">
           {steps.map((step, index) => (
@@ -439,11 +493,15 @@ export const ZALUZJE_MOUNT_ORDER: ZaluzjeMountId[] = ["w-swietle-szyby", "na-skr
 export function ZaluzjeMeasureModal({
   mountId,
   hasVent = false,
+  pid,
+  withTape = false,
   onClose,
   onPick,
 }: {
   mountId: ZaluzjeMountId;
   hasVent?: boolean;
+  pid?: number | string;
+  withTape?: boolean;
   onClose: () => void;
   onPick?: (mountId: ZaluzjeMountId) => void;
 }) {
@@ -494,7 +552,7 @@ export function ZaluzjeMeasureModal({
             Okno ma nawiewnik (kratkę wentylacyjną na górze skrzydła)
           </label>
         ) : null}
-        <ZaluzjeMeasureAnimation key={`${active}-${vent}`} mountId={active} hasVent={active === "na-skrzydlo" && vent} />
+        <ZaluzjeMeasureAnimation key={`${active}-${vent}`} mountId={active} hasVent={active === "na-skrzydlo" && vent} pid={pid} withTape={withTape} />
         <p className="zl-measure-rule">{rule.ruleText}</p>
         <div className="zl-measure-actions">
           {onPick && active !== mountId ? (

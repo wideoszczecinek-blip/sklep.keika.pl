@@ -1028,7 +1028,16 @@ export default function RoletyConfiguratorPanel({
             <>
             {modelFirst ? (
               <div className="zl-measure-intro">
-                {measuring && zaluzjeRule ? <ZaluzjeMeasureAnimation key={`${zaluzjeRule.id}-${hasVent}`} mountId={zaluzjeRule.id} hasVent={zaluzjeRule.id === "na-skrzydlo" && hasVent} compact /> : null}
+                {measuring && zaluzjeRule ? (
+                  <ZaluzjeMeasureAnimation
+                    key={`${zaluzjeRule.id}-${hasVent}`}
+                    mountId={zaluzjeRule.id}
+                    hasVent={zaluzjeRule.id === "na-skrzydlo" && hasVent}
+                    pid={wallPid || undefined}
+                    withTape={wallTape}
+                    compact
+                  />
+                ) : null}
                 {measuring && zaluzjeRule && zaluzjeRule.id === "na-skrzydlo" ? (
                   <div className="zl-vent">
                     <span className="zl-vent-q">Czy okno ma nawiewnik (kratkę wentylacyjną na górze skrzydła)?</span>
@@ -1848,6 +1857,8 @@ export default function RoletyConfiguratorPanel({
           <ZaluzjeMeasureModal
             mountId={(zaluzjeMountRule(selectedMountId)?.id || "w-swietle-szyby") as ZaluzjeMountId}
             hasVent={hasVent}
+            pid={wallPid || undefined}
+            withTape={wallTape}
             onClose={() => setMeasureGuideOpen(false)}
             onPick={(id) => {
               const option = profile?.mountOptions.find((entry) => entry.id === id);
