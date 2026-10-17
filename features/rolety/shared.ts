@@ -8,6 +8,7 @@
 // do którego pisze panel CRM (jak plisy, features/plisy/shared.ts), z pamięcią
 // podręczną 5 min, żeby zmiany właściciela w CRM pojawiały się bez wdrożenia,
 // a jedno wejście na stronę nie ciągnęło katalogu kilka razy.
+import type { ZaluzjaDetailGroup, ZaluzjaDrawingData } from "./zaluzja-drawing-data";
 import {
   applyPriceDeltas,
   resolvePriceBreakpointIndex,
@@ -649,6 +650,9 @@ export type ConfiguratorResult = {
   spaceAboveMm: number;
   /** Żaluzje: zdjęcie modelu do podglądu pozycji. */
   previewImageUrl: string;
+  /** Żaluzje: rysunek z wyborów klienta i szczegóły w grupach (podsumowanie, toast, koszyk). */
+  drawing?: ZaluzjaDrawingData | null;
+  detailGroups?: ZaluzjaDetailGroup[];
   qty: number;
   unitPrice: number;
   totalPrice: number;

@@ -36,6 +36,7 @@ export const NON_PRODUCT_POSITION_SLUGS: ReadonlySet<string> = new Set([
 ]);
 
 import type { SsSupplierOrder } from "@/features/rolety/ss-options";
+import { readZaluzjaDetailGroups, readZaluzjaDrawing, type ZaluzjaDetailGroup, type ZaluzjaDrawingData } from "@/features/rolety/zaluzja-drawing-data";
 
 export type CartLineItem = {
   id: string;
@@ -78,6 +79,9 @@ export type CartLineItem = {
   /** Żaluzje, na ścianę: miejsce nad wnęką wliczone w wysokość (mm). */
   spaceAboveMm?: number;
   previewImageUrl?: string;
+  /** Żaluzje: rysunek z wyborów klienta i szczegóły pozycji w grupach. */
+  drawing?: ZaluzjaDrawingData;
+  detailGroups?: ZaluzjaDetailGroup[];
   /** rolety-dachowe only: the chosen window model ("Velux MK04") or "Wymiar
    * własny" for a manual entry - undefined for other products. Additive/
    * optional so existing stored items from before this field existed still
@@ -231,6 +235,8 @@ export function readCartItems(): CartLineItem[] {
         stackMm: Number(row.stackMm ?? 0) > 0 ? Number(row.stackMm) : undefined,
         spaceAboveMm: row.spaceAboveMm !== undefined && row.spaceAboveMm !== null && Number(row.spaceAboveMm) >= 0 ? Number(row.spaceAboveMm) : undefined,
         previewImageUrl: row.previewImageUrl ? String(row.previewImageUrl) : undefined,
+        drawing: readZaluzjaDrawing(row.drawing),
+        detailGroups: readZaluzjaDetailGroups(row.detailGroups),
         splitFromWidthMm: Number(row.splitFromWidthMm ?? 0) > 0 ? Number(row.splitFromWidthMm) : undefined,
         sagNoticeShown: row.sagNoticeShown === true ? true : undefined,
         sagLimitMm: Number(row.sagLimitMm ?? 0) > 0 ? Number(row.sagLimitMm) : undefined,

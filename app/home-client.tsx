@@ -141,6 +141,8 @@ import RoletyLanding from "@/features/rolety/Landing";
 import ZaluzjeCatalog, { ZALUZJE_CATALOG_ID } from "@/features/rolety/ZaluzjeCatalog";
 import ZaluzjeModelLanding from "@/features/rolety/ZaluzjeModelLanding";
 import ZaluzjaPreview, { type ZaluzjaPreviewData } from "@/features/rolety/ZaluzjaPreview";
+import ZaluzjaDrawing, { ZaluzjaDetailGroups } from "@/features/rolety/ZaluzjaDrawing";
+import type { ZaluzjaDetailGroup, ZaluzjaDrawingData } from "@/features/rolety/zaluzja-drawing-data";
 import { ssStoredOptions } from "@/features/rolety/ss-options";
 import { findZaluzjeModel } from "@/features/rolety/shared";
 import { crmGetJson } from "@/lib/crm-get";
@@ -1507,6 +1509,8 @@ export default function Home({
     leftover?: { meters: number; value: number };
     /** Żaluzje: podgląd dodanej pozycji (zdjęcie modelu + kolor + parametry). */
     preview?: ZaluzjaPreviewData;
+    drawing?: ZaluzjaDrawingData;
+    detailGroups?: ZaluzjaDetailGroup[];
   } | null>(null);
   // Label of whichever locked product the visitor just tried to open via a
   // real navigation attempt (menu/flyout click) - see activateProductView()
@@ -5806,7 +5810,14 @@ export default function Home({
                           <p>
                             <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
                           </p>
-                          {addToCartToast.preview ? <ZaluzjaPreview data={addToCartToast.preview} /> : null}
+                          {addToCartToast.drawing ? (
+                            <div className="zl-toast-preview">
+                              <ZaluzjaDrawing data={addToCartToast.drawing} compact />
+                              {addToCartToast.detailGroups ? <ZaluzjaDetailGroups groups={addToCartToast.detailGroups.filter((group) => group.title !== "Cena za sztukę")} className="zl-details--compact" /> : null}
+                            </div>
+                          ) : addToCartToast.preview ? (
+                            <ZaluzjaPreview data={addToCartToast.preview} />
+                          ) : null}
                           <div className="hero-product-added-toast-actions">
                             <button
                               type="button"
@@ -5878,6 +5889,8 @@ export default function Home({
                           stackMm: result.stackMm || undefined,
                           spaceAboveMm: result.mountId === "na-sciane" && result.measuredWidthMm ? result.spaceAboveMm : undefined,
                           previewImageUrl: result.previewImageUrl || undefined,
+                          drawing: result.drawing || undefined,
+                          detailGroups: result.detailGroups || undefined,
                           fabricColor: result.fabricColor || undefined,
                           hardwareColor: result.hardwareColor || undefined,
                           imageUrl: result.fabricThumbnailUrl || undefined,
@@ -5896,6 +5909,8 @@ export default function Home({
                         setAddToCartToast({
                           productSlug: productSlugFromSelected(displayedProduct),
                           productLabel: result.productLabel || displayedProduct.label,
+                          drawing: result.drawing || undefined,
+                          detailGroups: result.detailGroups || undefined,
                           preview:
                             productSlugFromSelected(displayedProduct) === "zaluzje"
                               ? {

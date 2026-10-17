@@ -28,6 +28,7 @@ import RoletyConfiguratorPanel from "@/features/rolety/ConfiguratorPanel";
 import { isRoletySlug, roletyCartLeadTimeLabel, roletyFitsPaczkomat, type RoletySlug } from "@/features/rolety/shared";
 import { ssStoredOptions, ssSupplierSummaryRows } from "@/features/rolety/ss-options";
 import ZaluzjaPreview from "@/features/rolety/ZaluzjaPreview";
+import ZaluzjaDrawing, { ZaluzjaDetailGroups } from "@/features/rolety/ZaluzjaDrawing";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
@@ -427,6 +428,10 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
  * Wymiar idzie pierwszy, bo po nim klient rozpoznaje pozycję; przy kolorach
  * stoi kropka w wybranym kolorze, jeśli go znamy. */
 function CartItemSpecs({ item }: { item: CartLineItem }) {
+  // Żaluzje: szczegóły w grupach, tak jak w podsumowaniu konfiguratora.
+  if (item.productSlug === "zaluzje" && item.detailGroups?.length) {
+    return <ZaluzjaDetailGroups groups={item.detailGroups} className="zl-details--cart" />;
+  }
   const labels = cartItemFieldLabels(item.productSlug);
   const colors = resolveCartWindowThumb(item);
   const rows: { label: string; value: string; dot?: string }[] = [];
@@ -3642,6 +3647,11 @@ export default function CartPage() {
                       <div className="cart-page-item-thumb cart-page-item-thumb--window">
                         <CartWindowThumb item={item} label={`${item.productLabel} na oknie, w wybranych kolorach`} />
                       </div>
+                    ) : item.productSlug === "zaluzje" && item.drawing ? (
+                      // Żaluzje: rysunek z wyborów klienta (ZaluzjaDrawing).
+                      <div className="cart-page-item-thumb cart-page-item-thumb--zaluzja is-drawing">
+                        <ZaluzjaDrawing compact data={item.drawing} />
+                      </div>
                     ) : item.productSlug === "zaluzje" && (item.previewImageUrl || item.imageUrl) ? (
                       // Żaluzje: zdjęcie modelu z próbką koloru lameli w rogu.
                       <div className="cart-page-item-thumb cart-page-item-thumb--zaluzja">
@@ -4967,6 +4977,8 @@ export default function CartPage() {
                     stackMm: result.stackMm || undefined,
                     spaceAboveMm: result.mountId === "na-sciane" && result.measuredWidthMm ? result.spaceAboveMm : undefined,
                     previewImageUrl: result.previewImageUrl || undefined,
+                    drawing: result.drawing || undefined,
+                    detailGroups: result.detailGroups || undefined,
                     fabricColor: result.fabricColor || undefined,
                     hardwareColor: result.hardwareColor || undefined,
                     imageUrl: result.fabricThumbnailUrl || undefined,
