@@ -129,6 +129,16 @@ import {
 import { buildRoofWindowDisplayLabel, fetchRoofWindowLibrary, type RoofWindowLibraryItem } from "@/features/rolety-dachowe/roof-window-library";
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
 import { calcPlisyPrice, fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
+import {
+  fetchRoletyProfile,
+  isRoletySlug,
+  ROLETY_COPY,
+  ROLETY_INSTRUCTION_STEPS,
+  type ConfiguratorResult as RoletyConfiguratorResult,
+  type RoletyProfile,
+  type RoletySlug,
+} from "@/features/rolety/shared";
+import RoletyLanding from "@/features/rolety/Landing";
 import { crmGetJson } from "@/lib/crm-get";
 import { useBackToClose } from "@/lib/use-back-to-close";
 import PdHeroPhotos from "@/features/plisy-dachowe/PdHeroPhotos";
@@ -190,6 +200,8 @@ const RoletyDachoweConfiguratorPanel = dynamic(() => import("@/features/rolety-d
   ssr: false,
 });
 const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/ConfiguratorPanel"), { ssr: false });
+// Rolety mini (dzień-noc i tradycyjne, 2026-10-17) - jeden panel dla obu slugów.
+const RoletyConfiguratorPanel = dynamic(() => import("@/features/rolety/ConfiguratorPanel"), { ssr: false });
 const PlisyDachoweConfiguratorPanel = dynamic(() => import("@/features/plisy-dachowe/ConfiguratorPanel"), { ssr: false });
 // Statycznie, nie przez dynamic(): to jest hero, więc ma się pojawić od razu
 // razem z resztą sekcji, a nie doładować po hydratacji (LCP).
@@ -699,6 +711,11 @@ function productInstructionSteps(label: string): ProductInstructionStep[] {
   if (/^plis/.test(normalized)) {
     return PLISY_INSTRUCTION_STEPS;
   }
+  // Rolety mini (dzień-noc / tradycyjne): pomiar szyby + 15 mm, montaż na
+  // skrzydle - generyczne "otwór montażowy" nie pasuje do rolety.
+  if (normalized.includes("rolet") && (normalized.includes("dzien") || normalized.includes("tradycyjn"))) {
+    return ROLETY_INSTRUCTION_STEPS;
+  }
   return GENERIC_INSTRUCTION_STEPS;
 }
 
@@ -792,6 +809,7 @@ function productSectionCtaLabel(product: SelectedProductView | null): string {
   if (slug === "rolety-dachowe") return RD_PRIMARY_CTA;
   if (slug === "plisy-dachowe") return PD_PRIMARY_CTA;
   if (slug === "plisy") return PLISY_PRIMARY_CTA;
+  if (isRoletySlug(slug)) return "Wyceń swoją roletę";
   return "Skonfiguruj i zobacz cenę";
 }
 
@@ -995,12 +1013,13 @@ function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string
   const infoLink = resolveInfoLandingMenuLink(groupSlug, labelRaw);
   if (infoLink) return infoLink;
 
+  // Rolety mini (2026-10-17): własne strony produktu z konfiguratorem.
   if (groupSlug === "oslony-wewnetrzne" && /^rolety dzien ?-? noc$/.test(label)) {
-    return "/kategoria/rolety-dzien-noc";
+    return "/produkt/rolety-dzien-noc";
   }
 
   if (groupSlug === "oslony-wewnetrzne" && /^rolety tradycyjne$/.test(label)) {
-    return "/kategoria/oslony-wewnetrzne";
+    return "/produkt/rolety-tradycyjne";
   }
 
   if (groupSlug === "oslony-wewnetrzne" && /^plisy do okien dachowych$/.test(label)) {
@@ -1546,6 +1565,12 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
   // 2026-09-14). Same public profile the configurator fetches - cached by
   // fetchPlisyProfile, so it costs nothing extra once the panel mounts.
   const [plisyProfile, setPlisyProfile] = useState<PlisyProfile | null>(null);
+  // Rolety mini (dzień-noc / tradycyjne, 2026-10-17): profil per slug (cena
+  // "od" na landingu), klucz remountu konfiguratora i ostatnia konfiguracja
+  // do "Wyceń podobną roletę".
+  const [roletyProfiles, setRoletyProfiles] = useState<Partial<Record<RoletySlug, RoletyProfile>>>({});
+  const [roletyConfigKey, setRoletyConfigKey] = useState(0);
+  const [roletyLastResult, setRoletyLastResult] = useState<RoletyConfiguratorResult | null>(null);
   // Korekta procentowa ceny per produkt (CRM: Sklep WWW → Produkty →
   // "Korekta ceny (%)"), nakładana na ceny bazowe - patrz lib/price-adjustment.ts.
   const moskPriceAdjustmentPercent = useProductPriceAdjustment("moskitiery-ramkowe");
@@ -1820,6 +1845,17 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
       cancelled = true;
     };
   }, [displayedProductSlugForPlisy, plisyProfile]);
+  useEffect(() => {
+    const slug = displayedProductSlugForPlisy;
+    if (!isRoletySlug(slug) || roletyProfiles[slug]) return;
+    let cancelled = false;
+    void fetchRoletyProfile(slug).then((profile) => {
+      if (!cancelled && profile) setRoletyProfiles((prev) => ({ ...prev, [slug]: profile }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayedProductSlugForPlisy, roletyProfiles]);
   useEffect(() => {
     if (displayedProductSlugForPlisy !== "rolety-dachowe" || rdProfile) return;
     let cancelled = false;
@@ -2385,7 +2421,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
           ? import("@/features/plisy-dachowe/ConfiguratorPanel")
           : slug === "plisy"
             ? import("@/features/plisy/ConfiguratorPanel")
-            : import("@/features/moskitiery-ramkowe/ConfiguratorPanel");
+            : isRoletySlug(slug)
+              ? import("@/features/rolety/ConfiguratorPanel")
+              : import("@/features/moskitiery-ramkowe/ConfiguratorPanel");
     load
       .then(() => {
         if (!cancelled) setConfiguratorChunkReady(true);
@@ -3823,7 +3861,9 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                             ? productLanding?.title && productLanding.title.toLowerCase() !== "plisy do okien dachowych"
                               ? productLanding.title
                               : PD_H1
-                            : displayedProduct.label}
+                            : isRoletySlug(productSlugFromSelected(displayedProduct))
+                              ? ROLETY_COPY[productSlugFromSelected(displayedProduct) as RoletySlug].h1
+                              : displayedProduct.label}
                     </h1>
                   ) : null}
                   {plisyV2 ? (
@@ -4581,6 +4621,16 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                               </button>
                             </div>
                           </div>
+                        ) : isRoletySlug(productSlugFromSelected(displayedProduct)) ? (
+                          <RoletyLanding
+                            slug={productSlugFromSelected(displayedProduct) as RoletySlug}
+                            profile={roletyProfiles[productSlugFromSelected(displayedProduct) as RoletySlug] || null}
+                            landing={productLanding}
+                            fallbackGallery={displayedProduct.gallery}
+                            productLabel={displayedProduct.label}
+                            onConfigure={scrollToConfigPanel}
+                            onZoom={(preview) => setZoomPreview(preview)}
+                          />
                         ) : productLanding && productLanding.sections.length > 0 ? (
                           <div className="pl-landing">
                             <h2 className="hero-product-section-title">Opis produktu</h2>
@@ -4668,6 +4718,11 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         const builtinGallery =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                             ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
+                            : isRoletySlug(productSlugFromSelected(displayedProduct))
+                              // Rolety mini: galeria wyłącznie z CRM (gallery_urls).
+                              ? productLanding?.gallery?.length
+                                ? productLanding.gallery
+                                : displayedProduct.gallery
                             : plisyCategories.length
                                 ? plisyCategories.flatMap((category) => category.photos)
                                 : displayedProduct.gallery;
@@ -5080,7 +5135,7 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                           <RoofReviews crmReviews={productLanding?.reviews?.length ? productLanding.reviews : undefined} />
                         ) : productSlugFromSelected(displayedProduct) === "plisy-dachowe" ? (
                           <PdReviews crmReviews={productLanding?.reviews?.length ? productLanding.reviews : undefined} />
-                        ) : productSlugFromSelected(displayedProduct) === "plisy" ? (
+                        ) : productSlugFromSelected(displayedProduct) === "plisy" || isRoletySlug(productSlugFromSelected(displayedProduct)) ? (
                           <PlisyReviews crmReviews={productLanding?.reviews?.length ? productLanding.reviews : undefined} />
                         ) : (
                           <ul className="hero-product-reviews">
@@ -5695,6 +5750,89 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
                         setAddToCartToast({ productSlug: "plisy-dachowe", productLabel: displayedProduct.label });
+                      }}
+                    />
+                  )
+                ) : isRoletySlug(productSlugFromSelected(displayedProduct)) ? (
+                  addToCartToast ? (
+                    <MobileOverlayPortal>
+                    <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
+                      <div className="hero-product-mini-summary-body">
+                        <div className="hero-product-added-toast">
+                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
+                          <p>
+                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
+                          </p>
+                          <div className="hero-product-added-toast-actions">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setRoletyConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń podobną roletę
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddToCartToast(null);
+                                setRoletyLastResult(null);
+                                setRoletyConfigKey((key) => key + 1);
+                              }}
+                            >
+                              Wyceń nową roletę
+                            </button>
+                            <a href="/koszyk" className="is-primary">
+                              Przejdź do koszyka
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    </MobileOverlayPortal>
+                  ) : (
+                    <RoletyConfiguratorPanel
+                      key={`${productSlugFromSelected(displayedProduct)}-${roletyConfigKey}`}
+                      slug={productSlugFromSelected(displayedProduct) as RoletySlug}
+                      initialValues={
+                        roletyLastResult
+                          ? {
+                              mountId: roletyLastResult.mountId,
+                              hardwareId: roletyLastResult.hardwareId,
+                              fabricGroupId: roletyLastResult.fabricGroupId,
+                              fabricId: roletyLastResult.fabricId,
+                              chainSide: roletyLastResult.chainSide,
+                            }
+                          : undefined
+                      }
+                      submitLabel="Dodaj do koszyka"
+                      onZoom={(preview) => setZoomPreview(preview)}
+                      onSubmit={(result) => {
+                        setRoletyLastResult(result);
+                        const item: CartLineItem = {
+                          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                          productSlug: productSlugFromSelected(displayedProduct),
+                          productLabel: displayedProduct.label,
+                          hardwareLabel: result.hardwareLabel,
+                          meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
+                          mountLabel: result.mountLabel,
+                          fabricColor: result.fabricColor || undefined,
+                          hardwareColor: result.hardwareColor || undefined,
+                          imageUrl: result.fabricThumbnailUrl || undefined,
+                          widthMm: result.widthMm,
+                          heightMm: result.heightMm,
+                          qty: result.qty,
+                          price: result.unitPrice,
+                          total: result.totalPrice,
+                          createdAt: new Date().toISOString(),
+                        };
+                        const items = addCartItem(item);
+                        setCartItems(items);
+                        setCartSummary(cartSummaryWithSurcharge(items));
+                        setCartIsBumping(true);
+                        window.setTimeout(() => setCartIsBumping(false), 500);
+                        setAddToCartToast({ productSlug: productSlugFromSelected(displayedProduct), productLabel: displayedProduct.label });
                       }}
                     />
                   )

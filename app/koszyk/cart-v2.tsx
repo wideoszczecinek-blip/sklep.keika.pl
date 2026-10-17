@@ -103,6 +103,7 @@ export type CartV2Props = {
   dispatchExpressLabel: string;
   dispatchCutoffLabel: string;
   plisyLeadTime: boolean;
+  roletyLeadTime: boolean;
   // dostawa i dane
   deliveryMethods: DeliveryOption[];
   deliveryMethod: string;
@@ -832,6 +833,8 @@ export default function CartV2(props: CartV2Props) {
         </>
       ) : p.plisyLeadTime ? (
         <p className="cv2-lead-time">Wysyłka w 5–7 dni roboczych.</p>
+      ) : p.roletyLeadTime ? (
+        <p className="cv2-lead-time">Realizacja do 10 dni roboczych.</p>
       ) : null}
     </>
   );

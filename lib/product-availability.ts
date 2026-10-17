@@ -15,7 +15,16 @@
 // dachowe and plisy dachowe joined the live set.
 import { infoLandingHref } from "@/lib/info-landings";
 
-export const LIVE_PRODUCT_SLUGS = new Set<string>(["moskitiery-ramkowe", "plisy", "rolety-dachowe", "plisy-dachowe"]);
+// 2026-10-17: rolety mini (dzień-noc i tradycyjne Deko/Termo) z własnym
+// konfiguratorem (features/rolety/) - zastąpiły informacyjne landingi.
+export const LIVE_PRODUCT_SLUGS = new Set<string>([
+  "moskitiery-ramkowe",
+  "plisy",
+  "rolety-dachowe",
+  "plisy-dachowe",
+  "rolety-dzien-noc",
+  "rolety-tradycyjne",
+]);
 
 /** Catalog placeholders that stand for a live landing under another slug
  * (the CRM record for roof blinds is still "roleta-dachowa-dekolux"). */

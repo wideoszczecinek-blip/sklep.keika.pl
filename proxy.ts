@@ -8,6 +8,8 @@ import { NextResponse, type NextRequest } from "next/server";
 const STATIC_PRODUCT_ROUTES: Record<string, string> = {
   "moskitiery-ramkowe": "/moskitiery-ramkowe",
   plisy: "/plisy",
+  "rolety-dzien-noc": "/rolety-dzien-noc",
+  "rolety-tradycyjne": "/rolety-tradycyjne",
 };
 
 export function proxy(request: NextRequest) {

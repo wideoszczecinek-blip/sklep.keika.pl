@@ -84,17 +84,17 @@
         {
           "label": "Rolety tradycyjne",
           "icon_url": "",
-          "link_url": "#kolekcje"
+          "link_url": "/produkt/rolety-tradycyjne"
         },
         {
           "label": "Rolety dzień noc",
           "icon_url": "",
-          "link_url": "#kolekcje"
+          "link_url": "/produkt/rolety-dzien-noc"
         },
         {
           "label": "Plisy",
           "icon_url": "",
-          "link_url": "#kolekcje"
+          "link_url": "/produkt/plisy"
         },
         {
           "label": "Żaluzje",

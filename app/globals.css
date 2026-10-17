@@ -22143,3 +22143,48 @@ body:has(.cart-page--v2) .site-footer {
 
 /* Moskitiery: brak koloru siatki przy "Dodaj do koszyka" (2026-10-15) */
 .mosk-missing-choice { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid #f3b546; background: #fff8e8; color: #6b4a10; font-size: 0.88rem; font-weight: 700; line-height: 1.4; }
+
+/* Rolety mini (dzień-noc / tradycyjne), 2026-10-17: landing i konfigurator
+   korzystają z klas plis; tu tylko to, czego plisy nie mają. */
+.rl-photos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+.rl-photos--3 .rl-photo:first-child,
+.rl-photos--1 .rl-photo:first-child {
+  grid-column: 1 / -1;
+}
+.rl-photo {
+  display: block;
+  padding: 0;
+  border: 1px solid rgba(19, 40, 67, 0.12);
+  border-radius: 0.9rem;
+  overflow: hidden;
+  background: #f3f6f9;
+  cursor: zoom-in;
+}
+.rl-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.rl-landing .pl-cta-row {
+  margin: 0.25rem 0 0.9rem;
+}
+.rolety-summary-swatch {
+  flex: 0 0 auto;
+  width: 5.2rem;
+  height: 5.2rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background-size: cover;
+  background-position: center;
+}
+.rolety-chain-icon {
+  font-size: 1.9rem;
+  line-height: 1;
+  color: #16314e;
+}

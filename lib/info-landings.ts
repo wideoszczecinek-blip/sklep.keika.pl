@@ -1,5 +1,5 @@
 // Informacyjne strony produktowe ("landingi ofertowe") bez konfiguratora:
-// rolety tradycyjne / dzień-noc / rzymskie, żaluzje pionowe, rolety
+// rolety rzymskie, żaluzje pionowe, rolety
 // zewnętrzne, żaluzje fasadowe, markizy, moskitiery drzwiowe / przesuwne /
 // plisowane. Zamiast ceny - prośba o wycenę (lead w CRM) albo rozmowa.
 //
@@ -10,10 +10,10 @@
 export const INFO_LANDINGS_ENABLED = process.env.NEXT_PUBLIC_INFO_LANDINGS === "1";
 
 /** slug (z linku w menu albo z etykiety) -> ścieżka landingu */
+// Rolety tradycyjne i dzień-noc od 2026-10-17 są pełnymi produktami
+// (features/rolety/, trasy /rolety-tradycyjne i /rolety-dzien-noc) - nie są
+// już landingami informacyjnymi.
 export const INFO_LANDING_ROUTES: Record<string, string> = {
-  "rolety-tradycyjne": "/rolety-tradycyjne",
-  "oslony-wewnetrzne": "/rolety-tradycyjne",
-  "rolety-dzien-noc": "/rolety-dzien-noc",
   "rolety-rzymskie": "/rolety-rzymskie",
   zaluzje: "/zaluzje",
   "zaluzje-poziome": "/zaluzje",
@@ -50,8 +50,6 @@ export function resolveInfoLandingMenuLink(groupSlugRaw: string, labelRaw: strin
   const group = String(groupSlugRaw || "").trim().toLowerCase();
   const label = normalizeLabel(labelRaw);
   if (group === "oslony-wewnetrzne") {
-    if (/^rolety tradycyjne$/.test(label)) return "/rolety-tradycyjne";
-    if (/^rolety dzien ?-? ?noc$/.test(label)) return "/rolety-dzien-noc";
     if (/^(zaluzje|zaluzje poziome)$/.test(label)) return "/zaluzje";
     if (/^(zaluzje pionowe|verticale)$/.test(label)) return "/zaluzje-pionowe";
     if (/^rolety rzymskie$/.test(label)) return "/rolety-rzymskie";

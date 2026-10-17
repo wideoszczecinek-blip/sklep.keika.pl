@@ -24,6 +24,8 @@ import {
 } from "@/features/moskitiery-ramkowe/shared";
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
+import RoletyConfiguratorPanel from "@/features/rolety/ConfiguratorPanel";
+import { isRoletySlug, ROLETY_LEAD_TIME_LABEL, ROLETY_PACZKOMAT_MAX_WIDTH_MM, type RoletySlug } from "@/features/rolety/shared";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
@@ -43,6 +45,8 @@ const EMPTY_CART_TARGETS: Record<string, { href: string; label: string }> = {
   plisy: { href: "/plisy", label: "Skonfiguruj plisę" },
   "rolety-dachowe": { href: "/?produkt=rolety-dachowe", label: "Skonfiguruj roletę dachową" },
   "plisy-dachowe": { href: "/?produkt=plisy-dachowe", label: "Skonfiguruj plisę dachową" },
+  "rolety-dzien-noc": { href: "/rolety-dzien-noc", label: "Skonfiguruj roletę dzień-noc" },
+  "rolety-tradycyjne": { href: "/rolety-tradycyjne", label: "Skonfiguruj roletę" },
 };
 function emptyCartTarget(lastPage: string): { href: string; label: string } {
   try {
@@ -189,6 +193,8 @@ const PLISY_PACZKOMAT_MAX_WIDTH_MM = 600;
 // item (see getAvailableDeliveryMethods' items.every() below).
 function itemFitsPaczkomat(item: CartLineItem): boolean {
   if (item.productSlug === "plisy") return item.widthMm <= PLISY_PACZKOMAT_MAX_WIDTH_MM;
+  // Rolety mini: sztywna rura - do paczkomatu tylko szerokość do 60 cm.
+  if (isRoletySlug(item.productSlug)) return item.widthMm <= ROLETY_PACZKOMAT_MAX_WIDTH_MM;
   return item.widthMm <= PACZKOMAT_MAX_DIMENSION_MM && item.heightMm <= PACZKOMAT_MAX_DIMENSION_MM;
 }
 
@@ -401,6 +407,9 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
   }
   if (productSlug === "plisy-dachowe") {
     return { hardware: "Kolor osprzętu", mesh: "Kolekcja i kolor tkaniny" };
+  }
+  if (isRoletySlug(productSlug)) {
+    return { hardware: "Kolor mechanizmu", mesh: "Kolekcja i kolor tkaniny" };
   }
   return { hardware: "Kolor profilu", mesh: "Kolor siatki" };
 }
@@ -745,6 +754,13 @@ export default function CartPage() {
     items.length > 0 &&
     items.some((item) => item.productSlug === "plisy") &&
     items.every((item) => item.productSlug === "plisy" || item.productSlug === "moskitiery-ramkowe");
+  // Rolety mini (2026-10-17): realizacja do 10 dni roboczych. Koszyk z
+  // roletami i plisami/moskitierami dostaje ten dłuższy termin; dachowe
+  // nadal bez deklaracji.
+  const roletyLeadTime =
+    items.length > 0 &&
+    items.some((item) => isRoletySlug(item.productSlug)) &&
+    items.every((item) => isRoletySlug(item.productSlug) || item.productSlug === "plisy" || item.productSlug === "moskitiery-ramkowe");
   useEffect(() => {
     if (!expressEligible && expressSelected) {
       setExpressSelected(false);
@@ -3270,6 +3286,7 @@ export default function CartPage() {
     dispatchExpressLabel: dispatchInfo?.expressLabel || "",
     dispatchCutoffLabel: dispatchInfo?.cutoffLabel || "",
     plisyLeadTime: !expressEligible && plisyLeadTime,
+    roletyLeadTime: !expressEligible && roletyLeadTime,
     deliveryMethods: availableDeliveryMethods,
     deliveryMethod,
     chooseDelivery: (method: { id: string; label: string }) => {
@@ -3686,7 +3703,7 @@ export default function CartPage() {
                     >
                       Usuń
                     </button>
-                    {item.productSlug === "moskitiery-ramkowe" || item.productSlug === "plisy" || item.productSlug === "rolety-dachowe" || item.productSlug === "plisy-dachowe" ? (
+                    {item.productSlug === "moskitiery-ramkowe" || item.productSlug === "plisy" || item.productSlug === "rolety-dachowe" || item.productSlug === "plisy-dachowe" || isRoletySlug(item.productSlug) ? (
                       <button
                         type="button"
                         className="cart-page-item-edit"
@@ -3947,6 +3964,14 @@ export default function CartPage() {
                     <h2>Termin realizacji</h2>
                     <p className="cart-dispatch-static">
                       <strong>Wysyłka w 5–7 dni roboczych.</strong>
+                    </p>
+                  </section>
+                ) : null}
+                {!expressEligible && roletyLeadTime ? (
+                  <section className="cart-delivery-card cart-dispatch-card">
+                    <h2>Termin realizacji</h2>
+                    <p className="cart-dispatch-static">
+                      <strong>Realizacja {ROLETY_LEAD_TIME_LABEL}.</strong>
                     </p>
                   </section>
                 ) : null}
@@ -4864,6 +4889,41 @@ export default function CartPage() {
                     windowCertain: result.windowCertain,
                     nameplateAttachmentId: result.nameplateAttachmentId || undefined,
                     missingModelRequest: result.missingModelRequest || undefined,
+                  });
+                  setItems(updated);
+                  setEditingItemId(null);
+                }}
+              />
+            ) : isRoletySlug(editingItem.productSlug) ? (
+              <RoletyConfiguratorPanel
+                key={editingItem.id}
+                slug={editingItem.productSlug as RoletySlug}
+                initialValues={{
+                  // Dane opcji żyją w CRM (features/rolety/shared.ts) - etykiety
+                  // z pozycji dopasowuje sam panel po wczytaniu profilu;
+                  // mountLabel niesie też stronę łańcuszka.
+                  mountLabel: editingItem.mountLabel,
+                  hardwareLabel: editingItem.hardwareLabel,
+                  fabricGroupLabel: editingItem.meshLabel.split(" — ")[0],
+                  fabricLabel: editingItem.meshLabel.split(" — ")[1],
+                  widthMm: editingItem.widthMm,
+                  heightMm: editingItem.heightMm,
+                  qty: editingItem.qty,
+                }}
+                submitLabel="Zapisz zmiany"
+                onSubmit={(result) => {
+                  const updated = updateCartItemConfig(editingItem.id, {
+                    hardwareLabel: result.hardwareLabel,
+                    meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
+                    mountLabel: result.mountLabel,
+                    fabricColor: result.fabricColor || undefined,
+                    hardwareColor: result.hardwareColor || undefined,
+                    imageUrl: result.fabricThumbnailUrl || undefined,
+                    widthMm: result.widthMm,
+                    heightMm: result.heightMm,
+                    qty: result.qty,
+                    price: result.unitPrice,
+                    total: result.totalPrice,
                   });
                   setItems(updated);
                   setEditingItemId(null);

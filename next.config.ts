@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
       { source: "/produkt/rolety-dachowe-dekolux", destination: "/?produkt=rolety-dachowe", permanent: false },
       { source: "/kategoria/rolety-dachowe", destination: "/?produkt=rolety-dachowe", permanent: false },
       { source: "/produkt/plisy-dachowe", destination: "/?produkt=plisy-dachowe", permanent: false },
+      // Rolety mini (dzień-noc i tradycyjne) żyją od 2026-10-17 na własnych
+      // statycznych stronach; menu CRM linkuje do /produkt/<slug>.
+      { source: "/produkt/rolety-dzien-noc", destination: "/rolety-dzien-noc", permanent: false },
+      { source: "/kategoria/rolety-dzien-noc", destination: "/rolety-dzien-noc", permanent: false },
+      { source: "/produkt/rolety-tradycyjne", destination: "/rolety-tradycyjne", permanent: false },
+      { source: "/kategoria/rolety-tradycyjne", destination: "/rolety-tradycyjne", permanent: false },
       // Formularz opinii żyje na stronie firmowej. Ten wpis został z czasu,
       // gdy keika.pl stało jeszcze na starym serwerze i odsyłało tu SMS-y po
       // montażu - zostawiamy go, żeby stare linki nie kończyły się pustą

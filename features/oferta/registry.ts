@@ -1,6 +1,4 @@
 import type { OfertaContent } from "./types";
-import { ROLETY_TRADYCYJNE } from "./content/rolety-tradycyjne";
-import { ROLETY_DZIEN_NOC } from "./content/rolety-dzien-noc";
 import { ROLETY_RZYMSKIE } from "./content/rolety-rzymskie";
 import { ZALUZJE } from "./content/zaluzje";
 import { ZALUZJE_PIONOWE } from "./content/zaluzje-pionowe";
@@ -12,10 +10,10 @@ import { MOSKITIERY_DRZWIOWE } from "./content/moskitiery-drzwiowe";
 import { MOSKITIERY_PRZESUWNE } from "./content/moskitiery-przesuwne";
 import { MOSKITIERY_PLISOWANE } from "./content/moskitiery-plisowane";
 
-/** Kolejność = kolejność w menu sklepu (grupami). */
+/** Kolejność = kolejność w menu sklepu (grupami). Rolety tradycyjne i
+ * dzień-noc od 2026-10-17 mają pełne strony produktu (features/rolety/) -
+ * ich dawna treść informacyjna została w content/, ale nie jest używana. */
 export const OFERTA_LANDINGS: OfertaContent[] = [
-  ROLETY_TRADYCYJNE,
-  ROLETY_DZIEN_NOC,
   ROLETY_RZYMSKIE,
   ZALUZJE,
   ZALUZJE_PIONOWE,

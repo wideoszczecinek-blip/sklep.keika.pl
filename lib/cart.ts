@@ -270,6 +270,8 @@ const CONFIGURATOR_DRAFT_KEYS: Record<string, string> = {
   plisy: "keika_plisy_draft_v1",
   "plisy-dachowe": "keika_pd_draft_v1",
   "rolety-dachowe": "keika_rd_draft_v1",
+  "rolety-dzien-noc": "keika_rolety_dn_draft_v1",
+  "rolety-tradycyjne": "keika_rolety_trad_draft_v1",
 };
 
 function clearConfiguratorDraft(productSlug: string): void {
