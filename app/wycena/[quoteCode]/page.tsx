@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import QuoteCheckout from "./quote-checkout";
 import { fetchPublicQuote } from "@/lib/shop-public";
 import styles from "@/app/moskitiery/moskitiery-v2.module.css";
+import { isSupplierSummaryRow } from "@/features/rolety/ss-options";
 
 // Reserved for real, placed quotes/orders (a customer who actually
 // configured a product) - the static "Moja wycena" summary below. A link
@@ -43,7 +44,8 @@ export default async function QuotePage({ params }: QuotePageProps) {
               <article key={position.id} className={styles.position}>
                 <strong>{position.product_label}</strong>
                 <div className={styles.summaryRows}>
-                  {position.summary_rows.map((row, index) => (
+                  {/* Sekcja "Zamówienie u dostawcy" jest tylko dla biura. */}
+                  {position.summary_rows.filter((row) => !isSupplierSummaryRow(row.label)).map((row, index) => (
                     <div key={`${position.id}-${index}`} className={styles.summaryRow}>
                       <span>{row.label}</span>
                       <span>

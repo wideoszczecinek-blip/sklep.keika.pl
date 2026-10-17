@@ -35,6 +35,8 @@ export const NON_PRODUCT_POSITION_SLUGS: ReadonlySet<string> = new Set([
   "doplata-ekspres",
 ]);
 
+import type { SsSupplierOrder } from "@/features/rolety/ss-options";
+
 export type CartLineItem = {
   id: string;
   productSlug: string;
@@ -65,6 +67,11 @@ export type CartLineItem = {
   measuredWidthMm?: number;
   measuredHeightMm?: number;
   measureNote?: string;
+  /** Żaluzje: zamówienie u dostawcy Sun & Shade (wszystkie pola formularza
+   * id[attr]=v + czytelne linie dla biura), opis opcji i dopłat. */
+  supplier?: SsSupplierOrder;
+  optionsNote?: string;
+  extrasNote?: string;
   /** rolety-dachowe only: the chosen window model ("Velux MK04") or "Wymiar
    * własny" for a manual entry - undefined for other products. Additive/
    * optional so existing stored items from before this field existed still
@@ -153,6 +160,35 @@ function readMissingModelRequest(value: unknown): CartLineItem["missingModelRequ
   };
 }
 
+function readSupplierOrder(raw: unknown): SsSupplierOrder | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const row = raw as Record<string, unknown>;
+  const options = row.options && typeof row.options === "object" ? (row.options as Record<string, unknown>) : null;
+  if (!options) return undefined;
+  const cleanOptions: Record<string, string> = {};
+  for (const [key, value] of Object.entries(options)) cleanOptions[String(key)] = String(value);
+  const lines = Array.isArray(row.lines)
+    ? row.lines
+        .filter((line): line is Record<string, unknown> => Boolean(line) && typeof line === "object")
+        .map((line) => ({
+          attr: String(line.attr ?? ""),
+          ssLabel: String(line.ssLabel ?? ""),
+          v: String(line.v ?? ""),
+          ssText: String(line.ssText ?? ""),
+          applies: line.applies !== false,
+        }))
+    : [];
+  return {
+    name: String(row.name ?? "Sun & Shade"),
+    productId: Number(row.productId ?? 0) || 0,
+    ssTitle: String(row.ssTitle ?? ""),
+    widthMm: Number(row.widthMm ?? 0) || 0,
+    heightMm: Number(row.heightMm ?? 0) || 0,
+    options: cleanOptions,
+    lines,
+  };
+}
+
 export function readCartItems(): CartLineItem[] {
   return readCartRows()
     .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object")
@@ -181,6 +217,9 @@ export function readCartItems(): CartLineItem[] {
         measuredWidthMm: Number(row.measuredWidthMm ?? 0) > 0 ? Number(row.measuredWidthMm) : undefined,
         measuredHeightMm: Number(row.measuredHeightMm ?? 0) > 0 ? Number(row.measuredHeightMm) : undefined,
         measureNote: row.measureNote ? String(row.measureNote).slice(0, 300) : undefined,
+        supplier: readSupplierOrder(row.supplier),
+        optionsNote: row.optionsNote ? String(row.optionsNote).slice(0, 600) : undefined,
+        extrasNote: row.extrasNote ? String(row.extrasNote).slice(0, 600) : undefined,
         splitFromWidthMm: Number(row.splitFromWidthMm ?? 0) > 0 ? Number(row.splitFromWidthMm) : undefined,
         sagNoticeShown: row.sagNoticeShown === true ? true : undefined,
         sagLimitMm: Number(row.sagLimitMm ?? 0) > 0 ? Number(row.sagLimitMm) : undefined,

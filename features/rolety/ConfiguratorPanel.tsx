@@ -36,6 +36,26 @@ import PlisyFabricGallery from "@/features/plisy/FabricGallery";
 import PlisyCollectionBackdrop from "@/features/plisy/CollectionBackdrop";
 import UnitAskModal from "@/features/plisy/UnitAskModal";
 import { ZaluzjeMeasureAnimation, ZaluzjeMeasureModal, ZaluzjeMountThumb } from "./ZaluzjeMeasure";
+import ZaluzjeSsSteps from "./ZaluzjeSsSteps";
+import {
+  loadSsOptions,
+  ssApplyNoDrill,
+  ssBuildSupplierOrder,
+  ssColorValue,
+  ssCustomerSummary,
+  ssDefaultSelection,
+  ssExtras,
+  ssField,
+  ssNoDrillFromStored,
+  ssOption,
+  ssSelectionFromStored,
+  ssTapeStatus,
+  ssTilterLabel,
+  ssTilterSide,
+  ssVisibleOptions,
+  type SsModelOptions,
+  type SsSelection,
+} from "./ss-options";
 import {
   CHAIN_SIDES,
   calcRoletyPrice,
@@ -238,6 +258,31 @@ export default function RoletyConfiguratorPanel({
     Boolean(modelFirst && initialValues?.widthMm && !initialValues?.measuredWidthMm),
   );
   const [measureGuideOpen, setMeasureGuideOpen] = useState(false);
+  // Żaluzje: opcje dostawcy Sun & Shade dla wybranego modelu (ss-options.ts).
+  const [ssModel, setSsModel] = useState<SsModelOptions | null>(null);
+  const [ssSelection, setSsSelection] = useState<SsSelection>({});
+  const [noDrill, setNoDrill] = useState(false);
+  const ssInitFor = useRef("");
+  const ssStepsRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!modelFirst || !selectedFabricGroupId) return;
+    let cancelled = false;
+    void loadSsOptions(selectedFabricGroupId).then((model) => {
+      if (cancelled) return;
+      setSsModel(model);
+      if (model && ssInitFor.current !== model.groupId) {
+        // Zapisany wybór (edycja z koszyka / "Wyceń podobną") tylko przy pierwszym modelu.
+        const stored = ssInitFor.current ? undefined : initialValues?.supplierOptions;
+        ssInitFor.current = model.groupId;
+        setSsSelection(stored ? ssSelectionFromStored(model, stored) : ssDefaultSelection(model));
+        setNoDrill(stored ? ssNoDrillFromStored(model, stored) : false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelFirst, selectedFabricGroupId]);
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const [stepDimsCollapsed, setStepDimsCollapsed] = useState(Boolean(isCartEdit && initialValues?.widthMm && initialValues?.heightMm));
   const lastTrackedDimsRef = useRef("");
@@ -497,7 +542,24 @@ export default function RoletyConfiguratorPanel({
     if (!profile || !dimensionsValid) return false;
     return roletyMatrixCell(profile, fabricGroupId, widthNum, heightNum).status === "unavailable";
   }
-  const unitPrice = unitPriceFor(selectedFabricGroupId);
+  // Żaluzje: cena = żaluzja z cennika + dopłaty za opcje Sun & Shade.
+  const ssColorV = modelFirst && ssModel && selectedFabric ? ssColorValue(selectedFabric.id, ssModel.pid) : "";
+  const ssCtx = { widthMm: widthNum, noDrill };
+  const ssExtraLines = modelFirst ? ssExtras(ssModel, ssSelection, ssCtx) : [];
+  const ssExtrasTotal = ssExtraLines.reduce((sum, line) => sum + line.amount, 0);
+  const ssTapeBlocked = Boolean(modelFirst && ssModel && ssColorV && ssSelection["7"] && ssTapeStatus(ssModel, ssColorV, ssSelection["7"]) === 2);
+  // Zmiana koloru lameli: taśma niedostępna do nowego koloru -> pierwsza dostępna.
+  useEffect(() => {
+    if (!ssModel || !ssColorV) return;
+    const f7 = ssField(ssModel, "7");
+    const current = ssSelection["7"];
+    if (!f7 || !current || ssTapeStatus(ssModel, ssColorV, current) !== 2) return;
+    const fallback = ssVisibleOptions(f7).find((option) => ssTapeStatus(ssModel, ssColorV, option.v) !== 2);
+    if (fallback) setSsSelection((prev) => ({ ...prev, "7": fallback.v }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ssModel, ssColorV]);
+  const baseUnitPrice = unitPriceFor(selectedFabricGroupId);
+  const unitPrice = baseUnitPrice !== null ? Math.round((baseUnitPrice + (modelFirst ? ssExtrasTotal : 0)) * 100) / 100 : null;
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
   const selectedUnavailable = Boolean(selectedFabricGroup) && groupUnavailable(selectedFabricGroupId);
   const cheapest = useMemo(() => {
@@ -575,10 +637,19 @@ export default function RoletyConfiguratorPanel({
     setSelectedFabricId(id);
     setFabricGalleryIndex(null);
     setStepFabricCollapsed(true);
-    window.setTimeout(() => scrollStepIntoView(stepChainRef.current), 380);
+    window.setTimeout(() => scrollStepIntoView(modelFirst ? ssStepsRef.current : stepChainRef.current), 380);
   }
 
-  const canSubmit = Boolean(selectedMount && hardwareChosen && selectedFabricGroup && selectedFabric && chainSide && dimensionsValid && unitPrice !== null && !selectedUnavailable);
+  const canSubmit = Boolean(
+    selectedMount &&
+      hardwareChosen &&
+      selectedFabricGroup &&
+      selectedFabric &&
+      (modelFirst ? Boolean(ssModel) && !ssTapeBlocked : Boolean(chainSide)) &&
+      dimensionsValid &&
+      unitPrice !== null &&
+      !selectedUnavailable,
+  );
 
   // Stan formularza dla analityki "na czym stanął" (lib/configurator-state).
   useEffect(() => {
@@ -589,7 +660,7 @@ export default function RoletyConfiguratorPanel({
     if (hasHardwareStep) (selectedHardware ? done : missing).push("kolor mechanizmu");
     (selectedFabricGroup ? done : missing).push(copy.groupUnit);
     (selectedFabric ? done : missing).push("kolor");
-    (chainSide ? done : missing).push(copy.controlLabelWord);
+    ((modelFirst ? ssModel : chainSide) ? done : missing).push(copy.controlLabelWord);
     const hasDims = widthNum > 0 || heightNum > 0;
     reportConfiguratorState({
       product: slug,
@@ -608,12 +679,22 @@ export default function RoletyConfiguratorPanel({
   useEffect(() => () => clearConfiguratorState(slug), [slug]);
 
   function handleSubmit() {
-    if (!canSubmit || !selectedMount || !selectedFabricGroup || !selectedFabric || !chainSide || unitPrice === null || totalPrice === null) return;
+    if (!canSubmit || !selectedMount || !selectedFabricGroup || !selectedFabric || (!modelFirst && !chainSide) || unitPrice === null || totalPrice === null) return;
+    const tilter = modelFirst && ssModel ? ssOption(ssField(ssModel, "16"), ssSelection["16"]) : null;
     onSubmit({
       productLabel: modelFirst && profile ? zaluzjeModelForGroup(profile, selectedFabricGroup.id)?.name || "" : "",
       mountId: selectedMount.id,
-      mountLabel: joinRoletyMountLabel(selectedMount.label, chainSide, slug),
-      chainSide,
+      mountLabel: tilter
+        ? `${selectedMount.label} · sterowanie: ${ssTilterLabel(tilter.label).toLowerCase()}`
+        : joinRoletyMountLabel(selectedMount.label, chainSide, slug),
+      chainSide: tilter ? ssTilterSide(tilter.label) : (chainSide as ChainSide),
+      supplier:
+        modelFirst && ssModel
+          ? ssBuildSupplierOrder(ssModel, ssSelection, ssCtx, { v: ssColorV, ssText: `${selectedFabric.label.toLowerCase()} --- ${selectedFabric.code}` }, widthNum, heightNum)
+          : null,
+      extras: ssExtraLines,
+      extrasNote: ssExtraLines.map((line) => `${line.title}: ${line.label} +${line.amount} zł`).join("; "),
+      optionsNote: modelFirst && ssModel ? ssCustomerSummary(ssModel, ssSelection, ssCtx) : "",
       hardwareId: selectedHardware?.id || "",
       hardwareLabel: selectedHardware?.label || "",
       fabricGroupId: selectedFabricGroup.id,
@@ -1037,6 +1118,16 @@ export default function RoletyConfiguratorPanel({
                   {copy.groupUnit === "model" ? "Model" : "Kolekcja"} {cheapest.groupLabel}. Dokładną cenę zobaczysz po wyborze {copy.groupUnit === "model" ? "modelu" : "kolekcji"} i koloru.
                 </span>
               ) : null}
+              {modelFirst && exact && ssExtraLines.length && baseUnitPrice !== null ? (
+                <span className="zs-price-extras">
+                  <span>Żaluzja: {formatZl(baseUnitPrice)}</span>
+                  {ssExtraLines.map((line) => (
+                    <span key={line.attr}>
+                      {line.title}: {line.label} +{formatZl(line.amount)}
+                    </span>
+                  ))}
+                </span>
+              ) : null}
               <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
             </>
           );
@@ -1341,7 +1432,8 @@ export default function RoletyConfiguratorPanel({
   }
 
   function renderSummary() {
-    if (!selectedFabricGroup || !selectedFabric || !chainSide) return null;
+    if (!selectedFabricGroup || !selectedFabric || (!modelFirst && !chainSide)) return null;
+    const tilterOption = modelFirst && ssModel ? ssOption(ssField(ssModel, "16"), ssSelection["16"]) : null;
     return (
       <div ref={summaryRef} className="hero-product-mini-summary is-revealed">
         <h3>{profile!.productName}</h3>
@@ -1366,8 +1458,20 @@ export default function RoletyConfiguratorPanel({
             </div>
             <div>
               <dt>{copy.groupUnit === "model" ? "Sterowanie" : "Łańcuszek"}</dt>
-              <dd>{chainLabel || "--"}</dd>
+              <dd>{tilterOption ? ssTilterLabel(tilterOption.label) : chainLabel || "--"}</dd>
             </div>
+            {modelFirst && ssModel ? (
+              <div>
+                <dt>Opcje</dt>
+                <dd>{ssCustomerSummary(ssModel, ssSelection, ssCtx) || "--"}</dd>
+              </div>
+            ) : null}
+            {modelFirst && ssExtraLines.length ? (
+              <div>
+                <dt>Dopłaty</dt>
+                <dd>{ssExtraLines.map((line) => `${line.label} +${formatZl(line.amount)}`).join(", ")}</dd>
+              </div>
+            ) : null}
             {dimensionsValid ? (
               <div>
                 <dt>{modelFirst ? "Wymiar żaluzji" : "Wymiar"}</dt>
@@ -1490,7 +1594,30 @@ export default function RoletyConfiguratorPanel({
             {renderDimsSection(2)}
             {renderPriceCard()}
             {renderColorSection(3)}
-            {selectedFabric ? renderControlSection(4) : <p className="hero-product-config-hint">Wybierz kolor lameli, aby przejść do strony sterowania.</p>}
+            {selectedFabric ? (
+              ssModel ? (
+                <div ref={ssStepsRef}>
+                  <ZaluzjeSsSteps
+                    model={ssModel}
+                    selection={ssSelection}
+                    onChange={(attr, v) => setSsSelection((prev) => ({ ...prev, [attr]: v }))}
+                    noDrill={noDrill}
+                    onNoDrillChange={(on) => {
+                      setNoDrill(on);
+                      setSsSelection((prev) => ssApplyNoDrill(ssModel, prev, on));
+                    }}
+                    widthMm={widthNum}
+                    mountId={selectedMountId}
+                    colorV={ssColorV}
+                    firstStepNo={4}
+                  />
+                </div>
+              ) : (
+                <p className="hero-product-config-hint">Wczytuję opcje żaluzji…</p>
+              )
+            ) : (
+              <p className="hero-product-config-hint">Wybierz kolor lameli, aby przejść do kolejnych opcji.</p>
+            )}
             {renderSummary()}
           </>
         ) : (

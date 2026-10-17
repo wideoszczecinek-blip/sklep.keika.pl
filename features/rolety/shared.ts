@@ -20,6 +20,7 @@ import {
 } from "@/features/plisy/shared";
 
 export type { FabricGroup, FabricSwatch, HardwareOption, MountOption, PriceTable };
+import type { SsExtraLine, SsSupplierOrder } from "./ss-options";
 
 export const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 
@@ -311,6 +312,23 @@ async function fetchRoletyProfileUncached(slug: RoletySlug): Promise<RoletyProfi
 
 /** Profil z odpowiedzi configurator_public.php - czysta funkcja, używana też
  * po stronie serwera (strony modeli żaluzji: metadane, generateStaticParams). */
+/** Żaluzje: etykieta koloru z CRM bywa tekstem z formularza dostawcy
+ * ("White matt PRF ----[met 25/cl-2501]- (+80%|+109.16 zł)", "Pine **ograniczona
+ * dostępność ..."). Klient widzi samą nazwę (+ dopisek o dostępności), kod
+ * trafia do pola code, ceny dostawcy znikają. Rolety bez zmian. */
+function cleanSwatchText(slug: RoletySlug, label: string, code: string): { label: string; code: string } {
+  if (slug !== "zaluzje") return { label, code };
+  let text = String(label || "").replace(/\s*\(\s*\+[^)]*\)/g, "");
+  let nextCode = String(code || "");
+  const bracket = text.match(/-{2,}\s*\[([^\]]+)\]\s*-*/);
+  if (bracket) {
+    if (!nextCode || /^ss-\d/.test(nextCode)) nextCode = bracket[1].trim();
+    text = text.replace(bracket[0], " ");
+  }
+  text = text.replace(/\s*\*\*\s*/g, " (").replace(/\(([^)]*)$/, "($1)");
+  return { label: text.replace(/\s+/g, " ").trim(), code: /^ss-\d/.test(nextCode) ? "" : nextCode };
+}
+
 export function roletyProfileFromCatalogJson(raw: unknown, slug: RoletySlug): RoletyProfile | null {
   try {
     const json = raw as {
@@ -351,10 +369,11 @@ export function roletyProfileFromCatalogJson(raw: unknown, slug: RoletySlug): Ro
       label: group.label,
       note: group.note || "",
       imageUrl: group.image_url || "",
-      swatches: (group.swatches || []).map((swatch) => ({
+      swatches: (group.swatches || [])
+        .filter((swatch) => slug !== "zaluzje" || !/\*\*\s*(wycofan|brak na stanie)/i.test(swatch.label))
+        .map((swatch) => ({
         id: swatch.id,
-        code: swatch.code,
-        label: swatch.label,
+        ...cleanSwatchText(slug, swatch.label, swatch.code),
         color: swatch.color || "#E2E8F0",
         imageUrl: swatch.image_url || "",
         thumbnailUrl: swatch.thumbnail_url || swatch.image_url || "",
@@ -514,9 +533,12 @@ export function joinRoletyMountLabel(mountLabel: string, chainSide: ChainSide | 
 }
 export function splitRoletyMountLabel(label: string | undefined): { mountLabel: string; chainSide: ChainSide | "" } {
   const raw = String(label || "");
-  const match = raw.match(/^(.*?) · (?:łańcuszek|sterowanie): (lewa|prawa)\s*$/i);
+  // "… · łańcuszek: lewa", "… · sterowanie: prawa" albo (żaluzje S&S)
+  // "… · sterowanie: przekładnia lewa, hamulec prawy".
+  const match = raw.match(/^(.*?) · (?:łańcuszek|sterowanie): (.+?)\s*$/i);
   if (!match) return { mountLabel: raw, chainSide: "" };
-  return { mountLabel: match[1], chainSide: match[2].toLowerCase() as ChainSide };
+  const side = match[2].toLowerCase().match(/^(?:przekładnia\s+)?(lewa|prawa)\b/);
+  return { mountLabel: match[1], chainSide: side ? (side[1] as ChainSide) : "" };
 }
 
 /** Termin realizacji dla koszyka z kilkoma produktami tej rodziny - najdłuższy. */
@@ -571,6 +593,8 @@ export type ConfiguratorInitialValues = {
    * wymiar żaluzji podany wprost. */
   measuredWidthMm?: number;
   measuredHeightMm?: number;
+  /** Żaluzje: zapisany wybór opcji Sun & Shade (id[attr] -> v) - edycja z koszyka. */
+  supplierOptions?: Record<string, string>;
   qty?: number;
   /** Edycja z koszyka: pozycja ma tylko etykiety, id dobieramy po
    * wczytaniu profilu (jak w plisach). */
@@ -606,6 +630,13 @@ export type ConfiguratorResult = {
   measuredHeightMm: number;
   /** Żaluzje: notatka produkcyjna "pomiar: szybę ... → żaluzja ...". */
   measureNote: string;
+  /** Żaluzje: zamówienie u dostawcy (Sun & Shade) - wszystkie pola formularza. */
+  supplier: SsSupplierOrder | null;
+  /** Żaluzje: dopłaty za opcje (wliczone w unitPrice) i ich opis. */
+  extras: SsExtraLine[];
+  extrasNote: string;
+  /** Żaluzje: krótki opis wybranych opcji dla klienta (koszyk). */
+  optionsNote: string;
   qty: number;
   unitPrice: number;
   totalPrice: number;

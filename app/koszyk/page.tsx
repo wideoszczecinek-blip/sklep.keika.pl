@@ -26,6 +26,7 @@ import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/Configurat
 import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import RoletyConfiguratorPanel from "@/features/rolety/ConfiguratorPanel";
 import { isRoletySlug, roletyCartLeadTimeLabel, roletyFitsPaczkomat, type RoletySlug } from "@/features/rolety/shared";
+import { ssSupplierSummaryRows } from "@/features/rolety/ss-options";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
@@ -441,6 +442,8 @@ function CartItemSpecs({ item }: { item: CartLineItem }) {
   if (item.meshLabel) rows.push({ label: labels.mesh, value: item.meshLabel, dot: colors?.fabric });
   if (item.modelLabel) rows.push({ label: "Model okna", value: item.modelLabel });
   if (item.measureNote) rows.push({ label: "Pomiar", value: item.measureNote });
+  if (item.optionsNote) rows.push({ label: "Opcje", value: item.optionsNote });
+  if (item.extrasNote) rows.push({ label: "Dopłaty", value: item.extrasNote });
   if (item.productSlug === "rolety-dachowe" && item.bracketCount === 2) rows.push({ label: "Uchwyty", value: "2 szt." });
   if (rows.length === 0) return null;
   return (
@@ -472,6 +475,7 @@ function buildQuotePayloadFromCart(
       item.meshLabel ? `${fieldLabels.mesh.toLowerCase()} ${item.meshLabel}` : "",
       item.modelLabel ? `model okna ${item.modelLabel}` : "",
       item.measureNote ? item.measureNote : "",
+      item.optionsNote ? item.optionsNote : "",
       item.widthMm && item.heightMm ? `${item.widthMm} × ${item.heightMm} mm` : "",
     ]
       .filter(Boolean)
@@ -507,6 +511,11 @@ function buildQuotePayloadFromCart(
             }
           : null,
         item.measureNote ? { label: "Pomiar", value: item.measureNote, note: "przeliczenie w konfiguratorze - reguły do potwierdzenia" } : null,
+        item.optionsNote ? { label: "Opcje", value: item.optionsNote, note: "" } : null,
+        item.extrasNote ? { label: "Dopłaty za opcje (w cenie pozycji)", value: item.extrasNote, note: "" } : null,
+        // Zamówienie u dostawcy Sun & Shade - jedna linia na pole formularza
+        // (ssLabel, tekst S&S, id[attr]=v), żeby biuro złożyło je bez zgadywania.
+        ...(item.supplier ? ssSupplierSummaryRows(item.supplier) : []),
         item.missingModelRequest
           ? {
               label: "Okno spoza biblioteki",
@@ -542,6 +551,7 @@ function buildQuotePayloadFromCart(
           : null,
         { label: "Ilość", value: `${item.qty} szt.`, note: "" },
       ].filter((row): row is { label: string; value: string; note: string } => row !== null),
+      ...(item.supplier ? { meta: { supplier: item.supplier } } : {}),
       ...(item.productSlug === "rolety-dachowe" || item.productSlug === "plisy-dachowe"
         ? {
             meta: {
@@ -4926,6 +4936,7 @@ export default function CartPage() {
                   heightMm: editingItem.heightMm,
                   measuredWidthMm: editingItem.measuredWidthMm,
                   measuredHeightMm: editingItem.measuredHeightMm,
+                  supplierOptions: editingItem.supplier?.options,
                   qty: editingItem.qty,
                 }}
                 submitLabel="Zapisz zmiany"
@@ -4937,6 +4948,9 @@ export default function CartPage() {
                     measuredWidthMm: result.measuredWidthMm || undefined,
                     measuredHeightMm: result.measuredHeightMm || undefined,
                     measureNote: result.measureNote || undefined,
+                    supplier: result.supplier || undefined,
+                    optionsNote: result.optionsNote || undefined,
+                    extrasNote: result.extrasNote || undefined,
                     fabricColor: result.fabricColor || undefined,
                     hardwareColor: result.hardwareColor || undefined,
                     imageUrl: result.fabricThumbnailUrl || undefined,

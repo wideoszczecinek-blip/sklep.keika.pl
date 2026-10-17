@@ -630,6 +630,18 @@ export default function CartV2(props: CartV2Props) {
                     <dd>{item.measureNote}</dd>
                   </div>
                 ) : null}
+                {item.optionsNote ? (
+                  <div>
+                    <dt>Opcje</dt>
+                    <dd>{item.optionsNote}</dd>
+                  </div>
+                ) : null}
+                {item.extrasNote ? (
+                  <div>
+                    <dt>Dopłaty</dt>
+                    <dd>{item.extrasNote}</dd>
+                  </div>
+                ) : null}
                 {item.productSlug === "rolety-dachowe" && item.bracketCount === 2 ? (
                   <div>
                     <dt>Uchwyty</dt>

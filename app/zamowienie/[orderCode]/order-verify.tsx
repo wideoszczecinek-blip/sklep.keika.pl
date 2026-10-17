@@ -30,6 +30,7 @@ import {
   type P24Kind,
   type PaymentKind,
 } from "@/app/components/payment-methods";
+import { isSupplierSummaryRow } from "@/features/rolety/ss-options";
 
 const STRIPE_PUBLISHABLE_KEY = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "").trim();
 const STRIPE_KINDS: PaymentKind[] = ["blik", "card", "wallets"];
@@ -1125,7 +1126,7 @@ function splitOrderLines(order: PublicOrder): OrderLines {
     }
     const rows = Array.isArray(p.summary_rows) ? (p.summary_rows as Array<{ label?: string; value?: string }>) : [];
     const specs = rows
-      .filter((r) => r && r.label && r.value && r.label !== "Ilość")
+      .filter((r) => r && r.label && r.value && r.label !== "Ilość" && !isSupplierSummaryRow(r.label))
       .map((r) => (r.label === "Rozmiar" ? String(r.value) : `${r.label}: ${r.value}`))
       .join(" · ");
     const qty = Math.max(1, Number(p.quantity) || 1);

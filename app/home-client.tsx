@@ -5848,6 +5848,7 @@ export default function Home({
                               fabricGroupId: roletyLastResult.fabricGroupId,
                               fabricId: roletyLastResult.fabricId,
                               chainSide: roletyLastResult.chainSide,
+                              supplierOptions: roletyLastResult.supplier?.options,
                             }
                           : undefined
                       }
@@ -5865,6 +5866,9 @@ export default function Home({
                           measuredWidthMm: result.measuredWidthMm || undefined,
                           measuredHeightMm: result.measuredHeightMm || undefined,
                           measureNote: result.measureNote || undefined,
+                          supplier: result.supplier || undefined,
+                          optionsNote: result.optionsNote || undefined,
+                          extrasNote: result.extrasNote || undefined,
                           fabricColor: result.fabricColor || undefined,
                           hardwareColor: result.hardwareColor || undefined,
                           imageUrl: result.fabricThumbnailUrl || undefined,
