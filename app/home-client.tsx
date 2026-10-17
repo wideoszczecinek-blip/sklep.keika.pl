@@ -140,9 +140,8 @@ import {
 import RoletyLanding from "@/features/rolety/Landing";
 import ZaluzjeCatalog, { ZALUZJE_CATALOG_ID } from "@/features/rolety/ZaluzjeCatalog";
 import ZaluzjeModelLanding from "@/features/rolety/ZaluzjeModelLanding";
-import ZaluzjaPreview, { type ZaluzjaPreviewData } from "@/features/rolety/ZaluzjaPreview";
-import ZaluzjaDrawing, { ZaluzjaDetailGroups } from "@/features/rolety/ZaluzjaDrawing";
-import type { ZaluzjaDetailGroup, ZaluzjaDrawingData } from "@/features/rolety/zaluzja-drawing-data";
+import ZaluzjaPreview, { ZaluzjaHead, ZaluzjaSpecTable, type ZaluzjaPreviewData } from "@/features/rolety/ZaluzjaPreview";
+import type { ZaluzjaDetailGroup } from "@/features/rolety/zaluzja-drawing-data";
 import { ssStoredOptions } from "@/features/rolety/ss-options";
 import { findZaluzjeModel } from "@/features/rolety/shared";
 import { crmGetJson } from "@/lib/crm-get";
@@ -1509,8 +1508,8 @@ export default function Home({
     leftover?: { meters: number; value: number };
     /** Żaluzje: podgląd dodanej pozycji (zdjęcie modelu + kolor + parametry). */
     preview?: ZaluzjaPreviewData;
-    drawing?: ZaluzjaDrawingData;
     detailGroups?: ZaluzjaDetailGroup[];
+    sub?: string;
   } | null>(null);
   // Label of whichever locked product the visitor just tried to open via a
   // real navigation attempt (menu/flyout click) - see activateProductView()
@@ -5810,10 +5809,20 @@ export default function Home({
                           <p>
                             <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
                           </p>
-                          {addToCartToast.drawing ? (
-                            <div className="zl-toast-preview">
-                              <ZaluzjaDrawing data={addToCartToast.drawing} compact />
-                              {addToCartToast.detailGroups ? <ZaluzjaDetailGroups groups={addToCartToast.detailGroups.filter((group) => group.title !== "Cena za sztukę")} className="zl-details--compact" /> : null}
+                          {addToCartToast.preview && addToCartToast.detailGroups ? (
+                            <div className="zl-toast-compact">
+                              <ZaluzjaHead
+                                photoUrl={addToCartToast.preview.photoUrl}
+                                swatchUrl={addToCartToast.preview.swatchUrl}
+                                swatchColor={addToCartToast.preview.swatchColor}
+                                swatchLabel={addToCartToast.preview.swatchLabel}
+                                title={addToCartToast.productLabel}
+                                sub={addToCartToast.sub || ""}
+                              />
+                              <ZaluzjaSpecTable
+                                rows={(addToCartToast.detailGroups[0]?.rows || []).filter((row) => ["Montaż", "Drabinka", "Sterowanie"].includes(row.label))}
+                                priceRows={(addToCartToast.detailGroups[1]?.rows || []).filter((row) => row.label === "Razem za sztukę")}
+                              />
                             </div>
                           ) : addToCartToast.preview ? (
                             <ZaluzjaPreview data={addToCartToast.preview} />
@@ -5909,8 +5918,8 @@ export default function Home({
                         setAddToCartToast({
                           productSlug: productSlugFromSelected(displayedProduct),
                           productLabel: result.productLabel || displayedProduct.label,
-                          drawing: result.drawing || undefined,
                           detailGroups: result.detailGroups || undefined,
+                          sub: `${result.fabricLabel} · ${(result.widthMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(result.heightMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm · ${result.qty} szt.`,
                           preview:
                             productSlugFromSelected(displayedProduct) === "zaluzje"
                               ? {

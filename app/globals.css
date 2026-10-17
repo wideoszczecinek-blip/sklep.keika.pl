@@ -23435,3 +23435,140 @@ html[data-theme="dark"] .zs-opt {
 .cart-page-item-thumb.is-drawing {
   align-self: start;
 }
+
+/* Żaluzje: zwarte podsumowanie - miniatura w nagłówku + tabela na całą szerokość (18.10.2026). */
+.zl-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+.zl-head-zoom {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  flex: none;
+}
+.zl-head-thumb {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: #eef2f6;
+  box-shadow: 0 0 0 1px rgba(19, 40, 67, 0.12);
+}
+.zl-head-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.zl-head-swatch {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+}
+.zl-head-text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.zl-head-text strong {
+  font-size: 0.98rem;
+  line-height: 1.25;
+  color: #16314e;
+}
+.zl-head-text small {
+  font-size: 0.78rem;
+  color: rgba(19, 40, 67, 0.68);
+}
+.zl-summary .zl-summary-body {
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+dl.zl-table {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  width: 100%;
+}
+.hero-product-mini-summary dl.zl-table > div,
+dl.zl-table > div {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 35%) 1fr;
+  gap: 0.6rem;
+  padding: 0.28rem 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  border-bottom: 1px solid rgba(19, 40, 67, 0.1);
+  color: rgba(19, 40, 67, 0.72);
+}
+.hero-product-mini-summary dl.zl-table > div:last-child,
+dl.zl-table > div:last-child {
+  border-bottom: 0;
+}
+dl.zl-table dt {
+  margin: 0;
+}
+.hero-product-mini-summary dl.zl-table dd,
+dl.zl-table dd {
+  margin: 0;
+  font-weight: 700;
+  color: #16314e;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.hero-product-mini-summary dl.zl-table > div.is-price-first,
+dl.zl-table > div.is-price-first {
+  margin-top: 0.35rem;
+  border-top: 1px solid rgba(19, 40, 67, 0.18);
+}
+dl.zl-table > div.is-price dd {
+  text-align: right;
+}
+.zl-table--cart {
+  margin-top: 0.35rem;
+}
+.zl-table--cart > div {
+  font-size: 0.78rem;
+}
+.zl-cart-sub {
+  display: block;
+  font-size: 0.78rem;
+  color: rgba(19, 40, 67, 0.68);
+}
+.zl-toast-compact {
+  display: grid;
+  gap: 0.5rem;
+  text-align: left;
+}
+/* Koszyk v1: miniatura żaluzji w kolumnie miniatur (64 px), bez nachodzenia na opis. */
+.cart-page-item-thumb.cart-page-item-thumb--zaluzja {
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  align-self: start;
+}
+.cart-page-item-thumb--zaluzja .zl-preview,
+.cart-page-item-thumb--zaluzja .zl-preview-visual {
+  width: 100%;
+  height: 100%;
+}
+.cart-page-item-thumb--zaluzja .zl-preview-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-product-mini-summary dl.zl-table > div.is-price,
+dl.zl-table > div.is-price {
+  grid-template-columns: minmax(0, 1fr) auto;
+}

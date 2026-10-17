@@ -41,3 +41,73 @@ export default function ZaluzjaPreview({ data, compact = false }: { data: Zaluzj
     </div>
   );
 }
+
+/** Nagłówek pozycji żaluzji w jednej linii (właściciel, 18.10.2026: "miniaturkę
+ * malutką daj u góry obok nazwy produktu - spójne i niewielkie wszystko"):
+ * miniatura zdjęcia modelu z kropką koloru lameli + nazwa i drobny opis. */
+export function ZaluzjaHead({
+  photoUrl,
+  swatchUrl,
+  swatchColor,
+  swatchLabel,
+  title,
+  sub,
+  onZoom,
+}: {
+  photoUrl: string;
+  swatchUrl: string;
+  swatchColor: string;
+  swatchLabel: string;
+  title: string;
+  sub: string;
+  onZoom?: () => void;
+}) {
+  const thumb = (
+    <span className="zl-head-thumb" aria-hidden={onZoom ? undefined : "true"}>
+      {photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={optimizeImageUrl(photoUrl, 128)} alt="" loading="lazy" />
+      ) : (
+        <span className="zl-preview-photo-empty" />
+      )}
+      <span className="zl-head-swatch" style={buildPlisyHardwareSwatchStyle(swatchUrl, swatchColor)} title={swatchLabel} />
+    </span>
+  );
+  return (
+    <div className="zl-head">
+      {onZoom && photoUrl ? (
+        <button type="button" className="zl-head-zoom" onClick={onZoom} aria-label="Powiększ zdjęcie modelu">
+          {thumb}
+        </button>
+      ) : (
+        thumb
+      )}
+      <span className="zl-head-text">
+        <strong>{title}</strong>
+        {sub ? <small>{sub}</small> : null}
+      </span>
+    </div>
+  );
+}
+
+export type ZaluzjaRow = { label: string; value: string };
+
+/** Zwarta tabela "etykieta: wartość" na całą szerokość + krótkie wiersze ceny. */
+export function ZaluzjaSpecTable({ rows, priceRows = [], className = "" }: { rows: ZaluzjaRow[]; priceRows?: ZaluzjaRow[]; className?: string }) {
+  return (
+    <dl className={`zl-table ${className}`}>
+      {rows.map((row, index) => (
+        <div key={`r${index}`}>
+          <dt>{row.label}</dt>
+          <dd>{row.value}</dd>
+        </div>
+      ))}
+      {priceRows.map((row, index) => (
+        <div key={`p${index}`} className={`is-price ${index === 0 ? "is-price-first" : ""}`}>
+          <dt>{row.label}</dt>
+          <dd>{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}

@@ -33,8 +33,7 @@ import { formatPln, type CartLineItem } from "@/lib/cart";
 import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
 import PaymentTrustTicker from "@/app/components/payment-trust-ticker";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
-import ZaluzjaPreview from "@/features/rolety/ZaluzjaPreview";
-import ZaluzjaDrawing, { ZaluzjaDetailGroups } from "@/features/rolety/ZaluzjaDrawing";
+import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPreview";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
 import InstallmentOffer from "@/app/components/installment-offer";
@@ -231,13 +230,6 @@ function ItemVisual({ item, className }: { item: CartLineItem; className: string
     return (
       <div className={className}>
         <CartWindowThumb item={item} label={`${item.productLabel} na oknie, w wybranych kolorach`} />
-      </div>
-    );
-  }
-  if (item.productSlug === "zaluzje" && item.drawing) {
-    return (
-      <div className={`${className} is-zaluzja is-drawing`}>
-        <ZaluzjaDrawing compact data={item.drawing} />
       </div>
     );
   }
@@ -605,7 +597,7 @@ export default function CartV2(props: CartV2Props) {
               </button>
             </div>
             {open && item.productSlug === "zaluzje" && item.detailGroups?.length ? (
-              <ZaluzjaDetailGroups groups={item.detailGroups} className="zl-details--cart cv2-item-specs-groups" />
+              <ZaluzjaSpecTable rows={item.detailGroups[0]?.rows || []} priceRows={item.detailGroups[1]?.rows || []} className="zl-table--cart cv2-item-specs-groups" />
             ) : open ? (
               <dl className="cv2-item-specs">
                 {item.widthMm && item.heightMm ? (

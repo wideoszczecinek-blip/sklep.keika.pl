@@ -36,9 +36,8 @@ import PlisyFabricGallery from "@/features/plisy/FabricGallery";
 import PlisyCollectionBackdrop from "@/features/plisy/CollectionBackdrop";
 import UnitAskModal from "@/features/plisy/UnitAskModal";
 import { ZaluzjeMeasureAnimation, ZaluzjeMeasureModal, ZaluzjeMountThumb } from "./ZaluzjeMeasure";
-import ZaluzjaPreview, { type ZaluzjaPreviewData } from "./ZaluzjaPreview";
-import ZaluzjaDrawing, { ZaluzjaDetailGroups } from "./ZaluzjaDrawing";
-import { zaluzjeTapeColor, type ZaluzjaDetailGroup, type ZaluzjaDrawingData } from "./zaluzja-drawing-data";
+import ZaluzjaPreview, { ZaluzjaHead, ZaluzjaSpecTable, type ZaluzjaPreviewData, type ZaluzjaRow } from "./ZaluzjaPreview";
+import { zaluzjeTapeColor, type ZaluzjaDrawingData } from "./zaluzja-drawing-data";
 import ZaluzjeSsSteps from "./ZaluzjeSsSteps";
 import ZaluzjeLadderSteps from "./ZaluzjeLadderSteps";
 import {
@@ -751,63 +750,56 @@ export default function RoletyConfiguratorPanel({
         })
         .filter((row): row is { label: string; value: string } => Boolean(row))
     : [];
-  const zlGroups: ZaluzjaDetailGroup[] =
+  // Jeden wiersz na rzecz; model, kolor i wymiar są w nagłówku (ZaluzjaHead).
+  const joinRows = (rows: ZaluzjaRow[]) => rows.map((row) => row.value).join(", ");
+  const steerRows = ssRows(ATTR_STEER);
+  const maskRows = ssRows(["26", "18", "50", "19"]);
+  const mountRows = ssRows(["22", "56"]);
+  const zlRows: ZaluzjaRow[] =
     modelFirst && selectedFabricGroup && selectedFabric
       ? [
-          {
-            title: "Model i kolor",
-            rows: [
-              { label: "Model", value: selectedModelInfoName || selectedFabricGroup.label },
-              { label: "Kolor lameli", value: `${selectedFabric.label}${selectedFabric.code ? ` (${selectedFabric.code})` : ""}` },
-              ...(colorDelta > 0 ? [{ label: "Dopłata za kolor", value: `+${formatZl(colorDelta)}${colorDeltaPct ? ` (+${colorDeltaPct} %)` : ""}` }] : []),
-            ],
-          },
-          {
-            title: "Wymiar i montaż",
-            rows: [
-              ...(dimensionsValid ? [{ label: "Wymiar żaluzji", value: `${cmT(widthNum)} × ${cmT(heightNum)} cm · ${quantityNum} szt.` }] : []),
-              ...(selectedMount ? [{ label: "Sposób montażu", value: selectedMount.label }] : []),
-              ...(measuring && zaluzjeRule && dimensionsValid
-                ? [{ label: wallMode ? "Światło (wnęka)" : "Twój pomiar", value: `${wallMode ? "" : `${zaluzjeRule.measureNoun}: `}${cmT(inputWidthMm)} × ${cmT(inputHeightMm)} cm` }]
-                : []),
-              ...(wallMode && spaceAboveMm !== null ? [{ label: "Miejsce nad wnęką", value: `${cmT(spaceAboveMm)} cm` }] : []),
-              ...(zaluzjeRule?.id === "na-skrzydlo" ? [{ label: "Nawiewnik", value: hasVent ? "tak - żaluzja pod nawiewnikiem" : "nie" }] : []),
-            ],
-          },
-          ...(ladderInfo && ladderInfo.hasField && tapeResolved && tapeResolved.kind
+          ...(selectedMount ? [{ label: "Montaż", value: selectedMount.label }] : []),
+          ...(measuring && zaluzjeRule && dimensionsValid
             ? [
                 {
-                  title: "Drabinka",
-                  rows: [
-                    { label: "Rodzaj", value: tapeResolved.kind === "cord" ? "Drabinka sznurkowa" : "Taśma" },
-                    {
-                      label: tapeResolved.kind === "cord" ? "Kolor sznurka" : "Kolor taśmy",
-                      value:
-                        tapeResolved.kind === "cord"
-                          ? "STANDARD - dobrany do koloru lameli"
-                          : tapeResolved.standard
-                            ? `STANDARD - dobrana do koloru lameli${tapeResolved.option ? `: ${ssCleanLabel(tapeResolved.option.label)}${tapeResolved.option.code ? ` (${tapeResolved.option.code})` : ""}` : " (dobierze biuro)"}`
-                            : `${ssCleanLabel(tapeResolved.option?.label || "")}${tapeResolved.option?.code ? ` (${tapeResolved.option.code})` : ""}`,
-                    },
-                  ],
+                  label: wallMode ? "Światło (wnęka)" : "Pomiar",
+                  value: `${wallMode ? "" : `${zaluzjeRule.measureNoun}: `}${cmT(inputWidthMm)} × ${cmT(inputHeightMm)} cm${wallMode && spaceAboveMm !== null ? `, nad wnęką ${cmT(spaceAboveMm)} cm` : ""}${zaluzjeRule.id === "na-skrzydlo" ? (hasVent ? ", nawiewnik: tak" : ", bez nawiewnika") : ""}`,
                 },
               ]
             : []),
-          ...(ssRows(ATTR_STEER).length ? [{ title: "Sterowanie", rows: ssRows(ATTR_STEER) }] : []),
-          ...(ssRows(ATTR_MASK).length ? [{ title: "Maskownica i mocowanie", rows: ssRows(ATTR_MASK) }] : []),
-          ...(ssModel ? [{ title: "Dodatki", rows: addonRows.length ? addonRows : [{ label: "Wybrane dodatki", value: "brak" }] }] : []),
-          ...(stackMm ? [{ title: "Pakiet po podniesieniu", rows: [{ label: "Wysokość pakietu", value: `ok. ${cmT(stackMm)} cm (${stackPercent} % wysokości żaluzji)` }] }] : []),
+          ...(ladderInfo && ladderInfo.hasField && tapeResolved && tapeResolved.kind
+            ? [
+                {
+                  label: "Drabinka",
+                  value:
+                    tapeResolved.kind === "cord"
+                      ? "sznurkowa, kolor STANDARD (dobrany do lameli)"
+                      : tapeResolved.standard
+                        ? `taśma STANDARD - dobrana do koloru lameli${tapeResolved.option ? `: ${ssCleanLabel(tapeResolved.option.label)}` : " (dobierze biuro)"}`
+                        : `taśma ${ssCleanLabel(tapeResolved.option?.label || "")}${tapeResolved.option?.code ? ` (${tapeResolved.option.code})` : ""}`,
+                },
+              ]
+            : []),
+          ...(steerRows.length ? [{ label: "Sterowanie", value: steerRows.map((row) => (row.label === "Długość pokrętła" ? `pokrętło ${row.value}` : row.label === "Kolor mechanizmu" ? `mechanizm ${row.value.toLowerCase()}` : row.value)).join(", ") }] : []),
+          ...(maskRows.length ? [{ label: "Maskownica", value: joinRows(maskRows) }] : []),
+          ...(mountRows.length ? [{ label: "Uchwyty", value: mountRows.map((row) => (row.label.startsWith("Mocowania bezinwazyjne") ? `bez wiercenia: ${row.value}` : row.value)).join(", ") }] : []),
+          ...(addonRows.length ? [{ label: "Dodatki", value: addonRows.map((row) => `${row.label}: ${row.value}`).join("; ") }] : []),
+          ...(stackMm ? [{ label: "Pakiet", value: `ok. ${cmT(stackMm)} cm po podniesieniu (${stackPercent} %)` }] : []),
         ]
       : [];
-  const zlPriceRows =
+  const pctT = (pct: number) => `+${pct.toLocaleString("pl-PL", { maximumFractionDigits: 1 })} %`;
+  const zlPriceRows: ZaluzjaRow[] =
     modelFirst && baseUnitPrice !== null
       ? [
           { label: "Żaluzja", value: formatZl(colorDelta > 0 && colorlessUnit !== null ? colorlessUnit : baseUnitPrice) },
-          ...(colorDelta > 0 ? [{ label: "Dopłata za kolor lameli", value: `+${formatZl(colorDelta)}${colorDeltaPct ? ` (${colorDeltaPct} %)` : ""}` }] : []),
-          ...priceExtraLines.map((line) => ({ label: line.title, value: `${line.label}: +${formatZl(line.amount)}` })),
-          ...(unitPrice !== null && quantityNum > 1 ? [{ label: "Cena za sztukę", value: formatZl(unitPrice) }] : []),
+          ...(colorDelta > 0 ? [{ label: `Kolor lameli${colorDeltaPct ? ` ${pctT(colorDeltaPct)}` : ""}`, value: `+${formatZl(colorDelta)}` }] : []),
+          ...(tapeAmount > 0 && tapeResolved
+            ? [{ label: `Taśma ${tapeResolved.option && !tapeResolved.standard ? ssCleanLabel(tapeResolved.option.label) : "STANDARD"} ${pctT(tapePct)}${tapeResolved.officePicks ? " (maks.)" : ""}`, value: `+${formatZl(tapeAmount)}` }]
+            : []),
+          ...ssExtraLines.map((line) => ({ label: `${line.title}: ${line.label}`, value: `+${formatZl(line.amount)}` })),
         ]
       : [];
+  const zlSub = selectedFabric ? [selectedFabric.label, dimensionsValid ? `${cmT(widthNum)} × ${cmT(heightNum)} cm` : "", `${quantityNum} szt.`].filter(Boolean).join(" · ") : "";
   const selectedUnavailable = Boolean(selectedFabricGroup) && groupUnavailable(selectedFabricGroupId);
   const cheapest = useMemo(() => {
     if (!profile || !dimensionsValid) return null as { unit: number; groupLabel: string } | null;
@@ -967,7 +959,7 @@ export default function RoletyConfiguratorPanel({
       spaceAboveMm: wallMode ? spaceAboveMm ?? 0 : 0,
       previewImageUrl: selectedFabricGroup.imageUrl || "",
       drawing: modelFirst ? zlDrawing : null,
-      detailGroups: modelFirst ? [...zlGroups, ...(zlPriceRows.length ? [{ title: "Cena za sztukę", rows: [...zlPriceRows.filter((row) => row.label !== "Cena za sztukę"), { label: "Razem za sztukę", value: formatZl(unitPrice) }] }] : [])] : undefined,
+      detailGroups: modelFirst ? [{ title: "Szczegóły", rows: zlRows }, ...(zlPriceRows.length ? [{ title: "Cena", rows: [...zlPriceRows, { label: "Razem za sztukę", value: formatZl(unitPrice) }] }] : [])] : undefined,
       qty: quantityNum,
       unitPrice,
       totalPrice,
@@ -1820,27 +1812,22 @@ export default function RoletyConfiguratorPanel({
     const tilterOption = modelFirst && ssModel ? ssOption(ssField(ssModel, "16"), ssSelection["16"]) : null;
     return (
       <div ref={summaryRef} className={`hero-product-mini-summary is-revealed ${modelFirst ? "zl-summary" : ""}`}>
-        <h3>{modelFirst ? selectedModelInfoName || profile!.productName : profile!.productName}</h3>
         {modelFirst ? (
           <div className="zl-summary-body">
-            <div className="zl-summary-visual">
-              {zlDrawing ? <ZaluzjaDrawing data={zlDrawing} label={`Tak będzie wyglądać Twoja żaluzja: ${cmT(widthNum)} × ${cmT(heightNum)} cm`} /> : null}
-              {previewData ? (
-                <button
-                  type="button"
-                  className="zl-summary-thumb"
-                  aria-label="Powiększ zdjęcie modelu"
-                  onClick={() => (previewData.photoUrl ? openZoom({ title: `${selectedModelInfoName || selectedFabricGroup.label} - ${selectedFabric.label}`, urls: [previewData.photoUrl], index: 0 }) : undefined)}
-                >
-                  <ZaluzjaPreview data={previewData} compact />
-                  <span>Zdjęcie modelu - kliknij, aby powiększyć</span>
-                </button>
-              ) : null}
-            </div>
-            <ZaluzjaDetailGroups groups={zlGroups} />
-            {zlPriceRows.length ? <ZaluzjaDetailGroups groups={[{ title: "Cena", rows: zlPriceRows }]} className="zl-details--price" /> : null}
+            <ZaluzjaHead
+              photoUrl={previewData?.photoUrl || ""}
+              swatchUrl={previewData?.swatchUrl || ""}
+              swatchColor={previewData?.swatchColor || ""}
+              swatchLabel={selectedFabric.label}
+              title={selectedModelInfoName || selectedFabricGroup.label}
+              sub={zlSub}
+              onZoom={() => (previewData?.photoUrl ? openZoom({ title: `${selectedModelInfoName || selectedFabricGroup.label} - ${selectedFabric.label}`, urls: [previewData.photoUrl], index: 0 }) : undefined)}
+            />
+            <ZaluzjaSpecTable rows={zlRows} priceRows={zlPriceRows} />
           </div>
-        ) : null}
+        ) : (
+          <h3>{profile!.productName}</h3>
+        )}
         {!modelFirst ? (
         <div className="hero-product-mini-summary-body">
           {previewData ? (

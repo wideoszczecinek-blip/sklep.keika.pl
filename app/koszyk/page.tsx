@@ -27,8 +27,7 @@ import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import RoletyConfiguratorPanel from "@/features/rolety/ConfiguratorPanel";
 import { isRoletySlug, roletyCartLeadTimeLabel, roletyFitsPaczkomat, type RoletySlug } from "@/features/rolety/shared";
 import { ssStoredOptions, ssSupplierSummaryRows } from "@/features/rolety/ss-options";
-import ZaluzjaPreview from "@/features/rolety/ZaluzjaPreview";
-import ZaluzjaDrawing, { ZaluzjaDetailGroups } from "@/features/rolety/ZaluzjaDrawing";
+import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPreview";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
@@ -427,10 +426,22 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
  * swatche ciągiem wymienione - można to zrobić ładniej i czytelniej").
  * Wymiar idzie pierwszy, bo po nim klient rozpoznaje pozycję; przy kolorach
  * stoi kropka w wybranym kolorze, jeśli go znamy. */
+/** Żaluzje: drobny opis pod nazwą pozycji - kolor lameli, wymiar, ilość. */
+function zaluzjaCartSub(item: CartLineItem): string {
+  const color = String(item.meshLabel || "").split(" — ").pop() || "";
+  const size = item.widthMm && item.heightMm ? `${(item.widthMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(item.heightMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` : "";
+  return [color, size, `${item.qty} szt.`].filter(Boolean).join(" · ");
+}
+
 function CartItemSpecs({ item }: { item: CartLineItem }) {
   // Żaluzje: szczegóły w grupach, tak jak w podsumowaniu konfiguratora.
   if (item.productSlug === "zaluzje" && item.detailGroups?.length) {
-    return <ZaluzjaDetailGroups groups={item.detailGroups} className="zl-details--cart" />;
+    return (
+      <>
+        <span className="zl-cart-sub">{zaluzjaCartSub(item)}</span>
+        <ZaluzjaSpecTable rows={item.detailGroups[0]?.rows || []} priceRows={item.detailGroups[1]?.rows || []} className="zl-table--cart" />
+      </>
+    );
   }
   const labels = cartItemFieldLabels(item.productSlug);
   const colors = resolveCartWindowThumb(item);
@@ -3646,11 +3657,6 @@ export default function CartPage() {
                       // gałęzie niżej zostają dla pozycji bez znanych kolorów.
                       <div className="cart-page-item-thumb cart-page-item-thumb--window">
                         <CartWindowThumb item={item} label={`${item.productLabel} na oknie, w wybranych kolorach`} />
-                      </div>
-                    ) : item.productSlug === "zaluzje" && item.drawing ? (
-                      // Żaluzje: rysunek z wyborów klienta (ZaluzjaDrawing).
-                      <div className="cart-page-item-thumb cart-page-item-thumb--zaluzja is-drawing">
-                        <ZaluzjaDrawing compact data={item.drawing} />
                       </div>
                     ) : item.productSlug === "zaluzje" && (item.previewImageUrl || item.imageUrl) ? (
                       // Żaluzje: zdjęcie modelu z próbką koloru lameli w rogu.
