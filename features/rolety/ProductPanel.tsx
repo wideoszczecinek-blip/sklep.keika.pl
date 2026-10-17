@@ -87,6 +87,17 @@ export default function RoletyProductPanel(props: Props) {
 
 type Stage = "category" | "width" | "variant" | "configure";
 
+// Deep-link z adresu (?model=, ?kategoria=) obowiązuje tylko przy pierwszym
+// zamontowaniu po wejściu na stronę. Każde kolejne zamontowanie (remount po
+// "Wyceń nową żaluzję") ma zaczynać od bloków - inaczej adres zapisany
+// replaceState po wyborze modelu otwierałby ten sam model w kółko.
+let urlDeepLinkConsumed = false;
+function consumeUrlDeepLink(): { model: string; kategoria: string } {
+  if (urlDeepLinkConsumed) return { model: "", kategoria: "" };
+  urlDeepLinkConsumed = true;
+  return { model: readUrlParam("model"), kategoria: readUrlParam("kategoria") };
+}
+
 function ZaluzjeFlow({ slug, initialValues, submitLabel, onSubmit, onZoom }: Props) {
   const adjustPercent = useProductPriceAdjustment(slug);
   const [profile, setProfile] = useState<RoletyProfile | null>(null);
@@ -112,15 +123,22 @@ function ZaluzjeFlow({ slug, initialValues, submitLabel, onSubmit, onZoom }: Pro
 
   const tree = useMemo(() => (profile ? buildZaluzjeTree(profile, adjustPercent) : []), [profile, adjustPercent]);
 
-  // Punkt startowy: model z "Wyceń podobną" / edycji, albo z adresu.
+  // Punkt startowy: model z "Wyceń podobną" / edycji, albo z adresu (raz).
+  const [deepLink] = useState(() => consumeUrlDeepLink());
   const [stage, setStage] = useState<Stage>(() => {
-    if (initialValues?.fabricGroupId || initialValues?.fabricGroupLabel || readUrlParam("model")) return "configure";
-    if (readUrlParam("kategoria")) return "width";
+    if (initialValues?.fabricGroupId || initialValues?.fabricGroupLabel || deepLink.model) return "configure";
+    if (deepLink.kategoria) return "width";
     return "category";
   });
-  const [categorySlug, setCategorySlug] = useState<string>(() => readUrlParam("kategoria"));
+  const [categorySlug, setCategorySlug] = useState<string>(() => deepLink.kategoria);
   const [widthMm, setWidthMm] = useState<number>(0);
-  const [modelId, setModelId] = useState<string>(() => initialValues?.fabricGroupId || readUrlParam("model"));
+  const [modelId, setModelId] = useState<string>(() => initialValues?.fabricGroupId || deepLink.model);
+  // Start od bloków = czysty adres (po "Wyceń nową" zostawał ?model=...).
+  useEffect(() => {
+    if (stage === "category") writeUrlParams({ model: null, kategoria: null });
+    else if (stage === "configure" && modelId) writeUrlParams({ model: modelId, kategoria: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Walidacja deep-linków po wczytaniu profilu: nieznany model / kategoria
   // wracają do bloków.
