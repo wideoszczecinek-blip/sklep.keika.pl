@@ -23022,3 +23022,144 @@ html[data-theme="dark"] .zs-opt {
   background: rgba(240, 248, 255, 0.05);
   border-color: rgba(194, 228, 255, 0.25);
 }
+
+/* Żaluzje: nawiewnik, pakiet po podniesieniu, limity S&S, podgląd pozycji
+   (features/rolety/ZaluzjaPreview.tsx), scena pomiaru jak w plisach. */
+.zl-measure-stage {
+  position: relative;
+}
+.zl-replay {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(19, 40, 67, 0.3);
+  background: rgba(255, 255, 255, 0.92);
+  color: #16314e;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.zl-vent {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.2rem 0 0.4rem;
+}
+.zl-vent-q {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+.zl-vent-opts {
+  display: flex;
+  gap: 0.4rem;
+}
+.zl-vent-opts .zl-chip {
+  min-width: 4rem;
+  padding: 0.4rem 0.9rem;
+}
+.zl-vent-toggle {
+  margin: 0.2rem 0 0.6rem;
+}
+.zl-stack-note {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.7rem;
+  background: rgba(22, 49, 78, 0.06);
+  border: 1px solid rgba(22, 49, 78, 0.14);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+.zl-stack-note strong {
+  font-weight: 800;
+}
+.zl-spec-issue {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.7rem;
+  background: #fff4ec;
+  border: 1px solid #f6c7a3;
+}
+.zl-preview {
+  display: grid;
+  gap: 0.55rem;
+}
+.zl-preview-visual {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  background: #f3f6f9;
+  border: 1px solid rgba(19, 40, 67, 0.12);
+}
+.zl-preview-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.zl-preview-photo-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e8edf2, #d6dde5);
+}
+.zl-preview-swatch {
+  position: absolute;
+  right: 0.45rem;
+  bottom: 0.45rem;
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 0.6rem;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 12px rgba(8, 20, 35, 0.35);
+  background-size: cover;
+  background-position: center;
+}
+.zl-preview.is-compact .zl-preview-visual {
+  max-width: none;
+}
+.zl-preview-lines {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+.zl-preview-lines > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  border-bottom: 1px solid rgba(19, 40, 67, 0.08);
+  padding-bottom: 0.2rem;
+}
+.zl-preview-lines dt {
+  opacity: 0.7;
+}
+.zl-preview-lines dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+.hero-product-mini-summary-body .zl-preview.is-compact {
+  flex: 0 0 auto;
+  width: 8.4rem;
+}
+.hero-product-added-toast .zl-preview {
+  margin: 0.6rem 0 0.8rem;
+  text-align: left;
+}
+.cart-page-item-thumb--zaluzja {
+  width: 6.6rem;
+  height: auto;
+  padding: 0;
+  background: none;
+}
+.cart-page-item-thumb--zaluzja .zl-preview-visual {
+  border-radius: 0.6rem;
+}
+.cv2-item-visual.is-zaluzja .zl-preview-visual {
+  border-radius: 0.6rem;
+}

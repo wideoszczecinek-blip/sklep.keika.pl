@@ -33,6 +33,7 @@ import { formatPln, type CartLineItem } from "@/lib/cart";
 import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
 import PaymentTrustTicker from "@/app/components/payment-trust-ticker";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
+import ZaluzjaPreview from "@/features/rolety/ZaluzjaPreview";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
 import InstallmentOffer from "@/app/components/installment-offer";
@@ -229,6 +230,13 @@ function ItemVisual({ item, className }: { item: CartLineItem; className: string
     return (
       <div className={className}>
         <CartWindowThumb item={item} label={`${item.productLabel} na oknie, w wybranych kolorach`} />
+      </div>
+    );
+  }
+  if (item.productSlug === "zaluzje" && (item.previewImageUrl || item.imageUrl)) {
+    return (
+      <div className={`${className} is-zaluzja`}>
+        <ZaluzjaPreview compact data={{ photoUrl: item.previewImageUrl || "", swatchUrl: item.imageUrl || "", swatchColor: item.fabricColor || "", swatchLabel: item.meshLabel, lines: [] }} />
       </div>
     );
   }
@@ -628,6 +636,12 @@ export default function CartV2(props: CartV2Props) {
                   <div>
                     <dt>Pomiar</dt>
                     <dd>{item.measureNote}</dd>
+                  </div>
+                ) : null}
+                {item.stackMm ? (
+                  <div>
+                    <dt>Pakiet po podniesieniu</dt>
+                    <dd>ok. {(item.stackMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm</dd>
                   </div>
                 ) : null}
                 {item.optionsNote ? (

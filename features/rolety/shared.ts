@@ -21,6 +21,7 @@ import {
 
 export type { FabricGroup, FabricSwatch, HardwareOption, MountOption, PriceTable };
 import type { SsExtraLine, SsSupplierOrder } from "./ss-options";
+import ZALUZJE_SPECS_JSON from "./ss-options/_specs.json";
 
 export const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 
@@ -595,6 +596,8 @@ export type ConfiguratorInitialValues = {
   measuredHeightMm?: number;
   /** Żaluzje: zapisany wybór opcji Sun & Shade (id[attr] -> v) - edycja z koszyka. */
   supplierOptions?: Record<string, string>;
+  /** Żaluzje, montaż na skrzydło: okno ma nawiewnik (wysokość pod nawiewnikiem). */
+  hasVent?: boolean;
   qty?: number;
   /** Edycja z koszyka: pozycja ma tylko etykiety, id dobieramy po
    * wczytaniu profilu (jak w plisach). */
@@ -637,6 +640,11 @@ export type ConfiguratorResult = {
   extrasNote: string;
   /** Żaluzje: krótki opis wybranych opcji dla klienta (koszyk). */
   optionsNote: string;
+  /** Żaluzje: nawiewnik (montaż na skrzydło) i pakiet po podniesieniu (mm). */
+  hasVent: boolean;
+  stackMm: number;
+  /** Żaluzje: zdjęcie modelu do podglądu pozycji. */
+  previewImageUrl: string;
   qty: number;
   unitPrice: number;
   totalPrice: number;
@@ -919,42 +927,47 @@ export type ZaluzjeMountRule = {
 };
 
 export const ZALUZJE_MOUNT_RULES: Record<ZaluzjeMountId, ZaluzjeMountRule> = {
+  // Jak plisy w montażu przykręcanym (STANDARD): od połowy uszczelki do połowy
+  // uszczelki, żaluzja = zmierzony wymiar (właściciel, 17.10.2026).
   "w-swietle-szyby": {
     id: "w-swietle-szyby",
-    measureWhat: "szybę między uszczelkami",
-    measureNoun: "szyba między uszczelkami",
+    measureWhat: "szybę od połowy uszczelki do połowy uszczelki",
+    measureNoun: "szyba (połowa uszczelki)",
     widthLabel: "Szerokość szyby",
     heightLabel: "Wysokość szyby",
-    addWidthMm: 20,
-    addHeightMm: 20,
-    ruleText: "Żaluzja = szyba + 2 cm na szerokość i + 2 cm na wysokość (zachodzi po 1 cm na listwy przyszybowe).",
+    addWidthMm: 0,
+    addHeightMm: 0,
+    ruleText: "Żaluzja = zmierzony wymiar. Nic nie dodajemy ani nie odejmujemy.",
     pros: ["Okno otwiera się i uchyla razem z żaluzją", "Nie zabiera miejsca na parapecie"],
     cons: ["Lamele 35-65 mm odstają od szyby o ok. 4-7 cm - sprawdź klamkę"],
     onSash: true,
     steps: [
-      "Zmierz szerokość szyby od uszczelki do uszczelki, w najszerszym miejscu.",
-      "Zmierz wysokość szyby od górnej do dolnej uszczelki.",
-      "Wpisz oba wymiary. Doliczymy po 1 cm z każdej strony - żaluzja zachodzi na listwy przyszybowe.",
+      "Zmierz szerokość od połowy uszczelki do połowy uszczelki po drugiej stronie.",
+      "Zmierz wysokość tak samo: od połowy górnej do połowy dolnej uszczelki.",
+      "Wpisz oba wymiary. Żaluzja będzie dokładnie taka - nic nie dodajemy.",
     ],
   },
+  // Jak plisy bezinwazyjne: szerokość od kreseczki do kreseczki (szyba razem z
+  // listwami), wysokość całego skrzydła; z nawiewnikiem - od jego dołu.
   "na-skrzydlo": {
     id: "na-skrzydlo",
-    measureWhat: "skrzydło po zewnętrznych krawędziach",
-    measureNoun: "skrzydło po zewnętrznych krawędziach",
-    widthLabel: "Szerokość skrzydła",
+    measureWhat: "skrzydło: szerokość od kreseczki do kreseczki, wysokość całej ramy",
+    measureNoun: "skrzydło (kreseczka / cała rama)",
+    widthLabel: "Szerokość (kreseczka-kreseczka)",
     heightLabel: "Wysokość skrzydła",
-    addWidthMm: -10,
+    addWidthMm: 0,
     addHeightMm: 0,
-    ruleText: "Żaluzja = szerokość skrzydła − 1 cm, wysokość skrzydła bez zmian.",
+    ruleText: "Żaluzja = zmierzony wymiar. Szerokość od kreseczki do kreseczki, wysokość całego skrzydła - bez odejmowania.",
     pros: ["Okno otwiera się i uchyla razem z żaluzją", "Zakrywa też ramę skrzydła - mniej szczelin światła"],
     cons: ["Lamele odstają od skrzydła - sprawdź klamkę"],
     onSash: true,
     steps: [
-      "Zmierz szerokość skrzydła po zewnętrznych krawędziach ramy, widocznych od pokoju.",
-      "Zmierz wysokość skrzydła od górnej do dolnej krawędzi ramy.",
-      "Wpisz oba wymiary. Odejmiemy 1 cm od szerokości, żeby żaluzja nie wystawała poza skrzydło.",
+      "Szerokość: od kreseczki do kreseczki - cienkiej linii, w której listwa przyszybowa łączy się z ramą skrzydła (szyba razem z listwami).",
+      "Wysokość: całe skrzydło, od górnej do dolnej krawędzi ramy skrzydła.",
+      "Wpisz oba wymiary. Żaluzja będzie dokładnie taka - nic nie odejmujemy.",
     ],
   },
+  // Założenie do potwierdzenia przez właściciela.
   "na-sciane": {
     id: "na-sciane",
     measureWhat: "wnękę okienną",
@@ -1001,9 +1014,75 @@ export function zaluzjeHandleWarning(mountId: string, slatWidthMm: number): stri
 }
 
 /** Notatka produkcyjna do pozycji koszyka / wyceny. */
-export function zaluzjeMeasureNote(mountId: string, measuredWidthMm: number, measuredHeightMm: number, blindWidthMm: number, blindHeightMm: number): string {
+export function zaluzjeMeasureNote(
+  mountId: string,
+  measuredWidthMm: number,
+  measuredHeightMm: number,
+  blindWidthMm: number,
+  blindHeightMm: number,
+  extra: { hasVent?: boolean; stackMm?: number } = {},
+): string {
   const rule = zaluzjeMountRule(mountId);
   const cm = (mm: number) => (mm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
-  if (!rule || !measuredWidthMm || !measuredHeightMm) return `wymiar żaluzji podany przez klienta ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`;
-  return `${rule.measureNoun} ${cm(measuredWidthMm)} × ${cm(measuredHeightMm)} cm → żaluzja ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`;
+  const parts: string[] = [];
+  if (!rule || !measuredWidthMm || !measuredHeightMm) parts.push(`wymiar żaluzji podany przez klienta ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`);
+  else parts.push(`${rule.measureNoun} ${cm(measuredWidthMm)} × ${cm(measuredHeightMm)} cm → żaluzja ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`);
+  if (mountId === "na-skrzydlo") parts.push(extra.hasVent ? "nawiewnik: tak, wysokość pod nawiewnikiem" : "nawiewnik: nie");
+  if (extra.stackMm && blindHeightMm > 0) parts.push(`pakiet po podniesieniu ok. ${cm(extra.stackMm)} cm (${Math.round((extra.stackMm / blindHeightMm) * 100)} %)`);
+  return parts.join("; ");
+}
+
+// ---------------------------------------------------------------------------
+// Dane techniczne modeli z panelu Sun & Shade (features/rolety/ss-options/
+// _specs.json, klucz = pid): wysokość pakietu po podniesieniu i limity
+// wymiarów / powierzchni przy sterowaniu ręcznym.
+// ---------------------------------------------------------------------------
+
+export type ZaluzjeSpec = {
+  slatsPercentage: number;
+  headrailMm: number;
+  widthMinMm: number | null;
+  widthMaxMm: number | null;
+  heightMinMm: number | null;
+  heightMaxMm: number | null;
+  maxAreaM2: number | null;
+};
+
+export function zaluzjeSpec(pid: number | string): ZaluzjeSpec | null {
+  const raw = (ZALUZJE_SPECS_JSON as Record<string, unknown>)[String(pid)];
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const num = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
+  return {
+    slatsPercentage: num(row.slatsPercentage) ?? 0,
+    headrailMm: num(row.headrailMm) ?? 0,
+    widthMinMm: num(row.widthMinMm),
+    widthMaxMm: num(row.widthMaxMm),
+    heightMinMm: num(row.heightMinMm),
+    heightMaxMm: num(row.heightMaxMm),
+    maxAreaM2: num(row.maxAreaM2),
+  };
+}
+
+/** Pakiet po podniesieniu (mm) = wysokość × procent lameli × (taśma ? 1,12 : 1) + belka górna.
+ * Dla basswood 50 mm i 1000 mm: 172 mm, z taśmą 182 mm. 0 = brak danych. */
+export function zaluzjeStackMm(pid: number | string, blindHeightMm: number, withTape: boolean): number {
+  const spec = zaluzjeSpec(pid);
+  if (!spec || !spec.slatsPercentage || blindHeightMm <= 0) return 0;
+  return Math.round(blindHeightMm * spec.slatsPercentage * (withTape ? 1.12 : 1) + spec.headrailMm);
+}
+
+/** Wymiar żaluzji poza limitami modelu u dostawcy - komunikat albo "". */
+export function zaluzjeSpecIssue(pid: number | string, widthMm: number, heightMm: number): string {
+  const spec = zaluzjeSpec(pid);
+  if (!spec || widthMm <= 0 || heightMm <= 0) return "";
+  const cm = (mm: number) => (mm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+  if (spec.widthMinMm && widthMm < spec.widthMinMm) return `Ten model ma minimalną szerokość ${cm(spec.widthMinMm)} cm.`;
+  if (spec.widthMaxMm && widthMm > spec.widthMaxMm) return `Ten model ma maksymalną szerokość ${cm(spec.widthMaxMm)} cm.`;
+  if (spec.heightMinMm && heightMm < spec.heightMinMm) return `Ten model ma minimalną wysokość ${cm(spec.heightMinMm)} cm.`;
+  if (spec.heightMaxMm && heightMm > spec.heightMaxMm) return `Ten model ma maksymalną wysokość ${cm(spec.heightMaxMm)} cm.`;
+  if (spec.maxAreaM2 && (widthMm * heightMm) / 1e6 > spec.maxAreaM2 + 1e-9) {
+    return `Ten model ma maks. ${spec.maxAreaM2.toLocaleString("pl-PL")} m² przy sterowaniu ręcznym (wpisany wymiar to ${((widthMm * heightMm) / 1e6).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} m²).`;
+  }
+  return "";
 }

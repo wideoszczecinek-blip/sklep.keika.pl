@@ -36,11 +36,13 @@ import PlisyFabricGallery from "@/features/plisy/FabricGallery";
 import PlisyCollectionBackdrop from "@/features/plisy/CollectionBackdrop";
 import UnitAskModal from "@/features/plisy/UnitAskModal";
 import { ZaluzjeMeasureAnimation, ZaluzjeMeasureModal, ZaluzjeMountThumb } from "./ZaluzjeMeasure";
+import ZaluzjaPreview, { type ZaluzjaPreviewData } from "./ZaluzjaPreview";
 import ZaluzjeSsSteps from "./ZaluzjeSsSteps";
 import {
   loadSsOptions,
   ssApplyNoDrill,
   ssBuildSupplierOrder,
+  ssCleanLabel,
   ssColorValue,
   ssCustomerSummary,
   ssDefaultSelection,
@@ -66,6 +68,8 @@ import {
   zaluzjeMeasureNote,
   zaluzjeModelForGroup,
   zaluzjeMountRule,
+  zaluzjeSpecIssue,
+  zaluzjeStackMm,
   isRoletyCassetteMount,
   joinRoletyMountLabel,
   ROLETY_COPY,
@@ -258,6 +262,9 @@ export default function RoletyConfiguratorPanel({
     Boolean(modelFirst && initialValues?.widthMm && !initialValues?.measuredWidthMm),
   );
   const [measureGuideOpen, setMeasureGuideOpen] = useState(false);
+  // Żaluzje, montaż na skrzydło: nawiewnik na górze skrzydła - wysokość mierzy
+  // się od jego dołu (żaluzja wisi pod nawiewnikiem).
+  const [hasVent, setHasVent] = useState(Boolean(initialValues?.hasVent));
   // Żaluzje: opcje dostawcy Sun & Shade dla wybranego modelu (ss-options.ts).
   const [ssModel, setSsModel] = useState<SsModelOptions | null>(null);
   const [ssSelection, setSsSelection] = useState<SsSelection>({});
@@ -423,6 +430,8 @@ export default function RoletyConfiguratorPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelFromSlug]);
 
+  const selectedModelInfoPid = modelFirst && profile && selectedFabricGroupId ? zaluzjeModelForGroup(profile, selectedFabricGroupId)?.id.replace(/^ss-/, "") || "" : "";
+
   const hasHardwareStep = Boolean(profile && profile.hardware.length > 0);
   const selectedMount = useMemo(
     () => profile?.mountOptions.find((option) => option.id === selectedMountId) || null,
@@ -558,8 +567,34 @@ export default function RoletyConfiguratorPanel({
     if (fallback) setSsSelection((prev) => ({ ...prev, "7": fallback.v }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ssModel, ssColorV]);
+  // Limity modelu u dostawcy (min/maks szerokość i wysokość, maks. m²) i
+  // pakiet po podniesieniu (features/rolety/ss-options/_specs.json).
+  const ssPid = modelFirst && ssModel ? ssModel.pid : selectedModelInfoPid;
+  const specIssue = modelFirst && ssPid && dimensionsValid ? zaluzjeSpecIssue(ssPid, widthNum, heightNum) : "";
+  const tapeChosen = Boolean(modelFirst && ssModel && ssField(ssModel, "7") && ssSelection["7"] && ssSelection["7"] !== "15");
+  const stackMm = modelFirst && ssPid && heightNum > 0 ? zaluzjeStackMm(ssPid, heightNum, tapeChosen) : 0;
+  const stackPercent = stackMm && heightNum > 0 ? Math.round((stackMm / heightNum) * 100) : 0;
   const baseUnitPrice = unitPriceFor(selectedFabricGroupId);
   const unitPrice = baseUnitPrice !== null ? Math.round((baseUnitPrice + (modelFirst ? ssExtrasTotal : 0)) * 100) / 100 : null;
+  // Dane podglądu żaluzji (podsumowanie, "Dodano do koszyka", koszyk).
+  const previewData: ZaluzjaPreviewData | null =
+    modelFirst && selectedFabricGroup && selectedFabric
+      ? {
+          photoUrl: selectedFabricGroup.imageUrl || "",
+          swatchUrl: selectedFabric.thumbnailUrl || selectedFabric.imageUrl || "",
+          swatchColor: selectedFabric.color,
+          swatchLabel: selectedFabric.label,
+          lines: [
+            { label: "Model", value: selectedFabricGroup.label },
+            { label: "Kolor lameli", value: selectedFabric.label },
+            ...(dimensionsValid ? [{ label: "Wymiar żaluzji", value: `${(widthNum / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(heightNum / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` }] : []),
+            ...(selectedMount ? [{ label: "Montaż", value: selectedMount.label }] : []),
+            ...(ssModel && ssField(ssModel, "7") ? [{ label: "Drabinka", value: tapeChosen ? `taśma ${ssCleanLabel(ssOption(ssField(ssModel, "7"), ssSelection["7"])?.label || "")}` : "sznurkowa" }] : []),
+            ...(ssModel && ssOption(ssField(ssModel, "16"), ssSelection["16"]) ? [{ label: "Sterowanie", value: ssTilterLabel(ssOption(ssField(ssModel, "16"), ssSelection["16"])!.label) }] : []),
+            ...(stackMm ? [{ label: "Pakiet po podniesieniu", value: `ok. ${(stackMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm (${stackPercent} %)` }] : []),
+          ],
+        }
+      : null;
   const totalPrice = unitPrice !== null ? Math.round(unitPrice * quantityNum * 100) / 100 : null;
   const selectedUnavailable = Boolean(selectedFabricGroup) && groupUnavailable(selectedFabricGroupId);
   const cheapest = useMemo(() => {
@@ -645,7 +680,7 @@ export default function RoletyConfiguratorPanel({
       hardwareChosen &&
       selectedFabricGroup &&
       selectedFabric &&
-      (modelFirst ? Boolean(ssModel) && !ssTapeBlocked : Boolean(chainSide)) &&
+      (modelFirst ? Boolean(ssModel) && !ssTapeBlocked && !specIssue : Boolean(chainSide)) &&
       dimensionsValid &&
       unitPrice !== null &&
       !selectedUnavailable,
@@ -708,7 +743,15 @@ export default function RoletyConfiguratorPanel({
       heightMm: heightNum,
       measuredWidthMm: measuring ? inputWidthMm : 0,
       measuredHeightMm: measuring ? inputHeightMm : 0,
-      measureNote: modelFirst ? zaluzjeMeasureNote(selectedMount.id, measuring ? inputWidthMm : 0, measuring ? inputHeightMm : 0, widthNum, heightNum) : "",
+      measureNote: modelFirst
+        ? zaluzjeMeasureNote(selectedMount.id, measuring ? inputWidthMm : 0, measuring ? inputHeightMm : 0, widthNum, heightNum, {
+            hasVent: selectedMount.id === "na-skrzydlo" && hasVent,
+            stackMm,
+          })
+        : "",
+      hasVent: selectedMount.id === "na-skrzydlo" && hasVent,
+      stackMm,
+      previewImageUrl: selectedFabricGroup.imageUrl || "",
       qty: quantityNum,
       unitPrice,
       totalPrice,
@@ -950,7 +993,41 @@ export default function RoletyConfiguratorPanel({
             <>
             {modelFirst ? (
               <div className="zl-measure-intro">
-                {measuring && zaluzjeRule ? <ZaluzjeMeasureAnimation key={zaluzjeRule.id} mountId={zaluzjeRule.id} compact /> : null}
+                {measuring && zaluzjeRule ? <ZaluzjeMeasureAnimation key={`${zaluzjeRule.id}-${hasVent}`} mountId={zaluzjeRule.id} hasVent={zaluzjeRule.id === "na-skrzydlo" && hasVent} compact /> : null}
+                {measuring && zaluzjeRule && zaluzjeRule.id === "na-skrzydlo" ? (
+                  <div className="zl-vent">
+                    <span className="zl-vent-q">Czy okno ma nawiewnik (kratkę wentylacyjną na górze skrzydła)?</span>
+                    <span className="zl-vent-opts" role="group" aria-label="Nawiewnik">
+                      <button
+                        type="button"
+                        className={`zl-chip ${!hasVent ? "is-active" : ""}`}
+                        aria-pressed={!hasVent}
+                        onClick={() => {
+                          setHasVent(false);
+                          trackShopStep("zaluzje_vent", "nie", {});
+                        }}
+                      >
+                        <strong>Nie</strong>
+                      </button>
+                      <button
+                        type="button"
+                        className={`zl-chip ${hasVent ? "is-active" : ""}`}
+                        aria-pressed={hasVent}
+                        onClick={() => {
+                          setHasVent(true);
+                          trackShopStep("zaluzje_vent", "tak", {});
+                        }}
+                      >
+                        <strong>Tak</strong>
+                      </button>
+                    </span>
+                    {hasVent ? (
+                      <p className="zl-handle-warning" role="note">
+                        Zmierz wysokość od dolnej krawędzi nawiewnika do dołu ramy skrzydła - żaluzja wisi pod nawiewnikiem.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
                 <p className="hero-product-config-hint">
                   {measuring && zaluzjeRule
                     ? `Zmierz ${zaluzjeRule.measureWhat} i wpisz wynik. Wymiar żaluzji policzymy sami.`
@@ -1035,6 +1112,17 @@ export default function RoletyConfiguratorPanel({
                   Wymiar żaluzji: <strong>{cmText(widthNum)} × {cmText(heightNum)} cm</strong>
                 </span>
                 <small>{zaluzjeRule.ruleText}</small>
+              </p>
+            ) : null}
+            {specIssue ? (
+              <p className="rolety-unavailable-note zl-spec-issue" role="alert">
+                {specIssue}
+              </p>
+            ) : null}
+            {modelFirst && stackMm && heightNum > 0 && (dimensionsValid || inputHeightMm > 0) ? (
+              <p className="zl-stack-note" role="note">
+                Pakiet po podniesieniu: <strong>ok. {cmText(stackMm)} cm</strong> ({stackPercent} % wysokości) - tyle żaluzja zasłoni u góry szyby po pełnym podciągnięciu
+                {tapeChosen ? " (z taśmą pakiet jest nieco wyższy)" : ""}.
               </p>
             ) : null}
             {handleWarning ? (
@@ -1433,12 +1521,17 @@ export default function RoletyConfiguratorPanel({
 
   function renderSummary() {
     if (!selectedFabricGroup || !selectedFabric || (!modelFirst && !chainSide)) return null;
+    const cmTextSummary = (mm: number) => (mm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
     const tilterOption = modelFirst && ssModel ? ssOption(ssField(ssModel, "16"), ssSelection["16"]) : null;
     return (
       <div ref={summaryRef} className="hero-product-mini-summary is-revealed">
         <h3>{profile!.productName}</h3>
         <div className="hero-product-mini-summary-body">
-          <div className="rolety-summary-swatch" aria-hidden="true" style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl || selectedFabricGroup.imageUrl, selectedFabric.color)} />
+          {previewData ? (
+            <ZaluzjaPreview data={previewData} compact />
+          ) : (
+            <div className="rolety-summary-swatch" aria-hidden="true" style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl || selectedFabricGroup.imageUrl, selectedFabric.color)} />
+          )}
           <dl>
             <div>
               <dt>Montaż</dt>
@@ -1485,6 +1578,15 @@ export default function RoletyConfiguratorPanel({
                 <dt>Pomiar</dt>
                 <dd>
                   {zaluzjeRule.measureNoun}: {inputWidthMm} × {inputHeightMm} mm
+                  {zaluzjeRule.id === "na-skrzydlo" ? (hasVent ? ", nawiewnik: tak (wysokość pod nawiewnikiem)" : ", bez nawiewnika") : ""}
+                </dd>
+              </div>
+            ) : null}
+            {modelFirst && stackMm ? (
+              <div>
+                <dt>Pakiet po podniesieniu</dt>
+                <dd>
+                  ok. {cmTextSummary(stackMm)} cm ({stackPercent} % wysokości)
                 </dd>
               </div>
             ) : null}
@@ -1502,6 +1604,20 @@ export default function RoletyConfiguratorPanel({
               }}
             >
               Wpisz wymiary (krok 2)
+            </button>
+          </div>
+        ) : null}
+        {specIssue && !selectedUnavailable ? (
+          <div className="plisy-missing-dims rolety-unavailable-block" role="alert">
+            <span>{specIssue}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setStepDimsCollapsed(false);
+                window.setTimeout(() => scrollStepIntoView(stepDimsRef.current), 80);
+              }}
+            >
+              Zmień wymiar
             </button>
           </div>
         ) : null}
@@ -1626,6 +1742,7 @@ export default function RoletyConfiguratorPanel({
         {measureGuideOpen ? (
           <ZaluzjeMeasureModal
             mountId={(zaluzjeMountRule(selectedMountId)?.id || "w-swietle-szyby") as ZaluzjeMountId}
+            hasVent={hasVent}
             onClose={() => setMeasureGuideOpen(false)}
             onPick={(id) => {
               const option = profile?.mountOptions.find((entry) => entry.id === id);

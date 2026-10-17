@@ -27,6 +27,7 @@ import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import RoletyConfiguratorPanel from "@/features/rolety/ConfiguratorPanel";
 import { isRoletySlug, roletyCartLeadTimeLabel, roletyFitsPaczkomat, type RoletySlug } from "@/features/rolety/shared";
 import { ssSupplierSummaryRows } from "@/features/rolety/ss-options";
+import ZaluzjaPreview from "@/features/rolety/ZaluzjaPreview";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
@@ -442,6 +443,7 @@ function CartItemSpecs({ item }: { item: CartLineItem }) {
   if (item.meshLabel) rows.push({ label: labels.mesh, value: item.meshLabel, dot: colors?.fabric });
   if (item.modelLabel) rows.push({ label: "Model okna", value: item.modelLabel });
   if (item.measureNote) rows.push({ label: "Pomiar", value: item.measureNote });
+  if (item.stackMm) rows.push({ label: "Pakiet po podniesieniu", value: `ok. ${(item.stackMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` });
   if (item.optionsNote) rows.push({ label: "Opcje", value: item.optionsNote });
   if (item.extrasNote) rows.push({ label: "Dopłaty", value: item.extrasNote });
   if (item.productSlug === "rolety-dachowe" && item.bracketCount === 2) rows.push({ label: "Uchwyty", value: "2 szt." });
@@ -3640,6 +3642,14 @@ export default function CartPage() {
                       <div className="cart-page-item-thumb cart-page-item-thumb--window">
                         <CartWindowThumb item={item} label={`${item.productLabel} na oknie, w wybranych kolorach`} />
                       </div>
+                    ) : item.productSlug === "zaluzje" && (item.previewImageUrl || item.imageUrl) ? (
+                      // Żaluzje: zdjęcie modelu z próbką koloru lameli w rogu.
+                      <div className="cart-page-item-thumb cart-page-item-thumb--zaluzja">
+                        <ZaluzjaPreview
+                          compact
+                          data={{ photoUrl: item.previewImageUrl || "", swatchUrl: item.imageUrl || "", swatchColor: item.fabricColor || "", swatchLabel: item.meshLabel, lines: [] }}
+                        />
+                      </div>
                     ) : item.productSlug === "plisy" && item.fabricColor ? (
                       // Same tinted graphic as the configurator's own
                       // preview (features/plisy/PlisaPreview.tsx), just
@@ -4937,6 +4947,7 @@ export default function CartPage() {
                   measuredWidthMm: editingItem.measuredWidthMm,
                   measuredHeightMm: editingItem.measuredHeightMm,
                   supplierOptions: editingItem.supplier?.options,
+                  hasVent: editingItem.hasVent,
                   qty: editingItem.qty,
                 }}
                 submitLabel="Zapisz zmiany"
@@ -4951,6 +4962,9 @@ export default function CartPage() {
                     supplier: result.supplier || undefined,
                     optionsNote: result.optionsNote || undefined,
                     extrasNote: result.extrasNote || undefined,
+                    hasVent: result.hasVent || undefined,
+                    stackMm: result.stackMm || undefined,
+                    previewImageUrl: result.previewImageUrl || undefined,
                     fabricColor: result.fabricColor || undefined,
                     hardwareColor: result.hardwareColor || undefined,
                     imageUrl: result.fabricThumbnailUrl || undefined,

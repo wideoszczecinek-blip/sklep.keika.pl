@@ -140,6 +140,7 @@ import {
 import RoletyLanding from "@/features/rolety/Landing";
 import ZaluzjeCatalog, { ZALUZJE_CATALOG_ID } from "@/features/rolety/ZaluzjeCatalog";
 import ZaluzjeModelLanding from "@/features/rolety/ZaluzjeModelLanding";
+import ZaluzjaPreview, { type ZaluzjaPreviewData } from "@/features/rolety/ZaluzjaPreview";
 import { findZaluzjeModel } from "@/features/rolety/shared";
 import { crmGetJson } from "@/lib/crm-get";
 import { useBackToClose } from "@/lib/use-back-to-close";
@@ -1503,6 +1504,8 @@ export default function Home({
      * that hint never saw it, so it needs a second chance right in the
      * "Dodano do koszyka!" success moment too. */
     leftover?: { meters: number; value: number };
+    /** Żaluzje: podgląd dodanej pozycji (zdjęcie modelu + kolor + parametry). */
+    preview?: ZaluzjaPreviewData;
   } | null>(null);
   // Label of whichever locked product the visitor just tried to open via a
   // real navigation attempt (menu/flyout click) - see activateProductView()
@@ -5802,6 +5805,7 @@ export default function Home({
                           <p>
                             <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
                           </p>
+                          {addToCartToast.preview ? <ZaluzjaPreview data={addToCartToast.preview} /> : null}
                           <div className="hero-product-added-toast-actions">
                             <button
                               type="button"
@@ -5869,6 +5873,9 @@ export default function Home({
                           supplier: result.supplier || undefined,
                           optionsNote: result.optionsNote || undefined,
                           extrasNote: result.extrasNote || undefined,
+                          hasVent: result.hasVent || undefined,
+                          stackMm: result.stackMm || undefined,
+                          previewImageUrl: result.previewImageUrl || undefined,
                           fabricColor: result.fabricColor || undefined,
                           hardwareColor: result.hardwareColor || undefined,
                           imageUrl: result.fabricThumbnailUrl || undefined,
@@ -5884,7 +5891,27 @@ export default function Home({
                         setCartSummary(cartSummaryWithSurcharge(items));
                         setCartIsBumping(true);
                         window.setTimeout(() => setCartIsBumping(false), 500);
-                        setAddToCartToast({ productSlug: productSlugFromSelected(displayedProduct), productLabel: result.productLabel || displayedProduct.label });
+                        setAddToCartToast({
+                          productSlug: productSlugFromSelected(displayedProduct),
+                          productLabel: result.productLabel || displayedProduct.label,
+                          preview:
+                            productSlugFromSelected(displayedProduct) === "zaluzje"
+                              ? {
+                                  photoUrl: result.previewImageUrl,
+                                  swatchUrl: result.fabricThumbnailUrl,
+                                  swatchColor: result.fabricColor,
+                                  swatchLabel: result.fabricLabel,
+                                  lines: [
+                                    { label: "Model", value: result.fabricGroupLabel },
+                                    { label: "Kolor lameli", value: result.fabricLabel },
+                                    { label: "Wymiar żaluzji", value: `${(result.widthMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(result.heightMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` },
+                                    { label: "Montaż i sterowanie", value: result.mountLabel },
+                                    ...(result.optionsNote ? [{ label: "Opcje", value: result.optionsNote }] : []),
+                                    ...(result.stackMm ? [{ label: "Pakiet po podniesieniu", value: `ok. ${(result.stackMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` }] : []),
+                                  ],
+                                }
+                              : undefined,
+                        });
                       }}
                     />
                   )
