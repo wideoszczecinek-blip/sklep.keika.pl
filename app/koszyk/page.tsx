@@ -26,7 +26,7 @@ import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/Configurat
 import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import RoletyConfiguratorPanel from "@/features/rolety/ConfiguratorPanel";
 import { isRoletySlug, roletyCartLeadTimeLabel, roletyFitsPaczkomat, type RoletySlug } from "@/features/rolety/shared";
-import { ssSupplierSummaryRows } from "@/features/rolety/ss-options";
+import { ssStoredOptions, ssSupplierSummaryRows } from "@/features/rolety/ss-options";
 import ZaluzjaPreview from "@/features/rolety/ZaluzjaPreview";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
@@ -4946,7 +4946,7 @@ export default function CartPage() {
                   heightMm: editingItem.heightMm,
                   measuredWidthMm: editingItem.measuredWidthMm,
                   measuredHeightMm: editingItem.measuredHeightMm,
-                  supplierOptions: editingItem.supplier?.options,
+                  supplierOptions: ssStoredOptions(editingItem.supplier),
                   hasVent: editingItem.hasVent,
                   spaceAboveMm: editingItem.spaceAboveMm,
                   qty: editingItem.qty,

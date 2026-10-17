@@ -192,6 +192,7 @@ function readSupplierOrder(raw: unknown): SsSupplierOrder | undefined {
     heightMm: Number(row.heightMm ?? 0) || 0,
     options: cleanOptions,
     lines,
+    ...(row.ladder ? { ladder: String(row.ladder).slice(0, 40) } : {}),
   };
 }
 

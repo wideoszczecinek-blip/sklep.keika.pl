@@ -30,6 +30,8 @@ export type SsOption = {
   ssText: string;
   costDelta: number;
   delta: number;
+  /** Dopłata procentowa od ceny żaluzji (taśmy: PCV +10 %, drewnopodobne +5 %...). */
+  deltaPercent?: number;
   img: string;
   disabled: boolean;
 };
@@ -53,6 +55,8 @@ export type SsModelOptions = {
   ssTitle: string;
   maxWidthMm: number;
   tapeAvailability: Record<string, Record<string, number>>;
+  /** Taśmy oznaczone w B2B jako "Best match" do koloru lameli (pierwsza = STANDARD). */
+  tapeBestMatch?: Record<string, string[]>;
   fields: SsField[];
 };
 
@@ -174,7 +178,78 @@ export function ssSelectionFromStored(model: SsModelOptions, stored: Record<stri
     const value = stored?.[field.attr];
     if (value && field.options.some((option) => option.v === value)) out[field.attr] = value;
   }
+  // Taśma STANDARD (do dobrania przez biuro) zapisana jako "standard".
+  if (stored?.["7"] === SS_TAPE_STANDARD && ssField(model, "7")) out["7"] = SS_TAPE_STANDARD;
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Drabinka (pole 7): sznurek / taśma, STANDARD dobrany do koloru lameli,
+// dopłaty procentowe taśm (deltaPercent) od ceny żaluzji.
+// ---------------------------------------------------------------------------
+
+/** Wartość pola 7 dla taśmy STANDARD "dobranej do koloru lameli". */
+export const SS_TAPE_STANDARD = "standard";
+
+export type SsLadderInfo = {
+  hasField: boolean;
+  cordOption: SsOption | null;
+  tapeOptions: SsOption[];
+  /** Pierwsza taśma "Best match" dla koloru lameli (dostępna) albo null. */
+  bestMatch: SsOption | null;
+  /** Dopłata STANDARD: best match albo najwyższa wśród taśm dostępnych dla koloru. */
+  standardPct: number;
+  tapePctRange: { min: number; max: number };
+};
+
+export function ssLadderInfo(model: SsModelOptions | null, colorV: string): SsLadderInfo {
+  const f7 = ssField(model, "7");
+  if (!model || !f7 || f7.role === "hidden" || f7.options.length < 2) {
+    return { hasField: false, cordOption: null, tapeOptions: [], bestMatch: null, standardPct: 0, tapePctRange: { min: 0, max: 0 } };
+  }
+  const visible = ssVisibleOptions(f7);
+  // Sznurek do wyboru tylko, gdy jest PIERWSZĄ opcją formularza (v=15). W RETRO
+  // pierwsza jest taśma - model z założenia na taśmie, "brak" pomijamy.
+  const cordOption = visible[0] && (visible[0].v === "15" || /drabinka sznurkowa/i.test(visible[0].label)) ? visible[0] : null;
+  const tapeOptions = visible.filter((option) => option !== cordOption && option.v !== "15" && !/drabinka sznurkowa/i.test(option.label));
+  const available = tapeOptions.filter((option) => !colorV || ssTapeStatus(model, colorV, option.v) !== 2);
+  const bestV = (model.tapeBestMatch?.[colorV] || []).find((v) => available.some((option) => option.v === v));
+  const bestMatch = bestV ? available.find((option) => option.v === bestV) || null : null;
+  const pcts = available.map((option) => option.deltaPercent || 0);
+  const max = pcts.length ? Math.max(...pcts) : 0;
+  const min = pcts.length ? Math.min(...pcts) : 0;
+  return { hasField: true, cordOption, tapeOptions, bestMatch, standardPct: bestMatch ? bestMatch.deltaPercent || 0 : max, tapePctRange: { min, max } };
+}
+
+export type SsTapeResolved = {
+  kind: "" | "cord" | "tape";
+  standard: boolean;
+  /** Taśma faktycznie zamawiana (wybrana albo best match); null = sznurek / do dobrania. */
+  option: SsOption | null;
+  /** Dopłata procentowa liczona do ceny. */
+  pct: number;
+  /** STANDARD bez best match - cena maksymalna, biuro dobierze. */
+  officePicks: boolean;
+};
+
+export function ssTapeResolve(model: SsModelOptions | null, selection: SsSelection, colorV: string): SsTapeResolved {
+  const info = ssLadderInfo(model, colorV);
+  const value = selection["7"] || "";
+  if (!info.hasField || !value) return { kind: "", standard: false, option: null, pct: 0, officePicks: false };
+  if (info.cordOption && value === info.cordOption.v) return { kind: "cord", standard: true, option: info.cordOption, pct: 0, officePicks: false };
+  if (value === SS_TAPE_STANDARD) {
+    if (info.bestMatch) return { kind: "tape", standard: true, option: info.bestMatch, pct: info.bestMatch.deltaPercent || 0, officePicks: false };
+    return { kind: "tape", standard: true, option: null, pct: info.standardPct, officePicks: true };
+  }
+  const option = info.tapeOptions.find((entry) => entry.v === value) || null;
+  return { kind: "tape", standard: false, option, pct: option?.deltaPercent || 0, officePicks: false };
+}
+
+/** Wybór drabinki kompletny (rodzaj + kolor) albo model bez drabinki. */
+export function ssLadderDone(model: SsModelOptions | null, selection: SsSelection, colorV: string): boolean {
+  const info = ssLadderInfo(model, colorV);
+  if (!info.hasField) return true;
+  return ssTapeResolve(model, selection, colorV).kind !== "";
 }
 
 /** Czy "Montaż bez wiercenia" był wybrany w zapisanym wyborze. */
@@ -256,6 +331,8 @@ export type SsSupplierOrder = {
   options: Record<string, string>;
   /** Czytelne linie dla biura, w kolejności pól formularza S&S (numer pola). */
   lines: SsSupplierLine[];
+  /** Wybór klienta w polu 7, gdy różni się od options["7"] ("standard" = taśma dobrana do lameli). */
+  ladder?: string;
 };
 
 /** Zamówienie u dostawcy: wszystkie pola modelu (wybrane, domyślne dla
@@ -270,15 +347,48 @@ export function ssBuildSupplierOrder(
 ): SsSupplierOrder {
   const options: Record<string, string> = { "6": color.v };
   const lines: SsSupplierLine[] = [{ attr: "6", ssLabel: "Kolor", v: color.v, ssText: ssStripPrices(color.ssText), applies: true }];
+  const tape = ssTapeResolve(model, selection, color.v);
+  const colorName = ssStripPrices(color.ssText).split(" --- ")[0];
   for (const field of model.fields) {
     const applies = ssFieldApplies(model, field, selection, ctx);
+    if (field.attr === "7" && tape.kind === "tape" && tape.standard) {
+      if (tape.option) {
+        options["7"] = tape.option.v;
+        lines.push({
+          attr: "7",
+          ssLabel: field.ssLabel,
+          v: tape.option.v,
+          ssText: `STANDARD - dobrany do koloru lameli: ${ssCleanLabel(tape.option.label)}${tape.option.code ? ` (${tape.option.code})` : ""}`,
+          applies,
+        });
+      } else {
+        // Brak listy "Best match" - nie zgadujemy koloru taśmy.
+        options["7"] = SS_TAPE_STANDARD;
+        lines.push({ attr: "7", ssLabel: field.ssLabel, v: "?", ssText: `STANDARD - do dobrania przez biuro do koloru lameli ${colorName}`, applies });
+      }
+      continue;
+    }
     const value = selection[field.attr] || field.default;
     const option = ssOption(field, value) || ssOption(field, field.default);
     options[field.attr] = option?.v || value;
-    lines.push({ attr: field.attr, ssLabel: field.ssLabel, v: option?.v || value, ssText: ssStripPrices(option?.ssText || option?.label || ""), applies });
+    const text = ssStripPrices(option?.ssText || option?.label || "");
+    lines.push({
+      attr: field.attr,
+      ssLabel: field.ssLabel,
+      v: option?.v || value,
+      ssText: field.attr === "7" && tape.kind === "cord" ? `${text} (sznurek STANDARD - dobrany do koloru lameli)` : text,
+      applies,
+    });
   }
   lines.sort((a, b) => Number(a.attr) - Number(b.attr));
-  return { name: SS_SUPPLIER_NAME, productId: model.pid, ssTitle: model.ssTitle, widthMm, heightMm, options, lines };
+  const ladder = tape.kind === "tape" && tape.standard ? SS_TAPE_STANDARD : undefined;
+  return { name: SS_SUPPLIER_NAME, productId: model.pid, ssTitle: model.ssTitle, widthMm, heightMm, options, lines, ...(ladder ? { ladder } : {}) };
+}
+
+/** Opcje do odtworzenia wyboru w konfiguratorze (edycja pozycji) - z wyborem STANDARD taśmy. */
+export function ssStoredOptions(order: SsSupplierOrder | null | undefined): Record<string, string> | undefined {
+  if (!order) return undefined;
+  return order.ladder ? { ...order.options, "7": order.ladder } : order.options;
 }
 
 /** Wiersze "Zamówienie u dostawcy" do wyceny (summary_rows) - dla biura. */
@@ -338,6 +448,18 @@ export function ssCustomerSummary(model: SsModelOptions, selection: SsSelection,
   for (const field of model.fields) {
     if (field.role === "hidden" || field.role === "fixed") continue;
     if (!ssFieldApplies(model, field, selection, ctx)) continue;
+    if (field.attr === "7") {
+      const value = selection["7"] || "";
+      if (value === SS_TAPE_STANDARD) {
+        parts.push("Taśma: STANDARD - dobrana do koloru lameli");
+        continue;
+      }
+      const opt7 = ssOption(field, value);
+      if (opt7 && /drabinka sznurkowa/i.test(opt7.label)) {
+        parts.push("Drabinka sznurkowa (kolor standard)");
+        continue;
+      }
+    }
     const option = ssOption(field, selection[field.attr]);
     if (!option) continue;
     if (field.role === "optional" && field.attr !== "56" && (option.v === field.default || /^\s*(brak|nie|standard)\b/i.test(option.label))) continue;

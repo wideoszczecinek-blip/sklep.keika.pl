@@ -141,6 +141,7 @@ import RoletyLanding from "@/features/rolety/Landing";
 import ZaluzjeCatalog, { ZALUZJE_CATALOG_ID } from "@/features/rolety/ZaluzjeCatalog";
 import ZaluzjeModelLanding from "@/features/rolety/ZaluzjeModelLanding";
 import ZaluzjaPreview, { type ZaluzjaPreviewData } from "@/features/rolety/ZaluzjaPreview";
+import { ssStoredOptions } from "@/features/rolety/ss-options";
 import { findZaluzjeModel } from "@/features/rolety/shared";
 import { crmGetJson } from "@/lib/crm-get";
 import { useBackToClose } from "@/lib/use-back-to-close";
@@ -5852,7 +5853,7 @@ export default function Home({
                               fabricGroupId: roletyLastResult.fabricGroupId,
                               fabricId: roletyLastResult.fabricId,
                               chainSide: roletyLastResult.chainSide,
-                              supplierOptions: roletyLastResult.supplier?.options,
+                              supplierOptions: ssStoredOptions(roletyLastResult.supplier),
                             }
                           : undefined
                       }

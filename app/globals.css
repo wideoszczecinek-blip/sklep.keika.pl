@@ -23205,3 +23205,44 @@ html[data-theme="dark"] .zs-opt {
   font: inherit;
   font-size: 1rem;
 }
+
+/* Żaluzje: drabinka w dwóch krokach (ZaluzjeLadderSteps.tsx). */
+.zs-grid--kinds {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+}
+.zs-kind .zs-opt-text strong {
+  font-size: 0.95rem;
+}
+.zs-standard-card {
+  position: relative;
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  margin-bottom: 0.35rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.9rem;
+  border: 2px solid rgba(19, 40, 67, 0.16);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.zs-standard-card strong {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+.zs-standard-card span {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+.zs-standard-card.is-active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #d97706;
+}
+.zs-standard-card.is-info {
+  cursor: default;
+}
+.zs-standard-card .zs-opt-delta {
+  justify-self: start;
+}

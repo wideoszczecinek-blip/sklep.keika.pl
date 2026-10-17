@@ -38,6 +38,7 @@ import UnitAskModal from "@/features/plisy/UnitAskModal";
 import { ZaluzjeMeasureAnimation, ZaluzjeMeasureModal, ZaluzjeMountThumb } from "./ZaluzjeMeasure";
 import ZaluzjaPreview, { type ZaluzjaPreviewData } from "./ZaluzjaPreview";
 import ZaluzjeSsSteps from "./ZaluzjeSsSteps";
+import ZaluzjeLadderSteps from "./ZaluzjeLadderSteps";
 import {
   loadSsOptions,
   ssApplyNoDrill,
@@ -54,7 +55,10 @@ import {
   ssTapeStatus,
   ssTilterLabel,
   ssTilterSide,
-  ssVisibleOptions,
+  ssLadderDone,
+  ssLadderInfo,
+  ssTapeResolve,
+  SS_TAPE_STANDARD,
   type SsModelOptions,
   type SsSelection,
 } from "./ss-options";
@@ -292,7 +296,14 @@ export default function RoletyConfiguratorPanel({
         // Zapisany wybór (edycja z koszyka / "Wyceń podobną") tylko przy pierwszym modelu.
         const stored = ssInitFor.current ? undefined : initialValues?.supplierOptions;
         ssInitFor.current = model.groupId;
-        setSsSelection(stored ? ssSelectionFromStored(model, stored) : ssDefaultSelection(model));
+        if (stored) setSsSelection(ssSelectionFromStored(model, stored));
+        else {
+          const fresh = ssDefaultSelection(model);
+          const ladder = ssLadderInfo(model, "");
+          // Drabinkę klient wybiera sam (krok 4); bez sznurka (RETRO) od razu taśma STANDARD.
+          if (ladder.hasField) fresh["7"] = ladder.cordOption ? "" : SS_TAPE_STANDARD;
+          setSsSelection(fresh);
+        }
         setNoDrill(stored ? ssNoDrillFromStored(model, stored) : false);
       }
     });
@@ -497,7 +508,7 @@ export default function RoletyConfiguratorPanel({
   // Na ścianę: pakiet nad wnęką liczony dla wysokości całkowitej (shared.ts).
   const wallMode = Boolean(measuring && zaluzjeRule?.stackAbove);
   const wallPid = modelFirst ? (ssModel ? ssModel.pid : selectedModelInfoPid) : "";
-  const wallTape = Boolean(modelFirst && ssModel && ssField(ssModel, "7") && ssSelection["7"] && ssSelection["7"] !== "15");
+  const wallTape = Boolean(modelFirst && ssModel && ssField(ssModel, "7") && ssSelection["7"] && ssSelection["7"] !== "15" && ssSelection["7"] !== "");
   const stackAboveMm = wallMode && wallPid && inputHeightMm > 0 ? zaluzjeStackAboveMm(wallPid, inputHeightMm, wallTape) : 0;
   const spaceLessMm = Math.max(0, Math.round((Number(String(spaceLessCm).replace(",", ".")) || 0) * 10));
   const spaceAboveMm: number | null = !wallMode
@@ -589,25 +600,42 @@ export default function RoletyConfiguratorPanel({
   const ssExtraLines = modelFirst ? ssExtras(ssModel, ssSelection, ssCtx) : [];
   const ssExtrasTotal = ssExtraLines.reduce((sum, line) => sum + line.amount, 0);
   const ssTapeBlocked = Boolean(modelFirst && ssModel && ssColorV && ssSelection["7"] && ssTapeStatus(ssModel, ssColorV, ssSelection["7"]) === 2);
-  // Zmiana koloru lameli: taśma niedostępna do nowego koloru -> pierwsza dostępna.
+  // Zmiana koloru lameli: taśma niedostępna do nowego koloru -> STANDARD
+  // (dobrany do nowego koloru; STANDARD przelicza się sam).
   useEffect(() => {
     if (!ssModel || !ssColorV) return;
     const f7 = ssField(ssModel, "7");
     const current = ssSelection["7"];
-    if (!f7 || !current || ssTapeStatus(ssModel, ssColorV, current) !== 2) return;
-    const fallback = ssVisibleOptions(f7).find((option) => ssTapeStatus(ssModel, ssColorV, option.v) !== 2);
-    if (fallback) setSsSelection((prev) => ({ ...prev, "7": fallback.v }));
+    if (!f7 || !current || current === SS_TAPE_STANDARD || ssTapeStatus(ssModel, ssColorV, current) !== 2) return;
+    setSsSelection((prev) => ({ ...prev, "7": SS_TAPE_STANDARD }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ssModel, ssColorV]);
+  // Drabinka: rodzaj + kolor wybrane (cena pojawia się dopiero potem) i
+  // dopłata procentowa taśmy od ceny żaluzji (przed dopłatami kwotowymi).
+  const ladderDone = !modelFirst || ssLadderDone(ssModel, ssSelection, ssColorV);
+  const tapeResolved = modelFirst ? ssTapeResolve(ssModel, ssSelection, ssColorV) : null;
   // Limity modelu u dostawcy (min/maks szerokość i wysokość, maks. m²) i
   // pakiet po podniesieniu (features/rolety/ss-options/_specs.json).
   const ssPid = modelFirst && ssModel ? ssModel.pid : selectedModelInfoPid;
   const specIssue = modelFirst && ssPid && dimensionsValid ? zaluzjeSpecIssue(ssPid, widthNum, heightNum) : "";
-  const tapeChosen = Boolean(modelFirst && ssModel && ssField(ssModel, "7") && ssSelection["7"] && ssSelection["7"] !== "15");
+  const tapeChosen = Boolean(tapeResolved && tapeResolved.kind === "tape");
   const stackMm = wallMode ? stackAboveMm : modelFirst && ssPid && heightNum > 0 ? zaluzjeStackMm(ssPid, heightNum, tapeChosen) : 0;
   const stackPercent = stackMm && heightNum > 0 ? Math.round((stackMm / heightNum) * 100) : 0;
   const baseUnitPrice = unitPriceFor(selectedFabricGroupId);
-  const unitPrice = baseUnitPrice !== null ? Math.round((baseUnitPrice + (modelFirst ? ssExtrasTotal : 0)) * 100) / 100 : null;
+  const tapePct = tapeResolved && tapeResolved.kind === "tape" ? tapeResolved.pct : 0;
+  const tapeAmount = baseUnitPrice !== null && tapePct > 0 ? Math.round(baseUnitPrice * tapePct) / 100 : 0;
+  const tapeExtraLine =
+    tapeAmount > 0 && tapeResolved
+      ? {
+          attr: "7%",
+          title: "Taśma",
+          label: `${tapeResolved.option ? ssCleanLabel(tapeResolved.option.label) : "STANDARD"} (+${tapePct.toLocaleString("pl-PL", { maximumFractionDigits: 1 })} %${tapeResolved.officePicks ? ", cena maks., biuro dobierze taśmę" : ""})`,
+          amount: tapeAmount,
+        }
+      : null;
+  const priceExtraLines = tapeExtraLine ? [tapeExtraLine, ...ssExtraLines] : ssExtraLines;
+  const unitPrice =
+    baseUnitPrice !== null ? Math.round((baseUnitPrice + (modelFirst ? tapeAmount + ssExtrasTotal : 0)) * 100) / 100 : null;
   // Dane podglądu żaluzji (podsumowanie, "Dodano do koszyka", koszyk).
   const previewData: ZaluzjaPreviewData | null =
     modelFirst && selectedFabricGroup && selectedFabric
@@ -622,7 +650,19 @@ export default function RoletyConfiguratorPanel({
             ...(wallMode && dimensionsValid ? [{ label: "Światło (wnęka)", value: `${(inputWidthMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(inputHeightMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` }] : []),
             ...(dimensionsValid ? [{ label: "Wymiar żaluzji", value: `${(widthNum / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(heightNum / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` }] : []),
             ...(selectedMount ? [{ label: "Montaż", value: selectedMount.label }] : []),
-            ...(ssModel && ssField(ssModel, "7") ? [{ label: "Drabinka", value: tapeChosen ? `taśma ${ssCleanLabel(ssOption(ssField(ssModel, "7"), ssSelection["7"])?.label || "")}` : "sznurkowa" }] : []),
+            ...(tapeResolved && tapeResolved.kind
+              ? [
+                  {
+                    label: "Drabinka",
+                    value:
+                      tapeResolved.kind === "cord"
+                        ? "sznurkowa, kolor STANDARD"
+                        : tapeResolved.standard
+                          ? `taśma STANDARD${tapeResolved.option ? ` (${ssCleanLabel(tapeResolved.option.label)})` : " - biuro dobierze"}`
+                          : `taśma ${ssCleanLabel(tapeResolved.option?.label || "")}`,
+                  },
+                ]
+              : []),
             ...(ssModel && ssOption(ssField(ssModel, "16"), ssSelection["16"]) ? [{ label: "Sterowanie", value: ssTilterLabel(ssOption(ssField(ssModel, "16"), ssSelection["16"])!.label) }] : []),
             ...(stackMm ? [{ label: "Pakiet po podniesieniu", value: `ok. ${(stackMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm (${stackPercent} %)` }] : []),
           ],
@@ -713,7 +753,7 @@ export default function RoletyConfiguratorPanel({
       hardwareChosen &&
       selectedFabricGroup &&
       selectedFabric &&
-      (modelFirst ? Boolean(ssModel) && !ssTapeBlocked && !specIssue : Boolean(chainSide)) &&
+      (modelFirst ? Boolean(ssModel) && !ssTapeBlocked && !specIssue && ladderDone : Boolean(chainSide)) &&
       dimensionsValid &&
       unitPrice !== null &&
       !selectedUnavailable,
@@ -760,8 +800,8 @@ export default function RoletyConfiguratorPanel({
         modelFirst && ssModel
           ? ssBuildSupplierOrder(ssModel, ssSelection, ssCtx, { v: ssColorV, ssText: `${selectedFabric.label.toLowerCase()} --- ${selectedFabric.code}` }, widthNum, heightNum)
           : null,
-      extras: ssExtraLines,
-      extrasNote: ssExtraLines.map((line) => `${line.title}: ${line.label} +${line.amount} zł`).join("; "),
+      extras: priceExtraLines,
+      extrasNote: priceExtraLines.map((line) => `${line.title}: ${line.label} +${line.amount} zł`).join("; "),
       optionsNote: modelFirst && ssModel ? ssCustomerSummary(ssModel, ssSelection, ssCtx) : "",
       hardwareId: selectedHardware?.id || "",
       hardwareLabel: selectedHardware?.label || "",
@@ -1319,10 +1359,10 @@ export default function RoletyConfiguratorPanel({
                   {copy.groupUnit === "model" ? "Model" : "Kolekcja"} {cheapest.groupLabel}. Dokładną cenę zobaczysz po wyborze {copy.groupUnit === "model" ? "modelu" : "kolekcji"} i koloru.
                 </span>
               ) : null}
-              {modelFirst && exact && ssExtraLines.length && baseUnitPrice !== null ? (
+              {modelFirst && exact && priceExtraLines.length && baseUnitPrice !== null ? (
                 <span className="zs-price-extras">
                   <span>Żaluzja: {formatZl(baseUnitPrice)}</span>
-                  {ssExtraLines.map((line) => (
+                  {priceExtraLines.map((line) => (
                     <span key={line.attr}>
                       {line.title}: {line.label} +{formatZl(line.amount)}
                     </span>
@@ -1672,10 +1712,10 @@ export default function RoletyConfiguratorPanel({
                 <dd>{ssCustomerSummary(ssModel, ssSelection, ssCtx) || "--"}</dd>
               </div>
             ) : null}
-            {modelFirst && ssExtraLines.length ? (
+            {modelFirst && priceExtraLines.length ? (
               <div>
                 <dt>Dopłaty</dt>
-                <dd>{ssExtraLines.map((line) => `${line.label} +${formatZl(line.amount)}`).join(", ")}</dd>
+                <dd>{priceExtraLines.map((line) => `${line.title === "Taśma" ? "Taśma " : ""}${line.label} +${formatZl(line.amount)}`).join(", ")}</dd>
               </div>
             ) : null}
             {dimensionsValid ? (
@@ -1822,11 +1862,26 @@ export default function RoletyConfiguratorPanel({
           <>
             {renderMountSection(1)}
             {renderDimsSection(2)}
-            {renderPriceCard()}
             {renderColorSection(3)}
+            {selectedFabric && ssModel ? (
+              <div ref={ssStepsRef}>
+                <ZaluzjeLadderSteps
+                  model={ssModel}
+                  selection={ssSelection}
+                  onChange={(v) => setSsSelection((prev) => ({ ...prev, "7": v }))}
+                  colorV={ssColorV}
+                  colorLabel={selectedFabric.label}
+                  basePrice={baseUnitPrice}
+                  firstStepNo={4}
+                />
+              </div>
+            ) : null}
+            {/* Cena dopiero po montażu, wymiarach, kolorze i drabince (właściciel, 17.10.2026). */}
+            {selectedFabric && ssModel && ladderDone ? renderPriceCard() : null}
             {selectedFabric ? (
               ssModel ? (
-                <div ref={ssStepsRef}>
+                ladderDone ? (
+                <div>
                   <ZaluzjeSsSteps
                     model={ssModel}
                     selection={ssSelection}
@@ -1839,9 +1894,12 @@ export default function RoletyConfiguratorPanel({
                     widthMm={widthNum}
                     mountId={selectedMountId}
                     colorV={ssColorV}
-                    firstStepNo={4}
+                    firstStepNo={4 + (ssLadderInfo(ssModel, ssColorV).cordOption && ssLadderInfo(ssModel, ssColorV).tapeOptions.length ? 1 : 0) + (ssLadderInfo(ssModel, ssColorV).hasField ? 1 : 0)}
                   />
                 </div>
+                ) : (
+                  <p className="hero-product-config-hint">Wybierz rodzaj drabinki - potem pokażemy cenę i pozostałe opcje.</p>
+                )
               ) : (
                 <p className="hero-product-config-hint">Wczytuję opcje żaluzji…</p>
               )

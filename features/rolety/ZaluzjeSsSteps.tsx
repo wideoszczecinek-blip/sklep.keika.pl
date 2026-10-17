@@ -18,7 +18,6 @@ import {
   ssNoneOption,
   ssOption,
   ssOptionDelta,
-  ssTapeStatus,
   ssTilterLabel,
   ssVisibleOptions,
   type SsField,
@@ -50,7 +49,6 @@ export default function ZaluzjeSsSteps({
   onNoDrillChange,
   widthMm,
   mountId,
-  colorV,
   firstStepNo,
 }: {
   model: SsModelOptions;
@@ -131,60 +129,8 @@ export default function ZaluzjeSsSteps({
     );
   }
 
-  // 4) Drabinka: sznurek czy taśma (attr 7)
-  const f7 = ssField(model, "7");
-  if (f7 && f7.role !== "hidden" && f7.options.length > 1) {
-    const visible = ssVisibleOptions(f7, selection["7"]);
-    const ladder = visible.filter((option) => /drabinka sznurkowa/i.test(option.label));
-    const tapes = visible.filter((option) => !/drabinka sznurkowa/i.test(option.label));
-    const selectedTape = ssOption(f7, selection["7"]);
-    const selectedStatus = selectedTape ? ssTapeStatus(model, colorV, selectedTape.v) : 0;
-    section(
-      "7",
-      ladder.length ? "Drabinka: sznurek czy taśma" : "Kolor taśmy",
-      f7,
-      <>
-        {ladder.length ? (
-          <div className="zs-grid zs-grid--wide">
-            {ladder.map((option) =>
-              optionCard(f7, option, { label: "Drabinka sznurkowa", note: <span className="zs-opt-note">Cienkie sznurki między lamelami - standard.</span> }),
-            )}
-          </div>
-        ) : null}
-        {tapes.length ? (
-          <>
-            <p className="zs-subtitle">{ladder.length ? "albo taśma ozdobna - wybierz kolor:" : "Wybierz kolor taśmy:"}</p>
-            <div className="zs-grid zs-grid--tapes">
-              {tapes.map((option) => {
-                const status = colorV ? ssTapeStatus(model, colorV, option.v) : 0;
-                return optionCard(f7, option, {
-                  disabled: status === 2 && selection["7"] !== option.v,
-                  badge:
-                    status === 2 ? (
-                      <span className="zs-opt-flag is-off">niedostępna do tego koloru</span>
-                    ) : status === 1 ? (
-                      <span className="zs-opt-flag">ograniczona gwarancja</span>
-                    ) : null,
-                });
-              })}
-            </div>
-          </>
-        ) : null}
-        {selectedStatus === 1 ? (
-          <p className="zl-handle-warning" role="note">
-            Ta taśma przy wybranym kolorze lameli ma ograniczoną gwarancję - jest ryzyko przebarwienia lamel.
-          </p>
-        ) : null}
-        {selectedStatus === 2 ? (
-          <p className="rolety-unavailable-note" role="alert">
-            Ta taśma nie jest dostępna do wybranego koloru lameli - wybierz inną.
-          </p>
-        ) : null}
-      </>,
-    );
-  }
-
-  // 5) Strona przekładni i hamulca (attr 16)
+  // Drabinka (pole 7) jest w ZaluzjeLadderSteps.tsx - przed ceną.
+  // Strona przekładni i hamulca (attr 16)
   const f16 = ssField(model, "16");
   if (f16 && f16.role !== "hidden") {
     section(
