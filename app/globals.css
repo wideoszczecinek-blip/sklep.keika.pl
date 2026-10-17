@@ -23246,3 +23246,11 @@ html[data-theme="dark"] .zs-opt {
 .zs-standard-card .zs-opt-delta {
   justify-self: start;
 }
+.zs-standard-card .hardware-selected-badge {
+  left: auto;
+  right: 0.6rem;
+  top: 0.6rem;
+}
+.zs-standard-card {
+  padding-right: 2.4rem;
+}
