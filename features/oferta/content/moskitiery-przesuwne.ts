@@ -53,7 +53,7 @@ export const MOSKITIERY_PRZESUWNE: OfertaContent = {
     { icon: "home", title: "Zero miejsca na otwieranie", body: "Skrzydło przesuwa się wzdłuż drzwi - idealne, gdy na zewnątrz jest barierka, roleta lub mało miejsca." },
     { icon: "wind", title: "Cichy bieg", body: "Rolki w dolnej prowadnicy i uszczelki szczotkowe na obwodzie - skrzydło nie klekocze i nie wpuszcza owadów szczelinami." },
     { icon: "ruler", title: "Pod każdą szerokość", body: "Profile prowadnic w długościach do 4,5 m - zasłonimy także szerokie drzwi tarasowe i HST." },
-    { icon: "palette", title: "Profile w kolorze okien", body: "Biały, antracyt, brązy, czarny i okleiny: złoty dąb, orzech, winchester, mahoń, turner oak." },
+    { icon: "palette", title: "Profile w kolorze okien", body: "Biały, brąz, antracyt oraz okleiny złoty dąb, orzech, mahoń i winchester - jak w moskitierach okiennych." },
   ],
   gallery: [
     { src: "/oferta/moskitiery-przesuwne/g2.jpg", alt: "Narożnik ciemnej ramy moskitiery z uszczelką szczotkową", caption: "Uszczelka szczotkowa" },
@@ -63,11 +63,11 @@ export const MOSKITIERY_PRZESUWNE: OfertaContent = {
     title: "Najważniejsze parametry",
     items: [
       { label: "System", value: "prowadnica górna i dolna z aluminium, skrzydło na rolkach, klamka obustronna, uszczelki szczotkowe" },
-      { label: "Skrzydła", value: "jedno lub dwa; szerokość i podział dobierane do drzwi" },
-      { label: "Siatka", value: "włókno szklane powlekane PVC (szara lub czarna); opcja aluminiowa lub stalowa" },
-      { label: "Kolory profili", value: "biały RAL 9016, antracyt RAL 7016, brązy RAL 8017 / 8003 / 8022 / 8028, czarny RAL 9005, surowe aluminium; okleiny złoty dąb, orzech, winchester, mahoń, turner oak" },
+      { label: "Skrzydła", value: "jedno lub dwa, z blokadą; szerokość i podział dobierane do drzwi; ramy robimy na wymiar u siebie" },
+      { label: "Siatka", value: "włókno szklane, szara lub czarna (wzmocniona); na życzenie aluminiowa odporna na pazury" },
+      { label: "Kolory profili", value: "biały, brąz, antracyt, złoty dąb, orzech, mahoń, winchester - jak w moskitierach okiennych" },
       { label: "Montaż", value: "prowadnice do ramy drzwi, ościeża lub do podłogi i nadproża; wymagany pomiar w kilku punktach" },
-      { label: "Opcje", value: "przejście dla zwierząt, wzmocniony dolny panel, poprzeczka" },
+      { label: "Opcje", value: "przejście dla zwierząt, poprzeczka usztywniająca" },
     ],
   },
   faq: [

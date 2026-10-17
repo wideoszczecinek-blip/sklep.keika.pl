@@ -1,100 +1,104 @@
 import type { OfertaContent } from "../types";
 
-// Moskitiery drzwiowe - system drzwiowy MOSKITO (moskitosystem.com.pl,
-// P.P.H. Moskito, Tarnów). Tylko fakty z katalogu komponentów i formularza
-// zamówienia producenta (2026-10-17): profil drzwiowy + poprzeczny +
-// uzupełniający, zawias, sprężyna, zamek magnetyczny, klamka, uszczelka,
-// siatka; w zamówieniu: kolor RAL, kolor siatki, wysokość poprzeczki,
-// kierunek otwierania (z zewnątrz), szerokość i wysokość. Opcje z katalogu:
-// przejście dla zwierząt, wypełnienie lexan. Bez wersji dwuskrzydłowej.
+// Moskitiery drzwiowe - spójne z opisem i FAQ na keika.pl (keika-www:
+// scripts/seed-content-v3.ts, scripts/faq/moskitiery.ts) oraz katalogiem
+// systemu drzwiowego MOSKITO (moskitosystem.com.pl): rama ze wzmocnionego
+// profilu aluminiowego z poprzeczką i listwą kopnięciową, zawiasy, magnesy
+// domykające, uchwyt, uszczelka szczotkowa; otwieranie na zewnątrz; montaż na
+// wkręty do ramy drzwi lub futryny; jedno- lub dwuskrzydłowa. Kolory profili
+// jak w moskitierach ramkowych w sklepie (7). Siatka jak w sklepie: szara lub
+// czarna wzmocniona; opcja aluminiowa.
 export const MOSKITIERY_DRZWIOWE: OfertaContent = {
   slug: "moskitiery-drzwiowe",
   path: "/moskitiery-drzwiowe",
   group: "moskitiery",
   menuLabel: "Moskitiery drzwiowe",
-  seoTitle: "Moskitiery drzwiowe na wymiar - aluminiowa rama na zawiasach | KEIKA",
+  seoTitle: "Moskitiery drzwiowe na wymiar - na zawiasach, z magnesami | KEIKA",
   seoDescription:
-    "Moskitiera drzwiowa na wymiar na drzwi balkonowe i tarasowe: aluminiowa rama na zawiasach z zamkiem magnetycznym, poprzeczka na wybranej wysokości, siatka szara lub czarna, profile w kolorach RAL i okleinach drewnopodobnych. Opcja przejścia dla zwierząt i wzmocnionego dołu. Bezpłatna wycena.",
+    "Moskitiera drzwiowa na wymiar na drzwi balkonowe i tarasowe: wzmocniona rama aluminiowa z poprzeczką i listwą kopnięciową, zawiasy, magnesy domykające, uchwyt. Jedno- lub dwuskrzydłowa, 7 kolorów profili, siatka szara lub czarna. Bezpłatna wycena.",
   eyebrow: "Moskitiery",
   title: "Moskitiery drzwiowe na wymiar",
   lead:
-    "Wychodzisz na taras, moskitiera domyka się za Tobą, komary zostają na zewnątrz. Aluminiowa rama na zawiasach, zamykana magnesem, z poprzeczką na wysokości, którą sam wybierasz - w kolorze Twoich drzwi.",
+    "Otwierasz jak drzwi, a magnesy zamykają za Tobą - wychodzisz na taras z rękami pełnymi talerzy i nie martwisz się o komary. Wzmocniona rama aluminiowa z poprzeczką i listwą kopnięciową, na wymiar Twoich drzwi balkonowych lub tarasowych, w kolorze stolarki.",
   hero: { src: "/oferta/moskitiery-drzwiowe/hero.jpg", alt: "Biała moskitiera drzwiowa z dolnym panelem na drzwiach balkonowych w drewnianej ramie" },
-  heroChips: ["Rama aluminiowa na zawiasach", "Zamek magnetyczny", "Poprzeczka na wybranej wysokości", "Kolory RAL i okleiny drewnopodobne"],
+  heroChips: ["Zawiasy i magnesy domykające", "Poprzeczka i listwa kopnięciowa", "Jedno- lub dwuskrzydłowa", "7 kolorów profili"],
   productLabel: "Moskitiery drzwiowe",
   quoteOptions: [
-    "Moskitiera drzwiowa na zawiasach (standard)",
+    "Moskitiera drzwiowa jednoskrzydłowa",
+    "Moskitiera drzwiowa dwuskrzydłowa",
     "Z przejściem dla zwierząt",
-    "Z wypełnieniem dolnym z lexanu",
     "Nie wiem - proszę o doradztwo",
   ],
-  supplier: { name: "MOSKITO", note: "system drzwiowy polskiego producenta profili moskitierowych" },
+  supplier: { name: "MOSKITO", note: "profile systemu drzwiowego polskiego producenta; ramy robimy na wymiar u siebie" },
   variants: {
-    title: "Jedna rama, trzy wykończenia",
-    intro: "Podstawa jest zawsze ta sama: rama z aluminiowych profili drzwiowych z poprzeczką, siatka, zawiasy i zamek magnetyczny. Do wyboru masz to, co dzieje się w dolnej części ramy.",
+    title: "Jedno skrzydło, dwa albo z przejściem dla zwierząt",
+    intro: "Rama jest zawsze ta sama: wzmocniony profil aluminiowy, poprzeczka usztywniająca, listwa kopnięciowa na dole, uszczelka szczotkowa na obwodzie, zawiasy, uchwyt i magnesy domykające.",
     items: [
       {
-        id: "standard",
-        name: "Standard na zawiasach",
-        tagline: "Na drzwi balkonowe i tarasowe",
-        body: "Rama z profili drzwiowych i profilu poprzecznego, nitowana w narożnikach, z siatką z włókna szklanego. Zawiasy ze sprężyną domykają skrzydło, magnesy w zamku trzymają je zamknięte, a klamka pozwala otworzyć z obu stron. Kierunek otwierania (lewe / prawe, patrząc z zewnątrz) i wysokość poprzeczki ustalamy przy zamówieniu.",
+        id: "jedno",
+        name: "Jednoskrzydłowa",
+        tagline: "Standard na drzwi balkonowe i tarasowe",
+        body: "Skrzydło na zawiasach otwiera się na zewnątrz, więc nie koliduje z drzwiami balkonowymi otwieranymi do środka. Po puszczeniu magnesy na krawędzi domykają je same. Stronę zawiasów ustalamy przy pomiarze - pod Twoje przyzwyczajenia i miejsce obok drzwi.",
         image: "/oferta/moskitiery-drzwiowe/g1.jpg",
         imageAlt: "Narożnik ramy moskitiery drzwiowej z zawiasem",
-        bullets: ["Zawiasy ze sprężyną, zamek magnetyczny, klamka", "Uszczelka szczotkowa między ramą a ościeżem", "Poprzeczka na wysokości podanej do osi"],
-        quoteOption: "Moskitiera drzwiowa na zawiasach (standard)",
+        bullets: ["Zawiasy z regulacją, magnesy domykające, uchwyt", "Poprzeczka usztywniająca i listwa kopnięciowa", "Dolna krawędź nad podłożem - bez progu"],
+        quoteOption: "Moskitiera drzwiowa jednoskrzydłowa",
+      },
+      {
+        id: "dwa",
+        name: "Dwuskrzydłowa",
+        tagline: "Na drzwi dwuskrzydłowe i szersze otwory",
+        body: "Dwa skrzydła na zawiasach, z magnesami domykającymi na styku. Rozwiązanie na drzwi dwuskrzydłowe i szersze wyjścia, gdzie jedno skrzydło byłoby za ciężkie. Przy drzwiach przesuwnych HST i PSK polecamy jednak moskitierę przesuwną albo plisowaną.",
+        image: "/oferta/moskitiery-drzwiowe/g2.jpg",
+        imageAlt: "Zamek magnetyczny na profilu moskitiery drzwiowej",
+        bullets: ["Magnesy na styku skrzydeł", "Każde skrzydło na własnych zawiasach", "Montaż do ramy drzwi lub futryny"],
+        quoteOption: "Moskitiera drzwiowa dwuskrzydłowa",
       },
       {
         id: "zwierzeta",
         name: "Z przejściem dla zwierząt",
         tagline: "Kot i pies wychodzą sami",
-        body: "W dolnym polu ramy, pod poprzeczką, montujemy przejście dla zwierząt z katalogu producenta - klapkę, którą zwierzę samo otwiera. Siatka nad poprzeczką zostaje nienaruszona.",
-        image: "/oferta/moskitiery-drzwiowe/g2.jpg",
-        imageAlt: "Zamek magnetyczny na profilu moskitiery drzwiowej",
-        bullets: ["Klapka w dolnym polu ramy", "Poprzeczka oddziela pole z klapką od siatki", "Dostępna w kolorach profili"],
-        quoteOption: "Z przejściem dla zwierząt",
-      },
-      {
-        id: "lexan",
-        name: "Z wypełnieniem dolnym z lexanu",
-        tagline: "Ochrona siatki przed pazurami i piłką",
-        body: "Zamiast siatki w dolnym polu ramy - przezroczysta płyta z lexanu (poliwęglanu). Nie zasłania światła, a wytrzymuje psa, dziecko i piłkę. Dobre rozwiązanie na drzwi tarasowe, przez które przechodzi się wiele razy dziennie.",
+        body: "W dolnym polu ramy, pod poprzeczką, montujemy klapkę dla zwierząt z katalogu producenta profili. Listwa kopnięciowa i poprzeczka przejmują uderzenia łapą, a siatka w górnym polu zostaje nienaruszona. Przy zwierzętach polecamy też siatkę wzmocnioną odporną na pazury.",
         image: "/oferta/moskitiery-drzwiowe/hero.jpg",
-        imageAlt: "Moskitiera drzwiowa z dolnym panelem z lexanu",
-        bullets: ["Płyta lexan w dolnym polu, siatka w górnym", "Można połączyć z przejściem dla zwierząt", "Montaż jak w wersji standardowej"],
-        quoteOption: "Z wypełnieniem dolnym z lexanu",
+        imageAlt: "Moskitiera drzwiowa ze wzmocnionym dolnym polem ramy",
+        bullets: ["Klapka w dolnym polu ramy", "Siatka wzmocniona lub aluminiowa na życzenie", "W kolorze profili"],
+        quoteOption: "Z przejściem dla zwierząt",
       },
     ],
   },
   features: [
-    { icon: "shield", title: "Sztywna rama", body: "Profile z lakierowanego aluminium łączone narożnikami i nitowane, poprzeczka usztywnia skrzydło - rama nie skręca się przy otwieraniu." },
-    { icon: "wind", title: "Powietrze tak, owady nie", body: "Siatka z włókna szklanego powlekanego PVC, szara lub czarna, nie ogranicza przewiewu i wytrzymuje słońce oraz deszcz." },
-    { icon: "palette", title: "W kolorze Twoich drzwi", body: "Lakier RAL: biały, antracyt, brązy, czarny, oraz okleiny strukturalne: złoty dąb, orzech, winchester, mahoń, turner oak." },
-    { icon: "ruler", title: "Pod Twoje drzwi", body: "Wymiar, kierunek otwierania i wysokość poprzeczki podajesz przy zamówieniu - albo mierzymy je przy pomiarze." },
+    { icon: "shield", title: "Wzmocniona rama", body: "Poprzeczka i listwa kopnięciowa na dole - rama wytrzymuje dzieci, psy i codzienne wychodzenie na taras bez wykrzywiania." },
+    { icon: "tools", title: "Samodomykanie", body: "Magnesy na krawędzi skrzydła zamykają moskitierę za Tobą. Zawiasy i siłę domykania regulujemy przy montażu i w serwisie po sezonie." },
+    { icon: "wind", title: "Powietrze tak, owady nie", body: "Siatka z włókna szklanego, szara lub czarna, nie ogranicza przewiewu. Przy zwierzętach - wersja wzmocniona albo aluminiowa." },
+    { icon: "palette", title: "W kolorze Twoich drzwi", body: "Biały, brąz, antracyt oraz okleiny złoty dąb, orzech, mahoń i winchester - jak w moskitierach okiennych." },
   ],
   gallery: [
     { src: "/oferta/moskitiery-drzwiowe/g3.jpg", alt: "Zawias moskitiery drzwiowej w białej ramie", caption: "Zawias w białej ramie" },
     { src: "/oferta/moskitiery-drzwiowe/g4.jpg", alt: "Narożnik ciemnej ramy moskitiery z uszczelką szczotkową", caption: "Uszczelka szczotkowa i narożnik" },
     { src: "/oferta/moskitiery-drzwiowe/g5.jpg", alt: "Zbliżenie na siatkę z włókna szklanego w czarnej ramie", caption: "Siatka z włókna szklanego" },
-    { src: "/oferta/moskitiery-drzwiowe/g6.jpg", alt: "Ekspozycja ram moskitierowych w showroomie producenta", caption: "Profile systemu MOSKITO" },
+    { src: "/oferta/moskitiery-drzwiowe/g6.jpg", alt: "Ekspozycja ram moskitierowych w showroomie producenta profili", caption: "Profile systemu MOSKITO" },
   ],
   specs: {
     title: "Najważniejsze parametry",
     items: [
-      { label: "Rama", value: "profil drzwiowy, profil poprzeczny i profil uzupełniający z aluminium lakierowanego; narożniki, nitowana" },
-      { label: "Otwieranie", value: "zawiasy ze sprężyną, zamek magnetyczny, klamka; kierunek otwierania lewy lub prawy (określany z zewnątrz)" },
-      { label: "Poprzeczka", value: "na wysokości podanej przy zamówieniu (do osi profilu)" },
-      { label: "Siatka", value: "włókno szklane powlekane PVC, kolor szary (popielaty) lub czarny" },
-      { label: "Opcje", value: "przejście dla zwierząt, wypełnienie dolne z lexanu, uszczelka szczotkowa" },
-      { label: "Kolory profili", value: "biały RAL 9016 / 9003, antracyt RAL 7016, brąz RAL 8017 / 8003 / 8022 / 8028 / 8001, czarny RAL 9005 / 9004, surowe aluminium; okleiny: złoty dąb, orzech, winchester, mahoń, turner oak" },
-      { label: "Wymiary", value: "na wymiar - szerokość i wysokość światła ościeża; do wyceny wystarczą wymiary orientacyjne" },
+      { label: "Rama", value: "wzmocniony profil aluminiowy z poprzeczką usztywniającą i dolną listwą kopnięciową, narożniki, uszczelka szczotkowa na obwodzie" },
+      { label: "Otwieranie", value: "na zawiasach, na zewnątrz; magnesy domykające, uchwyt; strona zawiasów do wyboru" },
+      { label: "Wersje", value: "jednoskrzydłowa, dwuskrzydłowa (magnesy na styku skrzydeł), z przejściem dla zwierząt" },
+      { label: "Siatka", value: "włókno szklane, szara lub czarna (wzmocniona); na życzenie aluminiowa odporna na pazury" },
+      { label: "Kolory profili", value: "biały, brąz, antracyt, złoty dąb, orzech, mahoń, winchester" },
+      { label: "Montaż", value: "na wkręty do ramy drzwi lub futryny, ok. 30 minut; mierzymy światło ościeżnicy od zewnątrz i miejsce na zawiasy" },
+      { label: "Realizacja", value: "ramy robimy na wymiar u siebie - termin podajemy przy wycenie" },
     ],
   },
   faq: [
-    { q: "W którą stronę otwiera się moskitiera drzwiowa?", a: "Na zewnątrz, na zawiasach po lewej albo po prawej stronie - stronę określamy patrząc na drzwi z zewnątrz. Jeśli na zewnątrz nie ma miejsca (barierka, roleta), proponujemy moskitierę przesuwną lub plisowaną." },
-    { q: "Po co poprzeczka i na jakiej wysokości?", a: "Poprzeczka usztywnia ramę i dzieli siatkę na dwa pola; w dolnym można zamontować przejście dla zwierząt albo lexan. Zwykle dajemy ją na wysokości poprzeczki drzwi albo klamki - podajesz wymiar do osi profilu." },
-    { q: "Czy pies nie zniszczy siatki?", a: "Zamów wypełnienie dolne z lexanu - przezroczyste, odporne na pazury - i przejście dla zwierząt, żeby pies sam wychodził, a siatka w górnym polu została cała." },
-    { q: "Jak podać wymiary?", a: "Zmierz szerokość i wysokość światła ościeża drzwi w kilku miejscach i napisz, po której stronie mają być zawiasy. Dokładny pomiar zrobimy przy montażu." },
+    { q: "W którą stronę otwiera się skrzydło?", a: "Standardowo na zewnątrz, żeby nie kolidowało z drzwiami balkonowymi otwieranymi do środka. Stronę zawiasów ustalamy przy pomiarze." },
+    { q: "Czy pasuje do drzwi z roletą zewnętrzną?", a: "Zwykle tak - mocujemy ją do ramy drzwi lub futryny, a roleta pracuje w swoich prowadnicach. Liczy się odstęp między prowadnicą rolety a ramą; przy ciasnych ościeżach proponujemy moskitierę plisowaną albo przesuwną." },
+    { q: "Czy skrzydło wytrzyma dzieci i psa?", a: "Tak - ramę wzmacniamy poprzeczką, a na dole montujemy listwę kopnięciową, która przejmuje uderzenia łapą i kopnięcia. Przy zwierzętach polecamy siatkę wzmocnioną." },
+    { q: "Czy jest próg, o który można się potknąć?", a: "Nie - dolna krawędź skrzydła zostaje nad podłożem. Jeśli zależy Ci na całkowicie płaskim przejściu na bardzo szerokich drzwiach, rozważ moskitierę plisowaną." },
+    { q: "Jak zmierzyć drzwi?", a: "Szerokość i wysokość światła ościeżnicy od zewnątrz oraz miejsce na zawiasy. Do wyceny wystarczą wymiary orientacyjne, dokładny pomiar zrobimy przy montażu." },
+    { q: "Czy da się ją zdjąć na zimę?", a: "Tak, skrzydło zdejmuje się z zawiasów. Nie jest to konieczne, ale wiele osób tak robi, żeby zimą nie zawadzało przy drzwiach." },
+    { q: "Co wybrać do szerokich drzwi tarasowych?", a: "Przy drzwiach przesuwnych HST i PSK lepsza będzie moskitiera przesuwna albo plisowana - skrzydło na zawiasach przy dużych szerokościach staje się ciężkie i niewygodne." },
   ],
   related: ["moskitiery-przesuwne", "moskitiery-plisowane", "rolety-zewnetrzne"],
-  ownerNote: "Treść ograniczona do katalogu i formularza zamówienia MOSKITO (profile, zawias + sprężyna, zamek magnetyczny, klamka, uszczelka, poprzeczka, przejście dla zwierząt, lexan, kolory). Usunięto: otwieranie do wewnątrz, wersję dwuskrzydłową, regulację zawiasów, panel w kolorze ramy, montaż na dystansach. Zdjęcia to detale z moskitosystem.com.pl - warto dołożyć realizację na tarasie.",
+  ownerNote: "Treść ujednolicona z opisem i FAQ moskitier drzwiowych na keika.pl (poprzeczka, listwa kopnięciowa, magnesy, zawiasy, otwieranie na zewnątrz, 1 lub 2 skrzydła, 7 kolorów jak w ramkowych). Zdjęcia to detale z moskitosystem.com.pl - warto dołożyć realizację na tarasie.",
 };
