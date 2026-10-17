@@ -1,0 +1,108 @@
+import type { OfertaContent } from "../types";
+
+// Markizy ALUPROF (dawniej SELT): Palladio, Madeira, Casablanca, Italia,
+// Italia kasetowa / poręczowa, Australia, Bora, Corsica, Dakar, Jamaica.
+// Liczby z kart produktów aluprof.com (2026-10-17).
+export const MARKIZY: OfertaContent = {
+  slug: "markizy",
+  path: "/markizy",
+  group: "taras",
+  menuLabel: "Markizy",
+  seoTitle: "Markizy tarasowe i balkonowe ALUPROF na wymiar - kasetowe, półkasetowe | KEIKA",
+  seoDescription:
+    "Markizy na wymiar: tarasowe Palladio i Madeira (do 7 m, wysięg 3,6 m), kasetowa Casablanca, balkonowa Italia. 150 wzorów tkanin akrylowych, napęd elektryczny, LED, czujnik wiatru. Wycena z pomiarem i montażem.",
+  eyebrow: "Taras i balkon",
+  title: "Markizy tarasowe i balkonowe na wymiar",
+  lead:
+    "Cień dokładnie tam, gdzie siedzisz. Markiza rozkłada się w kilka sekund, a po złożeniu chowa tkaninę w kasecie. Dobierzemy model do szerokości tarasu, sposobu montażu i tego, czy ma zostać ręczna, czy w pełni automatyczna.",
+  hero: { src: "/oferta/markizy/hero.jpg", alt: "Markiza kasetowa Madeira nad tarasem domu z widokiem na jezioro" },
+  heroChips: ["Do 7 m szerokości, wysięg 3,6 m", "150 wzorów tkanin akrylowych", "Napęd ręczny lub elektryczny", "LED i czujnik wiatru"],
+  productLabel: "Markizy",
+  quoteOptions: [
+    "Markiza tarasowa półkasetowa (Palladio)",
+    "Markiza tarasowa kasetowa (Madeira / Casablanca)",
+    "Markiza balkonowa / okienna (Italia)",
+    "Nie wiem - proszę o doradztwo",
+  ],
+  supplier: { name: "ALUPROF", note: "markizy dawnej marki SELT, produkcja w Polsce" },
+  variants: {
+    title: "Który model na Twój taras?",
+    intro: "Wszystkie mają konstrukcję z aluminium ekstrudowanego i ramiona z łańcuchem Flyera. Różnią się zabudową tkaniny, maksymalną szerokością i stylem.",
+    items: [
+      {
+        id: "palladio",
+        name: "Palladio",
+        tagline: "Półkaseta, najpopularniejsza tarasowa",
+        body: "Zaokrąglone boki i front, półkaseta chroniąca zwiniętą tkaninę. Do 7 m szerokości i 3,6 m wysięgu, opcjonalne podpory teleskopowe zwiększające odporność na wiatr. Z falbaną lub bez.",
+        image: "/oferta/markizy/g1.jpg",
+        imageAlt: "Markiza Palladio nad tarasem domu jednorodzinnego z basenem",
+        bullets: ["Szerokość do 7,0 m, wysięg do 3,6 m", "Kąt pochylenia 5–50°", "Napęd ręczny (korba) lub silnik"],
+      },
+      {
+        id: "madeira",
+        name: "Madeira",
+        tagline: "Nowość: kaseta, LED w standardzie",
+        body: "Minimalistyczna, geometryczna forma na kwadratowej belce nośnej. Półkaseta chroni tkaninę, a w maskownicy i ramionach jest oświetlenie LED - taras działa także po zmroku. Silnik z awaryjnym zwijaniem korbą.",
+        image: "/oferta/markizy/madeira.jpg",
+        imageAlt: "Markiza Madeira nad tarasem z meblami ogrodowymi",
+        bullets: ["Szerokość do 6,0 m, wysięg do 3,6 m", "Oświetlenie LED w standardzie", "Kąt pochylenia 5–50°"],
+      },
+      {
+        id: "casablanca",
+        quoteOption: "Markiza tarasowa kasetowa (Madeira / Casablanca)",
+        name: "Casablanca",
+        tagline: "Pełna, zamykana kaseta",
+        body: "Po złożeniu tkanina i ramiona są całkowicie schowane w aluminiowej kasecie z dodatkowymi uszczelkami. Najlepsza ochrona tkaniny i najczystsza forma na nowoczesnej elewacji.",
+        image: "/oferta/markizy/casablanca.jpg",
+        imageAlt: "Markiza kasetowa Casablanca nad tarasem z leżakami",
+        bullets: ["Szerokość do 6,0 m, wysięg do 3,6 m", "Kąt pochylenia 5–40°", "Pokrywy boczne z aluminium"],
+      },
+      {
+        id: "italia",
+        quoteOption: "Markiza balkonowa / okienna (Italia)",
+        name: "Italia",
+        tagline: "Balkon i okno, ekonomiczna",
+        body: "Markiza z ramionami mocowanymi do ściany i sprężyną napinającą tkaninę. Do zacieniania okien, małych balkonów, witryn. Wersja kasetowa i poręczowa (mocowana do barierki balkonu).",
+        image: "/oferta/markizy/italia.jpg",
+        imageAlt: "Markiza Italia kasetowa nad oknami domu",
+        bullets: ["Szerokość do 5,0 m, wysięg do 1,8 m", "Montaż do ściany, sufitu lub we wnęce", "Obsługa ręczna lub elektryczna"],
+      },
+    ],
+  },
+  features: [
+    { icon: "sun", title: "Tkaniny akrylowe", body: "150 wzorów barwionych w masie - nie blakną, odpychają wodę i brud, zatrzymują do 99% promieniowania UV." },
+    { icon: "wind", title: "Bezpieczna przy wietrze", body: "Czujnik wiatru sam zwija markizę, a podpory teleskopowe (Palladio) usztywniają ją przy większych wysięgach." },
+    { icon: "clock", title: "Automatyka i LED", body: "Silnik z pilotem, czujnik słońca rozkładający markizę w upał, oświetlenie LED w ramionach - wieczory na tarasie bez dodatkowych lamp." },
+    { icon: "palette", title: "Konstrukcja w kolorze elewacji", body: "Standardowo biel, kość słoniowa, srebrny, brąz i antracyt strukturalny; na życzenie dowolny kolor RAL." },
+    { icon: "home", title: "Montaż do ściany, sufitu lub krokwi", body: "Uchwyty ścienne, sufitowe i krokwiowe - dobierzemy do konstrukcji domu i miejsca nad drzwiami tarasowymi." },
+    { icon: "tools", title: "Pomiar i montaż u Ciebie", body: "Sprawdzamy wysokość montażu, kąt nachylenia i przeszkody (okap, lampy), żeby cień padał tam, gdzie stół." },
+  ],
+  gallery: [
+    { src: "/oferta/markizy/g2.jpg", alt: "Markiza Palladio nad tarasem hotelu z widokiem na morze", caption: "Palladio w obiekcie hotelowym" },
+    { src: "/oferta/markizy/g3.jpg", alt: "Markiza tarasowa nad długim stołem ogrodowym", caption: "Markiza nad jadalnią ogrodową" },
+    { src: "/oferta/markizy/palladio.jpg", alt: "Rendering markizy Palladio z rozłożonymi ramionami", caption: "Ramiona z łańcuchem Flyera" },
+    { src: "/oferta/markizy/casablanca.jpg", alt: "Markiza Casablanca z pełną kasetą nad drewnianym tarasem", caption: "Casablanca - pełna kaseta" },
+  ],
+  specs: {
+    title: "Najważniejsze parametry",
+    items: [
+      { label: "Palladio", value: "półkaseta, szer. do 7,0 m, wysięg do 3,6 m, kąt 5–50°, falbana, podpory teleskopowe Standard / Plus" },
+      { label: "Madeira (nowość)", value: "kaseta, szer. do 6,0 m, wysięg do 3,6 m, kąt 5–50°, LED w standardzie, kwadratowa belka nośna" },
+      { label: "Casablanca", value: "pełna zamykana kaseta, szer. do 6,0 m, wysięg do 3,6 m, kąt 5–40°" },
+      { label: "Italia / Italia kasetowa / poręczowa", value: "balkonowa, szer. do 5,0 m, wysięg do 1,8 m, ramiona ze sprężyną, kąt do 90°" },
+      { label: "Pozostałe modele", value: "Australia, Bora, Corsica, Dakar, Jamaica - dobierane do nietypowych tarasów" },
+      { label: "Tkaniny", value: "akrylowe, 150 wzorów (jednolite, pasy, melanże), UV do 99%" },
+      { label: "Kolory konstrukcji", value: "RAL 9010, 1015, 9006, 8014, FSM 71319 w standardzie; pozostałe RAL i struktury za dopłatą" },
+      { label: "Napęd", value: "korba lub silnik 230 V z pilotem; czujnik wiatru, słońca, LED" },
+    ],
+  },
+  faq: [
+    { q: "Jaki wysięg wybrać?", a: "Cień przesuwa się w ciągu dnia, więc wysięg powinien być o ok. 50 cm większy niż głębokość miejsca, które chcesz zacienić. Do typowego stołu z krzesłami wystarcza 2,5–3 m." },
+    { q: "Czy markizę można zostawić rozłożoną na deszcz?", a: "Tkanina akrylowa jest impregnowana i przy nachyleniu min. 14° odprowadza lekki deszcz. Przy ulewie i wietrze markizę zwijamy - czujnik wiatru robi to sam." },
+    { q: "Ręczna czy elektryczna?", a: "Do 4 m szerokości korba wystarcza. Przy większych markizach, codziennym używaniu i czujnikach polecamy silnik - jest cichy i ma awaryjne zwijanie korbą przy braku prądu." },
+    { q: "Czy markizę da się zamontować na ociepleniu?", a: "Tak, używamy kotew chemicznych i dystansów przenoszących obciążenie na ścianę nośną. Przy pomiarze sprawdzamy grubość ocieplenia i rodzaj ściany." },
+    { q: "Ile trwa realizacja?", a: "Termin zależy od modelu i tkaniny; podajemy go przy wycenie i potwierdzamy po pomiarze." },
+  ],
+  related: ["zaluzje-fasadowe", "rolety-zewnetrzne", "moskitiery-przesuwne"],
+  ownerNote: "Zdjęcia: aluprof.com (Madeira, Palladio, Casablanca, Italia kasetowa). SELT -> ALUPROF: na stronie tylko ALUPROF.",
+};

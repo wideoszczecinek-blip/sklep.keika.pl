@@ -1,0 +1,95 @@
+import type { OfertaContent } from "../types";
+
+// Rolety dzień-noc - te same systemy BESTA co rolety tradycyjne (MINI D-N,
+// SMALL, KOMBI dzień-noc, RS, MG S, MAXI) z tkaniną w pasy.
+export const ROLETY_DZIEN_NOC: OfertaContent = {
+  slug: "rolety-dzien-noc",
+  path: "/rolety-dzien-noc",
+  group: "wewnetrzne",
+  menuLabel: "Rolety dzień noc",
+  seoTitle: "Rolety dzień-noc na wymiar - w kasecie i wolnowiszące | KEIKA",
+  seoDescription:
+    "Rolety dzień i noc na wymiar: w kasecie zwykłej na skrzydle okna, w kasecie z prowadnicami przestrzennymi i wolnowiszące. Pasy przezierne i pełne, także zaciemniające. Bezpłatna wycena i pomiar.",
+  eyebrow: "Osłony wewnętrzne",
+  title: "Rolety dzień-noc na wymiar",
+  lead:
+    "Jedna roleta, dwa tryby: przesuń pasy i w sekundę przejdź od pełnego światła do prywatności. Robimy je w kasecie na skrzydle, z prowadnicami przestrzennymi oraz jako wolnowiszące na całe okno.",
+  hero: { src: "/oferta/rolety-dzien-noc/hero.jpg", alt: "Roleta dzień-noc w ciemnym wnętrzu, pasy pełne i przezierne" },
+  heroChips: ["Kaseta zwykła i przestrzenna", "Wolnowiszące do dużych okien", "Pasy klasyczne, zaciemniające, drewnopodobne", "Montaż bez wiercenia"],
+  productLabel: "Rolety dzień-noc",
+  quoteOptions: [
+    "Dzień-noc w kasecie zwykłej (na skrzydle)",
+    "Dzień-noc w kasecie z prowadnicami przestrzennymi",
+    "Dzień-noc wolnowisząca (ściana / sufit)",
+    "Nie wiem - proszę o doradztwo",
+  ],
+  supplier: { name: "BESTA", note: "systemy kasetowe i wolnowiszące z profilem na tkaninę dzień-noc" },
+  variants: {
+    title: "Wybierz sposób montażu",
+    intro: "Tkanina dzień-noc jest grubsza od zwykłej, dlatego używamy kaset i profili zaprojektowanych właśnie pod nią - pasy przesuwają się płynnie i nie zahaczają o kasetę.",
+    items: [
+      {
+        id: "kaseta",
+        name: "W kasecie zwykłej",
+        tagline: "Na skrzydle, bez wiercenia",
+        body: "Aluminiowa kaseta z profilem zaczepowym dla tkaniny dzień-noc i płaskie prowadnice przy szybie. Roleta porusza się razem ze skrzydłem - uchylasz i otwierasz okno bez przeszkód.",
+        image: "/oferta/rolety-dzien-noc/kaseta.jpg",
+        imageAlt: "Kaseta SMALL z tkaniną dzień-noc na skrzydle okna",
+        bullets: ["Do 160 cm szerokości i 250 cm wysokości", "Kaseta w kolorze białym, brązowym lub w okleinie drewnopodobnej", "Montaż na taśmie piankowej, wieszakach lub wkrętach"],
+      },
+      {
+        id: "przestrzenna",
+        name: "W kasecie z prowadnicami przestrzennymi",
+        tagline: "Kaseta KOMBI, pełne prowadzenie",
+        body: "Kaseta z wypukłym profilem osłonowym i kieszenią na tkaninę, a prowadnice odsunięte od szyby - pasuje do okien z głębokimi listwami i drzwi balkonowych. Pasy zaciemniające w tej wersji dają wyraźnie ciemniejsze wnętrze.",
+        image: "/oferta/rolety-dzien-noc/przestrzenna.jpg",
+        imageAlt: "Roleta dzień-noc w kasecie KOMBI z prowadnicą boczną",
+        bullets: ["Wieszaki sprężyste lub nastawne - bez wiercenia", "Opcjonalne prowadzenie żyłkowe", "Te same komponenty co w rolecie gładkiej - łatwy serwis"],
+      },
+      {
+        id: "wolnowiszaca",
+        name: "Wolnowisząca",
+        tagline: "Na całe okno lub drzwi tarasowe",
+        body: "Tkanina dzień-noc na rurze z profilem osłonowym i kołnierzem prowadzącym materiał (system MG S) albo z ozdobnymi uchwytami (RS, BXL). Kilka rolet można zestawić obok siebie z minimalnym odstępem.",
+        image: "/oferta/rolety-dzien-noc/wolnowiszaca.jpg",
+        imageAlt: "Roleta dzień-noc wolnowisząca z szarym uchwytem na ciemnym oknie",
+        bullets: ["Montaż do ściany lub sufitu", "Łańcuszek albo silnik z pilotem", "Łącznik szyny do zestawów kilku rolet"],
+      },
+    ],
+  },
+  features: [
+    { icon: "sun", title: "Światło pod kontrolą", body: "Pasy pełne i przezierne ustawisz tak, by wpuścić światło, ale odciąć widok z zewnątrz - albo zamknąć całkiem." },
+    { icon: "eye", title: "Prywatność bez ciemności", body: "W ciągu dnia wnętrze zostaje jasne, a z ulicy nie widać, co dzieje się w środku. Idealne do parteru i biur." },
+    { icon: "palette", title: "Kolekcje tkanin", body: "Klasyczne jednolite, drewnopodobne, dekoracyjne ze srebrną nicią, naturalne z domieszką lnu i zaciemniające z pełnym pasem." },
+    { icon: "tools", title: "Montaż w jeden dzień", body: "Rolety naokienne zakładamy bez wiercenia. Przy pomiarze sprawdzamy klamki, uchył i listwy, żeby nic nie kolidowało." },
+  ],
+  gallery: [
+    { src: "/oferta/rolety-dzien-noc/g1.jpg", alt: "Biuro z roletami dzień-noc na dużych oknach", caption: "Dzień-noc w biurze" },
+    { src: "/oferta/rolety-dzien-noc/g2.jpg", alt: "Salon z roletami dzień-noc na całej ścianie okien", caption: "Rolety wolnowiszące na przeszkleniu" },
+    { src: "/oferta/rolety-dzien-noc/g3.jpg", alt: "Zbliżenie kasety SMALL z tkaniną dzień-noc i łańcuszkiem", caption: "Kaseta na skrzydle" },
+    { src: "/oferta/rolety-dzien-noc/kombi.jpg", alt: "Kaseta KOMBI z tkaniną dzień-noc, widok z boku", caption: "Kaseta KOMBI" },
+    { src: "/oferta/rolety-dzien-noc/g4.jpg", alt: "Roleta dzień-noc w kasecie KOMBI z prowadnicą przy szybie", caption: "Prowadnica przestrzenna" },
+    { src: "/oferta/rolety-dzien-noc/mgs.jpg", alt: "Roleta wolnowisząca MG S z kołnierzem prowadzącym tkaninę dzień-noc", caption: "System MG S z kołnierzem" },
+    { src: "/oferta/rolety-dzien-noc/g6.jpg", alt: "Uchwyt rolety wolnowiszącej z tkaniną dzień-noc", caption: "Uchwyt systemu RS" },
+    { src: "/oferta/rolety-dzien-noc/g5.jpg", alt: "Zbliżenie mechanizmu łańcuszkowego rolety dzień-noc", caption: "Mechanizm łańcuszkowy" },
+  ],
+  specs: {
+    title: "Najważniejsze parametry",
+    items: [
+      { label: "Kaseta zwykła (MINI D-N / SMALL)", value: "do 160 × 250 cm, profile aluminiowe lub PCV, rura ø15–17 mm" },
+      { label: "Kaseta KOMBI (przestrzenna)", value: "profil osłonowy wypukły z kieszenią, wieszaki sprężyste lub nastawne, prowadzenie żyłkowe" },
+      { label: "Wolnowiszące (RS / MG S / BXL / MAXI)", value: "do dużych przeszkleń, montaż do ściany lub sufitu, łańcuszek lub silnik" },
+      { label: "Pasy tkaniny", value: "standardowe, szerokie i wąskie; kolekcje klasyczne, drewnopodobne, dekoracyjne, naturalne (len) i zaciemniające" },
+      { label: "Kolory profili", value: "biały, brąz, dąb oraz okleiny drewnopodobne pod stolarkę" },
+      { label: "Sterowanie", value: "łańcuszek, sprężyna, silnik 230 V lub akumulatorowy" },
+    ],
+  },
+  faq: [
+    { q: "Czy roleta dzień-noc zaciemni sypialnię?", a: "Standardowe pasy pełne są półprzezierne. Do sypialni wybierz kolekcję zaciemniającą (pełny pas blokuje światło) i kasetę z prowadnicami przestrzennymi - wtedy zostaje tylko delikatna poświata przy krawędziach." },
+    { q: "Czym różni się od zwykłej rolety w kasecie?", a: "Kasetą - tkanina dzień-noc nawija się grubiej, więc kaseta ma większą kieszeń i profil zaczepowy. Dlatego nie da się wymienić materiału w zwykłej rolecie na dzień-noc bez zmiany kasety." },
+    { q: "Czy pasy da się ustawić dokładnie na wprost siebie?", a: "Tak, hamulec łańcuszkowy zatrzymuje roletę w dowolnym położeniu. Pełne zamknięcie uzyskasz, gdy pasy pełne nachodzą na siebie." },
+    { q: "Ile okien możecie zrobić w jednym kolorze?", a: "Dowolną liczbę - tkaniny zamawiamy z jednej partii, żeby odcień był identyczny na wszystkich oknach w pomieszczeniu." },
+  ],
+  related: ["rolety-tradycyjne", "rolety-rzymskie", "zaluzje-pionowe"],
+  ownerNote: "Zdjęcia z kart systemów BESTA; hero to panorama 1920×670 z besta.wroc.pl (kadr przycięty na telefonie).",
+};

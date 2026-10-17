@@ -13,6 +13,8 @@
 // swatch colors or prices which are meant to be self-service in the CRM.
 // 2026-09-19 (owner: "możesz podpiąć te dwa produkty już w menu"): rolety
 // dachowe and plisy dachowe joined the live set.
+import { infoLandingHref } from "@/lib/info-landings";
+
 export const LIVE_PRODUCT_SLUGS = new Set<string>(["moskitiery-ramkowe", "plisy", "rolety-dachowe", "plisy-dachowe"]);
 
 /** Catalog placeholders that stand for a live landing under another slug
@@ -28,6 +30,10 @@ export function resolveLiveProductSlug(slug: string): string {
 }
 
 export function isProductSlugLive(slug: string): boolean {
+  // Informacyjne landingi (lib/info-landings.ts) liczą się jako dostępne
+  // tylko gdy włączone - na produkcji bez NEXT_PUBLIC_INFO_LANDINGS nic się
+  // nie zmienia.
+  if (infoLandingHref(slug)) return true;
   return LIVE_PRODUCT_SLUGS.has(resolveLiveProductSlug(slug));
 }
 

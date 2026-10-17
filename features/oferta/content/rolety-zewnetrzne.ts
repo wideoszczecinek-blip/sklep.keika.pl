@@ -1,0 +1,108 @@
+import type { OfertaContent } from "../types";
+
+// Rolety zewnętrzne ALUPROF: adaptacyjne SK/SKE/SKP, podtynkowe SP/SP-E,
+// nadstawne SKT Opoterm, antywłamaniowe Safety Premium (RC3). Liczby z kart
+// produktów na aluprof.com (2026-10-17). Zdjęcia: aluprof.com.
+export const ROLETY_ZEWNETRZNE: OfertaContent = {
+  slug: "rolety-zewnetrzne",
+  path: "/rolety-zewnetrzne",
+  group: "zewnetrzne",
+  menuLabel: "Rolety zewnętrzne",
+  seoTitle: "Rolety zewnętrzne ALUPROF na wymiar - adaptacyjne, podtynkowe, nadstawne | KEIKA",
+  seoDescription:
+    "Rolety zewnętrzne aluminiowe na wymiar: adaptacyjne do istniejących domów, podtynkowe i nadstawne do nowych, antywłamaniowe klasy RC3. Pancerz z pianką, 40 kolorów, napęd elektryczny i sterowanie z telefonu. Wycena z pomiarem.",
+  eyebrow: "Osłony zewnętrzne",
+  title: "Rolety zewnętrzne na wymiar",
+  lead:
+    "Chłodniej latem, cieplej zimą, ciszej i bezpieczniej przez cały rok. Rolety zewnętrzne z aluminiowym pancerzem dobieramy do etapu budowy: adaptacyjne do gotowego domu, podtynkowe i nadstawne do nowego, antywłamaniowe tam, gdzie liczy się ochrona.",
+  hero: { src: "/oferta/rolety-zewnetrzne/hero.jpg", alt: "Nowoczesny dom z opuszczonymi roletami zewnętrznymi" },
+  heroChips: ["Adaptacyjne, podtynkowe, nadstawne", "Pancerz aluminiowy z pianką", "Napęd elektryczny i pilot", "Opcja antywłamaniowa RC3"],
+  productLabel: "Rolety zewnętrzne",
+  quoteOptions: [
+    "Adaptacyjne (dom istniejący, skrzynka na ścianie lub we wnęce)",
+    "Podtynkowe (dom w budowie, skrzynka pod tynkiem)",
+    "Nadstawne (na ramie okna, przy wymianie okien)",
+    "Antywłamaniowe (klasa RC3)",
+    "Nie wiem - proszę o doradztwo",
+  ],
+  supplier: { name: "ALUPROF", note: "systemy rolet zewnętrznych, produkcja w Polsce" },
+  variants: {
+    title: "Cztery systemy - zależnie od etapu budowy",
+    intro: "Najważniejsze pytanie brzmi: czy dom już stoi, czy dopiero powstaje. Od tego zależy, gdzie schowamy skrzynkę.",
+    items: [
+      {
+        id: "adaptacyjne",
+        name: "Adaptacyjne SK / SKE / SKP",
+        tagline: "Do domu, który już stoi",
+        body: "Skrzynka montowana na ścianie lub we wnęce okiennej, bez ingerencji w budynek - decyzję możesz podjąć w każdej chwili. Skrzynka ścięta pod kątem 45° (SK, SKE z aluminium ekstrudowanego) albo półowalna SKP, która ładnie łączy się z elewacją.",
+        image: "/oferta/rolety-zewnetrzne/sk.jpg",
+        imageAlt: "Roleta adaptacyjna SK z widoczną skrzynką i pancerzem",
+        bullets: ["Montaż na ścianie lub we wnęce", "Możliwa zintegrowana moskitiera", "Pancerz aluminiowy z pianką PU lub ekstrudowany"],
+      },
+      {
+        id: "podtynkowe",
+        name: "Podtynkowe SP / SP-E",
+        tagline: "Niewidoczne na elewacji",
+        body: "Skrzynkę planuje się na etapie projektu, a jej czoło staje się podkładem pod tynk - po wykończeniu widać tylko pancerz i prowadnice. Nie ingeruje w okno ani nadproże, więc nie psuje bilansu cieplnego. Skrzynki do 165 mm mają certyfikat Instytutu Domów Pasywnych.",
+        image: "/oferta/rolety-zewnetrzne/sk2.jpg",
+        imageAlt: "Roleta zewnętrzna we wnęce okiennej z opuszczonym pancerzem",
+        bullets: ["Certyfikat PHI dla budownictwa pasywnego", "Pokrywa rewizyjna i prowadnice w kolorze okien", "Opcja siatki przeciw insektom"],
+      },
+      {
+        id: "nadstawne",
+        name: "Nadstawne SKT Opoterm",
+        tagline: "Na ramie okna, przy wymianie stolarki",
+        body: "Skrzynka z PCV osadzana bezpośrednio na ramie okna profilem adaptacyjnym, w środku docieplona. Można ją zostawić widoczną, zabudować częściowo albo całkowicie. Warianty NOVA, RENO i MONOBLOCK.",
+        image: "/oferta/rolety-zewnetrzne/skt.jpg",
+        imageAlt: "Roleta nadstawna SKT Opoterm na ramie okna",
+        bullets: ["U skrzynki 230/170 z moskitierą: 0,73 W/(m²K)", "Jedna roleta lub zestaw w jednej skrzynce", "Wąskie prowadnice z aluminium ekstrudowanego"],
+      },
+      {
+        id: "safety",
+        name: "Antywłamaniowe Safety Premium",
+        tagline: "Pierwsza w Polsce roleta klasy RC3",
+        body: "Wzmocnione prowadnice uniemożliwiają odgięcie i wyciągnięcie pancerza, mocna kurtyna znosi uderzenia, a zapadka w dolnej części blokuje podniesienie zamkniętej rolety. Klasa RC3 potwierdzona badaniami IFT Rosenheim wg EN 1627:2021.",
+        image: "/oferta/rolety-zewnetrzne/safety.jpg",
+        imageAlt: "Roleta antywłamaniowa Safety Premium z pancerzem ekstrudowanym",
+        bullets: ["Pancerz PE 55 z aluminium ekstrudowanego", "Mechanizm zapadkowy przeciw podniesieniu", "Kolory: biały, szary, beż, brąz, antracyt i perłowe"],
+      },
+    ],
+  },
+  features: [
+    { icon: "sun", title: "Mniej nagrzewania latem", body: "Pancerz zatrzymuje słońce przed szybą, nie za nią - to najskuteczniejsza osłona przed upałem w domu bez klimatyzacji." },
+    { icon: "leaf", title: "Mniejsze straty ciepła", body: "Opuszczona roleta tworzy poduszkę powietrzną przed oknem. Systemy podtynkowe i nadstawne są certyfikowane do domów energooszczędnych." },
+    { icon: "shield", title: "Spokojny wyjazd", body: "Zamknięte rolety odcinają wgląd do środka, a w wersji Safety Premium realnie utrudniają włamanie (RC3)." },
+    { icon: "wind", title: "Cisza i ciemność", body: "Pancerz z pianką tłumi hałas z ulicy i daje pełne zaciemnienie sypialni - bez rolet wewnętrznych." },
+    { icon: "palette", title: "Ponad 40 kolorów", body: "Od bieli i antracytu po okleiny drewnopodobne (złoty dąb, orzech, mahoń) - pancerz, skrzynka i prowadnice w kolorze okien." },
+    { icon: "clock", title: "Automatyka", body: "Silnik z pilotem, przełącznik ścienny, programator czasowy albo sterowanie z telefonu i integracja z domem inteligentnym." },
+  ],
+  gallery: [
+    { src: "/oferta/rolety-zewnetrzne/g1.jpg", alt: "Dom z białą elewacją i roletami zewnętrznymi w kolorze antracytu", caption: "Rolety w kolorze stolarki" },
+    { src: "/oferta/rolety-zewnetrzne/g2.jpg", alt: "Dom z basenem i opuszczonymi roletami zewnętrznymi", caption: "Pełne zaciemnienie od zewnątrz" },
+    { src: "/oferta/rolety-zewnetrzne/skp.jpg", alt: "Roleta adaptacyjna SKP z półowalną skrzynką", caption: "Skrzynka półowalna SKP" },
+    { src: "/oferta/rolety-zewnetrzne/skt2.jpg", alt: "Roleta nadstawna SKT Opoterm NOVA w przekroju", caption: "SKT Opoterm NOVA" },
+    { src: "/oferta/rolety-zewnetrzne/g3.jpg", alt: "Dom jednorodzinny z roletami zewnętrznymi na wszystkich oknach", caption: "Rolety na całej elewacji" },
+    { src: "/oferta/rolety-zewnetrzne/g4.jpg", alt: "Dom z osłonami zewnętrznymi typu screen na dużych przeszkleniach", caption: "Alternatywa: screen na duże przeszklenia" },
+  ],
+  specs: {
+    title: "Najważniejsze parametry",
+    items: [
+      { label: "Systemy", value: "adaptacyjne SK / SKE / SKP, podtynkowe SP / SP-E, nadstawne SKT Opoterm (NOVA, RENO, MONOBLOCK), antywłamaniowe Safety Premium" },
+      { label: "Pancerz", value: "aluminium z pianką poliuretanową PA 37 / 39 / 40 / 43 / 45 / 52 / 55, aluminium ekstrudowane PE 41 / 55, tworzywo PT 37 / 52" },
+      { label: "Kolory pancerza", value: "ponad 40: biały, srebrny, szary, antracyt, beże, brązy, zieleń, bordo, czarny, perłowe mat; okleiny złoty dąb / orzech / mahoń za dopłatą" },
+      { label: "Napęd", value: "ręczny (taśma, linka, korba) lub elektryczny 230 V; pilot, przełącznik, czujniki, sterowanie z telefonu" },
+      { label: "Odporność na włamanie", value: "Safety Premium: klasa RC3 wg EN 1627:2021 (badania IFT Rosenheim)" },
+      { label: "Izolacja (SKT Opoterm)", value: "skrzynka 230/170 z moskitierą U = 0,73 W/(m²K); SP / SP-E - certyfikat Instytutu Domów Pasywnych" },
+      { label: "Dodatki", value: "zintegrowana moskitiera, pokrywa rewizyjna, zestawy kilku rolet w jednej skrzynce" },
+    ],
+  },
+  faq: [
+    { q: "Mój dom jest już otynkowany - czy mogę mieć rolety zewnętrzne?", a: "Tak, do tego służą systemy adaptacyjne SK / SKE / SKP. Skrzynka siedzi na ścianie lub we wnęce okna i nie wymaga przeróbek budynku." },
+    { q: "Który system do domu w budowie?", a: "Jeśli jesteś przed tynkami - podtynkowy SP (skrzynka znika pod tynkiem). Jeśli wymieniasz okna lub montujesz je właśnie teraz - nadstawny SKT Opoterm na ramie okna." },
+    { q: "Czy rolety mogą mieć moskitierę?", a: "Tak, w systemach adaptacyjnych, podtynkowych i nadstawnych montujemy w tej samej skrzynce zwijaną siatkę przeciw insektom." },
+    { q: "Czy napęd elektryczny jest konieczny?", a: "Nie, ale przy roletach szerszych niż ok. 1,5 m i na piętrze polecamy silnik - jest cichy, a pilot lub aplikacja pozwalają sterować wszystkimi roletami naraz, także według harmonogramu." },
+    { q: "Jak wygląda wycena?", a: "Napisz, ile masz okien i orientacyjne wymiary, albo dołącz zdjęcie elewacji. Przy pomiarze sprawdzamy nadproża, ościeża i miejsce na skrzynkę, a potem podajemy cenę z montażem." },
+  ],
+  related: ["zaluzje-fasadowe", "markizy", "moskitiery-drzwiowe"],
+  ownerNote: "Zdjęcia: renderingi i wizualizacje z aluprof.com (al_90/93/95, karty SK/SKP/SKT/Safety). Brak zdjęcia realizacji SP (podtynkowej) - użyto widoku we wnęce.",
+};

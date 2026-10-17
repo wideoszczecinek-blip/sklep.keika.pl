@@ -167,6 +167,7 @@ import {
   PLISY_SUBTITLE,
 } from "@/features/plisy/landing-content";
 import { isProductSlugLive, PRODUCT_LOCKED_MESSAGE } from "@/lib/product-availability";
+import { isInfoLandingHref, resolveInfoLandingMenuLink } from "@/lib/info-landings";
 import { ALLEGRO_RATING_SNAPSHOTS, HOMEPAGE_CONFIG_SNAPSHOT } from "@/lib/landing-snapshot";
 
 // The three product configurators are the heaviest part of this page's
@@ -987,6 +988,12 @@ function normalizeMenuLabel(raw: string): string {
 function resolveMenuFallbackLink(groupSlugRaw: string, labelRaw: string): string {
   const groupSlug = String(groupSlugRaw || "").trim().toLowerCase();
   const label = normalizeMenuLabel(labelRaw);
+
+  // Informacyjne landingi (rolety tradycyjne, dzień-noc, rzymskie, żaluzje,
+  // zewnętrzne, fasadowe, markizy, moskitiery drzwiowe/przesuwne/plisowane)
+  // - tylko gdy włączone flagą, inaczej stare reguły poniżej.
+  const infoLink = resolveInfoLandingMenuLink(groupSlug, labelRaw);
+  if (infoLink) return infoLink;
 
   if (groupSlug === "oslony-wewnetrzne" && /^rolety dzien ?-? noc$/.test(label)) {
     return "/kategoria/rolety-dzien-noc";
@@ -3049,6 +3056,12 @@ export default function Home({ initialProductSlug = "" }: { initialProductSlug?:
     options?: { updateUrl?: boolean },
   ) {
     const shareSlug = slugFromLink(subItem.linkUrl, subItem.label);
+    // Informacyjny landing (bez konfiguratora) to osobna strona, nie widok
+    // produktu w home-client - zwykła nawigacja.
+    if (options?.updateUrl !== false && isInfoLandingHref(subItem.linkUrl)) {
+      window.location.assign(subItem.linkUrl);
+      return;
+    }
     // options.updateUrl === false uniquely identifies the mount-time
     // "?produkt=..." URL resolution (activateFromUrl() below) rather than
     // an actual menu click - a direct/bookmarked link must keep working for
