@@ -25,7 +25,22 @@ export default async function QuotePage({ params }: QuotePageProps) {
     notFound();
   }
 
-  const quote = response.quote;
+  // Sekcja "Zamówienie u dostawcy" i meta.supplier są tylko dla biura - nie
+  // trafiają do HTML ani do danych komponentu klienckiego (QuoteCheckout
+  // korzysta wyłącznie z quote_code).
+  const quote = {
+    ...response.quote,
+    payload: response.quote.payload
+      ? {
+          ...response.quote.payload,
+          positions: (response.quote.payload.positions || []).map((position) => {
+            const { meta: _meta, ...rest } = position as typeof position & { meta?: unknown };
+            void _meta;
+            return { ...rest, summary_rows: (position.summary_rows || []).filter((row) => !isSupplierSummaryRow(row.label)) };
+          }),
+        }
+      : response.quote.payload,
+  };
 
   return (
     <main className={styles.page}>
@@ -45,7 +60,7 @@ export default async function QuotePage({ params }: QuotePageProps) {
                 <strong>{position.product_label}</strong>
                 <div className={styles.summaryRows}>
                   {/* Sekcja "Zamówienie u dostawcy" jest tylko dla biura. */}
-                  {position.summary_rows.filter((row) => !isSupplierSummaryRow(row.label)).map((row, index) => (
+                  {position.summary_rows.map((row, index) => (
                     <div key={`${position.id}-${index}`} className={styles.summaryRow}>
                       <span>{row.label}</span>
                       <span>
