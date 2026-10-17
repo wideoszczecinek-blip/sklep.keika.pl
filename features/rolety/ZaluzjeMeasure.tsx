@@ -254,6 +254,7 @@ export function ZaluzjeMeasureAnimation({
   compact = false,
   pid,
   withTape = false,
+  customerStackMm = 0,
 }: {
   mountId: ZaluzjeMountId;
   hasVent?: boolean;
@@ -261,6 +262,8 @@ export function ZaluzjeMeasureAnimation({
   /** Model S&S (pid) - wysokość pakietu z _specs.json; brak = basswood 50 mm. */
   pid?: number | string;
   withTape?: boolean;
+  /** Pakiet dla wymiaru wpisanego przez klienta (mała wersja nad polami); 0 = podaj procent. */
+  customerStackMm?: number;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ID = { clip: `zlmClip${uid}`, sheen: `zlmSheen${uid}` };
@@ -318,8 +321,27 @@ export function ZaluzjeMeasureAnimation({
   const unitsPerMm = hLen / m.height.mm;
   const packH = Math.max(18, Math.min(mountId === "na-sciane" ? 86 : m.blind.h * 0.5, stackMm * unitsPerMm));
   const blindRect: Rect = mountId === "na-sciane" ? { x: m.blind.x, y: RECESS.y - packH, w: m.blind.w, h: RECESS.h + packH } : m.blind;
-  const stackCm = (Math.ceil(stackMm / 10) || 0).toLocaleString("pl-PL");
-  const packCaption = mountId === "na-sciane" ? `Po podniesieniu pakiet zajmuje ok. ${stackCm} cm i mieści się nad wnęką` : `Po podniesieniu pakiet zajmuje ok. ${stackCm} cm u góry ${mountId === "na-skrzydlo" ? "skrzydła" : "szyby"}`;
+  // Pakiet zależy od wysokości żaluzji, więc w instrukcji podajemy procent
+  // (właściciel, 17.10.2026): stack(h)/h dla h = 100 i 200 cm wg _specs.json.
+  // Dokładne cm tylko w małej wersji nad polami, gdy klient wpisał wymiar.
+  const pctFor = (h: number) => Math.round((zaluzjeStackMm(specPid, h, withTape) / h) * 100);
+  const pctLo = pctFor(2000);
+  const pctHi = pctFor(1000);
+  const pctText = pctLo && pctHi ? (pctLo === pctHi ? `${pctHi} %` : `${Math.min(pctLo, pctHi)}–${Math.max(pctLo, pctHi)} %`) : "kilkanaście %";
+  const where = mountId === "na-skrzydlo" ? "skrzydła" : "szyby";
+  const customerCm = compact && customerStackMm > 0 ? (Math.ceil(customerStackMm / 10) || 0).toLocaleString("pl-PL") : "";
+  const packCaption = customerCm
+    ? mountId === "na-sciane"
+      ? `Po podniesieniu pakiet zajmuje ok. ${customerCm} cm i mieści się nad wnęką`
+      : `Po podniesieniu pakiet zajmuje ok. ${customerCm} cm u góry ${where}`
+    : mountId === "na-sciane"
+      ? `Pakiet ok. ${pctText} wysokości żaluzji - schowa się nad wnęką`
+      : `Pakiet po podniesieniu: ok. ${pctText} wysokości żaluzji`;
+  const packStep = customerCm
+    ? `${packCaption}.`
+    : mountId === "na-sciane"
+      ? `Po podniesieniu pakiet zajmuje ok. ${pctText} wysokości żaluzji i schowa się nad wnęką - ile miejsca potrzebujesz, policzymy po wpisaniu wymiarów.`
+      : `Po podniesieniu pakiet zajmuje ok. ${pctText} wysokości żaluzji (u góry ${where}) - dokładną wysokość policzymy po wpisaniu wymiarów.`;
   const showPackCaption = reduced || t >= T.raise[0];
   const keyLabel = m.margins[0] !== "0" ? `${m.margins[0]} z każdej strony, światło = wnęka` : "= zmierzony wymiar";
   const showKeyLabel = t >= T.blind[1];
@@ -343,7 +365,7 @@ export function ZaluzjeMeasureAnimation({
     rule.steps[0],
     hasVent && mountId === "na-skrzydlo" ? "Wysokość: od dolnej krawędzi nawiewnika do dołu ramy skrzydła - żaluzja wisi pod nawiewnikiem." : rule.steps[1],
     rule.steps[2],
-    `${packCaption}.`,
+    packStep,
   ];
 
   return (

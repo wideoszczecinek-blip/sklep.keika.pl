@@ -1075,6 +1075,7 @@ export default function RoletyConfiguratorPanel({
                     hasVent={zaluzjeRule.id === "na-skrzydlo" && hasVent}
                     pid={wallPid || undefined}
                     withTape={wallTape}
+                    customerStackMm={stackMm}
                     compact
                   />
                 ) : null}
