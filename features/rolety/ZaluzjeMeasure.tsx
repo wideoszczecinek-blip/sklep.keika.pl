@@ -12,7 +12,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNod
 import { createPortal } from "react-dom";
 import { trackShopStep } from "@/lib/track-step";
 import { useBackToClose } from "@/lib/use-back-to-close";
-import { ZALUZJE_MOUNT_RULES, type ZaluzjeMountId } from "./shared";
+import { ZALUZJE_MOUNT_RULES, ZALUZJE_WALL_INFO, type ZaluzjeMountId } from "./shared";
 
 /* ---- geometria sceny (viewBox 0 0 1000 800), okno od strony pokoju ---- */
 const RECESS = { x: 150, y: 60, w: 700, h: 600 }; // wnęka (otwór w ścianie)
@@ -64,10 +64,11 @@ function spec(mountId: ZaluzjeMountId, hasVent: boolean): Spec {
   return {
     targetName: "krawędź wnęki",
     target: { x: RECESS.x, y: RECESS.y },
-    width: { from: RECESS.x, to: RECESS.x + RECESS.w, mm: 1200, a: "od ściany", b: "do ściany" },
-    height: { from: RECESS.y, to: SILL.y, mm: 1500, a: "od góry wnęki", b: "do parapetu" },
-    blind: { x: RECESS.x - 48, y: RECESS.y - 48, w: RECESS.w + 96, h: RECESS.h + 48 },
-    margins: ["+5 cm", "+5 cm"],
+    width: { from: RECESS.x, to: RECESS.x + RECESS.w, mm: 1200, a: "światło: od ściany", b: "do ściany" },
+    height: { from: RECESS.y, to: SILL.y, mm: 1500, a: "światło: od góry wnęki", b: "do parapetu" },
+    // Żaluzja szersza o 5 cm z każdej strony, u góry miejsce na pakiet nad wnęką.
+    blind: { x: RECESS.x - 40, y: RECESS.y - 52, w: RECESS.w + 80, h: RECESS.h + 52 },
+    margins: ["+5 cm", "pakiet nad wnęką"],
   };
 }
 
@@ -83,7 +84,6 @@ const T = {
   end: [9200, 10600],
 } as const;
 const TOTAL = 10600;
-const LOOP_GAP = 1800;
 
 function seg(t: number, [a, b]: readonly [number, number]): number {
   if (t <= a) return 0;
@@ -264,7 +264,9 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
     const tick = (now: number) => {
       const elapsed = now - start;
       if (elapsed < 0) setProgress(0);
-      else setProgress(Math.min(TOTAL, compact ? elapsed % (TOTAL + LOOP_GAP) : elapsed));
+      // Koniec animacji zostaje na ekranie (nakładka żaluzji nie znika); mała
+      // wersja też - do ponownego odtworzenia służy przycisk.
+      else setProgress(Math.min(TOTAL, elapsed));
       frame = window.requestAnimationFrame(tick);
     };
     frame = window.requestAnimationFrame(tick);
@@ -306,6 +308,11 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
 
   return (
     <figure className={`zl-measure-anim ${compact ? "is-compact" : ""}`}>
+      {mountId === "na-sciane" && !compact ? (
+        <p className="zl-wall-info" role="note">
+          {ZALUZJE_WALL_INFO}
+        </p>
+      ) : null}
       <div className="zl-measure-stage" ref={stageRef}>
         <svg viewBox="90 30 820 680" role="img" aria-label={`Pomiar: ${rule.measureWhat}`}>
           <defs>
@@ -347,7 +354,7 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
             </>
           ) : null}
           {/* żaluzja - jak będzie wisieć; obrys mierzonego elementu zostaje na wierzchu */}
-          <Blind rect={m.blind} progress={bP} label={m.margins[0] !== "0" ? `${m.margins[0]} z każdej strony` : "= zmierzony wymiar"} />
+          <Blind rect={m.blind} progress={bP} label={m.margins[0] !== "0" ? `${m.margins[0]} z każdej strony, ${m.margins[1]}` : "= zmierzony wymiar"} />
           <rect x={m.width.from} y={m.height.from} width={wLen} height={hLen} fill="none" stroke="#f59e0b" strokeWidth="3.5" strokeDasharray="9 6" opacity={highlightO * Math.min(1, t / 400)} />
           {/* lupa na punkt pomiaru (krok 1) */}
           {lupaS > 0.01 ? (
@@ -405,7 +412,7 @@ export function ZaluzjeMeasureAnimation({ mountId, hasVent = false, compact = fa
             </g>
           ) : null}
         </svg>
-        {!compact && !reduced ? (
+        {!reduced && t >= TOTAL ? (
           <button type="button" className="zl-replay" onClick={() => setRun((r) => r + 1)} aria-label="Odtwórz animację ponownie">
             ↻ Odtwórz
           </button>

@@ -4948,6 +4948,7 @@ export default function CartPage() {
                   measuredHeightMm: editingItem.measuredHeightMm,
                   supplierOptions: editingItem.supplier?.options,
                   hasVent: editingItem.hasVent,
+                  spaceAboveMm: editingItem.spaceAboveMm,
                   qty: editingItem.qty,
                 }}
                 submitLabel="Zapisz zmiany"
@@ -4964,6 +4965,7 @@ export default function CartPage() {
                     extrasNote: result.extrasNote || undefined,
                     hasVent: result.hasVent || undefined,
                     stackMm: result.stackMm || undefined,
+                    spaceAboveMm: result.mountId === "na-sciane" && result.measuredWidthMm ? result.spaceAboveMm : undefined,
                     previewImageUrl: result.previewImageUrl || undefined,
                     fabricColor: result.fabricColor || undefined,
                     hardwareColor: result.hardwareColor || undefined,

@@ -598,6 +598,8 @@ export type ConfiguratorInitialValues = {
   supplierOptions?: Record<string, string>;
   /** Żaluzje, montaż na skrzydło: okno ma nawiewnik (wysokość pod nawiewnikiem). */
   hasVent?: boolean;
+  /** Żaluzje, montaż na ścianę: ile miejsca nad wnęką klient zadeklarował (mm). */
+  spaceAboveMm?: number;
   qty?: number;
   /** Edycja z koszyka: pozycja ma tylko etykiety, id dobieramy po
    * wczytaniu profilu (jak w plisach). */
@@ -643,6 +645,8 @@ export type ConfiguratorResult = {
   /** Żaluzje: nawiewnik (montaż na skrzydło) i pakiet po podniesieniu (mm). */
   hasVent: boolean;
   stackMm: number;
+  /** Żaluzje, na ścianę: miejsce nad wnęką (mm) wliczone w wysokość; 0 = nie dotyczy. */
+  spaceAboveMm: number;
   /** Żaluzje: zdjęcie modelu do podglądu pozycji. */
   previewImageUrl: string;
   qty: number;
@@ -922,9 +926,16 @@ export type ZaluzjeMountRule = {
   cons: string[];
   /** Montaż na skrzydle - lamele odstają od szyby, uwaga na klamkę. */
   onSash: boolean;
+  /** Na ścianę: zmierzony wymiar to ŚWIATŁO żaluzji; wysokość żaluzji =
+   * światło + miejsce na podniesiony pakiet nad wnęką (zaluzjeStackAboveMm). */
+  stackAbove?: boolean;
   /** Kroki instrukcji pomiaru (modal "Jak zmierzyć?"). */
   steps: string[];
 };
+
+/** Stały blok informacyjny dla montażu na ścianę (krok pomiaru i modal). */
+export const ZALUZJE_WALL_INFO =
+  "Mierzysz wnękę okienną. Jej wymiar to światło żaluzji - tyle będzie zasłonięte. Do szerokości dodamy po 5 cm z każdej strony (żaluzja = światło + 10 cm). Wysokość policzymy tak, żeby podniesiony pakiet lameli schował się nad wnęką.";
 
 export const ZALUZJE_MOUNT_RULES: Record<ZaluzjeMountId, ZaluzjeMountRule> = {
   // Jak plisy w montażu przykręcanym (STANDARD): od połowy uszczelki do połowy
@@ -967,23 +978,25 @@ export const ZALUZJE_MOUNT_RULES: Record<ZaluzjeMountId, ZaluzjeMountRule> = {
       "Wpisz oba wymiary. Żaluzja będzie dokładnie taka - nic nie odejmujemy.",
     ],
   },
-  // Założenie do potwierdzenia przez właściciela.
+  // Wnęka = światło żaluzji (właściciel, 17.10.2026): szerokość + 10 cm,
+  // wysokość = światło + miejsce na pakiet nad wnęką (stackAbove).
   "na-sciane": {
     id: "na-sciane",
-    measureWhat: "wnękę okienną",
-    measureNoun: "wnęka okienna",
-    widthLabel: "Szerokość wnęki",
-    heightLabel: "Wysokość wnęki",
+    measureWhat: "wnękę okienną - jej wymiar to światło żaluzji",
+    measureNoun: "wnęka (światło)",
+    widthLabel: "Szerokość światła (wnęki)",
+    heightLabel: "Wysokość światła (wnęki)",
     addWidthMm: 100,
-    addHeightMm: 50,
-    ruleText: "Żaluzja = szerokość wnęki + 10 cm (po 5 cm z każdej strony), wysokość wnęki + 5 cm (klamry ok. 5 cm nad wnęką).",
+    addHeightMm: 0,
+    stackAbove: true,
+    ruleText: "Żaluzja = światło + 10 cm szerokości (po 5 cm z każdej strony); wysokość = światło + miejsce na podniesiony pakiet nad wnęką.",
     pros: ["Najlepsze zaciemnienie - zasłania całe okno", "Nie dotyka okna"],
     cons: ["Przed otwarciem okna trzeba podciągnąć żaluzję"],
     onSash: false,
     steps: [
-      "Zmierz szerokość wnęki okiennej od ściany do ściany.",
-      "Zmierz wysokość wnęki od górnej krawędzi do parapetu.",
-      "Wpisz oba wymiary. Doliczymy po 5 cm z każdej strony i 5 cm u góry na klamry - żaluzja zasłoni okno z zapasem.",
+      "Zmierz szerokość wnęki okiennej od ściany do ściany - to światło żaluzji.",
+      "Zmierz wysokość wnęki od górnej krawędzi do parapetu - to światło w pionie.",
+      "Wpisz oba wymiary i podaj, ile masz miejsca nad wnęką. Doliczymy po 5 cm z każdej strony i wysokość pakietu nad wnęką.",
     ],
   },
 };
@@ -993,12 +1006,12 @@ export function zaluzjeMountRule(mountId: string | null | undefined): ZaluzjeMou
 }
 
 /** Wymiar żaluzji z tego, co klient zmierzył przy danym montażu. */
-export function zaluzjeBlindSize(mountId: string, measuredWidthMm: number, measuredHeightMm: number): { widthMm: number; heightMm: number } {
+export function zaluzjeBlindSize(mountId: string, measuredWidthMm: number, measuredHeightMm: number, spaceAboveMm = 0): { widthMm: number; heightMm: number } {
   const rule = zaluzjeMountRule(mountId);
   if (!rule) return { widthMm: measuredWidthMm, heightMm: measuredHeightMm };
   return {
     widthMm: measuredWidthMm > 0 ? measuredWidthMm + rule.addWidthMm : 0,
-    heightMm: measuredHeightMm > 0 ? measuredHeightMm + rule.addHeightMm : 0,
+    heightMm: measuredHeightMm > 0 ? measuredHeightMm + (rule.stackAbove ? Math.max(0, spaceAboveMm) : rule.addHeightMm) : 0,
   };
 }
 
@@ -1020,13 +1033,23 @@ export function zaluzjeMeasureNote(
   measuredHeightMm: number,
   blindWidthMm: number,
   blindHeightMm: number,
-  extra: { hasVent?: boolean; stackMm?: number } = {},
+  extra: { hasVent?: boolean; stackMm?: number; spaceAboveMm?: number } = {},
 ): string {
   const rule = zaluzjeMountRule(mountId);
   const cm = (mm: number) => (mm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
   const parts: string[] = [];
   if (!rule || !measuredWidthMm || !measuredHeightMm) parts.push(`wymiar żaluzji podany przez klienta ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`);
-  else parts.push(`${rule.measureNoun} ${cm(measuredWidthMm)} × ${cm(measuredHeightMm)} cm → żaluzja ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`);
+  else if (rule.stackAbove) {
+    // Na ścianę: światło, miejsce nad wnęką, pakiet, wymiar żaluzji.
+    const space = Math.max(0, extra.spaceAboveMm || 0);
+    const stack = extra.stackMm || 0;
+    if (stack && space < stack) {
+      parts.push(`wnęka (światło) ${cm(measuredWidthMm)} × ${cm(measuredHeightMm)} cm; nad wnęką tylko ${cm(space)} cm → żaluzja ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm, pakiet zasłoni ok. ${cm(stack - space)} cm światła`);
+    } else {
+      parts.push(`wnęka (światło) ${cm(measuredWidthMm)} × ${cm(measuredHeightMm)} cm; nad wnęką ${cm(space)} cm; pakiet ok. ${cm(stack || space)} cm → żaluzja ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`);
+    }
+    return parts.join("; ");
+  } else parts.push(`${rule.measureNoun} ${cm(measuredWidthMm)} × ${cm(measuredHeightMm)} cm → żaluzja ${cm(blindWidthMm)} × ${cm(blindHeightMm)} cm`);
   if (mountId === "na-skrzydlo") parts.push(extra.hasVent ? "nawiewnik: tak, wysokość pod nawiewnikiem" : "nawiewnik: nie");
   if (extra.stackMm && blindHeightMm > 0) parts.push(`pakiet po podniesieniu ok. ${cm(extra.stackMm)} cm (${Math.round((extra.stackMm / blindHeightMm) * 100)} %)`);
   return parts.join("; ");
@@ -1070,6 +1093,21 @@ export function zaluzjeStackMm(pid: number | string, blindHeightMm: number, with
   const spec = zaluzjeSpec(pid);
   if (!spec || !spec.slatsPercentage || blindHeightMm <= 0) return 0;
   return Math.round(blindHeightMm * spec.slatsPercentage * (withTape ? 1.12 : 1) + spec.headrailMm);
+}
+
+/** Na ścianę: pakiet dla WYSOKOŚCI CAŁKOWITEJ (światło + pakiet), nie dla
+ * samego światła - 4 iteracje H = światło + stack(H) (zbiega się przy
+ * procencie ≤ 0,13), wynik zaokrąglony w górę do pełnego cm. 0 = brak danych. */
+export function zaluzjeStackAboveMm(pid: number | string, lightHeightMm: number, withTape: boolean): number {
+  const spec = zaluzjeSpec(pid);
+  if (!spec || !spec.slatsPercentage || lightHeightMm <= 0) return 0;
+  let total = lightHeightMm;
+  let stack = 0;
+  for (let i = 0; i < 4; i += 1) {
+    stack = zaluzjeStackMm(pid, total, withTape);
+    total = lightHeightMm + stack;
+  }
+  return Math.ceil(stack / 10) * 10;
 }
 
 /** Wymiar żaluzji poza limitami modelu u dostawcy - komunikat albo "". */

@@ -69,7 +69,9 @@ import {
   zaluzjeModelForGroup,
   zaluzjeMountRule,
   zaluzjeSpecIssue,
+  zaluzjeStackAboveMm,
   zaluzjeStackMm,
+  ZALUZJE_WALL_INFO,
   isRoletyCassetteMount,
   joinRoletyMountLabel,
   ROLETY_COPY,
@@ -265,6 +267,15 @@ export default function RoletyConfiguratorPanel({
   // Żaluzje, montaż na skrzydło: nawiewnik na górze skrzydła - wysokość mierzy
   // się od jego dołu (żaluzja wisi pod nawiewnikiem).
   const [hasVent, setHasVent] = useState(Boolean(initialValues?.hasVent));
+  // Żaluzje, montaż na ścianę: ile miejsca nad wnęką ("full" = co najmniej
+  // tyle, ile zajmie pakiet; "less" = mniej, wartość w cm). Klient musi wybrać.
+  const [spaceChoice, setSpaceChoice] = useState<"" | "full" | "less">(() =>
+    initialValues?.spaceAboveMm !== undefined && initialValues.spaceAboveMm !== null && initialValues.spaceAboveMm >= 0 ? "less" : "",
+  );
+  const [spaceLessCm, setSpaceLessCm] = useState(() =>
+    initialValues?.spaceAboveMm ? String(Math.round(initialValues.spaceAboveMm / 10)) : "",
+  );
+  const spaceRestoredRef = useRef(false);
   // Żaluzje: opcje dostawcy Sun & Shade dla wybranego modelu (ss-options.ts).
   const [ssModel, setSsModel] = useState<SsModelOptions | null>(null);
   const [ssSelection, setSsSelection] = useState<SsSelection>({});
@@ -483,11 +494,32 @@ export default function RoletyConfiguratorPanel({
   const inputHeightMm = inputToMm(height, dimensionUnit);
   const zaluzjeRule = modelFirst ? zaluzjeMountRule(selectedMountId) : null;
   const measuring = Boolean(zaluzjeRule) && !exactBlindSize;
-  const blindFromInput = (w: number, h: number) => (measuring ? zaluzjeBlindSize(selectedMountId, w, h) : { widthMm: w, heightMm: h });
+  // Na ścianę: pakiet nad wnęką liczony dla wysokości całkowitej (shared.ts).
+  const wallMode = Boolean(measuring && zaluzjeRule?.stackAbove);
+  const wallPid = modelFirst ? (ssModel ? ssModel.pid : selectedModelInfoPid) : "";
+  const wallTape = Boolean(modelFirst && ssModel && ssField(ssModel, "7") && ssSelection["7"] && ssSelection["7"] !== "15");
+  const stackAboveMm = wallMode && wallPid && inputHeightMm > 0 ? zaluzjeStackAboveMm(wallPid, inputHeightMm, wallTape) : 0;
+  const spaceLessMm = Math.max(0, Math.round((Number(String(spaceLessCm).replace(",", ".")) || 0) * 10));
+  const spaceAboveMm: number | null = !wallMode
+    ? null
+    : spaceChoice === "full"
+      ? stackAboveMm
+      : spaceChoice === "less" && String(spaceLessCm).trim() !== ""
+        ? Math.min(stackAboveMm, spaceLessMm)
+        : null;
+  const wallAnswered = !wallMode || (spaceAboveMm !== null && stackAboveMm > 0);
+  const blindFromInput = (w: number, h: number) => (measuring ? zaluzjeBlindSize(selectedMountId, w, h, spaceAboveMm ?? 0) : { widthMm: w, heightMm: h });
   const { widthMm: widthNum, heightMm: heightNum } = blindFromInput(inputWidthMm, inputHeightMm);
   const widthInRange = profile ? widthNum >= profile.widthMinMm && widthNum <= profile.widthMaxMm : false;
   const heightInRange = profile ? heightNum >= profile.heightMinMm && heightNum <= profile.heightMaxMm : false;
-  const dimensionsValid = widthInRange && heightInRange;
+  const dimensionsValid = widthInRange && heightInRange && wallAnswered;
+  // Edycja z koszyka: zapisane miejsce nad wnęką >= pakiet -> "mam co najmniej".
+  useEffect(() => {
+    if (spaceRestoredRef.current || !wallMode || !stackAboveMm || initialValues?.spaceAboveMm === undefined) return;
+    spaceRestoredRef.current = true;
+    if ((initialValues.spaceAboveMm || 0) >= stackAboveMm) setSpaceChoice("full");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallMode, stackAboveMm]);
   const quantityNum = Math.min(ROLETY_QTY_MAX, Math.max(1, Math.round(Number(quantity) || 1)));
 
   const looksLikeCm =
@@ -572,7 +604,7 @@ export default function RoletyConfiguratorPanel({
   const ssPid = modelFirst && ssModel ? ssModel.pid : selectedModelInfoPid;
   const specIssue = modelFirst && ssPid && dimensionsValid ? zaluzjeSpecIssue(ssPid, widthNum, heightNum) : "";
   const tapeChosen = Boolean(modelFirst && ssModel && ssField(ssModel, "7") && ssSelection["7"] && ssSelection["7"] !== "15");
-  const stackMm = modelFirst && ssPid && heightNum > 0 ? zaluzjeStackMm(ssPid, heightNum, tapeChosen) : 0;
+  const stackMm = wallMode ? stackAboveMm : modelFirst && ssPid && heightNum > 0 ? zaluzjeStackMm(ssPid, heightNum, tapeChosen) : 0;
   const stackPercent = stackMm && heightNum > 0 ? Math.round((stackMm / heightNum) * 100) : 0;
   const baseUnitPrice = unitPriceFor(selectedFabricGroupId);
   const unitPrice = baseUnitPrice !== null ? Math.round((baseUnitPrice + (modelFirst ? ssExtrasTotal : 0)) * 100) / 100 : null;
@@ -587,6 +619,7 @@ export default function RoletyConfiguratorPanel({
           lines: [
             { label: "Model", value: selectedFabricGroup.label },
             { label: "Kolor lameli", value: selectedFabric.label },
+            ...(wallMode && dimensionsValid ? [{ label: "Światło (wnęka)", value: `${(inputWidthMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(inputHeightMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` }] : []),
             ...(dimensionsValid ? [{ label: "Wymiar żaluzji", value: `${(widthNum / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(heightNum / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` }] : []),
             ...(selectedMount ? [{ label: "Montaż", value: selectedMount.label }] : []),
             ...(ssModel && ssField(ssModel, "7") ? [{ label: "Drabinka", value: tapeChosen ? `taśma ${ssCleanLabel(ssOption(ssField(ssModel, "7"), ssSelection["7"])?.label || "")}` : "sznurkowa" }] : []),
@@ -747,10 +780,12 @@ export default function RoletyConfiguratorPanel({
         ? zaluzjeMeasureNote(selectedMount.id, measuring ? inputWidthMm : 0, measuring ? inputHeightMm : 0, widthNum, heightNum, {
             hasVent: selectedMount.id === "na-skrzydlo" && hasVent,
             stackMm,
+            spaceAboveMm: wallMode ? spaceAboveMm ?? 0 : 0,
           })
         : "",
       hasVent: selectedMount.id === "na-skrzydlo" && hasVent,
       stackMm,
+      spaceAboveMm: wallMode ? spaceAboveMm ?? 0 : 0,
       previewImageUrl: selectedFabricGroup.imageUrl || "",
       qty: quantityNum,
       unitPrice,
@@ -1028,11 +1063,17 @@ export default function RoletyConfiguratorPanel({
                     ) : null}
                   </div>
                 ) : null}
-                <p className="hero-product-config-hint">
-                  {measuring && zaluzjeRule
-                    ? `Zmierz ${zaluzjeRule.measureWhat} i wpisz wynik. Wymiar żaluzji policzymy sami.`
-                    : "Wpisz gotowy wymiar żaluzji (szerokość × wysokość). Nic nie doliczamy."}
-                </p>
+                {wallMode ? (
+                  <p className="zl-wall-info" role="note">
+                    {ZALUZJE_WALL_INFO}
+                  </p>
+                ) : (
+                  <p className="hero-product-config-hint">
+                    {measuring && zaluzjeRule
+                      ? `Zmierz ${zaluzjeRule.measureWhat} i wpisz wynik. Wymiar żaluzji policzymy sami.`
+                      : "Wpisz gotowy wymiar żaluzji (szerokość × wysokość). Nic nie doliczamy."}
+                  </p>
+                )}
                 <div className="zl-measure-intro-actions">
                   {selectedMount ? (
                     <button
@@ -1106,12 +1147,75 @@ export default function RoletyConfiguratorPanel({
                 <input type="number" inputMode="numeric" min={1} max={ROLETY_QTY_MAX} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
               </label>
             </div>
-            {measuring && zaluzjeRule && inputWidthMm > 0 && inputHeightMm > 0 ? (
+            {wallMode && inputHeightMm > 0 && stackAboveMm > 0 ? (
+              <div className="zl-wall-space" aria-live="polite">
+                <p className="zl-stack-note">
+                  Podniesiony pakiet zajmie <strong>ok. {cmText(stackAboveMm)} cm</strong>. Żeby nie zasłaniał światła, nad wnęką potrzebujesz {cmText(stackAboveMm)} cm wolnej ściany
+                  (klamry mieszczą się w tej wysokości).{wallTape ? " Z taśmą pakiet jest nieco wyższy." : ""}
+                </p>
+                <span className="zl-vent-q">Ile masz miejsca nad wnęką?</span>
+                <span className="zl-vent-opts zl-space-opts" role="group" aria-label="Miejsce nad wnęką">
+                  <button
+                    type="button"
+                    className={`zl-chip ${spaceChoice === "full" ? "is-active" : ""}`}
+                    aria-pressed={spaceChoice === "full"}
+                    onClick={() => {
+                      setSpaceChoice("full");
+                      trackShopStep("zaluzje_space_above", "full", { stack_mm: stackAboveMm });
+                    }}
+                  >
+                    <strong>Mam co najmniej {cmText(stackAboveMm)} cm</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`zl-chip ${spaceChoice === "less" ? "is-active" : ""}`}
+                    aria-pressed={spaceChoice === "less"}
+                    onClick={() => {
+                      setSpaceChoice("less");
+                      trackShopStep("zaluzje_space_above", "less", { stack_mm: stackAboveMm });
+                    }}
+                  >
+                    <strong>Mam mniej - podaj ile</strong>
+                  </button>
+                </span>
+                {spaceChoice === "less" ? (
+                  <label className="zl-space-less">
+                    cm nad wnęką (0-{cmText(stackAboveMm)})
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      max={stackAboveMm / 10}
+                      step={0.5}
+                      value={spaceLessCm}
+                      onChange={(event) => setSpaceLessCm(event.target.value)}
+                    />
+                  </label>
+                ) : null}
+                {spaceChoice === "less" && spaceLessCm !== "" && spaceAboveMm !== null && spaceAboveMm < stackAboveMm ? (
+                  <p className="zl-handle-warning" role="note">
+                    Podniesiony pakiet zasłoni górne ok. {cmText(stackAboveMm - spaceAboveMm)} cm światła.
+                  </p>
+                ) : null}
+                {spaceChoice === "less" && spaceLessMm >= stackAboveMm && spaceLessCm !== "" ? (
+                  <p className="hero-product-config-hint">To wystarczy - pakiet zmieści się nad wnęką.</p>
+                ) : null}
+                {spaceChoice === "" ? <p className="hero-product-config-hint">Wybierz jedną z opcji - od tego zależy wysokość żaluzji.</p> : null}
+              </div>
+            ) : null}
+            {measuring && zaluzjeRule && inputWidthMm > 0 && inputHeightMm > 0 && (!wallMode || (spaceAboveMm !== null && stackAboveMm > 0)) ? (
               <p className={`zl-blind-size ${dimensionsValid ? "" : "is-invalid"}`} aria-live="polite">
                 <span>
                   Wymiar żaluzji: <strong>{cmText(widthNum)} × {cmText(heightNum)} cm</strong>
                 </span>
-                <small>{zaluzjeRule.ruleText}</small>
+                {wallMode && spaceAboveMm !== null ? (
+                  <small>
+                    światło {cmText(inputWidthMm)} × {cmText(inputHeightMm)} cm, +10 cm szerokości,{" "}
+                    {spaceAboveMm >= stackAboveMm ? `+${cmText(stackAboveMm)} cm na pakiet nad wnęką` : `+${cmText(spaceAboveMm)} cm, pakiet częściowo w świetle`}
+                  </small>
+                ) : (
+                  <small>{zaluzjeRule.ruleText}</small>
+                )}
               </p>
             ) : null}
             {specIssue ? (
@@ -1119,7 +1223,7 @@ export default function RoletyConfiguratorPanel({
                 {specIssue}
               </p>
             ) : null}
-            {modelFirst && stackMm && heightNum > 0 && (dimensionsValid || inputHeightMm > 0) ? (
+            {modelFirst && !wallMode && stackMm && heightNum > 0 && (dimensionsValid || inputHeightMm > 0) ? (
               <p className="zl-stack-note" role="note">
                 Pakiet po podniesieniu: <strong>ok. {cmText(stackMm)} cm</strong> ({stackPercent} % wysokości) - tyle żaluzja zasłoni u góry szyby po pełnym podciągnięciu
                 {tapeChosen ? " (z taśmą pakiet jest nieco wyższy)" : ""}.
@@ -1579,6 +1683,7 @@ export default function RoletyConfiguratorPanel({
                 <dd>
                   {zaluzjeRule.measureNoun}: {inputWidthMm} × {inputHeightMm} mm
                   {zaluzjeRule.id === "na-skrzydlo" ? (hasVent ? ", nawiewnik: tak (wysokość pod nawiewnikiem)" : ", bez nawiewnika") : ""}
+                  {wallMode && spaceAboveMm !== null ? `, nad wnęką ${spaceAboveMm / 10} cm` : ""}
                 </dd>
               </div>
             ) : null}

@@ -5875,6 +5875,7 @@ export default function Home({
                           extrasNote: result.extrasNote || undefined,
                           hasVent: result.hasVent || undefined,
                           stackMm: result.stackMm || undefined,
+                          spaceAboveMm: result.mountId === "na-sciane" && result.measuredWidthMm ? result.spaceAboveMm : undefined,
                           previewImageUrl: result.previewImageUrl || undefined,
                           fabricColor: result.fabricColor || undefined,
                           hardwareColor: result.hardwareColor || undefined,
@@ -5904,6 +5905,9 @@ export default function Home({
                                   lines: [
                                     { label: "Model", value: result.fabricGroupLabel },
                                     { label: "Kolor lameli", value: result.fabricLabel },
+                                    ...(result.mountId === "na-sciane" && result.measuredWidthMm
+                                      ? [{ label: "Światło (wnęka)", value: `${(result.measuredWidthMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(result.measuredHeightMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` }]
+                                      : []),
                                     { label: "Wymiar żaluzji", value: `${(result.widthMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} × ${(result.heightMm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} cm` },
                                     { label: "Montaż i sterowanie", value: result.mountLabel },
                                     ...(result.optionsNote ? [{ label: "Opcje", value: result.optionsNote }] : []),

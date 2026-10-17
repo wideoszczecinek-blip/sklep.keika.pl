@@ -23163,3 +23163,45 @@ html[data-theme="dark"] .zs-opt {
 .cv2-item-visual.is-zaluzja .zl-preview-visual {
   border-radius: 0.6rem;
 }
+
+/* Żaluzje, montaż na ścianę: światło wnęki, pakiet nad wnęką. */
+.zl-wall-info {
+  margin: 0 0 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.8rem;
+  background: rgba(44, 157, 130, 0.1);
+  border: 1px solid rgba(44, 157, 130, 0.35);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #16314e;
+}
+.zl-wall-space {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+.zl-space-opts .zl-chip {
+  min-width: 0;
+  padding: 0.45rem 0.8rem;
+  text-align: left;
+  justify-items: start;
+}
+.zl-space-opts .zl-chip strong {
+  font-size: 0.86rem;
+}
+.zl-space-less {
+  display: grid;
+  gap: 0.25rem;
+  max-width: 14rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.zl-space-less input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(19, 40, 67, 0.3);
+  font: inherit;
+  font-size: 1rem;
+}

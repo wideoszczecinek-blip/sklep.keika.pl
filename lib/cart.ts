@@ -75,6 +75,8 @@ export type CartLineItem = {
   /** Żaluzje: nawiewnik, pakiet po podniesieniu (mm), zdjęcie modelu do podglądu. */
   hasVent?: boolean;
   stackMm?: number;
+  /** Żaluzje, na ścianę: miejsce nad wnęką wliczone w wysokość (mm). */
+  spaceAboveMm?: number;
   previewImageUrl?: string;
   /** rolety-dachowe only: the chosen window model ("Velux MK04") or "Wymiar
    * własny" for a manual entry - undefined for other products. Additive/
@@ -226,6 +228,7 @@ export function readCartItems(): CartLineItem[] {
         extrasNote: row.extrasNote ? String(row.extrasNote).slice(0, 600) : undefined,
         hasVent: row.hasVent === true ? true : undefined,
         stackMm: Number(row.stackMm ?? 0) > 0 ? Number(row.stackMm) : undefined,
+        spaceAboveMm: row.spaceAboveMm !== undefined && row.spaceAboveMm !== null && Number(row.spaceAboveMm) >= 0 ? Number(row.spaceAboveMm) : undefined,
         previewImageUrl: row.previewImageUrl ? String(row.previewImageUrl) : undefined,
         splitFromWidthMm: Number(row.splitFromWidthMm ?? 0) > 0 ? Number(row.splitFromWidthMm) : undefined,
         sagNoticeShown: row.sagNoticeShown === true ? true : undefined,
