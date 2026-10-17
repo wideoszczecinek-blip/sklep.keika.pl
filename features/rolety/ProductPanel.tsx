@@ -13,6 +13,7 @@ import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import RoletyConfiguratorPanel from "./ConfiguratorPanel";
+import ZaluzjeCategoryGrid, { colorCountLabel, ZALUZJE_CATEGORY_EVENT } from "./ZaluzjeCategoryGrid";
 import {
   buildZaluzjeTree,
   fetchRoletyProfile,
@@ -38,22 +39,6 @@ type Props = {
 
 function formatZl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
-}
-
-function modelCountLabel(count: number): string {
-  if (count === 1) return "1 model";
-  const last = count % 10;
-  const lastTwo = count % 100;
-  if (last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14)) return `${count} modele`;
-  return `${count} modeli`;
-}
-
-function colorCountLabel(count: number): string {
-  if (count === 1) return "1 kolor";
-  const last = count % 10;
-  const lastTwo = count % 100;
-  if (last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14)) return `${count} kolory`;
-  return `${count} kolorów`;
 }
 
 function readUrlParam(name: string): string {
@@ -206,6 +191,27 @@ function ZaluzjeFlow({ slug, initialValues, submitLabel, onSubmit, onZoom }: Pro
     writeUrlParams({ model: variant.group.id, kategoria: null });
   }
 
+  // Blok kategorii kliknięty na landingu (telefon: panel jest pod opisem) -
+  // ten sam wybór co w panelu; gdy profil jeszcze się ładuje, czekamy na drzewo.
+  const [pendingCategory, setPendingCategory] = useState("");
+  useEffect(() => {
+    const onPick = (event: Event) => {
+      const slugFromEvent = String((event as CustomEvent<{ slug?: string }>).detail?.slug || "");
+      if (slugFromEvent) setPendingCategory(slugFromEvent);
+    };
+    window.addEventListener(ZALUZJE_CATEGORY_EVENT, onPick);
+    return () => window.removeEventListener(ZALUZJE_CATEGORY_EVENT, onPick);
+  }, []);
+  useEffect(() => {
+    if (!pendingCategory || tree.length === 0) return;
+    const entry = tree.find((item) => item.slug === pendingCategory);
+    setPendingCategory("");
+    if (!entry) return;
+    setModelId("");
+    pickCategory(entry);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCategory, tree]);
+
   function backToCategories() {
     trackShopStep("zaluzje_change_model", selectedGroup?.label || "", {});
     setModelId("");
@@ -319,26 +325,7 @@ function ZaluzjeFlow({ slug, initialValues, submitLabel, onSubmit, onZoom }: Pro
         <strong>Wyceń żaluzję do swojego okna</strong>
       </header>
       <p className="zl-intro">Wybierz rodzaj żaluzji. Potem szerokość lameli, kolor i wymiary.</p>
-      <div className="zl-cat-grid">
-        {tree.map((entry) => (
-          <button key={entry.slug} type="button" className="zl-cat-card" onClick={() => pickCategory(entry)}>
-            <span
-              className="zl-cat-photo"
-              aria-hidden="true"
-              style={entry.imageUrl ? { backgroundImage: `url(${optimizeImageUrl(entry.imageUrl, 360)})` } : undefined}
-            />
-            <span className="zl-cat-body">
-              <strong>{entry.category}</strong>
-              {entry.description ? <span className="zl-cat-desc">{entry.description}</span> : null}
-              <span className="zl-cat-meta">
-                {entry.startingPrice !== null ? <span className="zl-price">od {formatZl(entry.startingPrice)}</span> : null}
-                <span>{modelCountLabel(entry.modelCount)}</span>
-                <span>{colorCountLabel(entry.colorCount)}</span>
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
+      <ZaluzjeCategoryGrid tree={tree} onPick={pickCategory} />
     </>
   );
 }
