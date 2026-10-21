@@ -64,12 +64,13 @@ export type PdHardwareOption = {
   note: string;
 };
 
-// The old shop's four finishes (WAPF form "Kolor osprzętu": Biały, Anoda
-// (szary), Brąz, Sosna (drewnopodobny)). Colours sampled from the swatches.
+// The old shop's finishes (WAPF form "Kolor osprzętu": Biały, Anoda
+// (szary), Sosna (drewnopodobny)). Colours sampled from the swatches.
+// Brąz WYCOFANY na stałe (właściciel 21.10.2026) - nie przywracać; stare
+// szkice z "braz" po prostu nie mają wybranego osprzętu.
 export const PD_HARDWARE: PdHardwareOption[] = [
   { id: "bialy", label: "Biały", color: "#F2F3F1", imageUrl: "/plisy-dachowe/osprzet-bialy.jpg", plisyHardwareId: "bialy", note: "do białych okien PVC i lakierowanych" },
   { id: "anoda", label: "Anoda (szary)", color: "#C6CACE", imageUrl: "/plisy-dachowe/osprzet-anoda.jpg", plisyHardwareId: "anoda", note: "naturalne aluminium, do szarych i antracytowych ram" },
-  { id: "braz", label: "Brąz", color: "#4A3128", imageUrl: "/plisy-dachowe/osprzet-braz.jpg", plisyHardwareId: "braz", note: "do ciemnych okien drewnianych i brązowych PVC" },
   { id: "sosna", label: "Sosna", color: "#D9B26A", imageUrl: "/plisy-dachowe/osprzet-sosna.jpg", plisyHardwareId: "sosna", note: "drewnopodobny, do sosnowych okien Velux / Fakro / Roto" },
 ];
 

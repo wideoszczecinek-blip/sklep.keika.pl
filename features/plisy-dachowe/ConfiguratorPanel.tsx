@@ -41,7 +41,6 @@ import PlisaDachowaPreview from "./PlisaDachowaPreview";
 import {
   calcPlisyDachowePrice,
   PD_HARDWARE,
-  PD_HARDWARE_SHEET_URL,
   PD_PRODUCT_LABEL,
   PD_PRODUCT_SLUG,
   pdCheapestPriceForSize,
@@ -970,7 +969,7 @@ export default function ConfiguratorPanel({
                                 {badge ? <span className="pd-delta-badge">{badge}</span> : null}
                               </span>
                             </button>
-                            <button type="button" className="config-option-zoom" aria-label={`Powiększ: ${option.label}`} onClick={() => openZoom({ title: `Osprzęt ${option.label}`, urls: [option.imageUrl, PD_HARDWARE_SHEET_URL], index: 0 })}>
+                            <button type="button" className="config-option-zoom" aria-label={`Powiększ: ${option.label}`} onClick={() => openZoom({ title: `Osprzęt ${option.label}`, urls: [option.imageUrl], index: 0 })}>
                               🔍
                             </button>
                           </div>

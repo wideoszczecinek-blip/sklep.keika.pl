@@ -8,7 +8,7 @@
 // roof-blind one (RoofLibraryTeaser) - both reused, not copied.
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { PD_HOW_IT_WORKS, type PdHowItWorksTile } from "./landing-content";
-import { PD_HARDWARE, PD_HARDWARE_SHEET_URL } from "./shared";
+import { PD_HARDWARE } from "./shared";
 
 function TileIcon({ id }: { id: PdHowItWorksTile["id"] }) {
   const common = { width: 40, height: 40, viewBox: "0 0 40 40", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
@@ -75,11 +75,11 @@ export function PdHowItWorks() {
 export function PdHardwareStrip({ onZoom }: { onZoom: (title: string, urls: string[], index: number) => void }) {
   return (
     <section className="rd-hardware pd-hardware" aria-label="Kolory osprzętu">
-      <h2 className="hero-product-section-title">4 kolory osprzętu</h2>
+      <h2 className="hero-product-section-title">3 kolory osprzętu</h2>
       <p className="rd-how-lead">Belki i prowadnice zawsze w jednym kolorze — dobierz do ramy okna. Kliknij, żeby zobaczyć kolor na prawdziwym oknie.</p>
       <div className="rd-hardware-grid pd-hardware-strip">
         {PD_HARDWARE.map((option, index) => (
-          <button key={option.id} type="button" className="rd-hardware-card" onClick={() => onZoom(`Osprzęt ${option.label}`, [option.imageUrl, PD_HARDWARE_SHEET_URL], 0)} title={option.note}>
+          <button key={option.id} type="button" className="rd-hardware-card" onClick={() => onZoom(`Osprzęt ${option.label}`, [option.imageUrl], 0)} title={option.note}>
             <span className="rd-hardware-image pd-hardware-image" style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 360)})` }} />
             <span className="rd-hardware-label">
               <span className="hardware-dot" style={{ background: option.color }} />
@@ -89,9 +89,6 @@ export function PdHardwareStrip({ onZoom }: { onZoom: (title: string, urls: stri
           </button>
         ))}
       </div>
-      <button type="button" className="rd-link pd-hardware-sheet-link" onClick={() => onZoom("Kolory osprzętu na oknie", [PD_HARDWARE_SHEET_URL], 0)}>
-        Zobacz wszystkie cztery kolory na ramach okien →
-      </button>
     </section>
   );
 }
