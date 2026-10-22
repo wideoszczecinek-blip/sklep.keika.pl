@@ -14,6 +14,15 @@
  * Ten sam plik jest w sklepie (lib/chat-bot.ts) i na keika.pl
  * (src/lib/chat-bot.ts) - zdarzenia Crispa podaje wywołujący, bo w sklepie
  * muszą iść przez lib/crisp-events.ts (Crisp trzyma jedną funkcję na zdarzenie).
+ *
+ * Dostarczanie odpowiedzi (2026-10-22, wieczór): CRM mówi w każdej odpowiedzi,
+ * kto pokazuje tekst klientowi - pole `delivery`:
+ *   "crisp_api" - CRM wysłał odpowiedź do rozmowy przez REST API Crispa jako
+ *                 operator „Asystent KEIKA” (widać ją w panelu Crispa, dochodzi
+ *                 też po zamknięciu karty) - przeglądarka NIE pokazuje jej sama,
+ *   "local"     - brak tokenu albo błąd API - pokazujemy lokalnie (message:show,
+ *                 tylko u klienta). Sprawdzane przy KAŻDEJ odpowiedzi, bo przy
+ *                 błędzie API pojedyncza odpowiedź może wrócić jako "local".
  */
 
 const API = "https://crm-keika.groovemedia.pl/views/biuro/api/shop-public/chat_bot.php";
@@ -22,6 +31,8 @@ const HUMAN_KEY = "keika_chat_bot_human_at";
 const HUMAN_QUIET_MS = 30 * 60 * 1000;
 /** Klient często pisze w kilku wiadomościach - czekamy chwilę i wysyłamy razem. */
 const DEBOUNCE_MS = 1500;
+/** Podpis operatora, pod którym CRM wysyła odpowiedzi bota przez API Crispa. */
+const BOT_NICKNAME = "Asystent KEIKA";
 
 type CrispApi = unknown[] & { get?: (key: string) => unknown };
 type CrispWindow = Window & { $crisp?: CrispApi };
@@ -36,6 +47,10 @@ type BotResponse = {
   human_active?: boolean;
   contact_email?: string;
   contact_phone?: string;
+  /** Kto pokazuje odpowiedź klientowi: CRM przez API Crispa albo przeglądarka. */
+  delivery?: "crisp_api" | "local";
+  /** action=human: tekst był echem naszej własnej odpowiedzi, nie człowiekiem. */
+  own_reply?: boolean;
 };
 
 export type ChatBotOptions = {
@@ -130,6 +145,17 @@ function show(text: string): void {
   }
 }
 
+/** Pokazuje odpowiedź bota, chyba że CRM już wysłał ją do rozmowy przez API
+ * Crispa (wtedy przyjdzie jako zwykła wiadomość operatora). Tekst zapamiętujemy
+ * w obu przypadkach, żeby echo w message:received nie uchodziło za człowieka. */
+function deliver(data: BotResponse | null, allowLocal: boolean): void {
+  const text = typeof data?.reply === "string" ? data.reply.trim() : "";
+  if (!text) return;
+  shownByBot.add(text);
+  if (data?.delivery === "crisp_api") return;
+  if (allowLocal) show(text);
+}
+
 function applyState(data: BotResponse | null): void {
   const c = crisp();
   if (!data || !c) return;
@@ -143,7 +169,7 @@ function applyState(data: BotResponse | null): void {
       chain = chain.then(async () => {
         if (humanRecently()) return;
         const res = await post({ action: "wait_expired" });
-        if (res?.reply) show(res.reply);
+        deliver(res, true);
         applyState(res);
       });
     }, Number(data.wait_ms));
@@ -172,7 +198,7 @@ function flush(): void {
       contact: { email: crispGet("user:email"), phone: crispGet("user:phone"), nickname: crispGet("user:nickname") },
     });
     if (!res) return;
-    if (res.reply && !humanRecently()) show(res.reply);
+    deliver(res, !humanRecently());
     applyState(res);
   });
 }
@@ -190,9 +216,13 @@ function onCustomerMessage(message: unknown): void {
 }
 
 function onOperatorMessage(message: unknown): void {
-  const m = (message || {}) as { content?: unknown };
+  const m = (message || {}) as { content?: unknown; automated?: unknown; user?: { nickname?: unknown } };
   const text = typeof m.content === "string" ? m.content.trim() : "";
-  // Echo naszej własnej odpowiedzi - to nie człowiek.
+  // Odpowiedź bota wysłana przez CRM do Crispa wraca tu jako wiadomość
+  // operatora „Asystent KEIKA” - to nie człowiek.
+  const nickname = typeof m.user?.nickname === "string" ? m.user.nickname.trim() : "";
+  if (nickname === BOT_NICKNAME || m.automated === true) return;
+  // Echo naszej własnej odpowiedzi (pokazanej lokalnie albo przez API) - jw.
   if (text && shownByBot.has(text)) return;
   markHuman();
   if (waitTimer !== undefined) {

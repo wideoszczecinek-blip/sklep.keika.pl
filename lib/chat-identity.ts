@@ -126,8 +126,12 @@ export function armChatIdentity(): void {
     track("chat_message", "od klienta", { crisp_session_id: lastReportedId, from: "customer" });
     pushContext();
   });
-  onCrispEvent("message:received", () => {
-    track("chat_message", "od nas", { crisp_session_id: lastReportedId, from: "operator" });
+  onCrispEvent("message:received", (message) => {
+    // Odpowiedzi automatycznego konsultanta (CRM przez API Crispa jako
+    // „Asystent KEIKA”) liczymy osobno od człowieka.
+    const m = (message || {}) as { user?: { nickname?: unknown } };
+    const bot = typeof m.user?.nickname === "string" && m.user.nickname.trim() === "Asystent KEIKA";
+    track("chat_message", bot ? "od bota" : "od nas", { crisp_session_id: lastReportedId, from: bot ? "bot" : "operator" });
   });
 
   // Kontekst wrzucamy OD RAZU: Crisp odtwarza zakolejkowane polecenia po
