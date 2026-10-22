@@ -31,8 +31,9 @@ const HUMAN_KEY = "keika_chat_bot_human_at";
 const HUMAN_QUIET_MS = 30 * 60 * 1000;
 /** Klient często pisze w kilku wiadomościach - czekamy chwilę i wysyłamy razem. */
 const DEBOUNCE_MS = 1500;
-/** Podpis operatora, pod którym CRM wysyła odpowiedzi bota przez API Crispa. */
-const BOT_NICKNAME = "Asystent KEIKA";
+/** Podpis operatora, pod którym CRM wysyła odpowiedzi bota przez API Crispa
+ * (CRM podaje go w GET i w każdej odpowiedzi jako `bot_nickname`). */
+let botNickname = "Asystent KEIKA";
 
 type CrispApi = unknown[] & { get?: (key: string) => unknown };
 type CrispWindow = Window & { $crisp?: CrispApi };
@@ -51,7 +52,13 @@ type BotResponse = {
   delivery?: "crisp_api" | "local";
   /** action=human: tekst był echem naszej własnej odpowiedzi, nie człowiekiem. */
   own_reply?: boolean;
+  /** Podpis bota w Crispie - z konfiguracji CRM. */
+  bot_nickname?: string;
 };
+
+function rememberNickname(data: { bot_nickname?: unknown } | null | undefined): void {
+  if (data && typeof data.bot_nickname === "string" && data.bot_nickname.trim()) botNickname = data.bot_nickname.trim();
+}
 
 export type ChatBotOptions = {
   site: "sklep" | "www";
@@ -159,6 +166,7 @@ function deliver(data: BotResponse | null, allowLocal: boolean): void {
 function applyState(data: BotResponse | null): void {
   const c = crisp();
   if (!data || !c) return;
+  rememberNickname(data);
   if (waitTimer !== undefined) {
     window.clearTimeout(waitTimer);
     waitTimer = undefined;
@@ -221,7 +229,7 @@ function onOperatorMessage(message: unknown): void {
   // Odpowiedź bota wysłana przez CRM do Crispa wraca tu jako wiadomość
   // operatora „Asystent KEIKA” - to nie człowiek.
   const nickname = typeof m.user?.nickname === "string" ? m.user.nickname.trim() : "";
-  if (nickname === BOT_NICKNAME || m.automated === true) return;
+  if ((nickname !== "" && nickname === botNickname) || m.automated === true) return;
   // Echo naszej własnej odpowiedzi (pokazanej lokalnie albo przez API) - jw.
   if (text && shownByBot.has(text)) return;
   markHuman();
@@ -244,8 +252,9 @@ export async function armChatBot(options: ChatBotOptions): Promise<void> {
       enabled = cached.enabled;
     } else {
       const res = await fetch(API, { method: "GET" });
-      const data = (await res.json()) as { enabled?: boolean };
+      const data = (await res.json()) as { enabled?: boolean; bot_nickname?: string };
       enabled = Boolean(data?.enabled);
+      rememberNickname(data);
       window.sessionStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify({ at: Date.now(), enabled }));
     }
   } catch {
