@@ -12,6 +12,20 @@ const CRISP_WEBSITE_ID = "8c31cd03-8650-476a-accf-9d63cde5da9c";
 
 let injected = false;
 
+/** Co klient ogląda i ile ma w koszyku - kontekst dla automatycznego konsultanta. */
+function shopChatContext(): string {
+  try {
+    const path = window.location.pathname.replace(/^\/+|\/+$/g, "") || "strona główna";
+    const raw = window.localStorage.getItem("keika_cart");
+    const items = raw ? ((JSON.parse(raw) as { items?: Array<{ total?: number; productLabel?: string; label?: string }> }).items || []) : [];
+    const total = items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+    const labels = items.map((item) => item.productLabel || item.label || "").filter(Boolean).slice(0, 5).join(", ");
+    return `Klient jest na stronie: ${path}. Koszyk: ${items.length ? `${items.length} poz. (${labels || "produkty"}) za ${total.toFixed(2)} zł` : "pusty"}.`;
+  } catch {
+    return "";
+  }
+}
+
 /** `prefill` (2026-09-17, chat nudge): a message dropped into the composer
  * so the customer only has to hit send - "Dzień dobry, mam pytanie o
  * pomiar plisy". Never sent on its own. */
@@ -37,9 +51,17 @@ export function openCrispChat(prefill?: string): void {
     // nic do zrobienia
   }
 
-  // Automat na długie oczekiwanie: po 3 minutach bez odpowiedzi klient
-  // dostaje prośbę o kontakt (lib/chat-follow-up.ts).
-  void import("@/lib/chat-follow-up").then(({ armChatFollowUp }) => armChatFollowUp()).catch(() => null);
+  // Automatyczny konsultant (lib/chat-bot.ts, 2026-10-22) odpowiada sam
+  // i przekazuje trudne sprawy człowiekowi. Gdy jest wyłączony w CRM albo
+  // CRM nie odpowiada - wraca stary automat na długie oczekiwanie
+  // (lib/chat-follow-up.ts: komunikaty po 1 i 3 minutach).
+  const armFollowUp = () =>
+    void import("@/lib/chat-follow-up").then(({ armChatFollowUp }) => armChatFollowUp()).catch(() => null);
+  void Promise.all([import("@/lib/chat-bot"), import("@/lib/crisp-events")])
+    .then(([{ armChatBot }, { onCrispEvent }]) =>
+      armChatBot({ site: "sklep", on: onCrispEvent, context: shopChatContext, onUnavailable: armFollowUp }),
+    )
+    .catch(armFollowUp);
   // Powiązanie rozmowy z odwiedzającym w CRM (lib/chat-identity.ts):
   // identyfikator sesji Crispa leci do analityki, a do samej rozmowy
   // dokładamy kontekst klienta.
