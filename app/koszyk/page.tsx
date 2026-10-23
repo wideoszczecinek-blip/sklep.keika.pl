@@ -63,6 +63,7 @@ function emptyCartTarget(lastPage: string): { href: string; label: string } {
 }
 import PaczkomatPicker from "../components/paczkomat-picker";
 import PromoTopStrip from "../components/promo-top-strip";
+import { clearPersonalCode, getPendingPersonalCode, getPersonalCode, rememberCheckedCode } from "@/lib/personal-code";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import type { CheckoutContact } from "../components/stripe-payment-step";
 import StripeMethodStep, { type CreatedIntent, type StripeMethod } from "../components/stripe-method-step";
@@ -346,7 +347,9 @@ type AppliedDiscount = {
 
 type DiscountCheckResponse = {
   ok: boolean;
-  discount?: { code: string; type: "percent" | "amount"; value: number; amount: number };
+  // expires_at / personal / label: kody osobiste (bon za opinię, kod dla
+  // powracających WRACAM-…) - pasek u góry pokazuje termin (lib/personal-code.ts).
+  discount?: { code: string; type: "percent" | "amount"; value: number; amount: number; expires_at?: string | null; personal?: boolean; label?: string };
   error?: string;
 };
 
@@ -1852,9 +1855,13 @@ export default function CartPage() {
       }
       setAppliedDiscount(json.discount);
       setDiscountCodeInput(json.discount.code);
+      rememberCheckedCode(json.discount);
       trackCheckoutIssue("checkout_discount_applied", json.discount.code);
     } catch (checkError) {
       setAppliedDiscount(null);
+      // Kod osobisty, który CRM odrzucił (wygasł / użyty) - nie trzymamy go,
+      // żeby przy następnym wejściu koszyk wrócił do SEZON20.
+      if (getPersonalCode()?.code === code.toUpperCase()) clearPersonalCode();
       setDiscountError(checkError instanceof Error ? checkError.message : "Nie udało się sprawdzić kodu.");
       trackCheckoutIssue("discount_code_invalid", code);
     } finally {
@@ -2080,7 +2087,10 @@ export default function CartPage() {
     // entirely, which is exactly what broke this for a customer arriving
     // from a Facebook link (Facebook's in-app browser can silently
     // partition/block localStorage - see lib/promo.ts).
-    const storedCode = isPromoActive(PROMO_CODE) ? PROMO_CODE : "";
+    // Kod osobisty z linku ?kod= (mail/SMS dla powracających, 23.10.2026) ma
+    // pierwszeństwo przed SEZON20 - zastępuje go, nie dokłada (CRM: kod >= 25 %
+    // jest "mocniejszy od promocji sezonowej").
+    const storedCode = getPendingPersonalCode() || (isPromoActive(PROMO_CODE) ? PROMO_CODE : "");
     if (!storedCode) return;
     autoAppliedPromoRef.current = true;
     setDiscountCodeInput(storedCode);

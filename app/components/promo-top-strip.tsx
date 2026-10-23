@@ -32,6 +32,7 @@ import { crmGetJson } from "@/lib/crm-get";
 import { CRM_PUBLIC_BASE } from "./payment-methods";
 import PromoCountdownBanner from "./promo-countdown-banner";
 import { PROMO_CODE } from "@/lib/promo";
+import { PERSONAL_CODE_EVENT, formatPersonalCodeDate, formatPersonalCodeRemaining, getPersonalCode, type PersonalCode } from "@/lib/personal-code";
 import { EXPRESS_CUTOFF, EXPRESS_ENABLED, EXPRESS_FEE_AMOUNT, formatCutoff } from "@/lib/express";
 
 /** How long each message stays. Long enough to read a short sentence twice
@@ -204,6 +205,26 @@ export default function PromoTopStrip({
   // Slajd PayPo pokazujemy tylko wtedy, gdy metoda jest realnie dostępna w
   // koszyku (CRM -> checkout.p24_paypo_enabled), tak samo jak baner przy CTA.
   const [paypoEnabled, setPaypoEnabled] = useState(false);
+  // Kod osobisty (WRACAM-… dla powracających, bon za opinię): zamiast slajdu
+  // SEZON20 pokazujemy JEGO termin - kod zastępuje SEZON20 w koszyku, więc
+  // odliczanie promocji sezonowej byłoby mylące. Po wygaśnięciu wraca SEZON20.
+  const [personal, setPersonal] = useState<PersonalCode | null>(null);
+  const [personalRemainingMs, setPersonalRemainingMs] = useState(0);
+  useEffect(() => {
+    function sync() {
+      const next = getPersonalCode();
+      const current = next && next.verified && next.expiresAtMs ? next : null;
+      setPersonal(current);
+      setPersonalRemainingMs(current && current.expiresAtMs ? Math.max(0, current.expiresAtMs - Date.now()) : 0);
+    }
+    sync();
+    window.addEventListener(PERSONAL_CODE_EVENT, sync);
+    const timer = window.setInterval(sync, 30000);
+    return () => {
+      window.removeEventListener(PERSONAL_CODE_EVENT, sync);
+      window.clearInterval(timer);
+    };
+  }, []);
   useEffect(() => {
     let cancelled = false;
     crmGetJson<any>(`${CRM_PUBLIC_BASE}/site`)
@@ -228,7 +249,29 @@ export default function PromoTopStrip({
         // Keeping the row present at all times is what stops the header and
         // hero from jumping once the promo state resolves (CLS 0,23 -> 0,05,
         // measured 2026-09-14); globals.css offsets them by --promo-strip-h.
-        const promoSlide: Slide | null = promo
+        const personalExpiresAtMs = personal?.expiresAtMs ?? null;
+        const personalSlide: Slide | null =
+          personal && personalExpiresAtMs !== null && personalRemainingMs > 0
+            ? {
+                key: "personal",
+                icon: "🎁",
+                badge: `-${personal.percent}%`,
+                content: (
+                  <>
+                    <span className="promo-strip-wide">
+                      Twój kod <strong>{personal.code}</strong> naliczy się w koszyku · ważny do {formatPersonalCodeDate(personalExpiresAtMs)}, jeszcze{" "}
+                    </span>
+                    <span className="promo-strip-narrow">
+                      <strong>{personal.code}</strong> · jeszcze{" "}
+                    </span>
+                    <strong className="promo-top-strip-clock">{formatPersonalCodeRemaining(personalRemainingMs)}</strong>
+                  </>
+                ),
+              }
+            : null;
+        const promoSlide: Slide | null = personalSlide
+          ? personalSlide
+          : promo
           ? {
               key: "promo",
               icon: "🔥",

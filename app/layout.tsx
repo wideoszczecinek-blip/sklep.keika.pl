@@ -6,6 +6,7 @@ import TrackingBoot from "./components/tracking-boot";
 import SiteAnalytics from "./components/site-analytics";
 import ChatBubble from "./components/chat-bubble";
 import ConsentBar from "./components/consent-bar";
+import PersonalCodeCapture from "./components/personal-code-capture";
 import SiteFooter from "@/app/components/site-footer";
 
 // Hero slogans on the homepage (owner, 2026-09-19: "kwestia dobrania
@@ -71,6 +72,7 @@ export default function RootLayout({
         <LastPageTracker />
         <SiteAnalytics />
         <TrackingBoot />
+        <PersonalCodeCapture />
         {children}
         <SiteFooter />
         <ChatBubble />
