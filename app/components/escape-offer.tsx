@@ -10,6 +10,7 @@
 // przewinął koszyk do końca i nie tknął formularza. Okienka po bezczynności
 // i przechwytywanie "wstecz" zostały zdjęte 13.09 i 01.10 - nie wracają.
 import Link from "next/link";
+import { PERSONAL_CODE_EVENT, getPersonalCode } from "@/lib/personal-code";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatPln, readCartItems, type CartLineItem } from "@/lib/cart";
 import {
@@ -40,15 +41,21 @@ export function useActiveEscapeOffer(): { offer: EscapeOfferState | null; remain
   const [now, setNow] = useState(0);
   useEffect(() => {
     const sync = () => {
-      const next = getActiveEscapeOffer();
+      // Kod osobisty >= 25 % (WRACAM-… dla powracających, bon za opinię) nie
+      // łączy się z 5 % dla wychodzących - przy takim kodzie oferta znika
+      // z paska, koszyka i okienka (właściciel, 23.10.2026).
+      const personal = getPersonalCode();
+      const next = personal && personal.verified && personal.percent >= 25 ? null : getActiveEscapeOffer();
       setOffer((current) => (current?.quoteCode === next?.quoteCode && current?.expiresAtMs === next?.expiresAtMs ? current : next));
       setNow(Date.now());
     };
     sync();
     window.addEventListener(ESCAPE_OFFER_EVENT, sync);
+    window.addEventListener(PERSONAL_CODE_EVENT, sync);
     const timer = window.setInterval(sync, 30000);
     return () => {
       window.removeEventListener(ESCAPE_OFFER_EVENT, sync);
+      window.removeEventListener(PERSONAL_CODE_EVENT, sync);
       window.clearInterval(timer);
     };
   }, []);

@@ -1061,7 +1061,7 @@ export default function CartPage() {
   // read once on mount; stacks additively alongside appliedDiscount above,
   // never replaces it (business decision: during SEZON20, a rescued
   // customer gets -25% total, not just -20% or just -5%).
-  const [rescueGrant, setRescueGrantState] = useState<RescueGrant | null>(null);
+  const [rescueGrantRaw, setRescueGrantState] = useState<RescueGrant | null>(null);
   // Rabat może się zmienić w trakcie wizyty (oferta "dodatkowe 5% dla
   // wychodzących" przyznana przy wyjściu, koniec jej terminu) - stąd nasłuch
   // i odświeżanie co 30 s. Zamówienie już w trakcie płacenia dostaje 15 min
@@ -1085,6 +1085,13 @@ export default function CartPage() {
       window.clearInterval(timer);
     };
   }, []);
+  // Kod osobisty >= 25 % (WRACAM-… dla powracających, bon za opinię) NIE łączy
+  // się z 5 % dla wychodzących ani z rabatem za zapisanie wyceny (właściciel,
+  // 23.10.2026) - CRM i tak nie przyzna nowej oferty przy takim kodzie, a tu
+  // wyłączamy też rabat przyznany wcześniej, żeby kwota w koszyku zgadzała
+  // się z tym, co policzy quote_save.php.
+  const strongCodeApplied = Boolean(appliedDiscount && appliedDiscount.type === "percent" && appliedDiscount.value >= 25);
+  const rescueGrant = strongCodeApplied ? null : rescueGrantRaw;
   const combinedDiscountPercent =
     (appliedDiscount?.type === "percent" ? appliedDiscount.value : 0) + (rescueGrant?.percent || 0);
   // Wchodzi do "odcisku" zamówienia w toku: zmiana rabatu (przyznanie, koniec
