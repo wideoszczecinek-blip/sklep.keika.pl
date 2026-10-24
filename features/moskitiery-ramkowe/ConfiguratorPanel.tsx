@@ -475,7 +475,12 @@ export default function ConfiguratorPanel({
       width_mm: widthNum,
       height_mm: heightNum,
       unit: dimensionUnit,
+      product_label: "Moskitiera ramkowa",
+      hardware_label: selectedHardwareOption?.label || "",
+      fabric_label: selectedMesh?.label || "",
+      display_price: dimensionTotalPrice,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedHardwareId, selectedMeshId, hasValidDimensions, widthNum, heightNum, bothDimensionsOverTechnicalLimit, widthOverAbsoluteMax, requiredSurchargeForCurrentDims, surchargeSatisfied, isCalculatingPrice, dimensionTotalPrice, dimensionsBlocked, quantityNum, dimensionUnit]);
   useEffect(() => () => clearConfiguratorState("moskitiery-ramkowe"), []);
 

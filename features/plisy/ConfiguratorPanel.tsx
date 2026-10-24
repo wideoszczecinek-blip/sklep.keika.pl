@@ -20,6 +20,7 @@ import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configurator-state";
+import { ASSISTANT_APPLY_EVENT, takePendingAssistantApply, type AssistantApply } from "@/lib/assistant";
 import { usePlisyFavourites } from "@/lib/plisy-favourites";
 import { useBackToClose } from "@/lib/use-back-to-close";
 import { applyPromoToPrice, getPromoRemainingMs, PROMO_CODE, type PromoPreview } from "@/lib/promo";
@@ -990,9 +991,65 @@ export default function ConfiguratorPanel({
       width_mm: widthNum,
       height_mm: heightNum,
       unit: dimensionUnit,
+      product_label: profile?.productName || "Plisy na wymiar",
+      hardware_label: selectedHardware?.label || "",
+      fabric_label: selectedFabricGroup && selectedFabric ? `${selectedFabricGroup.label} — ${selectedFabric.label}` : "",
+      display_price: setGrandTotal ?? cheapestSetPrice?.total ?? null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMount, bracketRequired, selectedBracket, selectedHardware, selectedFabricGroup, selectedFabric, hasSizes, effectivePositions.length, widthNum, heightNum, canFinalSubmit, setGrandTotal, quantityNum, dimensionUnit]);
+  }, [selectedMount, bracketRequired, selectedBracket, selectedHardware, selectedFabricGroup, selectedFabric, hasSizes, effectivePositions.length, widthNum, heightNum, canFinalSubmit, setGrandTotal, cheapestSetPrice, quantityNum, dimensionUnit]);
+
+  // Mądry asystent (lib/assistant.ts): „Wstaw do konfiguratora” z czatu (tkanina i mechanizm
+  // z doradcy kolorów), odpowiedź na dymek o montażu, poradnik pomiaru, „dodaj kolejne okno”.
+  // Wybór przyniesiony z innej strony czeka w sessionStorage do załadowania profilu.
+  const applyFromAssistant = (apply: AssistantApply) => {
+    if (!profile) return;
+    if (apply.mount) {
+      const wantNonInvasive = apply.mount === "nieinwazyjny";
+      const option = profile.mountOptions.find(
+        (entry) => (isPlisyMountNonInvasive(entry.id) || isPlisyMountNonInvasive(entry.label)) === wantNonInvasive,
+      );
+      if (option && option.id !== selectedMountId) handleMountChange(option);
+    }
+    if (apply.hardwareId && profile.hardware.some((entry) => entry.id === apply.hardwareId)) {
+      setSelectedHardwareId(apply.hardwareId);
+      setStepOneChosen(true);
+      setStepOneCollapsed(true);
+    }
+    if (apply.fabricId) {
+      const group = profile.fabricGroups.find((entry) =>
+        apply.fabricGroupId ? entry.id === apply.fabricGroupId : entry.swatches.some((swatch) => swatch.id === apply.fabricId),
+      );
+      const swatch = group?.swatches.find((entry) => entry.id === apply.fabricId);
+      if (group && swatch) {
+        trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id, source: "assistant" });
+        setSelectedFabricGroupId(group.id);
+        setSelectedFabricId(swatch.id);
+        setStepTwoCollapsed(true);
+        setStepThreeCollapsed(true);
+      }
+    }
+    if (apply.measureGuide) setMeasureGuideOpen(true);
+    if (apply.focusDimensions) {
+      setStepDimsCollapsed(false);
+      window.setTimeout(() => {
+        positionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        positionFormRef.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+      }, 120);
+    }
+  };
+  const applyFromAssistantRef = useRef(applyFromAssistant);
+  applyFromAssistantRef.current = applyFromAssistant;
+  useEffect(() => {
+    const onApply = (event: Event) => applyFromAssistantRef.current((event as CustomEvent<AssistantApply>).detail || {});
+    window.addEventListener(ASSISTANT_APPLY_EVENT, onApply);
+    return () => window.removeEventListener(ASSISTANT_APPLY_EVENT, onApply);
+  }, []);
+  useEffect(() => {
+    if (!profile) return;
+    const pending = takePendingAssistantApply("plisy");
+    if (pending) window.setTimeout(() => applyFromAssistantRef.current(pending), 300);
+  }, [profile]);
   useEffect(() => () => clearConfiguratorState("plisy"), []);
 
   function handleFinalSubmit() {

@@ -17,6 +17,7 @@ import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { buildRescuePosition, hasSeenRescueModal, isRescueDismissedForGood, markRescueDismissedForGood, markRescueModalShown } from "@/lib/rescue";
 import { trackShopStep } from "@/lib/track-step";
 import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configurator-state";
+import { ASSISTANT_APPLY_EVENT, takePendingAssistantApply, type AssistantApply } from "@/lib/assistant";
 import { activatePromoCode, applyPromoToPrice, getPromoRemainingMs, isPromoActive, type PromoPreview } from "@/lib/promo";
 import { ensurePromoQuoteCode, hasSavedPromoLink } from "@/lib/promo-save";
 import PlisyFabricGallery from "@/features/plisy/FabricGallery";
@@ -425,6 +426,17 @@ export default function ConfiguratorPanel({
     });
   }, [selectedHardwareId, selectedFabricGroupId, selectedFabricId, hasWindowInfo, windowChoice, windowQuery, searchResults.length, totalPrice, quantityNum, resolvedDims, priceOutOfRange, loadState]);
   useEffect(() => () => clearConfiguratorState(PD_PRODUCT_SLUG), []);
+  // Mądry asystent: model okna odczytany ze zdjęcia tabliczki trafia do wyszukiwarki.
+  useEffect(() => {
+    const onApply = (event: Event) => {
+      const query = (event as CustomEvent<AssistantApply>).detail?.windowQuery;
+      if (query) setWindowQuery(query);
+    };
+    window.addEventListener(ASSISTANT_APPLY_EVENT, onApply);
+    const pending = takePendingAssistantApply(PD_PRODUCT_SLUG);
+    if (pending?.windowQuery) setWindowQuery(pending.windowQuery);
+    return () => window.removeEventListener(ASSISTANT_APPLY_EVENT, onApply);
+  }, []);
 
   // ---- window selection helpers -------------------------------------------
   function chooseLibraryWindow(item: RoofWindowLibraryItem, source: string, attachmentId = "") {

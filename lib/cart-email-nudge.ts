@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { runCartExitGate } from "@/lib/escape-offer";
 import { getCartEmailArm, hasCartEmailSaved } from "@/lib/promo-save";
 import { trackShopStep } from "@/lib/track-step";
+import { isAssistantSpeaking } from "@/lib/assistant";
 
 const SHOWN_SESSION_KEY = "keika_cart_email_offer_shown";
 const CART_FIRST_ITEM_AT_KEY = "keika_cart_first_item_at";
@@ -74,6 +75,8 @@ export function useCartEmailNudge(options: {
     (why: CartEmailTrigger) => {
       if (firedRef.current) return;
       if (!cartEmailOfferEligible()) return;
+      // Mądry asystent właśnie coś pokazuje - naraz mówi tylko jedno okienko.
+      if (isAssistantSpeaking()) return;
       firedRef.current = true;
       markShown();
       setTrigger(why);

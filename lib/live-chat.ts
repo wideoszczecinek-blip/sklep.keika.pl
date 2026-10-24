@@ -27,6 +27,28 @@ export const LIVE_CHAT_OPEN_EVENT = "keika:live-chat-open";
 
 export type ChatMode = "own" | "crisp";
 
+/** Propozycja tkaniny z doradcy kolorów (CRM: core/lib/chat_assistant_vision.php). */
+export type LiveChatColorItem = {
+  role: string;
+  swatchId: string;
+  groupId: string;
+  groupLabel: string;
+  label: string;
+  color: string;
+  image: string;
+  why: string;
+};
+
+export type LiveChatCard =
+  | {
+      type: "colors";
+      product: string;
+      mood: string;
+      items: LiveChatColorItem[];
+      hardware?: { id: string; label: string; color: string; why: string } | null;
+    }
+  | { type: "plate"; brand: string; model: string; query: string; confident: boolean };
+
 export type LiveChatMessage = {
   id: number;
   from: "customer" | "bot" | "staff";
@@ -35,6 +57,18 @@ export type LiveChatMessage = {
   image?: string;
   at?: string;
   pending?: boolean;
+  card?: LiveChatCard | null;
+};
+
+/** Co klient chce zrobić zdjęciem: pokój (kolory), tabliczka okna dachowego, auto = niech AI rozpozna. */
+export type LiveChatPhotoMode = "room" | "plate" | "auto";
+
+export type LiveChatOpenOptions = {
+  prefill?: string;
+  /** Wyślij od razu tę wiadomość (np. odpowiedź z dymka asystenta). */
+  send?: string;
+  /** Otwórz wybór zdjęcia (musi być wywołane w kliknięciu klienta). */
+  photo?: LiveChatPhotoMode;
 };
 
 export type LiveChatState = {
@@ -113,9 +147,9 @@ export function resolveChatMode(): Promise<ChatMode> {
 }
 
 /** Otwiera okienko własnego czatu (app/components/live-chat.tsx słucha zdarzenia). */
-export function openLiveChat(prefill?: string): void {
+export function openLiveChat(prefill?: string, options?: Omit<LiveChatOpenOptions, "prefill">): void {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent(LIVE_CHAT_OPEN_EVENT, { detail: { prefill: prefill || "" } }));
+  window.dispatchEvent(new CustomEvent<LiveChatOpenOptions>(LIVE_CHAT_OPEN_EVENT, { detail: { prefill: prefill || "", ...(options || {}) } }));
 }
 
 export function readLiveChatToken(): string {
@@ -166,6 +200,11 @@ export function liveChatPoll(token: string, after: number): Promise<LiveChatPayl
 
 export function liveChatHuman(token: string, after: number): Promise<LiveChatPayload> {
   return post({ action: "human", token, after });
+}
+
+/** Mądry asystent: AI ogląda ostatnie zdjęcie klienta (pokój -> 3 tkaniny, tabliczka -> model okna). */
+export function liveChatAdvise(token: string, kind: LiveChatPhotoMode, product: string, after: number): Promise<LiveChatPayload> {
+  return post({ action: "advise", token, kind, product, after, page_url: window.location.href });
 }
 
 export async function liveChatUpload(token: string, file: File, after: number): Promise<LiveChatPayload> {

@@ -30,6 +30,7 @@ import { calcBundleDiscount } from "@/lib/bundle-discount";
 import { PROMO_CODE, isPromoActive, readCachedPromoPreview } from "@/lib/promo";
 import { buildRescuePosition, clearRescueGrant, setRescueGrant } from "@/lib/rescue";
 import { trackShopStep } from "@/lib/track-step";
+import { isAssistantSpeaking } from "@/lib/assistant";
 
 const ENDPOINT = "https://crm-keika.groovemedia.pl/biuro/api/shop-public/escape_offer.php";
 const STATE_KEY = "keika_escape_offer_v1";
@@ -190,6 +191,8 @@ export function requestEscapeOffer(trigger: EscapeTrigger, items: CartLineItem[]
   const existing = readState();
   if (existing) return Promise.resolve(existing);
   if (!isCartEligibleForEscapeOffer(items)) return Promise.resolve(null);
+  // Mądry asystent właśnie coś pokazuje - naraz mówi tylko jedno okienko (spróbujemy przy kolejnym sygnale).
+  if (isAssistantSpeaking()) return Promise.resolve(null);
   if (inFlight) return inFlight;
   if (Date.now() - lastAskAt < 20000) return Promise.resolve(null);
   lastAskAt = Date.now();

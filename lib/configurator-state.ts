@@ -19,7 +19,16 @@ export type ConfiguratorProgress = {
   width_mm: number;
   height_mm: number;
   unit: string;
+  /** Dla mądrego asystenta (zapis oferty z rabatem): opisy wybranych opcji. */
+  product_label?: string;
+  hardware_label?: string;
+  fabric_label?: string;
+  /** Cena widoczna dla klienta (także „od” przed wyborem kolekcji); price zostaje do analityki. */
+  display_price?: number | null;
 };
+
+/** Zdarzenie przy każdym zgłoszeniu stanu - słucha go mądry asystent (lib/assistant.ts). */
+export const CONFIGURATOR_STATE_EVENT = "keika:configurator-state";
 
 let current: ConfiguratorProgress | null = null;
 let updatedAt = 0;
@@ -27,6 +36,13 @@ let updatedAt = 0;
 export function reportConfiguratorState(state: ConfiguratorProgress): void {
   current = state;
   updatedAt = Date.now();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<ConfiguratorProgress>(CONFIGURATOR_STATE_EVENT, { detail: state }));
+  }
+}
+
+export function getConfiguratorState(): ConfiguratorProgress | null {
+  return current;
 }
 
 export function clearConfiguratorState(product?: string): void {

@@ -319,6 +319,12 @@ export function addCartItem(item: CartLineItem, options?: { source?: "add" | "re
       /* tracking never blocks the cart */
     });
   void trackCartEventToCrm("add_to_cart", item.productSlug, item, items);
+  // Mądry asystent (lib/assistant.ts) - moment „masz więcej okien?”.
+  try {
+    window.dispatchEvent(new CustomEvent("keika:cart-added", { detail: { productSlug: item.productSlug, qty: item.qty, count: items.length } }));
+  } catch {
+    // poza przeglądarką nic do zrobienia
+  }
   return items;
 }
 

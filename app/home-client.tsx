@@ -64,7 +64,7 @@ import {
 import InfoModal from "./components/info-modal";
 import MeasurementHelp from "./components/measurement-help";
 import { openCrispChat } from "@/lib/crisp";
-import ChatNudge from "@/app/components/chat-nudge";
+import { HeaderChatLabel, HeaderChatNudge } from "@/app/components/assistant-nudges";
 import {
   getRescueGrant,
   RESCUE_GRANT_EVENT,
@@ -3644,7 +3644,7 @@ export default function Home({
               onSent={() => cartEmailNudge.markSent()}
             />
           ) : null}
-          <ChatNudge productSlug={productSlugFromSelected(displayedProduct)} active={isProductView} />
+          <HeaderChatNudge productSlug={productSlugFromSelected(displayedProduct)} active={isProductView} />
           <button
             type="button"
             className="header-chat-button"
@@ -3665,6 +3665,7 @@ export default function Home({
               <circle cx="15.5" cy="12" r="1" fill="currentColor" />
             </svg>
             <span className="header-chat-button-dot" aria-hidden="true" />
+            <HeaderChatLabel />
           </button>
           </div>
           <div

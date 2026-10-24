@@ -1,0 +1,270 @@
+/* Mądry asystent (24.10.2026, lib/assistant.ts) - wygląd czatu w kolorach strony (lc-v2),
+   duże okno na propozycje (lc-wide), karty tkanin, powiększenie próbki i dymki asystenta
+   pod ikoną czatu (as-nudge). Osobny plik, bo globals.css jest ogromny (a next dev gubi
+   reguły z jego końca). Kolory strony: granat #16314e / --ink, biel, pomarańczowe akcje
+   jak koszyk (#ffb020 -> #f08a00), zielone kropki statusu. */
+
+/* ---- układ okienka (wszystkie wersje): rozmowa + opcjonalna tablica propozycji ---- */
+.lc-main { flex: 1; display: flex; min-height: 0; }
+.lc-talk { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+
+/* ---- nowy wygląd: karta konfiguratora zamiast turkusowego nagłówka ---- */
+.lc-panel.lc-v2 { --lc-head: #fff; border-color: #dbe3ee; }
+.lc-v2 .lc-head { color: var(--ink, #132843); border-bottom: 1px solid #e3e9f1; }
+.lc-v2 .lc-head-avatar { background: #16314e; border-color: #16314e; color: #fff; border-radius: 50%; }
+.lc-v2 .lc-head-dot { background: #1fae6a; }
+.lc-v2 .lc-head-status { color: var(--ink-soft, #4e6480); }
+.lc-v2 .lc-head-status .lc-ico { color: #f08a00; }
+.lc-v2 .lc-close { background: #f1f5f9; color: #16314e; }
+.lc-v2 .lc-close:hover { background: #e2e8f0; }
+.lc-v2.lc-mode-waiting .lc-head { background: #fff8ee; }
+.lc-v2.lc-mode-waiting .lc-head-avatar { background: #f59e0b; border-color: #f59e0b; }
+.lc-v2.lc-mode-human .lc-head { background: #16314e; color: #fff; border-bottom-color: #16314e; }
+.lc-v2.lc-mode-human .lc-head-avatar { background: #fff; color: #16314e; border-color: #fff; }
+.lc-v2.lc-mode-human .lc-head-status { color: rgba(255, 255, 255, 0.85); }
+.lc-v2.lc-mode-human .lc-close,
+.lc-v2.lc-mode-human .lc-shrink { background: rgba(255, 255, 255, 0.16); color: #fff; border-color: transparent; }
+.lc-v2 .lc-body { background: #f3f6fa; }
+.lc-v2 .lc-avatar-ai { background: #16314e; color: #fff; }
+.lc-v2 .lc-msg-bot { background: #fff; border: 1px solid #dbe3ee; border-top-left-radius: 6px; box-shadow: none; }
+.lc-v2 .lc-msg-customer { background: #16314e; color: #fff; }
+.lc-v2 .lc-chip { border-color: #c9d5e4; color: #16314e; background: #fff; }
+.lc-v2 .lc-chip:hover { background: #16314e; border-color: #16314e; color: #fff; }
+.lc-v2 .lc-compose:focus-within { border-color: #16314e; box-shadow: 0 0 0 4px rgba(22, 49, 78, 0.1); }
+.lc-v2 .lc-send { background: linear-gradient(135deg, #ffb020, #f08a00); box-shadow: 0 6px 14px rgba(240, 138, 0, 0.3); }
+.lc-v2 .lc-human-link {
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft, #4e6480);
+  font-weight: 600;
+  padding: 6px;
+  margin: 2px auto 0;
+  box-shadow: none;
+}
+.lc-v2 .lc-human-link:hover { background: transparent; color: #16314e; text-decoration: underline; }
+.lc-advising { padding: 11px 14px; font-size: 13.5px; color: var(--ink-soft, #4e6480); font-style: italic; }
+
+.lc-shrink {
+  border: 1px solid #c9d5e4;
+  background: #fff;
+  color: #16314e;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+/* potwierdzenie „Wstawione do konfiguratora” */
+.lc-applied {
+  margin: 0 12px 8px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: #edfbf3;
+  border: 1px solid #b7ebcf;
+  color: #14532d;
+  font-size: 13px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.lc-applied span { flex: 1; }
+.lc-applied button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 14px; }
+
+/* ---- karty w wiadomościach ---- */
+.lc-msg.has-card { max-width: 92%; }
+.lc-card { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.lc-swatches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.lc-swatches .lc-sw { display: flex; flex-direction: column; border: 1px solid #dbe3ee; border-radius: 10px; overflow: hidden; background: #fff; }
+.lc-sw-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 0;
+  padding: 0;
+  cursor: zoom-in;
+  position: relative;
+  overflow: hidden;
+}
+.lc-sw-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lc-swatches .lc-sw-text { padding: 5px 6px 6px; display: flex; flex-direction: column; gap: 1px; line-height: 1.25; }
+.lc-sw-text strong { font-size: 12px; color: #16314e; }
+.lc-sw-role { font-size: 10.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #c26a00; }
+.lc-sw-group { font-size: 11px; color: var(--ink-soft, #4e6480); }
+.lc-card-open,
+.lc-sw-apply {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: linear-gradient(135deg, #ffb020, #f08a00);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+}
+.lc-card-open:hover,
+.lc-sw-apply:hover { filter: brightness(1.05); }
+.lc-sw-apply.is-ghost { background: #fff; color: #16314e; border: 1px solid #c9d5e4; }
+.lc-card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.lc-card-plate { padding: 10px 12px; border-radius: 12px; background: #f3f6fa; border: 1px solid #dbe3ee; }
+.lc-card-plate strong { font-family: var(--font-heading); font-size: 16px; color: #16314e; }
+.lc-card-note { font-size: 12px; color: var(--ink-soft, #4e6480); margin: 2px 0 0; }
+
+/* ---- duże okno: rozmowa po lewej, propozycje po prawej ---- */
+.lc-panel.lc-wide { width: min(940px, calc(100vw - 40px)); height: min(700px, calc(100vh - 40px)); }
+.lc-wide .lc-talk { flex: 0 0 380px; border-right: 1px solid #e3e9f1; }
+.lc-board { flex: 1; min-width: 0; overflow-y: auto; padding: 18px 20px 20px; background: #fff; display: flex; flex-direction: column; gap: 14px; overscroll-behavior: contain; }
+.lc-board-head { display: flex; flex-direction: column; gap: 6px; }
+.lc-board-head strong { font-family: var(--font-heading); font-size: 19px; color: #16314e; }
+.lc-board-head p { margin: 0; font-size: 14px; line-height: 1.5; color: #35506b; }
+.lc-board-back { display: none; align-self: flex-start; border: 0; background: transparent; color: #16314e; font: inherit; font-weight: 700; padding: 0; cursor: pointer; }
+.lc-board-list { display: flex; flex-direction: column; gap: 12px; }
+.lc-board-list .lc-sw { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 14px; border: 1px solid #dbe3ee; border-radius: 14px; padding: 12px; background: #fff; }
+.lc-board-list .lc-sw-img { aspect-ratio: 1; border-radius: 10px; }
+.lc-board-list .lc-sw-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lc-board-list .lc-sw-text strong { font-size: 15px; }
+.lc-board-list .lc-sw-text p { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.5; color: #35506b; }
+.lc-board-list .lc-sw-apply { align-self: flex-start; }
+.lc-hw { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 12px; background: #f3f6fa; font-size: 13.5px; line-height: 1.45; color: #35506b; }
+.lc-hw i { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 6px; border: 1px solid #c9d5e4; }
+.lc-hw strong { color: #16314e; }
+
+/* ---- powiększenie próbki ---- */
+.lc-zoom { position: absolute; inset: 0; z-index: 5; background: rgba(13, 24, 40, 0.55); display: grid; place-items: center; padding: 16px; }
+.lc-zoom-box { width: min(520px, 100%); max-height: 100%; overflow: auto; background: #fff; border-radius: 16px; display: flex; flex-direction: column; }
+.lc-zoom-img { width: 100%; aspect-ratio: 4 / 3; }
+.lc-zoom-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lc-zoom-text { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.lc-zoom-text strong { font-family: var(--font-heading); font-size: 16px; color: #16314e; }
+.lc-zoom-text p { margin: 0; font-size: 14px; line-height: 1.5; color: #35506b; }
+
+@media (max-width: 760px) {
+  /* telefon: okienko i tak na cały ekran; duże okno = propozycje zamiast rozmowy */
+  .lc-panel.lc-wide { width: 100%; height: 100%; }
+  .lc-wide .lc-talk { display: none; }
+  .lc-wide .lc-board-back { display: inline-block; }
+  .lc-shrink { display: none; }
+  .lc-board { padding: 14px 16px max(16px, env(safe-area-inset-bottom)); }
+  .lc-board-list .lc-sw { grid-template-columns: minmax(0, 1fr); }
+  .lc-board-list .lc-sw-img { aspect-ratio: 16 / 9; }
+  .lc-board-list .lc-sw-apply { align-self: stretch; padding: 12px; }
+}
+
+/* ---- przycisk czatu w nagłówku z napisem (grupa A) ---- */
+.header-chat-button:has(.header-chat-label) {
+  width: auto;
+  padding: 0 0.95rem 0 0.7rem;
+  gap: 0.4rem;
+  background: #16314e;
+  box-shadow: 0 8px 18px rgba(22, 49, 78, 0.28);
+}
+.header-chat-label { font-size: 0.82rem; font-weight: 800; white-space: nowrap; letter-spacing: 0.01em; }
+.header-chat-button:has(.header-chat-label) .header-chat-button-ping { display: none; }
+@media (max-width: 420px) {
+  .header-chat-label { font-size: 0.76rem; }
+  .header-chat-button:has(.header-chat-label) { padding: 0 0.7rem 0 0.55rem; }
+}
+
+/* ---- dymek asystenta pod ikoną czatu ---- */
+.as-nudge {
+  position: absolute;
+  top: calc(100% + 0.7rem);
+  right: 0;
+  z-index: 90;
+  width: min(330px, calc(100vw - 1.5rem));
+  padding: 0.9rem 0.95rem 0.85rem;
+  border-radius: 1rem;
+  background: #fff;
+  color: #16314e;
+  border: 1px solid #d5dee8;
+  box-shadow: 0 18px 40px rgba(19, 40, 67, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  text-align: left;
+  animation: chat-nudge-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.as-nudge-arrow {
+  position: absolute;
+  top: -7px;
+  right: 1.2rem;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-left: 1px solid #d5dee8;
+  border-top: 1px solid #d5dee8;
+  transform: rotate(45deg);
+}
+.as-nudge-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  border: none;
+  background: transparent;
+  color: #7a8794;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+}
+.as-nudge-top { display: flex; gap: 0.65rem; align-items: flex-start; padding-right: 1.2rem; }
+.as-nudge-avatar {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #16314e;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+.as-nudge-top div > strong { display: block; font-size: 0.95rem; font-weight: 800; line-height: 1.3; }
+.as-nudge-top div > span { display: block; margin-top: 0.15rem; font-size: 0.83rem; line-height: 1.45; color: #35506b; }
+.as-nudge-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.as-nudge-actions button,
+.as-nudge-form button,
+.as-nudge-done > button {
+  border: 1px solid #c9d5e4;
+  background: #fff;
+  color: #16314e;
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.as-nudge-actions button.is-primary,
+.as-nudge-form button.is-primary,
+.as-nudge-done > button.is-primary { background: #16314e; border-color: #16314e; color: #fff; }
+.as-nudge-form { display: flex; gap: 0.45rem; }
+.as-nudge-form input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #c9d5e4;
+  border-radius: 999px;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
+  font-size: 0.88rem;
+  color: #16314e;
+}
+.as-nudge-form input:focus { outline: none; border-color: #16314e; box-shadow: 0 0 0 3px rgba(22, 49, 78, 0.12); }
+.as-nudge-done { display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.85rem; line-height: 1.45; color: #14532d; }
+.as-nudge-done > button { align-self: flex-start; }
+.as-nudge-msg { margin: 0; font-size: 0.8rem; color: #b91c1c; }
+.as-nudge-foot { margin: 0; }
+.as-nudge-foot button { border: 0; background: transparent; color: #7a8794; font: inherit; font-size: 0.78rem; cursor: pointer; padding: 0; text-decoration: underline; }
+.as-flash { animation: asFlash 0.8s ease-in-out 3; }
+@keyframes asFlash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 138, 0, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(240, 138, 0, 0.45); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .as-nudge, .as-flash { animation: none; }
+}
