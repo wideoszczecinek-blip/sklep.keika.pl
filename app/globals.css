@@ -23572,3 +23572,177 @@ dl.zl-table > div.is-price dd {
 dl.zl-table > div.is-price {
   grid-template-columns: minmax(0, 1fr) auto;
 }
+
+/* Własny czat KEIKA (app/components/live-chat.tsx, 24.10.2026) - zastępuje
+   Crispa, gdy włączony w CRM. Komputer: panel w prawym dolnym rogu;
+   telefon: pełny ekran, żeby klawiatura nie zasłaniała rozmowy. */
+.lc-panel {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  width: 380px;
+  height: min(620px, calc(100vh - 40px));
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+  font-size: 15px;
+}
+.lc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  background: linear-gradient(155deg, var(--accent, #c2410c) 0%, var(--accent-deep, #9a3412) 100%);
+  color: #fff;
+}
+.lc-head-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+.lc-head-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.lc-head-text strong { font-size: 16px; }
+.lc-head-text span { font-size: 12.5px; opacity: 0.9; }
+.lc-close {
+  border: 0;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+}
+.lc-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+}
+.lc-msg {
+  max-width: 85%;
+  padding: 9px 12px;
+  border-radius: 16px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.lc-msg a { color: inherit; text-decoration: underline; }
+.lc-msg-who { font-size: 11.5px; font-weight: 700; opacity: 0.7; margin-bottom: 2px; }
+.lc-msg-customer {
+  align-self: flex-end;
+  background: var(--accent, #c2410c);
+  color: #fff;
+  border-bottom-right-radius: 5px;
+}
+.lc-msg-customer.is-pending { opacity: 0.65; }
+.lc-msg-bot {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-bottom-left-radius: 5px;
+}
+.lc-msg-staff {
+  align-self: flex-start;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-bottom-left-radius: 5px;
+}
+.lc-msg-img { max-width: 220px; max-height: 220px; border-radius: 10px; display: block; }
+.lc-typing { display: flex; gap: 4px; padding: 12px 14px; }
+.lc-typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94a3b8;
+  animation: lcTyping 1.1s infinite ease-in-out;
+}
+.lc-typing span:nth-child(2) { animation-delay: 0.15s; }
+.lc-typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes lcTyping {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+.lc-note { text-align: center; color: #64748b; font-size: 13px; }
+.lc-banner {
+  margin: 0 12px 8px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.lc-human {
+  margin: 8px 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 2px solid #0f2f4f;
+  background: #fff;
+  color: #0f2f4f;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+.lc-human:hover { background: #0f2f4f; color: #fff; }
+.lc-error { margin: 0 12px 6px; color: #b91c1c; font-size: 13px; }
+.lc-compose {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px 10px 12px;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}
+.lc-compose textarea {
+  flex: 1;
+  resize: none;
+  max-height: 120px;
+  min-height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 16px;
+  color: #0f172a;
+  background: #fff;
+}
+.lc-attach,
+.lc-send {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 0;
+  cursor: pointer;
+  font-size: 18px;
+}
+.lc-attach { background: #f1f5f9; }
+.lc-send { background: var(--accent, #c2410c); color: #fff; }
+.lc-send:disabled { opacity: 0.45; cursor: default; }
+@media (max-width: 760px) {
+  .lc-panel {
+    inset: 0;
+    width: auto;
+    height: 100dvh;
+    border-radius: 0;
+  }
+}

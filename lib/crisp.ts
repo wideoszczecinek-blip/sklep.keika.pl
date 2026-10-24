@@ -13,7 +13,7 @@ const CRISP_WEBSITE_ID = "8c31cd03-8650-476a-accf-9d63cde5da9c";
 let injected = false;
 
 /** Co klient ogląda i ile ma w koszyku - kontekst dla automatycznego konsultanta. */
-function shopChatContext(): string {
+export function shopChatContext(): string {
   try {
     const path = window.location.pathname.replace(/^\/+|\/+$/g, "") || "strona główna";
     const raw = window.localStorage.getItem("keika_cart");
@@ -33,6 +33,21 @@ export function openCrispChat(prefill?: string): void {
   if (typeof window === "undefined") return;
   // Otwarcie czatu to sygnał "ma pytanie / utknął" - do analityki CRM.
   void import("@/lib/track-step").then(({ trackShopStep }) => trackShopStep("chat_opened", prefill ? "z podpowiedzią" : "ręcznie")).catch(() => null);
+  try {
+    window.sessionStorage.setItem("keika_chat_opened", "1");
+  } catch {
+    // nic do zrobienia
+  }
+  // Własny czat KEIKA (24.10.2026, lib/live-chat.ts): gdy włączony w CRM albo
+  // wymuszony ?czat=nowy, otwiera się nasze okienko; inaczej jak dotąd Crisp.
+  void import("@/lib/live-chat")
+    .then(({ resolveChatMode, openLiveChat }) =>
+      resolveChatMode().then((mode) => (mode === "own" ? openLiveChat(prefill) : openCrispWidget(prefill))),
+    )
+    .catch(() => openCrispWidget(prefill));
+}
+
+function openCrispWidget(prefill?: string): void {
   const w = window as unknown as { $crisp?: unknown[]; CRISP_WEBSITE_ID?: string };
 
   w.$crisp = w.$crisp || [];
@@ -44,11 +59,6 @@ export function openCrispChat(prefill?: string): void {
   w.$crisp.push(["do", "chat:open"]);
   if (prefill) {
     w.$crisp.push(["set", "message:text", [prefill]]);
-  }
-  try {
-    window.sessionStorage.setItem("keika_chat_opened", "1");
-  } catch {
-    // nic do zrobienia
   }
 
   // Automatyczny konsultant (lib/chat-bot.ts, 2026-10-22) odpowiada sam

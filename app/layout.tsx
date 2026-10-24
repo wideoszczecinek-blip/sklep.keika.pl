@@ -5,6 +5,7 @@ import LastPageTracker from "./components/last-page-tracker";
 import TrackingBoot from "./components/tracking-boot";
 import SiteAnalytics from "./components/site-analytics";
 import ChatBubble from "./components/chat-bubble";
+import LiveChat from "./components/live-chat";
 import ConsentBar from "./components/consent-bar";
 import PersonalCodeCapture from "./components/personal-code-capture";
 import SiteFooter from "@/app/components/site-footer";
@@ -76,6 +77,7 @@ export default function RootLayout({
         {children}
         <SiteFooter />
         <ChatBubble />
+        <LiveChat />
         <ConsentBar />
       </body>
     </html>
