@@ -10,7 +10,9 @@
  * Który czat się otwiera:
  *  - ?czat=nowy  -> zawsze własny czat w tej przeglądarce (test), zapamiętane,
  *  - ?czat=crisp -> kasuje wymuszenie (wraca ustawienie z CRM),
- *  - inaczej decyduje przełącznik w CRM (GET live_chat.php -> mode: own|crisp).
+ *  - inaczej decyduje przełącznik w CRM (GET live_chat.php -> mode: own|crisp);
+ *    od 24.10.2026 właściciel: „przełącz czat na nasz, wyłącz Crisp” - domyślnie own,
+ *    Crisp tylko gdy CRM wprost zwróci crisp (awaryjny powrót z zakładki Czat).
  * Backend: CRM views/biuro/api/shop-public/live_chat.php + core/lib/live_chat.php.
  */
 
@@ -92,7 +94,7 @@ export function resolveChatMode(): Promise<ChatMode> {
     modePromise = fetch(LIVE_CHAT_API, { method: "GET", signal: controller.signal })
       .then((res) => res.json() as Promise<{ ok?: boolean; mode?: string }>)
       .then((data) => {
-        const mode: ChatMode = data?.mode === "own" ? "own" : "crisp";
+        const mode: ChatMode = data?.mode === "crisp" ? "crisp" : "own";
         try {
           window.sessionStorage.setItem(MODE_CACHE_KEY, JSON.stringify({ mode, at: Date.now() }));
         } catch {
@@ -100,8 +102,8 @@ export function resolveChatMode(): Promise<ChatMode> {
         }
         return mode;
       })
-      // CRM nie odpowiada - zostaje Crisp (on działa bez naszego serwera).
-      .catch((): ChatMode => "crisp")
+      // CRM nie odpowiada - i tak nasz czat (od 24.10 Crisp wyłączony; okienko pokaże błąd połączenia).
+      .catch((): ChatMode => "own")
       .finally(() => {
         window.clearTimeout(timer);
         modePromise = null;

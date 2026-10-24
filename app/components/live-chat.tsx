@@ -159,12 +159,15 @@ export default function LiveChat() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, sending, open]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(preset?: string) {
+    const text = (preset ?? input).trim();
     if (!text || sending) return;
     if (!tokenRef.current) await ensureStarted();
     if (!tokenRef.current) return;
-    setInput("");
+    if (preset === undefined) {
+      setInput("");
+      if (inputRef.current) inputRef.current.style.height = "";
+    }
     setError("");
     setSending(true);
     const tempId = Date.now();
@@ -216,49 +219,90 @@ export default function LiveChat() {
   const humanActive = !!state?.human_active;
   const waitingHuman = !!state?.waiting_human && !humanActive;
   const staffName = [...messages].reverse().find((m) => m.from === "staff")?.name || "Doradca KEIKA";
+  const customerWrote = messages.some((m) => m.from === "customer");
+  const mode = humanActive ? "human" : waitingHuman ? "waiting" : "ai";
 
   return (
-    <div className="lc-panel" role="dialog" aria-label="Czat z KEIKA">
+    <div className={`lc-panel lc-mode-${mode}`} role="dialog" aria-label="Czat z KEIKA">
       <div className="lc-head">
-        <div className="lc-head-avatar" aria-hidden="true">{humanActive ? "👤" : "K"}</div>
+        <div className="lc-head-avatar" aria-hidden="true">
+          {humanActive ? initials(staffName) : "K"}
+          <span className="lc-head-dot" />
+        </div>
         <div className="lc-head-text">
-          <strong>{humanActive ? staffName : "Czat KEIKA"}</strong>
-          <span>
-            {humanActive
-              ? "Rozmawia Pan/Pani z doradcą"
-              : waitingHuman
-                ? "Przekazano do doradcy - odpisze tutaj"
-                : "Odpowiada asystent AI · doradca na życzenie"}
+          <strong>{humanActive ? staffName : "KEIKA · pomoc na czacie"}</strong>
+          <span className="lc-head-status">
+            {mode === "human" ? (
+              <>
+                <IconPerson /> Rozmawiasz z doradcą
+              </>
+            ) : mode === "waiting" ? (
+              <>
+                <IconClock /> Czekasz na doradcę - odpisze tutaj
+              </>
+            ) : (
+              <>
+                <IconSpark /> Asystent AI · doradca na życzenie
+              </>
+            )}
           </span>
         </div>
-        <button type="button" className="lc-close" aria-label="Zamknij czat" onClick={() => setOpen(false)}>
-          ✕
+        <button type="button" className="lc-close" aria-label="Zminimalizuj czat" title="Zminimalizuj" onClick={() => setOpen(false)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
       </div>
 
       <div className="lc-body" ref={listRef}>
-        <div className="lc-msg lc-msg-bot">
-          <div className="lc-msg-who">Asystent AI KEIKA</div>
-          {greeting}
-        </div>
-        {messages.map((m) => (
-          <div key={`${m.id}-${m.pending ? "p" : "s"}`} className={`lc-msg lc-msg-${m.from} ${m.pending ? "is-pending" : ""}`}>
-            {m.from !== "customer" ? <div className="lc-msg-who">{m.from === "staff" ? m.name || "Doradca KEIKA" : "Asystent AI KEIKA"}</div> : null}
-            {m.image ? (
-              <a href={m.image} target="_blank" rel="noopener noreferrer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={m.image} alt="Przesłane zdjęcie" className="lc-msg-img" />
-              </a>
-            ) : (
-              <div className="lc-msg-text">{linkify(m.text)}</div>
-            )}
+        <div className="lc-row lc-row-bot">
+          <div className="lc-avatar lc-avatar-ai" aria-hidden="true">AI</div>
+          <div className="lc-msg lc-msg-bot">
+            <div className="lc-msg-who">Asystent AI KEIKA</div>
+            <div className="lc-msg-text">{greeting}</div>
           </div>
-        ))}
+        </div>
+        {!customerWrote && !humanActive ? (
+          <div className="lc-chips" aria-label="Szybkie pytania">
+            {QUICK_QUESTIONS.map((q) => (
+              <button key={q} type="button" className="lc-chip" disabled={sending} onClick={() => void send(q)}>
+                {q}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {messages.map((m) => {
+          const time = (m.at || "").slice(11, 16);
+          return (
+            <div key={`${m.id}-${m.pending ? "p" : "s"}`} className={`lc-row lc-row-${m.from}`}>
+              {m.from === "bot" ? (
+                <div className="lc-avatar lc-avatar-ai" aria-hidden="true">AI</div>
+              ) : m.from === "staff" ? (
+                <div className="lc-avatar lc-avatar-staff" aria-hidden="true">{initials(m.name || "Doradca KEIKA")}</div>
+              ) : null}
+              <div className={`lc-msg lc-msg-${m.from} ${m.pending ? "is-pending" : ""}`}>
+                {m.from !== "customer" ? <div className="lc-msg-who">{m.from === "staff" ? m.name || "Doradca KEIKA" : "Asystent AI KEIKA"}</div> : null}
+                {m.image ? (
+                  <a href={m.image} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={m.image} alt="Przesłane zdjęcie" className="lc-msg-img" />
+                  </a>
+                ) : (
+                  <div className="lc-msg-text">{linkify(m.text)}</div>
+                )}
+                {time || m.pending ? <div className="lc-msg-time">{m.pending ? "wysyłanie…" : time}</div> : null}
+              </div>
+            </div>
+          );
+        })}
         {sending && !humanActive ? (
-          <div className="lc-msg lc-msg-bot lc-typing" aria-live="polite">
-            <span />
-            <span />
-            <span />
+          <div className="lc-row lc-row-bot" aria-live="polite">
+            <div className="lc-avatar lc-avatar-ai" aria-hidden="true">AI</div>
+            <div className="lc-msg lc-msg-bot lc-typing" aria-label="Asystent pisze">
+              <span />
+              <span />
+              <span />
+            </div>
           </div>
         ) : null}
         {starting && !messages.length ? <div className="lc-note">Łączenie…</div> : null}
@@ -266,60 +310,117 @@ export default function LiveChat() {
 
       {waitingHuman ? (
         <div className="lc-banner">
-          Przekazaliśmy rozmowę doradcy. Odpowie tutaj, zwykle w kilka minut. Można też zostawić e-mail lub numer telefonu.
+          <IconClock />
+          <span>Przekazaliśmy rozmowę doradcy. Odpowie tutaj, zwykle w kilka minut. Warto zostawić e-mail albo telefon - gdyby nie zdążył, odezwiemy się.</span>
         </div>
-      ) : null}
-      {!humanActive && !waitingHuman ? (
-        <button type="button" className="lc-human" onClick={() => void askHuman()}>
-          👤 Chcę porozmawiać z człowiekiem
-        </button>
       ) : null}
       {error ? <div className="lc-error">{error}</div> : null}
 
-      <form
-        className="lc-compose"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send();
-        }}
-      >
-        <button
-          type="button"
-          className="lc-attach"
-          aria-label="Dodaj zdjęcie"
-          title="Dodaj zdjęcie"
-          disabled={uploading}
-          onClick={() => fileRef.current?.click()}
+      <div className="lc-foot">
+        {!humanActive && !waitingHuman ? (
+          <button type="button" className="lc-human" onClick={() => void askHuman()}>
+            <IconPerson /> Chcę porozmawiać z człowiekiem
+          </button>
+        ) : null}
+        <form
+          className="lc-compose"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
         >
-          {uploading ? "…" : "📷"}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void upload(f);
-          }}
-        />
-        <textarea
-          ref={inputRef}
-          rows={1}
-          value={input}
-          placeholder="Napisz wiadomość…"
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void send();
-            }
-          }}
-        />
-        <button type="submit" className="lc-send" disabled={sending || !input.trim()} aria-label="Wyślij">
-          ➤
-        </button>
-      </form>
+          <button
+            type="button"
+            className="lc-attach"
+            aria-label="Dodaj zdjęcie"
+            title="Dodaj zdjęcie (np. okna albo produktu)"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading ? (
+              <span className="lc-spinner" aria-hidden="true" />
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.6l1.3-1.8h5.2L15.9 6h1.6A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinejoin="round"
+                />
+                <circle cx="12" cy="12.4" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.7" />
+              </svg>
+            )}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void upload(f);
+            }}
+          />
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={input}
+            placeholder={humanActive ? `Napisz do: ${staffName}…` : "Napisz wiadomość…"}
+            onChange={(e) => {
+              setInput(e.target.value);
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+          />
+          <button type="submit" className="lc-send" disabled={sending || !input.trim()} aria-label="Wyślij">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </form>
+        <div className="lc-legal">{humanActive ? "Rozmowa z pracownikiem KEIKA" : "Asystent AI może się pomylić - w razie wątpliwości poproś doradcę"}</div>
+      </div>
     </div>
+  );
+}
+
+const QUICK_QUESTIONS = ["Ile kosztuje plisa na mój wymiar?", "Jak zmierzyć okno?", "Gdzie jest moje zamówienie?", "Ile trwa realizacja?"];
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] || "K") + (parts[1]?.[0] || "")).toUpperCase();
+}
+
+function IconPerson() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="lc-ico">
+      <circle cx="12" cy="8" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconClock() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="lc-ico">
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconSpark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="lc-ico">
+      <path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z" fill="currentColor" />
+    </svg>
   );
 }
