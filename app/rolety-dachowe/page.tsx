@@ -15,7 +15,7 @@ export const revalidate = 3600;
 const SLUG = "rolety-dachowe";
 const TITLE = "Rolety do okien dachowych na wymiar - pod model okna | KEIKA";
 const DESCRIPTION =
-  "Roleta do okna dachowego w aluminiowej kasecie z prowadnicami i hamulcem, dobrana do modelu Twojego okna (VELUX, FAKRO, ROTO, OKPOL i inne - ponad 420 modeli). 73 tkaniny DEKO i TERMO blackout. Wysyłka zwykle w 2 dni robocze, 5 lat gwarancji, 30 dni na zwrot.";
+  "Roleta do okna dachowego w aluminiowej kasecie z prowadnicami i hamulcem, dobrana do modelu Twojego okna (VELUX, FAKRO, ROTO, OKPOL i inne - ponad 420 modeli). 73 tkaniny DEKO i TERMO blackout. Montaż do skrzydła okna, 5 lat gwarancji, 30 dni na zwrot.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const product = await getPricedProduct(SLUG);

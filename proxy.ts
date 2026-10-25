@@ -7,6 +7,10 @@ import { NextResponse, type NextRequest } from "next/server";
 const STATIC_PRODUCT_ROUTES: Record<string, string> = {
   "moskitiery-ramkowe": "/moskitiery-ramkowe",
   plisy: "/plisy",
+  // 25.10.2026: produkty dachowe dostały własne strony (agenci AI i Google
+  // widzieli pod /?produkt=... tylko stronę główną).
+  "rolety-dachowe": "/rolety-dachowe",
+  "plisy-dachowe": "/plisy-dachowe",
   "rolety-dzien-noc": "/rolety-dzien-noc",
   "rolety-tradycyjne": "/rolety-tradycyjne",
   zaluzje: "/zaluzje",

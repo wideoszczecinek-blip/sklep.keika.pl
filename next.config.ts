@@ -9,10 +9,11 @@ const nextConfig: NextConfig = {
       { source: "/kategoria/plisy", destination: "/plisy", permanent: false },
       // Rolety dachowe + plisy dachowe went live 2026-09-19 (same pattern;
       // the CRM catalog placeholder for roof blinds is "rolety-dachowe-dekolux").
-      { source: "/produkt/rolety-dachowe", destination: "/?produkt=rolety-dachowe", permanent: false },
-      { source: "/produkt/rolety-dachowe-dekolux", destination: "/?produkt=rolety-dachowe", permanent: false },
-      { source: "/kategoria/rolety-dachowe", destination: "/?produkt=rolety-dachowe", permanent: false },
-      { source: "/produkt/plisy-dachowe", destination: "/?produkt=plisy-dachowe", permanent: false },
+      // Od 25.10.2026 prosto na własne strony /rolety-dachowe i /plisy-dachowe.
+      { source: "/produkt/rolety-dachowe", destination: "/rolety-dachowe", permanent: false },
+      { source: "/produkt/rolety-dachowe-dekolux", destination: "/rolety-dachowe", permanent: false },
+      { source: "/kategoria/rolety-dachowe", destination: "/rolety-dachowe", permanent: false },
+      { source: "/produkt/plisy-dachowe", destination: "/plisy-dachowe", permanent: false },
       // Rolety mini (dzień-noc i tradycyjne) żyją od 2026-10-17 na własnych
       // statycznych stronach; menu CRM linkuje do /produkt/<slug>.
       { source: "/produkt/rolety-dzien-noc", destination: "/rolety-dzien-noc", permanent: false },
