@@ -57,6 +57,55 @@ function linkify(text: string): ReactNode[] {
   );
 }
 
+// ---- Głos (właściciel 25.10: „coraz więcej osób rozmawia z AI zamiast pisać”) ----
+// Rozpoznawanie mowy wbudowane w przeglądarkę (Web Speech API, bez kosztów): Chrome, Edge,
+// Safari, Samsung Internet. Gdzie go nie ma (np. przeglądarka Facebooka na Androidzie, Firefox),
+// mikrofon się nie pokazuje. Odpowiedź na pytanie zadane głosem asystent czyta na głos.
+type SpeechAlt = { transcript: string };
+type SpeechResultList = ArrayLike<ArrayLike<SpeechAlt> & { isFinal: boolean }>;
+type SpeechRec = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  maxAlternatives: number;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onresult: ((event: { results: SpeechResultList }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+};
+
+function speechRecognitionCtor(): (new () => SpeechRec) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
+  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
+}
+
+function speakText(text: string): void {
+  try {
+    const synth = window.speechSynthesis;
+    if (!synth || !text.trim()) return;
+    synth.cancel();
+    const utterance = new SpeechSynthesisUtterance(text.replace(/https?:\/\/\S+/g, "link w czacie"));
+    utterance.lang = "pl-PL";
+    const voice = synth.getVoices().find((v) => (v.lang || "").toLowerCase().startsWith("pl"));
+    if (voice) utterance.voice = voice;
+    utterance.rate = 1.05;
+    synth.speak(utterance);
+  } catch {
+    // brak syntezy mowy - odpowiedź i tak jest na ekranie
+  }
+}
+
+function stopSpeaking(): void {
+  try {
+    window.speechSynthesis?.cancel();
+  } catch {
+    // nic
+  }
+}
+
 function maxId(list: LiveChatMessage[]): number {
   return list.reduce((m, x) => (!x.pending && x.id > m ? x.id : m), 0);
 }
@@ -90,6 +139,13 @@ export default function LiveChat() {
   // Duże okno: id wiadomości z kartą pokazywaną obok rozmowy (0 = zwykłe okienko).
   const [wideCardId, setWideCardId] = useState(0);
   const [zoom, setZoom] = useState<LiveChatColorItem | null>(null);
+  const [voiceOk, setVoiceOk] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<SpeechRec | null>(null);
+  const voiceTextRef = useRef("");
+  // Ostatnia wiadomość klienta była głosowa -> następną odpowiedź czytamy na głos.
+  const speakNextRef = useRef(false);
+  const voiceMessageRef = useRef(false);
 
   const messagesRef = useRef<LiveChatMessage[]>([]);
   const tokenRef = useRef("");
@@ -130,6 +186,11 @@ export default function LiveChat() {
         return [...base, ...add].sort((a, b) => (a.pending ? 1 : 0) - (b.pending ? 1 : 0) || a.id - b.id);
       });
     }
+    const reply = [...fresh].reverse().find((m) => m.from !== "customer" && m.text);
+    if (reply && speakNextRef.current) {
+      speakNextRef.current = false;
+      speakText(reply.text);
+    }
     return fresh.some((m) => m.from !== "customer");
   }, []);
 
@@ -151,6 +212,72 @@ export default function LiveChat() {
   }, [apply]);
 
   const sendRef = useRef<(preset?: string) => Promise<void>>(async () => undefined);
+
+  useEffect(() => {
+    setVoiceOk(!!speechRecognitionCtor());
+    return () => {
+      recRef.current?.abort();
+      stopSpeaking();
+    };
+  }, []);
+
+  // Zamknięte okienko = cisza (nie czytamy dalej i nie słuchamy).
+  useEffect(() => {
+    if (open) return;
+    recRef.current?.abort();
+    stopSpeaking();
+  }, [open]);
+
+  function toggleVoice() {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const Ctor = speechRecognitionCtor();
+    if (!Ctor) return;
+    stopSpeaking();
+    const rec = new Ctor();
+    rec.lang = "pl-PL";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+    voiceTextRef.current = "";
+    rec.onresult = (event) => {
+      let text = "";
+      for (let i = 0; i < event.results.length; i++) text += event.results[i][0]?.transcript || "";
+      voiceTextRef.current = text.trim();
+      setInput(voiceTextRef.current);
+    };
+    rec.onerror = (event) => {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setError("Brak zgody na mikrofon - można ją włączyć w ustawieniach przeglądarki.");
+      } else if (event.error === "no-speech") {
+        setError("Nic nie usłyszałem - proszę spróbować jeszcze raz.");
+      }
+    };
+    rec.onend = () => {
+      setListening(false);
+      recRef.current = null;
+      const text = voiceTextRef.current;
+      voiceTextRef.current = "";
+      if (!text) return;
+      setInput("");
+      speakNextRef.current = true;
+      voiceMessageRef.current = true;
+      trackShopStep("assistant_voice", "sent", { chars: text.length });
+      void sendRef.current(text);
+    };
+    recRef.current = rec;
+    setError("");
+    setListening(true);
+    trackShopStep("assistant_voice", "start", {});
+    try {
+      rec.start();
+    } catch {
+      setListening(false);
+      recRef.current = null;
+    }
+  }
 
   // Otwieranie z dowolnego przycisku „czat” na stronie (lib/crisp.ts -> openLiveChat)
   // i z dymków asystenta (gotowa wiadomość albo wybór zdjęcia).
@@ -237,7 +364,11 @@ export default function LiveChat() {
     setMessages((prev) => [...prev, { id: tempId, from: "customer", text, pending: true }]);
     try {
       // „asystent: tak” - bot może wtedy zaproponować zdjęcie pokoju / tabliczki (czat w CRM to obsłuży).
-      const context = v2 ? `${shopChatContext()} · asystent: tak` : shopChatContext();
+      const voice = voiceMessageRef.current;
+      voiceMessageRef.current = false;
+      const context = v2
+        ? `${shopChatContext()} · asystent: tak${voice ? " · wiadomość podyktowana głosem (możliwe błędy rozpoznania mowy)" : ""}`
+        : shopChatContext();
       const data = await liveChatSend(tokenRef.current, text, context, maxId(messagesRef.current));
       if (!data.ok) throw new Error(data.error || "send");
       apply(data, true);
@@ -315,10 +446,10 @@ export default function LiveChat() {
     if (window.matchMedia("(max-width: 759px)").matches) setOpen(false);
   }
 
-  function applyPlate(card: Extract<LiveChatCard, { type: "plate" }>, product: string) {
-    trackShopStep("assistant_apply", card.query, { product, kind: "plate" });
-    applyToConfigurator({ product, windowQuery: card.query }, `/produkt/${product}`);
-    setNote(`Model ${card.query} wpisany do wyszukiwarki okna.`);
+  function applyPlate(card: Extract<LiveChatCard, { type: "plate" }>, product: string, libraryId?: number, label?: string) {
+    trackShopStep("assistant_apply", card.query, { product, kind: "plate", library_id: libraryId || 0 });
+    applyToConfigurator({ product, windowLibraryId: libraryId || undefined, windowQuery: card.query }, `/produkt/${product}`);
+    setNote(libraryId ? `Wybrane okno: ${label || card.query}.` : `Model ${card.query} wpisany do wyszukiwarki okna.`);
     if (window.matchMedia("(max-width: 759px)").matches) setOpen(false);
   }
 
@@ -404,19 +535,44 @@ export default function LiveChat() {
           {card.brand ? `${card.brand} ` : ""}
           {card.model}
         </strong>
-        {onRoof ? (
-          <button type="button" className="lc-sw-apply" onClick={() => applyPlate(card, product)}>
-            Wpisz do wyszukiwarki okna
-          </button>
+        {card.libraryId ? (
+          <>
+            {card.label ? <span className="lc-sw-group">Pasujące okno w konfiguratorze: {card.label}</span> : null}
+            {onRoof ? (
+              <button type="button" className="lc-sw-apply" onClick={() => applyPlate(card, product, card.libraryId, card.label)}>
+                Wybierz to okno
+              </button>
+            ) : (
+              <div className="lc-card-actions">
+                <button type="button" className="lc-sw-apply" onClick={() => applyPlate(card, "rolety-dachowe", card.libraryId, card.label)}>
+                  Roleta do tego okna
+                </button>
+                <button type="button" className="lc-sw-apply is-ghost" onClick={() => applyPlate(card, "plisy-dachowe", card.libraryId, card.label)}>
+                  Plisa do tego okna
+                </button>
+              </div>
+            )}
+          </>
+        ) : card.candidates?.length ? (
+          <>
+            <span className="lc-sw-group">Które to okno?</span>
+            <div className="lc-card-actions">
+              {card.candidates.map((cand) => (
+                <button
+                  key={cand.id}
+                  type="button"
+                  className="lc-sw-apply is-ghost"
+                  onClick={() => applyPlate(card, onRoof ? product : "rolety-dachowe", cand.id, cand.label)}
+                >
+                  {cand.label}
+                </button>
+              ))}
+            </div>
+          </>
         ) : (
-          <div className="lc-card-actions">
-            <button type="button" className="lc-sw-apply" onClick={() => applyPlate(card, "rolety-dachowe")}>
-              Roleta do tego okna
-            </button>
-            <button type="button" className="lc-sw-apply is-ghost" onClick={() => applyPlate(card, "plisy-dachowe")}>
-              Plisa do tego okna
-            </button>
-          </div>
+          <button type="button" className="lc-sw-apply" onClick={() => applyPlate(card, onRoof ? product : "rolety-dachowe")}>
+            Szukaj tego okna
+          </button>
         )}
       </div>
     );
@@ -533,7 +689,9 @@ export default function LiveChat() {
           ref={inputRef}
           rows={1}
           value={input}
-          placeholder={humanActive ? `Napisz do: ${staffName}…` : v2 ? "Napisz albo wyślij zdjęcie…" : "Napisz wiadomość…"}
+          placeholder={
+            listening ? "Słucham… proszę mówić" : humanActive ? `Napisz do: ${staffName}…` : v2 ? (voiceOk ? "Napisz, powiedz albo wyślij zdjęcie…" : "Napisz albo wyślij zdjęcie…") : "Napisz wiadomość…"
+          }
           onChange={(e) => {
             setInput(e.target.value);
             const el = e.currentTarget;
@@ -547,11 +705,33 @@ export default function LiveChat() {
             }
           }}
         />
-        <button type="submit" className="lc-send" disabled={sending || !input.trim()} aria-label="Wyślij">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        {v2 && voiceOk && (listening || !input.trim()) ? (
+          <button
+            type="button"
+            className={`lc-mic ${listening ? "is-listening" : ""}`}
+            onClick={toggleVoice}
+            disabled={sending}
+            aria-label={listening ? "Zakończ mówienie" : "Zadaj pytanie głosem"}
+            title={listening ? "Zakończ mówienie" : "Zadaj pytanie głosem"}
+          >
+            {listening ? (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="9" y="3.5" width="6" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.9" />
+                <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
+        ) : (
+          <button type="submit" className="lc-send" disabled={sending || !input.trim()} aria-label="Wyślij">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
       </form>
       {v2 && !humanActive && !waitingHuman ? (
         <button type="button" className="lc-human lc-human-link" onClick={() => void askHuman()}>

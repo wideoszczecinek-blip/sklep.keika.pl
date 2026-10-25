@@ -47,7 +47,17 @@ export type LiveChatCard =
       items: LiveChatColorItem[];
       hardware?: { id: string; label: string; color: string; why: string } | null;
     }
-  | { type: "plate"; brand: string; model: string; query: string; confident: boolean };
+  | {
+      type: "plate";
+      brand: string;
+      model: string;
+      query: string;
+      confident: boolean;
+      /** Pasujące okno z biblioteki konfiguratora (0 = brak pewnego dopasowania). */
+      libraryId?: number;
+      label?: string;
+      candidates?: { id: number; label: string }[];
+    };
 
 export type LiveChatMessage = {
   id: number;

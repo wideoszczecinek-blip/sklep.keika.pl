@@ -426,17 +426,24 @@ export default function ConfiguratorPanel({
     });
   }, [selectedHardwareId, selectedFabricGroupId, selectedFabricId, hasWindowInfo, windowChoice, windowQuery, searchResults.length, totalPrice, quantityNum, resolvedDims, priceOutOfRange, loadState]);
   useEffect(() => () => clearConfiguratorState(PD_PRODUCT_SLUG), []);
-  // Mądry asystent: model okna odczytany ze zdjęcia tabliczki trafia do wyszukiwarki.
+  // Mądry asystent: okno odczytane ze zdjęcia tabliczki wybieramy od razu z biblioteki
+  // (właściciel 25.10: „dalej lista wyboru jest ogromna”); bez dopasowania - tekst do wyszukiwarki.
+  const assistantApplyRef = useRef<(apply: AssistantApply) => void>(() => undefined);
+  assistantApplyRef.current = (apply: AssistantApply) => {
+    const item = apply.windowLibraryId ? library.find((entry) => entry.id === apply.windowLibraryId) : undefined;
+    if (item) chooseLibraryWindow(item, "assistant");
+    else if (apply.windowQuery) setWindowQuery(apply.windowQuery);
+  };
   useEffect(() => {
-    const onApply = (event: Event) => {
-      const query = (event as CustomEvent<AssistantApply>).detail?.windowQuery;
-      if (query) setWindowQuery(query);
-    };
+    const onApply = (event: Event) => assistantApplyRef.current((event as CustomEvent<AssistantApply>).detail || {});
     window.addEventListener(ASSISTANT_APPLY_EVENT, onApply);
-    const pending = takePendingAssistantApply(PD_PRODUCT_SLUG);
-    if (pending?.windowQuery) setWindowQuery(pending.windowQuery);
     return () => window.removeEventListener(ASSISTANT_APPLY_EVENT, onApply);
   }, []);
+  useEffect(() => {
+    if (!library.length) return;
+    const pending = takePendingAssistantApply(PD_PRODUCT_SLUG);
+    if (pending) assistantApplyRef.current(pending);
+  }, [library]);
 
   // ---- window selection helpers -------------------------------------------
   function chooseLibraryWindow(item: RoofWindowLibraryItem, source: string, attachmentId = "") {

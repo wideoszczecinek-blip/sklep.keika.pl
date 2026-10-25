@@ -42,6 +42,8 @@ export type AssistantApply = {
   mount?: string;
   /** Model okna dachowego do wyszukiwarki (np. "GGL MK06"). */
   windowQuery?: string;
+  /** Okno z biblioteki okien dachowych (odczyt tabliczki) - konfigurator wybiera je od razu. */
+  windowLibraryId?: number;
   /** Otwórz poradnik pomiaru. */
   measureGuide?: boolean;
   /** Przewiń do wymiarów i ustaw kursor (np. „dodaj kolejne okno”). */
