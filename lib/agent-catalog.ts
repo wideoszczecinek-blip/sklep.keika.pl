@@ -54,6 +54,8 @@ export const SHOP_POLICY = {
   showroomHours: "pon.–pt. 10:00–17:00",
   phoneHours: "codziennie 9:00–20:00",
   regulaminUrl: SHOP_URL + "/regulamin",
+  returnsUrl: SHOP_URL + "/legal/reklamacje",
+  logoUrl: "https://crm-keika.groovemedia.pl/storage/shop/media/20260227_234547_1abf0858_LOGO_PNG.png",
   contactUrl: SHOP_URL + "/kontakt",
 } as const;
 

@@ -38,7 +38,9 @@ export function returnPolicyJsonLd(): JsonLd {
     returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
     merchantReturnDays: SHOP_POLICY.returnDays,
     returnMethod: "https://schema.org/ReturnByMail",
-    url: SHOP_POLICY.regulaminUrl,
+    // „Koszt odesłania: przesyłkę zwrotną opłaca Klient” - /legal/reklamacje.
+    returnFees: "https://schema.org/ReturnShippingFees",
+    url: SHOP_POLICY.returnsUrl,
   };
 }
 
@@ -64,7 +66,8 @@ export function organizationJsonLd(): JsonLd {
     name: "KEIKA",
     legalName: SHOP_POLICY.legalName,
     url: SHOP_URL,
-    logo: SHOP_URL + "/favicon.ico",
+    logo: SHOP_POLICY.logoUrl,
+    image: SHOP_POLICY.logoUrl,
     description:
       "Producent osłon okiennych na wymiar ze Szczecinka: moskitiery ramkowe, plisy okienne, rolety i plisy do okien dachowych. Sprzedaż online w całej Polsce z wyceną od razu, 5 lat gwarancji, 30 dni na zwrot.",
     vatID: "PL" + SHOP_POLICY.vatId,

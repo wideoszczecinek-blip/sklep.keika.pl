@@ -49,7 +49,7 @@ export async function GET() {
   lines.push("## Zakupy, dostawa i zwroty");
   lines.push("");
   lines.push(`- Dostawa w Polsce: kurier lub Paczkomat InPost, ${formatPricePl(SHOP_POLICY.shippingFee)} zł poniżej ${SHOP_POLICY.freeShippingThreshold} zł, powyżej - za darmo (plisy okienne zawsze za darmo); odbiór osobisty w Szczecinku bez opłat. Płatność za pobraniem +${formatPricePl(SHOP_POLICY.codSurcharge)} zł.`);
-  lines.push(`- Zwrot: ${SHOP_POLICY.returnDays} dni bez podania przyczyny, także dla produktów szytych na wymiar. Gwarancja ${SHOP_POLICY.warrantyYears} lat.`);
+  lines.push(`- Zwrot: ${SHOP_POLICY.returnDays} dni bez podania przyczyny, także dla produktów szytych na wymiar (przesyłkę zwrotną opłaca klient; reklamacje na nasz koszt). Gwarancja ${SHOP_POLICY.warrantyYears} lat.`);
   lines.push(`- [Regulamin sklepu](${SHOP_POLICY.regulaminUrl})`);
   lines.push(`- [Dostawa i płatność](${SHOP_URL}/legal/dostawa-i-platnosc)`);
   lines.push(`- [Reklamacje i zwroty](${SHOP_URL}/legal/reklamacje)`);
