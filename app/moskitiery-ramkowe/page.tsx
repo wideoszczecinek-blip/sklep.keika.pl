@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import Home from "../home-client";
-import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
-import {
-  MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO,
-  MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD,
-} from "@/features/moskitiery-ramkowe/shared";
+import { getPricedProduct } from "@/lib/agent-catalog";
+import { JsonLdScripts, productPageJsonLd } from "@/lib/structured-data";
 
 // Canonical, statically prerendered product page (audit 2026-09-13). The
 // former /?produkt=moskitiery-ramkowe entry point 308-redirects here (see
@@ -22,6 +19,10 @@ const DESCRIPTION =
 const IMAGE =
   "https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/moskitiera-okienna-allegro-miniaturka.jpg";
 
+// Dane strukturalne (Product, FAQ, okruszki, sklep) z lib/agent-catalog.ts -
+// cena „od” z korektą ceny z CRM, odświeżana co godzinę (25.10.2026).
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
@@ -38,68 +39,11 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: [IMAGE] },
 };
 
-function buildJsonLd() {
-  const rating = ALLEGRO_RATING_SNAPSHOTS[SLUG];
-  const perMb = MOSKITIERY_RAMKOWE_PRICE_PER_MB_PROMO || MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD;
-  // Real, current per-started-meter list price (SEZON20 is applied at
-  // checkout and not asserted here). Smallest orderable frame bills 1 mb,
-  // the largest supported (2,5 x 1,6 m) ~9 mb.
-  const product = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: "Moskitiera ramkowa na wymiar",
-    description: DESCRIPTION,
-    image: [IMAGE],
-    brand: { "@type": "Brand", name: "KEIKA" },
-    sku: "moskitiera-ramkowa-na-wymiar",
-    category: "Moskitiery okienne",
-    url: SITE + URL_PATH,
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "PLN",
-      lowPrice: perMb.toFixed(2),
-      highPrice: (perMb * 9).toFixed(2),
-      offerCount: 1,
-      availability: "https://schema.org/InStock",
-      itemCondition: "https://schema.org/NewCondition",
-      url: SITE + URL_PATH,
-      seller: { "@type": "Organization", name: "KEIKA" },
-    },
-    ...(rating && rating.totalResponses > 0
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: rating.averageScore.toFixed(2),
-            reviewCount: rating.totalResponses,
-            bestRating: 5,
-            worstRating: 1,
-          },
-        }
-      : {}),
-  };
-  const breadcrumbs = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "KEIKA", item: SITE + "/" },
-      { "@type": "ListItem", position: 2, name: "Moskitiery ramkowe na wymiar", item: SITE + URL_PATH },
-    ],
-  };
-  return [product, breadcrumbs];
-}
-
-export default function MoskitieryRamkowePage() {
-  const jsonLd = buildJsonLd();
+export default async function MoskitieryRamkowePage() {
+  const product = await getPricedProduct(SLUG);
   return (
     <>
-      {jsonLd.map((entry, index) => (
-        <script
-          key={index}
-          type="application/ld+json"
-          // JSON only - nothing user-supplied ends up here.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(entry) }}
-        />
-      ))}
+      <JsonLdScripts data={productPageJsonLd(product)} />
       <Home initialProductSlug={SLUG} />
     </>
   );

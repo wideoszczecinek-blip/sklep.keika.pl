@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Home from "../home-client";
-import { PLISY_LEAD_TIME_LABEL, PLISY_STARTING_PRICE_FALLBACK } from "@/features/plisy/landing-content";
+import { getPricedProduct } from "@/lib/agent-catalog";
+import { JsonLdScripts, productPageJsonLd } from "@/lib/structured-data";
+import { PLISY_LEAD_TIME_LABEL } from "@/features/plisy/landing-content";
 
 // Statycznie prerenderowana strona plis (wydajność, punkt 6 audytu
 // landingu). Wejście z reklam - /?produkt=plisy - przekierowuje tu 308
@@ -19,6 +21,10 @@ const DESCRIPTION =
   ", 5 lat gwarancji, 30 dni na zwrot.";
 const IMAGE = SITE + "/plisy/produkt-01.jpg";
 
+// Dane strukturalne (Product, FAQ, okruszki, sklep) z lib/agent-catalog.ts -
+// cena „od” z korektą ceny z CRM, odświeżana co godzinę (25.10.2026).
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
@@ -35,55 +41,11 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: [IMAGE] },
 };
 
-function buildJsonLd() {
-  // lowPrice = najniższa realna cena plisy (ta sama liczba, co "od ... zł"
-  // na stronie, gdy cennik z CRM jeszcze się nie wczytał). Bez highPrice -
-  // górna granica zależy od kolekcji i wymiaru, a zmyślona liczba w danych
-  // strukturalnych byłaby gorsza niż jej brak.
-  const product = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: "Plisy okienne na wymiar",
-    description: DESCRIPTION,
-    image: [IMAGE],
-    brand: { "@type": "Brand", name: "KEIKA" },
-    sku: "plisa-okienna-na-wymiar",
-    category: "Plisy okienne",
-    url: SITE + URL_PATH,
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "PLN",
-      lowPrice: PLISY_STARTING_PRICE_FALLBACK.toFixed(2),
-      offerCount: 1,
-      availability: "https://schema.org/InStock",
-      itemCondition: "https://schema.org/NewCondition",
-      url: SITE + URL_PATH,
-      seller: { "@type": "Organization", name: "KEIKA" },
-    },
-  };
-  const breadcrumbs = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "KEIKA", item: SITE + "/" },
-      { "@type": "ListItem", position: 2, name: "Plisy okienne na wymiar", item: SITE + URL_PATH },
-    ],
-  };
-  return [product, breadcrumbs];
-}
-
-export default function PlisyPage() {
-  const jsonLd = buildJsonLd();
+export default async function PlisyPage() {
+  const product = await getPricedProduct(SLUG);
   return (
     <>
-      {jsonLd.map((entry, index) => (
-        <script
-          key={index}
-          type="application/ld+json"
-          // Tylko JSON - nic pochodzącego od użytkownika tu nie trafia.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(entry) }}
-        />
-      ))}
+      <JsonLdScripts data={productPageJsonLd(product)} />
       <Home initialProductSlug={SLUG} />
     </>
   );

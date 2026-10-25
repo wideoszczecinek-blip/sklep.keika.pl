@@ -9,8 +9,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: SITE + "/moskitiery-ramkowe", lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: SITE + "/plisy", lastModified: now, changeFrequency: "weekly", priority: 0.9 },
-    { url: SITE + "/?produkt=rolety-dachowe", lastModified: now, changeFrequency: "weekly", priority: 0.9 },
-    { url: SITE + "/?produkt=plisy-dachowe", lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: SITE + "/rolety-dachowe", lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: SITE + "/plisy-dachowe", lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: SITE + "/plisy/jak-mierzyc", lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: SITE + "/", lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: SITE + "/kontakt", lastModified: now, changeFrequency: "monthly", priority: 0.4 },
