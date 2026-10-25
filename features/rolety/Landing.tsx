@@ -63,8 +63,10 @@ export default function RoletyLanding({
           <span className="pl-price-unit"> / szt.</span>
         </span>
         <span className="pl-chip">Realizacja {copy.leadTimeLabel}</span>
-        <span className="pl-chip">5 lat gwarancji</span>
-        <span className="pl-chip">30 dni na zwrot</span>
+        {/* Nasza produkcja: 5 lat gwarancji i 30 dni na zwrot wyróżnione jak w plisach (właściciel 25.10:
+            „to trzeba komunikować”). Żaluzje to dystrybucja - gwarancja producenta, do decyzji właściciela. */}
+        <span className={slug === "zaluzje" ? "pl-chip" : "pl-chip pl-chip-promise"}>{slug === "zaluzje" ? "" : "🛡 "}5 lat gwarancji</span>
+        <span className={slug === "zaluzje" ? "pl-chip" : "pl-chip pl-chip-promise"}>{slug === "zaluzje" ? "" : "↩ "}30 dni na zwrot</span>
         <span className="pl-chip">Darmowa dostawa od 79 zł</span>
       </div>
 

@@ -23899,3 +23899,6 @@ dl.zl-table > div.is-price {
   .lc-mode-waiting .lc-head-dot,
   .lc-typing span { animation: none; }
 }
+
+/* Rolety (nasza produkcja): gwarancja i zwrot wyróżnione jak plv2-offer-badge w plisach (25.10). */
+.pl-landing .pl-trust-row .pl-chip.pl-chip-promise { color: #0f5132; background: #e7f6ec; border-color: #b7e1c4; font-weight: 800; }
