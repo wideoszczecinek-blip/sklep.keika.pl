@@ -226,3 +226,18 @@ export async function liveChatUpload(token: string, file: File, after: number): 
   const res = await fetch(LIVE_CHAT_API, { method: "POST", body: form });
   return (await res.json().catch(() => ({ ok: false, error: "Nie udało się wysłać zdjęcia." }))) as LiveChatPayload;
 }
+
+/**
+ * Pytanie głosem tam, gdzie przeglądarka nie rozpoznaje mowy (np. Facebook na Androidzie):
+ * nagranie idzie do CRM, AI zamienia je na tekst (ok. 0,1 gr - zgoda właściciela 25.10).
+ * Zwraca sam tekst - wysyła go potem zwykła wiadomość.
+ */
+export async function liveChatTranscribe(token: string, audio: Blob): Promise<{ ok: boolean; text?: string; error?: string }> {
+  const form = new FormData();
+  form.append("action", "transcribe");
+  form.append("token", token);
+  const ext = audio.type.includes("mp4") ? "m4a" : audio.type.includes("ogg") ? "ogg" : "webm";
+  form.append("file", audio, `pytanie.${ext}`);
+  const res = await fetch(LIVE_CHAT_API, { method: "POST", body: form });
+  return (await res.json().catch(() => ({ ok: false, error: "Nie udało się rozpoznać nagrania." }))) as { ok: boolean; text?: string; error?: string };
+}

@@ -26,6 +26,7 @@ import {
   liveChatPoll,
   liveChatSend,
   liveChatStart,
+  liveChatTranscribe,
   liveChatUpload,
   saveLiveChatToken,
   type LiveChatCard,
@@ -60,7 +61,8 @@ function linkify(text: string): ReactNode[] {
 // ---- Głos (właściciel 25.10: „coraz więcej osób rozmawia z AI zamiast pisać”) ----
 // Rozpoznawanie mowy wbudowane w przeglądarkę (Web Speech API, bez kosztów): Chrome, Edge,
 // Safari, Samsung Internet. Gdzie go nie ma (np. przeglądarka Facebooka na Androidzie, Firefox),
-// mikrofon się nie pokazuje. Odpowiedź na pytanie zadane głosem asystent czyta na głos.
+// mikrofon nagrywa pytanie, a tekst robi z niego CRM (liveChatTranscribe, ok. 0,1 gr - zgoda
+// właściciela 25.10). Odpowiedź na pytanie zadane głosem asystent czyta na głos.
 type SpeechAlt = { transcript: string };
 type SpeechResultList = ArrayLike<ArrayLike<SpeechAlt> & { isFinal: boolean }>;
 type SpeechRec = {
@@ -81,6 +83,19 @@ function speechRecognitionCtor(): (new () => SpeechRec) | null {
   const w = window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
+
+/** Format nagrania obsługiwany przez przeglądarkę ('' = brak MediaRecorder / mikrofonu). */
+function recorderMime(): string {
+  if (typeof window === "undefined" || typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return "";
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+  return types.find((t) => MediaRecorder.isTypeSupported?.(t)) || "audio/webm";
+}
+
+// Nagrywanie: koniec po ciszy (jak rozpoznawanie w przeglądarce), najdłużej 30 s;
+// nagrania bez mowy nie wysyłamy (zero kosztu).
+const RECORD_MAX_MS = 30_000;
+const RECORD_SILENCE_MS = 1600;
+const RECORD_NO_SPEECH_MS = 8000;
 
 function speakText(text: string): void {
   try {
@@ -139,9 +154,13 @@ export default function LiveChat() {
   // Duże okno: id wiadomości z kartą pokazywaną obok rozmowy (0 = zwykłe okienko).
   const [wideCardId, setWideCardId] = useState(0);
   const [zoom, setZoom] = useState<LiveChatColorItem | null>(null);
-  const [voiceOk, setVoiceOk] = useState(false);
+  // native = rozpoznawanie w przeglądarce, record = nagranie + tekst z CRM, null = brak mikrofonu.
+  const [voiceMode, setVoiceMode] = useState<"native" | "record" | null>(null);
+  const voiceOk = voiceMode !== null;
   const [listening, setListening] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const recRef = useRef<SpeechRec | null>(null);
+  const recorderRef = useRef<{ stop: (send: boolean) => void } | null>(null);
   const voiceTextRef = useRef("");
   // Ostatnia wiadomość klienta była głosowa -> następną odpowiedź czytamy na głos.
   const speakNextRef = useRef(false);
@@ -214,9 +233,10 @@ export default function LiveChat() {
   const sendRef = useRef<(preset?: string) => Promise<void>>(async () => undefined);
 
   useEffect(() => {
-    setVoiceOk(!!speechRecognitionCtor());
+    setVoiceMode(speechRecognitionCtor() ? "native" : recorderMime() ? "record" : null);
     return () => {
       recRef.current?.abort();
+      recorderRef.current?.stop(false);
       stopSpeaking();
     };
   }, []);
@@ -225,12 +245,134 @@ export default function LiveChat() {
   useEffect(() => {
     if (open) return;
     recRef.current?.abort();
+    recorderRef.current?.stop(false);
     stopSpeaking();
   }, [open]);
 
+  /** Pytanie wypowiedziane (z rozpoznawania albo z nagrania) - wysyłamy i czytamy odpowiedź na głos. */
+  function sendVoiceText(text: string, mode: "native" | "record") {
+    setInput("");
+    speakNextRef.current = true;
+    voiceMessageRef.current = true;
+    trackShopStep("assistant_voice", "sent", { chars: text.length, mode });
+    void sendRef.current(text);
+  }
+
+  async function startRecording() {
+    const mime = recorderMime();
+    if (!mime) return;
+    stopSpeaking();
+    setError("");
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch {
+      setError("Brak zgody na mikrofon - można ją włączyć w ustawieniach przeglądarki.");
+      return;
+    }
+    let recorder: MediaRecorder;
+    try {
+      recorder = new MediaRecorder(stream, { mimeType: mime });
+    } catch {
+      recorder = new MediaRecorder(stream);
+    }
+    const chunks: Blob[] = [];
+    let heardSpeech = false;
+    let sendOnStop = true;
+    let audioCtx: AudioContext | null = null;
+    const timers: number[] = [];
+    const finish = () => {
+      timers.forEach((t) => window.clearInterval(t));
+      stream.getTracks().forEach((t) => t.stop());
+      void audioCtx?.close().catch(() => undefined);
+    };
+    recorder.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size) chunks.push(ev.data);
+    };
+    recorder.onstop = () => {
+      finish();
+      recorderRef.current = null;
+      setListening(false);
+      if (!sendOnStop) return;
+      if (!heardSpeech) {
+        setError("Nic nie słychać - proszę spróbować jeszcze raz.");
+        return;
+      }
+      const blob = new Blob(chunks, { type: recorder.mimeType || mime });
+      setTranscribing(true);
+      void (async () => {
+        try {
+          if (!tokenRef.current) await ensureStarted();
+          if (!tokenRef.current) throw new Error("start");
+          const data = await liveChatTranscribe(tokenRef.current, blob);
+          if (!data.ok || !data.text) {
+            setError(data.error || "Nie udało się rozpoznać nagrania - proszę spróbować jeszcze raz.");
+            return;
+          }
+          sendVoiceText(data.text, "record");
+        } catch {
+          setError("Nie udało się rozpoznać nagrania - proszę spróbować jeszcze raz albo napisać.");
+        } finally {
+          setTranscribing(false);
+        }
+      })();
+    };
+    const stop = (send: boolean) => {
+      sendOnStop = send;
+      if (recorder.state !== "inactive") recorder.stop();
+      else finish();
+    };
+    recorderRef.current = { stop };
+
+    // Wykrywanie mowy i ciszy po głośności - bez tego klient musiałby sam klikać „stop”.
+    const startedAt = Date.now();
+    let lastVoiceAt = startedAt;
+    try {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (Ctx) {
+        audioCtx = new Ctx();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        audioCtx.createMediaStreamSource(stream).connect(analyser);
+        const buf = new Float32Array(analyser.fftSize);
+        timers.push(
+          window.setInterval(() => {
+            analyser.getFloatTimeDomainData(buf);
+            let sum = 0;
+            for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+            const now = Date.now();
+            if (Math.sqrt(sum / buf.length) > 0.02) {
+              heardSpeech = true;
+              lastVoiceAt = now;
+            } else if (heardSpeech && now - lastVoiceAt > RECORD_SILENCE_MS) {
+              stop(true);
+            } else if (!heardSpeech && now - startedAt > RECORD_NO_SPEECH_MS) {
+              stop(true);
+            }
+          }, 100),
+        );
+      } else {
+        heardSpeech = true;
+      }
+    } catch {
+      // bez analizy głośności - koniec przyciskiem albo po 30 s
+      heardSpeech = true;
+    }
+    timers.push(window.setInterval(() => Date.now() - startedAt > RECORD_MAX_MS && stop(true), 500));
+
+    setListening(true);
+    trackShopStep("assistant_voice", "start", { mode: "record" });
+    recorder.start(250);
+  }
+
   function toggleVoice() {
     if (listening) {
-      recRef.current?.stop();
+      if (recorderRef.current) recorderRef.current.stop(true);
+      else recRef.current?.stop();
+      return;
+    }
+    if (voiceMode === "record") {
+      void startRecording();
       return;
     }
     const Ctor = speechRecognitionCtor();
@@ -248,11 +390,17 @@ export default function LiveChat() {
       voiceTextRef.current = text.trim();
       setInput(voiceTextRef.current);
     };
+    let fallback = false;
     rec.onerror = (event) => {
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      if (["network", "service-not-allowed", "language-not-supported"].includes(event.error) && recorderMime()) {
+        // Przeglądarka ma rozpoznawanie, ale nie działa (np. część WebView, Safari bez Siri) -
+        // od teraz nagrywamy i tekst robi CRM.
+        fallback = true;
+        trackShopStep("assistant_voice", "fallback", { reason: event.error });
+      } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
         setError("Brak zgody na mikrofon - można ją włączyć w ustawieniach przeglądarki.");
       } else if (event.error === "no-speech") {
-        setError("Nic nie usłyszałem - proszę spróbować jeszcze raz.");
+        setError("Nic nie słychać - proszę spróbować jeszcze raz.");
       }
     };
     rec.onend = () => {
@@ -260,17 +408,18 @@ export default function LiveChat() {
       recRef.current = null;
       const text = voiceTextRef.current;
       voiceTextRef.current = "";
+      if (fallback) {
+        setVoiceMode("record");
+        void startRecording();
+        return;
+      }
       if (!text) return;
-      setInput("");
-      speakNextRef.current = true;
-      voiceMessageRef.current = true;
-      trackShopStep("assistant_voice", "sent", { chars: text.length });
-      void sendRef.current(text);
+      sendVoiceText(text, "native");
     };
     recRef.current = rec;
     setError("");
     setListening(true);
-    trackShopStep("assistant_voice", "start", {});
+    trackShopStep("assistant_voice", "start", { mode: "native" });
     try {
       rec.start();
     } catch {
@@ -690,7 +839,7 @@ export default function LiveChat() {
           rows={1}
           value={input}
           placeholder={
-            listening ? "Słucham… proszę mówić" : humanActive ? `Napisz do: ${staffName}…` : v2 ? (voiceOk ? "Napisz, powiedz albo wyślij zdjęcie…" : "Napisz albo wyślij zdjęcie…") : "Napisz wiadomość…"
+            transcribing ? "Rozpoznaję pytanie…" : listening ? "Słucham… proszę mówić" : humanActive ? `Napisz do: ${staffName}…` : v2 ? (voiceOk ? "Napisz, powiedz albo wyślij zdjęcie…" : "Napisz albo wyślij zdjęcie…") : "Napisz wiadomość…"
           }
           onChange={(e) => {
             setInput(e.target.value);
@@ -705,12 +854,12 @@ export default function LiveChat() {
             }
           }}
         />
-        {v2 && voiceOk && (listening || !input.trim()) ? (
+        {v2 && voiceOk && (listening || transcribing || !input.trim()) ? (
           <button
             type="button"
-            className={`lc-mic ${listening ? "is-listening" : ""}`}
+            className={`lc-mic ${listening ? "is-listening" : ""} ${transcribing ? "is-busy" : ""}`}
             onClick={toggleVoice}
-            disabled={sending}
+            disabled={sending || transcribing}
             aria-label={listening ? "Zakończ mówienie" : "Zadaj pytanie głosem"}
             title={listening ? "Zakończ mówienie" : "Zadaj pytanie głosem"}
           >

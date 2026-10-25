@@ -292,3 +292,6 @@
   50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
 }
 @media (prefers-reduced-motion: reduce) { .lc-mic.is-listening { animation: none; } }
+.lc-mic.is-busy { opacity: 1; animation: lcMicBusy 1s ease-in-out infinite; }
+@keyframes lcMicBusy { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .lc-mic.is-busy { animation: none; } }
