@@ -16,7 +16,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import "./assistant.css";
 import { shopChatContext } from "@/lib/crisp";
 import { applyToConfigurator, assistantArmSync, resolveAssistantArm } from "@/lib/assistant";
-import { getConfiguratorState } from "@/lib/configurator-state";
+import { CONFIGURATOR_STATE_EVENT, getConfiguratorState } from "@/lib/configurator-state";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackShopStep } from "@/lib/track-step";
 import {
@@ -24,7 +24,9 @@ import {
   liveChatAdvise,
   liveChatHuman,
   liveChatPoll,
+  liveChatPresence,
   liveChatSend,
+  liveChatSnapshot,
   liveChatStart,
   liveChatTranscribe,
   liveChatUpload,
@@ -40,6 +42,8 @@ import {
 
 const POLL_OPEN_MS = 4000;
 const POLL_CLOSED_MS = 15000;
+const PRESENCE_MS = 20000;
+const PRESENCE_NUDGE_EVENT = "keika:lc-presence";
 const DEFAULT_GREETING =
   "Dzień dobry! Jestem asystentem KEIKA. Chętnie pomogę dobrać produkt, policzę cenę dla wymiaru albo sprawdzę zamówienie. W każdej chwili można też poprosić o rozmowę z człowiekiem.";
 const ROOM_PHOTO_CHIP = "Dobierz kolor do mojego pokoju";
@@ -469,6 +473,48 @@ export default function LiveChat() {
       // brak pamięci przeglądarki - nic do wznowienia
     }
   }, [ensureStarted]);
+
+  // Obecność dla zespołu (25.10.2026): co ok. 20 s i od razu przy zmianie (karta w tle, koszyk,
+  // konfigurator, otwarcie okienka, pisanie) CRM dostaje, co klient robi. Gdy karta długo nie jest
+  // widoczna, CRM kończy rozmowę; zakończona budzi się dopiero, gdy klient napisze.
+  const typing = input.trim() !== "";
+  const typingRef = useRef(false);
+  typingRef.current = typing;
+  const closed = !!state?.closed;
+  useEffect(() => {
+    if (!token || closed) return;
+    let last = 0;
+    let soonTimer = 0;
+    const beat = () => {
+      last = Date.now();
+      liveChatPresence(tokenRef.current, liveChatSnapshot(openRef.current, typingRef.current))
+        .then((d) => {
+          if (d.ok && d.state?.closed) setState(d.state);
+        })
+        .catch(() => undefined);
+    };
+    const soon = () => {
+      window.clearTimeout(soonTimer);
+      soonTimer = window.setTimeout(beat, Math.max(0, 2500 - (Date.now() - last)));
+    };
+    beat();
+    const interval = window.setInterval(beat, PRESENCE_MS);
+    document.addEventListener("visibilitychange", beat);
+    window.addEventListener("keika-cart-updated", soon);
+    window.addEventListener(CONFIGURATOR_STATE_EVENT, soon);
+    window.addEventListener(PRESENCE_NUDGE_EVENT, soon);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(soonTimer);
+      document.removeEventListener("visibilitychange", beat);
+      window.removeEventListener("keika-cart-updated", soon);
+      window.removeEventListener(CONFIGURATOR_STATE_EVENT, soon);
+      window.removeEventListener(PRESENCE_NUDGE_EVENT, soon);
+    };
+  }, [token, closed]);
+  useEffect(() => {
+    window.dispatchEvent(new Event(PRESENCE_NUDGE_EVENT));
+  }, [open, typing]);
 
   // Odpytywanie: często przy otwartym okienku, rzadziej przy zamkniętym, gdy czekamy na człowieka.
   useEffect(() => {

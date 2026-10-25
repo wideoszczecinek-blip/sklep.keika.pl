@@ -17,6 +17,8 @@
  */
 
 import { getSessionToken, getVisitorId } from "@/lib/analytics-context";
+import { readCartItems, type CartLineItem } from "@/lib/cart";
+import { getConfiguratorState, type ConfiguratorProgress } from "@/lib/configurator-state";
 
 export const LIVE_CHAT_API = "https://crm-keika.groovemedia.pl/views/biuro/api/shop-public/live_chat.php";
 const FORCE_KEY = "keika_chat_force";
@@ -87,6 +89,8 @@ export type LiveChatState = {
   waiting_human: boolean;
   wait_ms: number;
   has_contact: boolean;
+  /** Rozmowa zakończona (np. klient wyszedł ze strony) - budzi się, gdy klient napisze. */
+  closed?: boolean;
 };
 
 export type LiveChatPayload = {
@@ -206,6 +210,58 @@ export function liveChatSend(token: string, text: string, context: string, after
 
 export function liveChatPoll(token: string, after: number): Promise<LiveChatPayload> {
   return post({ action: "poll", token, after });
+}
+
+/**
+ * Obecność klienta dla zespołu w CRM (25.10.2026): czy karta jest widoczna, strona, stan
+ * konfiguratora i koszyk. Po kilku minutach bez widocznej karty CRM sam kończy rozmowę.
+ */
+export type LiveChatSnapshot = {
+  visible: boolean;
+  page_url: string;
+  page_title: string;
+  chat_open: boolean;
+  typing: string;
+  cart: { count: number; total: number; items: { label: string; details: string; qty: number; total: number }[] };
+  cfg: ConfiguratorProgress | null;
+};
+
+export function liveChatSnapshot(chatOpen: boolean, typing: boolean): LiveChatSnapshot {
+  let items: CartLineItem[] = [];
+  try {
+    items = readCartItems();
+  } catch {
+    items = [];
+  }
+  const cm = (mm: number) => String(Math.round(mm / 10 * 10) / 10).replace(".", ",");
+  return {
+    visible: document.visibilityState === "visible",
+    page_url: window.location.href,
+    page_title: document.title,
+    chat_open: chatOpen,
+    typing: typing ? "1" : "",
+    cart: {
+      count: items.reduce((sum, it) => sum + (it.qty || 1), 0),
+      total: items.reduce((sum, it) => sum + (it.total || 0), 0),
+      items: items.slice(0, 20).map((it) => ({
+        label: it.productLabel,
+        details: [
+          it.widthMm && it.heightMm ? `${cm(it.widthMm)} × ${cm(it.heightMm)} cm` : "",
+          it.modelLabel || "",
+          it.mountLabel || "",
+          it.hardwareLabel || "",
+          it.meshLabel || "",
+        ].filter(Boolean).join(" · "),
+        qty: it.qty || 1,
+        total: it.total || 0,
+      })),
+    },
+    cfg: getConfiguratorState(),
+  };
+}
+
+export function liveChatPresence(token: string, live: LiveChatSnapshot): Promise<LiveChatPayload> {
+  return post({ action: "presence", token, live });
 }
 
 export function liveChatHuman(token: string, after: number): Promise<LiveChatPayload> {
