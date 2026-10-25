@@ -263,10 +263,20 @@ export default function LiveChat() {
     if (!mime) return;
     stopSpeaking();
     setError("");
+    // Odczyt głośności musi powstać jeszcze w kliknięciu klienta - inaczej przeglądarka go wycisza.
+    let audioCtx: AudioContext | null = null;
+    try {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      audioCtx = Ctx ? new Ctx() : null;
+      void audioCtx?.resume().catch(() => undefined);
+    } catch {
+      audioCtx = null;
+    }
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     } catch {
+      void audioCtx?.close().catch(() => undefined);
       setError("Brak zgody na mikrofon - można ją włączyć w ustawieniach przeglądarki.");
       return;
     }
@@ -279,7 +289,6 @@ export default function LiveChat() {
     const chunks: Blob[] = [];
     let heardSpeech = false;
     let sendOnStop = true;
-    let audioCtx: AudioContext | null = null;
     const timers: number[] = [];
     const finish = () => {
       timers.forEach((t) => window.clearInterval(t));
@@ -328,9 +337,8 @@ export default function LiveChat() {
     const startedAt = Date.now();
     let lastVoiceAt = startedAt;
     try {
-      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (Ctx) {
-        audioCtx = new Ctx();
+      if (audioCtx && audioCtx.state !== "running") await audioCtx.resume().catch(() => undefined);
+      if (audioCtx && audioCtx.state === "running") {
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 1024;
         audioCtx.createMediaStreamSource(stream).connect(analyser);
@@ -409,8 +417,9 @@ export default function LiveChat() {
       const text = voiceTextRef.current;
       voiceTextRef.current = "";
       if (fallback) {
+        // Nagrywanie musi ruszyć z kliknięcia klienta (mikrofon i odczyt głośności).
         setVoiceMode("record");
-        void startRecording();
+        setError("Proszę dotknąć mikrofonu jeszcze raz i zadać pytanie.");
         return;
       }
       if (!text) return;
