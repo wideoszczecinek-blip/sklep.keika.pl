@@ -54,6 +54,8 @@ export type AssistantApply = {
   qty?: number;
   /** Pokaż chmurkę przy kroku, który klient musi jeszcze wybrać sam (np. kolor tkaniny). */
   guide?: boolean;
+  /** Kolor siatki moskitiery ramkowej (grey / black). */
+  meshId?: string;
 };
 
 let pilotPromise: Promise<number> | null = null;

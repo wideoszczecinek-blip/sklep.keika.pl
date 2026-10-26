@@ -80,6 +80,7 @@ export type LiveChatCard =
         heightMm?: number;
         qty?: number;
         guide?: boolean;
+        meshId?: string;
       };
     };
 

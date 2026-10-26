@@ -23,6 +23,7 @@ import {
 } from "@/lib/rescue";
 import { trackShopStep } from "@/lib/track-step";
 import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configurator-state";
+import { ASSISTANT_APPLY_EVENT, takePendingAssistantApply, type AssistantApply } from "@/lib/assistant";
 import {
   PROMO_ACTIVATED_EVENT,
   PROMO_CODE,
@@ -484,6 +485,66 @@ export default function ConfiguratorPanel({
   }, [selectedHardwareId, selectedMeshId, hasValidDimensions, widthNum, heightNum, bothDimensionsOverTechnicalLimit, widthOverAbsoluteMax, requiredSurchargeForCurrentDims, surchargeSatisfied, isCalculatingPrice, dimensionTotalPrice, dimensionsBlocked, quantityNum, dimensionUnit]);
   useEffect(() => () => clearConfiguratorState("moskitiery-ramkowe"), []);
 
+  // „Ustaw w konfiguratorze” z czatu (karta podsumowania, 26.10.2026): kolor profili, siatka i wymiar
+  // z rozmowy, a chmurka pokazuje, co klient musi jeszcze wybrać sam. Tylko egzemplarz na stronie
+  // produktu (enableRescueModal) - okno „Edytuj pozycję” w koszyku nie przejmuje ustawień z czatu.
+  const [assistantGuide, setAssistantGuide] = useState(false);
+  const guideStep: "hardware" | "mesh" | "" = !assistantGuide ? "" : !selectedHardwareId ? "hardware" : !selectedMeshId ? "mesh" : "";
+  useEffect(() => {
+    if (assistantGuide && guideStep === "") setAssistantGuide(false);
+  }, [assistantGuide, guideStep]);
+  const guideBubble = (step: "hardware" | "mesh") =>
+    guideStep === step ? (
+      <div className="plisy-assistant-guide mosk-assistant-guide" role="status">
+        {step === "hardware" ? "Zostało wybrać kolor profili" : "Zostało wybrać kolor siatki"}
+      </div>
+    ) : null;
+  const applyFromAssistant = (apply: AssistantApply) => {
+    if (apply.hardwareId && hardwareOptions.some((option) => option.id === apply.hardwareId)) {
+      trackShopStep("select_hardware_color", apply.hardwareId, { option_id: apply.hardwareId, source: "assistant" });
+      setSelectedHardwareId(apply.hardwareId);
+      setStepOneChosen(true);
+      setStepOneCollapsed(true);
+    }
+    if (apply.meshId && MESH_OPTIONS.some((option) => option.id === apply.meshId)) {
+      trackShopStep("select_mesh_color", apply.meshId, { option_id: apply.meshId, source: "assistant" });
+      setSelectedMeshId(apply.meshId);
+      setStepTwoCollapsed(true);
+    }
+    if (apply.widthMm && apply.heightMm) {
+      const asInput = (mm: number) => (dimensionUnit === "cm" ? String(Math.round(mm) / 10).replace(".", ",") : String(Math.round(mm)));
+      setDimensionWidth(asInput(apply.widthMm));
+      setDimensionHeight(asInput(apply.heightMm));
+      setDimensionQuantity(String(Math.max(1, apply.qty || 1)));
+      trackShopStep("assistant_fill_dimensions", `${apply.widthMm}x${apply.heightMm}`, { product_slug: "moskitiery-ramkowe", source: "assistant" });
+      // Bok ponad próg dłużycowy: to samo okno dopłaty co po wpisaniu wymiaru ręcznie.
+      const required = moskOversizeSurchargeForDimension(Math.max(apply.widthMm, apply.heightMm));
+      if (required > 0 && !surchargeAccepted) setSurchargeModal({ amount: required });
+    }
+    if (apply.measureGuide && onOpenInstructions) onOpenInstructions();
+    if (apply.guide) {
+      setAssistantGuide(true);
+      window.setTimeout(() => {
+        const bubble = [...document.querySelectorAll<HTMLElement>(".mosk-assistant-guide")].find((el) => el.offsetParent !== null);
+        if (bubble) scrollStepIntoView(bubble);
+      }, 450);
+    }
+  };
+  const applyFromAssistantRef = useRef(applyFromAssistant);
+  applyFromAssistantRef.current = applyFromAssistant;
+  useEffect(() => {
+    if (!enableRescueModal) return;
+    const onApply = (event: Event) => {
+      const apply = (event as CustomEvent<AssistantApply>).detail || {};
+      if (apply.product && apply.product !== "moskitiery-ramkowe") return;
+      applyFromAssistantRef.current(apply);
+    };
+    window.addEventListener(ASSISTANT_APPLY_EVENT, onApply);
+    const pending = takePendingAssistantApply("moskitiery-ramkowe");
+    if (pending) window.setTimeout(() => applyFromAssistantRef.current(pending), 300);
+    return () => window.removeEventListener(ASSISTANT_APPLY_EVENT, onApply);
+  }, [enableRescueModal]);
+
   function handleDimensionBlur() {
     if (!hasValidDimensions) return;
     trackShopStep("enter_dimensions", "moskitiery-ramkowe", {
@@ -576,6 +637,7 @@ export default function ConfiguratorPanel({
       <header>
         <strong>Wyceń swoją moskitierę</strong>
       </header>
+      {guideBubble("hardware")}
       <section className={`hero-product-step-accordion ${stepOneCollapsed ? "is-collapsed" : ""}`}>
         <button
           type="button"
@@ -663,6 +725,7 @@ export default function ConfiguratorPanel({
       </section>
       {stepOneChosen ? (
         <>
+          {guideBubble("mesh")}
           <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
             <button
               type="button"
