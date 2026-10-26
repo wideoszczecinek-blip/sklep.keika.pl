@@ -350,7 +350,7 @@ function injectOpenAiPixelScript(): void {
   window.oaiq?.("init", { pixelId: "S6yWuTLTD7meKp4DkUJ4EF" });
 }
 
-// Google Ads (konto KEIKA ROLETY 911-646-1233) - dodane 2026-10-26 na
+// Google Ads (konto KEIKA ROLETY, tag AW-878528080) - dodane 2026-10-26 na
 // polecenie właściciela (kampanie Search/Shopping sklepu). Ten sam gate zgody
 // co Meta/OpenAI: gtag.js ładuje się dopiero po "Akceptuję" w consent-bar,
 // więc bez zgody nie ma cookies _gcl_*. Konwersja "Zakup – sklep.keika.pl"
