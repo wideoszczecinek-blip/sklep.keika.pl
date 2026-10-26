@@ -485,7 +485,8 @@ export default function LiveChat() {
   typingRef.current = typing;
   const closed = !!state?.closed;
   useEffect(() => {
-    if (!token || closed) return;
+    // Także po zakończeniu rozmowy - CRM widzi, że klient wrócił na stronę (26.10.2026).
+    if (!token) return;
     let last = 0;
     let soonTimer = 0;
     const beat = () => {
