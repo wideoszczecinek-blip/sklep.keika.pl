@@ -44,7 +44,8 @@ export function openCrispChat(prefill?: string): void {
     .then(({ resolveChatMode, openLiveChat }) =>
       resolveChatMode().then((mode) => (mode === "own" ? openLiveChat(prefill) : openCrispWidget(prefill))),
     )
-    .catch(() => openCrispWidget(prefill));
+    // Nie udało się wczytać modułu czatu - i tak nasze okienko (26.10.2026: Crisp ma się nie pokazywać).
+    .catch(() => window.dispatchEvent(new CustomEvent("keika:live-chat-open", { detail: { prefill: prefill || "" } })));
 }
 
 function openCrispWidget(prefill?: string): void {
