@@ -534,9 +534,10 @@ export default function ConfiguratorPanel({
         if (panel && panelRect && (panelRect.top > window.innerHeight - 120 || panelRect.bottom < 0)) {
           const full = panel.closest(".hero-full") as HTMLElement | null;
           if (full && full.scrollHeight > full.clientHeight) {
-            full.scrollTo({ top: full.scrollTop + panelRect.top - full.getBoundingClientRect().top - 110, behavior: "smooth" });
+            // Bez „smooth”: płynne przewijanie .hero-full potrafi nie ruszyć w ogóle (sprawdzone 26.10).
+            full.scrollTo({ top: full.scrollTop + panelRect.top - full.getBoundingClientRect().top - 110 });
           } else {
-            window.scrollTo({ top: window.scrollY + panelRect.top - 110, behavior: "smooth" });
+            window.scrollTo({ top: window.scrollY + panelRect.top - 110 });
           }
         }
         scrollStepIntoView(bubble);
