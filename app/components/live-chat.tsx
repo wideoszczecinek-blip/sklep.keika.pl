@@ -13,6 +13,7 @@
 // („Pokaż w dużym oknie”) i „Wstaw do konfiguratora” jednym kliknięciem.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import "./assistant.css";
 import { shopChatContext } from "@/lib/crisp";
 import { applyToConfigurator, assistantArmSync, resolveAssistantArm } from "@/lib/assistant";
@@ -141,6 +142,8 @@ function currentProduct(): string {
 }
 
 export default function LiveChat() {
+  // Zmiana strony = od razu sygnał obecności (CRM pokazuje, co klient ogląda; 26.10.2026).
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState("");
   const [messages, setMessages] = useState<LiveChatMessage[]>([]);
@@ -514,7 +517,7 @@ export default function LiveChat() {
   }, [token, closed]);
   useEffect(() => {
     window.dispatchEvent(new Event(PRESENCE_NUDGE_EVENT));
-  }, [open, typing]);
+  }, [open, typing, pathname]);
 
   // Odpytywanie: często przy otwartym okienku, rzadziej przy zamkniętym, gdy czekamy na człowieka.
   useEffect(() => {
