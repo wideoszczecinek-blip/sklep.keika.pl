@@ -1081,7 +1081,8 @@ export default function ConfiguratorPanel({
     if (apply.guide) {
       setAssistantGuide(true);
       window.setTimeout(() => {
-        document.getElementById("plisy-assistant-guide")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        // block start + scroll-margin-top (assistant.css): chmurka nie chowa się pod przyklejonym nagłówkiem.
+        document.getElementById("plisy-assistant-guide")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 450);
     }
     if (apply.fabricId) {

@@ -306,6 +306,6 @@
 .lc-sum-price { font-size: 13px; color: #5b6b80; }
 .lc-sum-price b { font-size: 18px; color: #0f7a3d; }
 .lc-sum-missing { margin: 0; font-size: 12px; color: #5b6b80; }
-.plisy-assistant-guide { position: relative; margin: 6px 0 8px; padding: 9px 12px; border-radius: 12px; background: #fff7d6; border: 2px solid #f1b600; color: #5a4300; font-weight: 700; font-size: 14px; box-shadow: 0 6px 18px rgba(241, 182, 0, .25); animation: plisyGuidePulse 1.6s ease-in-out infinite; }
+.plisy-assistant-guide { position: relative; scroll-margin-top: 140px; margin: 6px 0 8px; padding: 9px 12px; border-radius: 12px; background: #fff7d6; border: 2px solid #f1b600; color: #5a4300; font-weight: 700; font-size: 14px; box-shadow: 0 6px 18px rgba(241, 182, 0, .25); animation: plisyGuidePulse 1.6s ease-in-out infinite; }
 .plisy-assistant-guide::after { content: ""; position: absolute; left: 22px; bottom: -9px; width: 14px; height: 14px; background: #fff7d6; border-right: 2px solid #f1b600; border-bottom: 2px solid #f1b600; transform: rotate(45deg); }
 @keyframes plisyGuidePulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
