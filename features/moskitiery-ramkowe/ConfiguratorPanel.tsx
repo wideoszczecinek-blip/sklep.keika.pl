@@ -526,7 +526,20 @@ export default function ConfiguratorPanel({
       setAssistantGuide(true);
       window.setTimeout(() => {
         const bubble = [...document.querySelectorAll<HTMLElement>(".mosk-assistant-guide")].find((el) => el.offsetParent !== null);
-        if (bubble) scrollStepIntoView(bubble);
+        if (!bubble) return;
+        // Panel konfiguratora poza ekranem (układ jednokolumnowy: panel pod opisem) - najpierw przewijamy
+        // do niego stronę, potem scrollStepIntoView ustawia chmurkę w samym panelu.
+        const panel = bubble.closest(".hero-product-config-panel") as HTMLElement | null;
+        const panelRect = panel?.getBoundingClientRect();
+        if (panel && panelRect && (panelRect.top > window.innerHeight - 120 || panelRect.bottom < 0)) {
+          const full = panel.closest(".hero-full") as HTMLElement | null;
+          if (full && full.scrollHeight > full.clientHeight) {
+            full.scrollTo({ top: full.scrollTop + panelRect.top - full.getBoundingClientRect().top - 110, behavior: "smooth" });
+          } else {
+            window.scrollTo({ top: window.scrollY + panelRect.top - 110, behavior: "smooth" });
+          }
+        }
+        scrollStepIntoView(bubble);
       }, 450);
     }
   };
