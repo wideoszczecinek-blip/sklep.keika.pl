@@ -70,6 +70,8 @@ declare global {
     fbq?: ((...args: unknown[]) => void) & { queue?: unknown[]; loaded?: boolean };
     _fbq?: unknown;
     oaiq?: ((...args: unknown[]) => void) & { q?: unknown[] };
+    gtag?: (...args: unknown[]) => void;
+    dataLayer?: unknown[];
   }
 }
 
@@ -348,6 +350,54 @@ function injectOpenAiPixelScript(): void {
   window.oaiq?.("init", { pixelId: "S6yWuTLTD7meKp4DkUJ4EF" });
 }
 
+// Google Ads (konto KEIKA ROLETY 911-646-1233) - dodane 2026-10-26 na
+// polecenie właściciela (kampanie Search/Shopping sklepu). Ten sam gate zgody
+// co Meta/OpenAI: gtag.js ładuje się dopiero po "Akceptuję" w consent-bar,
+// więc bez zgody nie ma cookies _gcl_*. Konwersja "Zakup – sklep.keika.pl"
+// (etykieta poniżej) leci z trackOpenAiOrderCreated - czyli dokładnie w tych
+// samych miejscach co zakup OpenAI (tylko zamówienie finalne), wartość w zł,
+// transaction_id = order_code (Google deduplikuje powtórne wywołania).
+// Konwersje rozszerzone wyłączone, dopóki właściciel nie zaakceptuje ich
+// warunków w Google Ads.
+const GOOGLE_ADS_ID = "AW-878528080";
+const GOOGLE_ADS_PURCHASE_LABEL = "nBg5CODC3KodENCM9aID";
+let googleTagInjected = false;
+function injectGoogleTag(): void {
+  if (googleTagInjected || typeof window === "undefined") return;
+  googleTagInjected = true;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag =
+    window.gtag ||
+    function gtag() {
+      // gtag.js wymaga obiektu arguments, nie tablicy.
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer!.push(arguments);
+    };
+  window.gtag("consent", "default", {
+    ad_storage: "granted",
+    analytics_storage: "granted",
+    ad_user_data: "granted",
+    ad_personalization: "granted",
+  });
+  window.gtag("js", new Date());
+  window.gtag("config", GOOGLE_ADS_ID);
+  const j = document.createElement("script");
+  j.async = true;
+  j.src = `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`;
+  document.head.appendChild(j);
+}
+
+function trackGoogleAdsPurchase(orderCode: string, amountZl: number, currency: string): void {
+  if (typeof window === "undefined" || !hasAnalyticsConsent()) return;
+  injectGoogleTag();
+  window.gtag?.("event", "conversion", {
+    send_to: `${GOOGLE_ADS_ID}/${GOOGLE_ADS_PURCHASE_LABEL}`,
+    value: Math.round(amountZl * 100) / 100,
+    currency,
+    transaction_id: orderCode,
+  });
+}
+
 /**
  * Standardowe zdarzenie konwersji OpenAI Ads dla realnego zamówienia
  * ("order_created" to ICH nazwa dla zakupu - patrz developers.openai.com/
@@ -374,6 +424,11 @@ export function trackOpenAiOrderCreated(params: {
   if (typeof window === "undefined") return;
   const amountMinorUnits = Math.round(params.amountZl * 100);
   if (!Number.isFinite(amountMinorUnits) || amountMinorUnits <= 0) return;
+  try {
+    trackGoogleAdsPurchase(params.orderCode, params.amountZl, params.currency || "PLN");
+  } catch {
+    /* Google Ads best-effort - nie może zablokować OpenAI */
+  }
   window.oaiq?.(
     "measure",
     "order_created",
@@ -404,6 +459,7 @@ export async function initTracking(): Promise<void> {
     ensureFbp();
     ensureFbc(readAttribution());
     injectOpenAiPixelScript();
+    injectGoogleTag();
   }
 
   const cfg = await loadConfig();
