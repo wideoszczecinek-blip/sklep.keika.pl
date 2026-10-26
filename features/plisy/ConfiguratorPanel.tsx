@@ -943,6 +943,34 @@ export default function ConfiguratorPanel({
   // Wpisany wymiar trafia do zestawu, pola wymiarów czyszczą się i dostają
   // kursor; do koszyka cały zestaw idzie potem jednym "Dodaj do koszyka".
   const [similarHint, setSimilarHint] = useState(false);
+  // Chmurka po „Ustaw w konfiguratorze” z czatu: pokazuje krok, który klient musi jeszcze wybrać sam.
+  const [assistantGuide, setAssistantGuide] = useState(false);
+  const guideStep: "hardware" | "bracket" | "group" | "fabric" | "" = !assistantGuide
+    ? ""
+    : !selectedHardwareId
+      ? "hardware"
+      : bracketRequired && !selectedBracket
+        ? "bracket"
+        : !selectedFabricGroupId
+          ? "group"
+          : !selectedFabricId
+            ? "fabric"
+            : "";
+  useEffect(() => {
+    if (assistantGuide && guideStep === "") setAssistantGuide(false);
+  }, [assistantGuide, guideStep]);
+  const GUIDE_TEXT = {
+    hardware: "Zostało wybrać kolor listew",
+    bracket: "Zostało wybrać uchwyty",
+    group: "Zostało wybrać kolekcję tkaniny",
+    fabric: "Zostało wybrać kolor tkaniny",
+  } as const;
+  const guideBubble = (step: "hardware" | "bracket" | "group" | "fabric") =>
+    guideStep === step ? (
+      <div id="plisy-assistant-guide" className="plisy-assistant-guide" role="status">
+        {GUIDE_TEXT[step]}
+      </div>
+    ) : null;
   function handleAddSimilar() {
     if (!canFinalSubmit) return;
     if (currentPosition()) handleAddPosition();
@@ -1004,7 +1032,31 @@ export default function ConfiguratorPanel({
   // Wybór przyniesiony z innej strony czeka w sessionStorage do załadowania profilu.
   const applyFromAssistant = (apply: AssistantApply) => {
     if (!profile) return;
-    if (apply.mount) {
+    if (apply.widthMm && apply.heightMm) {
+      // Karta podsumowania z czatu: montaż i wymiar razem - bez pytania „zmieniasz montaż, zmierz od nowa”,
+      // bo wymiar był ustalony w rozmowie właśnie dla tego montażu.
+      if (apply.mount) {
+        const wantNonInvasive = apply.mount === "nieinwazyjny";
+        const option = profile.mountOptions.find(
+          (entry) => (isPlisyMountNonInvasive(entry.id) || isPlisyMountNonInvasive(entry.label)) === wantNonInvasive,
+        );
+        if (option && option.id !== selectedMountId) {
+          trackShopStep("select_mount_type", option.label, { option_id: option.id, source: "assistant" });
+          setSelectedMountId(option.id);
+          if (wantNonInvasive) setStepBracketCollapsed(false);
+          else setSelectedBracketId("");
+        }
+      }
+      setPositions([]);
+      setEditingPositionId(null);
+      setWidth(mmToInput(apply.widthMm, dimensionUnit));
+      setHeight(mmToInput(apply.heightMm, dimensionUnit));
+      setQuantity(String(Math.max(1, apply.qty || 1)));
+      setRemeasureHint(null);
+      setStepMountCollapsed(true);
+      setStepDimsCollapsed(true);
+      trackShopStep("assistant_fill_dimensions", `${apply.widthMm}x${apply.heightMm}`, { source: "assistant" });
+    } else if (apply.mount) {
       const wantNonInvasive = apply.mount === "nieinwazyjny";
       const option = profile.mountOptions.find(
         (entry) => (isPlisyMountNonInvasive(entry.id) || isPlisyMountNonInvasive(entry.label)) === wantNonInvasive,
@@ -1015,6 +1067,22 @@ export default function ConfiguratorPanel({
       setSelectedHardwareId(apply.hardwareId);
       setStepOneChosen(true);
       setStepOneCollapsed(true);
+    }
+    if (apply.fabricGroupId && !apply.fabricId) {
+      const group = profile.fabricGroups.find((entry) => entry.id === apply.fabricGroupId);
+      if (group) {
+        trackShopStep("select_fabric_group", group.label, { option_id: group.id, source: "assistant" });
+        setSelectedFabricGroupId(group.id);
+        setStepTwoCollapsed(true);
+        if (!group.swatches.some((swatch) => swatch.id === selectedFabricId)) setSelectedFabricId("");
+        setStepThreeCollapsed(false);
+      }
+    }
+    if (apply.guide) {
+      setAssistantGuide(true);
+      window.setTimeout(() => {
+        document.getElementById("plisy-assistant-guide")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 450);
     }
     if (apply.fabricId) {
       const group = profile.fabricGroups.find((entry) =>
@@ -1617,6 +1685,7 @@ export default function ConfiguratorPanel({
           })()
         : null}
 
+      {guideBubble("hardware")}
       <section className={`hero-product-step-accordion hero-product-step-accordion--hardware-color ${stepOneCollapsed ? "is-collapsed" : ""}`}>
         <button
           type="button"
@@ -1701,6 +1770,7 @@ export default function ConfiguratorPanel({
       </section>
 
       {/* KROK 4: kolor uchwytów - tylko montaż bezinwazyjny */}
+      {selectedHardwareId && bracketRequired ? guideBubble("bracket") : null}
       {selectedHardwareId && bracketRequired ? (
         <section className={`hero-product-step-accordion hero-product-step-accordion--bracket ${stepBracketCollapsed ? "is-collapsed" : ""}`}>
           <button
@@ -1768,6 +1838,7 @@ export default function ConfiguratorPanel({
       {selectedHardwareId && bracketChosen ? (
         <>
           {/* KROK 4/5: kolekcja tkanin */}
+          {guideBubble("group")}
           <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
             <button
               type="button"
@@ -1927,6 +1998,7 @@ export default function ConfiguratorPanel({
           {fabricGroupChosen ? (
             <>
               {/* KROK 5/6: kolor tkaniny */}
+              {guideBubble("fabric")}
               <section className={`hero-product-step-accordion hero-product-step-accordion--fabric-color ${stepThreeCollapsed ? "is-collapsed" : ""}`}>
                 <button
                   type="button"

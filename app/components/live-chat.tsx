@@ -654,6 +654,19 @@ export default function LiveChat() {
     if (window.matchMedia("(max-width: 759px)").matches) setOpen(false);
   }
 
+  function applySummary(card: Extract<LiveChatCard, { type: "summary" }>) {
+    trackShopStep("assistant_apply", card.title, { product: card.product, kind: "summary", missing: card.missing.join(", ") });
+    applyToConfigurator(card.apply, `/${card.product}`);
+    setNote(card.missing.length ? `Ustawione w konfiguratorze. Zostało wybrać: ${card.missing.join(", ")}.` : "Ustawione w konfiguratorze.");
+    if (window.matchMedia("(max-width: 759px)").matches) setOpen(false);
+  }
+
+  function showMeasureGuide(card: Extract<LiveChatCard, { type: "summary" }>) {
+    trackShopStep("assistant_apply", "jak mierzyć", { product: card.product, kind: "measure_guide" });
+    applyToConfigurator({ product: card.product, measureGuide: true }, `/${card.product}`);
+    if (window.matchMedia("(max-width: 759px)").matches) setOpen(false);
+  }
+
   function applyPlate(card: Extract<LiveChatCard, { type: "plate" }>, product: string, libraryId?: number, label?: string) {
     trackShopStep("assistant_apply", card.query, { product, kind: "plate", library_id: libraryId || 0 });
     applyToConfigurator({ product, windowLibraryId: libraryId || undefined, windowQuery: card.query }, `/produkt/${product}`);
@@ -786,6 +799,35 @@ export default function LiveChat() {
     );
   };
 
+  const renderSummaryCard = (card: Extract<LiveChatCard, { type: "summary" }>) => (
+    <div className="lc-card lc-card-summary">
+      <span className="lc-sw-role">Podsumowanie</span>
+      <strong>{card.title}</strong>
+      <dl className="lc-sum-rows">
+        {card.rows.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {card.price ? (
+        <div className="lc-sum-price">
+          <b>{card.price}</b> <span>{card.price_note}</span>
+        </div>
+      ) : null}
+      {card.missing.length ? <p className="lc-sum-missing">W konfiguratorze zostanie do wybrania: {card.missing.join(", ")}.</p> : null}
+      <div className="lc-card-actions">
+        <button type="button" className="lc-sw-apply" onClick={() => applySummary(card)}>
+          Ustaw w konfiguratorze
+        </button>
+        <button type="button" className="lc-sw-apply is-ghost" onClick={() => showMeasureGuide(card)}>
+          Jak mierzyć?
+        </button>
+      </div>
+    </div>
+  );
+
   const conversation = (
     <div className="lc-body" ref={listRef}>
       <div className="lc-row lc-row-bot">
@@ -831,6 +873,7 @@ export default function LiveChat() {
               )}
               {m.card?.type === "colors" ? renderColorCard(m, m.card, false) : null}
               {m.card?.type === "plate" ? renderPlateCard(m.card) : null}
+              {m.card?.type === "summary" ? renderSummaryCard(m.card) : null}
               {time || m.pending ? <div className="lc-msg-time">{m.pending ? "wysyłanie…" : time}</div> : null}
             </div>
           </div>

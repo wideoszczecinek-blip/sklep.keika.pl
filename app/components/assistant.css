@@ -295,3 +295,17 @@
 .lc-mic.is-busy { opacity: 1; animation: lcMicBusy 1s ease-in-out infinite; }
 @keyframes lcMicBusy { 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .lc-mic.is-busy { animation: none; } }
+
+/* Karta podsumowania z czatu + chmurka w konfiguratorze (26.10.2026). */
+.lc-card-summary { padding: 10px 12px; border-radius: 12px; background: #f3f6fa; border: 1px solid #dbe3ee; }
+.lc-card-summary strong { font-family: var(--font-heading); font-size: 16px; color: #16314e; }
+.lc-sum-rows { margin: 0; display: grid; gap: 3px; }
+.lc-sum-rows div { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.lc-sum-rows dt { color: #5b6b80; }
+.lc-sum-rows dd { margin: 0; font-weight: 600; color: #16314e; text-align: right; }
+.lc-sum-price { font-size: 13px; color: #5b6b80; }
+.lc-sum-price b { font-size: 18px; color: #0f7a3d; }
+.lc-sum-missing { margin: 0; font-size: 12px; color: #5b6b80; }
+.plisy-assistant-guide { position: relative; margin: 6px 0 8px; padding: 9px 12px; border-radius: 12px; background: #fff7d6; border: 2px solid #f1b600; color: #5a4300; font-weight: 700; font-size: 14px; box-shadow: 0 6px 18px rgba(241, 182, 0, .25); animation: plisyGuidePulse 1.6s ease-in-out infinite; }
+.plisy-assistant-guide::after { content: ""; position: absolute; left: 22px; bottom: -9px; width: 14px; height: 14px; background: #fff7d6; border-right: 2px solid #f1b600; border-bottom: 2px solid #f1b600; transform: rotate(45deg); }
+@keyframes plisyGuidePulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }

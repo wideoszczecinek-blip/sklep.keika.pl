@@ -48,6 +48,12 @@ export type AssistantApply = {
   measureGuide?: boolean;
   /** Przewiń do wymiarów i ustaw kursor (np. „dodaj kolejne okno”). */
   focusDimensions?: boolean;
+  /** Wymiar z rozmowy na czacie (karta podsumowania) - wpisywany od razu, bez pytania o zmianę montażu. */
+  widthMm?: number;
+  heightMm?: number;
+  qty?: number;
+  /** Pokaż chmurkę przy kroku, który klient musi jeszcze wybrać sam (np. kolor tkaniny). */
+  guide?: boolean;
 };
 
 let pilotPromise: Promise<number> | null = null;

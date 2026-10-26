@@ -59,6 +59,28 @@ export type LiveChatCard =
       libraryId?: number;
       label?: string;
       candidates?: { id: number; label: string }[];
+    }
+  | {
+      /** Podsumowanie rozmowy z przyciskiem „Ustaw w konfiguratorze” (CRM: podsumuj_konfiguracje, 26.10.2026). */
+      type: "summary";
+      product: string;
+      title: string;
+      rows: [string, string][];
+      price: string;
+      price_note: string;
+      /** Co zostaje do wybrania w konfiguratorze, np. „kolor tkaniny”. */
+      missing: string[];
+      measure_url?: string;
+      apply: {
+        product: string;
+        mount?: string;
+        hardwareId?: string;
+        fabricGroupId?: string;
+        widthMm?: number;
+        heightMm?: number;
+        qty?: number;
+        guide?: boolean;
+      };
     };
 
 export type LiveChatMessage = {
