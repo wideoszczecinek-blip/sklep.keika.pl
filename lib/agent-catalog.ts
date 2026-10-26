@@ -121,7 +121,7 @@ const MOSKITIERY_FAQ: CatalogFaq[] = [
   },
   {
     question: "Jak prawidłowo zmierzyć okno?",
-    answer: "Zmierz szerokość i wysokość światła okna miarką zwijaną. Przy profilu skośnym lub zaokrąglonym dodaj 2–5 mm. Profil moskitiery ma płetwę, która zakrywa błąd pomiaru do kilku milimetrów.",
+    answer: "Zmierz szerokość i wysokość światła okna od uszczelki do uszczelki i wpisz ten wymiar. Tylko gdy profil okna w miejscu montażu mocno się rozchodzi, jest skośny lub zaokrąglony, dodaj 2–5 mm; w razie wątpliwości wyślij nam zdjęcie okna, sprawdzimy typ ramy. Profil moskitiery ma płetwę, która zakrywa błąd pomiaru do kilku milimetrów.",
   },
   {
     question: "Czy moskitiera pasuje do każdego okna?",
@@ -161,7 +161,7 @@ export const CATALOG: CatalogProduct[] = [
     handlingDays: [0, 3],
     freeShippingAlways: false,
     mounting: "na zaczepy sprężynowe, bez wiercenia",
-    measuring: "szerokość i wysokość światła okna (przy profilu skośnym +2–5 mm), wycena online z instrukcją pomiaru",
+    measuring: "szerokość i wysokość światła okna od uszczelki do uszczelki (+2–5 mm tylko przy profilu mocno rozchodzącym się, skośnym lub zaokrąglonym), wycena online z instrukcją pomiaru",
     options: ["7 kolorów profili: biały, antracyt, brąz, złoty dąb, orzech, winchester, mahoń", "siatka wzmocniona szara lub czarna", "opcja Ekspres"],
     faq: MOSKITIERY_FAQ,
     sku: "moskitiera-ramkowa-na-wymiar",
