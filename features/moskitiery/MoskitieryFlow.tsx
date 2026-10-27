@@ -1758,7 +1758,7 @@ export default function MoskitieryFlow({
                     <label className={styles.field}>
                       <span>{dimensionsStep.width_label}</span>
                       <input
-                        type="number"
+                        type="text" data-dim-input="" autoComplete="off"
                         min="1"
                         step="1"
                         inputMode="numeric"
@@ -1780,7 +1780,7 @@ export default function MoskitieryFlow({
                     <label className={styles.field}>
                       <span>{dimensionsStep.height_label}</span>
                       <input
-                        type="number"
+                        type="text" data-dim-input="" autoComplete="off"
                         min="1"
                         step="1"
                         inputMode="numeric"

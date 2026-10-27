@@ -866,7 +866,7 @@ export default function ConfiguratorPanel({
                 <label>
                   Szerokość ({dimensionUnit})
                   <input
-                    type="number"
+                    type="text" data-dim-input="" autoComplete="off"
                     inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                     step={dimensionUnit === "cm" ? 0.1 : 1}
                     min={dimensionUnit === "cm" ? MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM / 10 : MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}
@@ -880,7 +880,7 @@ export default function ConfiguratorPanel({
                 <label>
                   Wysokość ({dimensionUnit})
                   <input
-                    type="number"
+                    type="text" data-dim-input="" autoComplete="off"
                     inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                     step={dimensionUnit === "cm" ? 0.1 : 1}
                     min={dimensionUnit === "cm" ? MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM / 10 : MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM}

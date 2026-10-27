@@ -2841,7 +2841,7 @@ export default function Home({
       scrollToConfigPanel();
       window.setTimeout(() => {
         document
-          .querySelector<HTMLInputElement>(".hero-product-config-panel input[type=number]")
+          .querySelector<HTMLInputElement>(".hero-product-config-panel input[data-dim-input], .hero-product-config-panel input[type=number]")
           ?.focus({ preventScroll: true });
       }, 400);
       return;
@@ -6242,7 +6242,7 @@ export default function Home({
                           <label>
                             Szerokość (mm)
                             <input
-                              type="number"
+                              type="text" data-dim-input="" autoComplete="off"
                               inputMode="numeric"
                               min={300}
                               max={OVERSIZE_MAX_WIDTH_MM}
@@ -6255,7 +6255,7 @@ export default function Home({
                           <label>
                             Wysokość (mm)
                             <input
-                              type="number"
+                              type="text" data-dim-input="" autoComplete="off"
                               inputMode="numeric"
                               min={300}
                               max={OVERSIZE_SURCHARGE_TIER_2_MAX_MM}

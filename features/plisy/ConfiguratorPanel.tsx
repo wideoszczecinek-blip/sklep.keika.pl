@@ -983,7 +983,7 @@ export default function ConfiguratorPanel({
     trackShopStep("add_similar", "plisy", { positions: effectivePositions.length });
     window.setTimeout(() => {
       positionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      positionFormRef.current?.querySelector<HTMLInputElement>("input[type='number'], input")?.focus({ preventScroll: true });
+      positionFormRef.current?.querySelector<HTMLInputElement>("input[data-dim-input], input[type='number'], input")?.focus({ preventScroll: true });
     }, 180);
   }
 
@@ -1418,7 +1418,7 @@ export default function ConfiguratorPanel({
               <label>
                 Szerokość ({dimensionUnit})
                 <input
-                  type="number"
+                  type="text" data-dim-input="" autoComplete="off"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                   step={dimensionUnit === "cm" ? 0.1 : 1}
                   min={dimensionUnit === "cm" ? profile.widthMinMm / 10 : profile.widthMinMm}
@@ -1432,7 +1432,7 @@ export default function ConfiguratorPanel({
               <label>
                 Wysokość ({dimensionUnit})
                 <input
-                  type="number"
+                  type="text" data-dim-input="" autoComplete="off"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                   step={dimensionUnit === "cm" ? 0.1 : 1}
                   min={dimensionUnit === "cm" ? profile.heightMinMm / 10 : profile.heightMinMm}

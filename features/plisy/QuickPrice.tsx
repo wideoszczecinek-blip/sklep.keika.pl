@@ -258,7 +258,7 @@ export default function PlisyQuickPrice({
 
   const numberField = (axis: "w" | "h") => (
     <input
-      type="number"
+      type="text" data-dim-input="" autoComplete="off"
       inputMode="numeric"
       min={axis === "w" ? minW : minH}
       max={axis === "w" ? maxW : maxH}

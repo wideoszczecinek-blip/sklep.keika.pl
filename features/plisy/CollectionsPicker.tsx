@@ -111,7 +111,7 @@ function SizeField({
       <input type="range" min={min} max={max} step={1} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-label={`${label} w centymetrach`} />
       <span className="pl-coll-size-num">
         <input
-          type="number"
+          type="text" data-dim-input="" autoComplete="off"
           inputMode="numeric"
           min={min}
           max={max}

@@ -252,11 +252,11 @@ export default function MissingModelForm({
         <div className="rd-form-grid rd-form-grid--dims">
           <label className="rd-form-field">
             <span>Wymiar A — szerokość ({unit})</span>
-            <input type="number" inputMode="decimal" value={dimA} onChange={(event) => setDimA(event.target.value)} placeholder={unit === "cm" ? "np. 78" : "np. 780"} className={touched && !widthOk ? "is-invalid" : ""} />
+            <input type="text" data-dim-input="" autoComplete="off" inputMode="decimal" value={dimA} onChange={(event) => setDimA(event.target.value)} placeholder={unit === "cm" ? "np. 78" : "np. 780"} className={touched && !widthOk ? "is-invalid" : ""} />
           </label>
           <label className="rd-form-field">
             <span>Wymiar B — wysokość ({unit})</span>
-            <input type="number" inputMode="decimal" value={dimB} onChange={(event) => setDimB(event.target.value)} placeholder={unit === "cm" ? "np. 118" : "np. 1180"} className={touched && !heightOk ? "is-invalid" : ""} />
+            <input type="text" data-dim-input="" autoComplete="off" inputMode="decimal" value={dimB} onChange={(event) => setDimB(event.target.value)} placeholder={unit === "cm" ? "np. 118" : "np. 1180"} className={touched && !heightOk ? "is-invalid" : ""} />
           </label>
         </div>
         {(touched || dimA || dimB) && ((dimA && !widthOk) || (dimB && !heightOk)) ? (

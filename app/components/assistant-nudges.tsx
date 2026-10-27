@@ -102,7 +102,7 @@ function focusConfigurator(productSlug: string): void {
   const panel = document.querySelector<HTMLElement>(".hero-product-config-panel");
   if (!panel) return;
   panel.scrollIntoView({ behavior: "smooth", block: "start" });
-  window.setTimeout(() => panel.querySelector<HTMLInputElement>('input[inputmode="decimal"], input[type="number"], input[type="text"]')?.focus({ preventScroll: true }), 400);
+  window.setTimeout(() => panel.querySelector<HTMLInputElement>('input[data-dim-input], input[inputmode="decimal"], input[type="number"], input[type="text"]')?.focus({ preventScroll: true }), 400);
 }
 
 /** Przewija do przycisku „Dodaj do koszyka” i na chwilę go podświetla. */

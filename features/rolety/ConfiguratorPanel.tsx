@@ -1300,7 +1300,7 @@ export default function RoletyConfiguratorPanel({
               <label>
                 {widthFieldLabel} ({dimensionUnit})
                 <input
-                  type="number"
+                  type="text" data-dim-input="" autoComplete="off"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                   step={dimensionUnit === "cm" ? 0.1 : 1}
                   min={dimensionUnit === "cm" ? p.widthMinMm / 10 : p.widthMinMm}
@@ -1314,7 +1314,7 @@ export default function RoletyConfiguratorPanel({
               <label>
                 {heightFieldLabel} ({dimensionUnit})
                 <input
-                  type="number"
+                  type="text" data-dim-input="" autoComplete="off"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                   step={dimensionUnit === "cm" ? 0.1 : 1}
                   min={dimensionUnit === "cm" ? p.heightMinMm / 10 : p.heightMinMm}
@@ -1365,7 +1365,7 @@ export default function RoletyConfiguratorPanel({
                   <label className="zl-space-less">
                     cm nad wnęką (0-{cmText(stackAboveMm)})
                     <input
-                      type="number"
+                      type="text" data-dim-input="" autoComplete="off"
                       inputMode="decimal"
                       min={0}
                       max={stackAboveMm / 10}

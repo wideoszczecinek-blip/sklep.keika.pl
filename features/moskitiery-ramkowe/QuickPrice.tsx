@@ -194,7 +194,7 @@ export default function MoskitieryQuickPrice({
             />
             <span className="pl-quick-num">
               <input
-                type="number"
+                type="text" data-dim-input="" autoComplete="off"
                 inputMode="numeric"
                 min={minCm}
                 max={maxCm}
@@ -224,7 +224,7 @@ export default function MoskitieryQuickPrice({
             />
             <span className="pl-quick-num">
               <input
-                type="number"
+                type="text" data-dim-input="" autoComplete="off"
                 inputMode="numeric"
                 min={minCm}
                 max={maxCm}
