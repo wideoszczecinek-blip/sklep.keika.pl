@@ -46,10 +46,18 @@ export function highlightElement(el: HTMLElement, ms = 5000): void {
   highlightTimer = window.setTimeout(() => el.classList.remove(HIGHLIGHT_CLASS), ms);
 }
 
+/** Zaraz po wczytaniu strona potrafi sama wrócić na górę (przywracanie pozycji) - przez ~2 s pilnujemy, żeby miejsce zostało w kadrze. */
+function keepInView(el: HTMLElement, attempt = 0): void {
+  const rect = el.getBoundingClientRect();
+  if (rect.top < -20 || rect.top > window.innerHeight * 0.75) scrollTo(el);
+  if (attempt < 3) window.setTimeout(() => keepInView(el, attempt + 1), 700);
+}
+
 function reveal(el: HTMLElement | null | undefined, focusSelector?: string): boolean {
   if (!visible(el)) return false;
   highlightElement(el);
   scrollTo(el);
+  window.setTimeout(() => keepInView(el), 500);
   if (focusSelector) {
     window.setTimeout(() => el.querySelector<HTMLInputElement>(focusSelector)?.focus({ preventScroll: true }), 600);
   }
