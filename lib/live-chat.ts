@@ -82,6 +82,14 @@ export type LiveChatCard =
         guide?: boolean;
         meshId?: string;
       };
+    }
+  | {
+      /** Przycisk „Pokaż mi na stronie” (CRM: pokaz_na_stronie, 27.10.2026) - lib/assistant-show.ts. */
+      type: "show";
+      place: string;
+      label: string;
+      path: string;
+      url: string;
     };
 
 export type LiveChatMessage = {

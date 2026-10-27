@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import "./assistant.css";
 import { shopChatContext } from "@/lib/crisp";
 import { applyToConfigurator, assistantArmSync, resolveAssistantArm } from "@/lib/assistant";
+import { showOnPage, runShowPlace, takePendingShow } from "@/lib/assistant-show";
 import { CONFIGURATOR_STATE_EVENT, getConfiguratorState } from "@/lib/configurator-state";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { trackShopStep } from "@/lib/track-step";
@@ -520,6 +521,13 @@ export default function LiveChat() {
   useEffect(() => {
     window.dispatchEvent(new Event(PRESENCE_NUDGE_EVENT));
   }, [open, typing, pathname]);
+  // Miejsce do pokazania po przejściu z innej strony (albo z keika.pl: ?pokaz=…) - po wczytaniu strony.
+  useEffect(() => {
+    const place = takePendingShow();
+    if (!place) return;
+    const timer = window.setTimeout(() => runShowPlace(place), 700);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
 
   // Odczyt (27.10.2026): gdy okienko jest otwarte, a karta widoczna, zgłaszamy najnowszą wiadomość od nas,
   // którą klient ma przed oczami - zespół widzi w CRM „Odczytano HH:MM”.
@@ -687,6 +695,19 @@ export default function LiveChat() {
     if (window.matchMedia("(max-width: 759px)").matches) setOpen(false);
   }
 
+  // „Pokaż mi na stronie” (27.10.2026): przewija do miejsca i podświetla je; na wąskim ekranie okienko
+  // czatu zasłania stronę, więc się zwija (klient wraca do rozmowy dymkiem).
+  function showPlace(card: Extract<LiveChatCard, { type: "show" }>) {
+    trackShopStep("assistant_apply", card.label, { kind: "show", place: card.place });
+    const result = showOnPage(card.place);
+    if (result === "unknown") {
+      window.location.href = card.url;
+      return;
+    }
+    if (result === "shown") setNote(`Podświetlam na stronie: ${card.label}.`);
+    if (window.matchMedia("(max-width: 1100px)").matches) setOpen(false);
+  }
+
   function applyPlate(card: Extract<LiveChatCard, { type: "plate" }>, product: string, libraryId?: number, label?: string) {
     trackShopStep("assistant_apply", card.query, { product, kind: "plate", library_id: libraryId || 0 });
     applyToConfigurator({ product, windowLibraryId: libraryId || undefined, windowQuery: card.query }, `/produkt/${product}`);
@@ -819,6 +840,15 @@ export default function LiveChat() {
     );
   };
 
+  const renderShowCard = (card: Extract<LiveChatCard, { type: "show" }>) => (
+    <div className="lc-card lc-card-show">
+      <button type="button" className="lc-sw-apply" onClick={() => showPlace(card)}>
+        📍 Pokaż mi na stronie
+      </button>
+      <span className="lc-show-label">{card.label}</span>
+    </div>
+  );
+
   const renderSummaryCard = (card: Extract<LiveChatCard, { type: "summary" }>) => (
     <div className="lc-card lc-card-summary">
       <span className="lc-sw-role">Podsumowanie</span>
@@ -894,6 +924,7 @@ export default function LiveChat() {
               {m.card?.type === "colors" ? renderColorCard(m, m.card, false) : null}
               {m.card?.type === "plate" ? renderPlateCard(m.card) : null}
               {m.card?.type === "summary" ? renderSummaryCard(m.card) : null}
+              {m.card?.type === "show" ? renderShowCard(m.card) : null}
               {time || m.pending ? <div className="lc-msg-time">{m.pending ? "wysyłanie…" : time}</div> : null}
             </div>
           </div>
