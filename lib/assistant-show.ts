@@ -28,15 +28,10 @@ function visible(el: Element | null | undefined): el is HTMLElement {
   return !!el && (el as HTMLElement).offsetParent !== null;
 }
 
-function scrollTo(el: HTMLElement, offset = 96): void {
-  // Strony produktów przewijają własny kontener (.hero-full), nie okno.
-  const container = el.closest<HTMLElement>(".hero-full");
-  if (container && container.scrollHeight > container.clientHeight) {
-    const delta = el.getBoundingClientRect().top - container.getBoundingClientRect().top - offset;
-    container.scrollTo({ top: Math.max(0, container.scrollTop + delta), behavior: "smooth" });
-  } else {
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
+function scrollTo(el: HTMLElement): void {
+  // scrollIntoView przewija właściwy kontener (na stronach produktów na komputerze .hero-full, na telefonie
+  // okno); scroll-margin-top z klasy podświetlenia (.kk-show-hl) trzyma miejsce pod przyklejonym nagłówkiem.
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 let highlightTimer = 0;
@@ -51,8 +46,8 @@ export function highlightElement(el: HTMLElement, ms = 5000): void {
 
 function reveal(el: HTMLElement | null | undefined, focusSelector?: string): boolean {
   if (!visible(el)) return false;
-  scrollTo(el);
   highlightElement(el);
+  scrollTo(el);
   if (focusSelector) {
     window.setTimeout(() => el.querySelector<HTMLInputElement>(focusSelector)?.focus({ preventScroll: true }), 600);
   }
