@@ -19,7 +19,7 @@
 //
 // Prices come off the live CRM matrix (calcPlisyPrice, the configurator's
 // own function) and SEZON20 through applyPromoToPrice - nothing hardcoded.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
@@ -82,6 +82,29 @@ function SizeField({
   max: number;
   onChange: (v: number) => void;
 }) {
+  // Tekst pola trzymany lokalnie (właściciel, 27.10.2026: wpisanie „91” dawało 1 albo 15) - wcześniej
+  // każdy znak był od razu dociągany do zakresu: „9” skakało do minimum 20, a dopisana „1” dawała 201,
+  // przycinane do maksimum. Teraz liczba w zakresie idzie dalej od razu, reszta dopiero po wyjściu z pola.
+  const [text, setText] = useState(String(value));
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setText((current) => (Number(current) === value ? current : String(value)));
+  }, [value]);
+  const type = (raw: string) => {
+    setText(raw);
+    const n = Number(raw.replace(",", "."));
+    if (raw.trim() !== "" && Number.isFinite(n) && n >= min && n <= max) onChange(Math.round(n));
+  };
+  const commit = () => {
+    const n = Number(text.replace(",", "."));
+    if (text.trim() === "" || !Number.isFinite(n) || n <= 0) {
+      setText(String(value));
+      return;
+    }
+    const next = clampInt(n, min, max);
+    setText(String(next));
+    if (next !== value) onChange(next);
+  };
   return (
     <label className="pl-coll-size-field">
       <span>{label}</span>
@@ -92,8 +115,12 @@ function SizeField({
           inputMode="numeric"
           min={min}
           max={max}
-          value={value}
-          onChange={(e) => onChange(clampInt(Number(e.target.value), min, max))}
+          value={text}
+          onChange={(e) => type(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
           aria-label={`${label}, wpisz w centymetrach`}
         />
         cm
