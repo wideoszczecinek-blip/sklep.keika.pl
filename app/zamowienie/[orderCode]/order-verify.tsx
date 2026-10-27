@@ -50,6 +50,9 @@ const PAYNOW_POLL_ATTEMPTS = 24;
 const PAYNOW_POLL_INTERVAL_MS = 3000;
 
 
+// Zamówienie bezpłatnych próbek tkanin (app/probki, 27.10.2026) - płatne tylko za dostawę.
+const SAMPLES_SLUG = "probki-tkanin";
+
 export default function OrderVerify({ orderCode }: { orderCode: string }) {
   const [verifier, setVerifier] = useState("");
   const [order, setOrder] = useState<PublicOrder | null>(null);
@@ -184,7 +187,8 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     if (openAiTrackedRef.current || !order) return;
     const redirectStatus = searchParams.get("redirect_status");
     if (searchParams.get("from_payment") !== "1" || redirectStatus !== "succeeded") return;
-    if (!order.amount_total) return;
+    // Próbki tkanin (27.10.2026) to nie sprzedaż - bez konwersji zakupu w reklamach.
+    if (!order.amount_total || order.product_slug === SAMPLES_SLUG) return;
     openAiTrackedRef.current = true;
     void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
       trackOpenAiOrderCreated({
@@ -224,7 +228,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
           setJustPaid(true);
           clearCart();
           trackShopStep("p24_return", "paid", { order_code: orderCode, attempts: attempt });
-          if (order.amount_total) {
+          if (order.amount_total && order.product_slug !== SAMPLES_SLUG) {
             void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
               trackOpenAiOrderCreated({
                 orderCode: order.order_code,
@@ -298,7 +302,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
           setJustPaid(true);
           clearCart();
           trackShopStep("paynow_return", "paid", { order_code: orderCode, attempts: attempt });
-          if (order.amount_total) {
+          if (order.amount_total && order.product_slug !== SAMPLES_SLUG) {
             void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
               trackOpenAiOrderCreated({
                 orderCode: order.order_code,
@@ -551,7 +555,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     // które przechodzą to bez strat (moskitiery, plisy) - dla reszty zostaje
     // kontakt, żeby nie zgubić np. modelu okna dachowego.
     const restoreSafe = lines.products.length > 0 && lines.products.every((p) => RESTORABLE_SLUGS.has(p.slug));
-    const editHref = !canPayNow ? "" : localCartCount > 0 ? "/koszyk" : restoreSafe && order.quote_code ? `/wizyta/${encodeURIComponent(order.quote_code)}?do=koszyk` : "";
+    const editHref = !canPayNow || order.product_slug === SAMPLES_SLUG ? "" : localCartCount > 0 ? "/koszyk" : restoreSafe && order.quote_code ? `/wizyta/${encodeURIComponent(order.quote_code)}?do=koszyk` : "";
 
     const heroTone = isPaid ? "is-paid" : isFailed || timedOut ? "is-failed" : "";
     // Jeden klucz stanu -> treść z CRM (Sklep WWW → Strony). Kolejność
@@ -609,7 +613,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
               onPaid={() => {
                 setJustPaid(true);
                 clearCart();
-                if (order.amount_total) {
+                if (order.amount_total && order.product_slug !== SAMPLES_SLUG) {
                   void import("@/lib/tracking").then(({ trackOpenAiOrderCreated }) => {
                     trackOpenAiOrderCreated({
                       orderCode: order.order_code,
@@ -785,7 +789,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
                     ) : null}
                   </div>
                   <span className="order-item-qty">{item.qty} szt.</span>
-                  <span className="cart-page-item-total">{item.total !== null ? formatPln(item.total) : "—"}</span>
+                  <span className="cart-page-item-total">{item.total !== null ? formatPln(item.total) : item.slug === SAMPLES_SLUG ? "gratis" : "—"}</span>
                 </li>
               ))}
             </ul>

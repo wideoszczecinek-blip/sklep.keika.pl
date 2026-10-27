@@ -31,6 +31,7 @@ import PlisaPreview from "./PlisaPreview";
 import PlisyMeasureGuide, { measureModeForMount } from "./MeasureGuide";
 import MeasureShare from "./MeasureShare";
 import PlisyFabricGallery from "./FabricGallery";
+import { useSamplesEnabled } from "@/lib/samples";
 import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyColorCountLabel } from "./CollectionVisual";
 import PlisyCollectionBackdrop from "./CollectionBackdrop";
 import UnitAskModal from "./UnitAskModal";
@@ -270,6 +271,8 @@ export default function ConfiguratorPanel({
   // Fabric carousel (big photos + "Wybierz tę tkaninę"); null = closed,
   // otherwise the index into the current collection swatches.
   const [fabricGalleryIndex, setFabricGalleryIndex] = useState<number | null>(null);
+  // Próbki tkanin (27.10.2026): wejście „Zamów bezpłatne próbki” - do akceptacji tylko z linkiem testowym (lib/samples.ts).
+  const samplesEnabled = useSamplesEnabled();
   useEffect(() => {
     if (!measureGuideOpen) return;
     const onKey = (event: KeyboardEvent) => {
@@ -2082,6 +2085,23 @@ export default function ConfiguratorPanel({
                       >
                         🔍 Zobacz duże zdjęcia tkanin
                       </button>
+                      {samplesEnabled ? (
+                        <a
+                          className="plisy-fabric-gallery-cta"
+                          href={`/probki?t=${encodeURIComponent(
+                            [
+                              ...(selectedFabricId ? [`${selectedFabricGroupId}.${selectedFabricId}`] : []),
+                              ...favouriteSwatches.map((entry) => `${entry.group.id}.${entry.swatch.id}`),
+                            ]
+                              .filter((v, i, all) => all.indexOf(v) === i)
+                              .slice(0, 5)
+                              .join(","),
+                          )}`}
+                          onClick={() => trackShopStep("samples_entry", selectedFabricGroup?.label || "", { source: "configurator" })}
+                        >
+                          🧵 Zamów bezpłatne próbki
+                        </a>
+                      ) : null}
                     </div>
                   ) : null}
                   <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
