@@ -31,7 +31,9 @@ function visible(el: Element | null | undefined): el is HTMLElement {
 function scrollTo(el: HTMLElement): void {
   // scrollIntoView przewija właściwy kontener (na stronach produktów na komputerze .hero-full, na telefonie
   // okno); scroll-margin-top z klasy podświetlenia (.kk-show-hl) trzyma miejsce pod przyklejonym nagłówkiem.
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Skok bez animacji: płynne przewijanie bywa anulowane przez wczytującą się stronę (i nie rusza w karcie
+  // w tle) - pulsująca ramka i tak pokazuje, gdzie patrzeć.
+  el.scrollIntoView({ behavior: "auto", block: "start" });
 }
 
 let highlightTimer = 0;
