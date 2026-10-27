@@ -287,6 +287,11 @@ export function liveChatPresence(token: string, live: LiveChatSnapshot): Promise
   return post({ action: "presence", token, live });
 }
 
+/** Klient odczytał nasze wiadomości do id `upto` (okienko otwarte, karta widoczna) - CRM pokazuje „Odczytano HH:MM”. */
+export function liveChatSeen(token: string, upto: number): Promise<LiveChatPayload> {
+  return post({ action: "seen", token, upto });
+}
+
 export function liveChatHuman(token: string, after: number): Promise<LiveChatPayload> {
   return post({ action: "human", token, after });
 }

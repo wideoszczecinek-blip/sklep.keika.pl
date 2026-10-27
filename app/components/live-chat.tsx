@@ -26,6 +26,7 @@ import {
   liveChatHuman,
   liveChatPoll,
   liveChatPresence,
+  liveChatSeen,
   liveChatSend,
   liveChatSnapshot,
   liveChatStart,
@@ -519,6 +520,25 @@ export default function LiveChat() {
   useEffect(() => {
     window.dispatchEvent(new Event(PRESENCE_NUDGE_EVENT));
   }, [open, typing, pathname]);
+
+  // Odczyt (27.10.2026): gdy okienko jest otwarte, a karta widoczna, zgłaszamy najnowszą wiadomość od nas,
+  // którą klient ma przed oczami - zespół widzi w CRM „Odczytano HH:MM”.
+  const seenUptoRef = useRef(0);
+  useEffect(() => {
+    if (!token || !open) return;
+    const report = () => {
+      if (document.visibilityState !== "visible") return;
+      const upto = messages.reduce((max, m) => (m.from !== "customer" && !m.pending && m.id > max ? m.id : max), 0);
+      if (upto <= seenUptoRef.current) return;
+      seenUptoRef.current = upto;
+      liveChatSeen(tokenRef.current, upto).catch(() => {
+        seenUptoRef.current = 0;
+      });
+    };
+    report();
+    document.addEventListener("visibilitychange", report);
+    return () => document.removeEventListener("visibilitychange", report);
+  }, [token, open, messages]);
 
   // Odpytywanie: często przy otwartym okienku, rzadziej przy zamkniętym, gdy czekamy na człowieka.
   useEffect(() => {
