@@ -20,7 +20,10 @@ export function shopChatContext(): string {
     const items = raw ? ((JSON.parse(raw) as { items?: Array<{ total?: number; productLabel?: string; label?: string }> }).items || []) : [];
     const total = items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
     const labels = items.map((item) => item.productLabel || item.label || "").filter(Boolean).slice(0, 5).join(", ");
-    return `Klient jest na stronie: ${path}. Koszyk: ${items.length ? `${items.length} poz. (${labels || "produkty"}) za ${total.toFixed(2)} zł` : "pusty"}.`;
+    // Urządzenie (27.10.2026): bot wskazuje klientowi, gdzie co jest - na komputerze (od 1101 px,
+    // próg z globals.css) konfigurator stoi w prawej kolumnie, na telefonie sekcje są jedna pod drugą.
+    const device = window.innerWidth >= 1101 ? "komputer (szeroki ekran, układ dwukolumnowy)" : "telefon albo wąski ekran (sekcje jedna pod drugą)";
+    return `Klient jest na stronie: ${path}. Urządzenie: ${device}. Koszyk: ${items.length ? `${items.length} poz. (${labels || "produkty"}) za ${total.toFixed(2)} zł` : "pusty"}.`;
   } catch {
     return "";
   }
