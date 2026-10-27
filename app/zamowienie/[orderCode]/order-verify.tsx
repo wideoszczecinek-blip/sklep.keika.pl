@@ -580,7 +580,13 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     const pageState = pages.states[pageStateKey];
     const pageVars = { amount: formatPln(amountTotalNum), status: order.friendly_status, phone: siteContact.phone };
     const heroTitle = fillPostPurchaseText(pageState.title, pageVars);
-    const heroText = fillPostPurchaseText(pageState.text, pageVars);
+    // Próbki tkanin: nie ma produkcji - teksty statusu mówią o wysyłce próbek.
+    const heroTextRaw = fillPostPurchaseText(pageState.text, pageVars);
+    const heroText = order.product_slug === SAMPLES_SLUG
+      ? heroTextRaw
+          .replace(/przekazujemy zamówienie do produkcji/g, "wysyłamy próbki w ciągu 1-2 dni roboczych")
+          .replace(/Zamówienie idzie do realizacji/g, "Próbki wyślemy w ciągu 1-2 dni roboczych")
+      : heroTextRaw;
     // Kroki "co dalej" - a gdy paczka już wyszła, nie opowiadamy o produkcji.
     const nextSteps = order.shipments.length > 0 ? [] : pageState.steps;
 
