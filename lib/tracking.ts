@@ -96,6 +96,15 @@ export function hasAnalyticsConsent(): boolean {
   return readConsent()?.analytics === true;
 }
 
+// Decyzja właściciela 2026-10-27 („na moją odpowiedzialność Google zbiera dane
+// każdego - tak samo pixel Meta”): Meta Pixel i tag Google Ads działają u
+// każdego odwiedzającego, niezależnie od wyboru w pasku zgody. Pasek zostaje
+// dla zgody na oferty e-mail/SMS. Pixel OpenAI nadal tylko po „Akceptuję”.
+const TRACK_EVERYONE = true;
+function adTrackingAllowed(): boolean {
+  return TRACK_EVERYONE || hasAnalyticsConsent();
+}
+
 /** true = wybór już dokonany (baner można schować). */
 export function consentDecided(): boolean {
   const c = readConsent();
@@ -241,7 +250,7 @@ export function getAttributionPayload(): Record<string, string> {
   const attr = readAttribution();
   const out: Record<string, string> = {};
   const fbp = getCookie("_fbp");
-  const fbc = hasAnalyticsConsent() ? resolveFbc(attr) : getCookie("_fbc");
+  const fbc = adTrackingAllowed() ? resolveFbc(attr) : getCookie("_fbc");
   if (fbp) out.fbp = fbp;
   if (fbc) out.fbc = fbc;
   if (attr.fbclid) out.fbclid = attr.fbclid;
@@ -351,9 +360,8 @@ function injectOpenAiPixelScript(): void {
 }
 
 // Google Ads (konto KEIKA ROLETY, tag AW-878528080) - dodane 2026-10-26 na
-// polecenie właściciela (kampanie Search/Shopping sklepu). Ten sam gate zgody
-// co Meta/OpenAI: gtag.js ładuje się dopiero po "Akceptuję" w consent-bar,
-// więc bez zgody nie ma cookies _gcl_*. Konwersja "Zakup – sklep.keika.pl"
+// polecenie właściciela (kampanie Search/Shopping sklepu). Od 2026-10-27
+// ładuje się u każdego (adTrackingAllowed wyżej), tak jak Meta Pixel. Konwersja "Zakup – sklep.keika.pl"
 // (etykieta poniżej) leci z trackOpenAiOrderCreated - czyli dokładnie w tych
 // samych miejscach co zakup OpenAI (tylko zamówienie finalne), wartość w zł,
 // transaction_id = order_code (Google deduplikuje powtórne wywołania).
@@ -388,7 +396,7 @@ function injectGoogleTag(): void {
 }
 
 function trackGoogleAdsPurchase(orderCode: string, amountZl: number, currency: string): void {
-  if (typeof window === "undefined" || !hasAnalyticsConsent()) return;
+  if (typeof window === "undefined" || !adTrackingAllowed()) return;
   injectGoogleTag();
   window.gtag?.("event", "conversion", {
     send_to: `${GOOGLE_ADS_ID}/${GOOGLE_ADS_PURCHASE_LABEL}`,
@@ -454,13 +462,13 @@ export function trackOpenAiOrderCreated(params: {
 export async function initTracking(): Promise<void> {
   if (typeof window === "undefined") return;
   captureAttribution();
-  const consented = hasAnalyticsConsent();
+  const consented = adTrackingAllowed();
   if (consented) {
     ensureFbp();
     ensureFbc(readAttribution());
-    injectOpenAiPixelScript();
     injectGoogleTag();
   }
+  if (hasAnalyticsConsent()) injectOpenAiPixelScript();
 
   const cfg = await loadConfig();
   if (!cfg) return;
@@ -499,8 +507,8 @@ async function relayToCapi(
       event_time: Math.floor(Date.now() / 1000),
       event_source_url: window.location.href,
       // Without consent: only whatever already exists (never minted here).
-      fbp: hasAnalyticsConsent() ? ensureFbp() : getCookie("_fbp"),
-      fbc: hasAnalyticsConsent() ? resolveFbc(attr) : getCookie("_fbc"),
+      fbp: adTrackingAllowed() ? ensureFbp() : getCookie("_fbp"),
+      fbc: adTrackingAllowed() ? resolveFbc(attr) : getCookie("_fbc"),
       fbclid: attr.fbclid || "",
       custom_data: params,
     };
@@ -526,7 +534,7 @@ export function track(eventName: string, params: TrackParams = {}, opts: TrackOp
   void (async () => {
     const cfg = await loadConfig();
     if (!cfg) return;
-    if (hasAnalyticsConsent()) {
+    if (adTrackingAllowed()) {
       injectPixelScript(cfg.pixelId);
       try {
         window.fbq?.("track", eventName, params, { eventID: eventId });
