@@ -699,13 +699,15 @@ export default function LiveChat() {
   // czatu zasłania stronę, więc się zwija (klient wraca do rozmowy dymkiem).
   function showPlace(card: Extract<LiveChatCard, { type: "show" }>) {
     trackShopStep("assistant_apply", card.label, { kind: "show", place: card.place });
-    const result = showOnPage(card.place);
-    if (result === "unknown") {
-      window.location.href = card.url;
-      return;
-    }
-    if (result === "shown") setNote(`Podświetlam na stronie: ${card.label}.`);
-    if (window.matchMedia("(max-width: 1100px)").matches) setOpen(false);
+    // Do ok. 1500 px okienko czatu zasłania prawą kolumnę z konfiguratorem - zwijamy je, żeby klient widział miejsce.
+    // Na telefonie otwarte okienko blokuje też przewijanie strony, więc przewijamy dopiero po zwinięciu.
+    const narrow = window.matchMedia("(max-width: 1500px)").matches;
+    if (narrow) setOpen(false);
+    window.setTimeout(() => {
+      const result = showOnPage(card.place);
+      if (result === "unknown") window.location.href = card.url;
+      else if (result === "shown") setNote(`Podświetlam na stronie: ${card.label}.`);
+    }, narrow ? 250 : 0);
   }
 
   function applyPlate(card: Extract<LiveChatCard, { type: "plate" }>, product: string, libraryId?: number, label?: string) {
