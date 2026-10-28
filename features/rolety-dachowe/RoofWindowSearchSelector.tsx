@@ -11,9 +11,10 @@
 // The "Skąd wziąć model okna" help modal doubles as the place the photo
 // outcome is shown (matched / candidates / no_match / unrecognized), so it
 // is controlled by the parent: the camera button opens it with the result.
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { useNameplatePhotoPicker } from "./NameplatePhotoPicker";
 import {
   buildRoofWindowDisplayLabel,
   resolveRoofWindowDimensions,
@@ -53,8 +54,6 @@ type Props = {
   autoFocus?: boolean;
 };
 
-const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif";
-
 function Highlighted({ value, ranges }: { value: string; ranges: Array<[number, number]> }): ReactNode {
   return splitRoofWindowHighlightedText(value, ranges).map((part, index) => (
     <span key={`${index}-${part.highlighted ? "hit" : "base"}`} className={part.highlighted ? "rd-hit" : undefined}>
@@ -91,9 +90,16 @@ export default function RoofWindowSearchSelector({
   onNameplateReportMissing,
   autoFocus = false,
 }: Props) {
-  const cameraInputRef = useRef<HTMLInputElement | null>(null);
-  const galleryInputRef = useRef<HTMLInputElement | null>(null);
-  const [isUploadChoiceOpen, setIsUploadChoiceOpen] = useState(false);
+  // Aparat + okienko "Jak chcesz dodać zdjęcie?" (wspólne z szybkimi
+  // wycenami na landingach). Escape obsługujemy tu, bo pod spodem bywa
+  // jeszcze okienko pomocy.
+  const photoPicker = useNameplatePhotoPicker({
+    onFile: (file) => onPhotoUpload?.(file),
+    helpImageUrl: modelHelp.imageUrl,
+    manageEscape: false,
+  });
+  const isUploadChoiceOpen = photoPicker.isOpen;
+  const closeUploadChoice = photoPicker.close;
   const trimmedQuery = query.trim();
   const hasTypedQuery = trimmedQuery.length > 0;
   const selectedLabel = selectedItem ? buildRoofWindowDisplayLabel(selectedItem).trim().toLowerCase() : "";
@@ -107,7 +113,7 @@ export default function RoofWindowSearchSelector({
     if (!isHelpOpen && !isUploadChoiceOpen) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (isUploadChoiceOpen) setIsUploadChoiceOpen(false);
+      if (isUploadChoiceOpen) closeUploadChoice();
       else onHelpOpenChange(false);
     };
     window.addEventListener("keydown", onKey);
@@ -117,16 +123,11 @@ export default function RoofWindowSearchSelector({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = previous;
     };
-  }, [isHelpOpen, isUploadChoiceOpen, onHelpOpenChange]);
-
-  const handleFiles = (list: FileList | null) => {
-    const file = Array.from(list || [])[0];
-    if (file && onPhotoUpload) onPhotoUpload(file);
-  };
+  }, [isHelpOpen, isUploadChoiceOpen, onHelpOpenChange, closeUploadChoice]);
 
   const photoButton = (className: string, label: string) =>
     onPhotoUpload ? (
-      <button type="button" className={className} onClick={() => setIsUploadChoiceOpen(true)} disabled={isRecognizing}>
+      <button type="button" className={className} onClick={photoPicker.open} disabled={isRecognizing}>
         {isRecognizing ? <span className="rd-spinner" aria-hidden="true" /> : <span aria-hidden="true">📷</span>}
         {isRecognizing ? "Rozpoznajemy zdjęcie…" : label}
       </button>
@@ -168,31 +169,7 @@ export default function RoofWindowSearchSelector({
           ) : null}
         </label>
 
-        {onPhotoUpload ? (
-          <>
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept={ACCEPT}
-              capture="environment"
-              className="rd-hidden-input"
-              onChange={(event) => {
-                handleFiles(event.target.files);
-                event.target.value = "";
-              }}
-            />
-            <input
-              ref={galleryInputRef}
-              type="file"
-              accept={ACCEPT}
-              className="rd-hidden-input"
-              onChange={(event) => {
-                handleFiles(event.target.files);
-                event.target.value = "";
-              }}
-            />
-          </>
-        ) : null}
+        {onPhotoUpload ? photoPicker.element : null}
 
         {isLoading ? (
           <div className="rd-search-note">
@@ -384,7 +361,7 @@ export default function RoofWindowSearchSelector({
                           <button type="button" className="rd-btn" onClick={onNameplateReportMissing}>
                             Żaden z nich — podam wymiar
                           </button>
-                          <button type="button" className="rd-btn" onClick={() => setIsUploadChoiceOpen(true)}>
+                          <button type="button" className="rd-btn" onClick={photoPicker.open}>
                             Spróbuj innym zdjęciem
                           </button>
                         </div>
@@ -406,7 +383,7 @@ export default function RoofWindowSearchSelector({
                           <button type="button" className="rd-btn rd-btn--primary" onClick={onNameplateReportMissing}>
                             Podaj wymiar okna
                           </button>
-                          <button type="button" className="rd-btn" onClick={() => setIsUploadChoiceOpen(true)}>
+                          <button type="button" className="rd-btn" onClick={photoPicker.open}>
                             Spróbuj innym zdjęciem
                           </button>
                         </div>
@@ -421,7 +398,7 @@ export default function RoofWindowSearchSelector({
                         </p>
                         <div className="rd-nameplate-actions">
                           {!assistantUnavailable ? (
-                            <button type="button" className="rd-btn rd-btn--primary" onClick={() => setIsUploadChoiceOpen(true)}>
+                            <button type="button" className="rd-btn rd-btn--primary" onClick={photoPicker.open}>
                               Spróbuj ponownie
                             </button>
                           ) : null}
@@ -435,7 +412,7 @@ export default function RoofWindowSearchSelector({
                         <strong>Szybsza ścieżka: zdjęcie tabliczki</strong>
                         <p>Zrób zdjęcie tabliczki znamionowej na oknie — odczytamy producenta i model automatycznie.</p>
                         {nameplateError ? <p className="rd-nameplate-error">{nameplateError}</p> : null}
-                        <button type="button" className="rd-btn rd-btn--primary" onClick={() => setIsUploadChoiceOpen(true)}>
+                        <button type="button" className="rd-btn rd-btn--primary" onClick={photoPicker.open}>
                           📷 Prześlij zdjęcie tabliczki
                         </button>
                       </div>
@@ -447,54 +424,6 @@ export default function RoofWindowSearchSelector({
                   <button type="button" className="rd-btn" onClick={() => onHelpOpenChange(false)}>
                     Zamknij
                   </button>
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
-
-      {isUploadChoiceOpen && typeof document !== "undefined"
-        ? createPortal(
-            <div className="instruction-modal rd-modal rd-modal--top" role="dialog" aria-modal="true" aria-label="Jak dodać zdjęcie" onClick={() => setIsUploadChoiceOpen(false)}>
-              <div className="rd-modal-shell rd-modal-shell--narrow" onClick={(event) => event.stopPropagation()}>
-                <button type="button" className="instruction-modal-close" aria-label="Zamknij" onClick={() => setIsUploadChoiceOpen(false)}>
-                  ×
-                </button>
-                <p className="rd-modal-eyebrow">Zdjęcie tabliczki</p>
-                <h3 className="rd-modal-title">Jak chcesz dodać zdjęcie?</h3>
-                <div className="rd-upload-grid">
-                  {modelHelp.imageUrl ? (
-                    <img className="rd-upload-image" src={optimizeImageUrl(modelHelp.imageUrl, 500)} alt="Gdzie szukać tabliczki znamionowej" loading="lazy" />
-                  ) : null}
-                  <div className="rd-upload-copy">
-                    <p>Zrób czytelne, dobrze oświetlone zdjęcie tabliczki znamionowej na oknie — odczytamy z niej producenta i model.</p>
-                    <p className="rd-upload-ai">
-                      <strong>Analiza AI:</strong> zdjęcie analizuje automat, który może się pomylić — sprawdź wynik, zanim go zapiszesz.
-                    </p>
-                    <div className="rd-upload-actions">
-                      <button
-                        type="button"
-                        className="rd-btn rd-btn--primary rd-btn--camera"
-                        onClick={() => {
-                          setIsUploadChoiceOpen(false);
-                          cameraInputRef.current?.click();
-                        }}
-                      >
-                        📷 Zrób zdjęcie
-                      </button>
-                      <button
-                        type="button"
-                        className="rd-btn"
-                        onClick={() => {
-                          setIsUploadChoiceOpen(false);
-                          galleryInputRef.current?.click();
-                        }}
-                      >
-                        🖼️ Wybierz plik
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>,
