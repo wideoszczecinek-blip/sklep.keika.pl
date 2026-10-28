@@ -627,7 +627,9 @@ function buildQuotePayloadFromCart(
   const combinedSavings = calcMoskitieryCombinedSavings(items);
   // Rabat pakietowy (decyzja #36) - podgląd; CRM liczy wiążąco w quote_save.php
   // (shop_bundle_discount_reapply_to_quote_input) tym samym algorytmem.
-  const bundle = calcBundleDiscount(items);
+  // combinedSavings: rabat na całe zamówienie liczy się od ceny PO korekcie
+  // obwodu moskitier (jak SEZON20).
+  const bundle = calcBundleDiscount(items, undefined, combinedSavings);
   if (bundle.savings > 0) {
     positions.push({
       id: "position-bundle-discount",
@@ -1262,7 +1264,7 @@ export default function CartPage() {
   // Rabat pakietowy (decyzja #36): najtańsze sztuki ponad limit -X %; te sztuki
   // nie wchodzą do podstawy kodu ani rabatu ratunkowego (bez kumulowania).
   const bundleRules = useBundleDiscountRules();
-  const bundle = calcBundleDiscount(items, bundleRules);
+  const bundle = calcBundleDiscount(items, bundleRules, combinedSavings);
   // Do groszy, tak jak liczy CRM - inaczej "Razem" różniło się o grosz od
   // kwoty zamówienia (lib/cart.ts roundMoney).
   const rescueAmount = rescueGrant
