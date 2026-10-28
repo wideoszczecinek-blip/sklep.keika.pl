@@ -34,6 +34,7 @@ import PromoCountdownBanner from "./promo-countdown-banner";
 import { PROMO_CODE, QTY_PROMO } from "@/lib/promo";
 import { PERSONAL_CODE_EVENT, formatPersonalCodeDate, formatPersonalCodeRemaining, getPersonalCode, type PersonalCode } from "@/lib/personal-code";
 import { EXPRESS_CUTOFF, EXPRESS_ENABLED, EXPRESS_FEE_AMOUNT, formatCutoff } from "@/lib/express";
+import { freeShippingLabel } from "@/lib/shipping-copy";
 
 /** How long each message stays. Long enough to read a short sentence twice
  * without feeling stuck (measured against the 5-6 slide rotation below). */
@@ -81,9 +82,10 @@ function benefitSlides(productSlug: string, paypoEnabled: boolean): Slide[] {
     key: "dostawa",
     icon: "🚚",
     badge: "GRATIS",
-    // Plisy: pilotaż darmowej dostawy od pierwszej sztuki (2026-09-24),
-    // reszta oferty ma próg 79 zł.
-    content: isPlisy ? <>Darmowa dostawa od 1 sztuki</> : <>Darmowa dostawa od 79 zł</>,
+    // Tekst z lib/shipping-copy.ts - ta sama zasada, którą liczy koszyk.
+    // Wcześniej plisy dachowe też dostawały „od 1 sztuki”, choć koszyk
+    // liczył dla nich próg 79 zł (Z01, 2026-10-28).
+    content: <>{freeShippingLabel(productSlug)}</>,
   },
   // 30 days is a voluntary offer term, not the statutory 14-day withdrawal:
   // these frames are made to measure, so art. 38 pkt 3 excludes that right

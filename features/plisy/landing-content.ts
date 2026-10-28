@@ -105,7 +105,7 @@ export const PLISY_PRIMARY_CTA = "Sprawdź cenę dla swojego okna";
 export const PLISY_DESCRIPTION_HTML =
   "<p><strong>Plisy okienne</strong> to osłony z tkaniny plisowanej, montowane bezpośrednio na skrzydle okna. W odróżnieniu od rolety mają dwie ruchome listwy: tkaninę przesuwasz z góry i z dołu i zasłaniasz tylko tę część okna, którą chcesz. Plisa nie przeszkadza w otwieraniu i uchylaniu okna, nie ma sznurków ani łańcuszków, a złożona zajmuje zaledwie kilka centymetrów.</p>" +
   "<p><strong>Produkujemy plisy sami, w Polsce.</strong> Jesteśmy producentem osłon okiennych. Każdą plisę wykonujemy na indywidualny wymiar, z aluminiowymi profilami w 10 kolorach i tkaninami z 5 kolekcji: od dekoracyjnych, rozpraszających światło, przez zaciemniające, po zaciemniająco-termoizolacyjne DUO TERMO. Wszystkie tkaniny są antystatyczne i łatwe w czyszczeniu.</p>" +
-  "<p><strong>Zamawiasz online w kilka minut.</strong> Wybierasz sposób montażu, kolor profili i tkaninę, wpisujesz wymiary i od razu widzisz cenę. Plisę produkujemy w 5–10 dni roboczych i wysyłamy kurierem w 24 h od wyprodukowania. Darmowa dostawa od 79 zł, 5 lat gwarancji, 30 dni na zwrot.</p>";
+  "<p><strong>Zamawiasz online w kilka minut.</strong> Wybierasz sposób montażu, kolor profili i tkaninę, wpisujesz wymiary i od razu widzisz cenę. Plisę produkujemy w 5–10 dni roboczych i wysyłamy kurierem w 24 h od wyprodukowania. Darmowa dostawa już od 1 sztuki, 5 lat gwarancji, 30 dni na zwrot.</p>";
 
 export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
   {
@@ -218,7 +218,7 @@ export const PLISY_COLLECTIONS: PlisyCollectionRow[] = [
 
 export const PLISY_CALLOUT = {
   title: "Polski producent: plisy wykonujemy sami, we własnym zakładzie",
-  body: `Nie sprowadzamy gotowych plis, produkujemy je na Twój wymiar. Realizacja ${PLISY_LEAD_TIME_LABEL}, wysyłka kurierem w 24 h od wyprodukowania, darmowa dostawa od 79 zł. Zamawiając plisy do kilku okien, dodajesz kolejne wymiary do jednego zamówienia.`,
+  body: `Nie sprowadzamy gotowych plis, produkujemy je na Twój wymiar. Realizacja ${PLISY_LEAD_TIME_LABEL}, wysyłka kurierem w 24 h od wyprodukowania, darmowa dostawa już od 1 sztuki. Zamawiając plisy do kilku okien, dodajesz kolejne wymiary do jednego zamówienia.`,
 };
 
 // FAQ, rewritten 2026-09-16 against what the market answers (Karnix,
@@ -306,7 +306,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   },
   {
     question: "Jak długo czekam na plisę?",
-    answer: `Każdą plisę produkujemy na Twój wymiar we własnym zakładzie w Polsce. Realizacja to ${PLISY_LEAD_TIME_LABEL}, potem kurier dostarcza paczkę w 24 h. Darmowa dostawa od 79 zł.`,
+    answer: `Każdą plisę produkujemy na Twój wymiar we własnym zakładzie w Polsce. Realizacja to ${PLISY_LEAD_TIME_LABEL}, potem kurier dostarcza paczkę w 24 h. Darmowa dostawa już od 1 sztuki.`,
   },
   {
     question: "Czy mogę zamówić próbki tkanin?",
@@ -321,7 +321,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Czy mogę zamówić plisy do kilku okien w jednym zamówieniu?",
     answer:
-      "Tak. Po wpisaniu wymiaru kliknij „Dodaj kolejną”, wpisz następny wymiar — każde okno może mieć inną tkaninę i inny montaż. Wszystko trafia do jednego koszyka, jedna dostawa, a powyżej 79 zł darmowa.",
+      "Tak. Po wpisaniu wymiaru kliknij „Dodaj kolejną”, wpisz następny wymiar — każde okno może mieć inną tkaninę i inny montaż. Wszystko trafia do jednego koszyka i jednej przesyłki, a dostawa plis jest darmowa już od 1 sztuki.",
   },
   {
     question: "Jak czyścić plisę?",

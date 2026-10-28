@@ -98,6 +98,7 @@ import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import CartV2, { CartV2Boundary } from "./cart-v2";
+import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE_AMOUNT, hasFreeShippingFromOne } from "@/lib/shipping-copy";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
 // every validation error, failed discount code, and failed order/payment
@@ -278,15 +279,10 @@ const P24_KIND_LABELS: Record<P24Kind, { title: string; hint: string; note: stri
 // osobisty jest zawsze bez opłaty (nic nie jest fizycznie wysyłane),
 // płatność za pobraniem dolicza swoją odrębną dopłatę (COD_SURCHARGE_AMOUNT)
 // NIEZALEŻNIE od kosztu samej wysyłki - obie się sumują poniżej progu.
-const FREE_SHIPPING_THRESHOLD = 79;
-const SHIPPING_FEE_AMOUNT = 12.9;
-
-// Pilotaż (właściciel, 2026-09-24): plisy mają darmową dostawę od pierwszej
-// sztuki, bez progu kwotowego - landing plis obiecuje to wprost, więc
-// koszyk musi to dotrzymać. Wystarczy jedna plisa w koszyku.
-const FREE_SHIPPING_PILOT_SLUGS = new Set(["plisy"]);
+// Stałe progu i kosztu wysyłki + pilotaż plis (darmowa od 1 szt.) są w
+// lib/shipping-copy.ts - te same wartości czytają teksty na landingach.
 function cartHasFreeShippingPilot(items: CartLineItem[]): boolean {
-  return items.some((item) => FREE_SHIPPING_PILOT_SLUGS.has(String(item.productSlug || "")));
+  return items.some((item) => hasFreeShippingFromOne(item.productSlug));
 }
 
 // The customer just picks "Kurier" - which actual carrier (DPD, GLS, ...)
