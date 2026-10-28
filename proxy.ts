@@ -83,7 +83,12 @@ export function proxy(request: NextRequest) {
   // (?resume_token= / ?quote_code=, wysyłane SMS-em/e-mailem) zostają na
   // /moskitiery, bo tylko MoskitieryFlow umie je wznowić.
   if (url.pathname === "/moskitiery" || url.pathname === "/moskitiery/") {
-    if (url.searchParams.has("resume_token") || url.searchParams.has("quote_code")) return NextResponse.next();
+    // Stary flow obsługiwał też inne produkty (?product=<slug>) - te linki
+    // zostają na miejscu, przekierowujemy tylko moskitiery ramkowe.
+    const product = (url.searchParams.get("product") || "").trim();
+    if (url.searchParams.has("resume_token") || url.searchParams.has("quote_code") || (product && product !== "moskitiery-ramkowe")) {
+      return NextResponse.next();
+    }
     const next = url.clone();
     next.pathname = "/moskitiery-ramkowe";
     next.searchParams.delete("product");

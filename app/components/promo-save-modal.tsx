@@ -328,7 +328,7 @@ export default function PromoSaveModal({
             <p>
               Sprawdź {channel === "email" ? "skrzynkę e-mail" : "SMS-y"} - link zaprowadzi Cię z powrotem tutaj
               {variant === "measure" ? ", do instrukcji pomiaru i Twojej konfiguracji" : ""}
-              {variant === "measure" && !SEASONAL_PROMO_ENABLED ? "." : ", z rabatem wciąż naliczonym."}
+              {SEASONAL_PROMO_ENABLED ? ", z rabatem wciąż naliczonym." : "."}
             </p>
             <button type="button" className="promo-save-modal-done-cta" onClick={onClose}>
               Zamknij
