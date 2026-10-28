@@ -77,6 +77,7 @@ export default function PdQuickPrice({
     }
     if (!dims.widthMm) return;
     const timer = window.setTimeout(() => {
+      void import("@/lib/tracking").then((m) => m.trackQuickPrice(PD_PRODUCT_SLUG, withPromo ?? regular)).catch(() => {}); // Meta QuickPrice (Z02), raz na produkt/sesję
       trackShopStep("quick_price_size", PD_PRODUCT_SLUG, {
         width_mm: dims.widthMm,
         height_mm: dims.heightMm,

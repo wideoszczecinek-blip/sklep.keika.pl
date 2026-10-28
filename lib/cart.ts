@@ -304,16 +304,9 @@ export function addCartItem(item: CartLineItem, options?: { source?: "add" | "re
   // Meta AddToCart - jedyny wspólny punkt dodania pozycji (homepage +
   // "Edytuj pozycję" na /koszyk idzie przez updateCartItemConfig, nie tędy).
   void import("@/lib/tracking")
-    .then(({ track }) => {
-      track("AddToCart", {
-        value: item.total,
-        currency: "PLN",
-        content_ids: [item.productSlug],
-        content_name: item.productLabel,
-        content_type: "product",
-        contents: [{ id: item.productSlug, quantity: item.qty, item_price: item.price }],
-        num_items: item.qty,
-      });
+    .then(({ track, cartTrackParams }) => {
+      // Ten sam kształt co InitiateCheckout (content_ids = sku z feedów).
+      track("AddToCart", { ...cartTrackParams([item]), content_name: item.productLabel });
     })
     .catch(() => {
       /* tracking never blocks the cart */

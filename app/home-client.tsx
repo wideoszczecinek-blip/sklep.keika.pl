@@ -2418,15 +2418,40 @@ export default function Home({
   // Meta ViewContent - gdy klient wchodzi w widok konkretnego produktu.
   // Homepage jest SPA (widok produktu to stan + pushState, nie route), więc
   // to jest właściwy moment na ViewContent zamiast PageView per-URL.
+  // Z02: content_ids = sku z plików produktowych (lib/catalog-ids.ts), value =
+  // cena „od” tego produktu (ta sama co w feedzie). Cena czytana z refa, żeby
+  // doczytanie cennika/korekty nie odpalało ViewContent drugi raz; produkty
+  // bez ceny „od” w tym miejscu (np. żaluzje) idą bez value.
   const viewContentSlug = productSlugFromSelected(displayedProduct);
+  const viewContentPriceFrom: number | null =
+    viewContentSlug === "moskitiery-ramkowe"
+      ? moskPricePerMbPromo || moskPricePerMbStandard
+      : viewContentSlug === "plisy"
+        ? plisyStartingPrice
+        : viewContentSlug === "rolety-dachowe"
+          ? roletyStartingPrice
+          : viewContentSlug === "plisy-dachowe"
+            ? pdStartingPriceValue
+            : null;
+  const viewContentPriceRef = useRef<number | null>(null);
+  // Ten efekt stoi przed efektem ViewContent - React uruchamia je w kolejności,
+  // więc ViewContent widzi już cenę z tego samego renderu.
+  useEffect(() => {
+    viewContentPriceRef.current = viewContentPriceFrom;
+  }, [viewContentPriceFrom]);
   useEffect(() => {
     if (!isProductView || !viewContentSlug) return;
-    void import("@/lib/tracking")
-      .then(({ track }) => {
+    const priceFrom = viewContentPriceRef.current;
+    void Promise.all([import("@/lib/tracking"), import("@/lib/catalog-ids")])
+      .then(([{ track }, { skuForSlug }]) => {
         track("ViewContent", {
-          content_ids: [viewContentSlug],
+          content_ids: [skuForSlug(viewContentSlug)],
           content_name: displayedProduct?.label || viewContentSlug,
           content_type: "product",
+          currency: "PLN",
+          ...(priceFrom !== null && Number.isFinite(priceFrom) && priceFrom > 0
+            ? { value: Math.round(priceFrom * 100) / 100 }
+            : {}),
         });
       })
       .catch(() => {});

@@ -14,6 +14,7 @@
 // dachowych VELUX, FAKRO, ROTO”), nigdy jako nazwa naszego produktu -
 // wezwanie VELUX z 20.10.2026, patrz zasady właściciela.
 
+import { CATALOG_SKU_BY_SLUG } from "@/lib/catalog-ids";
 import { PLISY_FAQ, PLISY_LEAD_TIME_LABEL, PLISY_STARTING_PRICE_FALLBACK } from "@/features/plisy/landing-content";
 import { RD_FAQ, RD_STARTING_PRICE_FALLBACK } from "@/features/rolety-dachowe/landing-content";
 import { PD_FAQ } from "@/features/plisy-dachowe/landing-content";
@@ -164,7 +165,7 @@ export const CATALOG: CatalogProduct[] = [
     measuring: "szerokość i wysokość światła okna od uszczelki do uszczelki (+2–5 mm tylko przy profilu mocno rozchodzącym się, skośnym lub zaokrąglonym), wycena online z instrukcją pomiaru",
     options: ["7 kolorów profili: biały, antracyt, brąz, złoty dąb, orzech, winchester, mahoń", "siatka wzmocniona szara lub czarna", "opcja Ekspres"],
     faq: MOSKITIERY_FAQ,
-    sku: "moskitiera-ramkowa-na-wymiar",
+    sku: CATALOG_SKU_BY_SLUG["moskitiery-ramkowe"],
     mpn: "KEIKA-MR",
   },
   {
@@ -192,7 +193,7 @@ export const CATALOG: CatalogProduct[] = [
     measuring: "szerokość i wysokość szyby z listwami (montaż bez wiercenia) albo od uszczelki do uszczelki (przykręcany); instrukcja: " + SHOP_URL + "/plisy/jak-mierzyc",
     options: ["5 kolekcji tkanin, ok. 150 kolorów", "10 kolorów profili", "montaż bez wiercenia lub przykręcany"],
     faq: PLISY_FAQ,
-    sku: "plisa-okienna-na-wymiar",
+    sku: CATALOG_SKU_BY_SLUG["plisy"],
     mpn: "KEIKA-PL",
   },
   {
@@ -223,7 +224,7 @@ export const CATALOG: CatalogProduct[] = [
     options: ["tkaniny DEKO (54 kolory) i TERMO blackout (19 kolorów)", "osprzęt: biały, anoda (szary), jasna sosna"],
     // Bez pytania o termin - jego odpowiedź (2 dni) przeczy paskowi strony.
     faq: RD_FAQ.filter((entry) => !/ile trwa realizacja/i.test(entry.question)),
-    sku: "roleta-do-okna-dachowego-na-wymiar",
+    sku: CATALOG_SKU_BY_SLUG["rolety-dachowe"],
     mpn: "KEIKA-RD",
   },
   {
@@ -251,7 +252,7 @@ export const CATALOG: CatalogProduct[] = [
     measuring: "bez mierzenia - wybór modelu okna z biblioteki lub zdjęcie tabliczki znamionowej; dla okien spoza listy szerokość i wysokość od rantu do rantu listwy przyszybowej",
     options: ["5 kolekcji tkanin, ok. 150 kolorów", "osprzęt: biały, anoda, sosna"],
     faq: PD_FAQ.filter((entry) => !/ile trwa realizacja/i.test(entry.question)),
-    sku: "plisa-do-okna-dachowego-na-wymiar",
+    sku: CATALOG_SKU_BY_SLUG["plisy-dachowe"],
     mpn: "KEIKA-PD",
   },
 ];
