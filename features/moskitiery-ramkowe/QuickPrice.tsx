@@ -50,18 +50,21 @@ export default function MoskitieryQuickPrice({
 }) {
   const minCm = Math.ceil(MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM / 10);
   const maxCm = Math.floor(Math.min(OVERSIZE_MAX_WIDTH_MM, OVERSIZE_SURCHARGE_TIER_2_MAX_MM) / 10);
-  const widthCm = Math.round(widthMm / 10);
-  const heightCm = Math.round(heightMm / 10);
+  // Wymiar co do milimetra (właściciel 28.10.2026, zam. 373/10: 935 mm zaokrąglało się do 940) -
+  // centymetry z jednym miejscem po przecinku, bez zaokrąglania do pełnych cm.
+  const widthCm = widthMm / 10;
+  const heightCm = heightMm / 10;
+  const cmText = (cm: number) => String(Math.round(cm * 10) / 10).replace(".", ",");
 
-  const [widthText, setWidthText] = useState(String(widthCm));
-  const [heightText, setHeightText] = useState(String(heightCm));
+  const [widthText, setWidthText] = useState(cmText(widthCm));
+  const [heightText, setHeightText] = useState(cmText(heightCm));
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setWidthText(String(widthCm));
+    setWidthText((current) => (Number(current.replace(",", ".")) === widthCm ? current : cmText(widthCm)));
   }, [widthCm]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHeightText(String(heightCm));
+    setHeightText((current) => (Number(current.replace(",", ".")) === heightCm ? current : cmText(heightCm)));
   }, [heightCm]);
 
   function typeSize(raw: string, axis: "w" | "h") {
@@ -69,7 +72,7 @@ export default function MoskitieryQuickPrice({
     else setHeightText(raw);
     const value = Number(String(raw).replace(",", "."));
     if (!Number.isFinite(value) || value < minCm || value > maxCm) return;
-    const mm = Math.round(value) * 10;
+    const mm = Math.round(value * 10);
     if (axis === "w") onSizeChange(mm, heightMm);
     else onSizeChange(widthMm, mm);
   }
@@ -77,17 +80,19 @@ export default function MoskitieryQuickPrice({
     const raw = axis === "w" ? widthText : heightText;
     const value = Number(String(raw).replace(",", "."));
     if (!Number.isFinite(value) || value <= 0) {
-      if (axis === "w") setWidthText(String(widthCm));
-      else setHeightText(String(heightCm));
+      if (axis === "w") setWidthText(cmText(widthCm));
+      else setHeightText(cmText(heightCm));
       return;
     }
-    const next = Math.round(clamp(value, minCm, maxCm));
+    // Liczba za duża na cm, a mieszcząca się po przeliczeniu z mm (np. 935) - to milimetry, nie ucinamy do maksimum.
+    const cm = value > maxCm && value / 10 >= minCm && value / 10 <= maxCm ? value / 10 : value;
+    const nextMm = Math.round(clamp(cm, minCm, maxCm) * 10);
     if (axis === "w") {
-      setWidthText(String(next));
-      onSizeChange(next * 10, heightMm);
+      setWidthText(cmText(nextMm / 10));
+      onSizeChange(nextMm, heightMm);
     } else {
-      setHeightText(String(next));
-      onSizeChange(widthMm, next * 10);
+      setHeightText(cmText(nextMm / 10));
+      onSizeChange(widthMm, nextMm);
     }
   }
 
@@ -169,7 +174,7 @@ export default function MoskitieryQuickPrice({
         </span>
         <span className="pl-quick-acc-meta">
           <span className="pl-quick-acc-size">
-            {widthCm} × {heightCm} cm
+            {cmText(widthCm)} × {cmText(heightCm)} cm
           </span>
           {headPrice !== null ? <strong>{zl(headPrice)}</strong> : null}
           <span className="pl-quick-acc-chevron" aria-hidden="true">
@@ -189,16 +194,16 @@ export default function MoskitieryQuickPrice({
               max={maxCm}
               step={1}
               value={clamp(widthCm, minCm, maxCm)}
-              onChange={(event) => onSizeChange(Math.min(Number(event.target.value), widthAllowedMaxCm) * 10, heightMm)}
+              onChange={(event) => onSizeChange(Math.round(Math.min(Number(event.target.value), widthAllowedMaxCm) * 10), heightMm)}
               aria-label="Szerokość moskitiery w centymetrach"
             />
             <span className="pl-quick-num">
               <input
                 type="text" data-dim-input="" autoComplete="off"
-                inputMode="numeric"
+                inputMode="decimal"
                 min={minCm}
                 max={maxCm}
-                step={1}
+                step={0.1}
                 value={widthText}
                 onChange={(event) => typeSize(event.target.value, "w")}
                 onBlur={() => commitSize("w")}
@@ -219,16 +224,16 @@ export default function MoskitieryQuickPrice({
               max={maxCm}
               step={1}
               value={clamp(heightCm, minCm, maxCm)}
-              onChange={(event) => onSizeChange(widthMm, Math.min(Number(event.target.value), heightAllowedMaxCm) * 10)}
+              onChange={(event) => onSizeChange(widthMm, Math.round(Math.min(Number(event.target.value), heightAllowedMaxCm) * 10))}
               aria-label="Wysokość moskitiery w centymetrach"
             />
             <span className="pl-quick-num">
               <input
                 type="text" data-dim-input="" autoComplete="off"
-                inputMode="numeric"
+                inputMode="decimal"
                 min={minCm}
                 max={maxCm}
-                step={1}
+                step={0.1}
                 value={heightText}
                 onChange={(event) => typeSize(event.target.value, "h")}
                 onBlur={() => commitSize("h")}

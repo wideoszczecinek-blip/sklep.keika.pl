@@ -3862,7 +3862,7 @@ export default function Home({
                         -{QTY_PROMO.percent}%
                       </span>
                       <span className="pl-sezon-line-text">
-                        Promocja <strong>{QTY_PROMO.name}</strong>: każde kolejne okno -{QTY_PROMO.percent} % · liczy się w koszyku
+                        Promocja <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.short} · liczy się w koszyku
                       </span>
                       <a className="pl-sezon-line-link" href={QTY_PROMO.rulesHref}>
                         Zasady
@@ -3907,8 +3907,8 @@ export default function Home({
                             regular={plisyQuickRegular}
                             withPromo={plisyQuickWithPromo}
                             promoRemainingText={promo && topPromoActive ? promo.remainingText : null}
-                            widthCm={Math.round(plisyQuickDims.widthMm / 10)}
-                            heightCm={Math.round(plisyQuickDims.heightMm / 10)}
+                            widthCm={plisyQuickDims.widthMm / 10}
+                            heightCm={plisyQuickDims.heightMm / 10}
                             leadTime={PLISY_LEAD_TIME_LABEL}
                             paypoEnabled={plisyPaypoEnabled}
                             phone={contactPhone}
@@ -4279,7 +4279,7 @@ export default function Home({
                                   promo={topPromoPreview}
                                   widthCm={plisyQuickDims.widthMm / 10}
                                   heightCm={plisyQuickDims.heightMm / 10}
-                                  onSizeChange={(widthCm, heightCm) => setPlisyQuickDims({ widthMm: widthCm * 10, heightMm: heightCm * 10 })}
+                                  onSizeChange={(widthCm, heightCm) => setPlisyQuickDims({ widthMm: Math.round(widthCm * 10), heightMm: Math.round(heightCm * 10) })}
                                   onQuote={plisyV2 ? () => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "") : scrollToConfigPanel}
                                   onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
                                 />
@@ -4470,9 +4470,9 @@ export default function Home({
                             <PlisyCollectionsPicker
                               profile={plisyProfile}
                               promo={topPromoActive ? topPromoPreview : null}
-                              widthCm={pdQuickDims.widthMm ? Math.round(pdQuickDims.widthMm / 10) : 78}
-                              heightCm={pdQuickDims.heightMm ? Math.round(pdQuickDims.heightMm / 10) : 118}
-                              onSizeChange={(widthCm, heightCm) => setPdQuickDims({ widthMm: widthCm * 10, heightMm: heightCm * 10, label: `${widthCm * 10} × ${heightCm * 10} mm` })}
+                              widthCm={pdQuickDims.widthMm ? pdQuickDims.widthMm / 10 : 78}
+                              heightCm={pdQuickDims.heightMm ? pdQuickDims.heightMm / 10 : 118}
+                              onSizeChange={(widthCm, heightCm) => setPdQuickDims({ widthMm: Math.round(widthCm * 10), heightMm: Math.round(heightCm * 10), label: `${Math.round(widthCm * 10)} × ${Math.round(heightCm * 10)} mm` })}
                               onQuote={scrollToConfigPanel}
                               onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
                               priceMultiplier={pdPriceMultiplier}
@@ -6469,8 +6469,8 @@ export default function Home({
           {plisyV2 ? (
             <PlisyStickyBar
               visible={isProductView && !hideBottomTabs && !cartDockVisible}
-              widthCm={Math.round(plisyQuickDims.widthMm / 10)}
-              heightCm={Math.round(plisyQuickDims.heightMm / 10)}
+              widthCm={plisyQuickDims.widthMm / 10}
+              heightCm={plisyQuickDims.heightMm / 10}
               price={plisyQuickWithPromo ?? plisyQuickRegular}
               bottomInset={inAppBrowserBottomInset}
               onClick={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")}

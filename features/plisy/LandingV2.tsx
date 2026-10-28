@@ -194,7 +194,7 @@ export function PlisyOfferCard({
         <span>🇵🇱 polska produkcja</span>
       </div>
       <div className="plv2-offer-size">
-        plisa {widthCm} × {heightCm} cm, kolekcja Klasyczne · cena rośnie z wymiarem
+        plisa {String(widthCm).replace(".", ",")} × {String(heightCm).replace(".", ",")} cm, kolekcja Klasyczne · cena rośnie z wymiarem
       </div>
       <ul className="plv2-offer-lines">
         <li>
@@ -286,7 +286,7 @@ export function PlisyStickyBar({
       <div className="plv2-bar-info">
         <b>{price !== null ? zlPlain(price) : "Twoje okno"}</b>
         <small>
-          {widthCm} × {heightCm} cm{price !== null ? ` · z kodem ${PROMO_CODE}` : ""}
+          {String(widthCm).replace(".", ",")} × {String(heightCm).replace(".", ",")} cm{price !== null ? ` · z kodem ${PROMO_CODE}` : ""}
         </small>
       </div>
       <button

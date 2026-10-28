@@ -105,8 +105,12 @@ export default function PlisyQuickPrice({
   const maxW = singleMaxW * 2;
   const minH = (profile ? profile.heightMinMm : PLISY_HEIGHT_MIN_MM) / 10;
   const maxH = (profile ? profile.heightMaxMm : PLISY_HEIGHT_MAX_MM) / 10;
-  const widthCm = Math.round(widthMm / 10);
-  const heightCm = Math.round(heightMm / 10);
+  // Wymiar co do milimetra (właściciel 28.10.2026, zam. 373/10: klient wpisał 935 mm, a do koszyka
+  // poszło 940 - pola w cm przyjmowały tylko całe centymetry). Centymetry mogą mieć jedno miejsce po
+  // przecinku (93,5 cm = 935 mm); nigdzie nie zaokrąglamy do pełnych cm.
+  const widthCm = widthMm / 10;
+  const heightCm = heightMm / 10;
+  const cmText = (cm: number) => String(Math.round(cm * 10) / 10).replace(".", ",");
 
   const inRange = profile
     ? widthMm >= profile.widthMinMm &&
@@ -133,15 +137,15 @@ export default function PlisyQuickPrice({
   // wpisuje go od razu zamiast celować suwakiem. Tekst trzymany lokalnie,
   // żeby dało się skasować pole i wpisać liczbę od nowa; do strony idzie
   // dopiero wartość mieszcząca się w zakresie produkcji.
-  const [widthText, setWidthText] = useState(String(widthCm));
-  const [heightText, setHeightText] = useState(String(heightCm));
+  const [widthText, setWidthText] = useState(cmText(widthCm));
+  const [heightText, setHeightText] = useState(cmText(heightCm));
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setWidthText(String(widthCm));
+    setWidthText((current) => (Number(current.replace(",", ".")) === widthCm ? current : cmText(widthCm)));
   }, [widthCm]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHeightText(String(heightCm));
+    setHeightText((current) => (Number(current.replace(",", ".")) === heightCm ? current : cmText(heightCm)));
   }, [heightCm]);
   // Pomyłka jednostek (właściciel, 2026-10-15: "wyczuć, że klient wpisuje
   // milimetry zamiast centymetrów i odwrotnie, i zapytać"). Pola są w cm;
@@ -160,9 +164,9 @@ export default function PlisyQuickPrice({
     if (value >= min && value <= max) return null;
     const fits = (cm: number) => cm >= min && cm <= max;
     let guess: UnitGuess | null = null;
-    if (value > max && fits(value / 10)) guess = { axis, raw: value, cm: Math.round(value / 10), unit: "mm" };
-    else if (value < min && value < 10 && fits(value * 100)) guess = { axis, raw: value, cm: Math.round(value * 100), unit: "m" };
-    else if (value < min && fits(value * 10)) guess = { axis, raw: value, cm: Math.round(value * 10), unit: "x10" };
+    if (value > max && fits(value / 10)) guess = { axis, raw: value, cm: Math.round(value) / 10, unit: "mm" };
+    else if (value < min && value < 10 && fits(value * 100)) guess = { axis, raw: value, cm: Math.round(value * 1000) / 10, unit: "m" };
+    else if (value < min && fits(value * 10)) guess = { axis, raw: value, cm: Math.round(value * 100) / 10, unit: "x10" };
     if (guess && dismissedGuessRef.current.has(`${axis}:${value}`)) return null;
     return guess;
   }
@@ -178,8 +182,8 @@ export default function PlisyQuickPrice({
     let w = widthMm;
     let h = heightMm;
     for (const g of unitGuess) {
-      if (g.axis === "w") { w = g.cm * 10; setWidthText(String(g.cm)); }
-      else { h = g.cm * 10; setHeightText(String(g.cm)); }
+      if (g.axis === "w") { w = Math.round(g.cm * 10); setWidthText(cmText(g.cm)); }
+      else { h = Math.round(g.cm * 10); setHeightText(cmText(g.cm)); }
     }
     trackShopStep("dimensions_unit_fix", "plisy", { place: "quick_price", accepted: true, kinds: unitGuess.map((g) => g.unit).join(","), to_w: w, to_h: h });
     setUnitGuess([]);
@@ -204,7 +208,7 @@ export default function PlisyQuickPrice({
     const min = axis === "w" ? minW : minH;
     const max = axis === "w" ? maxW : maxH;
     if (value < min || value > max) return;
-    const mm = Math.round(value) * 10;
+    const mm = Math.round(value * 10);
     if (axis === "w") onSizeChange(mm, heightMm);
     else onSizeChange(widthMm, mm);
   }
@@ -219,17 +223,17 @@ export default function PlisyQuickPrice({
     const min = axis === "w" ? minW : minH;
     const max = axis === "w" ? maxW : maxH;
     if (!Number.isFinite(value) || value <= 0) {
-      if (axis === "w") setWidthText(String(widthCm));
-      else setHeightText(String(heightCm));
+      if (axis === "w") setWidthText(cmText(widthCm));
+      else setHeightText(cmText(heightCm));
       return;
     }
-    const next = Math.round(clamp(value, min, max));
+    const nextMm = Math.round(clamp(value, min, max) * 10);
     if (axis === "w") {
-      setWidthText(String(next));
-      onSizeChange(next * 10, heightMm);
+      setWidthText(cmText(nextMm / 10));
+      onSizeChange(nextMm, heightMm);
     } else {
-      setHeightText(String(next));
-      onSizeChange(widthMm, next * 10);
+      setHeightText(cmText(nextMm / 10));
+      onSizeChange(widthMm, nextMm);
     }
   }
 
@@ -259,10 +263,10 @@ export default function PlisyQuickPrice({
   const numberField = (axis: "w" | "h") => (
     <input
       type="text" data-dim-input="" autoComplete="off"
-      inputMode="numeric"
+      inputMode="decimal"
       min={axis === "w" ? minW : minH}
       max={axis === "w" ? maxW : maxH}
-      step={1}
+      step={0.1}
       value={axis === "w" ? widthText : heightText}
       onChange={(event) => typeSize(event.target.value, axis)}
       onBlur={() => commitSize(axis)}
@@ -283,10 +287,10 @@ export default function PlisyQuickPrice({
     const detail = unitGuess
       .map((g) =>
         g.unit === "mm"
-          ? `${axisLabel(g)} ${fmt(g.raw)} mm = ${g.cm} cm`
+          ? `${axisLabel(g)} ${fmt(g.raw)} mm = ${fmt(g.cm)} cm`
           : g.unit === "m"
-            ? `${axisLabel(g)} ${fmt(g.raw)} m = ${g.cm} cm`
-            : `${axisLabel(g)} ${g.cm} cm zamiast ${fmt(g.raw)} cm`,
+            ? `${axisLabel(g)} ${fmt(g.raw)} m = ${fmt(g.cm)} cm`
+            : `${axisLabel(g)} ${fmt(g.cm)} cm zamiast ${fmt(g.raw)} cm`,
       )
       .join(", ");
     return (
@@ -357,7 +361,7 @@ export default function PlisyQuickPrice({
         ) : null}
         <div className="pl-quick-priceline" aria-live="polite">
           <span className="pl-quick-priceline-label">
-            {widthCm} × {heightCm} cm · Klasyczne
+            {cmText(widthCm)} × {cmText(heightCm)} cm · Klasyczne
             {selectedMount ? ` · ${isPlisyMountNonInvasive(selectedMount.id) || isPlisyMountNonInvasive(selectedMount.label) ? "bezinwazyjny" : "przykręcany"}` : ""}
           </span>
           {regular === null ? (
@@ -375,7 +379,7 @@ export default function PlisyQuickPrice({
           )}
         </div>
         {split ? (
-          <span className="pl-quick-split">Okno {widthCm} cm zrobimy z 2 plis po {pieceWidthMm / 10} cm — cena za obie.</span>
+          <span className="pl-quick-split">Okno {cmText(widthCm)} cm zrobimy z 2 plis po {cmText(pieceWidthMm / 10)} cm — cena za obie.</span>
         ) : null}
         <button type="button" className="pl-quick-cta pl-quick-cta--v2" disabled={!inRange} onClick={configure}>
           Wybierz tkaninę i kolor →
@@ -414,7 +418,7 @@ export default function PlisyQuickPrice({
           </span>
           <span className="pl-quick-acc-meta">
             <span className="pl-quick-acc-size">
-              {widthCm} × {heightCm} cm
+              {cmText(widthCm)} × {cmText(heightCm)} cm
             </span>
             {headPrice !== null ? <strong>{zl(headPrice)}</strong> : null}
             <span className="pl-quick-acc-chevron" aria-hidden="true">
@@ -426,7 +430,7 @@ export default function PlisyQuickPrice({
         <div className="pl-quick-head">
           <span className="pl-quick-title">Ile za Twoje okno?</span>
           <span className="pl-quick-size">
-            {widthCm} × {heightCm} cm
+            {cmText(widthCm)} × {cmText(heightCm)} cm
           </span>
         </div>
       )}
@@ -440,7 +444,7 @@ export default function PlisyQuickPrice({
             max={maxW}
             step={1}
             value={clamp(widthCm, minW, maxW)}
-            onChange={(event) => onSizeChange(Number(event.target.value) * 10, heightMm)}
+            onChange={(event) => onSizeChange(Math.round(Number(event.target.value) * 10), heightMm)}
             aria-label="Szerokość okna w centymetrach"
           />
           <span className="pl-quick-num">
@@ -458,7 +462,7 @@ export default function PlisyQuickPrice({
             max={maxH}
             step={1}
             value={clamp(heightCm, minH, maxH)}
-            onChange={(event) => onSizeChange(widthMm, Number(event.target.value) * 10)}
+            onChange={(event) => onSizeChange(widthMm, Math.round(Number(event.target.value) * 10))}
             aria-label="Wysokość okna w centymetrach"
           />
           <span className="pl-quick-num">
@@ -484,7 +488,7 @@ export default function PlisyQuickPrice({
             </span>
           )}
           {split ? (
-            <span className="pl-quick-split">Okno {widthCm} cm zrobimy z 2 plis po {pieceWidthMm / 10} cm — cena za obie.</span>
+            <span className="pl-quick-split">Okno {cmText(widthCm)} cm zrobimy z 2 plis po {cmText(pieceWidthMm / 10)} cm — cena za obie.</span>
           ) : null}
           <span className="pl-quick-note">
             Kolekcja Klasyczne, biały profil, montaż przykręcany do listwy · w cenie 5 lat gwarancji i 30 dni na zwrot

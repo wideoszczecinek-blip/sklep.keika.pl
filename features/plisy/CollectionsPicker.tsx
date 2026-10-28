@@ -39,10 +39,13 @@ function zl(value: number): string {
 }
 
 
-function clampInt(v: number, lo: number, hi: number): number {
+// Centymetry z dokładnością do 1 mm (właściciel 28.10.2026, zam. 373/10: 935 mm nie może stać się 940).
+function clampMm(v: number, lo: number, hi: number): number {
   if (!Number.isFinite(v)) return lo;
-  return Math.min(hi, Math.max(lo, Math.round(v)));
+  return Math.min(hi, Math.max(lo, Math.round(v * 10) / 10));
 }
+
+const cmText = (cm: number) => String(Math.round(cm * 10) / 10).replace(".", ",");
 
 function MoonIcon() {
   return (
@@ -85,24 +88,26 @@ function SizeField({
   // Tekst pola trzymany lokalnie (właściciel, 27.10.2026: wpisanie „91” dawało 1 albo 15) - wcześniej
   // każdy znak był od razu dociągany do zakresu: „9” skakało do minimum 20, a dopisana „1” dawała 201,
   // przycinane do maksimum. Teraz liczba w zakresie idzie dalej od razu, reszta dopiero po wyjściu z pola.
-  const [text, setText] = useState(String(value));
+  const [text, setText] = useState(cmText(value));
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setText((current) => (Number(current) === value ? current : String(value)));
+    setText((current) => (Number(current.replace(",", ".")) === value ? current : cmText(value)));
   }, [value]);
   const type = (raw: string) => {
     setText(raw);
     const n = Number(raw.replace(",", "."));
-    if (raw.trim() !== "" && Number.isFinite(n) && n >= min && n <= max) onChange(Math.round(n));
+    if (raw.trim() !== "" && Number.isFinite(n) && n >= min && n <= max) onChange(Math.round(n * 10) / 10);
   };
   const commit = () => {
-    const n = Number(text.replace(",", "."));
-    if (text.trim() === "" || !Number.isFinite(n) || n <= 0) {
-      setText(String(value));
+    const raw = Number(text.replace(",", "."));
+    if (text.trim() === "" || !Number.isFinite(raw) || raw <= 0) {
+      setText(cmText(value));
       return;
     }
-    const next = clampInt(n, min, max);
-    setText(String(next));
+    // Za duże na cm, a mieści się po przeliczeniu z mm (np. 935) - to milimetry.
+    const n = raw > max && raw / 10 >= min && raw / 10 <= max ? raw / 10 : raw;
+    const next = clampMm(n, min, max);
+    setText(cmText(next));
     if (next !== value) onChange(next);
   };
   return (
@@ -112,7 +117,7 @@ function SizeField({
       <span className="pl-coll-size-num">
         <input
           type="text" data-dim-input="" autoComplete="off"
-          inputMode="numeric"
+          inputMode="decimal"
           min={min}
           max={max}
           value={text}
@@ -206,13 +211,13 @@ export default function PlisyCollectionsPicker({
       PLISY_COLLECTIONS.map((row) => {
         const group = profile?.fabricGroups.find((entry) => entry.id === row.groupId);
         // Okno szersze niż jedna plisa = 2 plisy po połowie (2026-10-01).
-        const split = profile ? widthCm * 10 > profile.widthMaxMm : false;
+        const split = profile ? Math.round(widthCm * 10) > profile.widthMaxMm : false;
         const pieceBase =
           profile && group
             ? calcPlisyPrice(
                 { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
-                split ? Math.floor((widthCm * 10) / 2) : widthCm * 10,
-                heightCm * 10,
+                split ? Math.floor(Math.round(widthCm * 10) / 2) : Math.round(widthCm * 10),
+                Math.round(heightCm * 10),
                 profile.hardware[0]?.id || "",
                 row.groupId,
               )
@@ -227,7 +232,7 @@ export default function PlisyCollectionsPicker({
     [profile, promo, widthCm, heightCm, priceAdjustmentPercent, priceMultiplier],
   );
 
-  const sizeLabel = `${widthCm} × ${heightCm} cm`;
+  const sizeLabel = `${cmText(widthCm)} × ${cmText(heightCm)} cm`;
 
   return (
     <div className="pl-coll">
