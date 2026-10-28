@@ -9,7 +9,7 @@
 // komponenty w nowej kolejności - patrz app/home-client.tsx, gałąź plisy.
 import { useEffect, useRef, useState } from "react";
 import { crmGetJson } from "@/lib/crm-get";
-import { PROMO_CODE } from "@/lib/promo";
+import { PROMO_CODE, QTY_PROMO } from "@/lib/promo";
 import { trackShopStep } from "@/lib/track-step";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 import { PLISY_HERO_PHOTOS } from "./gallery";
@@ -184,7 +184,15 @@ export function PlisyOfferCard({
                 -20% z kodem {PROMO_CODE}
                 {promoRemainingText ? ` · jeszcze ${promoRemainingText}` : ""}
               </span>
-            ) : null}
+            ) : (
+              // Landing v2 nie ma paska u góry ani linii nad tytułem, więc
+              // promocja ilościowa „CAŁY DOM" (28.10.2026) jest tylko tu, przy
+              // cenie. Gałąź wyżej (kod) zostaje na wypadek powrotu SEZON20.
+              <span className="plv2-offer-code">
+                <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.short} ·{" "}
+                <a href={QTY_PROMO.rulesHref}>zasady</a>
+              </span>
+            )}
           </>
         )}
       </div>
