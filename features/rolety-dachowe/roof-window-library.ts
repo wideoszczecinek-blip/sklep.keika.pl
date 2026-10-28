@@ -380,8 +380,21 @@ export function buildRoofWindowDisplayLabel(item: RoofWindowLibraryItem): string
 // całe zapytanie. Najpierw porządkujemy zapis, a gdy i tak jest zero -
 // szukamy bez słów nieznanych żadnemu oknu, potem samym producentem z
 // rozmiarem, samym producentem, samym rozmiarem.
+//
+// Z01 (2026-10-28): przekręcone nazwy producentów ("welux", "fackro",
+// "okpoll") poprawiamy od razu, a gdy mimo łagodzenia wciąż jest zero -
+// ostatni etap: słowa z jedną literówką (Levenshtein ≤ 1, słowa od 4 znaków)
+// zamieniamy na najbliższe słowo z biblioteki i szukamy jeszcze raz.
 export function searchRoofWindowLibrary(items: RoofWindowLibraryItem[], query: string): RoofWindowSearchResult[] {
-  const prepared = prepareRoofWindowQuery(query);
+  const prepared = applyRoofWindowProducerAliases(prepareRoofWindowQuery(query));
+  const results = searchRoofWindowLibraryPrepared(items, prepared);
+  if (results.length || !items.length) return results;
+  const corrected = correctRoofWindowQueryTypos(items, prepared);
+  if (!corrected) return results;
+  return searchRoofWindowLibraryPrepared(items, corrected).map((result) => ({ ...result, relaxedQuery: result.relaxedQuery || corrected }));
+}
+
+function searchRoofWindowLibraryPrepared(items: RoofWindowLibraryItem[], prepared: string): RoofWindowSearchResult[] {
   const strict = searchRoofWindowLibraryStrict(items, prepared);
   if (!items.length) return strict;
   // Wpisany rozmiar/kod modelu ("mk04", "78x140", "304") musi być w wynikach -
@@ -418,6 +431,72 @@ function prepareRoofWindowQuery(query: string): string {
     .replace(/\b([uU]\d)(\d{2,3}[xX]\d{2,3})\b/g, "$1 $2")
     // "fts78x140" -> "fts 78x140"
     .replace(/([a-zA-Z])(\d{2,3}[xX]\d{2,3})/g, "$1 $2");
+}
+
+/** Częste przekręcenia nazw producentów (fonetycznie albo z klawiatury). */
+const ROOF_WINDOW_PRODUCER_ALIASES: Array<[RegExp, string]> = [
+  [/\b(?:welux|veluks|weluks)\b/gi, "velux"],
+  [/\b(?:fackro|facro|fakr)\b/gi, "fakro"],
+  [/\bokpoll\b/gi, "okpol"],
+  [/\brotto\b/gi, "roto"],
+];
+
+function applyRoofWindowProducerAliases(query: string): string {
+  return ROOF_WINDOW_PRODUCER_ALIASES.reduce((text, [pattern, producer]) => text.replace(pattern, producer), query);
+}
+
+/** Odległość Levenshteina, ale tylko do pytania "≤ 1?" - przy drugiej
+ * różnicy przerywamy od razu. */
+function roofWindowEditDistanceAtMostOne(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i += 1;
+      j += 1;
+      continue;
+    }
+    edits += 1;
+    if (edits > 1) return false;
+    if (a.length > b.length) i += 1;
+    else if (a.length < b.length) j += 1;
+    else {
+      i += 1;
+      j += 1;
+    }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+/** Słowa zapytania (od 4 znaków) spoza słownika biblioteki zamienia na
+ * słowo producenta/modelu z biblioteki różniące się o jedną literę. Zwraca
+ * null, gdy nie ma czego poprawić. */
+function correctRoofWindowQueryTypos(items: RoofWindowLibraryItem[], query: string): string | null {
+  const tokens = tokenizeRoofWindowsSearchQuery(query);
+  if (!tokens.length) return null;
+  const vocabulary = new Set<string>();
+  for (const item of items) {
+    for (const word of normalizeRoofWindowsSearchText(`${item.producer_name} ${item.window_model} ${item.alternate_window_model}`).split(/\s+/)) {
+      if (word.length >= 3) vocabulary.add(word);
+    }
+  }
+  let changed = false;
+  const corrected = tokens.map((token) => {
+    // Tylko ostatni etap przed "0 wyników" - poprawiamy każde słowo spoza
+    // słownika biblioteki (także takie, które pasuje gdzieś "po literach").
+    if (token.length < 4 || vocabulary.has(token)) return token;
+    for (const word of vocabulary) {
+      if (roofWindowEditDistanceAtMostOne(token, word)) {
+        changed = true;
+        return word;
+      }
+    }
+    return token;
+  });
+  return changed ? corrected.join(" ") : null;
 }
 
 function relaxRoofWindowQuery(items: RoofWindowLibraryItem[], query: string): string | null {

@@ -14,11 +14,22 @@
  *  - Każde zdarzenie ma wspólny `eventId` używany zarówno przez fbq (przeglądarka)
  *    jak i relay do CAPI (serwer CRM) -> Meta deduplikuje Browser + Server.
  *  - `pixel_id` i URL relaya pobierane raz z CRM (/shop-public/tracking_config) -
- *    jedno źródło prawdy, bez zmiennych środowiskowych na froncie.
- *  - Purchase NIE leci stąd do CAPI - serwer CRM wysyła go z potwierdzenia
- *    zamówienia (event_id = order_code). Tu odpalamy tylko przeglądarkowy
- *    Purchase na stronie podziękowania z tym samym event_id.
+ *    jedno źródło prawdy. Zapas (Z02, 2026-10-28): gdy CRM nie odpowie w
+ *    2,5 s albo nie poda pixel_id, Pixel startuje z
+ *    NEXT_PUBLIC_META_PIXEL_ID (jeśli ustawiony). Relay CAPI i tak czeka na
+ *    CRM - bez niego nie ma dokąd wysłać.
+ *  - Purchase leci WYŁĄCZNIE z CAPI po stronie CRM (event_id = order_code).
+ *    Przeglądarkowy fbq('Purchase') usunięty 2026-09-03 (Meta nie
+ *    deduplikowała go z serwerowym - podwójne konwersje).
+ *  - content_ids = sku z plików produktowych (lib/catalog-ids.ts), żeby
+ *    zdarzenia łączyły się z katalogiem Meta.
+ *  - Relay CAPI idzie z przeglądarki prosto do CRM (nie przez nasze /api),
+ *    więc CRM widzi IP klienta w samym żądaniu; user agent, fbp/fbc i
+ *    external_id (keika_visitor_id) są w treści.
  */
+
+import { getVisitorId } from "@/lib/analytics-context";
+import { skuForSlug } from "@/lib/catalog-ids";
 
 // Ta sama baza co lib/shop-public.ts, ale bez importu tamtego modułu (ma
 // server-only `cache()` w scope) - tracking.ts jest czysto kliencki.
@@ -29,12 +40,27 @@ const crmBaseUrl =
 const CONSENT_KEY = "keika-consent";
 const CONSENT_VERSION = 1;
 const ATTRIBUTION_KEY = "keika-attribution";
+const QUICK_PRICE_SESSION_KEY = "keika-quick-price-sent";
+// Zapas, gdy CRM nie poda pixel_id (Z02 A4). Pusty = bez zapasu.
+const ENV_META_PIXEL_ID = (process.env.NEXT_PUBLIC_META_PIXEL_ID || "").trim();
+const CONFIG_WAIT_MS = 2500;
 export const CONSENT_CHANGED_EVENT = "keika-consent-changed";
 
 type ConsentState = { analytics: boolean; ts: number; v: number };
 
 type Attribution = {
   fbclid?: string;
+  /** Google Ads - first touch (jak utm_*). */
+  gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
+  /** Google Ads - ostatni klik (nadpisywany przy każdym wejściu z reklamy). */
+  last_gclid?: string;
+  last_gclid_at?: string;
+  last_gbraid?: string;
+  last_gbraid_at?: string;
+  last_wbraid?: string;
+  last_wbraid_at?: string;
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
@@ -63,6 +89,11 @@ type TrackOptions = {
   eventId?: string;
   /** Pomiń relay do CAPI (np. czysto UI-owe zdarzenie). */
   skipCapi?: boolean;
+  /** Zdarzenie niestandardowe: fbq('trackCustom') zamiast fbq('track'). */
+  custom?: boolean;
+  /** Dane kontaktowe podane przez klienta (koszyk) - jawnym tekstem, CRM
+   * normalizuje i hashuje (SHA-256) przed wysłaniem do Meta jako em/ph. */
+  userData?: { email?: string; phone?: string };
 };
 
 declare global {
@@ -180,6 +211,25 @@ export function captureAttribution(): void {
       changed = true;
     }
   }
+  // Google Ads: first touch jak wyżej + osobno ostatni klik z datą (każde
+  // wejście z reklamy nadpisuje last_*), bo Google przypisuje konwersję
+  // ostatniemu kliknięciu.
+  const nowIso = new Date().toISOString();
+  for (const key of ["gclid", "gbraid", "wbraid"] as const) {
+    const val = params.get(key);
+    if (!val) continue;
+    const clean = val.slice(0, 500);
+    if (!current[key]) {
+      next[key] = clean;
+      changed = true;
+    }
+    const lastKey = `last_${key}` as const;
+    if (current[lastKey] !== clean) {
+      next[lastKey] = clean;
+      next[`${lastKey}_at` as const] = nowIso;
+      changed = true;
+    }
+  }
   if (!current.first_seen) {
     next.first_seen = new Date().toISOString();
     next.landing_url = window.location.href.slice(0, 900);
@@ -254,13 +304,51 @@ export function getAttributionPayload(): Record<string, string> {
   if (fbp) out.fbp = fbp;
   if (fbc) out.fbc = fbc;
   if (attr.fbclid) out.fbclid = attr.fbclid;
-  for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const) {
+  for (const k of [
+    "gclid",
+    "gbraid",
+    "wbraid",
+    "last_gclid",
+    "last_gclid_at",
+    "last_gbraid",
+    "last_gbraid_at",
+    "last_wbraid",
+    "last_wbraid_at",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+  ] as const) {
     if (attr[k]) out[k] = attr[k] as string;
   }
   if (attr.landing_url) out.landing_url = attr.landing_url;
   if (attr.referrer) out.referrer = attr.referrer;
   if (navigator?.userAgent) out.ua = navigator.userAgent;
+  const externalId = getVisitorId();
+  if (externalId) out.external_id = externalId;
   return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * Parametry produktowe (content_ids = sku z feedów)
+ * ------------------------------------------------------------------ */
+
+type ProductLine = { productSlug: string; qty: number; price: number; total: number };
+
+/** Wspólny kształt AddToCart / InitiateCheckout: content_ids i contents.id
+ * to sku z plików produktowych, value = suma pozycji (zł), PLN. */
+export function cartTrackParams(lines: ProductLine[]): TrackParams {
+  const value = Math.round(lines.reduce((sum, line) => sum + (Number(line.total) || 0), 0) * 100) / 100;
+  const ids = lines.map((line) => skuForSlug(line.productSlug)).filter(Boolean);
+  return {
+    value,
+    currency: "PLN",
+    content_type: "product",
+    content_ids: Array.from(new Set(ids)),
+    contents: lines.map((line) => ({ id: skuForSlug(line.productSlug), quantity: line.qty, item_price: line.price })),
+    num_items: lines.reduce((sum, line) => sum + (Number(line.qty) || 0), 0),
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -274,12 +362,20 @@ let configPromise: Promise<TrackingConfig | null> | null = null;
 let pixelInjected = false;
 let pageViewSent = false;
 
+/** Pełna konfiguracja z CRM (pixel + relay CAPI). Relay CAPI czeka na nią
+ * (twardy limit 15 s, żeby wiszące połączenie nie trzymało zdarzeń bez
+ * końca); fbq korzysta z resolvePixelId() niżej - z limitem 2,5 s. */
 async function loadConfig(): Promise<TrackingConfig | null> {
   if (config) return config;
   if (configPromise) return configPromise;
   configPromise = (async () => {
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const abortTimer = controller ? window.setTimeout(() => controller.abort(), 15_000) : 0;
     try {
-      const res = await fetch(`${crmBaseUrl}/biuro/api/shop-public/tracking_config`, { cache: "no-store" });
+      const res = await fetch(`${crmBaseUrl}/biuro/api/shop-public/tracking_config`, {
+        cache: "no-store",
+        ...(controller ? { signal: controller.signal } : {}),
+      });
       const json = (await res.json()) as {
         ok?: boolean;
         meta_pixel_id?: string;
@@ -295,9 +391,32 @@ async function loadConfig(): Promise<TrackingConfig | null> {
       return config;
     } catch {
       return null;
+    } finally {
+      if (abortTimer) window.clearTimeout(abortTimer);
     }
   })();
   return configPromise;
+}
+
+/**
+ * pixel_id dla przeglądarkowego fbq (Z02 A4). Gdy ustawiony jest zapas
+ * NEXT_PUBLIC_META_PIXEL_ID: czekamy na CRM najwyżej 2,5 s, potem (albo gdy
+ * CRM nie poda pixel_id) bierzemy zapas. Bez zapasu czekamy na CRM jak
+ * dotąd. Każde zdarzenie (też te z okresu oczekiwania) czeka na tę samą
+ * obietnicę i wysyła fbq dokładnie raz - nic nie ginie ani się nie dubluje.
+ * Jeśli CRM odpowie później z innym pixel_id, zostajemy przy już
+ * zainicjowanym (injectPixelScript jest jednorazowe).
+ */
+let pixelIdPromise: Promise<string> | null = null;
+function resolvePixelId(): Promise<string> {
+  if (pixelIdPromise) return pixelIdPromise;
+  if (config) return Promise.resolve(config.pixelId);
+  if (!ENV_META_PIXEL_ID) return loadConfig().then((cfg) => cfg?.pixelId || "");
+  pixelIdPromise = Promise.race([
+    loadConfig(),
+    new Promise<null>((resolve) => window.setTimeout(() => resolve(null), CONFIG_WAIT_MS)),
+  ]).then((cfg) => cfg?.pixelId || ENV_META_PIXEL_ID);
+  return pixelIdPromise;
 }
 
 function injectPixelScript(pixelId: string): void {
@@ -428,12 +547,14 @@ export function trackOpenAiOrderCreated(params: {
   amountZl: number;
   currency?: string;
   items: Array<{ id: string; name: string; quantity: number }>;
+  /** Pomiń konwersję Google Ads „Zakup” (przelew tradycyjny - Z02 A2). */
+  skipGoogleAds?: boolean;
 }): void {
   if (typeof window === "undefined") return;
   const amountMinorUnits = Math.round(params.amountZl * 100);
   if (!Number.isFinite(amountMinorUnits) || amountMinorUnits <= 0) return;
   try {
-    trackGoogleAdsPurchase(params.orderCode, params.amountZl, params.currency || "PLN");
+    if (!params.skipGoogleAds) trackGoogleAdsPurchase(params.orderCode, params.amountZl, params.currency || "PLN");
   } catch {
     /* Google Ads best-effort - nie może zablokować OpenAI */
   }
@@ -470,16 +591,20 @@ export async function initTracking(): Promise<void> {
   }
   if (hasAnalyticsConsent()) injectOpenAiPixelScript();
 
-  const cfg = await loadConfig();
-  if (!cfg) return;
+  const pixelId = await resolvePixelId();
+  // Ani CRM, ani zapas w env - jak dotąd nic nie wysyłamy.
+  if (!pixelId) return;
 
-  if (consented) injectPixelScript(cfg.pixelId);
+  if (consented) injectPixelScript(pixelId);
 
   if (!pageViewSent) {
     pageViewSent = true;
     const eventId = newEventId();
     if (consented) window.fbq?.("track", "PageView", {}, { eventID: eventId });
-    void relayToCapi("PageView", {}, eventId, cfg);
+    // CAPI tylko przez CRM - poczeka na jego konfigurację (bez niej nie idzie).
+    void loadConfig().then((cfg) => {
+      if (cfg) void relayToCapi("PageView", {}, eventId, cfg);
+    });
   }
 }
 
@@ -497,10 +622,17 @@ async function relayToCapi(
   params: TrackParams,
   eventId: string,
   cfg: TrackingConfig,
+  userData?: TrackOptions["userData"],
 ): Promise<void> {
   if (!cfg.capiEnabled) return;
   try {
     const attr = readAttribution();
+    // Z02 A6: Meta zgłaszała „s2s_missing_pii_or_external_id” dla 97%
+    // zdarzeń serwerowych - wysyłamy zawsze external_id (trwały, anonimowy
+    // keika_visitor_id; CRM hashuje) i user agent. IP CRM bierze z samego
+    // żądania (relay idzie z przeglądarki prosto do CRM, nie przez /api).
+    const email = (userData?.email || "").trim().toLowerCase();
+    const phone = (userData?.phone || "").replace(/[^0-9+]/g, "");
     const body = {
       event_name: eventName,
       event_id: eventId,
@@ -510,6 +642,14 @@ async function relayToCapi(
       fbp: adTrackingAllowed() ? ensureFbp() : getCookie("_fbp"),
       fbc: adTrackingAllowed() ? resolveFbc(attr) : getCookie("_fbc"),
       fbclid: attr.fbclid || "",
+      external_id: getVisitorId(),
+      client_user_agent: typeof navigator !== "undefined" ? navigator.userAgent || "" : "",
+      // E-mail/telefon tylko przy faktycznej zgodzie z paska cookies
+      // (hasAnalyticsConsent) - niezależnie od TRACK_EVERYONE. Dane osobowe
+      // do celów reklamowych bez zgody to osobna decyzja prawna (MASTER, 28.10).
+      ...((email || phone) && hasAnalyticsConsent()
+        ? { user_data: { ...(email ? { em: email } : {}), ...(phone ? { ph: phone } : {}) } }
+        : {}),
       custom_data: params,
     };
     await fetch(cfg.capiUrl, {
@@ -532,20 +672,56 @@ export function track(eventName: string, params: TrackParams = {}, opts: TrackOp
   if (typeof window === "undefined") return eventId;
 
   void (async () => {
-    const cfg = await loadConfig();
-    if (!cfg) return;
-    if (adTrackingAllowed()) {
-      injectPixelScript(cfg.pixelId);
+    // Pixel: CRM albo (po 2,5 s / bez pixel_id) zapas z env - patrz resolvePixelId.
+    const pixelId = await resolvePixelId();
+    if (pixelId && adTrackingAllowed()) {
+      injectPixelScript(pixelId);
       try {
-        window.fbq?.("track", eventName, params, { eventID: eventId });
+        window.fbq?.(opts.custom ? "trackCustom" : "track", eventName, params, { eventID: eventId });
       } catch {
         /* ignore */
       }
     }
     if (!opts.skipCapi) {
-      await relayToCapi(eventName, params, eventId, cfg);
+      // CAPI wyłącznie przez CRM - czeka na jego konfigurację.
+      const cfg = await loadConfig();
+      if (cfg) await relayToCapi(eventName, params, eventId, cfg, opts.userData);
     }
   })();
 
   return eventId;
+}
+
+/**
+ * Zdarzenie niestandardowe „QuickPrice” (Z02 A3): klient pierwszy raz
+ * zobaczył cenę swojego wymiaru w szybkiej wycenie. Raz na produkt na
+ * sesję. fbq trackCustom + relay CAPI z tym samym eventID (jak track()).
+ */
+export function trackQuickPrice(productSlug: string, value: number | null | undefined): void {
+  if (typeof window === "undefined" || !productSlug) return;
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  let sent: string[] = [];
+  try {
+    const parsed: unknown = JSON.parse(window.sessionStorage.getItem(QUICK_PRICE_SESSION_KEY) || "[]");
+    sent = Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    sent = [];
+  }
+  if (sent.includes(productSlug)) return;
+  try {
+    window.sessionStorage.setItem(QUICK_PRICE_SESSION_KEY, JSON.stringify([...sent, productSlug]));
+  } catch {
+    /* bez sessionStorage: wyślemy, ale w tej sesji możliwe powtórki */
+  }
+  track(
+    "QuickPrice",
+    {
+      value: Math.round(amount * 100) / 100,
+      currency: "PLN",
+      content_ids: [skuForSlug(productSlug)],
+      content_type: "product",
+    },
+    { custom: true },
+  );
 }

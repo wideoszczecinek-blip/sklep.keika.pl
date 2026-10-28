@@ -25,7 +25,7 @@ import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyC
 import { buildPlisyHardwareSwatchStyle, fetchPlisyProfile, formatPriceDeltaBadge, type FabricSwatch, type PlisyProfile } from "@/features/plisy/shared";
 import RoofWindowSearchSelector from "@/features/rolety-dachowe/RoofWindowSearchSelector";
 import MissingModelForm from "@/features/rolety-dachowe/MissingModelForm";
-import { fetchRoofBlindProfile, type RoofBlindProfile } from "@/features/rolety-dachowe/shared";
+import { fetchRoofBlindProfile, MISSING_MODEL_UNKNOWN_LABEL, type RoofBlindProfile } from "@/features/rolety-dachowe/shared";
 import {
   buildRoofWindowDisplayLabel,
   classifyNameplateResult,
@@ -58,6 +58,17 @@ import {
 type ZoomPreview = { title: string; urls: string[]; index: number };
 
 const MANUAL_MODEL_LABEL = "Wymiar własny";
+
+// Wybór domyślny (Z01, 2026-10-28): po wskazaniu okna „Dodaj do koszyka”
+// jest aktywny od razu - klient widzi te opcje jako wybrane (✓ i „Zmień”)
+// i może je zmienić. Ustawiane tylko w pustych polach, nigdy ponad wybór z
+// koszyka, szkicu, szybkiej wyceny ani asystenta; bez trackShopStep.
+/** Kolor osprzętu (PD_HARDWARE w ./shared). */
+const DEFAULT_PD_HARDWARE_ID = "bialy";
+/** Kolekcja szukana po nazwie; brak takiej w CRM = pierwsza kolekcja. */
+const DEFAULT_PD_FABRIC_GROUP_LABEL = "Klasyczne";
+/** Pusty = pierwsza tkanina wybranej kolekcji. */
+const DEFAULT_PD_FABRIC_ID = "";
 const MAX_RECOGNITIONS_PER_SESSION = 5;
 
 const DRAFT_STORAGE_KEY = "keika_pd_draft_v1";
@@ -159,9 +170,16 @@ export default function ConfiguratorPanel({
   const [draftSeed] = useState<PdDraft | null>(() => (isCartEdit ? null : readDraft()));
   const seed = { ...(draftSeed ?? {}), ...(initialValues ?? {}) };
 
-  const [selectedHardwareId, setSelectedHardwareId] = useState(() => seed.hardwareId || pdHardwareByLabel(initialValues?.hardwareLabel)?.id || "");
-  const [stepOneChosen, setStepOneChosen] = useState(() => Boolean(seed.hardwareId || pdHardwareByLabel(initialValues?.hardwareLabel)));
-  const [stepOneCollapsed, setStepOneCollapsed] = useState(() => Boolean(seed.hardwareId || pdHardwareByLabel(initialValues?.hardwareLabel)));
+  // Osprzęt jest statyczny (PD_HARDWARE), więc domyślny wchodzi od razu w
+  // inicjalizatorze - chyba że edycja z koszyka przyniosła nazwę koloru.
+  const [selectedHardwareId, setSelectedHardwareId] = useState(() => {
+    const known = pdHardwareById(seed.hardwareId || "") || pdHardwareByLabel(initialValues?.hardwareLabel);
+    if (known) return known.id;
+    if (initialValues?.hardwareLabel) return "";
+    return pdHardwareById(DEFAULT_PD_HARDWARE_ID)?.id || PD_HARDWARE[0]?.id || "";
+  });
+  const [stepOneChosen, setStepOneChosen] = useState(() => Boolean(selectedHardwareId));
+  const [stepOneCollapsed, setStepOneCollapsed] = useState(() => Boolean(selectedHardwareId));
   const [selectedFabricGroupId, setSelectedFabricGroupId] = useState(seed.fabricGroupId || "");
   const [stepTwoCollapsed, setStepTwoCollapsed] = useState(Boolean(seed.fabricGroupId));
   const [selectedFabricId, setSelectedFabricId] = useState(seed.fabricId || "");
@@ -208,14 +226,17 @@ export default function ConfiguratorPanel({
         setStepTwoCollapsed(true);
       }
     }
+    let fabricId = selectedFabricId;
     if (!selectedFabricId && initialValues?.fabricLabel) {
       const groups = groupId ? profile.fabricGroups.filter((group) => group.id === groupId) : profile.fabricGroups;
       for (const group of groups) {
         const hit = group.swatches.find((swatch) => swatch.label.toLowerCase() === initialValues.fabricLabel!.toLowerCase());
         if (hit) {
+          fabricId = hit.id;
           setSelectedFabricId(hit.id);
           setStepThreeCollapsed(true);
           if (!groupId) {
+            groupId = group.id;
             setSelectedFabricGroupId(group.id);
             setStepTwoCollapsed(true);
           }
@@ -223,11 +244,44 @@ export default function ConfiguratorPanel({
         }
       }
     }
+    // Wartości domyślne (DEFAULT_PD_* u góry pliku) - tylko w pustych albo
+    // nieaktualnych polach i nie przy edycji z koszyka po nazwach.
+    if (initialValues?.fabricGroupLabel || initialValues?.fabricLabel) return;
+    let group = profile.fabricGroups.find((entry) => entry.id === groupId);
+    if (!group) {
+      group =
+        profile.fabricGroups.find(
+          (entry) => entry.label.trim().toLowerCase() === DEFAULT_PD_FABRIC_GROUP_LABEL.toLowerCase(),
+        ) || profile.fabricGroups[0];
+      if (group) {
+        setSelectedFabricGroupId(group.id);
+        setStepTwoCollapsed(true);
+      }
+    }
+    if (group && !group.swatches.some((swatch) => swatch.id === fabricId)) {
+      const swatch = group.swatches.find((entry) => entry.id === DEFAULT_PD_FABRIC_ID) || group.swatches[0];
+      if (swatch) {
+        setSelectedFabricId(swatch.id);
+        setStepThreeCollapsed(true);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, labelsResolved]);
 
   useEffect(() => {
     if (!library.length || windowChoice) return;
+    // Z01: własny wymiar z szybkiej wyceny ("Konfiguruj to okno" bez modelu
+    // z biblioteki) - od razu jako okno spoza biblioteki z wymiarami A/B;
+    // "Popraw" otwiera formularz z tymi wymiarami (model można dopisać).
+    if (!isCartEdit && initialValues?.widthMm && initialValues?.heightMm && !initialValues.windowLibraryId && !initialValues.windowQuery) {
+      setWindowChoice({
+        kind: "manual",
+        request: { producer: "", model: MISSING_MODEL_UNKNOWN_LABEL, dimensionAMm: initialValues.widthMm, dimensionBMm: initialValues.heightMm, attachmentIds: [] },
+      });
+      setWindowQuery("");
+      setStepFourCollapsed(true);
+      return;
+    }
     const wantedId = initialValues?.windowLibraryId || (isCartEdit ? 0 : draftSeed?.windowLibraryId || 0);
     if (wantedId) {
       const item = library.find((entry) => entry.id === wantedId);
@@ -338,9 +392,11 @@ export default function ConfiguratorPanel({
     ? ""
     : windowChoice.kind === "library"
       ? buildRoofWindowDisplayLabel(windowChoice.item)
-      : windowChoice.request.producer && windowChoice.request.model !== MANUAL_MODEL_LABEL
+      : windowChoice.request.model && windowChoice.request.model !== MANUAL_MODEL_LABEL && windowChoice.request.model !== MISSING_MODEL_UNKNOWN_LABEL
         ? `${windowChoice.request.producer} ${windowChoice.request.model}`.trim()
-        : MANUAL_MODEL_LABEL;
+        : windowChoice.request.producer
+          ? `${windowChoice.request.producer}, ${MISSING_MODEL_UNKNOWN_LABEL}`
+          : MANUAL_MODEL_LABEL;
   const windowCertain = windowChoice?.kind === "library" ? windowChoice.item.is_certain : false;
 
   const quantityNum = Math.max(1, Math.min(20, Number(quantity) || 1));

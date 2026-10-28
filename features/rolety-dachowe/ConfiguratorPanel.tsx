@@ -29,6 +29,7 @@ import RoofBlindPreview from "./RoofBlindPreview";
 import {
   calcRoletyDachowePrice,
   fetchRoofBlindProfile,
+  MISSING_MODEL_UNKNOWN_LABEL,
   roofBlindProfileFallbackReason,
   roofBlindSizeLimits,
   type ConfiguratorInitialValues,
@@ -56,6 +57,18 @@ const PRODUCT_SLUG = "rolety-dachowe";
 const PRODUCT_LABEL = "Rolety dachowe";
 const MANUAL_MODEL_LABEL = "Wymiar własny";
 const MAX_RECOGNITIONS_PER_SESSION = 5;
+
+// Wybór domyślny (Z01, 2026-10-28): po wskazaniu okna „Dodaj do koszyka”
+// jest aktywny od razu - klient widzi te opcje jako wybrane (✓ i „Zmień”)
+// i może je zmienić. Ustawiane po wczytaniu profilu, tylko w pustych albo
+// nieaktualnych polach - nigdy ponad wybór z koszyka, szkicu, szybkiej
+// wyceny ani asystenta; bez trackShopStep.
+/** Kolor kasety i prowadnic (ROLETY_DACHOWE_HARDWARE w ./shared). */
+const DEFAULT_RD_HARDWARE_ID = "bialy";
+/** Rodzaj materiału: „Półprzepuszczalny” = tkaniny Deko. */
+const DEFAULT_RD_MATERIAL_TYPE_ID = "polprzepuszczalny";
+/** Pusty = pierwszy kolor wybranego rodzaju materiału (Deko 01). */
+const DEFAULT_RD_FABRIC_ID = "";
 
 // Steps 1-3 (and the last window) survive a remount and a return visit for a
 // week - the customer who left to photograph the nameplate finds the colours
@@ -237,11 +250,56 @@ export default function ConfiguratorPanel({
         setStepTwoCollapsed(true);
       }
     }
+    // Wartości domyślne (DEFAULT_RD_* u góry pliku) - nie przy edycji z
+    // koszyka po nazwach (te rozwiązują się wyżej).
+    if (initialValues?.hardwareLabel || initialValues?.materialTypeLabel || initialValues?.fabricLabel) return;
+    if (!profile.hardware.some((option) => option.id === selectedHardwareId)) {
+      const hardware = profile.hardware.find((option) => option.id === DEFAULT_RD_HARDWARE_ID) || profile.hardware[0];
+      if (hardware) {
+        setSelectedHardwareId(hardware.id);
+        setStepOneChosen(true);
+        setStepOneCollapsed(true);
+      }
+    }
+    // Kolor przywrócony bez rodzaju materiału wyznacza rodzaj (jak wyżej).
+    const restoredFabric = profile.fabrics.find((option) => option.id === selectedFabricId) || null;
+    let materialTypeId = selectedMaterialTypeId;
+    if (!profile.materialTypes.some((option) => option.id === materialTypeId)) {
+      const material =
+        profile.materialTypes.find((option) => option.id === restoredFabric?.materialTypeId) ||
+        profile.materialTypes.find((option) => option.id === DEFAULT_RD_MATERIAL_TYPE_ID) ||
+        profile.materialTypes[0];
+      if (material) {
+        materialTypeId = material.id;
+        setSelectedMaterialTypeId(material.id);
+        setStepTwoCollapsed(true);
+      }
+    }
+    if (materialTypeId && restoredFabric?.materialTypeId !== materialTypeId) {
+      const fabrics = profile.fabrics.filter((option) => option.materialTypeId === materialTypeId);
+      const fabric = fabrics.find((option) => option.id === DEFAULT_RD_FABRIC_ID) || fabrics[0];
+      if (fabric) {
+        setSelectedFabricId(fabric.id);
+        setStepThreeCollapsed(true);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, labelsResolved]);
 
   useEffect(() => {
     if (!library.length || windowChoice) return;
+    // Z01: własny wymiar z szybkiej wyceny ("Konfiguruj to okno" bez modelu
+    // z biblioteki) - od razu jako okno spoza biblioteki z wymiarami A/B;
+    // "Popraw" otwiera formularz z tymi wymiarami (model można dopisać).
+    if (!isCartEdit && initialValues?.widthMm && initialValues?.heightMm && !initialValues.windowLibraryId && !initialValues.windowQuery) {
+      setWindowChoice({
+        kind: "manual",
+        request: { producer: "", model: MISSING_MODEL_UNKNOWN_LABEL, dimensionAMm: initialValues.widthMm, dimensionBMm: initialValues.heightMm, attachmentIds: [] },
+      });
+      setWindowQuery("");
+      setStepFourCollapsed(true);
+      return;
+    }
     const wantedId = initialValues?.windowLibraryId || (isCartEdit ? 0 : draftSeed?.windowLibraryId || 0);
     if (wantedId) {
       const item = library.find((entry) => entry.id === wantedId);
@@ -368,9 +426,11 @@ export default function ConfiguratorPanel({
     ? ""
     : windowChoice.kind === "library"
       ? buildRoofWindowDisplayLabel(windowChoice.item)
-      : windowChoice.request.producer && windowChoice.request.model !== MANUAL_MODEL_LABEL
+      : windowChoice.request.model && windowChoice.request.model !== MANUAL_MODEL_LABEL && windowChoice.request.model !== MISSING_MODEL_UNKNOWN_LABEL
         ? `${windowChoice.request.producer} ${windowChoice.request.model}`.trim()
-        : MANUAL_MODEL_LABEL;
+        : windowChoice.request.producer
+          ? `${windowChoice.request.producer}, ${MISSING_MODEL_UNKNOWN_LABEL}`
+          : MANUAL_MODEL_LABEL;
   const windowCertain = windowChoice?.kind === "library" ? windowChoice.item.is_certain : false;
 
   const quantityNum = Math.max(1, Math.min(20, Number(quantity) || 1));

@@ -106,6 +106,14 @@ export default function QuoteCheckout({ quote }: { quote: SavedQuote }) {
     setIsSubmitting(true);
 
     try {
+      // Atrybucja (fbp/fbc, gclid/gbraid/wbraid, utm_*) - jak w /koszyk; CRM
+      // zapisuje ją przy zamówieniu (Meta CAPI Purchase, konwersje Google).
+      let tracking: Record<string, string> = {};
+      try {
+        tracking = (await import("@/lib/tracking")).getAttributionPayload();
+      } catch {
+        /* tracking never blocks checkout */
+      }
       const response = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,6 +131,7 @@ export default function QuoteCheckout({ quote }: { quote: SavedQuote }) {
             address_line_2: form.address2,
           },
           note_text: form.note,
+          tracking,
         }),
       });
       const json = (await response.json()) as OrderCreateResponse;

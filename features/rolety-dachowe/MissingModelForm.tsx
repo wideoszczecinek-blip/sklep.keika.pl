@@ -8,10 +8,14 @@
 // fields. The result is a MissingModelRequest carried through the cart to
 // the CRM quote/order (the model gets checked before production and lands
 // in the window library as "pending").
+//
+// Z01 (2026-10-28): wystarczą poprawne wymiary A/B - producent i model są
+// opcjonalne ("Nie znam modelu — podam wymiary"); bez nich prośba idzie do
+// koszyka i CRM jako MISSING_MODEL_UNKNOWN_LABEL.
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { trackShopStep } from "@/lib/track-step";
-import { ROLETY_DACHOWE_MIN_DIMENSION_MM, type MissingModelRequest } from "./shared";
+import { MISSING_MODEL_UNKNOWN_LABEL, ROLETY_DACHOWE_MIN_DIMENSION_MM, type MissingModelRequest } from "./shared";
 import {
   buildRoofWindowDisplayLabel,
   classifyNameplateResult,
@@ -23,6 +27,8 @@ import {
 } from "./roof-window-library";
 
 const OTHER = "__other__";
+/** Etykiety zastępcze (brak modelu) - nie pokazujemy ich w polu "Model". */
+const PLACEHOLDER_MODELS = [MISSING_MODEL_UNKNOWN_LABEL, "Wymiar własny"];
 const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif";
 
 type Unit = "mm" | "cm";
@@ -60,7 +66,9 @@ export default function MissingModelForm({
   const producerInList = producers.includes(initialProducer);
   const [producer, setProducer] = useState(initialProducer ? (producerInList ? initialProducer : OTHER) : "");
   const [customProducer, setCustomProducer] = useState(producerInList ? "" : initialProducer);
-  const [model, setModel] = useState(initial?.model || "");
+  const initialModel = initial?.model && !PLACEHOLDER_MODELS.includes(initial.model) ? initial.model : "";
+  const [model, setModel] = useState(initialModel);
+  const [unknownModel, setUnknownModel] = useState(Boolean(initial?.model) && !initialModel && !initialProducer);
   const [unit, setUnit] = useState<Unit>("mm");
   const [dimA, setDimA] = useState(initial?.dimensionAMm ? String(initial.dimensionAMm) : "");
   const [dimB, setDimB] = useState(initial?.dimensionBMm ? String(initial.dimensionBMm) : "");
@@ -95,9 +103,8 @@ export default function MissingModelForm({
   const widthOk = widthMm >= ROLETY_DACHOWE_MIN_DIMENSION_MM && widthMm <= maxWidthMm;
   const heightOk = heightMm >= ROLETY_DACHOWE_MIN_DIMENSION_MM && heightMm <= maxHeightMm;
   const producerValue = producer === OTHER ? customProducer.trim() : producer.trim();
-  const producerOk = producerValue.length > 0;
-  const modelOk = model.trim().length > 0;
-  const canSubmit = producerOk && modelOk && widthOk && heightOk;
+  // Producent i model są opcjonalne - do wyceny i produkcji wystarczą wymiary.
+  const canSubmit = widthOk && heightOk;
 
   async function handleFiles(list: FileList | null) {
     const files = Array.from(list || []).filter(Boolean);
@@ -129,6 +136,7 @@ export default function MissingModelForm({
       const modelRead = result?.aiRead.model.trim() || "";
       if (producerRead || modelRead) {
         setAiRead({ producer: producerRead, model: modelRead, confidence: result?.aiRead.confidence || "" });
+        setUnknownModel(false);
         if (producerRead && !producerValue) {
           if (producers.includes(producerRead)) setProducer(producerRead);
           else {
@@ -146,9 +154,11 @@ export default function MissingModelForm({
   function submit() {
     setTouched(true);
     if (!canSubmit) return;
+    const producerOut = unknownModel ? "" : producerValue;
+    const modelOut = unknownModel ? "" : model.trim();
     onSubmit({
-      producer: producerValue,
-      model: model.trim(),
+      producer: producerOut,
+      model: modelOut || MISSING_MODEL_UNKNOWN_LABEL,
       dimensionAMm: widthMm,
       dimensionBMm: heightMm,
       attachmentIds: attachments.map((entry) => entry.id),
@@ -168,8 +178,8 @@ export default function MissingModelForm({
         <p className="rd-modal-eyebrow">Okno spoza biblioteki</p>
         <h3 className="rd-modal-title">Podaj dane swojego okna</h3>
         <p className="rd-modal-body">
-          Roletę wykonamy dokładnie pod podane wymiary. Przed produkcją sprawdzimy dobór — jeśli coś będzie wymagało
-          potwierdzenia, skontaktujemy się z Tobą.
+          Roletę wykonamy dokładnie pod podane wymiary — producent i model są opcjonalne. Przed produkcją sprawdzimy dobór —
+          jeśli coś będzie wymagało potwierdzenia, skontaktujemy się z Tobą.
         </p>
 
         {outcome?.kind === "matched" ? (
@@ -208,30 +218,47 @@ export default function MissingModelForm({
           </div>
         ) : null}
 
-        <div className="rd-form-grid">
-          <label className="rd-form-field">
-            <span>Producent</span>
-            <select value={producer} onChange={(event) => setProducer(event.target.value)} className={touched && !producerOk ? "is-invalid" : ""}>
-              <option value="">Wybierz producenta</option>
-              {producers.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-              <option value={OTHER}>Inny producent</option>
-            </select>
-          </label>
-          {producer === OTHER ? (
-            <label className="rd-form-field">
-              <span>Nazwa producenta</span>
-              <input type="text" value={customProducer} onChange={(event) => setCustomProducer(event.target.value)} placeholder="np. Optilight" className={touched && !producerOk ? "is-invalid" : ""} />
-            </label>
-          ) : null}
-          <label className="rd-form-field">
-            <span>Model okna (z tabliczki)</span>
-            <input type="text" value={model} onChange={(event) => setModel(event.target.value)} placeholder="np. FTP-V U5 78x118" className={touched && !modelOk ? "is-invalid" : ""} />
-          </label>
+        <div className="rd-unit-toggle">
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={unknownModel}
+            className={`rd-unit ${unknownModel ? "is-active" : ""}`}
+            onClick={() => {
+              trackShopStep("missing_model_unknown_toggle", unknownModel ? "off" : "on");
+              setUnknownModel((prev) => !prev);
+            }}
+          >
+            {unknownModel ? "✓ " : ""}Nie znam modelu — podam wymiary (możesz też wysłać zdjęcie tabliczki)
+          </button>
         </div>
+
+        {!unknownModel ? (
+          <div className="rd-form-grid">
+            <label className="rd-form-field">
+              <span>Producent (opcjonalnie)</span>
+              <select value={producer} onChange={(event) => setProducer(event.target.value)}>
+                <option value="">Wybierz producenta</option>
+                {producers.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+                <option value={OTHER}>Inny producent</option>
+              </select>
+            </label>
+            {producer === OTHER ? (
+              <label className="rd-form-field">
+                <span>Nazwa producenta</span>
+                <input type="text" value={customProducer} onChange={(event) => setCustomProducer(event.target.value)} placeholder="np. Optilight" />
+              </label>
+            ) : null}
+            <label className="rd-form-field">
+              <span>Model okna z tabliczki (opcjonalnie)</span>
+              <input type="text" value={model} onChange={(event) => setModel(event.target.value)} placeholder="np. FTP-V U5 78x118" />
+            </label>
+          </div>
+        ) : null}
 
         <div className="rd-form-measure-head">
           <div>

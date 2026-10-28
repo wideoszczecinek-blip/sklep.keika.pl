@@ -143,6 +143,7 @@ export default function MoskitieryQuickPrice({
       return;
     }
     const timer = window.setTimeout(() => {
+      void import("@/lib/tracking").then((m) => m.trackQuickPrice("moskitiery-ramkowe", withPromo ?? regular)).catch(() => {}); // Meta QuickPrice (Z02), raz na produkt/sesję
       trackShopStep("quick_price_size", "moskitiery-ramkowe", {
         width_mm: widthMm,
         height_mm: heightMm,

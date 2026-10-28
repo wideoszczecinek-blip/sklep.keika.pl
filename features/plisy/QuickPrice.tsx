@@ -245,6 +245,7 @@ export default function PlisyQuickPrice({
       return;
     }
     const timer = window.setTimeout(() => {
+      void import("@/lib/tracking").then((m) => m.trackQuickPrice("plisy", withPromo ?? regular)).catch(() => {}); // Meta QuickPrice (Z02), raz na produkt/sesję
       trackShopStep("quick_price_size", "plisy", { width_mm: widthMm, height_mm: heightMm, in_range: inRange, price: regular ?? 0 });
     }, 700);
     return () => window.clearTimeout(timer);

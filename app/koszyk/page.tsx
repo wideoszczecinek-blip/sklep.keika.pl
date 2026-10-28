@@ -98,6 +98,7 @@ import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import CartV2, { CartV2Boundary } from "./cart-v2";
+import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE_AMOUNT, hasFreeShippingFromOne } from "@/lib/shipping-copy";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
 // every validation error, failed discount code, and failed order/payment
@@ -119,6 +120,20 @@ function trackCheckoutIssue(eventName: string, label: string, meta?: Record<stri
     device_type: window.innerWidth < 768 ? "mobile" : "desktop",
     meta,
   }).catch(() => null);
+}
+
+// Meta InitiateCheckout raz na zawartość koszyka (Z02): prosty hash pozycji
+// (produkt, wymiar, sztuki, kwota) - ta sama zawartość w tej sesji = bez
+// ponownego zdarzenia, zmiana koszyka = nowe.
+const INITIATE_CHECKOUT_SESSION_KEY = "keika-initiate-checkout-hash";
+function initiateCheckoutHash(items: CartLineItem[]): string {
+  const raw = items
+    .map((item) => [item.productSlug, item.widthMm, item.heightMm, item.qty, Math.round(item.total * 100)].join(":"))
+    .sort()
+    .join("|");
+  let hash = 5381;
+  for (let index = 0; index < raw.length; index += 1) hash = ((hash << 5) + hash + raw.charCodeAt(index)) | 0;
+  return `${items.length}-${(hash >>> 0).toString(36)}`;
 }
 
 type OrderCreateResponse = {
@@ -278,15 +293,10 @@ const P24_KIND_LABELS: Record<P24Kind, { title: string; hint: string; note: stri
 // osobisty jest zawsze bez opłaty (nic nie jest fizycznie wysyłane),
 // płatność za pobraniem dolicza swoją odrębną dopłatę (COD_SURCHARGE_AMOUNT)
 // NIEZALEŻNIE od kosztu samej wysyłki - obie się sumują poniżej progu.
-const FREE_SHIPPING_THRESHOLD = 79;
-const SHIPPING_FEE_AMOUNT = 12.9;
-
-// Pilotaż (właściciel, 2026-09-24): plisy mają darmową dostawę od pierwszej
-// sztuki, bez progu kwotowego - landing plis obiecuje to wprost, więc
-// koszyk musi to dotrzymać. Wystarczy jedna plisa w koszyku.
-const FREE_SHIPPING_PILOT_SLUGS = new Set(["plisy"]);
+// Stałe progu i kosztu wysyłki + pilotaż plis (darmowa od 1 szt.) są w
+// lib/shipping-copy.ts - te same wartości czytają teksty na landingach.
 function cartHasFreeShippingPilot(items: CartLineItem[]): boolean {
-  return items.some((item) => FREE_SHIPPING_PILOT_SLUGS.has(String(item.productSlug || "")));
+  return items.some((item) => hasFreeShippingFromOne(item.productSlug));
 }
 
 // The customer just picks "Kurier" - which actual carrier (DPD, GLS, ...)
@@ -1027,6 +1037,7 @@ export default function CartPage() {
     if (touchedKey) setTouchedFields((current) => (current.has(touchedKey) ? current : new Set(current).add(touchedKey)));
     if (target.value.trim() === "") return;
     setCheckoutFormStarted(true);
+    markCheckoutInteraction();
     // Silent capture of a typed e-mail (2026-09-26) - the CRM mails "Twój
     // koszyk" after 1 h only if no order followed; see captureCheckoutEmail().
     if (target instanceof HTMLInputElement && target.type === "email") {
@@ -1220,25 +1231,40 @@ export default function CartPage() {
     setBackHref(readLastPage());
   }, []);
 
-  // Meta InitiateCheckout - raz, gdy klient wejdzie na /koszyk z niepustym
-  // koszykiem (to jest moment "rozpoczęcia checkoutu").
-  const initiateCheckoutSentRef = useRef(false);
+  // Meta InitiateCheckout (Z02, 2026-10-28): NIE przy samym wejściu do
+  // koszyka (leciało przy każdym otwarciu /koszyk, też "tylko popatrzeć"),
+  // tylko przy pierwszej interakcji z danymi/dostawą/płatnością - patrz
+  // wywołania markCheckoutInteraction() (blur pola z treścią, wybór dostawy,
+  // wybór płatności; działa w obu koszykach - v2 dostaje te same handlery).
+  // Raz na zawartość koszyka: hash pozycji w sessionStorage. Ref trzyma
+  // świeże pozycje i dane kontaktowe (em/ph dla CRM, hashowane po stronie CRM).
+  const initiateCheckoutDataRef = useRef<{ items: CartLineItem[]; email: string; phone: string }>({
+    items: [],
+    email: "",
+    phone: "",
+  });
   useEffect(() => {
-    if (initiateCheckoutSentRef.current || !hydrated || items.length === 0) return;
-    initiateCheckoutSentRef.current = true;
-    const value = items.reduce((sum, it) => sum + it.total, 0);
+    initiateCheckoutDataRef.current = { items, email: form.email, phone: form.phone };
+  }, [items, form.email, form.phone]);
+  const initiateCheckoutSentHashRef = useRef("");
+  const markCheckoutInteraction = useCallback(() => {
+    const { items: currentItems, email, phone } = initiateCheckoutDataRef.current;
+    if (currentItems.length === 0) return;
+    const hash = initiateCheckoutHash(currentItems);
+    try {
+      if (window.sessionStorage.getItem(INITIATE_CHECKOUT_SESSION_KEY) === hash) return;
+      window.sessionStorage.setItem(INITIATE_CHECKOUT_SESSION_KEY, hash);
+    } catch {
+      /* bez sessionStorage - ref niżej i tak nie wyśle dwa razy na wizytę */
+    }
+    if (initiateCheckoutSentHashRef.current === hash) return;
+    initiateCheckoutSentHashRef.current = hash;
     void import("@/lib/tracking")
-      .then(({ track }) => {
-        track("InitiateCheckout", {
-          value,
-          currency: "PLN",
-          content_ids: items.map((it) => it.productSlug),
-          contents: items.map((it) => ({ id: it.productSlug, quantity: it.qty, item_price: it.price })),
-          num_items: items.reduce((sum, it) => sum + it.qty, 0),
-        });
+      .then(({ track, cartTrackParams }) => {
+        track("InitiateCheckout", cartTrackParams(currentItems), { userData: { email, phone } });
       })
       .catch(() => {});
-  }, [hydrated, items]);
+  }, []);
 
   useEffect(() => {
     sync();
@@ -2113,6 +2139,9 @@ export default function CartPage() {
   const submitOrder = useCallback(async (opts?: { stripeMethod?: StripeMethod; p24MethodId?: number; paynowMethodId?: number; paynowBlikCode?: string; wallet?: WalletContact }): Promise<CreatedIntent | null> => {
     if (submittedRef.current) return null;
     submittedRef.current = true;
+    // InitiateCheckout także dla ścieżek bez interakcji z formularzem
+    // (portfel) - hash koszyka pilnuje, by poszło raz (Z02, recenzja 28.10).
+    markCheckoutInteraction();
     // Portfel (Apple Pay / Google Pay, 2026-09-28): dane odbiorcy z arkusza
     // portfela, dostawa kurierem, płatność online, regulamin zaakceptowany
     // kliknięciem w portfel (adnotacja pod przyciskami). Reszta ścieżki -
@@ -2487,6 +2516,10 @@ export default function CartPage() {
               orderCode: createdOrder.order_code,
               amountZl: Number(createdOrder.amount_total),
               items: items.map((item) => ({ id: item.productSlug, name: item.productLabel, quantity: item.qty })),
+              // Przelew tradycyjny: zamówienie powstaje PRZED wpłatą (część
+              // klientów nigdy nie płaci) - konwersję Google Ads „Zakup”
+              // raportuje CRM po zaksięgowaniu wpłaty, nie przeglądarka (Z02 A2).
+              skipGoogleAds: pm === "transfer",
             });
           });
         }
@@ -2505,6 +2538,7 @@ export default function CartPage() {
       setIsSubmitting(false);
     }
   }, [
+    markCheckoutInteraction,
     items,
     deliveryMethod,
     selectedPaczkomat,
@@ -2612,6 +2646,7 @@ export default function CartPage() {
     }
     setOnlinePaymentKind(kind);
     trackCheckoutIssue("checkout_payment_kind", kind);
+    markCheckoutInteraction();
   };
   const stripeAvailable = STRIPE_PUBLISHABLE_KEY !== "";
   // Kafelki metod płatności budujemy TYM SAMYM kodem co strona ponowienia
@@ -3356,6 +3391,7 @@ export default function CartPage() {
     chooseDelivery: (method: { id: string; label: string }) => {
       setDeliveryMethod(method.id);
       trackCheckoutIssue("checkout_delivery", method.label, { method_id: method.id });
+      markCheckoutInteraction();
     },
     paczkomatMethodId: PACZKOMAT_METHOD.id,
     pickupMethodId: PICKUP_METHOD.id,
@@ -4075,6 +4111,7 @@ export default function CartPage() {
                               onChange={() => {
                                 setDeliveryMethod(method.id);
                                 trackCheckoutIssue("checkout_delivery", method.label, { method_id: method.id });
+                                markCheckoutInteraction();
                               }}
                               disabled={dataLocked}
                             />
