@@ -28,6 +28,7 @@ import {
 import {
   PROMO_ACTIVATED_EVENT,
   PROMO_CODE,
+  QTY_PROMO,
   activatePromoCode,
   applyPromoToPrice,
   fetchPromoPreview,
@@ -3845,40 +3846,28 @@ export default function Home({
                       2026-09-24): dwuwierszowa ramka pod tytułem spychała na
                       mobile wszystko poniżej ekranu. */}
                   {plisyV2 ? <PlisyHeroGallery /> : null}
+                  {/* Promocja ilościowa „CAŁY DOM" (29.10.2026, w miejsce
+                      SEZON20): jedna linia bez aktywacji i odliczania - rabat
+                      nalicza koszyk z reguł CRM (lib/bundle-discount.ts). Ta
+                      sama treść na wszystkich czterech produktach objętych
+                      promocją; SEZON20 wraca tu tylko po włączeniu
+                      SEASONAL_PROMO_ENABLED (lib/promo.ts). */}
                   {displayedProduct &&
                   !plisyV2 &&
-                  (productSlugFromSelected(displayedProduct) === "plisy" ||
-                    productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe") &&
-                  (topPromoPreview || topPromoActive) ? (
-                    <PromoCountdownBanner code={PROMO_CODE} productSlug={productSlugFromSelected(displayedProduct)}>
-                      {(promo) => (
-                        <div className={`pl-sezon-line ${topPromoActive ? "is-active" : ""}`}>
-                          <span className="pl-sezon-line-badge" aria-hidden="true">
-                            {topPromoActive ? "✓" : "-20%"}
-                          </span>
-                          <span className="pl-sezon-line-text">
-                            {topPromoActive ? (
-                              <>
-                                Kod <strong>SEZON20</strong> aktywny · rabat w koszyku
-                              </>
-                            ) : (
-                              <>
-                                Kod <strong>SEZON20</strong>: -20% w koszyku
-                              </>
-                            )}
-                          </span>
-                          {!topPromoActive ? (
-                            <button type="button" className="pl-sezon-line-cta" onClick={activateTopPromo}>
-                              Aktywuj
-                            </button>
-                          ) : promo ? (
-                            <button type="button" className="pl-sezon-line-link" onClick={promo.openModal}>
-                              Zapisz link
-                            </button>
-                          ) : null}
-                        </div>
-                      )}
-                    </PromoCountdownBanner>
+                  ["plisy", "moskitiery-ramkowe", "rolety-dachowe", "plisy-dachowe"].includes(
+                    productSlugFromSelected(displayedProduct),
+                  ) ? (
+                    <div className="pl-sezon-line is-active">
+                      <span className="pl-sezon-line-badge" aria-hidden="true">
+                        -{QTY_PROMO.percent}%
+                      </span>
+                      <span className="pl-sezon-line-text">
+                        Promocja <strong>{QTY_PROMO.name}</strong>: każde kolejne okno -{QTY_PROMO.percent} % · liczy się w koszyku
+                      </span>
+                      <a className="pl-sezon-line-link" href={QTY_PROMO.rulesHref}>
+                        Zasady
+                      </a>
+                    </div>
                   ) : null}
                   {displayedProduct ? (
                     <h1>

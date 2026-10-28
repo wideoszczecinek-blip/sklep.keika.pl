@@ -68,7 +68,7 @@ import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import type { CheckoutContact } from "../components/stripe-payment-step";
 import StripeMethodStep, { type CreatedIntent, type StripeMethod } from "../components/stripe-method-step";
 import { trackStorefrontEvent } from "@/lib/shop-public";
-import { isPromoActive, PROMO_CODE } from "@/lib/promo";
+import { isPromoActive, PROMO_CODE, SEASONAL_PROMO_ENABLED } from "@/lib/promo";
 import {
   EXPRESS_CHANGED_EVENT,
   EXPRESS_ENABLED,
@@ -1908,7 +1908,10 @@ export default function CartPage() {
   // discount amount depends on it, skipped entirely once any code (SEZON20
   // or otherwise) is actually applied.
   useEffect(() => {
-    if (appliedDiscount || summary.total <= 0) {
+    // SEZON20 zakończony 29.10.2026 (promocja ilościowa „CAŁY DOM" liczy się
+    // w wierszu „Rabat pakietowy" wyżej) - bez podglądu nie ma przycisku
+    // „Zamów z kodem SEZON20", a sam kod jest w CRM nieaktywny.
+    if (!SEASONAL_PROMO_ENABLED || appliedDiscount || summary.total <= 0) {
       setSezon20Promo(null);
       return;
     }

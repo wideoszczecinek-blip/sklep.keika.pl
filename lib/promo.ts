@@ -18,6 +18,28 @@ export const ACTIVE_PROMO_STORAGE_KEY = "keika_shop_active_promo_code";
 export const PROMO_CODE = "SEZON20";
 export const PROMO_ACTIVATED_EVENT = "keika:promo-activated";
 
+// Promocja sezonowa SEZON20 (-20 % dla każdego) zakończona 29.10.2026 na
+// decyzję właściciela - zastąpiła ją promocja ilościowa „CAŁY DOM" (rabat
+// pakietowy liczony wiążąco w CRM, podgląd w lib/bundle-discount.ts). Cała
+// maszyneria kodu niżej (aktywacja, odliczanie, zapis linku, odnowienie z
+// remarketingu, zamrożenie ceny) zostaje w kodzie, ale jest wyłączona tym
+// jednym przełącznikiem - każda funkcja odpowiada wtedy „nieaktywne", więc
+// banery, modale i koszyk nie obiecują rabatu, którego CRM już nie naliczy.
+export const SEASONAL_PROMO_ENABLED = false;
+
+/** Jedno źródło nazwy i haseł promocji ilościowej dla pasków, banerów i FAQ.
+ * Sama wysokość rabatu jest w CRM (admin_automations.shop_bundle_discounts)
+ * i trafia do koszyka przez homepage_public - liczby tu są tylko do treści. */
+export const QTY_PROMO = {
+  name: "CAŁY DOM",
+  percent: 30,
+  fromQty: 2,
+  /** Regulamin promocji - strona prawna w CMS sklepu. */
+  rulesHref: "/legal/promocja-caly-dom",
+  /** Jedno zdanie do pasków i banerów - to samo wszędzie. */
+  tagline: "pierwsze okno w cenie regularnej, każde kolejne -30 %",
+} as const;
+
 const PROMO_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 dni
 
 // "Kup w ciągu 24h albo rabat przepada" - a *separate*, shorter marketing
@@ -76,6 +98,7 @@ function writePromoActivatedAtCookie(ms: number): void {
  * activatePromoCode()). Cookie first, localStorage as the same belt-and-
  * suspenders fallback isPromoActive() already uses. */
 export function getPromoActivatedAt(): number | null {
+  if (!SEASONAL_PROMO_ENABLED) return null;
   const cookieVal = readPromoActivatedAtCookie();
   if (cookieVal !== null) return cookieVal;
   try {
@@ -132,6 +155,7 @@ export function isPromoDeadlineExpired(): boolean {
  * never later, so re-opening an old link can't extend an already-running
  * countdown past what the server actually enforces. */
 export function syncPromoDeadlineFromServer(deadlineAtMs: number): void {
+  if (!SEASONAL_PROMO_ENABLED) return;
   if (!Number.isFinite(deadlineAtMs) || deadlineAtMs <= Date.now()) return;
   const activatedAtMs = deadlineAtMs - PROMO_DEADLINE_WINDOW_HOURS * 60 * 60 * 1000;
   const current = getPromoActivatedAt();
@@ -179,6 +203,7 @@ function markPromoRenewedOnThisDevice(): void {
 }
 
 export function renewPromoActivationFromServer(deadlineAtMs: number): boolean {
+  if (!SEASONAL_PROMO_ENABLED) return false;
   if (!Number.isFinite(deadlineAtMs) || deadlineAtMs <= Date.now()) return false;
   markPromoRenewedOnThisDevice();
   const activatedAtMs = deadlineAtMs - PROMO_DEADLINE_WINDOW_HOURS * 60 * 60 * 1000;
@@ -204,6 +229,7 @@ export function renewPromoActivationFromServer(deadlineAtMs: number): boolean {
 const PROMO_FROZEN_UNTIL_KEY = "keika_shop_promo_frozen_until";
 
 export function freezePromoDeadlineFromServer(deadlineAtMs: number): boolean {
+  if (!SEASONAL_PROMO_ENABLED) return false;
   if (!Number.isFinite(deadlineAtMs) || deadlineAtMs <= Date.now()) return false;
   const activatedAtMs = deadlineAtMs - PROMO_DEADLINE_WINDOW_HOURS * 60 * 60 * 1000;
   writePromoCookie(PROMO_CODE);
@@ -246,6 +272,7 @@ const PROMO_PREVIEW_CACHE_KEY = "keika_shop_promo_preview";
  * trakcie wizyty, więc miejsca, które muszą znać kwotę po rabacie "od ręki"
  * (np. raportowanie koszyka do CRM), nie muszą czekać na fetchPromoPreview(). */
 export function readCachedPromoPreview(): PromoPreview | null {
+  if (!SEASONAL_PROMO_ENABLED) return null;
   try {
     const raw = window.sessionStorage.getItem(PROMO_PREVIEW_CACHE_KEY);
     if (!raw) return null;
@@ -265,6 +292,7 @@ function cachePromoPreview(preview: PromoPreview | null): void {
 }
 
 export function isPromoActive(code: string = PROMO_CODE): boolean {
+  if (!SEASONAL_PROMO_ENABLED) return false;
   if (readPromoCookie() === code) return true;
   try {
     return window.localStorage.getItem(ACTIVE_PROMO_STORAGE_KEY) === code;
@@ -278,6 +306,7 @@ export function isPromoActive(code: string = PROMO_CODE): boolean {
  * tick - storage alone only fires a `storage` event in OTHER tabs/windows,
  * never the tab that made the write. */
 export function activatePromoCode(code: string = PROMO_CODE): void {
+  if (!SEASONAL_PROMO_ENABLED) return;
   writePromoCookie(code);
   try {
     window.localStorage.setItem(ACTIVE_PROMO_STORAGE_KEY, code);
@@ -307,6 +336,7 @@ export function activatePromoCode(code: string = PROMO_CODE): void {
  * code (error-swallowing by design - a broken promo preview must never
  * block the page it's decorating). */
 export async function fetchPromoPreview(subtotal: number, code: string = PROMO_CODE): Promise<PromoPreview | null> {
+  if (!SEASONAL_PROMO_ENABLED) return null;
   if (!Number.isFinite(subtotal) || subtotal <= 0) return null;
   try {
     const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/discount_code_check.php", {

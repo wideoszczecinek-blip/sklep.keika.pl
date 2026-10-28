@@ -334,9 +334,9 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
       "Profile są aluminiowe, tkanina nie ma części ruchomych. Jedyne, co z czasem może się poluzować, to napięcie sznurków — regulujesz je samodzielnie supełkiem pod górną listwą, bez narzędzi. Uchwyty bezinwazyjne można zdjąć i założyć ponownie, na przykład do mycia okna.",
   },
   {
-    question: "Czy kod SEZON20 działa na plisy?",
+    question: "Na czym polega promocja CAŁY DOM?",
     answer:
-      "Tak. SEZON20 obniża cenę plis o 20 %. Aktywuj go na tej stronie albo wpisz w koszyku — rabat zobaczysz w podsumowaniu zamówienia.",
+      "Pierwszą plisę w zamówieniu kupujesz w cenie regularnej, a każda kolejna jest o 30 % tańsza. Rabat liczy się sam w koszyku — bez kodu. Jeśli masz kilka okien w różnych wymiarach, dodaj je wszystkie do jednego zamówienia. Zasady promocji są w regulaminie (link w stopce).",
   },
   {
     question: "Jaka jest gwarancja i czy mogę zwrócić plisę?",

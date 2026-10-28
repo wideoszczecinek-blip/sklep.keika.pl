@@ -18,7 +18,7 @@ import { buildRescuePosition, hasSeenRescueModal, isRescueDismissedForGood, mark
 import { trackShopStep } from "@/lib/track-step";
 import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configurator-state";
 import { ASSISTANT_APPLY_EVENT, takePendingAssistantApply, type AssistantApply } from "@/lib/assistant";
-import { activatePromoCode, applyPromoToPrice, getPromoRemainingMs, isPromoActive, type PromoPreview } from "@/lib/promo";
+import { SEASONAL_PROMO_ENABLED, activatePromoCode, applyPromoToPrice, getPromoRemainingMs, isPromoActive, type PromoPreview } from "@/lib/promo";
 import { ensurePromoQuoteCode, hasSavedPromoLink } from "@/lib/promo-save";
 import PlisyFabricGallery from "@/features/plisy/FabricGallery";
 import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyColorCountLabel } from "@/features/plisy/CollectionVisual";
@@ -541,6 +541,9 @@ export default function ConfiguratorPanel({
   function openRescueModalOnce() {
     if (!hasWindowInfo || totalPrice === null) return;
     if (hasSeenRescueModal() || isRescueDismissedForGood()) return;
+    // Modal wyjścia jest zbudowany wokół kodu SEZON20 - bez promocji z kodem
+    // (lib/promo.ts) nie ma czego ratować.
+    if (!SEASONAL_PROMO_ENABLED) return;
     const wasPromoActive = isPromoActive();
     if (wasPromoActive && hasSavedPromoLink()) {
       markRescueModalShown();

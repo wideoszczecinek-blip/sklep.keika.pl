@@ -9,7 +9,6 @@
 // via onSubmit) changed.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import PromoCountdownBanner from "@/app/components/promo-countdown-banner";
 import PromoSaveModal from "@/app/components/promo-save-modal";
 import SaveShareWidget from "@/app/components/save-share-widget";
 import { optimizeImageUrl } from "@/lib/image-optim";
@@ -27,6 +26,8 @@ import { ASSISTANT_APPLY_EVENT, takePendingAssistantApply, type AssistantApply }
 import {
   PROMO_ACTIVATED_EVENT,
   PROMO_CODE,
+  QTY_PROMO,
+  SEASONAL_PROMO_ENABLED,
   activatePromoCode,
   applyPromoToPrice,
   fetchPromoPreview,
@@ -277,6 +278,9 @@ export default function ConfiguratorPanel({
     // single most-complained-about part of the page.
     if (!hasValidDimensions) return;
     if (hasSeenRescueModal() || isRescueDismissedForGood()) return;
+    // Modal wyjścia jest zbudowany wokół kodu SEZON20 („włączyliśmy rabat",
+    // odliczanie, zapis linku) - bez promocji z kodem nie ma czego ratować.
+    if (!SEASONAL_PROMO_ENABLED) return;
 
     const wasPromoActive = isPromoActive();
     if (wasPromoActive && hasSavedPromoLink()) {
@@ -1147,43 +1151,19 @@ export default function ConfiguratorPanel({
                   </div>
                 </div>
               ) : null}
-              {promoPreview ? (
-                <PromoCountdownBanner code={PROMO_CODE} productSlug="moskitiery-ramkowe">
-                  {(promo) => (
-                    <div className={`hero-product-promo-banner ${promoActive ? "is-active" : ""}`}>
-                      {promoActive ? (
-                        <>
-                          <span className="hero-product-promo-banner-text">
-                            {promo ? (
-                              <>
-                                ✓ Kod <strong>{PROMO_CODE}</strong> aktywny - ważny jeszcze <strong>{promo.remainingText}</strong>.
-                              </>
-                            ) : (
-                              <>
-                                ✓ Kod <strong>{PROMO_CODE}</strong> aktywny - rabat naliczy się automatycznie w koszyku.
-                              </>
-                            )}
-                          </span>
-                          {promo ? (
-                            <button type="button" className="hero-product-promo-banner-cta" onClick={promo.openModal}>
-                              Zapisz link
-                            </button>
-                          ) : null}
-                        </>
-                      ) : (
-                        <>
-                          <span className="hero-product-promo-banner-text">
-                            🔥 <strong>-20%</strong> z kodem <strong>{PROMO_CODE}</strong>
-                          </span>
-                          <button type="button" className="hero-product-promo-banner-cta" onClick={activatePromo}>
-                            Aktywuj rabat
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </PromoCountdownBanner>
-              ) : null}
+              {/* Promocja ilościowa „CAŁY DOM" (29.10.2026, w miejsce banera
+                  SEZON20 z aktywacją i odliczaniem): stała linia przy cenie,
+                  rabat nalicza koszyk z reguł CRM (lib/bundle-discount.ts).
+                  Baner z kodem (promoPreview/promoActive wyżej) wraca tylko po
+                  włączeniu SEASONAL_PROMO_ENABLED w lib/promo.ts. */}
+              <div className="hero-product-promo-banner is-active">
+                <span className="hero-product-promo-banner-text">
+                  🏠 Promocja <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.tagline}. Naliczy się w koszyku.
+                </span>
+                <a className="hero-product-promo-banner-cta" href={QTY_PROMO.rulesHref}>
+                  Zasady
+                </a>
+              </div>
               {missingChoice ? (
                 <p className="mosk-missing-choice" role="alert">
                   {missingChoice === "mesh"

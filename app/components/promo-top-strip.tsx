@@ -31,7 +31,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { crmGetJson } from "@/lib/crm-get";
 import { CRM_PUBLIC_BASE } from "./payment-methods";
 import PromoCountdownBanner from "./promo-countdown-banner";
-import { PROMO_CODE } from "@/lib/promo";
+import { PROMO_CODE, QTY_PROMO } from "@/lib/promo";
 import { PERSONAL_CODE_EVENT, formatPersonalCodeDate, formatPersonalCodeRemaining, getPersonalCode, type PersonalCode } from "@/lib/personal-code";
 import { EXPRESS_CUTOFF, EXPRESS_ENABLED, EXPRESS_FEE_AMOUNT, formatCutoff } from "@/lib/express";
 
@@ -269,8 +269,32 @@ export default function PromoTopStrip({
                 ),
               }
             : null;
+        // Promocja ilościowa „CAŁY DOM" (od 29.10.2026, w miejsce SEZON20):
+        // stały slajd bez odliczania - rabat nalicza koszyk z reguł CRM, więc
+        // nie ma czego aktywować ani zapisywać. Gałąź `promo` niżej zostaje
+        // na wypadek powrotu promocji z kodem (lib/promo.ts).
+        const qtyPromoSlide: Slide = {
+          key: "caly-dom",
+          icon: "🏠",
+          badge: `-${QTY_PROMO.percent}%`,
+          content: (
+            <>
+              <span className="promo-strip-wide">
+                Promocja <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.tagline} ·{" "}
+                <a href={QTY_PROMO.rulesHref} className="promo-strip-link">
+                  zasady
+                </a>
+              </span>
+              <span className="promo-strip-narrow">
+                <strong>{QTY_PROMO.name}</strong>: każde kolejne okno -{QTY_PROMO.percent} %
+              </span>
+            </>
+          ),
+        };
         const promoSlide: Slide | null = personalSlide
           ? personalSlide
+          : !promo
+          ? qtyPromoSlide
           : promo
           ? {
               key: "promo",

@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { runCartExitGate } from "@/lib/escape-offer";
 import { getCartEmailArm, hasCartEmailSaved } from "@/lib/promo-save";
+import { SEASONAL_PROMO_ENABLED } from "@/lib/promo";
 import { trackShopStep } from "@/lib/track-step";
 import { isAssistantSpeaking } from "@/lib/assistant";
 
@@ -23,6 +24,9 @@ export type CartEmailTrigger = "cart_idle" | "cart_exit" | "cart_tab_return" | "
 
 export function cartEmailOfferEligible(): boolean {
   if (typeof window === "undefined") return false;
+  // „Zamrozimy cenę na 7 dni" przedłużało termin kodu SEZON20 - bez promocji
+  // z kodem (lib/promo.ts) nie ma czego zamrażać, więc pasek się nie pokazuje.
+  if (!SEASONAL_PROMO_ENABLED) return false;
   if (getCartEmailArm() !== "show") return false;
   if (hasCartEmailSaved()) return false;
   try {
