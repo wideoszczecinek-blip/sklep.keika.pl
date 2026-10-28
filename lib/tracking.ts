@@ -644,7 +644,12 @@ async function relayToCapi(
       fbclid: attr.fbclid || "",
       external_id: getVisitorId(),
       client_user_agent: typeof navigator !== "undefined" ? navigator.userAgent || "" : "",
-      ...(email || phone ? { user_data: { ...(email ? { em: email } : {}), ...(phone ? { ph: phone } : {}) } } : {}),
+      // E-mail/telefon tylko przy faktycznej zgodzie z paska cookies
+      // (hasAnalyticsConsent) - niezależnie od TRACK_EVERYONE. Dane osobowe
+      // do celów reklamowych bez zgody to osobna decyzja prawna (MASTER, 28.10).
+      ...((email || phone) && hasAnalyticsConsent()
+        ? { user_data: { ...(email ? { em: email } : {}), ...(phone ? { ph: phone } : {}) } }
+        : {}),
       custom_data: params,
     };
     await fetch(cfg.capiUrl, {
