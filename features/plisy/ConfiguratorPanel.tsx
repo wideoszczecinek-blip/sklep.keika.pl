@@ -61,6 +61,21 @@ import {
 
 type ZoomPreview = { title: string; urls: string[]; index: number };
 
+// Wybór domyślny (Z01, 2026-10-28): „Dodaj do koszyka” ma być aktywny od
+// razu po wejściu do konfiguratora z wpisanym wymiarem. Klient widzi te
+// opcje jako wybrane (krok z ✓ i „Zmień”) i może je zmienić. Ustawiane
+// dopiero po wczytaniu profilu z CRM i tylko w pustych polach - nie
+// nadpisują wyboru z koszyka, zapisanego szkicu, linku ani asystenta.
+// Pusty identyfikator = pierwsza pozycja z CRM (ta sama, z której liczy
+// szybka wycena - plisyQuickPrice bierze hardware[0]).
+const DEFAULT_PLISY_HARDWARE_ID = "";
+/** Kolekcja szukana po nazwie; brak takiej w CRM = pierwsza kolekcja. */
+const DEFAULT_PLISY_FABRIC_GROUP_LABEL = "Klasyczne";
+/** Pusty = pierwsza tkanina wybranej domyślnie kolekcji. */
+const DEFAULT_PLISY_FABRIC_ID = "";
+/** Kolor uchwytów montażu bezinwazyjnego (PLISY_BRACKET_COLORS). */
+const DEFAULT_PLISY_BRACKET_ID = "bialy";
+
 // One line of the customer's set: same mount/hardware/fabric (chosen once,
 // shared by the whole set) but its own width/height/qty - see the
 // "positions" state below for how these get built up before a single final
@@ -506,6 +521,39 @@ export default function ConfiguratorPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
+  // Domyślny kolor mechanizmu i kolekcja (DEFAULT_PLISY_* u góry
+  // pliku) - raz, po wczytaniu profilu, tylko w pustych albo nieaktualnych
+  // polach. Edycja z koszyka po samych nazwach (efekt wyżej) jest pomijana:
+  // jej wartości rozwiązują się dopiero w tym i następnym renderze. Bez
+  // trackShopStep - to nie jest wybór klienta.
+  const defaultsAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!profile || defaultsAppliedRef.current) return;
+    defaultsAppliedRef.current = true;
+    if (initialValues?.hardwareLabel || initialValues?.fabricGroupLabel || initialValues?.fabricLabel) return;
+    if (!profile.hardware.some((option) => option.id === selectedHardwareId)) {
+      const hardware =
+        profile.hardware.find((option) => option.id === DEFAULT_PLISY_HARDWARE_ID) || profile.hardware[0];
+      if (hardware) {
+        setSelectedHardwareId(hardware.id);
+        setStepOneChosen(true);
+        setStepOneCollapsed(true);
+      }
+    }
+    if (!profile.fabricGroups.some((entry) => entry.id === selectedFabricGroupId)) {
+      const group =
+        profile.fabricGroups.find(
+          (entry) => entry.label.trim().toLowerCase() === DEFAULT_PLISY_FABRIC_GROUP_LABEL.toLowerCase(),
+        ) ||
+        profile.fabricGroups[0];
+      if (group) {
+        setSelectedFabricGroupId(group.id);
+        setStepTwoCollapsed(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
+
   const selectedMount = useMemo(
     () => profile?.mountOptions.find((option) => option.id === selectedMountId) || null,
     [profile, selectedMountId],
@@ -517,6 +565,16 @@ export default function ConfiguratorPanel({
   const bracketRequired = isPlisyMountNonInvasive(selectedMount?.id || selectedMount?.label);
   const selectedBracket = bracketRequired ? PLISY_BRACKET_COLORS.find((entry) => entry.id === selectedBracketId) || null : null;
   const bracketChosen = !bracketRequired || Boolean(selectedBracket);
+  // Montaż bezinwazyjny bez wybranych uchwytów (świeża konfiguracja albo
+  // przełączenie montażu) dostaje domyślny kolor - krok zwinięty z ✓ i
+  // „Zmień”, jak pozostałe wybrane kroki. Bez trackShopStep.
+  useEffect(() => {
+    if (!bracketRequired || selectedBracketId) return;
+    if (!PLISY_BRACKET_COLORS.some((entry) => entry.id === DEFAULT_PLISY_BRACKET_ID)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedBracketId(DEFAULT_PLISY_BRACKET_ID);
+    setStepBracketCollapsed(true);
+  }, [bracketRequired, selectedBracketId]);
   const stepBracketRef = useRef<HTMLButtonElement | null>(null);
   // Later step numbers shift by one while the bracket sub-step is showing.
   const stepShift = bracketRequired ? 1 : 0;
@@ -560,6 +618,23 @@ export default function ConfiguratorPanel({
     setStepThreeCollapsed(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFabricGroupId, swatchesForGroup, selectedFabricId]);
+
+  // Domyślna tkanina (DEFAULT_PLISY_FABRIC_ID) - raz, gdy pierwszy raz znamy
+  // próbniki kolekcji (domyślnej albo przywróconej). Stoi PO efekcie wyżej,
+  // żeby nieaktualne id ze szkicu najpierw się wyczyściło, a potem dostało
+  // wartość domyślną. Późniejsza zmiana kolekcji przez klienta nie wybiera
+  // już tkaniny za niego. Bez trackShopStep.
+  const fabricDefaultAppliedRef = useRef(false);
+  useEffect(() => {
+    if (fabricDefaultAppliedRef.current || !profile || swatchesForGroup.length === 0) return;
+    fabricDefaultAppliedRef.current = true;
+    if (initialValues?.hardwareLabel || initialValues?.fabricGroupLabel || initialValues?.fabricLabel) return;
+    if (swatchesForGroup.some((swatch) => swatch.id === selectedFabricId)) return;
+    const swatch = swatchesForGroup.find((entry) => entry.id === DEFAULT_PLISY_FABRIC_ID) || swatchesForGroup[0];
+    setSelectedFabricId(swatch.id);
+    setStepThreeCollapsed(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swatchesForGroup]);
 
   const widthNum = inputToMm(width, dimensionUnit);
   const heightNum = inputToMm(height, dimensionUnit);
