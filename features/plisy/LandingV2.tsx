@@ -9,7 +9,7 @@
 // komponenty w nowej kolejności - patrz app/home-client.tsx, gałąź plisy.
 import { useEffect, useRef, useState } from "react";
 import { crmGetJson } from "@/lib/crm-get";
-import { PROMO_CODE, QTY_PROMO } from "@/lib/promo";
+import { PROMO_CODE, QTY_PROMO, SEASONAL_PROMO_ENABLED } from "@/lib/promo";
 import { trackShopStep } from "@/lib/track-step";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 import { PLISY_HERO_PHOTOS } from "./gallery";
@@ -275,6 +275,7 @@ export function PlisyStickyBar({
   widthCm,
   heightCm,
   price,
+  regularPrice = null,
   bottomInset,
   onClick,
 }: {
@@ -282,9 +283,14 @@ export function PlisyStickyBar({
   widthCm: number;
   heightCm: number;
   price: number | null;
+  /** Cena przed rabatem z kodem. Dopisek „z kodem …” tylko gdy promocja
+   * sezonowa jest włączona i price jest od niej faktycznie niższa - bez
+   * tego (np. SEASONAL_PROMO_ENABLED=false) pasek nie obiecuje kodu. */
+  regularPrice?: number | null;
   bottomInset: number;
   onClick: () => void;
 }) {
+  const discounted = SEASONAL_PROMO_ENABLED && price !== null && regularPrice !== null && price < regularPrice;
   return (
     <div
       className={`plv2-bar ${visible ? "is-visible" : ""}`}
@@ -294,7 +300,7 @@ export function PlisyStickyBar({
       <div className="plv2-bar-info">
         <b>{price !== null ? zlPlain(price) : "Twoje okno"}</b>
         <small>
-          {String(widthCm).replace(".", ",")} × {String(heightCm).replace(".", ",")} cm{price !== null ? ` · z kodem ${PROMO_CODE}` : ""}
+          {String(widthCm).replace(".", ",")} × {String(heightCm).replace(".", ",")} cm{discounted ? ` · z kodem ${PROMO_CODE}` : ""}
         </small>
       </div>
       <button

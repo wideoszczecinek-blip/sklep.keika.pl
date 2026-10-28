@@ -58,6 +58,17 @@ import {
 type ZoomPreview = { title: string; urls: string[]; index: number };
 
 const MANUAL_MODEL_LABEL = "Wymiar własny";
+
+// Wybór domyślny (Z01, 2026-10-28): po wskazaniu okna „Dodaj do koszyka”
+// jest aktywny od razu - klient widzi te opcje jako wybrane (✓ i „Zmień”)
+// i może je zmienić. Ustawiane tylko w pustych polach, nigdy ponad wybór z
+// koszyka, szkicu, szybkiej wyceny ani asystenta; bez trackShopStep.
+/** Kolor osprzętu (PD_HARDWARE w ./shared). */
+const DEFAULT_PD_HARDWARE_ID = "bialy";
+/** Kolekcja szukana po nazwie; brak takiej w CRM = pierwsza kolekcja. */
+const DEFAULT_PD_FABRIC_GROUP_LABEL = "Klasyczne";
+/** Pusty = pierwsza tkanina wybranej kolekcji. */
+const DEFAULT_PD_FABRIC_ID = "";
 const MAX_RECOGNITIONS_PER_SESSION = 5;
 
 const DRAFT_STORAGE_KEY = "keika_pd_draft_v1";
@@ -159,9 +170,16 @@ export default function ConfiguratorPanel({
   const [draftSeed] = useState<PdDraft | null>(() => (isCartEdit ? null : readDraft()));
   const seed = { ...(draftSeed ?? {}), ...(initialValues ?? {}) };
 
-  const [selectedHardwareId, setSelectedHardwareId] = useState(() => seed.hardwareId || pdHardwareByLabel(initialValues?.hardwareLabel)?.id || "");
-  const [stepOneChosen, setStepOneChosen] = useState(() => Boolean(seed.hardwareId || pdHardwareByLabel(initialValues?.hardwareLabel)));
-  const [stepOneCollapsed, setStepOneCollapsed] = useState(() => Boolean(seed.hardwareId || pdHardwareByLabel(initialValues?.hardwareLabel)));
+  // Osprzęt jest statyczny (PD_HARDWARE), więc domyślny wchodzi od razu w
+  // inicjalizatorze - chyba że edycja z koszyka przyniosła nazwę koloru.
+  const [selectedHardwareId, setSelectedHardwareId] = useState(() => {
+    const known = pdHardwareById(seed.hardwareId || "") || pdHardwareByLabel(initialValues?.hardwareLabel);
+    if (known) return known.id;
+    if (initialValues?.hardwareLabel) return "";
+    return pdHardwareById(DEFAULT_PD_HARDWARE_ID)?.id || PD_HARDWARE[0]?.id || "";
+  });
+  const [stepOneChosen, setStepOneChosen] = useState(() => Boolean(selectedHardwareId));
+  const [stepOneCollapsed, setStepOneCollapsed] = useState(() => Boolean(selectedHardwareId));
   const [selectedFabricGroupId, setSelectedFabricGroupId] = useState(seed.fabricGroupId || "");
   const [stepTwoCollapsed, setStepTwoCollapsed] = useState(Boolean(seed.fabricGroupId));
   const [selectedFabricId, setSelectedFabricId] = useState(seed.fabricId || "");
@@ -208,19 +226,43 @@ export default function ConfiguratorPanel({
         setStepTwoCollapsed(true);
       }
     }
+    let fabricId = selectedFabricId;
     if (!selectedFabricId && initialValues?.fabricLabel) {
       const groups = groupId ? profile.fabricGroups.filter((group) => group.id === groupId) : profile.fabricGroups;
       for (const group of groups) {
         const hit = group.swatches.find((swatch) => swatch.label.toLowerCase() === initialValues.fabricLabel!.toLowerCase());
         if (hit) {
+          fabricId = hit.id;
           setSelectedFabricId(hit.id);
           setStepThreeCollapsed(true);
           if (!groupId) {
+            groupId = group.id;
             setSelectedFabricGroupId(group.id);
             setStepTwoCollapsed(true);
           }
           break;
         }
+      }
+    }
+    // Wartości domyślne (DEFAULT_PD_* u góry pliku) - tylko w pustych albo
+    // nieaktualnych polach i nie przy edycji z koszyka po nazwach.
+    if (initialValues?.fabricGroupLabel || initialValues?.fabricLabel) return;
+    let group = profile.fabricGroups.find((entry) => entry.id === groupId);
+    if (!group) {
+      group =
+        profile.fabricGroups.find(
+          (entry) => entry.label.trim().toLowerCase() === DEFAULT_PD_FABRIC_GROUP_LABEL.toLowerCase(),
+        ) || profile.fabricGroups[0];
+      if (group) {
+        setSelectedFabricGroupId(group.id);
+        setStepTwoCollapsed(true);
+      }
+    }
+    if (group && !group.swatches.some((swatch) => swatch.id === fabricId)) {
+      const swatch = group.swatches.find((entry) => entry.id === DEFAULT_PD_FABRIC_ID) || group.swatches[0];
+      if (swatch) {
+        setSelectedFabricId(swatch.id);
+        setStepThreeCollapsed(true);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

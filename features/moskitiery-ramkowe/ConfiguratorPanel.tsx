@@ -70,6 +70,15 @@ type ZoomPreview = { title: string; urls: string[]; index: number };
 const DIMENSION_UNIT_STORAGE_KEY = "keika_dimension_unit_v1";
 type DimensionUnit = "mm" | "cm";
 
+// Wybór domyślny (Z01, 2026-10-28): pola wymiarów są widoczne od razu, a
+// „Dodaj do koszyka” aktywny po wpisaniu wymiaru - klient widzi te kolory
+// jako wybrane (✓ i „Zmień”) i może je zmienić. Tylko gdy wejście (koszyk,
+// ostatnia konfiguracja) nie przyniosło własnego wyboru; bez trackShopStep.
+/** Kolor profilu (ALLEGRO_MOSKITIERY_HARDWARE w ./shared). */
+const DEFAULT_MOSK_HARDWARE_ID = "bialy";
+/** Kolor siatki (MESH_OPTIONS w ./shared) - szara wzmocniona. */
+const DEFAULT_MOSK_MESH_ID = "grey";
+
 function formatCm(mm: number): string {
   return (mm / 10).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
 }
@@ -114,11 +123,17 @@ export default function ConfiguratorPanel({
   const moskPricePerMbStandard = applyPriceAdjustment(MOSKITIERY_RAMKOWE_PRICE_PER_MB_STANDARD, priceAdjustmentPercent);
   const hardwareOptions = ALLEGRO_MOSKITIERY_HARDWARE;
 
-  const [selectedHardwareId, setSelectedHardwareId] = useState(initialValues?.hardwareId || "");
-  const [stepOneChosen, setStepOneChosen] = useState(Boolean(initialValues?.hardwareId));
-  const [stepOneCollapsed, setStepOneCollapsed] = useState(Boolean(initialValues?.hardwareId));
-  const [stepTwoCollapsed, setStepTwoCollapsed] = useState(Boolean(initialValues?.meshId));
-  const [selectedMeshId, setSelectedMeshId] = useState(initialValues?.meshId || "");
+  const [selectedHardwareId, setSelectedHardwareId] = useState(() => {
+    const wanted = initialValues?.hardwareId || DEFAULT_MOSK_HARDWARE_ID;
+    return (hardwareOptions.find((option) => option.id === wanted) || hardwareOptions[0])?.id || "";
+  });
+  const [stepOneChosen, setStepOneChosen] = useState(() => Boolean(selectedHardwareId));
+  const [stepOneCollapsed, setStepOneCollapsed] = useState(() => Boolean(selectedHardwareId));
+  const [selectedMeshId, setSelectedMeshId] = useState(() => {
+    const wanted = initialValues?.meshId || DEFAULT_MOSK_MESH_ID;
+    return (MESH_OPTIONS.find((option) => option.id === wanted) || MESH_OPTIONS[0])?.id || "";
+  });
+  const [stepTwoCollapsed, setStepTwoCollapsed] = useState(() => Boolean(selectedMeshId));
   const [dimensionWidth, setDimensionWidth] = useState(initialValues?.widthMm ? String(initialValues.widthMm) : "");
   const [dimensionHeight, setDimensionHeight] = useState(initialValues?.heightMm ? String(initialValues.heightMm) : "");
   const [dimensionQuantity, setDimensionQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
@@ -818,8 +833,9 @@ export default function ConfiguratorPanel({
               </div>
             </div>
           </section>
-          {meshChosen ? (
-            <>
+          {/* Wymiary widoczne od razu (Z01) - kolory mają wartości domyślne,
+              a brak któregoś i tak łapie bezpiecznik w handleSubmit. */}
+          <>
               <p ref={stepThreeRef} className="hero-product-config-step-title hero-product-config-step-title--muted">
                 <span className={`hero-product-step-check ${hasValidDimensions ? "" : "is-muted"}`} aria-hidden="true">
                   {hasValidDimensions ? "✓" : "3"}
@@ -935,8 +951,7 @@ export default function ConfiguratorPanel({
                   zł za przesyłkę dłużycową (zaakceptowano).
                 </p>
               ) : null}
-            </>
-          ) : null}
+          </>
           {hasValidDimensions ? (
             <div className="hero-product-mini-summary is-revealed">
               <h3>Moskitiera okienna</h3>
