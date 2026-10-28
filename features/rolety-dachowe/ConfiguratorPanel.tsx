@@ -57,6 +57,18 @@ const PRODUCT_LABEL = "Rolety dachowe";
 const MANUAL_MODEL_LABEL = "Wymiar własny";
 const MAX_RECOGNITIONS_PER_SESSION = 5;
 
+// Wybór domyślny (Z01, 2026-10-28): po wskazaniu okna „Dodaj do koszyka”
+// jest aktywny od razu - klient widzi te opcje jako wybrane (✓ i „Zmień”)
+// i może je zmienić. Ustawiane po wczytaniu profilu, tylko w pustych albo
+// nieaktualnych polach - nigdy ponad wybór z koszyka, szkicu, szybkiej
+// wyceny ani asystenta; bez trackShopStep.
+/** Kolor kasety i prowadnic (ROLETY_DACHOWE_HARDWARE w ./shared). */
+const DEFAULT_RD_HARDWARE_ID = "bialy";
+/** Rodzaj materiału: „Półprzepuszczalny” = tkaniny Deko. */
+const DEFAULT_RD_MATERIAL_TYPE_ID = "polprzepuszczalny";
+/** Pusty = pierwszy kolor wybranego rodzaju materiału (Deko 01). */
+const DEFAULT_RD_FABRIC_ID = "";
+
 // Steps 1-3 (and the last window) survive a remount and a return visit for a
 // week - the customer who left to photograph the nameplate finds the colours
 // as picked. Never read for a /koszyk edit (it carries its own values).
@@ -235,6 +247,39 @@ export default function ConfiguratorPanel({
       if (hit) {
         setSelectedMaterialTypeId(hit.id);
         setStepTwoCollapsed(true);
+      }
+    }
+    // Wartości domyślne (DEFAULT_RD_* u góry pliku) - nie przy edycji z
+    // koszyka po nazwach (te rozwiązują się wyżej).
+    if (initialValues?.hardwareLabel || initialValues?.materialTypeLabel || initialValues?.fabricLabel) return;
+    if (!profile.hardware.some((option) => option.id === selectedHardwareId)) {
+      const hardware = profile.hardware.find((option) => option.id === DEFAULT_RD_HARDWARE_ID) || profile.hardware[0];
+      if (hardware) {
+        setSelectedHardwareId(hardware.id);
+        setStepOneChosen(true);
+        setStepOneCollapsed(true);
+      }
+    }
+    // Kolor przywrócony bez rodzaju materiału wyznacza rodzaj (jak wyżej).
+    const restoredFabric = profile.fabrics.find((option) => option.id === selectedFabricId) || null;
+    let materialTypeId = selectedMaterialTypeId;
+    if (!profile.materialTypes.some((option) => option.id === materialTypeId)) {
+      const material =
+        profile.materialTypes.find((option) => option.id === restoredFabric?.materialTypeId) ||
+        profile.materialTypes.find((option) => option.id === DEFAULT_RD_MATERIAL_TYPE_ID) ||
+        profile.materialTypes[0];
+      if (material) {
+        materialTypeId = material.id;
+        setSelectedMaterialTypeId(material.id);
+        setStepTwoCollapsed(true);
+      }
+    }
+    if (materialTypeId && restoredFabric?.materialTypeId !== materialTypeId) {
+      const fabrics = profile.fabrics.filter((option) => option.materialTypeId === materialTypeId);
+      const fabric = fabrics.find((option) => option.id === DEFAULT_RD_FABRIC_ID) || fabrics[0];
+      if (fabric) {
+        setSelectedFabricId(fabric.id);
+        setStepThreeCollapsed(true);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

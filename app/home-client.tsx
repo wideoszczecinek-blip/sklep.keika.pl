@@ -663,6 +663,13 @@ const GENERIC_INSTRUCTION_STEPS: ProductInstructionStep[] = [
 ];
 
 const MOSKITIERY_RAMKOWE_INSTRUCTION_STEPS: ProductInstructionStep[] = [
+  // Krok „Pomiar” musi istnieć - przyciski „Jak mierzyć?” szukają kroku z
+  // „pomiar” w tytule; bez niego otwierał się krok o zaczepach (Z01, 2026-10-28).
+  // Treść = zasada pomiaru z lib/agent-catalog.ts (moskitiery-ramkowe.measuring).
+  {
+    title: "Pomiar okna",
+    body: "Otwórz okno i zmierz szerokość oraz wysokość światła okna od uszczelki do uszczelki. Tylko przy profilu mocno rozchodzącym się, skośnym lub zaokrąglonym dodaj 2–5 mm. Wpisz wymiary w konfiguratorze, a cenę zobaczysz od razu.",
+  },
   {
     title: "1. Sprężynowe zaczepy bez wiercenia",
     body: "Montaż odbywa się bezinwazyjnie, na zaczepach sprężynowych — bez wiercenia i bez uszkadzania ramy okna. Zaczepy mocujesz w kilku punktach na obwodzie ramy.",
@@ -5130,14 +5137,10 @@ export default function Home({
                                     <div className="allegro-review-meta">
                                       <strong>{review.maskedLogin}</strong>
                                       <span>{review.date}</span>
-                                      <span
-                                        className="allegro-review-estimated-stars"
-                                        title="Ocena szacowana na podstawie tonu treści opinii — nie jest to realna ocena gwiazdkowa pobrana z platformy (ta nie jest dostępna dla pojedynczych opinii)."
-                                      >
-                                        {"★".repeat(review.estimatedStars)}
-                                        {"☆".repeat(5 - review.estimatedStars)}
-                                        <em> (szac.)</em>
-                                      </span>
+                                      {/* Z01 (2026-10-28): bez gwiazdek „(szac.)” przy pojedynczych
+                                          opiniach - to nie była ocena wystawiona przez klienta, a dopisek
+                                          podważał wiarygodność całej sekcji. Realną ocenę pokazuje
+                                          podsumowanie z Allegro powyżej. */}
                                       {review.hasPhotos ? <span className="allegro-review-photo-tag">📷 zdjęcia klienta</span> : null}
                                     </div>
                                     <p>{review.body}</p>
@@ -6497,6 +6500,7 @@ export default function Home({
               widthCm={plisyQuickDims.widthMm / 10}
               heightCm={plisyQuickDims.heightMm / 10}
               price={plisyQuickWithPromo ?? plisyQuickRegular}
+              regularPrice={plisyQuickRegular}
               bottomInset={inAppBrowserBottomInset}
               onClick={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")}
             />

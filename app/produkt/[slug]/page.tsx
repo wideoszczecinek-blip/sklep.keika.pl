@@ -609,7 +609,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
     "Nowoczesny produkt na wymiar. Dobierz parametry, tkaninę i opcje montażu.";
   const hasDedicatedConfigurator =
     slug === "rolety-best-1" || slug.startsWith("moskitiery");
-  const configuratorHref = slug.startsWith("moskitiery") ? "/moskitiery" : hasDedicatedConfigurator ? `/konfigurator/${slug}` : "#konfigurator";
+  const configuratorHref = slug.startsWith("moskitiery") ? "/moskitiery-ramkowe" : hasDedicatedConfigurator ? `/konfigurator/${slug}` : "#konfigurator";
   const linkedFabricLibraries = useMemo(() => resolveProductFabricLibraries(config, foundProduct), [config, foundProduct]);
   const linkedMockupTemplate = useMemo(() => resolveMockupTemplate(config, foundProduct), [config, foundProduct]);
   const fabricGroups = useMemo(() => collectLibrarySwatches(linkedFabricLibraries), [linkedFabricLibraries]);
