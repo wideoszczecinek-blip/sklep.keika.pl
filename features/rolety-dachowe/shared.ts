@@ -579,6 +579,11 @@ export function roofBlindSizeLimits(profile: RoofBlindProfile | null): { maxWidt
 export const ROLETY_DACHOWE_MIN_DIMENSION_MM = 200;
 export const ROLETY_DACHOWE_MAX_DIMENSION_MM = 2300;
 
+/** Model okna, gdy klient podał same wymiary (Z01: producent i model w
+ * formularzu "Nie ma mojego okna" są opcjonalne). Trafia do koszyka i CRM
+ * zamiast pustego pola - lib/cart.ts odrzuca prośbę bez producenta i modelu. */
+export const MISSING_MODEL_UNKNOWN_LABEL = "model nieznany";
+
 export type MissingModelRequest = {
   producer: string;
   model: string;

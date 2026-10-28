@@ -29,6 +29,7 @@ import RoofBlindPreview from "./RoofBlindPreview";
 import {
   calcRoletyDachowePrice,
   fetchRoofBlindProfile,
+  MISSING_MODEL_UNKNOWN_LABEL,
   roofBlindProfileFallbackReason,
   roofBlindSizeLimits,
   type ConfiguratorInitialValues,
@@ -287,6 +288,18 @@ export default function ConfiguratorPanel({
 
   useEffect(() => {
     if (!library.length || windowChoice) return;
+    // Z01: własny wymiar z szybkiej wyceny ("Konfiguruj to okno" bez modelu
+    // z biblioteki) - od razu jako okno spoza biblioteki z wymiarami A/B;
+    // "Popraw" otwiera formularz z tymi wymiarami (model można dopisać).
+    if (!isCartEdit && initialValues?.widthMm && initialValues?.heightMm && !initialValues.windowLibraryId && !initialValues.windowQuery) {
+      setWindowChoice({
+        kind: "manual",
+        request: { producer: "", model: MISSING_MODEL_UNKNOWN_LABEL, dimensionAMm: initialValues.widthMm, dimensionBMm: initialValues.heightMm, attachmentIds: [] },
+      });
+      setWindowQuery("");
+      setStepFourCollapsed(true);
+      return;
+    }
     const wantedId = initialValues?.windowLibraryId || (isCartEdit ? 0 : draftSeed?.windowLibraryId || 0);
     if (wantedId) {
       const item = library.find((entry) => entry.id === wantedId);
@@ -413,9 +426,11 @@ export default function ConfiguratorPanel({
     ? ""
     : windowChoice.kind === "library"
       ? buildRoofWindowDisplayLabel(windowChoice.item)
-      : windowChoice.request.producer && windowChoice.request.model !== MANUAL_MODEL_LABEL
+      : windowChoice.request.model && windowChoice.request.model !== MANUAL_MODEL_LABEL && windowChoice.request.model !== MISSING_MODEL_UNKNOWN_LABEL
         ? `${windowChoice.request.producer} ${windowChoice.request.model}`.trim()
-        : MANUAL_MODEL_LABEL;
+        : windowChoice.request.producer
+          ? `${windowChoice.request.producer}, ${MISSING_MODEL_UNKNOWN_LABEL}`
+          : MANUAL_MODEL_LABEL;
   const windowCertain = windowChoice?.kind === "library" ? windowChoice.item.is_certain : false;
 
   const quantityNum = Math.max(1, Math.min(20, Number(quantity) || 1));
