@@ -32,12 +32,16 @@ export const SEASONAL_PROMO_ENABLED = false;
  * i trafia do koszyka przez homepage_public - liczby tu są tylko do treści. */
 export const QTY_PROMO = {
   name: "CAŁY DOM",
-  percent: 30,
+  /** Najwyższy próg - do plakietki „-20%". Progi: 2. sztuka -10 %, 3. i każda
+   * kolejna -20 % (właściciel 28.10.2026). */
+  percent: 20,
   fromQty: 2,
   /** Regulamin promocji - strona prawna w CMS sklepu. */
   rulesHref: "/legal/promocja-caly-dom",
   /** Jedno zdanie do pasków i banerów - to samo wszędzie. */
-  tagline: "pierwsze okno w cenie regularnej, każde kolejne -30 %",
+  tagline: "drugie okno -10 %, trzecie i każde kolejne -20 %",
+  /** Krótka wersja do wąskich pasków. */
+  short: "2. okno -10 %, 3. i kolejne -20 %",
 } as const;
 
 const PROMO_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 dni

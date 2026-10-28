@@ -286,7 +286,7 @@ export default function PromoTopStrip({
                 </a>
               </span>
               <span className="promo-strip-narrow">
-                <strong>{QTY_PROMO.name}</strong>: każde kolejne okno -{QTY_PROMO.percent} %
+                <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.short}
               </span>
             </>
           ),

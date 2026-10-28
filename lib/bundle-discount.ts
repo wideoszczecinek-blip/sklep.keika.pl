@@ -10,7 +10,12 @@
 import { useSyncExternalStore } from "react";
 import { roundMoney, type CartLineItem } from "@/lib/cart";
 
-export type BundleRule = { fromQty: number; percent: number; label: string };
+/** Progi (28.10.2026, „CAŁY DOM"): sztuka o numerze k (1 = najdroższa)
+ * dostaje procent ostatniego progu z fromQty <= k, np. [{2,10},{3,20}] =
+ * druga sztuka -10 %, trzecia i każda kolejna -20 %. fromQty/percent to
+ * pierwszy próg (zgodność ze starym kształtem). */
+export type BundleTier = { fromQty: number; percent: number };
+export type BundleRule = { fromQty: number; percent: number; tiers: BundleTier[]; label: string };
 export type BundleRules = Record<string, BundleRule>;
 
 const EMPTY: BundleRules = {};
@@ -30,18 +35,39 @@ function formatPercent(percent: number): string {
 
 /** Zasilenie z konfiguracji sklepu (homepage_public → config.bundle_discounts). */
 export function setBundleDiscountsFromConfig(config: unknown): void {
-  const raw = (config as { bundle_discounts?: Record<string, { from_qty?: unknown; percent?: unknown; label?: unknown; enabled?: unknown }> } | null)
-    ?.bundle_discounts;
+  const raw = (
+    config as {
+      bundle_discounts?: Record<
+        string,
+        { from_qty?: unknown; percent?: unknown; label?: unknown; enabled?: unknown; tiers?: unknown }
+      >;
+    } | null
+  )?.bundle_discounts;
   const next: BundleRules = {};
   if (raw && typeof raw === "object") {
     for (const [slug, rule] of Object.entries(raw)) {
       if (!rule || typeof rule !== "object") continue;
       if (rule.enabled !== undefined && Number(rule.enabled) !== 1) continue;
-      const fromQty = Math.max(2, Math.min(20, Math.round(Number(rule.from_qty) || 0)));
-      const percent = Math.max(1, Math.min(90, Number(rule.percent) || 0));
-      if (!Number.isFinite(fromQty) || !Number.isFinite(percent) || fromQty < 2 || percent <= 0) continue;
+      const tiers: BundleTier[] = [];
+      if (Array.isArray(rule.tiers)) {
+        for (const t of rule.tiers as Array<{ from_qty?: unknown; percent?: unknown }>) {
+          const tf = Math.round(Number(t?.from_qty) || 0);
+          const tp = Number(t?.percent) || 0;
+          if (tf < 2 || tf > 20 || tp < 1 || tp > 90) continue;
+          tiers.push({ fromQty: tf, percent: tp });
+        }
+      }
+      if (!tiers.length) {
+        const fromQty = Math.max(2, Math.min(20, Math.round(Number(rule.from_qty) || 0)));
+        const percent = Math.max(1, Math.min(90, Number(rule.percent) || 0));
+        if (!Number.isFinite(fromQty) || !Number.isFinite(percent) || fromQty < 2 || percent <= 0) continue;
+        tiers.push({ fromQty, percent });
+      }
+      tiers.sort((a, b) => a.fromQty - b.fromQty);
+      const fromQty = tiers[0].fromQty;
+      const percent = tiers[0].percent;
       const label = String(rule.label || "").trim() || `${fromQty}. i każda kolejna sztuka -${formatPercent(percent)} %`;
-      next[String(slug).trim().toLowerCase()] = { fromQty, percent, label };
+      next[String(slug).trim().toLowerCase()] = { fromQty, percent, tiers, label };
     }
   }
   if (JSON.stringify(next) === JSON.stringify(rules)) return;
@@ -92,18 +118,34 @@ export function calcBundleDiscount(items: CartLineItem[], rulesMap: BundleRules 
     const rule = rulesMap[slug];
     const prices = (unitPrices[slug] || []).slice().sort((a, b) => a - b);
     const n = prices.length;
-    const discounted = n - (rule.fromQty - 1);
-    if (n > 0 && discounted <= 0 && !out.hint) {
-      out.hint = { slug, missing: rule.fromQty - n, percent: rule.percent, fromQty: rule.fromQty };
+    // Podpowiedź: najbliższy próg, którego koszyk jeszcze nie osiągnął
+    // (1 szt. -> „dodaj 1, druga -10 %"; 2 szt. -> „dodaj 1, trzecia -20 %").
+    const nextTier = rule.tiers.find((t) => t.fromQty > n);
+    if (n > 0 && nextTier && !out.hint) {
+      out.hint = { slug, missing: nextTier.fromQty - n, percent: nextTier.percent, fromQty: nextTier.fromQty };
     }
-    if (discounted <= 0) continue;
-    const base = prices.slice(0, discounted).reduce((sum, price) => sum + price, 0);
-    const savings = roundMoney((base * rule.percent) / 100);
-    if (savings < 0.01) continue;
+    // Najdroższa sztuka ma numer 1 i pełną cenę; tańsze dostają próg wg
+    // numeru - ten sam algorytm co shop_bundle_discount_compute() w CRM.
+    let base = 0;
+    let savings = 0;
+    let discounted = 0;
+    let maxPercent = 0;
+    prices.forEach((price, i) => {
+      const rank = n - i;
+      let pct = 0;
+      for (const t of rule.tiers) if (rank >= t.fromQty) pct = t.percent;
+      if (pct <= 0) return;
+      base += price;
+      savings += (price * pct) / 100;
+      discounted += 1;
+      if (pct > maxPercent) maxPercent = pct;
+    });
+    savings = roundMoney(savings);
+    if (discounted <= 0 || savings < 0.01) continue;
     out.savings = roundMoney(out.savings + savings);
     out.discountedBase = roundMoney(out.discountedBase + base);
     out.units += discounted;
-    out.lines.push({ slug, units: discounted, percent: rule.percent, fromQty: rule.fromQty, savings, label: rule.label });
+    out.lines.push({ slug, units: discounted, percent: maxPercent, fromQty: rule.fromQty, savings, label: rule.label });
   }
   return out;
 }
@@ -118,5 +160,6 @@ export function bundleDiscountHintText(bundle: BundleDiscount): string {
   if (!bundle.hint) return "";
   const { missing, percent, fromQty } = bundle.hint;
   const noun = missing === 1 ? "sztukę" : missing < 5 ? "sztuki" : "sztuk";
-  return `Dodaj jeszcze ${missing} ${noun} - ${fromQty}. i każda kolejna sztuka ma -${formatPercent(percent)} %.`;
+  const ordinal = fromQty === 2 ? "druga" : fromQty === 3 ? "trzecia" : `${fromQty}.`;
+  return `Dodaj jeszcze ${missing} ${noun} - ${ordinal} sztuka ma -${formatPercent(percent)} %.`;
 }

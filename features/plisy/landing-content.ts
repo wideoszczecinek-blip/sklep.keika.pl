@@ -232,7 +232,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Ile kosztuje plisa na wymiar?",
     answer:
-      "Cena zależy od wymiaru, kolekcji tkaniny i sposobu montażu. Najmniejsza plisa 40 × 60 cm w kolekcji Klasyczne kosztuje {{cena_od}}. Dokładną cenę dla swojego okna sprawdzisz w konfiguratorze po wpisaniu wymiarów, bez rejestracji. W promocji CAŁY DOM każda kolejna plisa w zamówieniu jest o 30 % tańsza.",
+      "Cena zależy od wymiaru, kolekcji tkaniny i sposobu montażu. Najmniejsza plisa 40 × 60 cm w kolekcji Klasyczne kosztuje {{cena_od}}. Dokładną cenę dla swojego okna sprawdzisz w konfiguratorze po wpisaniu wymiarów, bez rejestracji. W promocji CAŁY DOM druga plisa w zamówieniu jest o 10 % tańsza, a trzecia i każda kolejna o 20 %.",
   },
   {
     question: "Czym plisa różni się od rolety?",
@@ -336,7 +336,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Na czym polega promocja CAŁY DOM?",
     answer:
-      "Pierwszą plisę w zamówieniu kupujesz w cenie regularnej, a każda kolejna jest o 30 % tańsza. Rabat liczy się sam w koszyku — bez kodu. Jeśli masz kilka okien w różnych wymiarach, dodaj je wszystkie do jednego zamówienia. Zasady promocji są w regulaminie (link w stopce).",
+      "Pierwszą plisę w zamówieniu kupujesz w cenie regularnej, druga jest o 10 % tańsza, a trzecia i każda kolejna o 20 %. Rabat liczy się sam w koszyku — bez kodu. Jeśli masz kilka okien w różnych wymiarach, dodaj je wszystkie do jednego zamówienia. Zasady promocji są w regulaminie (link w stopce).",
   },
   {
     question: "Jaka jest gwarancja i czy mogę zwrócić plisę?",
