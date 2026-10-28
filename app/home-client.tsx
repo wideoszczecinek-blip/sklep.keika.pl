@@ -6475,6 +6475,7 @@ export default function Home({
               widthCm={plisyQuickDims.widthMm / 10}
               heightCm={plisyQuickDims.heightMm / 10}
               price={plisyQuickWithPromo ?? plisyQuickRegular}
+              regularPrice={plisyQuickRegular}
               bottomInset={inAppBrowserBottomInset}
               onClick={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")}
             />
