@@ -15,7 +15,10 @@ import { roundMoney, type CartLineItem } from "@/lib/cart";
  * druga sztuka -10 %, trzecia i każda kolejna -20 %. fromQty/percent to
  * pierwszy próg (zgodność ze starym kształtem). */
 export type BundleTier = { fromQty: number; percent: number };
-export type BundleRule = { fromQty: number; percent: number; tiers: BundleTier[]; label: string };
+/** `group` (28.10.2026, właściciel: „rabat na całe zamówienie, produkty można
+ * łączyć"): produkty z tą samą grupą liczą się razem - plisa + moskitiera to
+ * jedno zamówienie z dwiema sztukami. Pusta grupa = produkt liczy się osobno. */
+export type BundleRule = { fromQty: number; percent: number; tiers: BundleTier[]; group: string; label: string };
 export type BundleRules = Record<string, BundleRule>;
 
 const EMPTY: BundleRules = {};
@@ -39,7 +42,7 @@ export function setBundleDiscountsFromConfig(config: unknown): void {
     config as {
       bundle_discounts?: Record<
         string,
-        { from_qty?: unknown; percent?: unknown; label?: unknown; enabled?: unknown; tiers?: unknown }
+        { from_qty?: unknown; percent?: unknown; label?: unknown; enabled?: unknown; tiers?: unknown; group?: unknown }
       >;
     } | null
   )?.bundle_discounts;
@@ -67,7 +70,8 @@ export function setBundleDiscountsFromConfig(config: unknown): void {
       const fromQty = tiers[0].fromQty;
       const percent = tiers[0].percent;
       const label = String(rule.label || "").trim() || `${fromQty}. i każda kolejna sztuka -${formatPercent(percent)} %`;
-      next[String(slug).trim().toLowerCase()] = { fromQty, percent, tiers, label };
+      const group = String(rule.group || "").trim();
+      next[String(slug).trim().toLowerCase()] = { fromQty, percent, tiers, group, label };
     }
   }
   if (JSON.stringify(next) === JSON.stringify(rules)) return;
@@ -104,18 +108,24 @@ export function calcBundleDiscount(items: CartLineItem[], rulesMap: BundleRules 
   const out: BundleDiscount = { savings: 0, discountedBase: 0, units: 0, lines: [], hint: null };
   const slugs = Object.keys(rulesMap);
   if (!slugs.length) return out;
+  // Klucz puli: grupa (sztuki różnych produktów razem) albo sam slug - ten
+  // sam podział co w shop_bundle_discount_compute() w CRM.
+  const poolKey = (slug: string) => (rulesMap[slug].group ? `grupa:${rulesMap[slug].group}` : slug);
   const unitPrices: Record<string, number[]> = {};
+  const poolRule: Record<string, BundleRule> = {};
   for (const item of items) {
     const slug = String(item.productSlug || "");
     if (!rulesMap[slug]) continue;
     const qty = Math.max(1, Math.round(item.qty || 1));
     const unit = qty > 0 ? (Number(item.total) || 0) / qty : 0;
     if (unit <= 0) continue;
-    const list = unitPrices[slug] || (unitPrices[slug] = []);
+    const key = poolKey(slug);
+    poolRule[key] = poolRule[key] || rulesMap[slug];
+    const list = unitPrices[key] || (unitPrices[key] = []);
     for (let i = 0; i < qty; i += 1) list.push(unit);
   }
-  for (const slug of slugs) {
-    const rule = rulesMap[slug];
+  for (const slug of Object.keys(unitPrices)) {
+    const rule = poolRule[slug];
     const prices = (unitPrices[slug] || []).slice().sort((a, b) => a - b);
     const n = prices.length;
     // Podpowiedź: najbliższy próg, którego koszyk jeszcze nie osiągnął
