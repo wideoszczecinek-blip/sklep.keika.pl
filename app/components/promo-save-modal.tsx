@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { trackShopStep } from "@/lib/track-step";
 import { createPortal } from "react-dom";
-import { formatPromoFrozenUntil, formatPromoRemaining } from "@/lib/promo";
+import { SEASONAL_PROMO_ENABLED, formatPromoFrozenUntil, formatPromoRemaining } from "@/lib/promo";
 import { freezeCartToEmail, savePromoContact, type PromoConsent } from "@/lib/promo-save";
 
 type Channel = "sms" | "email";
@@ -121,8 +121,8 @@ export default function PromoSaveModal({
   async function handleNativeShare() {
     try {
       await navigator.share({
-        title: "KEIKA - Twój rabat",
-        text: "Zapisałem link do sklepu z aktywnym rabatem:",
+        title: SEASONAL_PROMO_ENABLED ? "KEIKA - Twój rabat" : "KEIKA - Twoja konfiguracja",
+        text: SEASONAL_PROMO_ENABLED ? "Zapisałem link do sklepu z aktywnym rabatem:" : "Zapisałem link do mojej konfiguracji w KEIKA:",
         url: shareUrl,
       });
       trackShopStep("share_quote_link", variant, { quote_code: quoteCode || null }, quoteCode || undefined);
@@ -327,7 +327,8 @@ export default function PromoSaveModal({
             <h3>Wysłaliśmy link!</h3>
             <p>
               Sprawdź {channel === "email" ? "skrzynkę e-mail" : "SMS-y"} - link zaprowadzi Cię z powrotem tutaj
-              {variant === "measure" ? ", do instrukcji pomiaru i Twojej konfiguracji" : ""}, z rabatem wciąż naliczonym.
+              {variant === "measure" ? ", do instrukcji pomiaru i Twojej konfiguracji" : ""}
+              {SEASONAL_PROMO_ENABLED ? ", z rabatem wciąż naliczonym." : "."}
             </p>
             <button type="button" className="promo-save-modal-done-cta" onClick={onClose}>
               Zamknij
@@ -339,8 +340,9 @@ export default function PromoSaveModal({
               <>
                 <h3>Dokończ, kiedy zmierzysz okno</h3>
                 <p className="promo-save-modal-lead">
-                  Zapisz lub udostępnij link do tej konfiguracji - montaż, kolor i tkanina zostaną zapamiętane, a rabat
-                  SEZON20 będzie czekał. Wrócisz jednym kliknięciem, także z innego telefonu.
+                  Zapisz lub udostępnij link do tej konfiguracji - montaż, kolor i tkanina zostaną zapamiętane
+                  {SEASONAL_PROMO_ENABLED ? ", a rabat SEZON20 będzie czekał" : ""}. Wrócisz jednym kliknięciem, także z
+                  innego telefonu.
                 </p>
               </>
             ) : (

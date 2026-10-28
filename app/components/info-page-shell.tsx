@@ -9,7 +9,7 @@ type InfoPageShellProps = {
 };
 
 const menuLinks = [
-  { label: "Moskitiery", href: "/moskitiery" },
+  { label: "Moskitiery", href: "/moskitiery-ramkowe" },
   { label: "O nas", href: "/o-nas" },
   { label: "Moje zamówienia", href: "/moje-zamowienia" },
   { label: "Kontakt", href: "/kontakt" },

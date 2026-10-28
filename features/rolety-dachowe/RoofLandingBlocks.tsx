@@ -251,3 +251,37 @@ export function RoofLibraryTeaser({ library, onSearch }: { library: RoofWindowLi
     </section>
   );
 }
+
+/** "Roleta czy plisa?" (Z01, 2026-10-28) - krótkie różnice na obu landingach
+ * okien dachowych i link do drugiego produktu. Treść wyłącznie z opisów w
+ * landing-content.ts obu produktów. */
+export function RoofBlindVsPleated({ current }: { current: "rolety-dachowe" | "plisy-dachowe" }) {
+  const otherHref = current === "rolety-dachowe" ? "/plisy-dachowe" : "/rolety-dachowe";
+  return (
+    <section className="rd-vs" aria-label="Roleta czy plisa do okna dachowego">
+      <h2 className="hero-product-section-title">Roleta czy plisa?</h2>
+      <div className="rd-vs-grid">
+        <div className={`rd-vs-card ${current === "rolety-dachowe" ? "is-current" : ""}`}>
+          <h3>Roleta dachowa</h3>
+          <ul>
+            <li>Jedna tkanina na całą szybę, zwijana do aluminiowej kasety u góry skrzydła.</li>
+            <li>Zaciemnia z tkaniną TERMO (blackout ze srebrną warstwą refleksyjną); DEKO rozprasza światło.</li>
+          </ul>
+        </div>
+        <div className={`rd-vs-card ${current === "plisy-dachowe" ? "is-current" : ""}`}>
+          <h3>Plisa dachowa</h3>
+          <ul>
+            <li>Regulacja góra/dół — dwie belki, każdą ustawisz osobno.</li>
+            <li>Zasłania dowolny fragment okna: całość, tylko górę, tylko dół albo pas na środku.</li>
+          </ul>
+        </div>
+      </div>
+      <p className="rd-vs-common">
+        <strong>Obie</strong> wykonujemy na wymiar pod model Twojego okna (ponad 420 modeli w bibliotece), z aluminiowymi prowadnicami bocznymi.
+      </p>
+      <a className="rd-vs-link" href={otherHref} onClick={() => trackShopStep("roof_vs_pleated_click", current, { to: otherHref })}>
+        {current === "rolety-dachowe" ? "Zobacz plisy dachowe →" : "Zobacz rolety dachowe →"}
+      </a>
+    </section>
+  );
+}

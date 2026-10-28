@@ -77,6 +77,24 @@ export function proxy(request: NextRequest) {
     }
   }
 
+  // Stary landing /moskitiery -> /moskitiery-ramkowe (Z01, 2026-10-28):
+  // dotąd miał tylko canonical, więc ruch z reklam/linków trafiał na stary
+  // flow bez zdarzeń Meta AddToCart. Linki do zapisanych wycen starego flow
+  // (?resume_token= / ?quote_code=, wysyłane SMS-em/e-mailem) zostają na
+  // /moskitiery, bo tylko MoskitieryFlow umie je wznowić.
+  if (url.pathname === "/moskitiery" || url.pathname === "/moskitiery/") {
+    // Stary flow obsługiwał też inne produkty (?product=<slug>) - te linki
+    // zostają na miejscu, przekierowujemy tylko moskitiery ramkowe.
+    const product = (url.searchParams.get("product") || "").trim();
+    if (url.searchParams.has("resume_token") || url.searchParams.has("quote_code") || (product && product !== "moskitiery-ramkowe")) {
+      return NextResponse.next();
+    }
+    const next = url.clone();
+    next.pathname = "/moskitiery-ramkowe";
+    next.searchParams.delete("product");
+    return NextResponse.redirect(next, 308);
+  }
+
   if (url.pathname !== "/") return NextResponse.next();
   const produkt = (url.searchParams.get("produkt") || "").trim().toLowerCase();
   const target = STATIC_PRODUCT_ROUTES[produkt];
@@ -88,5 +106,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/zaluzje/:path*", "/produkt/:slug", "/kategoria/:slug"],
+  matcher: ["/", "/moskitiery", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/zaluzje/:path*", "/produkt/:slug", "/kategoria/:slug"],
 };

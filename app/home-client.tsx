@@ -112,7 +112,7 @@ import {
 } from "@/features/rolety-dachowe/shared";
 import RoofHeroPhotos from "@/features/rolety-dachowe/RoofHeroPhotos";
 import RoofQuickPrice from "@/features/rolety-dachowe/RoofQuickPrice";
-import { RoofFabricsGuide, RoofHardwareStrip, RoofHowItWorks, RoofLibraryTeaser } from "@/features/rolety-dachowe/RoofLandingBlocks";
+import { RoofBlindVsPleated, RoofFabricsGuide, RoofHardwareStrip, RoofHowItWorks, RoofLibraryTeaser } from "@/features/rolety-dachowe/RoofLandingBlocks";
 import RoofReviews from "@/features/rolety-dachowe/Reviews";
 import { RD_ALL_PHOTOS, buildRdGalleryCategories } from "@/features/rolety-dachowe/gallery";
 import {
@@ -663,6 +663,13 @@ const GENERIC_INSTRUCTION_STEPS: ProductInstructionStep[] = [
 ];
 
 const MOSKITIERY_RAMKOWE_INSTRUCTION_STEPS: ProductInstructionStep[] = [
+  // Krok „Pomiar” musi istnieć - przyciski „Jak mierzyć?” szukają kroku z
+  // „pomiar” w tytule; bez niego otwierał się krok o zaczepach (Z01, 2026-10-28).
+  // Treść = zasada pomiaru z lib/agent-catalog.ts (moskitiery-ramkowe.measuring).
+  {
+    title: "Pomiar okna",
+    body: "Otwórz okno i zmierz szerokość oraz wysokość światła okna od uszczelki do uszczelki. Tylko przy profilu mocno rozchodzącym się, skośnym lub zaokrąglonym dodaj 2–5 mm. Wpisz wymiary w konfiguratorze, a cenę zobaczysz od razu.",
+  },
   {
     title: "1. Sprężynowe zaczepy bez wiercenia",
     body: "Montaż odbywa się bezinwazyjnie, na zaczepach sprężynowych — bez wiercenia i bez uszkadzania ramy okna. Zaczepy mocujesz w kilku punktach na obwodzie ramy.",
@@ -1538,7 +1545,8 @@ export default function Home({
   const [rdLibrary, setRdLibrary] = useState<RoofWindowLibraryItem[]>([]);
   const [rdQuickMaterial, setRdQuickMaterial] = useState("");
   const [rdQuickDims, setRdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
-  const [rdPrefill, setRdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; materialTypeId?: string } | null>(null);
+  // widthMm/heightMm: własny wymiar z szybkiej wyceny (bez modelu z biblioteki).
+  const [rdPrefill, setRdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; materialTypeId?: string; widthMm?: number; heightMm?: number } | null>(null);
   // Plisy dachowe (2026-09-19): fabrics/prices come off the plisy profile
   // (plisyProfile below), the window library is rdLibrary; pdPrefill hands
   // the window / collection chosen up top into the configurator.
@@ -1546,7 +1554,7 @@ export default function Home({
   const [pdLastResult, setPdLastResult] = useState<PlisyDachoweConfiguratorResult | null>(null);
   const [pdQuickGroup, setPdQuickGroup] = useState("");
   const [pdQuickDims, setPdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
-  const [pdPrefill, setPdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; fabricGroupId?: string } | null>(null);
+  const [pdPrefill, setPdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; fabricGroupId?: string; widthMm?: number; heightMm?: number } | null>(null);
   // Same pattern again, for plisy's own <ConfiguratorPanel>
   // (features/plisy/) - see that folder's shared.ts for why its option data
   // is fetched live from the CRM instead of hardcoded like the two above.
@@ -4416,6 +4424,9 @@ export default function Home({
                                   windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
                                   windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
                                   fabricGroupId: selection.fabricGroupId || undefined,
+                                  // Własny wymiar (bez modelu) nie może zginąć po drodze (Z01).
+                                  widthMm: selection.item ? undefined : selection.widthMm || undefined,
+                                  heightMm: selection.item ? undefined : selection.heightMm || undefined,
                                 });
                                 setPdConfigKey((key) => key + 1);
                                 scrollToConfigPanel();
@@ -4467,6 +4478,8 @@ export default function Home({
 
                             <PdHowItWorks />
 
+                            <RoofBlindVsPleated current="plisy-dachowe" />
+
                             <PlisyCollectionsPicker
                               profile={plisyProfile}
                               promo={topPromoActive ? topPromoPreview : null}
@@ -4490,7 +4503,7 @@ export default function Home({
                               library={rdLibrary}
                               onSearch={(query) => {
                                 setPdLastResult(null);
-                                setPdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query }));
+                                setPdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query, widthMm: undefined, heightMm: undefined }));
                                 setPdConfigKey((key) => key + 1);
                                 scrollToConfigPanel();
                               }}
@@ -4553,6 +4566,9 @@ export default function Home({
                                   windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
                                   windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
                                   materialTypeId: selection.materialTypeId || undefined,
+                                  // Własny wymiar (bez modelu) nie może zginąć po drodze (Z01).
+                                  widthMm: selection.item ? undefined : selection.widthMm || undefined,
+                                  heightMm: selection.item ? undefined : selection.heightMm || undefined,
                                 });
                                 setRdConfigKey((key) => key + 1);
                                 scrollToConfigPanel();
@@ -4610,6 +4626,8 @@ export default function Home({
 
                             <RoofHowItWorks />
 
+                            <RoofBlindVsPleated current="rolety-dachowe" />
+
                             <RoofFabricsGuide
                               profile={rdProfile}
                               promo={topPromoActive ? topPromoPreview : null}
@@ -4633,7 +4651,7 @@ export default function Home({
                               library={rdLibrary}
                               onSearch={(query) => {
                                 setRdLastResult(null);
-                                setRdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query }));
+                                setRdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query, widthMm: undefined, heightMm: undefined }));
                                 setRdConfigKey((key) => key + 1);
                                 scrollToConfigPanel();
                               }}
@@ -5105,14 +5123,10 @@ export default function Home({
                                     <div className="allegro-review-meta">
                                       <strong>{review.maskedLogin}</strong>
                                       <span>{review.date}</span>
-                                      <span
-                                        className="allegro-review-estimated-stars"
-                                        title="Ocena szacowana na podstawie tonu treści opinii — nie jest to realna ocena gwiazdkowa pobrana z platformy (ta nie jest dostępna dla pojedynczych opinii)."
-                                      >
-                                        {"★".repeat(review.estimatedStars)}
-                                        {"☆".repeat(5 - review.estimatedStars)}
-                                        <em> (szac.)</em>
-                                      </span>
+                                      {/* Z01 (2026-10-28): bez gwiazdek „(szac.)” przy pojedynczych
+                                          opiniach - to nie była ocena wystawiona przez klienta, a dopisek
+                                          podważał wiarygodność całej sekcji. Realną ocenę pokazuje
+                                          podsumowanie z Allegro powyżej. */}
                                       {review.hasPhotos ? <span className="allegro-review-photo-tag">📷 zdjęcia klienta</span> : null}
                                     </div>
                                     <p>{review.body}</p>
@@ -5645,6 +5659,7 @@ export default function Home({
                                     ...(rdPrefill.materialTypeId && !rdLastResult ? { materialTypeId: rdPrefill.materialTypeId } : {}),
                                     ...(rdPrefill.windowLibraryId ? { windowLibraryId: rdPrefill.windowLibraryId } : {}),
                                     ...(rdPrefill.windowQuery ? { windowQuery: rdPrefill.windowQuery } : {}),
+                                    ...(rdPrefill.widthMm && rdPrefill.heightMm ? { widthMm: rdPrefill.widthMm, heightMm: rdPrefill.heightMm } : {}),
                                   }
                                 : {}),
                             }
@@ -5745,6 +5760,7 @@ export default function Home({
                                     ...(pdPrefill.fabricGroupId && !pdLastResult ? { fabricGroupId: pdPrefill.fabricGroupId } : {}),
                                     ...(pdPrefill.windowLibraryId ? { windowLibraryId: pdPrefill.windowLibraryId } : {}),
                                     ...(pdPrefill.windowQuery ? { windowQuery: pdPrefill.windowQuery } : {}),
+                                    ...(pdPrefill.widthMm && pdPrefill.heightMm ? { widthMm: pdPrefill.widthMm, heightMm: pdPrefill.heightMm } : {}),
                                   }
                                 : {}),
                             }
@@ -6472,6 +6488,7 @@ export default function Home({
               widthCm={plisyQuickDims.widthMm / 10}
               heightCm={plisyQuickDims.heightMm / 10}
               price={plisyQuickWithPromo ?? plisyQuickRegular}
+              regularPrice={plisyQuickRegular}
               bottomInset={inAppBrowserBottomInset}
               onClick={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")}
             />
