@@ -112,7 +112,7 @@ import {
 } from "@/features/rolety-dachowe/shared";
 import RoofHeroPhotos from "@/features/rolety-dachowe/RoofHeroPhotos";
 import RoofQuickPrice from "@/features/rolety-dachowe/RoofQuickPrice";
-import { RoofFabricsGuide, RoofHardwareStrip, RoofHowItWorks, RoofLibraryTeaser } from "@/features/rolety-dachowe/RoofLandingBlocks";
+import { RoofBlindVsPleated, RoofFabricsGuide, RoofHardwareStrip, RoofHowItWorks, RoofLibraryTeaser } from "@/features/rolety-dachowe/RoofLandingBlocks";
 import RoofReviews from "@/features/rolety-dachowe/Reviews";
 import { RD_ALL_PHOTOS, buildRdGalleryCategories } from "@/features/rolety-dachowe/gallery";
 import {
@@ -1538,7 +1538,8 @@ export default function Home({
   const [rdLibrary, setRdLibrary] = useState<RoofWindowLibraryItem[]>([]);
   const [rdQuickMaterial, setRdQuickMaterial] = useState("");
   const [rdQuickDims, setRdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
-  const [rdPrefill, setRdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; materialTypeId?: string } | null>(null);
+  // widthMm/heightMm: własny wymiar z szybkiej wyceny (bez modelu z biblioteki).
+  const [rdPrefill, setRdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; materialTypeId?: string; widthMm?: number; heightMm?: number } | null>(null);
   // Plisy dachowe (2026-09-19): fabrics/prices come off the plisy profile
   // (plisyProfile below), the window library is rdLibrary; pdPrefill hands
   // the window / collection chosen up top into the configurator.
@@ -1546,7 +1547,7 @@ export default function Home({
   const [pdLastResult, setPdLastResult] = useState<PlisyDachoweConfiguratorResult | null>(null);
   const [pdQuickGroup, setPdQuickGroup] = useState("");
   const [pdQuickDims, setPdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
-  const [pdPrefill, setPdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; fabricGroupId?: string } | null>(null);
+  const [pdPrefill, setPdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; fabricGroupId?: string; widthMm?: number; heightMm?: number } | null>(null);
   // Same pattern again, for plisy's own <ConfiguratorPanel>
   // (features/plisy/) - see that folder's shared.ts for why its option data
   // is fetched live from the CRM instead of hardcoded like the two above.
@@ -4416,6 +4417,9 @@ export default function Home({
                                   windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
                                   windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
                                   fabricGroupId: selection.fabricGroupId || undefined,
+                                  // Własny wymiar (bez modelu) nie może zginąć po drodze (Z01).
+                                  widthMm: selection.item ? undefined : selection.widthMm || undefined,
+                                  heightMm: selection.item ? undefined : selection.heightMm || undefined,
                                 });
                                 setPdConfigKey((key) => key + 1);
                                 scrollToConfigPanel();
@@ -4467,6 +4471,8 @@ export default function Home({
 
                             <PdHowItWorks />
 
+                            <RoofBlindVsPleated current="plisy-dachowe" />
+
                             <PlisyCollectionsPicker
                               profile={plisyProfile}
                               promo={topPromoActive ? topPromoPreview : null}
@@ -4490,7 +4496,7 @@ export default function Home({
                               library={rdLibrary}
                               onSearch={(query) => {
                                 setPdLastResult(null);
-                                setPdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query }));
+                                setPdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query, widthMm: undefined, heightMm: undefined }));
                                 setPdConfigKey((key) => key + 1);
                                 scrollToConfigPanel();
                               }}
@@ -4553,6 +4559,9 @@ export default function Home({
                                   windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
                                   windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
                                   materialTypeId: selection.materialTypeId || undefined,
+                                  // Własny wymiar (bez modelu) nie może zginąć po drodze (Z01).
+                                  widthMm: selection.item ? undefined : selection.widthMm || undefined,
+                                  heightMm: selection.item ? undefined : selection.heightMm || undefined,
                                 });
                                 setRdConfigKey((key) => key + 1);
                                 scrollToConfigPanel();
@@ -4610,6 +4619,8 @@ export default function Home({
 
                             <RoofHowItWorks />
 
+                            <RoofBlindVsPleated current="rolety-dachowe" />
+
                             <RoofFabricsGuide
                               profile={rdProfile}
                               promo={topPromoActive ? topPromoPreview : null}
@@ -4633,7 +4644,7 @@ export default function Home({
                               library={rdLibrary}
                               onSearch={(query) => {
                                 setRdLastResult(null);
-                                setRdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query }));
+                                setRdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query, widthMm: undefined, heightMm: undefined }));
                                 setRdConfigKey((key) => key + 1);
                                 scrollToConfigPanel();
                               }}
@@ -5645,6 +5656,7 @@ export default function Home({
                                     ...(rdPrefill.materialTypeId && !rdLastResult ? { materialTypeId: rdPrefill.materialTypeId } : {}),
                                     ...(rdPrefill.windowLibraryId ? { windowLibraryId: rdPrefill.windowLibraryId } : {}),
                                     ...(rdPrefill.windowQuery ? { windowQuery: rdPrefill.windowQuery } : {}),
+                                    ...(rdPrefill.widthMm && rdPrefill.heightMm ? { widthMm: rdPrefill.widthMm, heightMm: rdPrefill.heightMm } : {}),
                                   }
                                 : {}),
                             }
@@ -5745,6 +5757,7 @@ export default function Home({
                                     ...(pdPrefill.fabricGroupId && !pdLastResult ? { fabricGroupId: pdPrefill.fabricGroupId } : {}),
                                     ...(pdPrefill.windowLibraryId ? { windowLibraryId: pdPrefill.windowLibraryId } : {}),
                                     ...(pdPrefill.windowQuery ? { windowQuery: pdPrefill.windowQuery } : {}),
+                                    ...(pdPrefill.widthMm && pdPrefill.heightMm ? { widthMm: pdPrefill.widthMm, heightMm: pdPrefill.heightMm } : {}),
                                   }
                                 : {}),
                             }

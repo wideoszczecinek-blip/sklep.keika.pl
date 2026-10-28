@@ -13,13 +13,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
+import { useQuickNameplatePhoto } from "./NameplatePhotoPicker";
 import {
   buildRoofWindowDisplayLabel,
   resolveRoofWindowDimensions,
   searchRoofWindowLibrary,
   type RoofWindowLibraryItem,
 } from "./roof-window-library";
-import { calcRoletyDachowePrice, roofBlindSizeLimits, ROLETY_DACHOWE_MIN_DIMENSION_MM, type RoofBlindProfile } from "./shared";
+import { calcRoletyDachowePrice, roofBlindSizeLimits, ROLETY_DACHOWE_MIN_DIMENSION_MM, ROOF_WINDOW_MODEL_HELP_IMAGE_FALLBACK, type RoofBlindProfile } from "./shared";
 
 function zl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
@@ -57,6 +58,20 @@ export default function RoofQuickPrice({
   const [heightMm, setHeightMm] = useState(1180);
 
   const results = useMemo(() => (query.trim() && !picked ? searchRoofWindowLibrary(library, query).slice(0, 6) : []), [library, query, picked]);
+
+  function pickWindow(item: RoofWindowLibraryItem, source: string) {
+    setPicked(item);
+    setQuery(buildRoofWindowDisplayLabel(item));
+    setManual(false);
+    trackShopStep("quick_price_window", buildRoofWindowDisplayLabel(item), { library_id: item.id, source });
+  }
+  // Z01: zdjęcie tabliczki także tutaj (ta sama logika co w konfiguratorze).
+  const nameplate = useQuickNameplatePhoto({
+    productSlug: "rolety-dachowe",
+    helpImageUrl: profile?.modelHelp.imageUrl || ROOF_WINDOW_MODEL_HELP_IMAGE_FALLBACK,
+    onPick: (item) => pickWindow(item, "nameplate"),
+    onManual: () => setManual(true),
+  });
   const materials = profile?.materialTypes || [];
   const activeMaterial = materials.find((option) => option.id === materialTypeId) || materials[0] || null;
   const hardwareId = profile?.hardware[0]?.id || "bialy";
@@ -123,6 +138,7 @@ export default function RoofQuickPrice({
               onChange={(event) => {
                 setQuery(event.target.value);
                 if (picked) setPicked(null);
+                nameplate.reset();
               }}
             />
             {query ? (
@@ -139,6 +155,12 @@ export default function RoofQuickPrice({
               </button>
             ) : null}
           </label>
+          <div className="rd-search-actions">
+            <button type="button" className="rd-chip rd-chip--photo" onClick={nameplate.open} disabled={nameplate.isRecognizing}>
+              <span aria-hidden="true">📷</span> Zdjęcie tabliczki
+            </button>
+          </div>
+          {nameplate.element}
           {results[0]?.relaxedQuery ? (
             <p className="rd-results-relaxed">Nie mamy dokładnie tego modelu — pokazujemy najbliższe pasujące okna. Nie ma Twojego? Wgraj zdjęcie tabliczki albo podaj wymiar.</p>
           ) : null}
@@ -151,9 +173,8 @@ export default function RoofQuickPrice({
                     <button
                       type="button"
                       onClick={() => {
-                        setPicked(item);
-                        setQuery(buildRoofWindowDisplayLabel(item));
-                        trackShopStep("quick_price_window", buildRoofWindowDisplayLabel(item), { library_id: item.id });
+                        nameplate.reset();
+                        pickWindow(item, "search");
                       }}
                     >
                       <strong>{buildRoofWindowDisplayLabel(item)}</strong>
@@ -168,7 +189,24 @@ export default function RoofQuickPrice({
               })}
             </ul>
           ) : query.trim() && !picked && library.length ? (
-            <p className="rd-quick-empty">Nie znaleźliśmy takiego modelu — sprawdź pisownię albo podaj wymiar okna.</p>
+            <div className="rd-quick-empty">
+              <p>Nie znaleźliśmy takiego modelu — sprawdź pisownię, zrób zdjęcie tabliczki albo podaj wymiary okna.</p>
+              <div className="rd-search-actions">
+                <button type="button" className="rd-chip rd-chip--photo" onClick={nameplate.open} disabled={nameplate.isRecognizing}>
+                  <span aria-hidden="true">📷</span> Zdjęcie tabliczki
+                </button>
+                <button
+                  type="button"
+                  className="rd-chip"
+                  onClick={() => {
+                    trackShopStep("quick_price_no_results_manual", "rolety-dachowe", { query: query.trim().slice(0, 60) });
+                    setManual(true);
+                  }}
+                >
+                  Podam wymiary
+                </button>
+              </div>
+            </div>
           ) : null}
           <button type="button" className="rd-link rd-quick-manual" onClick={() => setManual(true)}>
             Nie znam modelu — podam wymiar okna

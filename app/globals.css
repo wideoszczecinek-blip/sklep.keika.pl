@@ -15460,6 +15460,78 @@ html[data-theme="light"] .plisy-positions-total strong {
   margin: 0;
   font-size: 0.8rem;
   color: #4a5b6e;
+  display: grid;
+  gap: 0.35rem;
+}
+.rd-quick-empty p {
+  margin: 0;
+}
+/* Z01: wynik zdjęcia tabliczki w szybkiej wycenie. */
+.rd-quick-photo-status {
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #4a5b6e;
+}
+.rd-quick-photo-status p {
+  margin: 0;
+}
+.rd-quick-photo-status .rd-link {
+  justify-self: start;
+}
+/* Z01: "Roleta czy plisa?" na landingach okien dachowych. */
+.rd-vs {
+  margin: 1.4rem 0 0.6rem;
+}
+.rd-vs-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 640px) {
+  .rd-vs-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.rd-vs-card {
+  border-radius: 0.9rem;
+  border: 1px solid #e1e7ee;
+  background: #f6f8fb;
+  padding: 0.85rem 0.9rem 0.9rem;
+}
+.rd-vs-card.is-current {
+  border-color: #ff9f0a;
+  background: #fff8ee;
+}
+.rd-vs-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #16314e;
+}
+.rd-vs-card ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #4a5b6e;
+}
+.rd-vs-common {
+  margin: 0.7rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #4a5b6e;
+}
+.rd-vs-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #d96a00;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .rd-quick-manual {
   justify-self: start;
