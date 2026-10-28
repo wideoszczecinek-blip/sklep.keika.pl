@@ -2139,6 +2139,9 @@ export default function CartPage() {
   const submitOrder = useCallback(async (opts?: { stripeMethod?: StripeMethod; p24MethodId?: number; paynowMethodId?: number; paynowBlikCode?: string; wallet?: WalletContact }): Promise<CreatedIntent | null> => {
     if (submittedRef.current) return null;
     submittedRef.current = true;
+    // InitiateCheckout także dla ścieżek bez interakcji z formularzem
+    // (portfel) - hash koszyka pilnuje, by poszło raz (Z02, recenzja 28.10).
+    markCheckoutInteraction();
     // Portfel (Apple Pay / Google Pay, 2026-09-28): dane odbiorcy z arkusza
     // portfela, dostawa kurierem, płatność online, regulamin zaakceptowany
     // kliknięciem w portfel (adnotacja pod przyciskami). Reszta ścieżki -
@@ -2535,6 +2538,7 @@ export default function CartPage() {
       setIsSubmitting(false);
     }
   }, [
+    markCheckoutInteraction,
     items,
     deliveryMethod,
     selectedPaczkomat,
