@@ -16,8 +16,7 @@ const SLUG = "moskitiery-ramkowe";
 const TITLE = "Moskitiery ramkowe na wymiar od producenta - 5 lat gwarancji | KEIKA";
 const DESCRIPTION =
   "Moskitiera ramkowa na wymiar: aluminiowa rama, wzmocniona siatka, 7 kolorów profili, montaż bez wiercenia. Wycena online w 30 sekund, 5 lat gwarancji, darmowa dostawa od 79 zł, wysyłka z produkcji w Szczecinku.";
-const IMAGE =
-  "https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/moskitiera-okienna-allegro-miniaturka.jpg";
+const IMAGE = SITE + "/moskitiery-ramkowe/produkt-01.jpg";
 
 // Dane strukturalne (Product, FAQ, okruszki, sklep) z lib/agent-catalog.ts -
 // cena „od” z korektą ceny z CRM, odświeżana co godzinę (25.10.2026).

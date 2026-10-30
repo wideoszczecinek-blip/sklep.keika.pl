@@ -151,7 +151,9 @@ export const CATALOG: CatalogProduct[] = [
     description:
       "Moskitiera ramkowa na wymiar okna: aluminiowa rama, wzmocniona siatka z włókna szklanego (szara lub czarna), 7 kolorów profili, montaż na zaczepy sprężynowe bez wiercenia. Zestaw docięty na wymiar do samodzielnego złożenia (ok. 15 minut). Pasuje do ponad 90 % okien PCV i drewnianych (nie do okien zlicowanych). Wycena online w 30 sekund, 5 lat gwarancji, 30 dni na zwrot.",
     bestFor: "moskitiera na okno na wymiar, moskitiera ramkowa bez wiercenia, moskitiera aluminiowa do okna PCV lub drewnianego",
-    image: "https://crm-keika.groovemedia.pl/storage/shop/media/moskitiery-ramkowe-galeria/moskitiera-okienna-allegro-miniaturka.jpg",
+    // Zdjęcie na sklepie, nie w CRM (31.10.2026): Merchant Center odrzucił 33
+    // moskitiery, bo robots.txt CRM blokował Google przy pierwszym pobraniu.
+    image: SHOP_URL + "/moskitiery-ramkowe/produkt-01.jpg",
     extraImages: [],
     basePrice: MOSK_PER_MB,
     priceUnit: "za metr bieżący obwodu ramki",
