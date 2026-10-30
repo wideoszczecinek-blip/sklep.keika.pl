@@ -112,6 +112,22 @@ const PLACES: Record<string, Place> = {
   plisy_mechanizm: { path: "/plisy", run: () => reveal(configuratorStep("mechanizmu")) },
   plisy_tkaniny: { path: "/plisy", run: () => reveal(configuratorStep("tkaniny")) },
   plisy_kolekcje: { path: "/plisy", run: () => reveal(document.querySelector<HTMLElement>(".pl-coll")) },
+  // Animacja 3D plisy (30.10.2026, features/plisy/FilmClips.tsx).
+  plisy_film_odstawanie: { path: "/plisy", run: () => reveal(document.getElementById("film-oferta")) },
+  plisy_film: { path: "/plisy", run: () => reveal(document.getElementById("film-plisa")) },
+  plisy_film_montaz: {
+    path: "/plisy",
+    run: () => {
+      // Krok „Montaż” w Instrukcjach otwiera się w okienku z filmem przez #instrukcja-N (home-client.tsx).
+      const items = [...document.querySelectorAll<HTMLElement>(".hero-product-instruction-item")];
+      const index = items.findIndex((el) => /montaż/i.test(el.querySelector("summary")?.textContent || el.textContent || ""));
+      if (index < 0) return false;
+      // Ten sam adres drugi raz nie wywoła hashchange - najpierw zdejmujemy hash bez przewijania.
+      if (window.location.hash) window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+      window.location.hash = `instrukcja-${index + 1}`;
+      return true;
+    },
+  },
   plisy_jak_mierzyc: {
     path: "/plisy",
     apply: { product: "plisy", measureGuide: true },
