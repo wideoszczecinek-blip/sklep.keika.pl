@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   title: "KEIKA | Rolety i Markizy na Wymiar",
   description:
     "Nowoczesny sklep KEIKA: rolety, markizy i moskitiery na wymiar z ekspresową wyceną.",
+  // Google Merchant Center / Search Console (konto keikarolety@gmail.com, 30.10.2026) - nie usuwać,
+  // Google sprawdza tag okresowo.
+  verification: { google: "zZw9TJlokqzD2yTegxYVnJSFye6OsWWo9agau-WD8KA" },
   // Weryfikacja domeny w Meta Business (opcjonalnie - alternatywa dla rekordu
   // DNS TXT). Ustaw NEXT_PUBLIC_META_DOMAIN_VERIFICATION w Vercel na wartość
   // z "content" podaną przez Meta.
