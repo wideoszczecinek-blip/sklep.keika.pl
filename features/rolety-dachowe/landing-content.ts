@@ -218,7 +218,7 @@ export const RD_FAQ: RdFaqEntry[] = [
   {
     question: "Ile trwa realizacja i wysyłka?",
     answer:
-      "Roletę produkujemy pod Twoje okno zaraz po zamówieniu — zwykle wysyłamy w ciągu 2 dni roboczych. Aktualny, gwarantowany termin wysyłki pokazujemy nad konfiguratorem. Darmowa dostawa od 79 zł.",
+      "Roletę produkujemy pod Twoje okno zaraz po zamówieniu — realizacja trwa 5 dni roboczych, potem kurier dowozi paczkę zwykle następnego dnia. Darmowa dostawa od 79 zł.",
   },
   {
     question: "Co jest w paczce?",

@@ -792,7 +792,7 @@ export default function CartPage() {
   // nie doliczyła się po cichu.
   const expressEligible =
     EXPRESS_ENABLED && items.length > 0 && items.every((item) => item.productSlug === "moskitiery-ramkowe");
-  // Plisy: stały termin 5-7 dni roboczych (właściciel, 2026-09-28); koszyk
+  // Plisy: stały termin 7 dni roboczych (właściciel, 2026-09-28, 31.10.2026); koszyk
   // z moskitierami i plisami jedzie razem, więc obowiązuje dłuższy termin.
   // Rolety/plisy dachowe mają terminy ustalane ręcznie - bez deklaracji.
   const plisyLeadTime =
@@ -4035,7 +4035,7 @@ export default function CartPage() {
                   <section className="cart-delivery-card cart-dispatch-card">
                     <h2>Termin realizacji</h2>
                     <p className="cart-dispatch-static">
-                      <strong>Wysyłka w 5–7 dni roboczych.</strong>
+                      <strong>Realizacja 7 dni roboczych.</strong>
                     </p>
                   </section>
                 ) : null}

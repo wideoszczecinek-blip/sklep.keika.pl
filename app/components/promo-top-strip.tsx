@@ -101,7 +101,9 @@ function benefitSlides(productSlug: string, paypoEnabled: boolean): Slide[] {
         {
           key: "termin",
           icon: "🗓️",
-          badge: isPlisy ? "5-10 dni" : "10-15 dni",
+          // Terminy od właściciela 31.10.2026: plisy (okienne i dachowe) 7 dni
+          // roboczych, rolety do okien dachowych 5.
+          badge: isPlisy ? "7 dni" : "5 dni",
           content: <>roboczych na produkcję na wymiar</>,
         },
       ]

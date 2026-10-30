@@ -867,7 +867,7 @@ export default function CartV2(props: CartV2Props) {
           </div>
         </>
       ) : p.plisyLeadTime ? (
-        <p className="cv2-lead-time">Wysyłka w 5–7 dni roboczych.</p>
+        <p className="cv2-lead-time">Realizacja 7 dni roboczych.</p>
       ) : p.roletyLeadTime ? (
         <p className="cv2-lead-time">Realizacja {p.roletyLeadTimeLabel}.</p>
       ) : null}

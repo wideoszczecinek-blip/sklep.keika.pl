@@ -59,7 +59,7 @@ export const PLISY_EXAMPLE_HEIGHT_MM = 600;
 export const PLISY_DEFAULT_WIDTH_MM = 500;
 export const PLISY_DEFAULT_HEIGHT_MM = 1100;
 
-export const PLISY_LEAD_TIME_LABEL = "5–10 dni roboczych";
+export const PLISY_LEAD_TIME_LABEL = "7 dni roboczych";
 
 /** The CRM currently holds this placeholder sentence in subtitle,
  * description and the single landing section. While that is the case the
@@ -105,7 +105,7 @@ export const PLISY_PRIMARY_CTA = "Sprawdź cenę dla swojego okna";
 export const PLISY_DESCRIPTION_HTML =
   "<p><strong>Plisy okienne</strong> to osłony z tkaniny plisowanej, montowane bezpośrednio na skrzydle okna. W odróżnieniu od rolety mają dwie ruchome listwy: tkaninę przesuwasz z góry i z dołu i zasłaniasz tylko tę część okna, którą chcesz. Plisa nie przeszkadza w otwieraniu i uchylaniu okna, nie ma sznurków ani łańcuszków, a złożona zajmuje zaledwie kilka centymetrów.</p>" +
   "<p><strong>Produkujemy plisy sami, w Polsce.</strong> Jesteśmy producentem osłon okiennych. Każdą plisę wykonujemy na indywidualny wymiar, z aluminiowymi profilami w 10 kolorach i tkaninami z 5 kolekcji: od dekoracyjnych, rozpraszających światło, przez zaciemniające, po zaciemniająco-termoizolacyjne DUO TERMO. Wszystkie tkaniny są antystatyczne i łatwe w czyszczeniu.</p>" +
-  "<p><strong>Zamawiasz online w kilka minut.</strong> Wybierasz sposób montażu, kolor profili i tkaninę, wpisujesz wymiary i od razu widzisz cenę. Plisę produkujemy w 5–10 dni roboczych i wysyłamy kurierem w 24 h od wyprodukowania. Darmowa dostawa od 79 zł, 5 lat gwarancji, 30 dni na zwrot.</p>";
+  "<p><strong>Zamawiasz online w kilka minut.</strong> Wybierasz sposób montażu, kolor profili i tkaninę, wpisujesz wymiary i od razu widzisz cenę. Plisę produkujemy w 7 dni roboczych i wysyłamy kurierem w 24 h od wyprodukowania. Darmowa dostawa od 79 zł, 5 lat gwarancji, 30 dni na zwrot.</p>";
 
 export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
   {

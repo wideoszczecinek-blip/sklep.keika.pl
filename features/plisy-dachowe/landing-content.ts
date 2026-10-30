@@ -177,7 +177,7 @@ export const PD_FAQ: PdFaqEntry[] = [
   {
     question: "Ile trwa realizacja i wysyłka?",
     answer:
-      "Plisę produkujemy pod Twoje okno zaraz po zamówieniu — zwykle wysyłamy w ciągu kilku dni roboczych; aktualny termin wysyłki pokazujemy nad konfiguratorem. Darmowa dostawa od 79 zł.",
+      "Plisę produkujemy pod Twoje okno zaraz po zamówieniu — realizacja trwa 7 dni roboczych, potem kurier dowozi paczkę zwykle następnego dnia. Darmowa dostawa od 79 zł.",
   },
   {
     question: "Co jest w paczce?",
