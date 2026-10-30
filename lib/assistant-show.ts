@@ -120,7 +120,10 @@ const PLACES: Record<string, Place> = {
     run: () => {
       // Krok „Montaż” w Instrukcjach otwiera się w okienku z filmem przez #instrukcja-N (home-client.tsx).
       const items = [...document.querySelectorAll<HTMLElement>(".hero-product-instruction-item")];
-      const index = items.findIndex((el) => /montaż/i.test(el.querySelector("summary")?.textContent || el.textContent || ""));
+      const index = items.findIndex((el) => {
+        const title = el.querySelector("summary")?.textContent || "";
+        return /montaż/i.test(title) && !/pomiar/i.test(title);
+      });
       if (index < 0) return false;
       // Ten sam adres drugi raz nie wywoła hashchange - najpierw zdejmujemy hash bez przewijania.
       if (window.location.hash) window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);

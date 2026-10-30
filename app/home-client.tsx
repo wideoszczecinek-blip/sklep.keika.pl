@@ -2388,7 +2388,11 @@ export default function Home({
   }, [activeInstructionSteps, displayedProduct]);
   // „Zobacz montaż (film)” w wycenie plis - ten sam pojedynczy krok Instrukcji, z animacją 3D montażu.
   const openMountFilm = useCallback(() => {
-    const mountIndex = activeInstructionSteps.findIndex((step) => normalizeMenuLabel(step.title).includes("montaz"));
+    // „1. Pomiar … zależnie od montażu” też ma „montaż” w tytule - krok montażu to ten bez „pomiar”.
+    const mountIndex = activeInstructionSteps.findIndex((step) => {
+      const title = normalizeMenuLabel(step.title);
+      return title.includes("montaz") && !title.includes("pomiar");
+    });
     if (mountIndex < 0) return;
     setInstructionModalSingleStep(true);
     setInstructionModalIndex(mountIndex);
