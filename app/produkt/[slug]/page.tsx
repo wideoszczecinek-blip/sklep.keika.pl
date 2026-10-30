@@ -306,7 +306,7 @@ const fixedRomanProducts: ProductItem[] = [
   {
     name: "Rolety rzymskie",
     slug: "rolety-rzymskie",
-    subtitle: "Dekoracyjne rolety tekstylne szyte na wymiar, z systemem zwijania kaskadowego.",
+    subtitle: "Dekoracyjne rolety tekstylne produkowane na wymiar, z systemem zwijania kaskadowego.",
     price_from: "od 399 zł",
     image_url:
       "https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=1400&q=80",
@@ -558,7 +558,7 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
             : isZaluzje
               ? "Żaluzje aluminiowe, drewniane, bambusowe oraz serie specjalne."
               : isRoman
-                ? "Rolety rzymskie szyte na wymiar, łączące funkcję dekoracyjną i osłonową."
+                ? "Rolety rzymskie produkowane na wymiar, łączące funkcję dekoracyjną i osłonową."
                 : isRoof
                   ? "Rolety i plisy dedykowane oknom dachowym."
                   : isExternalRoller

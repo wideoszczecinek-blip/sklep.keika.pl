@@ -29,7 +29,7 @@ export const ZALUZJE: OfertaContent = {
   supplier: { name: "Sun & Shade", note: "polski producent żaluzji poziomych" },
   variants: {
     title: "Sześć kolekcji - która do Twojego wnętrza?",
-    intro: "Wszystkie szyjemy na wymiar, z wyborem szerokości lameli, koloru, tasiemek i sposobu montażu. Różni je materiał lameli - a więc wygląd, ciężar i odporność na wilgoć.",
+    intro: "Wszystkie produkujemy na wymiar, z wyborem szerokości lameli, koloru, tasiemek i sposobu montażu. Różni je materiał lameli - a więc wygląd, ciężar i odporność na wilgoć.",
     items: [
       {
         id: "basswood",

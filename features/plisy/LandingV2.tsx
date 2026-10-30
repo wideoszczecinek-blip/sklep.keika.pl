@@ -205,6 +205,7 @@ export function PlisyOfferCard({
       {/* Obietnica z reklam „jakość” widoczna od razu pod ceną (właściciel 16.10, #87). */}
       <div className="plv2-offer-badge">
         <span>🛡 5 lat gwarancji</span>
+        <span>↩ 30 dni na zwrot</span>
         <span>🇵🇱 polska produkcja</span>
       </div>
       <div className="plv2-offer-size">

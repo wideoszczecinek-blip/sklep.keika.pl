@@ -25,7 +25,7 @@ export async function GET() {
       image_link: product.image,
       additional_image_link: product.extraImages,
       price: `${product.priceFrom.toFixed(2)} PLN`,
-      price_note: `Cena od: ${product.priceNote}${product.priceUnit ? " (" + product.priceUnit + ")" : ""}. Produkt szyty na wymiar - dokładna cena po wpisaniu wymiaru na stronie produktu.`,
+      price_note: `Cena od: ${product.priceNote}${product.priceUnit ? " (" + product.priceUnit + ")" : ""}. Produkt produkowany na wymiar - dokładna cena po wpisaniu wymiaru na stronie produktu.`,
       availability: "in_stock",
       delivery_estimate: product.leadTime,
       shipping: `PL::Kurier:${shipping.toFixed(2)} PLN`,

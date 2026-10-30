@@ -135,7 +135,7 @@ export const ROLETY_COPY: Record<RoletySlug, RoletyProductCopy> = {
     h1: "Rolety dzień-noc mini na wymiar",
     seoTitle: "Rolety dzień-noc mini na wymiar - tkaniny Bahama w 3 kolekcjach | KEIKA",
     seoDescription:
-      "Roleta dzień-noc mini szyta na wymiar: tkaniny Bahama w 3 kolekcjach, montaż na skrzydle bez wiercenia, wkręcany lub w kasecie z prowadnicami, 5 kolorów mechanizmu, łańcuszek po wybranej stronie. Wycena online, realizacja do 10 dni roboczych, 5 lat gwarancji, 30 dni na zwrot.",
+      "Roleta dzień-noc mini produkowana na wymiar: tkaniny Bahama w 3 kolekcjach, montaż na skrzydle bez wiercenia, wkręcany lub w kasecie z prowadnicami, 5 kolorów mechanizmu, łańcuszek po wybranej stronie. Wycena online, realizacja do 10 dni roboczych, 5 lat gwarancji, 30 dni na zwrot.",
     startingPriceFallback: 76.9,
     sku: "roleta-dzien-noc-mini-na-wymiar",
     category: "Rolety dzień-noc",

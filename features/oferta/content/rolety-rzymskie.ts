@@ -12,13 +12,13 @@ export const ROLETY_RZYMSKIE: OfertaContent = {
   menuLabel: "Rolety rzymskie",
   seoTitle: "Rolety rzymskie na wymiar - klasyczne i dzień-noc | KEIKA",
   seoDescription:
-    "Rolety rzymskie szyte na wymiar: klasyczne z tkanin dekoracyjnych i zaciemniających oraz rzymskie dzień-noc z pasami przeziernymi. Montaż do ściany, sufitu, we wnęce lub na ramie okna. Bezpłatna wycena.",
+    "Rolety rzymskie produkowane na wymiar: klasyczne z tkanin dekoracyjnych i zaciemniających oraz rzymskie dzień-noc z pasami przeziernymi. Montaż do ściany, sufitu, we wnęce lub na ramie okna. Bezpłatna wycena.",
   eyebrow: "Osłony wewnętrzne",
   title: "Rolety rzymskie na wymiar",
   lead:
-    "Miękkość zasłony i wygoda rolety. Rzymska składa się w równe poziome fałdy, więc wygląda jak element aranżacji, a nie technika na oknie. Szyjemy ją z tkanin dekoracyjnych, zaciemniających oraz w wersji dzień-noc.",
+    "Miękkość zasłony i wygoda rolety. Rzymska składa się w równe poziome fałdy, więc wygląda jak element aranżacji, a nie technika na oknie. Produkujemy ją z tkanin dekoracyjnych, zaciemniających oraz w wersji dzień-noc.",
   hero: { src: "/oferta/rolety-rzymskie/hero.jpg", alt: "Beżowa roleta rzymska w jasnym salonie z fotelem" },
-  heroChips: ["Klasyczne i dzień-noc", "Tkaniny dekoracyjne i blackout", "Na ścianę, sufit, we wnękę lub na ramę", "Szyte na wymiar"],
+  heroChips: ["Klasyczne i dzień-noc", "Tkaniny dekoracyjne i blackout", "Na ścianę, sufit, we wnękę lub na ramę", "Produkowane na wymiar"],
   productLabel: "Rolety rzymskie",
   quoteOptions: [
     "Rzymska klasyczna (tkanina dekoracyjna)",

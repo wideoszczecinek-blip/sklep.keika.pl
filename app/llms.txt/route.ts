@@ -11,7 +11,7 @@ export async function GET() {
   lines.push("# KEIKA - sklep z osłonami okiennymi na wymiar");
   lines.push("");
   lines.push(
-    `> Producent osłon okiennych na wymiar ze Szczecinka (${SHOP_POLICY.legalName}, NIP ${SHOP_POLICY.vatId}). Sklep internetowy ${SHOP_URL} sprzedaje w całej Polsce: moskitiery ramkowe, plisy okienne, rolety i plisy do okien dachowych. Każdy produkt jest szyty na wymiar, cenę widać od razu w konfiguratorze na stronie produktu - bez rejestracji. ${SHOP_POLICY.warrantyYears} lat gwarancji, ${SHOP_POLICY.returnDays} dni na zwrot (także produktów na wymiar), darmowa dostawa od ${SHOP_POLICY.freeShippingThreshold} zł.`,
+    `> Producent osłon okiennych na wymiar ze Szczecinka (${SHOP_POLICY.legalName}, NIP ${SHOP_POLICY.vatId}). Sklep internetowy ${SHOP_URL} sprzedaje w całej Polsce: moskitiery ramkowe, plisy okienne, rolety i plisy do okien dachowych. Każdy produkt produkujemy na wymiar, cenę widać od razu w konfiguratorze na stronie produktu - bez rejestracji. ${SHOP_POLICY.warrantyYears} lat gwarancji, ${SHOP_POLICY.returnDays} dni na zwrot (także produktów na wymiar), darmowa dostawa od ${SHOP_POLICY.freeShippingThreshold} zł.`,
   );
   lines.push("");
   lines.push("Ceny w PLN brutto. Zamówienie składa się na stronie produktu: wybór opcji i wymiaru → koszyk → płatność (BLIK, karta, Revolut Pay, Przelewy24, przelew, płatność za pobraniem).");
