@@ -22014,6 +22014,15 @@ body:has(.cart-page--v2) .site-footer {
 .plv2-gallery-chip { position: absolute; left: 0.7rem; bottom: 0.7rem; background: rgba(22, 49, 78, 0.92); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 999px; pointer-events: none; }
 .plv2-gallery-dots { position: absolute; right: 0.7rem; bottom: 0.8rem; display: flex; gap: 0.3rem; }
 .plv2-gallery-dots button { width: 0.5rem; height: 0.5rem; border-radius: 50%; border: 0; padding: 0; background: rgba(255, 255, 255, 0.55); cursor: pointer; }
+/* Animacja 3D plisy (30.10.2026, features/plisy/FilmClips.tsx): slajd galerii, pętla pod ofertą, klip w FAQ. Tło = szare studio filmu. */
+.plv2-slide--film { background: #a2a19d; display: grid; place-items: center; }
+.plv2-slide--film video { width: 100%; height: 100%; object-fit: contain; display: block; background: #a2a19d; }
+.plv2-film-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 0.5rem; border: 0; border-radius: 999px; padding: 0.75rem 1.2rem; background: #d94d00; color: #fff; font-weight: 800; font-size: 0.95rem; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); cursor: pointer; }
+.plv2-film { margin: 0.75rem 0 0.9rem; border-radius: 1rem; overflow: hidden; background: #a2a19d; }
+.plv2-film video { display: block; width: 100%; aspect-ratio: 4 / 5; max-height: 62vh; object-fit: contain; background: #a2a19d; }
+.plv2-film figcaption { background: #f3f6fa; color: #16314e; font-size: 0.86rem; font-weight: 600; line-height: 1.35; padding: 0.6rem 0.8rem; }
+.plv2-film--faq { max-width: 22rem; margin: 0.5rem 0 0.25rem; }
+.plv2-film--faq video { max-height: 50vh; }
 .plv2-gallery-dots button.is-active { background: #fff; }
 @media (min-width: 761px) { .plv2-gallery { max-width: 560px; } .plv2-slide { aspect-ratio: 3 / 2; } }
 

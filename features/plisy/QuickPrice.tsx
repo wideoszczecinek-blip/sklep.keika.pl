@@ -69,6 +69,7 @@ export default function PlisyQuickPrice({
   mountId = "",
   onMountChange,
   onMeasureGuide,
+  onMountFilm,
   onSaveLater,
 }: {
   /** Akordeon: nagłówek "Szybka wycena" z rozmiarem i ceną, suwaki pod
@@ -91,6 +92,8 @@ export default function PlisyQuickPrice({
   mountId?: string;
   onMountChange?: (mountId: string) => void;
   onMeasureGuide?: () => void;
+  /** Film montażu (animacja 3D) - tylko przy montażu przykręcanym, bo pokazuje wkręty w listwę. */
+  onMountFilm?: () => void;
   onSaveLater?: () => void;
 }) {
   const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
@@ -353,6 +356,11 @@ export default function PlisyQuickPrice({
               );
             })}
           </div>
+        ) : null}
+        {onMountFilm && selectedMount && !(isPlisyMountNonInvasive(selectedMount.id) || isPlisyMountNonInvasive(selectedMount.label)) ? (
+          <button type="button" className="pl-quick-measure" onClick={onMountFilm}>
+            <span aria-hidden="true">▶</span> Zobacz montaż (film, 15 s)
+          </button>
         ) : null}
         {onMeasureGuide ? (
           <button type="button" className="pl-quick-measure" onClick={onMeasureGuide}>

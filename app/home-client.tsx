@@ -222,6 +222,7 @@ import { PLISY_INSTRUCTION_STEPS } from "@/features/plisy/instructions";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
+import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
 import { PlisyHeroGallery, PlisyOfferCard, PlisyProofLine, PlisyStickyBar, PlisyWhyGrid, usePaypoEnabled } from "@/features/plisy/LandingV2";
 import { useCompanyRating } from "@/features/plisy/Reviews";
 import { plisyQuickPrice } from "@/features/plisy/shared";
@@ -2338,7 +2339,12 @@ export default function Home({
       // "pomiar" step (a CRM text field cannot carry a React component).
       if (displayedProduct && productSlugFromSelected(displayedProduct) === "plisy") {
         return productLanding.instructionSteps.map((step) =>
-          /pomiar/i.test(step.title) && !step.mediaUrl ? { ...step, customMedia: "plisy-measure" as const } : step,
+          /pomiar/i.test(step.title) && !step.mediaUrl
+            ? { ...step, customMedia: "plisy-measure" as const }
+            : /montaż/i.test(step.title) && !step.mediaUrl
+              ? // Animacja 3D montażu standard (30.10.2026), dopóki CRM nie poda własnego filmu.
+                { ...step, mediaUrl: PLISY_FILM.montaz.src, mediaType: "video" as const }
+              : step,
         );
       }
       return productLanding.instructionSteps;
@@ -2380,6 +2386,14 @@ export default function Home({
       source: "landing_spec",
     });
   }, [activeInstructionSteps, displayedProduct]);
+  // „Zobacz montaż (film)” w wycenie plis - ten sam pojedynczy krok Instrukcji, z animacją 3D montażu.
+  const openMountFilm = useCallback(() => {
+    const mountIndex = activeInstructionSteps.findIndex((step) => normalizeMenuLabel(step.title).includes("montaz"));
+    if (mountIndex < 0) return;
+    setInstructionModalSingleStep(true);
+    setInstructionModalIndex(mountIndex);
+    trackShopStep("film_play", "plisy", { film: "montaz", source: "quick_price" });
+  }, [activeInstructionSteps]);
   // The "Instrukcja pomiaru" button inside the roof-blind window form opens
   // the same measurement popup the spec tile does.
   useEffect(() => {
@@ -3916,6 +3930,13 @@ export default function Home({
                           />
                         )}
                       </PromoCountdownBanner>
+                      <PlisyFilmLoop
+                        id="film-oferta"
+                        src={PLISY_FILM.oferta.src}
+                        poster={PLISY_FILM.oferta.poster}
+                        label="oferta"
+                        caption="Otwierasz okno – plisa zostaje przy skrzydle, trzymają ją sznurki prowadzące."
+                      />
                     </>
                   ) : null}
                     <div className="hero-product-content">
@@ -4244,6 +4265,7 @@ export default function Home({
                                     mountId={plisyQuickMount?.id || ""}
                                     onMountChange={setPlisyQuickMountId}
                                     onMeasureGuide={openMeasurementInstructions}
+                                    onMountFilm={openMountFilm}
                                     onSaveLater={promo ? promo.openModal : undefined}
                                     onConfigure={openPlisyConfiguratorFromQuote}
                                   />
@@ -5205,6 +5227,15 @@ export default function Home({
                                     <details key={`${entry.question}-${index}`} className="hero-product-faq-item">
                                       <summary>{entry.question}</summary>
                                       <p>{fillPricePlaceholders(entry.answer)}</p>
+                                      {productSlugFromSelected(displayedProduct) === "plisy" && /otwieran/i.test(entry.question) ? (
+                                        <PlisyFilmLoop
+                                          id="film-odstawanie"
+                                          className="plv2-film--faq"
+                                          src={PLISY_FILM.otwieranie.src}
+                                          poster={PLISY_FILM.otwieranie.poster}
+                                          label="faq_otwieranie"
+                                        />
+                                      ) : null}
                                     </details>
                                   ))}
                                   {faqEntries.length > FAQ_INITIAL_COUNT ? (

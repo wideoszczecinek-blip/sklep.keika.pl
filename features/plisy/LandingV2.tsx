@@ -7,13 +7,14 @@
 // przycisk), jeden stały przycisk pod kciukiem zamiast czterech zakładek.
 // Reszta landingu (wycena, kolekcje, opinie, instrukcje, FAQ) to istniejące
 // komponenty w nowej kolejności - patrz app/home-client.tsx, gałąź plisy.
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { crmGetJson } from "@/lib/crm-get";
 import { PROMO_CODE, QTY_PROMO } from "@/lib/promo";
 import { trackShopStep } from "@/lib/track-step";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 import { PLISY_HERO_PHOTOS } from "./gallery";
 import PlisyHeroScene from "./PlisyHeroScene";
+import { PlisyFilmSlide } from "./FilmClips";
 
 const HERO_ALT = [
   "Biała plisa okienna KEIKA zamontowana w oknie, tkanina opuszczona od góry",
@@ -67,7 +68,9 @@ export function PlisyHeroGallery() {
   const photos = PLISY_HERO_PHOTOS;
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [active, setActive] = useState(0);
-  const slidesCount = photos.length + 1;
+  // Drugi slajd = cały film 3D plisy (Agencja AI 30.10.2026: „zdjęcie główne zostaje, film zaraz po nim”).
+  const FILM_AT = 1;
+  const slidesCount = photos.length + 2;
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -99,12 +102,15 @@ export function PlisyHeroGallery() {
     <div className="plv2-gallery" role="region" aria-label="Zdjęcia plis KEIKA z montaży">
       <div className="plv2-gallery-scroller" ref={scrollerRef}>
         {photos.map((src, index) => (
-          <figure className="plv2-slide" key={src}>
-            <img src={heroSrc(src)} alt={HERO_ALT[index] || "Plisa KEIKA na oknie"} loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : undefined} />
-          </figure>
+          <Fragment key={src}>
+            {index === FILM_AT ? <PlisyFilmSlide active={active === FILM_AT} /> : null}
+            <figure className="plv2-slide">
+              <img src={heroSrc(src)} alt={HERO_ALT[index] || "Plisa KEIKA na oknie"} loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : undefined} />
+            </figure>
+          </Fragment>
         ))}
         <figure className="plv2-slide plv2-slide--scene" aria-label="Animowana prezentacja plisy">
-          <PlisyHeroScene active={active === photos.length} />
+          <PlisyHeroScene active={active === slidesCount - 1} />
         </figure>
       </div>
       <span className="plv2-gallery-chip">Własna produkcja od 2015</span>
@@ -114,7 +120,7 @@ export function PlisyHeroGallery() {
             key={index}
             type="button"
             className={index === active ? "is-active" : ""}
-            aria-label={index < photos.length ? `Zdjęcie ${index + 1}` : "Prezentacja"}
+            aria-label={index === FILM_AT ? "Film" : index === slidesCount - 1 ? "Prezentacja" : `Zdjęcie ${index < FILM_AT ? index + 1 : index}`}
             aria-pressed={index === active ? "true" : "false"}
             onClick={() => goTo(index)}
           />
