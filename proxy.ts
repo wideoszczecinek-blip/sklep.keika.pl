@@ -51,8 +51,34 @@ function previewRoutePath(url: URL): string | null {
   return null;
 }
 
+// Filmy (30.10.2026, właściciel: „nie rozdajemy ich, to nasza droga praca”): plik .mp4 gra tylko w odtwarzaczu
+// na naszych stronach. Otwarcie adresu wprost w przeglądarce (Sec-Fetch-Dest: document) albo osadzenie na cudzej
+// stronie (Referer spoza keika) = 403. Brak nagłówków (stare przeglądarki) przepuszczamy, żeby klient zawsze zobaczył film.
+const OUR_HOSTS = /(^|\.)keika\.pl$|\.vercel\.app$|^localhost$|^127\.0\.0\.1$/;
+function videoBlocked(request: NextRequest): boolean {
+  const dest = request.headers.get("sec-fetch-dest") || "";
+  if (dest === "document" || dest === "iframe" || dest === "embed" || dest === "object") return true;
+  const ref = request.headers.get("referer") || "";
+  if (ref) {
+    try {
+      if (!OUR_HOSTS.test(new URL(ref).hostname)) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function proxy(request: NextRequest) {
   const url = request.nextUrl;
+  if (url.pathname.toLowerCase().endsWith(".mp4")) {
+    if (videoBlocked(request)) {
+      return new NextResponse("Ten film jest dostępny tylko na sklep.keika.pl", { status: 403, headers: { "x-robots-tag": "noindex", "content-type": "text/plain; charset=utf-8" } });
+    }
+    const res = NextResponse.next();
+    res.headers.set("x-robots-tag", "noindex");
+    return res;
+  }
   const previewPath = previewRoutePath(url);
 
   if (previewPath) {
@@ -88,5 +114,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/zaluzje/:path*", "/produkt/:slug", "/kategoria/:slug"],
+  matcher: ["/(.*\\.mp4)", "/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/zaluzje/:path*", "/produkt/:slug", "/kategoria/:slug"],
 };
