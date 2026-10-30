@@ -40,6 +40,7 @@ export default function PdQuickPrice({
   onFabricGroupChange,
   onSelectionChange,
   onConfigure,
+  preselect = null,
 }: {
   profile: PlisyProfile | null;
   library: RoofWindowLibraryItem[];
@@ -48,6 +49,8 @@ export default function PdQuickPrice({
   onFabricGroupChange: (fabricGroupId: string) => void;
   onSelectionChange?: (selection: PdQuickSelection) => void;
   onConfigure: (selection: PdQuickSelection) => void;
+  /** Okno ustawione z adresu strony (wariant z katalogu Google). */
+  preselect?: { item: RoofWindowLibraryItem } | null;
 }) {
   const priceAdjustmentPercent = useProductPriceAdjustment(PD_PRODUCT_SLUG);
   const [query, setQuery] = useState("");
@@ -56,6 +59,15 @@ export default function PdQuickPrice({
   const limits = pdSizeLimits(profile);
   const [widthMm, setWidthMm] = useState(780);
   const [heightMm, setHeightMm] = useState(1180);
+
+  // Wejście z katalogu Google (/plisy-dachowe/okno/<id>-…): okno ustawione z góry,
+  // cena od razu jak po wybraniu go z listy (lib/merchant-variants.ts).
+  useEffect(() => {
+    if (!preselect) return;
+    setPicked(preselect.item);
+    setManual(false);
+    setQuery(buildRoofWindowDisplayLabel(preselect.item));
+  }, [preselect]);
 
   const results = useMemo(() => (query.trim() && !picked ? searchRoofWindowLibrary(library, query).slice(0, 6) : []), [library, query, picked]);
   const groups = profile?.fabricGroups || [];

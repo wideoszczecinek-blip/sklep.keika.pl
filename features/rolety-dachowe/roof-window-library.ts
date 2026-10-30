@@ -51,7 +51,7 @@ export type RoofWindowSearchResult = {
 };
 
 const CRM_ALLEGRO_API = "https://crm-keika.groovemedia.pl/biuro/api/allegro";
-const ROOF_WINDOW_LIBRARY_ENDPOINT = `${CRM_ALLEGRO_API}/roof_windows_public`;
+export const ROOF_WINDOW_LIBRARY_ENDPOINT = `${CRM_ALLEGRO_API}/roof_windows_public`;
 const ROOF_WINDOW_NAMEPLATE_RECOGNIZE_ENDPOINT = `${CRM_ALLEGRO_API}/roof_window_nameplate_recognize`;
 const ATTACHMENT_UPLOAD_ENDPOINT = `${CRM_ALLEGRO_API}/configurator_quote_attachment_upload.php`;
 const LIBRARY_CACHE_KEY = "keika_roof_window_library_v1";
@@ -335,7 +335,7 @@ export function classifyNameplateResult(result: RoofWindowNameplateRecognizeResu
   return { kind: "unrecognized" };
 }
 
-function normalizeRoofWindowLibraryItem(value: unknown): RoofWindowLibraryItem | null {
+export function normalizeRoofWindowLibraryItem(value: unknown): RoofWindowLibraryItem | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Record<string, unknown>;
   const normalizeMap = (input: unknown): Record<string, string> => {

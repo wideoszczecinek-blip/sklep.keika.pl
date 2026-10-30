@@ -246,7 +246,7 @@ export { ROLETY_DACHOWE_PRICE_TABLES, type PricingTable };
 // ---------------------------------------------------------------------------
 
 export const ROOF_BLIND_SOURCE_SLUG = "dachowe";
-const ROOF_BLIND_PROFILE_URL = `https://crm-keika.groovemedia.pl/biuro/api/allegro/configurator_public?slug=${ROOF_BLIND_SOURCE_SLUG}`;
+export const ROOF_BLIND_PROFILE_URL = `https://crm-keika.groovemedia.pl/biuro/api/allegro/configurator_public?slug=${ROOF_BLIND_SOURCE_SLUG}`;
 
 export type RoofBlindProfile = {
   hardware: HardwareOption[];
@@ -281,7 +281,7 @@ type RawTable = {
   height_breakpoints?: number[];
   prices?: number[][];
 };
-type RawProduct = {
+export type RawProduct = {
   slug?: string;
   pricing_calculation?: { mode?: string; tables?: RawTable[] };
   configurator?: {
@@ -335,7 +335,7 @@ function tableHasPositiveCell(table: PricingTable): boolean {
   return table.prices.some((row) => row.some((cell) => typeof cell === "number" && Number.isFinite(cell) && cell > 0));
 }
 
-function parseRoofBlindProfile(product: RawProduct): RoofBlindProfile | null {
+export function parseRoofBlindProfile(product: RawProduct): RoofBlindProfile | null {
   const steps = product.configurator?.steps || [];
   const byKey = (wanted: string) => steps.find((step) => normalizeStepKey(step.key) === wanted) || null;
   const hardwareStep = byKey("hardware_color");

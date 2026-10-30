@@ -128,6 +128,7 @@ import {
   isRdPlaceholderCopy,
 } from "@/features/rolety-dachowe/landing-content";
 import { buildRoofWindowDisplayLabel, fetchRoofWindowLibrary, type RoofWindowLibraryItem } from "@/features/rolety-dachowe/roof-window-library";
+import { readUrlPrefill, type UrlPrefill } from "@/lib/merchant-variants";
 import type { ConfiguratorResult as PlisyConfiguratorResult } from "@/features/plisy/shared";
 import { calcPlisyPrice, fetchPlisyProfile, type PlisyProfile } from "@/features/plisy/shared";
 import {
@@ -1548,6 +1549,9 @@ export default function Home({
   const [pdQuickGroup, setPdQuickGroup] = useState("");
   const [pdQuickDims, setPdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
   const [pdPrefill, setPdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; fabricGroupId?: string } | null>(null);
+  // Okno z adresu (wariant z katalogu Google) dla szybkich wycen dachowych.
+  const [rdPreselect, setRdPreselect] = useState<{ item: RoofWindowLibraryItem } | null>(null);
+  const [pdPreselect, setPdPreselect] = useState<{ item: RoofWindowLibraryItem } | null>(null);
   // Same pattern again, for plisy's own <ConfiguratorPanel>
   // (features/plisy/) - see that folder's shared.ts for why its option data
   // is fetched live from the CRM instead of hardcoded like the two above.
@@ -1892,7 +1896,8 @@ export default function Home({
     void fetchRoofBlindProfile().then((profile) => {
       if (cancelled) return;
       setRdProfile(profile);
-      if (!rdQuickMaterial && profile.materialTypes[0]) setRdQuickMaterial(profile.materialTypes[0].id);
+      // Funkcyjnie: materiał mógł już ustawić adres strony (TERMO z katalogu Google).
+      if (profile.materialTypes[0]) setRdQuickMaterial((current) => current || profile.materialTypes[0].id);
     });
     return () => {
       cancelled = true;
@@ -1911,6 +1916,50 @@ export default function Home({
       cancelled = true;
     };
   }, [displayedProductSlugForPlisy, rdLibrary.length]);
+  // Wejście z katalogu Google Merchant Center (30.10.2026): wymiar albo model
+  // okna z adresu (/plisy/wymiar/60x120, /rolety-dachowe/okno/304-velux-304,
+  // ?w=60&h=120, ?okno=304&tkanina=termo) ustawia szybką wycenę i
+  // konfigurator - klient od razu widzi cenę z katalogu (lib/merchant-variants.ts).
+  // Raz na wejście; potem strona działa jak zwykle.
+  const urlPrefillRef = useRef<UrlPrefill | null | undefined>(undefined);
+  useEffect(() => {
+    if (urlPrefillRef.current !== undefined) return;
+    const prefill = readUrlPrefill(String(initialProductSlug || ""), window.location.pathname, window.location.search);
+    urlPrefillRef.current = prefill;
+    if (!prefill || prefill.kind !== "size") return;
+    const dims = { widthMm: prefill.widthMm, heightMm: prefill.heightMm };
+    trackShopStep("url_prefill", prefill.product, { width_mm: dims.widthMm, height_mm: dims.heightMm });
+    if (prefill.product === "plisy") {
+      setPlisyQuickDims(dims);
+      setPlisyPrefillDims(dims);
+      setPlisyConfigKey((key) => key + 1);
+    } else {
+      setMoskQuickDims(dims);
+      setMoskPrefillDims(dims);
+      setRamkoweConfigKey((key) => key + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const prefill = urlPrefillRef.current;
+    if (!prefill || prefill.kind !== "window" || !rdLibrary.length) return;
+    urlPrefillRef.current = null;
+    const item = rdLibrary.find((entry) => entry.id === prefill.libraryId);
+    if (!item) return;
+    const windowQuery = buildRoofWindowDisplayLabel(item);
+    trackShopStep("url_prefill", prefill.product, { library_id: item.id, window: windowQuery, material: prefill.material });
+    if (prefill.product === "rolety-dachowe") {
+      const materialTypeId = prefill.material === "termo" ? "termo" : "polprzepuszczalny";
+      setRdQuickMaterial(materialTypeId);
+      setRdPreselect({ item });
+      setRdPrefill({ windowLibraryId: item.id, windowQuery, materialTypeId });
+      setRdConfigKey((key) => key + 1);
+    } else {
+      setPdPreselect({ item });
+      setPdPrefill({ windowLibraryId: item.id, windowQuery });
+      setPdConfigKey((key) => key + 1);
+    }
+  }, [rdLibrary]);
   // Lowest price in the whole matrix (any table, STANDARD mount has no
   // surcharge) - the honest "od X zł" for the trust row.
   // Teksty z CRM (cena "od", FAQ) mogą zawierać {{cena_od}} - podstawiamy
@@ -4417,6 +4466,7 @@ export default function Home({
                             <PdQuickPrice
                               profile={plisyProfile}
                               library={rdLibrary}
+                              preselect={pdPreselect}
                               promo={topPromoActive ? topPromoPreview : null}
                               fabricGroupId={pdQuickGroup}
                               onFabricGroupChange={setPdQuickGroup}
@@ -4554,6 +4604,7 @@ export default function Home({
                             <RoofQuickPrice
                               profile={rdProfile}
                               library={rdLibrary}
+                              preselect={rdPreselect}
                               promo={topPromoActive ? topPromoPreview : null}
                               materialTypeId={rdQuickMaterial}
                               onMaterialChange={setRdQuickMaterial}

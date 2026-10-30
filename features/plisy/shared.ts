@@ -170,9 +170,15 @@ export async function fetchPlisyProfile(): Promise<PlisyProfile | null> {
   return profileInFlight;
 }
 
-async function fetchPlisyProfileUncached(): Promise<PlisyProfile | null> {
+/** Serwer (katalog Google, strony wariantów): ten sam profil, ale z buforem
+ * Next zamiast "no-store", żeby strona mogła być statyczna (ISR). */
+export function fetchPlisyProfileWith(init: RequestInit & { next?: { revalidate?: number } }): Promise<PlisyProfile | null> {
+  return fetchPlisyProfileUncached(init);
+}
+
+async function fetchPlisyProfileUncached(init: RequestInit = { cache: "no-store" }): Promise<PlisyProfile | null> {
   try {
-    const response = await fetch(`${CONFIGURATOR_PUBLIC_URL}?slug=${PLISY_PRODUCT_SLUG}`, { cache: "no-store" });
+    const response = await fetch(`${CONFIGURATOR_PUBLIC_URL}?slug=${PLISY_PRODUCT_SLUG}`, init);
     const json = (await response.json()) as {
       ok: boolean;
       config?: { catalog?: { categories?: Array<{ products?: RawProduct[] }> } };

@@ -35,6 +35,7 @@ export default function RoofQuickPrice({
   onMaterialChange,
   onSelectionChange,
   onConfigure,
+  preselect = null,
 }: {
   profile: RoofBlindProfile | null;
   library: RoofWindowLibraryItem[];
@@ -45,6 +46,8 @@ export default function RoofQuickPrice({
    * prices both collections for the same window). */
   onSelectionChange?: (selection: RoofQuickSelection) => void;
   onConfigure: (selection: RoofQuickSelection) => void;
+  /** Okno ustawione z adresu strony (wariant z katalogu Google). */
+  preselect?: { item: RoofWindowLibraryItem } | null;
 }) {
   const adjustBySlug = useProductPriceAdjustment("rolety-dachowe");
   const adjustByCrmSlug = useProductPriceAdjustment("roleta-dachowa-dekolux");
@@ -55,6 +58,15 @@ export default function RoofQuickPrice({
   const limits = roofBlindSizeLimits(profile);
   const [widthMm, setWidthMm] = useState(780);
   const [heightMm, setHeightMm] = useState(1180);
+
+  // Wejście z katalogu Google (/rolety-dachowe/okno/<id>-…): okno ustawione z góry,
+  // cena od razu jak po wybraniu go z listy (lib/merchant-variants.ts).
+  useEffect(() => {
+    if (!preselect) return;
+    setPicked(preselect.item);
+    setManual(false);
+    setQuery(buildRoofWindowDisplayLabel(preselect.item));
+  }, [preselect]);
 
   const results = useMemo(() => (query.trim() && !picked ? searchRoofWindowLibrary(library, query).slice(0, 6) : []), [library, query, picked]);
   const materials = profile?.materialTypes || [];
