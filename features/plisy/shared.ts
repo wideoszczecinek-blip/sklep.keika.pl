@@ -8,6 +8,7 @@
 // rather than freezing a snapshot that would need a redeploy on every
 // content edit. See ConfiguratorPanel.tsx for the step UI that consumes it.
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { fetchConfiguratorJson } from "@/lib/configurator-fetch";
 
 const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 const PLISY_PRODUCT_SLUG = "plisy";
@@ -178,12 +179,11 @@ export function fetchPlisyProfileWith(init: RequestInit & { next?: { revalidate?
 
 async function fetchPlisyProfileUncached(init: RequestInit = { cache: "no-store" }): Promise<PlisyProfile | null> {
   try {
-    const response = await fetch(`${CONFIGURATOR_PUBLIC_URL}?slug=${PLISY_PRODUCT_SLUG}`, init);
-    const json = (await response.json()) as {
+    const json = await fetchConfiguratorJson<{
       ok: boolean;
       config?: { catalog?: { categories?: Array<{ products?: RawProduct[] }> } };
-    };
-    if (!json.ok || !json.config) return null;
+    }>(`${CONFIGURATOR_PUBLIC_URL}?slug=${PLISY_PRODUCT_SLUG}`, init);
+    if (!json || !json.ok || !json.config) return null;
     const categories = json.config.catalog?.categories || [];
     const product = categories.flatMap((category) => category.products || []).find((entry) => entry.slug === PLISY_PRODUCT_SLUG);
     if (!product) return null;

@@ -23,6 +23,7 @@ import {
 export type { FabricGroup, FabricSwatch, HardwareOption, MountOption, PriceTable };
 import type { SsExtraLine, SsSupplierOrder } from "./ss-options";
 import ZALUZJE_SPECS_JSON from "./ss-options/_specs.json";
+import { fetchConfiguratorJson } from "@/lib/configurator-fetch";
 
 export const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 
@@ -305,8 +306,8 @@ export async function fetchRoletyProfile(slug: RoletySlug): Promise<RoletyProfil
 
 async function fetchRoletyProfileUncached(slug: RoletySlug): Promise<RoletyProfile | null> {
   try {
-    const response = await fetch(`${CONFIGURATOR_PUBLIC_URL}?slug=${encodeURIComponent(slug)}`, { cache: "no-store" });
-    return roletyProfileFromCatalogJson(await response.json(), slug);
+    const json = await fetchConfiguratorJson<unknown>(`${CONFIGURATOR_PUBLIC_URL}?slug=${encodeURIComponent(slug)}`);
+    return json ? roletyProfileFromCatalogJson(json, slug) : null;
   } catch {
     return null;
   }
