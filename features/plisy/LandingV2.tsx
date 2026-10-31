@@ -195,7 +195,7 @@ export function PlisyOfferCard({
               // promocja ilościowa „CAŁY DOM" (28.10.2026) jest tylko tu, przy
               // cenie. Gałąź wyżej (kod) zostaje na wypadek powrotu SEZON20.
               <span className="plv2-offer-code">
-                <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.short} ·{" "}
+                <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.short} · {QTY_PROMO.mix} ·{" "}
                 <a href={QTY_PROMO.rulesHref}>zasady</a>
               </span>
             )}

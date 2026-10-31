@@ -46,10 +46,14 @@ export const QTY_PROMO = {
   ],
   /** Regulamin promocji - strona prawna w CMS sklepu. */
   rulesHref: "/legal/promocja-caly-dom",
-  /** Jedno zdanie do pasków i banerów - to samo wszędzie. */
-  tagline: "2 okna = -10 % na całe zamówienie, 3 i więcej = -20 %",
-  /** Krótka wersja do wąskich pasków. */
-  short: "2 okna -10 %, 3+ okna -20 % na całość",
+  /** Jedno zdanie do pasków i banerów - to samo wszędzie. Właściciel 31.10.2026:
+   * „-20 % na CAŁE ZAKUPY", bo „2 okna" brzmiało jak 2 takie same plisy -
+   * produkty mogą być różne, liczy się ich liczba w koszyku. */
+  tagline: "do -20 % na CAŁE ZAKUPY – kup 2 lub 3 produkty i zyskaj (mogą być różne): 2 produkty -10 %, 3 i więcej -20 %",
+  /** Krótka wersja do wąskich pasków (pasek u góry ma ~40 znaków na 320 px). */
+  short: "do -20 % na CAŁE ZAKUPY",
+  /** Dopowiedzenie do krótkiej wersji tam, gdzie jest miejsce na drugą frazę. */
+  mix: "kup 2 lub 3 produkty i zyskaj",
 } as const;
 
 const PROMO_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 dni

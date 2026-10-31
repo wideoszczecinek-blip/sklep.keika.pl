@@ -3929,7 +3929,7 @@ export default function Home({
                         -{QTY_PROMO.percent}%
                       </span>
                       <span className="pl-sezon-line-text">
-                        Promocja <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.short} · liczy się w koszyku
+                        Promocja <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.short} · {QTY_PROMO.mix}
                       </span>
                       <a className="pl-sezon-line-link" href={QTY_PROMO.rulesHref}>
                         Zasady

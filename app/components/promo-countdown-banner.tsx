@@ -151,6 +151,14 @@ export default function PromoCountdownBanner({
   );
 }
 
+/** 1 produkt, 2–4 produkty, 5+ produktów (12–14 też „produktów"). */
+function productNoun(n: number): string {
+  if (n === 1) return "produkt";
+  const last = n % 10;
+  const lastTwo = n % 100;
+  return last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? "produkty" : "produktów";
+}
+
 function formatTileZl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 }
@@ -306,16 +314,21 @@ export function QtyPromoTiers({
     return roundMoney((unit * qty - perimeter - bundle.savings) / qty);
   };
   const last = rule.tiers[rule.tiers.length - 1];
+  const pooled = rule.wholeOrder && rule.group !== "";
+  // Rabat od całego koszyka (właściciel 31.10.2026: „to sprawia wrażenie, że
+  // trzeba kupić 2 takie same plisy") - kafle mówią o produktach w koszyku,
+  // nie o sztukach tego jednego produktu.
+  const unitLabel = (n: number, plus = false) =>
+    pooled ? `${n}${plus ? "+" : ""} ${productNoun(n)}` : `${n}${plus ? "+" : ""} szt.`;
   const tiles = [
-    { key: "1", label: "1 szt.", percent: 0, price: roundMoney(unit) },
+    { key: "1", label: unitLabel(1), percent: 0, price: roundMoney(unit) },
     ...rule.tiers.map((t) => ({
       key: String(t.fromQty),
-      label: t === last ? `${t.fromQty}+ szt.` : `${t.fromQty} szt.`,
+      label: unitLabel(t.fromQty, t === last),
       percent: t.percent,
       price: priceFor(t.fromQty),
     })),
   ];
-  const pooled = rule.wholeOrder && rule.group !== "";
   const base = tiles[0].price;
   // Schodki: kafle odliczają kolejno (drugi po 0,25 s, ostatni po 0,8 s), a
   // ostatni - najniższy próg - dostaje na koniec wyróżnienie (CSS, opóźnienie
@@ -330,9 +343,16 @@ export function QtyPromoTiers({
     >
       <div className="qty-promo-head">
         <span className="qty-promo-badge">-{last.percent}%</span>
-        <span>
-          Promocja <strong>{QTY_PROMO.name}</strong> – im więcej okien, tym taniej
-        </span>
+        {pooled ? (
+          <span>
+            <strong className="qty-promo-claim">do -{last.percent} % na CAŁE ZAKUPY</strong>
+            Promocja <strong>{QTY_PROMO.name}</strong> – im więcej kupujesz, tym więcej zyskujesz
+          </span>
+        ) : (
+          <span>
+            Promocja <strong>{QTY_PROMO.name}</strong> – im więcej sztuk, tym taniej
+          </span>
+        )}
       </div>
       <div className="qty-promo-tiles">
         {tiles.map((tile, i) => {
@@ -363,7 +383,9 @@ export function QtyPromoTiers({
         })}
       </div>
       <p className="qty-promo-foot">
-        {pooled ? "Rabat liczy się od całego koszyka, także przy różnych produktach." : "Rabat naliczy się w koszyku."}{" "}
+        {pooled
+          ? "Kup 2 lub 3 produkty i zyskaj – nie muszą być takie same: plisy, moskitiery i rolety dachowe liczą się razem."
+          : "Rabat naliczy się w koszyku."}{" "}
         <a href={QTY_PROMO.rulesHref}>Zasady</a>
       </p>
     </div>

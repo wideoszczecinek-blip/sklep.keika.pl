@@ -301,7 +301,7 @@ export default function AssistantNudges({ productSlug, active }: { productSlug: 
         return {
           id: "more_windows",
           title: "Ma Pan/Pani więcej okien?",
-          text: `${QTY_PROMO.name}: 2 okna -10 %, 3 i więcej -20 % na całe zamówienie.`,
+          text: `${QTY_PROMO.name}: do -20 % na całe zakupy – 2 produkty -10 %, 3 i więcej -20 %. Mogą być różne, np. plisa i moskitiera.`,
           buttons: [
             { label: "Dodaj kolejne okno", primary: true, run: () => focusConfigurator(productSlug) },
             { label: "Tylko to jedno", run: () => undefined },

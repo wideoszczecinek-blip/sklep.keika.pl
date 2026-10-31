@@ -232,7 +232,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Ile kosztuje plisa na wymiar?",
     answer:
-      "Cena zależy od wymiaru, kolekcji tkaniny i sposobu montażu. Najmniejsza plisa 40 × 60 cm w kolekcji Klasyczne kosztuje {{cena_od}}. Dokładną cenę dla swojego okna sprawdzisz w konfiguratorze po wpisaniu wymiarów, bez rejestracji. W promocji CAŁY DOM 2 okna w zamówieniu dają -10 % na całość, a 3 i więcej -20 % — plisy, moskitiery i rolety dachowe liczą się razem.",
+      "Cena zależy od wymiaru, kolekcji tkaniny i sposobu montażu. Najmniejsza plisa 40 × 60 cm w kolekcji Klasyczne kosztuje {{cena_od}}. Dokładną cenę dla swojego okna sprawdzisz w konfiguratorze po wpisaniu wymiarów, bez rejestracji. W promocji CAŁY DOM masz do -20 % na całe zakupy: 2 produkty w koszyku to -10 %, 3 i więcej -20 %. Produkty mogą być różne — plisy, moskitiery i rolety dachowe liczą się razem.",
   },
   {
     question: "Czym plisa różni się od rolety?",
@@ -336,7 +336,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Na czym polega promocja CAŁY DOM?",
     answer:
-      "Rabat zależy od liczby okien w zamówieniu: 2 okna to -10 % na całe zamówienie, 3 i więcej to -20 % na całe zamówienie, 1 okno jest w cenie regularnej. Liczą się razem plisy, moskitiery ramkowe, rolety i plisy dachowe, więc plisa i moskitiera w jednym koszyku też dają rabat. Nalicza się sam — bez kodu. Zasady promocji są w regulaminie (link w stopce).",
+      "Do -20 % na całe zakupy — im więcej kupujesz, tym więcej zyskujesz: 2 produkty w koszyku to -10 % na całe zamówienie, 3 i więcej to -20 % na całe zamówienie, 1 produkt jest w cenie regularnej. Produkty nie muszą być takie same: plisy, moskitiery ramkowe, rolety i plisy dachowe liczą się razem, więc plisa i moskitiera w jednym koszyku też dają rabat. Nalicza się sam — bez kodu. Zasady promocji są w regulaminie (link w stopce).",
   },
   {
     question: "Jaka jest gwarancja i czy mogę zwrócić plisę?",
