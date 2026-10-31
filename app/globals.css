@@ -19911,6 +19911,99 @@ html[data-theme="dark"] .cart-pay-tile-count {
   font-size: 0.68rem;
   color: rgba(22, 49, 78, 0.6);
 }
+/* Animacja „schodków" (31.10.2026): po wejściu bloku w ekran (.is-run)
+   kafle kolejno odliczają cenę w dół od ceny za 1 szt. (CountingPrice), nad
+   ceną pojawia się przekreślona cena za 1 szt., pasek pod ceną kurczy się do
+   jej długości (100 % → 90 % → 80 %), a na koniec najniższy próg podskakuje
+   z błyskiem. Opóźnienia (--qp-delay, --qp-dur, --qp-land) ustawia komponent.
+   Wszystko bez zmiany wymiarów kafli - nic nie skacze pod przyciskiem. */
+.qty-promo-tile {
+  position: relative;
+  overflow: hidden;
+}
+.qty-promo-tile-was {
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: rgba(22, 49, 78, 0.5);
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  transition: opacity 0.3s ease var(--qp-delay, 0ms);
+}
+.qty-promo-tile-was.is-plain {
+  text-decoration: none;
+}
+.qty-promo.is-run .qty-promo-tile-was {
+  opacity: 1;
+}
+.qty-promo-meter {
+  display: block;
+  width: 78%;
+  height: 4px;
+  margin: 0.15rem 0 0.05rem;
+  border-radius: 999px;
+  background: rgba(22, 49, 78, 0.1);
+  overflow: hidden;
+}
+.qty-promo-meter i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: #f59e0b;
+  transition: width var(--qp-dur, 900ms) cubic-bezier(0.22, 1, 0.36, 1) var(--qp-delay, 0ms);
+}
+.qty-promo.is-run .qty-promo-meter i {
+  width: calc(var(--qp-ratio, 1) * 100%);
+}
+.qty-promo-tile.is-best .qty-promo-meter i {
+  background: #1fae6a;
+}
+.qty-promo-tile.is-best::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.85) 50%, transparent 70%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+.qty-promo.is-run .qty-promo-tile.is-best {
+  animation: qty-promo-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) var(--qp-land, 1.7s);
+}
+.qty-promo.is-run .qty-promo-tile.is-best::after {
+  animation: qty-promo-shine 0.9s ease-out var(--qp-land, 1.7s) forwards;
+}
+.qty-promo.is-run .qty-promo-badge {
+  animation: qty-promo-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) var(--qp-land, 1.7s);
+}
+@keyframes qty-promo-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.07);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes qty-promo-shine {
+  to {
+    transform: translateX(130%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qty-promo *,
+  .qty-promo *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+  .qty-promo-tile-was {
+    opacity: 1;
+  }
+  .qty-promo-meter i {
+    width: calc(var(--qp-ratio, 1) * 100%);
+  }
+}
 .qty-promo-foot {
   margin: 0;
   font-size: 0.72rem;

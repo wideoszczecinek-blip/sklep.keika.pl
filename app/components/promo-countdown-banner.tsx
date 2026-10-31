@@ -21,7 +21,7 @@
 // countdown strip (promo-top-strip.tsx) took over the "you have a running
 // discount" job. The modal is still reachable on purpose via openModal
 // (the "Zapisz link" CTAs).
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { calcBundleDiscount, useBundleDiscountRules, type BundleRule } from "@/lib/bundle-discount";
 import { calcMoskitieryCombinedSavings, roundMoney, type CartLineItem } from "@/lib/cart";
 import {
@@ -155,6 +155,98 @@ function formatTileZl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 }
 
+function prefersReducedMotion(): boolean {
+  return typeof window === "undefined" || !window.matchMedia || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Odliczanie ceny „w dół" (właściciel 31.10.2026: animacja, która obrazuje
+ * zasadę promocji). Liczby pisane wprost do DOM w requestAnimationFrame -
+ * bez setState na klatkę, więc konfigurator się nie przerysowuje. Przed
+ * startem kafel pokazuje `from` (cenę za 1 szt.), po `run` schodzi do
+ * `value`; późniejsza zmiana ceny (inny wymiar, tkanina) przechodzi krótko
+ * od poprzedniej liczby. Przy prefers-reduced-motion od razu cena końcowa. */
+function CountingPrice({ value, from, run, delayMs, durationMs }: { value: number; from: number; run: boolean; delayMs: number; durationMs: number }) {
+  const ref = useRef<HTMLElement>(null);
+  const shown = useRef<number | null>(null);
+  const played = useRef(false);
+
+  // Przed pierwszym malowaniem: pokaż cenę startową zamiast końcowej, żeby
+  // odliczanie nie zaczynało się od mignięcia ceny po rabacie.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || played.current || prefersReducedMotion()) return;
+    el.textContent = formatTileZl(from);
+    shown.current = from;
+  }, [from]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const reduced = prefersReducedMotion();
+    if (reduced || (!run && !played.current)) {
+      if (reduced) {
+        el.textContent = formatTileZl(value);
+        shown.current = value;
+      }
+      return;
+    }
+    const start = shown.current ?? value;
+    const first = !played.current;
+    played.current = true;
+    if (Math.abs(start - value) < 0.005) {
+      el.textContent = formatTileZl(value);
+      shown.current = value;
+      return;
+    }
+    el.textContent = formatTileZl(start);
+    const wait = first ? delayMs : 0;
+    const duration = first ? durationMs : 380;
+    let frame = 0;
+    let t0 = 0;
+    const step = (now: number) => {
+      if (!t0) t0 = now + wait;
+      const p = Math.min(1, Math.max(0, (now - t0) / duration));
+      const eased = 1 - Math.pow(1 - p, 3);
+      const current = start + (value - start) * eased;
+      el.textContent = formatTileZl(p >= 1 ? value : Math.round(current * 100) / 100);
+      shown.current = p >= 1 ? value : current;
+      if (p < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [value, run, delayMs, durationMs]);
+
+  return <strong ref={ref}>{formatTileZl(value)}</strong>;
+}
+
+/** Start animacji, gdy blok wejdzie w ekran (raz). Klasa na kontenerze
+ * odpala też przejścia CSS (paski, wyróżnienie progu). */
+function useRunWhenVisible(): [(el: HTMLDivElement | null) => void, boolean] {
+  // Callback ref, nie useRef: blok pojawia się dopiero, gdy jest cena (wcześniej
+  // komponent zwraca null), a efekt musi wtedy dostać nowy element.
+  const [el, setEl] = useState<HTMLDivElement | null>(null);
+  const [run, setRun] = useState(false);
+  useEffect(() => {
+    if (!el || run) return;
+    if (typeof IntersectionObserver === "undefined" || prefersReducedMotion()) {
+      const id = requestAnimationFrame(() => setRun(true));
+      return () => cancelAnimationFrame(id);
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setRun(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.6 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [el, run]);
+  return [setEl, run];
+}
+
 /** Zapas, gdy reguły z CRM jeszcze nie doszły (strona bez homepage_public). */
 const QTY_PROMO_FALLBACK_RULE: BundleRule = {
   fromQty: QTY_PROMO.tiers[0].fromQty,
@@ -190,6 +282,7 @@ export function QtyPromoTiers({
   heightMm?: number;
 }) {
   const rules = useBundleDiscountRules();
+  const [boxRef, run] = useRunWhenVisible();
   const rule = Object.keys(rules).length ? rules[productSlug] : QTY_PROMO_FALLBACK_RULE;
   const count = Math.max(1, Math.round(units || 1));
   if (!rule || !rule.tiers.length || total === null || !Number.isFinite(total) || total <= 0) return null;
@@ -223,8 +316,18 @@ export function QtyPromoTiers({
     })),
   ];
   const pooled = rule.wholeOrder && rule.group !== "";
+  const base = tiles[0].price;
+  // Schodki: kafle odliczają kolejno (drugi po 0,25 s, ostatni po 0,8 s), a
+  // ostatni - najniższy próg - dostaje na koniec wyróżnienie (CSS, opóźnienie
+  // --qp-land zgrane z końcem jego odliczania).
+  const timing = (i: number) => ({ delayMs: i === 0 ? 0 : 250 + (i - 1) * 550, durationMs: 900 });
+  const lastTiming = timing(tiles.length - 1);
   return (
-    <div className="qty-promo">
+    <div
+      ref={boxRef}
+      className={`qty-promo${run ? " is-run" : ""}`}
+      style={{ "--qp-land": `${lastTiming.delayMs + lastTiming.durationMs}ms` } as React.CSSProperties}
+    >
       <div className="qty-promo-head">
         <span className="qty-promo-badge">-{last.percent}%</span>
         <span>
@@ -232,16 +335,32 @@ export function QtyPromoTiers({
         </span>
       </div>
       <div className="qty-promo-tiles">
-        {tiles.map((tile, i) => (
-          <span key={tile.key} className={`qty-promo-tile${i === tiles.length - 1 ? " is-best" : ""}`}>
-            <span className="qty-promo-tile-label">
-              {tile.label}
-              {tile.percent > 0 ? <em>-{tile.percent} %</em> : null}
+        {tiles.map((tile, i) => {
+          const t = timing(i);
+          const ratio = base > 0 ? Math.max(0.05, Math.min(1, tile.price / base)) : 1;
+          return (
+            <span
+              key={tile.key}
+              className={`qty-promo-tile${i === tiles.length - 1 ? " is-best" : ""}`}
+              style={{ "--qp-ratio": ratio, "--qp-delay": `${t.delayMs}ms`, "--qp-dur": `${t.durationMs}ms` } as React.CSSProperties}
+            >
+              <span className="qty-promo-tile-label">
+                {tile.label}
+                {tile.percent > 0 ? <em>-{tile.percent} %</em> : null}
+              </span>
+              {i === 0 ? (
+                <span className="qty-promo-tile-was is-plain">bez rabatu</span>
+              ) : (
+                <s className="qty-promo-tile-was">{formatTileZl(base)}</s>
+              )}
+              <CountingPrice value={tile.price} from={base} run={run} delayMs={t.delayMs} durationMs={t.durationMs} />
+              <span className="qty-promo-meter" aria-hidden="true">
+                <i />
+              </span>
+              <small>{from ? "od · za szt." : "za szt."}</small>
             </span>
-            <strong>{formatTileZl(tile.price)}</strong>
-            <small>{from ? "od · za szt." : "za szt."}</small>
-          </span>
-        ))}
+          );
+        })}
       </div>
       <p className="qty-promo-foot">
         {pooled ? "Rabat liczy się od całego koszyka, także przy różnych produktach." : "Rabat naliczy się w koszyku."}{" "}
