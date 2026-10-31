@@ -24107,3 +24107,10 @@ dl.zl-table > div.is-price {
 
 /* Rolety (nasza produkcja): gwarancja i zwrot wyróżnione jak plv2-offer-badge w plisach (25.10). */
 .pl-landing .pl-trust-row .pl-chip.pl-chip-promise { color: #0f5132; background: #e7f6ec; border-color: #b7e1c4; font-weight: 800; }
+
+
+/* Zgody w kasie (31.10): zwarty blok - „Zaznacz wszystkie”, regulamin (wymagany), oferty e-mailem i SMS-em. */
+.cart-consents { display: flex; flex-direction: column; gap: 0.35rem; }
+.cart-consents .cart-consents-all { font-size: 0.82rem; }
+.cart-consents > .cart-terms-checkbox:not(.cart-consents-all) { padding-left: 1.4rem; }
+.cart-consents-req { opacity: 0.7; font-size: 0.72rem; }

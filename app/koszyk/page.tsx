@@ -32,7 +32,7 @@ import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/Configurator
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
 import { bundleDiscountHintText, bundleDiscountSummary, calcBundleDiscount, setBundleDiscountsFromConfig, useBundleDiscountRules } from "@/lib/bundle-discount";
-import { readMarketingConsent } from "@/lib/marketing-consent";
+import { readMarketingConsent, saveMarketingConsent } from "@/lib/marketing-consent";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
 import PromoSaveModal from "../components/promo-save-modal";
@@ -953,6 +953,20 @@ export default function CartPage() {
   // payment method. Single link/document: "Regulamin sklepu i płatności"
   // (shop terms and payment terms live together, not as two documents).
   const [termsAccepted, setTermsAccepted] = useState(false);
+  // Zgody marketingowe wracają do kasy (właściciel 31.10: „zgody zbierać - na pewno od zamawiających - tak jak to zazwyczaj
+  // jest: zaznacz wszystkie albo rozbite: regulamin sklepu, płatności, promocje”). Zwarty blok przy regulaminie, bez
+  // akordeonu (lekcja z 28.09: akordeon nad „Zamawiam” obniżył konwersję). Nic nie jest zaznaczone z góry; jeśli klient
+  // zgodził się wcześniej w pasku ciasteczek, pola marketingowe startują zaznaczone (to jego decyzja).
+  const [mktEmail, setMktEmail] = useState(false);
+  const [mktSms, setMktSms] = useState(false);
+  const mktTouchedRef = useRef(false);
+  useEffect(() => {
+    const prior = readMarketingConsent();
+    if (prior?.accepted) {
+      setMktEmail(true);
+      setMktSms(true);
+    }
+  }, []);
   // O marketing pytamy w pasku ciasteczek, nie w koszyku (właściciel,
   // 2026-09-28: "wracamy do prostego checkoutu ... strasznie spadła
   // konwersja"). Poprzedni akordeon "Akceptuję regulaminy i zgody" z dwiema
@@ -2275,16 +2289,17 @@ export default function CartPage() {
           consents: (() => {
             // Marketing: decyzja z paska ciasteczek (jedno pytanie o oferty
             // e-mailem i SMS-em), razem ze śladem kiedy i gdzie padła.
+            // Od 31.10 klient decyduje w kasie (pola niżej); bez dotknięcia pól zostaje decyzja z paska.
             const marketing = readMarketingConsent();
-            const marketingAccepted = marketing?.accepted === true;
+            const touched = mktTouchedRef.current;
             return {
               terms: ta,
-              marketing_email: marketingAccepted,
-              marketing_sms: marketingAccepted,
-              marketing_source: marketing?.source || "",
-              marketing_decided_at: marketing?.decidedAt || "",
+              marketing_email: mktEmail,
+              marketing_sms: mktSms,
+              marketing_source: touched ? "checkout" : marketing?.source || (mktEmail || mktSms ? "checkout" : ""),
+              marketing_decided_at: touched ? new Date().toISOString() : marketing?.decidedAt || "",
               accepted_at: new Date().toISOString(),
-              version: "2026-09-28",
+              version: "2026-10-31",
             };
           })(),
           shipping: {
@@ -3167,10 +3182,33 @@ export default function CartPage() {
     postcode: form.postcode,
     address1: form.address1,
   };
-  // Jeden checkbox, jedna linijka - regulamin sklepu i płatności (a przy
-  // Przelewy24 także regulamin operatora, bo to jego usługa).
+  // Zgody w kasie (31.10): „Zaznacz wszystkie” + regulamin sklepu i płatności (wymagany) + oferty e-mailem + oferty SMS-em.
+  const setMarketing = (email: boolean, sms: boolean) => {
+    mktTouchedRef.current = true;
+    setMktEmail(email);
+    setMktSms(sms);
+    saveMarketingConsent(email || sms, "checkout");
+    trackCheckoutIssue("checkout_marketing", (email ? "email" : "") + (sms ? "+sms" : "") || "off");
+  };
+  const allConsents = termsAccepted && mktEmail && mktSms;
   const termsCheckbox =
     !paymentConfirmed && items.length > 0 ? (
+      <div className="cart-consents">
+        <label className={`cart-terms-checkbox cart-consents-all ${allConsents ? "is-accepted" : ""}`}>
+          <input
+            type="checkbox"
+            checked={allConsents}
+            onChange={(event) => {
+              const on = event.target.checked;
+              setTermsAccepted(on);
+              trackCheckoutIssue("checkout_terms", on ? "on" : "off");
+              setMarketing(on, on);
+            }}
+          />
+          <span>
+            <strong>Zaznacz wszystkie</strong>
+          </span>
+        </label>
       <label className={`cart-terms-checkbox ${termsAccepted ? "is-accepted" : ""}`}>
         <input
           type="checkbox"
@@ -3200,9 +3238,18 @@ export default function CartPage() {
               </a>
             </>
           ) : null}
-          .
+          . <span className="cart-consents-req">(wymagane)</span>
         </span>
       </label>
+        <label className={`cart-terms-checkbox ${mktEmail ? "is-accepted" : ""}`}>
+          <input type="checkbox" checked={mktEmail} onChange={(event) => setMarketing(event.target.checked, mktSms)} />
+          <span>Chcę dostawać e-mailem informacje o promocjach i nowościach (rabaty, kody tylko dla klientów). Zgodę mogę wycofać w każdej chwili.</span>
+        </label>
+        <label className={`cart-terms-checkbox ${mktSms ? "is-accepted" : ""}`}>
+          <input type="checkbox" checked={mktSms} onChange={(event) => setMarketing(mktEmail, event.target.checked)} />
+          <span>Chcę dostawać SMS-em informacje o promocjach.</span>
+        </label>
+      </div>
     ) : null;
   useEffect(() => {
     cartKeepMetaRef.current = { arm: cartEmailArm, slug: items[0]?.productSlug || "" };
