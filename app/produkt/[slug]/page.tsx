@@ -22,6 +22,7 @@ type ProductItem = {
   fabric_library_ids?: string[];
   default_scene_id?: string;
   default_mount_variant_id?: string;
+  faq?: Array<{ question?: string; answer?: string }>;
 };
 
 type ProductGroup = {
@@ -603,6 +604,11 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
     .filter(Boolean);
   const galleryTiles = galleryImages.length > 0 ? galleryImages : (productImage ? [productImage] : []);
   const productBadge = String(foundProduct?.badge || "").trim();
+  // FAQ z CRM (Sklep WWW -> Produkty -> FAQ) - do 31.10.2026 ta strona go nie
+  // pokazywała, więc pytania wpisane w CRM były widoczne tylko na landingach.
+  const faqEntries = (Array.isArray(foundProduct?.faq) ? foundProduct.faq : [])
+    .map((entry) => ({ question: String(entry?.question || "").trim(), answer: String(entry?.answer || "").trim() }))
+    .filter((entry) => entry.question && entry.answer);
   const productLead =
     foundProduct?.description ||
     foundProduct?.subtitle ||
@@ -804,8 +810,9 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               <h2>{foundProduct.price_from || "Cena po konfiguracji"}</h2>
               <p>{productLead}</p>
               <div className="product-anchor-nav">
-                <a href="#galeria">Galeria</a>
+                {galleryTiles.length > 0 ? <a href="#galeria">Galeria</a> : null}
                 <a href="#opis">Opis</a>
+                {faqEntries.length > 0 ? <a href="#faq">FAQ</a> : null}
                 <a href={configuratorHref}>Konfigurator</a>
               </div>
               <ul>
@@ -950,23 +957,22 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                   ) : null}
                 </div>
               </article>
-              <article id="galeria" className="catalog-card">
-                <h3>Galeria</h3>
-                <div className="catalog-product-gallery-grid">
-                  {galleryTiles.map((image, index) => (
-                    <div
-                      key={`${image}-${index}`}
-                      className="catalog-product-gallery-tile"
-                      style={{ backgroundImage: `url(${optimizeImageUrl(image, 500)})` }}
-                    />
-                  ))}
-                  {galleryTiles.length === 0 ? (
-                    <div className="catalog-product-gallery-tile catalog-product-gallery-tile--empty">
-                      Dodaj zdjęcia w panelu CRM, aby zbudować galerię produktu.
-                    </div>
-                  ) : null}
-                </div>
-              </article>
+              {/* Bez zdjęć karty nie pokazujemy - klient widział tu podpowiedź dla
+                  admina „Dodaj zdjęcia w panelu CRM” (zlecenie Agencji 278, 31.10). */}
+              {galleryTiles.length > 0 ? (
+                <article id="galeria" className="catalog-card">
+                  <h3>Galeria</h3>
+                  <div className="catalog-product-gallery-grid">
+                    {galleryTiles.map((image, index) => (
+                      <div
+                        key={`${image}-${index}`}
+                        className="catalog-product-gallery-tile"
+                        style={{ backgroundImage: `url(${optimizeImageUrl(image, 500)})` }}
+                      />
+                    ))}
+                  </div>
+                </article>
+              ) : null}
               <article id="opis" className="catalog-card">
                 <h3>Opis</h3>
                 <p>{foundProduct.description || foundProduct.subtitle || "Opis produktu uzupełnisz w panelu CRM."}</p>
@@ -982,6 +988,19 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
                   <p><strong>Powiązane biblioteki tkanin:</strong> {linkedFabricLibraries.map((library) => library.label || library.id).join(", ")}</p>
                 ) : null}
               </article>
+              {faqEntries.length > 0 ? (
+                <article id="faq" className="catalog-card">
+                  <h3>FAQ - Pytania i Odpowiedzi</h3>
+                  <div className="hero-product-faq">
+                    {faqEntries.map((entry, index) => (
+                      <details key={`${entry.question}-${index}`} className="hero-product-faq-item">
+                        <summary>{entry.question}</summary>
+                        <p>{entry.answer}</p>
+                      </details>
+                    ))}
+                  </div>
+                </article>
+              ) : null}
               <article id="konfigurator" className="catalog-card">
                 <h3>Konfigurator</h3>
                 {hasDedicatedConfigurator ? (
