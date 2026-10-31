@@ -223,7 +223,7 @@ export default function PromoSaveModal({
                 {frozenUntilMs ? (
                   <>
                     Twoja cena jest zamrożona do <strong>{formatPromoFrozenUntil(frozenUntilMs)}</strong> - nawet jeśli
-                    promocja wygaśnie wcześniej.
+                    ceny zmienią się wcześniej.
                   </>
                 ) : (
                   <>Link zaprowadzi Cię prosto do koszyka, z tą samą ceną.</>
@@ -237,8 +237,8 @@ export default function PromoSaveModal({
             <form className="promo-save-modal-form cart-email-form" onSubmit={handleCartSubmit}>
               <h3>Wyślij koszyk na e-mail</h3>
               <p className="promo-save-modal-lead">
-                Zapiszemy Twój koszyk i <strong>zamrozimy dzisiejszą cenę na 7 dni</strong>. Nawet jeśli promocja
-                wygaśnie, Twoja cena zostanie. Wrócisz jednym kliknięciem, także z innego urządzenia.
+                Zapiszemy Twój koszyk i <strong>zamrozimy dzisiejszą cenę na 7 dni</strong>. Nawet jeśli ceny
+                się zmienią, Twoja cena zostanie. Wrócisz jednym kliknięciem, także z innego urządzenia.
               </p>
               <input
                 type="email"
@@ -327,7 +327,7 @@ export default function PromoSaveModal({
             <h3>Wysłaliśmy link!</h3>
             <p>
               Sprawdź {channel === "email" ? "skrzynkę e-mail" : "SMS-y"} - link zaprowadzi Cię z powrotem tutaj
-              {variant === "measure" ? ", do instrukcji pomiaru i Twojej konfiguracji" : ""}, z rabatem wciąż naliczonym.
+              {variant === "measure" ? ", do instrukcji pomiaru i Twojej konfiguracji." : ", z rabatem wciąż naliczonym."}
             </p>
             <button type="button" className="promo-save-modal-done-cta" onClick={onClose}>
               Zamknij
@@ -339,8 +339,8 @@ export default function PromoSaveModal({
               <>
                 <h3>Dokończ, kiedy zmierzysz okno</h3>
                 <p className="promo-save-modal-lead">
-                  Zapisz lub udostępnij link do tej konfiguracji - montaż, kolor i tkanina zostaną zapamiętane, a rabat
-                  SEZON20 będzie czekał. Wrócisz jednym kliknięciem, także z innego telefonu.
+                  Zapisz lub udostępnij link do tej konfiguracji - montaż, kolor i tkanina zostaną
+                  zapamiętane. Wrócisz jednym kliknięciem, także z innego telefonu.
                 </p>
               </>
             ) : (

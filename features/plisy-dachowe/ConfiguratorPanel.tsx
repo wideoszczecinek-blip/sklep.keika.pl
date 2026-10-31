@@ -765,7 +765,7 @@ export default function ConfiguratorPanel({
                       <s>{formatZl(amount)}</s>
                     </span>
                     <span className="plisy-price-card-row is-promo">
-                      <em>W promocji ({promo?.code || "SEZON20"})</em>
+                      <em>W promocji{promo?.code ? ` (${promo.code})` : ""}</em>
                       <strong>{formatZl(promoAmount)}</strong>
                     </span>
                   </span>

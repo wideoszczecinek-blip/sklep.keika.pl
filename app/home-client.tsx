@@ -3664,7 +3664,7 @@ export default function Home({
           <div className="header-chat-wrap">
           {promoRenewToast ? (
             <div className="promo-renew-toast" role="status">
-              <strong>Witaj ponownie!</strong> Rabat SEZON20 wraca na 24 h — naliczy się w koszyku.
+              <strong>Witaj ponownie!</strong> Rabat wraca na 24 h — naliczy się w koszyku.
             </div>
           ) : null}
           <EscapeOfferReturnBar
