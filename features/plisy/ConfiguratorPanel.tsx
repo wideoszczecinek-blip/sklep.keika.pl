@@ -1272,7 +1272,7 @@ export default function ConfiguratorPanel({
                           aria-hidden="true"
                           style={
                             option.imageUrl
-                              ? { backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 160)})` }
+                              ? { backgroundImage: `url(${optimizeImageUrl(option.imageUrl, 256)})` }
                               : { backgroundImage: "linear-gradient(135deg, #E2E8F0 0%, #C8D0DA 100%)" }
                           }
                         />

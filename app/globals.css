@@ -16797,7 +16797,7 @@ html[data-theme="light"] .hero-menu-card-head h3 {
 }
 .plisy-mount-pick-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 0.5rem;
 }
 .plisy-mount-pick-option {
@@ -16819,14 +16819,17 @@ html[data-theme="light"] .hero-menu-card-head h3 {
   border-color: #f59e0b;
   box-shadow: 0 0 0 1px #d97706;
 }
+/* Miniatura montażu: zdjęcia z CRM to kwadraty 1254 px z małym uchwytem
+   przy listwie - w 2,9 rem z "contain" był z nich biały kafelek
+   (właściciel 31.10: "nieczytelne"). Większa i przybliżona na uchwyt. */
 .plisy-mount-pick-thumb {
   flex: 0 0 auto;
-  width: 2.9rem;
-  height: 2.9rem;
-  border-radius: 0.6rem;
-  background-color: rgba(255, 255, 255, 0.92);
-  background-size: contain;
-  background-position: center;
+  width: 5.25rem;
+  height: 5.25rem;
+  border-radius: 0.65rem;
+  background-color: #f2f4f7;
+  background-size: 150%;
+  background-position: 32% 68%;
   background-repeat: no-repeat;
 }
 .plisy-mount-pick-text {
