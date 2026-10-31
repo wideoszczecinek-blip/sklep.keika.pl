@@ -8,12 +8,19 @@
  * distinct concepts. This one grants nothing; it only helps a customer keep
  * the discount they already activated before it expires.
  */
-import { PROMO_CODE, getPromoActivatedAt } from "@/lib/promo";
+import { PROMO_CODE, SEASONAL_PROMO_ENABLED, getPromoActivatedAt } from "@/lib/promo";
 import { readCartItems } from "@/lib/cart";
 import { buildRescuePosition } from "@/lib/rescue";
 
 import { renewPromoActivationFromServer } from "@/lib/promo";
 const QUOTE_SAVE_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop-public/quote_save.php";
+
+// Kod sezonowy do zapisu wyceny - pusty, gdy SEZON20 jest wyłączony. Po
+// 29.10.2026 sklep nadal wpisywał SEZON20 do nowych wycen (31 z 39 w dniu
+// 31.10, zgłoszone z CRM), a rabatu już nie było.
+function seasonalPromoCode(): string {
+  return SEASONAL_PROMO_ENABLED ? PROMO_CODE : "";
+}
 
 // Separate from koszyk/page.tsx's own lastQuoteCodeRef (an in-memory ref
 // that only exists once the cart page mounts) - this needs to survive a
@@ -146,7 +153,7 @@ async function ensurePromoQuoteCodeInner(productSlug?: string): Promise<PromoQuo
         quote_code: tracked.quoteCode,
         resume_token: tracked.resumeToken,
         session_token: getSessionToken(),
-        promo_code: PROMO_CODE,
+        promo_code: seasonalPromoCode(),
         promo_activated_at_ms: activatedAt,
         ...(effectiveSlug ? { product_slug: effectiveSlug } : {}),
         ...(positions ? { positions } : {}),
@@ -175,6 +182,9 @@ async function ensurePromoQuoteCodeInner(productSlug?: string): Promise<PromoQuo
  * the new deadline plus `promo_renewed: true`, or the unchanged state when
  * nothing was renewed (already used, or still running). */
 export async function renewPromoOnReturn(productSlug?: string): Promise<{ renewed: boolean; deadlineAtMs: number | null }> {
+  // Bez promocji nie ma czego odnawiać - każdy powrót z remarketingu
+  // (?wroc=1) zakładał w CRM pustą wycenę „produkt” z SEZON20.
+  if (!SEASONAL_PROMO_ENABLED) return { renewed: false, deadlineAtMs: null };
   const activatedAt = getPromoActivatedAt();
   // Go through the shared in-flight ensure first: on a return the countdown
   // banner fires its own ensurePromoQuoteCode() in the same tick, and two
@@ -192,7 +202,7 @@ export async function renewPromoOnReturn(productSlug?: string): Promise<{ renewe
         quote_code: tracked.quoteCode,
         resume_token: tracked.resumeToken,
         session_token: getSessionToken(),
-        promo_code: PROMO_CODE,
+        promo_code: seasonalPromoCode(),
         ...(activatedAt !== null ? { promo_activated_at_ms: activatedAt } : {}),
         promo_renew: 1,
         ...(effectiveSlug ? { product_slug: effectiveSlug } : {}),
@@ -266,7 +276,7 @@ export async function savePromoContact(input: {
         quote_code: input.quoteCode,
         resume_token: tracked.resumeToken,
         session_token: getSessionToken(),
-        promo_code: PROMO_CODE,
+        promo_code: seasonalPromoCode(),
         promo_activated_at_ms: getPromoActivatedAt() ?? undefined,
         // Re-send on every touch, not just the first (ensurePromoQuoteCode)
         // - see PROMO_PRODUCT_SLUG_KEY's comment above for the live bug this fixes.
@@ -391,7 +401,7 @@ export async function freezeCartToEmail(input: {
         quote_code: quoteCode,
         resume_token: tracked.resumeToken,
         session_token: getSessionToken(),
-        promo_code: PROMO_CODE,
+        promo_code: seasonalPromoCode(),
         promo_activated_at_ms: getPromoActivatedAt() ?? undefined,
         ...(tracked.productSlug || input.productSlug ? { product_slug: tracked.productSlug || input.productSlug } : {}),
         ab_cart_email: getCartEmailArm(),
@@ -442,7 +452,7 @@ export async function captureCheckoutEmail(email: string, productSlug?: string):
         quote_code: quoteCode,
         resume_token: tracked.resumeToken,
         session_token: getSessionToken(),
-        promo_code: PROMO_CODE,
+        promo_code: seasonalPromoCode(),
         promo_activated_at_ms: getPromoActivatedAt() ?? undefined,
         ...(tracked.productSlug || productSlug ? { product_slug: tracked.productSlug || productSlug } : {}),
         ab_cart_email: getCartEmailArm(),
