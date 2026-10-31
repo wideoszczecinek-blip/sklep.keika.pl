@@ -26,6 +26,7 @@ import PlisyFabricGallery from "@/features/plisy/FabricGallery";
 import RoofWindowSearchSelector from "./RoofWindowSearchSelector";
 import MissingModelForm from "./MissingModelForm";
 import RoofBlindPreview from "./RoofBlindPreview";
+import { QtyPromoTiers } from "@/app/components/promo-countdown-banner";
 import {
   calcRoletyDachowePrice,
   fetchRoofBlindProfile,
@@ -803,6 +804,7 @@ export default function ConfiguratorPanel({
                   <span className="plisy-price-card-note">Dokładną cenę zobaczysz po wyborze materiału i koloru kasety.</span>
                 ) : null}
                 <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+                <QtyPromoTiers productSlug={PRODUCT_SLUG} total={amount} from={!exact} />
               </>
             );
           })()}

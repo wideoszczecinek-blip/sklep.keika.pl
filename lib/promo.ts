@@ -37,6 +37,13 @@ export const QTY_PROMO = {
    * (właściciel 28.10.2026). */
   percent: 20,
   fromQty: 2,
+  /** Progi do kafli cen przy konfiguratorach (QtyPromoTiers) - zapas, gdy
+   * reguły z CRM (config.bundle_discounts) jeszcze nie doszły. Te same co
+   * shop_bundle_discounts.tiers w CRM. */
+  tiers: [
+    { fromQty: 2, percent: 10 },
+    { fromQty: 3, percent: 20 },
+  ],
   /** Regulamin promocji - strona prawna w CMS sklepu. */
   rulesHref: "/legal/promocja-caly-dom",
   /** Jedno zdanie do pasków i banerów - to samo wszędzie. */

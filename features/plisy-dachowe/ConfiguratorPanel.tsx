@@ -39,6 +39,7 @@ import {
   type RoofWindowNameplateOutcome,
 } from "@/features/rolety-dachowe/roof-window-library";
 import PlisaDachowaPreview from "./PlisaDachowaPreview";
+import { QtyPromoTiers } from "@/app/components/promo-countdown-banner";
 import {
   calcPlisyDachowePrice,
   PD_HARDWARE,
@@ -779,6 +780,7 @@ export default function ConfiguratorPanel({
                   <span className="plisy-price-card-note">Dokładną cenę zobaczysz po wyborze kolekcji, koloru tkaniny i osprzętu.</span>
                 ) : null}
                 <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+                <QtyPromoTiers productSlug={PD_PRODUCT_SLUG} total={amount} from={!exact} />
               </>
             );
           })()}

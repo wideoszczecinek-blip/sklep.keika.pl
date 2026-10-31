@@ -36,6 +36,7 @@ import {
   type PromoPreview,
 } from "@/lib/promo";
 import { ensurePromoQuoteCode, hasSavedPromoLink } from "@/lib/promo-save";
+import { QtyPromoTiers } from "@/app/components/promo-countdown-banner";
 import {
   ALLEGRO_MOSKITIERY_HARDWARE,
   MESH_OPTIONS,
@@ -1155,15 +1156,26 @@ export default function ConfiguratorPanel({
                   SEZON20 z aktywacją i odliczaniem): stała linia przy cenie,
                   rabat nalicza koszyk z reguł CRM (lib/bundle-discount.ts).
                   Baner z kodem (promoPreview/promoActive wyżej) wraca tylko po
-                  włączeniu SEASONAL_PROMO_ENABLED w lib/promo.ts. */}
-              <div className="hero-product-promo-banner is-active">
-                <span className="hero-product-promo-banner-text">
-                  🏠 Promocja <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.tagline}. Naliczy się w koszyku.
-                </span>
-                <a className="hero-product-promo-banner-cta" href={QTY_PROMO.rulesHref}>
-                  Zasady
-                </a>
-              </div>
+                  włączeniu SEASONAL_PROMO_ENABLED w lib/promo.ts. Od 31.10
+                  z ceną: kafle z ceną za sztukę przy 1 / 2 / 3+ szt. */}
+              {dimensionTotalPrice !== null && hasValidDimensions ? (
+                <QtyPromoTiers
+                  productSlug="moskitiery-ramkowe"
+                  total={dimensionTotalPrice}
+                  units={quantityNum}
+                  widthMm={widthNum}
+                  heightMm={heightNum}
+                />
+              ) : (
+                <div className="hero-product-promo-banner is-active">
+                  <span className="hero-product-promo-banner-text">
+                    🏠 Promocja <strong>{QTY_PROMO.name}</strong>: {QTY_PROMO.tagline}. Naliczy się w koszyku.
+                  </span>
+                  <a className="hero-product-promo-banner-cta" href={QTY_PROMO.rulesHref}>
+                    Zasady
+                  </a>
+                </div>
+              )}
               {missingChoice ? (
                 <p className="mosk-missing-choice" role="alert">
                   {missingChoice === "mesh"

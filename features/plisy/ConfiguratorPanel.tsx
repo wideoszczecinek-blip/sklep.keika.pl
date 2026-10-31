@@ -35,6 +35,7 @@ import { useSamplesEnabled } from "@/lib/samples";
 import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyColorCountLabel } from "./CollectionVisual";
 import PlisyCollectionBackdrop from "./CollectionBackdrop";
 import UnitAskModal from "./UnitAskModal";
+import { QtyPromoTiers } from "@/app/components/promo-countdown-banner";
 import {
   applyPriceDeltas,
   buildPlisyHardwareSwatchStyle,
@@ -1625,6 +1626,12 @@ export default function ConfiguratorPanel({
                   </span>
                 ) : null}
                 <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+                <QtyPromoTiers
+                  productSlug="plisy"
+                  total={amount}
+                  units={effectivePositions.reduce((sum, position) => sum + position.qty, 0)}
+                  from={!exact}
+                />
               </>
             );
           })()}

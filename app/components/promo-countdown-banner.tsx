@@ -22,8 +22,11 @@
 // discount" job. The modal is still reachable on purpose via openModal
 // (the "Zapisz link" CTAs).
 import { useEffect, useState } from "react";
+import { calcBundleDiscount, useBundleDiscountRules, type BundleRule } from "@/lib/bundle-discount";
+import { calcMoskitieryCombinedSavings, roundMoney, type CartLineItem } from "@/lib/cart";
 import {
   PROMO_ACTIVATED_EVENT,
+  QTY_PROMO,
   activatePromoCode,
   formatPromoRemaining,
   getPromoActivatedAt,
@@ -145,5 +148,105 @@ export default function PromoCountdownBanner({
         />
       ) : null}
     </>
+  );
+}
+
+function formatTileZl(value: number): string {
+  return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+}
+
+/** Zapas, gdy reguły z CRM jeszcze nie doszły (strona bez homepage_public). */
+const QTY_PROMO_FALLBACK_RULE: BundleRule = {
+  fromQty: QTY_PROMO.tiers[0].fromQty,
+  percent: QTY_PROMO.tiers[0].percent,
+  tiers: QTY_PROMO.tiers.map((t) => ({ ...t })),
+  group: "caly-dom",
+  wholeOrder: true,
+  label: "",
+};
+
+/** Kafle promocji ilościowej „CAŁY DOM" przy cenie konfiguratora (właściciel
+ * 31.10.2026: „ceny promocyjne powinny być też eksponowane"): cena za sztukę
+ * przy 1 szt. i przy każdym progu. Liczone tym samym calcBundleDiscount() co
+ * koszyk (i CRM), z regułą produktu z config.bundle_discounts - produkt bez
+ * reguły w CRM nie dostaje kafli. `total` = cena bieżącej konfiguracji,
+ * `units` = ile sztuk w niej jest (koszyk liczy rabat od sztuk). Wymiary
+ * tylko dla moskitier - koszyk łączy ich obwody przed rabatem. Tu, a nie w
+ * osobnym pliku: ten plik kopiuje też sklep Oknowo (npm run sync). */
+export function QtyPromoTiers({
+  productSlug,
+  total,
+  units = 1,
+  from = false,
+  widthMm = 0,
+  heightMm = 0,
+}: {
+  productSlug: string;
+  total: number | null;
+  units?: number;
+  /** Cena „od" (np. najtańsza kolekcja przed wyborem tkaniny). */
+  from?: boolean;
+  widthMm?: number;
+  heightMm?: number;
+}) {
+  const rules = useBundleDiscountRules();
+  const rule = Object.keys(rules).length ? rules[productSlug] : QTY_PROMO_FALLBACK_RULE;
+  const count = Math.max(1, Math.round(units || 1));
+  if (!rule || !rule.tiers.length || total === null || !Number.isFinite(total) || total <= 0) return null;
+  const unit = total / count;
+  const priceFor = (qty: number) => {
+    const item: CartLineItem = {
+      id: "qty-promo",
+      productSlug,
+      productLabel: "",
+      hardwareLabel: "",
+      meshLabel: "",
+      widthMm,
+      heightMm,
+      qty,
+      price: unit,
+      total: unit * qty,
+      createdAt: "",
+    };
+    const perimeter = productSlug === "moskitiery-ramkowe" && widthMm > 0 && heightMm > 0 ? calcMoskitieryCombinedSavings([item]) : 0;
+    const bundle = calcBundleDiscount([item], { [productSlug]: rule }, perimeter);
+    return roundMoney((unit * qty - perimeter - bundle.savings) / qty);
+  };
+  const last = rule.tiers[rule.tiers.length - 1];
+  const tiles = [
+    { key: "1", label: "1 szt.", percent: 0, price: roundMoney(unit) },
+    ...rule.tiers.map((t) => ({
+      key: String(t.fromQty),
+      label: t === last ? `${t.fromQty}+ szt.` : `${t.fromQty} szt.`,
+      percent: t.percent,
+      price: priceFor(t.fromQty),
+    })),
+  ];
+  const pooled = rule.wholeOrder && rule.group !== "";
+  return (
+    <div className="qty-promo">
+      <div className="qty-promo-head">
+        <span className="qty-promo-badge">-{last.percent}%</span>
+        <span>
+          Promocja <strong>{QTY_PROMO.name}</strong> – im więcej okien, tym taniej
+        </span>
+      </div>
+      <div className="qty-promo-tiles">
+        {tiles.map((tile, i) => (
+          <span key={tile.key} className={`qty-promo-tile${i === tiles.length - 1 ? " is-best" : ""}`}>
+            <span className="qty-promo-tile-label">
+              {tile.label}
+              {tile.percent > 0 ? <em>-{tile.percent} %</em> : null}
+            </span>
+            <strong>{formatTileZl(tile.price)}</strong>
+            <small>{from ? "od · za szt." : "za szt."}</small>
+          </span>
+        ))}
+      </div>
+      <p className="qty-promo-foot">
+        {pooled ? "Rabat liczy się od całego koszyka, także przy różnych produktach." : "Rabat naliczy się w koszyku."}{" "}
+        <a href={QTY_PROMO.rulesHref}>Zasady</a>
+      </p>
+    </div>
   );
 }

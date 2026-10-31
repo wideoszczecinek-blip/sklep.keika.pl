@@ -19829,6 +19829,99 @@ html[data-theme="dark"] .cart-pay-tile-count {
   color: #ffffff;
   font-size: 0.68rem;
 }
+
+/* Promocja CAŁY DOM przy cenie konfiguratora (31.10.2026): cena za sztukę
+   przy 1 / 2 / 3+ szt. (QtyPromoTiers w promo-countdown-banner.tsx). Trzy
+   kafle w rzędzie od 320 px - stąd małe paddingi i cena bez zawijania. */
+.qty-promo {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.45rem 0 0.2rem;
+  padding: 0.65rem 0.7rem 0.6rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(217, 119, 6, 0.4);
+  background: #fff8ec;
+  color: #16314e;
+}
+.qty-promo-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  line-height: 1.3;
+}
+.qty-promo-head strong {
+  font-weight: 800;
+}
+.qty-promo-badge {
+  flex: none;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: #d9480f;
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+.qty-promo-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+.qty-promo-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.08rem;
+  min-width: 0;
+  padding: 0.4rem 0.2rem 0.35rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(22, 49, 78, 0.14);
+  background: #ffffff;
+  text-align: center;
+}
+.qty-promo-tile.is-best {
+  border-color: #147a52;
+  box-shadow: 0 0 0 1px #147a52;
+  background: #effaf4;
+}
+.qty-promo-tile-label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: rgba(22, 49, 78, 0.8);
+}
+.qty-promo-tile-label em {
+  font-style: normal;
+  color: #d9480f;
+}
+.qty-promo-tile strong {
+  font-size: clamp(0.84rem, 3.6vw, 1rem);
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #16314e;
+}
+.qty-promo-tile.is-best strong {
+  color: #147a52;
+}
+.qty-promo-tile small {
+  font-size: 0.68rem;
+  color: rgba(22, 49, 78, 0.6);
+}
+.qty-promo-foot {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(22, 49, 78, 0.7);
+}
+.qty-promo-foot a {
+  color: #16314e;
+  font-weight: 700;
+  text-decoration: underline;
+}
 .plisy-split-notice {
   display: grid;
   gap: 0.25rem;
