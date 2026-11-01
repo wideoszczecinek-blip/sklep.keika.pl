@@ -24186,3 +24186,7 @@ html body button.wiz-entry-cena:hover { background: #e6faf6; }
 .wiz-entry-powrot b { display: block; font-size: 0.95rem; }
 .wiz-entry-powrot small { display: block; font-size: 0.82rem; color: #0f766e; font-weight: 700; }
 .wiz-entry-powrot-x { border: 0; background: none; font-size: 22px; line-height: 1; color: #64748b; cursor: pointer; padding: 4px 8px; }
+.wiz-entry-hero { margin: 12px 0; }
+.wiz-entry-hero .wiz-entry-card { margin: 0 0 6px; }
+html body button.wiz-entry-konf { display: block; width: 100%; border: 1.5px solid #cbd5e1; border-radius: 12px; background: #fff; color: #12212b; font-weight: 700; font-size: 0.92rem; padding: 10px 12px; cursor: pointer; }
+html body button.wiz-entry-konf:hover { border-color: #0f9f8f; }

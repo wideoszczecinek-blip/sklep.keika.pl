@@ -3986,7 +3986,7 @@ export default function Home({
                       </PromoCountdownBanner>
                       {/* Wizualizator „Twoje okno” (?wiz=1 / test A/B z CRM) */}
                       <WizPowrot />
-                      <WizButton zrodlo="plisy-oferta" />
+                      <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
                       <WizHost />
                       <WizPlywajacy zrodlo="plisy-plywajacy" />
                       <PlisyFilmLoop

@@ -1090,7 +1090,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   ) : null}
                   {/* banerki: promocja sklepu i korzyści wjeżdżają po kolei */}
                   {(() => {
-                    const lista: [string, string, string][] = [...(promo ? [["🏷️", promo.tytul, promo.opis] as [string, string, string]] : []), ...KORZYSCI.map((k) => [...k] as [string, string, string])];
+                    // CAŁY DOM na banerkach dopiero, gdy wykryto ≥ 2 szyby (Agencja 1.11)
+                    const lista: [string, string, string][] = [...(promo && (podglad?.szyb || 0) >= 2 ? [["🏷️", promo.tytul, promo.opis] as [string, string, string]] : []), ...KORZYSCI.map((k) => [...k] as [string, string, string])];
                     const b = lista[korzysc % lista.length];
                     return (
                       <div className={s.baner} key={korzysc}>

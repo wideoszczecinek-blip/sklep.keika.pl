@@ -51,7 +51,11 @@ export type WizOstatnia = { token: string; miniatura: string; data: string; szyb
  *  - link: w kroku tkaniny konfiguratora („Nie wiesz, która? Zobacz w swoim oknie”),
  *  - cena: jedna linia pod ceną konfiguratora (największa strata w lejku: widzą cenę, nie dodają).
  */
-export function WizButton({ zrodlo, variant = "karta", tkanina, listwa }: { zrodlo: string; variant?: "karta" | "link" | "cena"; tkanina?: string; listwa?: string }) {
+export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfiguruj }: {
+  zrodlo: string; variant?: "karta" | "link" | "cena"; tkanina?: string; listwa?: string;
+  /** karta w hero: drugi przycisk „Mam wymiary – konfiguruję” (przewija do konfiguratora) */
+  onKonfiguruj?: () => void;
+}) {
   const visible = useWizVisible();
   const [own, setOwn] = useState(false);
   useEffect(() => {
@@ -77,7 +81,7 @@ export function WizButton({ zrodlo, variant = "karta", tkanina, listwa }: { zrod
       </button>
     );
   }
-  return (
+  const karta = (
     <button type="button" className="wiz-entry-card" onClick={open}>
       <span className="wiz-entry-kadry" aria-hidden="true">
         <i style={{ backgroundImage: "url(/wizualizator-kadr-1.jpg)" }} />
@@ -90,6 +94,13 @@ export function WizButton({ zrodlo, variant = "karta", tkanina, listwa }: { zrod
       </span>
       <span className="wiz-entry-arrow" aria-hidden="true">›</span>
     </button>
+  );
+  if (!onKonfiguruj) return karta;
+  return (
+    <div className="wiz-entry-hero">
+      {karta}
+      <button type="button" className="wiz-entry-konf" onClick={onKonfiguruj}>Mam wymiary – konfiguruję →</button>
+    </div>
   );
 }
 
