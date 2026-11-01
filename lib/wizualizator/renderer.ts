@@ -164,12 +164,15 @@ void main() {
     float t = (v - tBot) / span;
     float ph = fract(t * uPleats);
     float pitchPx = span / uPleats * uPx.y;
-    float lit = 1.07 + 0.10 * comp;
-    float sh = 0.80 - 0.24 * comp;
-    float s = ph < 0.5 ? mix(lit, 1.0, ph * 2.0) : mix(0.97, sh, (ph - 0.5) * 2.0);
-    float cw = clamp(1.2 / max(pitchPx, 0.5), 0.03, 0.3);
+    // fałda: górna ścianka do światła, dolna w lekkim cieniu; przy rozłożonej plisie
+    // fałdy są płytkie (mały kontrast), przy ściśniętej - głębokie
+    float lit = 1.035 + 0.09 * comp;
+    float sh = 0.90 - 0.22 * comp;
+    float prof = sin(ph * 6.2832);
+    float s = prof > 0.0 ? mix(1.0, lit, prof) : mix(1.0, sh, -prof);
+    float cw = clamp(1.0 / max(pitchPx, 0.5), 0.04, 0.3);
     float crease = smoothstep(1.0 - cw, 1.0, ph);
-    s *= 1.0 - (0.16 + 0.22 * comp) * crease;
+    s *= 1.0 - (0.06 + 0.2 * comp) * crease;
     // drobne fałdy (poniżej ~3 px) uśredniamy, żeby nie migotały
     float aa = clamp((pitchPx - 1.5) / 3.0, 0.0, 1.0);
     s = mix(0.95, s, aa);
@@ -192,16 +195,18 @@ void main() {
     vec2 r = vec2(10.0) / uRes;
     vec3 back = (texture2D(uPhoto, tc).rgb + texture2D(uPhoto, tc + vec2(r.x, 0.0)).rgb + texture2D(uPhoto, tc - vec2(r.x, 0.0)).rgb
       + texture2D(uPhoto, tc + vec2(0.0, r.y)).rgb + texture2D(uPhoto, tc - vec2(0.0, r.y)).rgb) / 5.0;
-    float dbl = 1.0 - 0.5 * crease - 0.15 * comp;
-    vec3 diffused = mix(vec3(lum(alb)), alb, 0.65);
-    vec3 trans = uTrans * uBack * 1.7 * diffused * dbl * mix(vec3(1.0), back / max(lum(back), 0.08), 0.12);
+    float dbl = 1.0 - 0.3 * crease - 0.15 * comp + 0.06 * prof;
+    vec3 diffused = mix(vec3(lum(alb)), alb, 0.8);
+    vec3 trans = clamp(uTrans * uBack * 1.25 * diffused * dbl * mix(vec3(1.0), back / max(lum(back), 0.08), 0.12), 0.0, 0.92);
     // linki przez otwory w tkaninie (nie w plastrze miodu)
     float cords = 0.0;
     if (uHoney < 0.5) {
       float cu = min(min(abs(u - 0.045), abs(u - 0.06)), min(abs(u - 0.94), abs(u - 0.955)));
       cords = (1.0 - smoothstep(0.0, px.x * 1.1, cu)) * 0.18;
     }
-    col = vec4((front + trans) * (1.0 - cords), 1.0);
+    // światło z pokoju + prześwit (mieszanie „screen”: jasna tkanina pod słońce nie przepala się do bieli)
+    vec3 lit3 = 1.0 - (1.0 - clamp(front, 0.0, 1.0)) * (1.0 - trans);
+    col = vec4(lit3 * (1.0 - cords), 1.0);
   }
 
   // ---- belki (z grubością profilu widoczną pod kątem)
