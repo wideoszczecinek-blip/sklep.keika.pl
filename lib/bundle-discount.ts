@@ -105,6 +105,8 @@ export type BundleDiscount = {
   lines: BundleDiscountLine[];
   /** Podpowiedź „dodaj jeszcze N” dla produktu z regułą, którego jest za mało. */
   hint: { slug: string; missing: number; percent: number; fromQty: number; wholeOrder: boolean } | null;
+  /** Kod rabatowy, który dał więcej niż pakiet (bundleOrCode) - pakiet wtedy pusty. */
+  lostToCode?: string;
 };
 
 /** Ten sam algorytm co shop_bundle_discount_compute() w CRM. `perimeterSavings`
@@ -182,6 +184,31 @@ export function calcBundleDiscount(items: CartLineItem[], rulesMap: BundleRules 
   return out;
 }
 
+/** „Większy rabat wygrywa” (właściciel 1.11.2026, AGN-691): CAŁY DOM i kod
+ * rabatowy (np. WRACAM -30 %) się nie sumują. Gdy kod liczony od całego koszyka
+ * (`fullBase` = produkty po korekcie obwodu) daje więcej niż pakiet + kod od
+ * sztuk spoza pakietu, pakiet znika, a kod liczy się od całości. Ten sam wybór
+ * robi CRM (shop_bundle_discount_effective), liczenie kwoty jak
+ * shop_discount_code_validate(). */
+export function bundleOrCode(
+  bundle: BundleDiscount,
+  code: { code: string; type: "percent" | "amount"; value: number } | null | undefined,
+  fullBase: number,
+): BundleDiscount {
+  if (!code || bundle.savings < 0.01) return bundle;
+  const amountOn = (base: number) => {
+    const b = Math.max(0, base);
+    const raw = code.type === "amount" ? code.value : roundMoney((b * code.value) / 100);
+    return Math.max(0, Math.min(raw, b));
+  };
+  const onFull = amountOn(fullBase);
+  const onRest = amountOn(fullBase - bundle.discountedBase);
+  if (onFull > bundle.savings + onRest + 0.004) {
+    return { savings: 0, discountedBase: 0, units: 0, lines: [], hint: null, lostToCode: code.code };
+  }
+  return bundle;
+}
+
 /** Opis pozycji „rabat-pakiet” - identyczny jak shop_bundle_discount_summary() w CRM. */
 export function bundleDiscountSummary(bundle: BundleDiscount): string {
   const parts = bundle.lines.map((line) => `${line.label}: ${line.units} szt.`);
@@ -195,4 +222,10 @@ export function bundleDiscountHintText(bundle: BundleDiscount): string {
   if (wholeOrder) return `Dodaj jeszcze ${missing} ${noun} - całe zamówienie będzie miało -${formatPercent(percent)} %.`;
   const ordinal = fromQty === 2 ? "druga" : fromQty === 3 ? "trzecia" : `${fromQty}.`;
   return `Dodaj jeszcze ${missing} ${noun} - ${ordinal} sztuka ma -${formatPercent(percent)} %.`;
+}
+
+/** Linia w podsumowaniu koszyka, gdy kod wygrał z pakietem (bundleOrCode). */
+export function bundleLostToCodeText(bundle: BundleDiscount): string {
+  if (!bundle.lostToCode) return "";
+  return `Kod ${bundle.lostToCode} daje więcej niż promocja CAŁY DOM - liczymy większy rabat (rabaty się nie sumują).`;
 }

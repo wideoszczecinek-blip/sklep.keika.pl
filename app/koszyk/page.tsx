@@ -31,7 +31,7 @@ import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPrevi
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
-import { bundleDiscountHintText, bundleDiscountSummary, calcBundleDiscount, setBundleDiscountsFromConfig, useBundleDiscountRules } from "@/lib/bundle-discount";
+import { bundleDiscountHintText, bundleDiscountSummary, bundleLostToCodeText, bundleOrCode, calcBundleDiscount, setBundleDiscountsFromConfig, useBundleDiscountRules } from "@/lib/bundle-discount";
 import { readMarketingConsent, saveMarketingConsent } from "@/lib/marketing-consent";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
@@ -68,7 +68,7 @@ import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import type { CheckoutContact } from "../components/stripe-payment-step";
 import StripeMethodStep, { type CreatedIntent, type StripeMethod } from "../components/stripe-method-step";
 import { trackStorefrontEvent } from "@/lib/shop-public";
-import { isPromoActive, PROMO_CODE, SEASONAL_PROMO_ENABLED } from "@/lib/promo";
+import { isPromoActive, PROMO_CODE, QTY_PROMO, SEASONAL_PROMO_ENABLED } from "@/lib/promo";
 import {
   EXPRESS_CHANGED_EVENT,
   EXPRESS_ENABLED,
@@ -631,7 +631,12 @@ function buildQuotePayloadFromCart(
   // (shop_bundle_discount_reapply_to_quote_input) tym samym algorytmem.
   // combinedSavings: rabat na całe zamówienie liczy się od ceny PO korekcie
   // obwodu moskitier (jak SEZON20).
-  const bundle = calcBundleDiscount(items, undefined, combinedSavings);
+  // „Większy rabat wygrywa” (AGN-691): kod, który od całości daje więcej, zastępuje pakiet.
+  const bundle = bundleOrCode(
+    calcBundleDiscount(items, undefined, combinedSavings),
+    discount,
+    items.reduce((sum, item) => sum + item.total, 0) - combinedSavings,
+  );
   if (bundle.savings > 0) {
     positions.push({
       id: "position-bundle-discount",
@@ -1285,7 +1290,10 @@ export default function CartPage() {
   // Rabat pakietowy (decyzja #36): najtańsze sztuki ponad limit -X %; te sztuki
   // nie wchodzą do podstawy kodu ani rabatu ratunkowego (bez kumulowania).
   const bundleRules = useBundleDiscountRules();
-  const bundle = calcBundleDiscount(items, bundleRules, combinedSavings);
+  const bundleRaw = calcBundleDiscount(items, bundleRules, combinedSavings);
+  // „Większy rabat wygrywa” (właściciel 1.11, AGN-691): CAŁY DOM albo kod
+  // (np. WRACAM -30 %), bez sumowania - ten sam wybór co CRM w quote_save.php.
+  const bundle = bundleOrCode(bundleRaw, appliedDiscount, summary.total - combinedSavings);
   // Do groszy, tak jak liczy CRM - inaczej "Razem" różniło się o grosz od
   // kwoty zamówienia (lib/cart.ts roundMoney).
   const rescueAmount = rescueGrant
@@ -1862,24 +1870,49 @@ export default function CartPage() {
     }
   }
 
+  // AGN-690 (2.11): klienci z dawnych reklam wpisują SEZON20 (zakończony
+  // 29.10) i dostawali samo „Ten kod rabatowy jest nieaktywny” - 8 gorących
+  // sesji skończyło się na tym polu. Zamiast ślepego zaułka: CAŁY DOM liczy
+  // się sam, bez kodu (progi z reguł CRM; bez reguły zostaje komunikat CRM).
+  function retiredPromoCodeMessage(code: string): string {
+    if (code.trim().toUpperCase() !== "SEZON20") return "";
+    const rule = Object.values(bundleRules).find((r) => r.wholeOrder && r.tiers.length > 0);
+    if (!rule) return "";
+    const tiers = [...rule.tiers].sort((a, b) => a.fromQty - b.fromQty);
+    const parts = tiers.map((tier, index) => {
+      const pct = `−${tier.percent.toLocaleString("pl-PL")} %`;
+      if (index === tiers.length - 1) return `${tier.fromQty} i więcej ${pct}`;
+      return `${tier.fromQty} ${tier.fromQty < 5 ? "produkty" : "produktów"} ${pct}`;
+    });
+    return `Kod SEZON20 zakończył się 29.10. Teraz rabat ${QTY_PROMO.name} liczy się sam, bez kodu: ${parts.join(", ")} na całe zamówienie.`;
+  }
+
   async function checkDiscountCode(codeOverride?: string) {
     const code = (codeOverride ?? discountCodeInput).trim();
     if (!code) return;
     setDiscountChecking(true);
     setDiscountError("");
     try {
-      const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/discount_code_check.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Net of the real "wspólne rozliczenie obwodu" price correction
-        // (combinedSavings) - that correction isn't a marketing discount,
-        // but SEZON20's own % must be computed off what's actually left to
-        // discount, not the higher pre-correction subtotal (real live bug
-        // 2026-09-11 - see quote_save.php's own fix for the authoritative
-        // half of this).
-        body: JSON.stringify({ code, subtotal: Math.max(0, summary.total - combinedSavings - bundle.discountedBase) }),
-      });
-      const json = (await response.json()) as DiscountCheckResponse;
+      const checkOn = async (subtotal: number) => {
+        const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/discount_code_check.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, subtotal }),
+        });
+        return (await response.json()) as DiscountCheckResponse;
+      };
+      // Net of the real "wspólne rozliczenie obwodu" price correction
+      // (combinedSavings) - that correction isn't a marketing discount,
+      // but SEZON20's own % must be computed off what's actually left to
+      // discount, not the higher pre-correction subtotal (real live bug
+      // 2026-09-11 - see quote_save.php's own fix for the authoritative
+      // half of this). Najpierw od całości; gdy CAŁY DOM daje więcej niż
+      // kod (bundleOrCode), kod liczy się tylko od sztuk spoza pakietu.
+      const fullBase = Math.max(0, summary.total - combinedSavings);
+      let json = await checkOn(fullBase);
+      if (json.ok && json.discount && bundleRaw.discountedBase > 0 && bundleOrCode(bundleRaw, json.discount, fullBase) === bundleRaw) {
+        json = await checkOn(Math.max(0, fullBase - bundleRaw.discountedBase));
+      }
       if (!json.ok || !json.discount) {
         throw new Error(json.error || "Nieprawidłowy kod rabatowy.");
       }
@@ -1892,7 +1925,9 @@ export default function CartPage() {
       // Kod osobisty, który CRM odrzucił (wygasł / użyty) - nie trzymamy go,
       // żeby przy następnym wejściu koszyk wrócił do SEZON20.
       if (getPersonalCode()?.code === code.toUpperCase()) clearPersonalCode();
-      setDiscountError(checkError instanceof Error ? checkError.message : "Nie udało się sprawdzić kodu.");
+      setDiscountError(
+        retiredPromoCodeMessage(code) || (checkError instanceof Error ? checkError.message : "Nie udało się sprawdzić kodu."),
+      );
       trackCheckoutIssue("discount_code_invalid", code);
     } finally {
       setDiscountChecking(false);
@@ -3385,7 +3420,7 @@ export default function CartPage() {
     itemsTotal: summary.total,
     combinedSavings,
     bundleRow: bundle.savings > 0 ? { label: bundle.lines.map((line) => line.label).join(", "), amount: bundle.savings } : null,
-    bundleHint: bundleDiscountHintText(bundle),
+    bundleHint: bundleLostToCodeText(bundle) || bundleDiscountHintText(bundle),
     appliedDiscount,
     rescueRow:
       rescueGrant && rescueAmount > 0
@@ -3943,6 +3978,12 @@ export default function CartPage() {
                   {bundle.hint ? (
                     <div className="cart-page-summary-row is-muted">
                       <span>{bundleDiscountHintText(bundle)}</span>
+                      <span />
+                    </div>
+                  ) : null}
+                  {bundle.lostToCode ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>{bundleLostToCodeText(bundle)}</span>
                       <span />
                     </div>
                   ) : null}
