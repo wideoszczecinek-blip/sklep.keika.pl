@@ -23,9 +23,10 @@ import {
 import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
 import WizWycena, { type WycenaSzyba } from "./WizWycena";
+import WizDemo from "./WizDemo";
 import s from "./WizModal.module.css";
 
-type Faza = "start" | "wysylanie" | "sprawdzanie" | "popraw" | "analiza" | "gotowa" | "odrzucona" | "blad";
+type Faza = "start" | "wysylanie" | "sprawdzanie" | "popraw" | "analiza" | "gotowa" | "odrzucona" | "blad" | "qr_gotowe" | "qr_koniec";
 type Zakladka = "tkanina" | "listwy" | "wycena" | "szyby";
 type PaneState = {
   id: string; rogi: Pt[]; gora: number; dol: number; tkanina: string; listwa: string; pewnosc: number; szerMm: number; wysMm: number; swiatlo: WizSzyba["swiatlo"];
@@ -118,7 +119,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 }) {
   const [faza, setFaza] = useState<Faza>(startToken ? "analiza" : "start");
   const [blad, setBlad] = useState("");
-  const [zgoda, setZgoda] = useState(false);
+  // zgoda wyrażana wysłaniem zdjęcia (informacja pod przyciskami; właściciel 1.11: QR od razu widoczny)
+  const [zgoda] = useState(true);
   const [token, setToken] = useState<string | null>(startToken || null);
   const [status, setStatus] = useState<WizStatus | null>(null);
   const [katalog, setKatalog] = useState<WizKatalog | null>(null);
@@ -152,6 +154,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const rafRef = useRef(0);
   const saveRef = useRef(0);
   const korektaRef = useRef(false);
+  const zTelefonuRef = useRef(false);
 
   // ------------------------------------------------------------ start
   useEffect(() => {
@@ -175,14 +178,14 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
   // Komputer: kod QR do telefonu (tylko z ekranu startowego, nie na stronie telefonu)
   useEffect(() => {
-    if (mobile || qrKod || faza !== "start" || !zgoda || qr) return;
+    if (mobile || qrKod || faza !== "start" || qr) return;
     void wizQrCreate(zrodlo).then((q) => {
       if (q) {
         setQr(q);
         wizEvent("wiz_qr", null, { zrodlo });
       }
     });
-  }, [mobile, qrKod, faza, zgoda, qr, zrodlo]);
+  }, [mobile, qrKod, faza, qr, zrodlo]);
 
   // ...i czekanie, aż telefon wyśle zdjęcie
   useEffect(() => {
@@ -193,6 +196,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       const r = await wizQrPoll(qr.kod);
       if (stop) return;
       if (r?.status === "jest" && r.token) {
+        // zdjęcie z telefonu: kontrolę i start analizy robi telefon (tam klient poprawia zdjęcie)
+        zTelefonuRef.current = true;
         setToken(r.token);
         setFaza("analiza");
         return;
@@ -234,9 +239,10 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         setFaza("popraw");
         return;
       }
-      if (k.oslony) setInfo("Na oknie są już rolety – usuniemy je ze zdjęcia, żeby pokazać plisę.");
+      if (k.oslony || k.osoby || k.balagan) setInfo("Uporządkujemy zdjęcie (osoby, bałagan, stare rolety), żeby pokazać plisę w najlepszym świetle.");
       wizAnaliza(r.token);
-      setFaza("analiza");
+      // telefon z kodu QR: klient wybiera, gdzie ogląda wynik
+      setFaza(qrKod ? "qr_gotowe" : "analiza");
     } catch (e) {
       setBlad(e instanceof Error ? e.message : "Nie udało się wysłać zdjęcia.");
       setFaza("start");
@@ -248,7 +254,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     wizEvent("wiz_mimo_to", token, { problemy: (kontrola?.problemy || []).join(", ") });
     wizAnaliza(token);
     setKontrola(null);
-    setFaza("analiza");
+    setFaza(qrKod ? "qr_gotowe" : "analiza");
   };
 
   // zminimalizowane okno nie blokuje przewijania strony; po powrocie rysujemy od nowa
@@ -289,7 +295,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         setStatus(st);
         if (st.kontakt) setLead((l) => ({ ...l, wyslane: true }));
         // powrót do zdjęcia, które zostało przy kontroli (np. link) - analiza jeszcze nie ruszyła
-        if (st.status === "nowa" && n === 3) wizAnaliza(token);
+        if (st.status === "nowa" && n === 3 && !zTelefonuRef.current) wizAnaliza(token);
         if (st.status === "gotowa" || st.status === "recznie") {
           if (st.wynik) {
             setWynik(st.wynik);
@@ -341,7 +347,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     }
     setPanes(szyby);
     setSel(0);
-    setInfo(status?.podglad?.oczyszczone ? "Usunęliśmy ze zdjęcia obecne rolety – tak Twoje okno wygląda z naszą plisą." : "");
+    setInfo(wynik.uporzadkowane || status?.podglad?.oczyszczone ? "Uporządkowaliśmy zdjęcie (osoby, bałagan, stare rolety) – tak Twoje okno wygląda z naszą plisą." : "");
     const kol = katalog?.tkaniny.find((t) => t.id === tk)?.kolekcja;
     if (kol) setKolekcja(kol);
     if (wynik.status === "recznie" || szyby.some((p) => p.pewnosc < 70)) {
@@ -647,7 +653,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       ctx.fillRect(0, c.height - fs * 2.2, c.width, fs * 2.2);
       ctx.fillStyle = "#fff";
       ctx.font = `${fs}px system-ui, sans-serif`;
-      ctx.fillText("Wizualizacja poglądowa · KEIKA · sklep.keika.pl", fs * 0.8, c.height - fs * 0.75);
+      ctx.fillText(`Wizualizacja poglądowa${wynik.uporzadkowane ? " · zdjęcie uporządkowane automatycznie" : ""} · KEIKA · sklep.keika.pl`, fs * 0.8, c.height - fs * 0.75);
       const a = document.createElement("a");
       a.href = out.toDataURL("image/jpeg", 0.9);
       a.download = "plisa-w-moim-oknie.jpg";
@@ -695,7 +701,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
   // Portal do <body>: przyciski siedzą w sekcjach z transform/overflow, które przycinałyby position: fixed.
   const podglad = status?.podglad;
-  const etapy = ["R", "A", "B", "C", "F"];
+  const etapy = ["0", "R", "A", "B", "C", "F"];
   const postep = faza === "sprawdzanie" ? 6 : Math.max(10, Math.round(((etapy.indexOf(status?.etap || "A") + 1) / (etapy.length + 1)) * 100));
   const kontaktForm = (moment: string) => lead.wyslane ? (
     <p className={s.leadOk}>✓ Dziękujemy! Wyślemy Ci wizualizację i wycenę – możesz też od razu przejść dalej.</p>
@@ -718,66 +724,96 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   return createPortal(
     <>
     <div className={`${s.overlay} ${min ? s.hiddenOverlay : ""}`} role="dialog" aria-modal="true" aria-label="Zobacz plisę w swoim oknie">
-      <div className={`${s.modal} ${faza === "gotowa" ? s.modalWide : ""}`}>
+      <div className={`${s.modal} ${faza === "gotowa" || faza === "start" || faza === "wysylanie" ? s.modalWide : ""}`}>
         <button type="button" className={s.close} onClick={() => { wizEvent("wiz_zamkniete", token, { faza }); onClose(); }} aria-label="Zamknij">×</button>
         {faza !== "start" ? (
           <button type="button" className={s.minBtn} onClick={() => { setMin(true); wizEvent("wiz_minimalizuj", token, { faza }); }} aria-label="Zminimalizuj" title="Zminimalizuj – przeglądaj sklep, wrócisz jednym kliknięciem">–</button>
         ) : null}
 
-        {faza === "start" || faza === "wysylanie" ? (
-          <div className={s.startBox}>
-            <h2 className={s.title}>Zobacz plisę w swoim oknie</h2>
-            <p className={s.lead}>Zrób zdjęcie okna – w minutę pokażemy na nim plisę, wymiary szacunkowe i wycenę. Potem zmieniasz tkaninę, kolor listew i przesuwasz belki.</p>
-            <div className={s.produkt}>
-              <span className={s.small}>Produkt:</span>
-              <span className={s.chipOn}>Plisy na wymiar</span>
-              <span className={s.chipOff} title="Wkrótce">Rolety dachowe – wkrótce</span>
-              <span className={s.chipOff} title="Wkrótce">Moskitiery – wkrótce</span>
-            </div>
-            <p className={s.label}>Jak zrobić dobre zdjęcie</p>
-            <ul className={s.guide}>
-              <li><span className={s.gIcon} aria-hidden="true">🧍‍➡️🪟</span><b>Na wprost okna</b><small>stań 2–3 kroki od okna, telefon poziomo albo pionowo</small></li>
-              <li><span className={s.gIcon} aria-hidden="true">🖼️</span><b>Całe okno w kadrze</b><small>z ramą i kawałkiem ściany dookoła</small></li>
-              <li><span className={s.gIcon} aria-hidden="true">☀️</span><b>W dzień, szyba odsłonięta</b><small>firanka odsunięta; obecne rolety usuniemy ze zdjęcia sami</small></li>
-              <li><span className={s.gIcon} aria-hidden="true">🚫</span><b>Bez ludzi w kadrze</b><small>takich zdjęć nie przetwarzamy</small></li>
-            </ul>
-            <label className={s.consent}>
-              <input type="checkbox" checked={zgoda} onChange={(e) => setZgoda(e.target.checked)} />
-              <span>
-                Zgadzam się na przetworzenie zdjęcia przez KEIKA w celu przygotowania wizualizacji. Zdjęcie przechowujemy 30 dni, potem je usuwamy;
-                nie używamy go w reklamach. Usunięcia możesz zażądać wcześniej (czat lub biuro@keika.pl).
-              </span>
-            </label>
+        {qrKod && (faza === "start" || faza === "wysylanie") ? (
+          // telefon po zeskanowaniu kodu z komputera: od razu aparat / galeria, bez wstępu
+          <div className={s.phoneBox}>
+            <span className={s.newPill}>Połączono z komputerem</span>
+            <h2 className={s.titleBig}>Zrób zdjęcie okna</h2>
+            <p className={s.lead}>Stań na wprost okna, tak żeby całe było w kadrze. Osoby i bałagan usuniemy sami.</p>
             {blad ? <p className={s.error}>{blad}</p> : null}
             {faza === "wysylanie" ? (
               <p className={s.busy}>Wysyłamy zdjęcie…</p>
-            ) : mobile || qrKod ? (
-              <div className={s.actions}>
-                <button type="button" className={s.primary} disabled={!zgoda} onClick={() => camRef.current?.click()}>Zrób zdjęcie okna</button>
-                <button type="button" className={s.secondary} disabled={!zgoda} onClick={() => fileRef.current?.click()}>Wybierz z galerii</button>
-              </div>
             ) : (
-              <div className={s.desktopPick}>
-                <div className={s.qrBox}>
-                  {!zgoda ? (
-                    <p className={s.qrHint}>Zaznacz zgodę, a pokażemy kod QR.</p>
-                  ) : qr ? (
-                    <>
-                      <QrKod url={qr.url} />
-                      <p className={s.qrHint}>Zeskanuj telefonem i zrób zdjęcie – wizualizacja pojawi się tutaj.</p>
-                    </>
-                  ) : (
-                    <p className={s.qrHint}>Przygotowujemy kod…</p>
-                  )}
-                </div>
-                <div className={s.orBox}>
-                  <span>albo</span>
-                  <button type="button" className={s.secondary} disabled={!zgoda} onClick={() => fileRef.current?.click()}>Wybierz zdjęcie z komputera</button>
-                </div>
+              <div className={s.phoneBtns}>
+                <button type="button" className={s.primaryBig} onClick={() => camRef.current?.click()}>📷 Zrób zdjęcie</button>
+                <button type="button" className={s.secondaryBig} onClick={() => fileRef.current?.click()}>🖼️ Wybierz z galerii</button>
               </div>
             )}
+            <p className={s.consentLine}>Wysyłając zdjęcie, zgadzasz się na jego przetworzenie przez KEIKA w celu wizualizacji. Przechowujemy je 30 dni, nie używamy w reklamach.</p>
             <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void wyslij(e.target.files?.[0])} />
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void wyslij(e.target.files?.[0])} />
+          </div>
+        ) : null}
+
+        {faza === "qr_gotowe" || faza === "qr_koniec" ? (
+          <div className={s.phoneBox}>
+            <div className={s.bigCheck} aria-hidden="true">✓</div>
+            <h2 className={s.titleBig}>{faza === "qr_koniec" ? "Gotowe – wróć do komputera" : "Zdjęcie wysłane"}</h2>
+            <p className={s.lead}>
+              {faza === "qr_koniec"
+                ? "Wizualizacja pojawi się na ekranie komputera za około minutę. Telefon możesz odłożyć."
+                : "Przygotowujemy wizualizację – za około minutę zobaczysz plisę na swoim oknie. Gdzie chcesz ją oglądać?"}
+            </p>
+            {faza === "qr_gotowe" ? (
+              <div className={s.phoneBtns}>
+                <button type="button" className={s.primaryBig} onClick={() => { wizEvent("wiz_qr_telefon", token, { wybor: "telefon" }); setFaza("analiza"); }}>Kontynuuj na tym telefonie</button>
+                <button type="button" className={s.secondaryBig} onClick={() => { wizEvent("wiz_qr_telefon", token, { wybor: "komputer" }); setFaza("qr_koniec"); }}>Wróć do komputera</button>
+              </div>
+            ) : (
+              <button type="button" className={s.secondaryBig} onClick={() => setFaza("analiza")}>Jednak pokaż na telefonie</button>
+            )}
+          </div>
+        ) : null}
+
+        {!qrKod && (faza === "start" || faza === "wysylanie") ? (
+          <div className={s.startGrid}>
+            <WizDemo />
+            <div className={s.startBox}>
+              <div className={s.produkt}>
+                <span className={s.newPill}>Nowość · AI</span>
+                <span className={s.chipOnSm}>Plisy</span>
+                <span className={s.chipOff} title="Wkrótce">Rolety dachowe – wkrótce</span>
+              </div>
+              <h2 className={s.titleBig}>Zobacz plisę w swoim oknie – zanim kupisz</h2>
+              <p className={s.lead}>Wyślij zdjęcie okna. W minutę pokażemy plisę na Twojej szybie, dobierzemy kolor do wnętrza i policzymy cenę.</p>
+              <ol className={s.steps3}>
+                <li><span aria-hidden="true">📷</span><b>Zrób zdjęcie okna</b><small>na wprost, całe okno w kadrze, w dzień</small></li>
+                <li><span aria-hidden="true">✨</span><b>AI dopasuje plisę</b><small>szyby, perspektywa i światło</small></li>
+                <li><span aria-hidden="true">🎨</span><b>Wybierz kolor i zamów</b><small>150 tkanin, wycena od razu</small></li>
+              </ol>
+              {blad ? <p className={s.error}>{blad}</p> : null}
+              {faza === "wysylanie" ? (
+                <p className={s.busy}>Wysyłamy zdjęcie…</p>
+              ) : mobile || qrKod ? (
+                <div className={s.actions}>
+                  <button type="button" className={s.primaryBig} onClick={() => camRef.current?.click()}>📷 Zrób zdjęcie okna</button>
+                  <button type="button" className={s.secondary} onClick={() => fileRef.current?.click()}>Wybierz z galerii</button>
+                </div>
+              ) : (
+                <div className={s.qrCard}>
+                  <div className={s.qrImg}>{qr ? <QrKod url={qr.url} /> : <span className={s.qrWait}>…</span>}</div>
+                  <div className={s.qrText}>
+                    <b>Zeskanuj telefonem</b>
+                    <small>Otwórz aparat, zrób zdjęcie okna – wizualizacja pojawi się tutaj, na komputerze.</small>
+                    <span className={s.or}>albo</span>
+                    <button type="button" className={s.secondary} onClick={() => fileRef.current?.click()}>Wybierz zdjęcie z komputera</button>
+                  </div>
+                </div>
+              )}
+              <p className={s.tidy}>✨ Osoby, bałagan i stare rolety usuniemy ze zdjęcia automatycznie.</p>
+              <p className={s.consentLine}>
+                Wysyłając zdjęcie, zgadzasz się na jego przetworzenie przez KEIKA w celu przygotowania wizualizacji. Przechowujemy je 30 dni, nie używamy w reklamach;
+                usunięcia możesz zażądać wcześniej (czat lub biuro@keika.pl).
+              </p>
+              <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void wyslij(e.target.files?.[0])} />
+              <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void wyslij(e.target.files?.[0])} />
+            </div>
           </div>
         ) : null}
 
@@ -884,7 +920,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   );
                 })() : null}
                 {przedPo !== null ? <div className={s.split} style={{ left: cornerPos([przedPo, 0]).left }}><span>przed | po</span></div> : null}
-                <p className={s.disclaimer}>Wizualizacja poglądowa – kolory, faktura i proporcje mogą się różnić. Wymiary mierzysz sam.</p>
+                <p className={s.disclaimer}>
+                  Wizualizacja poglądowa{wynik.uporzadkowane ? " · zdjęcie uporządkowane automatycznie" : ""} – kolory, faktura i proporcje mogą się różnić. Wymiary mierzysz sam.
+                </p>
                 {!gotowyObraz ? <div className={s.loading}>Wczytujemy…</div> : null}
               </div>
               {zdjecia.length > 0 ? (

@@ -69,6 +69,8 @@ export type WizWynik = {
   } | null;
   swiatlo?: { tint: [number, number, number]; jasnosc_pokoju: number; kierunek_cienia: [number, number]; barwa: string; pora: string };
   zastrzezenie: string;
+  /** A0: zdjęcie posprzątane (osoby, bałagan, stare rolety) */
+  uporzadkowane?: boolean;
 };
 
 export type WizStatus = {
@@ -145,11 +147,11 @@ export async function wizStart(file: File, opts: { zrodlo: string; qr?: string; 
 }
 
 /** Szybka kontrola zdjęcia (etap Q, 2–4 s) - przed pełną analizą. */
-export async function wizSprawdz(token: string): Promise<{ decyzja: "ok" | "popraw" | "odrzuc"; komunikat: string; problemy: string[]; oslony: boolean }> {
+export async function wizSprawdz(token: string): Promise<{ decyzja: "ok" | "popraw" | "odrzuc"; komunikat: string; problemy: string[]; oslony: boolean; osoby?: boolean; balagan?: boolean }> {
   try {
     const r = await fetch(`${WIZ_API}/sprawdz.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token }) });
     const j = await r.json();
-    if (j && j.ok) return { decyzja: j.decyzja || "ok", komunikat: j.komunikat || "", problemy: j.problemy || [], oslony: Boolean(j.oslony) };
+    if (j && j.ok) return { decyzja: j.decyzja || "ok", komunikat: j.komunikat || "", problemy: j.problemy || [], oslony: Boolean(j.oslony), osoby: Boolean(j.osoby), balagan: Boolean(j.balagan) };
   } catch {
     // kontrola nie blokuje - pełna analiza i tak sprawdzi zdjęcie
   }

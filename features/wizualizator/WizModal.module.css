@@ -688,3 +688,49 @@
 @media (max-width: 899px) {
   .startBox .actions { position: sticky; bottom: 0; background: #fff; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); margin: 0 -2px; box-shadow: 0 -8px 16px rgba(255,255,255,0.9); }
 }
+
+/* ---- ekran startowy v2 (właściciel 1.11: „główna zachęta – większy, nowocześniej, animacja, QR od razu”) ---- */
+.startGrid { display: grid; grid-template-columns: 1fr; }
+@media (min-width: 900px) {
+  .startGrid { grid-template-columns: minmax(0, 1.25fr) minmax(380px, 1fr); min-height: min(720px, 88vh); }
+  .startGrid .startBox { padding: 34px 34px 26px; display: flex; flex-direction: column; justify-content: center; }
+}
+.demo { position: relative; background: #0b1218; overflow: hidden; display: flex; align-items: center; justify-content: center; line-height: 0; }
+@media (min-width: 900px) { .demo { border-radius: 18px 0 0 18px; } }
+.demoCanvas { width: 100%; height: auto; display: block; }
+.demoScan { position: absolute; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, #5eead4, transparent); box-shadow: 0 0 22px 4px rgba(94, 234, 212, 0.65); pointer-events: none; }
+.demoSvg { position: absolute; left: 0; width: 100%; height: auto; aspect-ratio: 1200 / 801; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.demoSvg polygon { fill: rgba(94, 234, 212, 0.12); stroke: #5eead4; stroke-width: 4; vector-effect: non-scaling-stroke; }
+.demoHand { position: absolute; transform: translate(-20%, -10%); font-size: 34px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); pointer-events: none; }
+.demoSteps { position: absolute; left: 12px; right: 12px; bottom: 34px; display: flex; flex-wrap: wrap; gap: 6px; line-height: 1.3; pointer-events: none; }
+.demoStep, .demoStepOn { font-size: 12px; padding: 5px 10px; border-radius: 999px; background: rgba(15, 23, 32, 0.55); color: rgba(255,255,255,0.7); backdrop-filter: blur(6px); transition: all 0.35s ease; }
+.demoStepOn { background: #0f9f8f; color: #fff; font-weight: 700; transform: scale(1.05); box-shadow: 0 6px 18px rgba(15,159,143,0.45); }
+.demoBadge { position: absolute; left: 12px; bottom: 8px; font-size: 11px; color: rgba(255,255,255,0.8); line-height: 1.3; }
+@media (max-width: 899px) { .demoSteps { display: none; } }
+.newPill { background: linear-gradient(90deg, #0f9f8f, #22c55e); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.03em; }
+.chipOnSm { background: #12212b; color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 600; }
+.titleBig { font-size: clamp(24px, 3vw, 34px); line-height: 1.12; font-weight: 800; margin: 6px 40px 10px 0; color: #0b1720; letter-spacing: -0.01em; }
+.steps3 { list-style: none; padding: 0; margin: 4px 0 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; counter-reset: k; }
+.steps3 li { background: #f4f8f8; border-radius: 14px; padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; position: relative; }
+.steps3 li > span { font-size: 24px; line-height: 1.1; }
+.steps3 small { color: #5b6b75; font-size: 12px; line-height: 1.35; }
+@media (max-width: 520px) { .steps3 { grid-template-columns: 1fr; } .steps3 li { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 6px; } .steps3 small { width: 100%; } }
+.primaryBig { background: linear-gradient(135deg, #0f9f8f, #0d8a7c); color: #fff; border: 0; border-radius: 14px; padding: 16px 20px; font-size: 17px; font-weight: 800; cursor: pointer; flex: 1 1 100%; box-shadow: 0 10px 24px rgba(15,159,143,0.35); }
+.qrCard { display: grid; grid-template-columns: 172px 1fr; gap: 16px; align-items: center; background: #fff; border: 2px solid #ccfbf1; border-radius: 18px; padding: 14px; box-shadow: 0 12px 30px rgba(15, 159, 143, 0.12); }
+.qrImg { width: 172px; height: 172px; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 12px; }
+.qrImg svg { width: 172px; height: 172px; display: block; }
+.qrWait { color: #94a3b8; font-size: 28px; }
+.qrText { display: flex; flex-direction: column; gap: 6px; }
+.qrText b { font-size: 18px; }
+.qrText small { color: #52616b; font-size: 13px; line-height: 1.4; }
+.or { color: #94a3b8; font-size: 12px; margin-top: 4px; }
+.tidy { margin: 14px 0 6px; font-size: 13.5px; color: #0f766e; font-weight: 600; }
+.consentLine { margin: 0; font-size: 11.5px; color: #7a8790; line-height: 1.45; }
+
+/* ---- telefon z kodu QR: od razu aparat / galeria, potem „kontynuuj tutaj / wróć do komputera” ---- */
+.phoneBox { padding: 42px 22px 28px; display: flex; flex-direction: column; gap: 12px; min-height: 100%; justify-content: center; text-align: left; }
+@media (min-width: 900px) { .phoneBox { padding: 40px; } }
+.phoneBtns { display: grid; gap: 10px; margin: 6px 0; }
+.secondaryBig { background: #eef3f5; color: #12212b; border: 0; border-radius: 14px; padding: 16px 20px; font-size: 16px; font-weight: 700; cursor: pointer; }
+.bigCheck { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #0f9f8f, #22c55e); color: #fff; font-size: 34px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 28px rgba(15,159,143,0.35); }
+.phoneBox .newPill { align-self: flex-start; }
