@@ -70,6 +70,25 @@ export function isAssistantSpeaking(): boolean {
   return speaking;
 }
 
+// Okienka sklepu (pasek „dodatkowe 5%”, pasek „koszyk na e-mail”) - gdy któreś jest na ekranie
+// albo właśnie decyduje, czy się pokazać, dymki asystenta czekają. Naraz tylko jedno okienko
+// (właściciel 1.11.2026: pasek -5 % zasłaniał „Witamy ponownie” u powracającego klienta).
+const screenWindows = new Set<string>();
+/** Pasek „dodatkowe 5%” u powracającego z koszykiem - na ekranie / CRM jeszcze odpowiada. */
+export const ESCAPE_RETURN_BAR = "escape_return_bar";
+export const ESCAPE_BAR_PENDING = "escape_return_pending";
+export const CART_EMAIL_BAR = "cart_email_bar";
+
+export function setScreenWindow(id: string, open: boolean): void {
+  if (open) screenWindows.add(id);
+  else screenWindows.delete(id);
+}
+
+/** Bez `id`: czy jakiekolwiek okienko jest na ekranie (lub w drodze). */
+export function isScreenWindowOpen(id?: string): boolean {
+  return id ? screenWindows.has(id) : screenWindows.size > 0;
+}
+
 function readStorage(key: string): string {
   try {
     return window.localStorage.getItem(key) || "";

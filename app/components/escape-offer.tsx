@@ -27,6 +27,7 @@ import {
   type EscapeOfferState,
   type EscapeTrigger,
 } from "@/lib/escape-offer";
+import { ESCAPE_BAR_PENDING, ESCAPE_RETURN_BAR, setScreenWindow } from "@/lib/assistant";
 import { formatPromoRemaining } from "@/lib/promo";
 import { trackShopStep } from "@/lib/track-step";
 
@@ -357,16 +358,33 @@ export function EscapeOfferReturnBar({ onVisible }: { onVisible?: () => void }) 
     }
     const trigger: EscapeTrigger = viaRemarketing ? "rm_return" : "return_visit";
     const hadDecision = getEscapeOfferState() !== null;
-    void requestEscapeOffer(trigger, items).then((state) => {
-      if (cancelled || !state || state.arm !== "offer" || state.status !== "active" || Date.now() >= state.expiresAtMs) return;
-      setOpen(true);
-      onVisibleRef.current?.();
-      trackShopStep("escape_offer_shown", trigger, { mode: "bar", fresh: !hadDecision, percent: state.percent }, state.quoteCode);
-    });
+    // Pasek ma pierwszeństwo przed dymkami asystenta: póki CRM odpowiada, dymki czekają
+    // (najwyżej 8 s, gdyby odpowiedź utknęła).
+    setScreenWindow(ESCAPE_BAR_PENDING, true);
+    const pendingTimer = window.setTimeout(() => setScreenWindow(ESCAPE_BAR_PENDING, false), 8000);
+    void requestEscapeOffer(trigger, items)
+      .then((state) => {
+        if (cancelled || !state || state.arm !== "offer" || state.status !== "active" || Date.now() >= state.expiresAtMs) return;
+        setOpen(true);
+        onVisibleRef.current?.();
+        trackShopStep("escape_offer_shown", trigger, { mode: "bar", fresh: !hadDecision, percent: state.percent }, state.quoteCode);
+      })
+      .finally(() => {
+        window.clearTimeout(pendingTimer);
+        setScreenWindow(ESCAPE_BAR_PENDING, false);
+      });
     return () => {
       cancelled = true;
+      window.clearTimeout(pendingTimer);
+      setScreenWindow(ESCAPE_BAR_PENDING, false);
     };
   }, []);
+
+  const visible = open && !!offer;
+  useEffect(() => {
+    setScreenWindow(ESCAPE_RETURN_BAR, visible);
+    return () => setScreenWindow(ESCAPE_RETURN_BAR, false);
+  }, [visible]);
 
   if (!open || !offer) return null;
   return (

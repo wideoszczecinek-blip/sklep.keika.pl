@@ -45,6 +45,7 @@ import { cartEmailOfferEligible, useCartEmailNudge } from "@/lib/cart-email-nudg
 import PromoCountdownBanner from "./components/promo-countdown-banner";
 import PromoTopStrip from "./components/promo-top-strip";
 import { EscapeOfferReturnBar } from "./components/escape-offer";
+import { CART_EMAIL_BAR, setScreenWindow } from "@/lib/assistant";
 import { setBundleDiscountsFromConfig } from "@/lib/bundle-discount";
 import {
   applyPriceAdjustment,
@@ -2099,6 +2100,11 @@ export default function Home({
     }, 1500);
     return () => window.clearTimeout(timer);
   }, []);
+  // Pasek „koszyk na e-mail” na ekranie - dymki asystenta czekają (jedno okienko naraz).
+  useEffect(() => {
+    setScreenWindow(CART_EMAIL_BAR, cartEmailBanner !== null);
+    return () => setScreenWindow(CART_EMAIL_BAR, false);
+  }, [cartEmailBanner]);
   // false until the first client-side read of the promo state - the banner
   // row below is held by a same-height placeholder in the meantime so the
   // price/CTA block never jumps down after hydration (CLS 2026-09-14).

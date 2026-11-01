@@ -23,7 +23,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   CART_ADDED_EVENT,
+  ESCAPE_RETURN_BAR,
   applyToConfigurator,
+  isScreenWindowOpen,
   resolveAssistantArm,
   setAssistantSpeaking,
   type AssistantArm,
@@ -232,6 +234,12 @@ export default function AssistantNudges({ productSlug, active }: { productSlug: 
       if (session.stopped || session.shown.length >= MAX_PER_VISIT) return;
       if (Date.now() - session.lastAt < GAP_MS) return;
       if (stageBusy() || readingContent()) return;
+      // Inne okienko sklepu na ekranie (albo w drodze) - czekamy. Pasek -5 % prowadzi do koszyka
+      // tak samo jak „Witamy ponownie”, więc po nim powitania w tej wizycie już nie ma.
+      if (isScreenWindowOpen()) {
+        if (isScreenWindowOpen(ESCAPE_RETURN_BAR) && !session.returnChecked) writeSession({ ...session, returnChecked: true });
+        return;
+      }
       const candidate = pickMoment(session);
       if (!candidate) return;
       firedThisPageRef.current.add(candidate.id);
