@@ -807,3 +807,122 @@
 .progressTrack span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #0f9f8f, #2dd4bf, #0f9f8f); background-size: 200% 100%; animation: postepPrzelew 1.6s linear infinite; transition: width 0.5s ease; }
 .progressRow small { grid-column: 1 / -1; font-size: 12.5px; color: #52616b; }
 @keyframes postepPrzelew { to { background-position: -200% 0; } }
+
+/* ===== wynik v3 (właściciel 1.11): duże zdjęcie, przyciski kart pod nim, jeden wyraźny przycisk zakupu ===== */
+.res { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 14px; }
+.resStage { display: flex; gap: 14px; align-items: stretch; min-height: 0; }
+.resStage .stageCol { flex: 1 1 auto; border-radius: 16px; overflow: hidden; }
+.res .canvas { max-height: 60vh; }
+.res .aiBar { margin: 10px 10px 0; }
+@media (min-width: 900px) {
+  .res .aiBar { margin-right: 100px; } /* miejsce na – i × modala */
+  .res .stageCol { padding-top: 0; }
+}
+.karta { flex: 0 0 370px; width: 370px; max-height: 66vh; display: flex; flex-direction: column; background: #fff; border: 1px solid #e3eaee; border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,32,0.12); animation: kartaWjazd 0.25s ease; overflow: hidden; }
+@keyframes kartaWjazd { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.kartaHead { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #eef2f4; }
+.kartaHead b { font-size: 16px; }
+.kartaHead button { border: 0; background: #f1f5f9; width: 32px; height: 32px; border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; color: #1f2a33; }
+.kartaBody { padding: 12px 14px 16px; overflow-y: auto; }
+.grupy { display: grid; gap: 8px; }
+.grupa { text-align: left; border: 1.5px solid #e3eaee; border-radius: 12px; background: #fff; padding: 10px 12px; cursor: pointer; display: grid; gap: 3px; }
+.grupa b { font-size: 15px; }
+.grupa small { font-size: 12.5px; color: #52616b; line-height: 1.35; }
+.grupa.on { border-color: #0f9f8f; box-shadow: 0 0 0 2px rgba(15,159,143,0.15); }
+.grupaTag { justify-self: start; font-size: 11.5px; font-weight: 700; color: #0f766e; background: #ccfbf1; border-radius: 999px; padding: 2px 8px; margin-top: 2px; }
+
+.resTools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tool { display: grid; gap: 2px; text-align: left; border: 1.5px solid #e3eaee; border-radius: 14px; background: #fff; padding: 10px 14px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
+.tool:hover { border-color: #99f6e4; transform: translateY(-1px); }
+.tool small { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+.tool b { display: flex; align-items: center; gap: 8px; font-size: 15.5px; color: #12212b; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tool b i { flex: 0 0 22px; height: 22px; border-radius: 6px; background-size: cover; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+.tool b::after { content: "›"; margin-left: auto; color: #94a3b8; font-size: 20px; font-weight: 400; }
+.toolOn { border-color: #0f9f8f; box-shadow: 0 0 0 3px rgba(15,159,143,0.15); }
+
+.resCta { display: flex; gap: 16px; align-items: center; }
+.resCtaInfo { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.resCtaInfo .bundle, .resCtaInfo .error, .resCtaInfo .info { margin: 0; }
+.resLinks { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 13.5px; color: #42515c; }
+.resLinks label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.ctaBig { flex: 0 0 auto; display: grid; gap: 2px; justify-items: center; border: 0; border-radius: 14px; padding: 14px 26px; min-width: 330px; font-size: 18px; font-weight: 800; color: #fff; cursor: pointer;
+  background: linear-gradient(90deg, #ea580c, #f97316); box-shadow: 0 8px 22px rgba(234,88,12,0.35); transition: transform 0.15s, filter 0.15s; }
+.ctaBig:hover { filter: brightness(1.05); transform: translateY(-1px); }
+.ctaBig:disabled { opacity: 0.5; cursor: default; transform: none; }
+.ctaBig small { font-size: 12.5px; font-weight: 600; opacity: 0.92; }
+.wycena .ctaBig { width: 100%; min-width: 0; }
+.res .photos { background: #0f1720; border-radius: 12px; }
+
+/* kreator wymiarów */
+.kreatorSvg { position: absolute; left: 0; top: 0; pointer-events: none; }
+.kreatorMaska { fill: rgba(8, 14, 20, 0.62); }
+.kreatorObrys { fill: none; stroke: #2dd4bf; stroke-width: 3; animation: pillPulse 1.4s ease-in-out infinite; }
+.kreatorStrz { stroke: #2dd4bf; stroke-width: 2.5; }
+.kreatorTxt { fill: #fff; font-size: 13px; font-weight: 700; paint-order: stroke; stroke: rgba(8,14,20,0.8); stroke-width: 4px; }
+.kreatorNr { fill: #fff; font-size: 40px; font-weight: 800; paint-order: stroke; stroke: rgba(15,118,110,0.85); stroke-width: 7px; }
+.kreator { display: grid; gap: 10px; }
+.krokTop { display: flex; gap: 10px; align-items: center; }
+.krokTop p { margin: 0; line-height: 1.25; }
+.krokTop p b { display: block; font-size: 16px; }
+.krokTop p small { color: #64748b; font-size: 12.5px; }
+.krokNr { flex: 0 0 38px; height: 38px; border-radius: 50%; background: #0f9f8f; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 18px; }
+.krokPasek { display: flex; gap: 4px; }
+.krokPasek i { flex: 1; height: 5px; border-radius: 999px; background: #e6eef1; }
+.krokPasek i.krokOk { background: #14b8a6; }
+.krokPasek i.krokTeraz { background: #99f6e4; }
+.krokBody { display: flex; gap: 12px; align-items: center; background: #f8fafc; border-radius: 12px; padding: 10px; }
+.krokRys { flex: 0 0 92px; width: 92px; height: auto; }
+.krokOpis { display: grid; gap: 4px; font-size: 13px; line-height: 1.35; }
+.krokOpis b { font-size: 14.5px; }
+.krokOpis small { color: #52616b; font-size: 12.5px; }
+.krokOpis a { color: #0f766e; font-weight: 700; font-size: 12.5px; }
+.krokPola { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.krokPola label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 700; color: #42515c; text-transform: uppercase; letter-spacing: 0.03em; }
+.krokPola label span { display: flex; align-items: center; gap: 6px; font-size: 15px; text-transform: none; font-weight: 600; }
+.krokPola input { width: 100%; min-width: 0; border: 2px solid #cbd5e1; border-radius: 12px; padding: 12px; font-size: 22px; font-weight: 700; text-align: center; }
+.krokPola input:focus { border-color: #0f9f8f; outline: none; box-shadow: 0 0 0 3px rgba(15,159,143,0.15); }
+.krokPola input::placeholder { color: #cbd5e1; font-weight: 600; }
+.krokSzac { margin: 0; font-size: 12px; color: #64748b; }
+.krokCena { margin: 0; font-size: 14px; }
+.krokAkcje { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; }
+.krokAkcje .primary, .krokAkcje .secondary { flex: none; padding: 11px 14px; }
+
+@media (max-width: 899px) {
+  .res { padding: 0 0 92px; gap: 10px; }
+  .resStage .stageCol { border-radius: 0; }
+  .res .canvas { max-height: 46vh; }
+  .resTools { grid-template-columns: 1fr 1fr; padding: 0 10px; gap: 8px; }
+  .tool { padding: 8px 10px; }
+  .tool b { font-size: 14px; }
+  .resCta { flex-direction: column; align-items: stretch; padding: 0 10px; }
+  .ctaBig { position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); min-width: 0; z-index: 30; }
+  .karta { position: fixed; left: 0; right: 0; bottom: 0; width: auto; max-height: 64vh; z-index: 40; border-radius: 18px 18px 0 0; animation: kartaDol 0.25s ease; }
+  .res .photos { margin: 0 10px; }
+}
+@keyframes kartaDol { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (min-width: 900px) { .karta { margin-top: 44px; max-height: calc(66vh - 44px); } } /* pod przyciskami – i × modala */
+
+/* prawdziwe zdjęcia próbek + lupa */
+.gridTk { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.swItem { position: relative; border: 2px solid transparent; border-radius: 12px; transition: border-color 0.15s; }
+.swItem.on { border-color: #0f9f8f; box-shadow: 0 0 0 2px rgba(15,159,143,0.15); }
+.swPick { display: block; width: 100%; border: 0; background: none; padding: 3px; cursor: pointer; text-align: left; }
+.swFoto { display: block; width: 100%; aspect-ratio: 1; border-radius: 9px; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); }
+.swPick small { display: block; font-size: 11px; color: #52616b; margin-top: 4px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.swPick small b { display: block; font-size: 12px; color: #12212b; }
+.lupaBtn { position: absolute; top: 7px; right: 7px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.92); box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-size: 15px; line-height: 1; cursor: pointer; color: #12212b; }
+.lupaBtn:hover { background: #fff; transform: scale(1.08); }
+.lupa { position: fixed; inset: 0; z-index: 60; background: rgba(8,14,20,0.72); display: grid; place-items: center; padding: 16px; animation: fadeIn 0.2s ease; }
+.lupaBox { width: min(980px, 100%); max-height: 92vh; background: #fff; border-radius: 18px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); box-shadow: 0 24px 70px rgba(0,0,0,0.4); }
+.lupaFoto { position: relative; overflow: hidden; background: #e2e8f0; cursor: zoom-in; line-height: 0; }
+.lupaFoto img { width: 100%; height: 100%; max-height: 92vh; object-fit: cover; display: block; transition: transform 0.25s ease; }
+.lupaHint { position: absolute; left: 10px; bottom: 10px; background: rgba(18,33,43,0.8); color: #fff; font-size: 12px; line-height: 1.2; padding: 5px 10px; border-radius: 999px; pointer-events: none; }
+.lupaInfo { display: grid; align-content: start; gap: 8px; padding: 20px; }
+.lupaInfo b { font-size: 19px; }
+.lupaInfo small { color: #52616b; font-size: 13.5px; line-height: 1.45; }
+.lupaAkcje { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .lupaBox { grid-template-columns: 1fr; }
+  .lupaFoto img { max-height: 52vh; }
+  .gridTk { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

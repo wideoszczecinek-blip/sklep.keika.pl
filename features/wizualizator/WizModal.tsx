@@ -22,12 +22,12 @@ import {
 } from "@/lib/wizualizator/api";
 import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
-import WizWycena, { type WycenaSzyba } from "./WizWycena";
+import WizWycena, { useCenaZestawu, type WycenaEtap, type WycenaSzyba } from "./WizWycena";
 import WizDemo from "./WizDemo";
 import s from "./WizModal.module.css";
 
 type Faza = "start" | "wysylanie" | "sprawdzanie" | "popraw" | "analiza" | "gotowa" | "odrzucona" | "blad" | "qr_gotowe" | "qr_koniec";
-type Zakladka = "tkanina" | "listwy" | "wycena" | "szyby";
+type Zakladka = "grupa" | "tkanina" | "listwy" | "wycena" | "szyby" | null;
 type PaneState = {
   id: string; rogi: Pt[]; gora: number; dol: number; tkanina: string; listwa: string; pewnosc: number; szerMm: number; wysMm: number; swiatlo: WizSzyba["swiatlo"];
   /** wycena: wymiary wpisane przez klienta, potwierdzenie pomiaru, pominięcie */
@@ -51,6 +51,8 @@ type Zdjecie = { token: string; miniatura: string; szyb: number };
 
 const SESJA_KEY = "keika_wiz_sesja_v1";
 const MAX_ZDJEC = 5;
+/** Prawdziwe zdjęcie próbki (makro 2048 px z katalogu) w rozmiarze do siatki/lupy - przez optymalizator obrazów sklepu. */
+const mini = (url: string, w: number) => (url ? `/_next/image?url=${encodeURIComponent(url)}&w=${w}&q=75` : "");
 /** Pasek postępu analizy: etap silnika → zakres paska (%) i typowy czas (s). Kolejność: Q → A → [0] → B → C → F. */
 const ETAPY_POSTEP: Record<string, { od: number; do: number; s: number }> = {
   Q: { od: 0, do: 8, s: 3 },
@@ -139,7 +141,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [sel, setSel] = useState(0);
   const [wszystkie, setWszystkie] = useState(true);
   const [montaz, setMontaz] = useState<"standard" | "bezinwazyjny">("standard");
-  const [zakladka, setZakladka] = useState<Zakladka>("tkanina");
+  // karta otwarta przyciskiem pod zdjęciem (null = duże zdjęcie bez karty) i etap wyceny (lista → kreator wymiarów → podsumowanie)
+  const [zakladka, setZakladka] = useState<Zakladka>(null);
+  const [wEtap, setWEtap] = useState<WycenaEtap>("wycena");
   const [kolekcja, setKolekcja] = useState("");
   const [przedPo, setPrzedPo] = useState<number | null>(null);
   const [edycja, setEdycja] = useState(false);
@@ -156,7 +160,10 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [ai, setAi] = useState<{ klucz: string; url: string } | null>(null);
   const [aiTrwa, setAiTrwa] = useState(false);
   const [aiInfo, setAiInfo] = useState("");
-  const [aiPokaz, setAiPokaz] = useState(true); // klient może wrócić do ustawiania bez zmiany układu
+  const [aiPokaz, setAiPokaz] = useState(true);
+  // lupa: duże prawdziwe zdjęcie próbki (właściciel 1.11: wybór tkanin na prawdziwych swatchach z powiększeniem)
+  const [lupa, setLupa] = useState<string | null>(null);
+  const [lupaZoom, setLupaZoom] = useState<{ x: number; y: number } | null>(null); // klient może wrócić do ustawiania bez zmiany układu
   const aiOffRef = useRef(false);
   // gotowe wizualizacje tej sesji - przełączanie między zdjęciami bez ponownego odpytywania CRM
   const cacheRef = useRef(new Map<string, { wynik: WizWynik; status: WizStatus | null; panes: PaneState[]; sel: number; montaz: "standard" | "bezinwazyjny"; ai: { klucz: string; url: string } | null }>());
@@ -807,6 +814,22 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   // ------------------------------------------------------------ widok
   const aktywna = panes[sel];
   const tkAkt = katalog?.tkaniny.find((t) => t.id === aktywna?.tkanina);
+  const liAkt = katalog?.listwy.find((l) => l.id === aktywna?.listwa);
+  const wycenaSzyby = useMemo(() => panes.map<WycenaSzyba>((p, i) => ({
+    id: p.id, nr: i + 1, tkanina: p.tkanina, listwa: p.listwa, szacSzerCm: Math.round(p.szerMm / 10), szacWysCm: Math.round(p.wysMm / 10),
+    pewnosc: p.pewnoscWym ?? null, odniesienia: p.odniesienia || [], szerMm: p.wpisSzerMm, wysMm: p.wpisWysMm, zmierzone: p.zmierzone, pomin: p.pomin,
+  })), [panes]);
+  const cenaZestawu = useCenaZestawu(wycenaSzyby, montaz);
+  const otworzKarte = (k: Exclude<Zakladka, null>) => {
+    if (zakladka === k) {
+      setZakladka(null);
+      setEdycja(false);
+      return;
+    }
+    setZakladka(k);
+    setEdycja(k === "szyby");
+    if (k === "wycena") wizEvent("wiz_produkt", token, { widok: "wycena" });
+  };
   const szybWDomu = zdjecia.reduce((a, z) => a + (z.token === token ? panes.length : z.szyb), 0);
   const prog = useMemo(() => {
     const r = bundle.plisy;
@@ -1042,222 +1065,319 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         ) : null}
 
         {faza === "gotowa" && wynik ? (
-          <div className={s.result}>
-            <div className={s.stageCol}>
-              {gotowyObraz && !edycja && przedPo === null && panes.length ? (
-                <div className={`${s.aiBar} ${ai && ai.klucz === klucz && aiPokaz && !aiTrwa ? s.aiBarOk : ""}`} aria-live="polite">
-                  {aiTrwa ? (
-                    <>
-                      <span className={s.aiSpin} aria-hidden="true" />
-                      <p><b>Przygotowujemy realistyczne zdjęcie Twojego okna…</b><small>To potrwa około 10 sekund.</small></p>
-                    </>
-                  ) : ai && ai.klucz === klucz && aiPokaz ? (
-                    <>
-                      <span className={s.aiIco} aria-hidden="true">✓</span>
-                      <p><b>Tak będzie wyglądać Twoje okno z tymi plisami</b><small>Chcesz coś zmienić? Wróć do ustawień – kolor i położenie plis zmienisz dalej na żywo.</small></p>
-                      <button type="button" className={s.aiBtnGhost} onClick={() => setAiPokaz(false)}>Zmień ustawienia</button>
-                    </>
-                  ) : aiOffRef.current ? (
-                    <>
-                      <span className={s.aiIco} aria-hidden="true">i</span>
-                      <p><b>{aiInfo || "Realistyczne zdjęcia dla tego okna są już wykorzystane."}</b><small>Kolor i położenie plis nadal zmienisz na podglądzie.</small></p>
-                    </>
-                  ) : (
-                    <>
-                      <span className={s.aiIco} aria-hidden="true">✨</span>
-                      <p><b>Ustaw plisy po swojemu, a potem zobacz realistyczne zdjęcie</b>
-                        <small>{aiInfo || "Wybierz tkaninę i kolor listew, przesuń belki tak, jak lubisz – i kliknij przycisk."}</small></p>
-                      <button type="button" className={s.aiBtn} onClick={() => void generujAi()}>Pokaż realistyczne zdjęcie</button>
-                    </>
-                  )}
-                </div>
-              ) : null}
-              <div className={s.canvasWrap} ref={wrapRef}>
-                <canvas
-                  ref={canvasRef}
-                  className={s.canvas}
-                  onPointerDown={onDown}
-                  onPointerMove={onMove}
-                  onPointerUp={onUp}
-                  onPointerCancel={onUp}
-                />
-                {/* zdjęcie AI bieżącego układu leży 1:1 na płótnie; przy każdej zmianie znika i wraca podgląd na żywo */}
-                {ai && ai.klucz === klucz && aiPokaz && !edycja && przedPo === null ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img data-ai="1" src={ai.url} alt="" className={s.aiImg} crossOrigin="anonymous" draggable={false} />
+          <div className={s.res}>
+            <div className={`${s.resStage} ${zakladka ? s.resStageKarta : ""}`}>
+              <div className={s.stageCol}>
+                {gotowyObraz && !edycja && przedPo === null && panes.length && zakladka !== "wycena" ? (
+                  <div className={`${s.aiBar} ${ai && ai.klucz === klucz && aiPokaz && !aiTrwa ? s.aiBarOk : ""}`} aria-live="polite">
+                    {aiTrwa ? (
+                      <>
+                        <span className={s.aiSpin} aria-hidden="true" />
+                        <p><b>Przygotowujemy realistyczne zdjęcie Twojego okna…</b><small>To potrwa około 10 sekund.</small></p>
+                      </>
+                    ) : ai && ai.klucz === klucz && aiPokaz ? (
+                      <>
+                        <span className={s.aiIco} aria-hidden="true">✓</span>
+                        <p><b>Tak będzie wyglądać Twoje okno z tymi plisami</b><small>Chcesz coś zmienić? Wróć do ustawień – kolor i położenie plis zmienisz dalej na żywo.</small></p>
+                        <button type="button" className={s.aiBtnGhost} onClick={() => setAiPokaz(false)}>Zmień ustawienia</button>
+                      </>
+                    ) : aiOffRef.current ? (
+                      <>
+                        <span className={s.aiIco} aria-hidden="true">i</span>
+                        <p><b>{aiInfo || "Realistyczne zdjęcia dla tego okna są już wykorzystane."}</b><small>Kolor i położenie plis nadal zmienisz na podglądzie.</small></p>
+                      </>
+                    ) : (
+                      <>
+                        <span className={s.aiIco} aria-hidden="true">✨</span>
+                        <p><b>Ustaw plisy po swojemu, a potem zobacz realistyczne zdjęcie</b>
+                          <small>{aiInfo || "Wybierz tkaninę i kolor listew poniżej, przesuń belki na zdjęciu – i kliknij przycisk."}</small></p>
+                        <button type="button" className={s.aiBtn} onClick={() => void generujAi()}>Pokaż realistyczne zdjęcie</button>
+                      </>
+                    )}
+                  </div>
                 ) : null}
-                {edycja
-                  ? panes.map((p, i) =>
-                      p.rogi.map((r, k) => (
-                        <button
-                          key={`${p.id}-${k}`}
-                          type="button"
-                          aria-label={`Róg ${k + 1} szyby ${i + 1}`}
-                          className={`${s.corner} ${i === sel ? s.cornerSel : ""}`}
-                          style={cornerPos(r)}
-                          onPointerDown={onCornerDown(i, k)}
-                          onPointerMove={onCornerMove}
-                          onPointerUp={onCornerUp}
-                          onPointerCancel={onCornerUp}
-                        />
-                      )),
-                    )
-                  : null}
-                {/* numery szyb (lista w „Wycenie”) i podświetlenie szyby wskazanej na liście */}
-                {gotowyObraz && (zakladka === "wycena" || hover) ? panes.map((p, i) => {
-                  const c = p.rogi.reduce((a, r) => [a[0] + r[0] / 4, a[1] + r[1] / 4], [0, 0]) as Pt;
-                  return <span key={`nr-${p.id}`} className={`${s.paneBadge} ${hover === p.id ? s.paneBadgeOn : ""}`} style={cornerPos(c)}>{i + 1}</span>;
-                }) : null}
-                {hover && gotowyObraz ? (() => {
-                  const p = panes.find((x) => x.id === hover);
-                  const c = canvasRef.current;
-                  const w = wrapRef.current;
-                  if (!p || !c || !w) return null;
-                  const wr = w.getBoundingClientRect();
-                  return (
-                    <svg className={s.hlSvg} width={wr.width} height={wr.height} aria-hidden="true">
-                      <polygon points={p.rogi.map((r) => { const q = cornerPos(r); return `${q.left},${q.top}`; }).join(" ")} />
-                    </svg>
-                  );
-                })() : null}
-                {przedPo !== null ? <div className={s.split} style={{ left: cornerPos([przedPo, 0]).left }}><span>przed | po</span></div> : null}
-                <p className={s.disclaimer}>
-                  Wizualizacja poglądowa{wynik.uporzadkowane ? " · zdjęcie uporządkowane automatycznie" : ""} – kolory, faktura i proporcje mogą się różnić. Wymiary mierzysz sam.
-                </p>
-                {!gotowyObraz ? <div className={s.loading}>Wczytujemy…</div> : null}
-              </div>
-              {zdjecia.length > 0 ? (
-                <div className={s.photos}>
-                  {zdjecia.map((z) => (
-                    <button key={z.token} type="button" className={`${s.photo} ${z.token === token ? s.photoOn : ""}`} onClick={() => otworzZdjecie(z)}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={z.miniatura} alt="" />
-                      <span>{z.token === token ? panes.length : z.szyb}</span>
-                    </button>
-                  ))}
-                  {zdjecia.length < MAX_ZDJEC ? (
-                    <button type="button" className={s.photoAdd} onClick={noweZdjecie}>+ Dodaj kolejne okno</button>
+                <div className={s.canvasWrap} ref={wrapRef}>
+                  <canvas
+                    ref={canvasRef}
+                    className={s.canvas}
+                    onPointerDown={onDown}
+                    onPointerMove={onMove}
+                    onPointerUp={onUp}
+                    onPointerCancel={onUp}
+                  />
+                  {/* zdjęcie AI bieżącego układu leży 1:1 na płótnie; przy każdej zmianie znika i wraca podgląd na żywo */}
+                  {ai && ai.klucz === klucz && aiPokaz && !edycja && przedPo === null ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img data-ai="1" src={ai.url} alt="" className={s.aiImg} crossOrigin="anonymous" draggable={false} />
                   ) : null}
+                  {edycja
+                    ? panes.map((p, i) =>
+                        p.rogi.map((r, k) => (
+                          <button
+                            key={`${p.id}-${k}`}
+                            type="button"
+                            aria-label={`Róg ${k + 1} szyby ${i + 1}`}
+                            className={`${s.corner} ${i === sel ? s.cornerSel : ""}`}
+                            style={cornerPos(r)}
+                            onPointerDown={onCornerDown(i, k)}
+                            onPointerMove={onCornerMove}
+                            onPointerUp={onCornerUp}
+                            onPointerCancel={onCornerUp}
+                          />
+                        )),
+                      )
+                    : null}
+                  {/* kreator wymiarów: przyciemnione zdjęcie, jasna tylko mierzona szyba, strzałki szerokości i wysokości */}
+                  {gotowyObraz && zakladka === "wycena" && wEtap === "kreator" && hover ? (() => {
+                    const i = panes.findIndex((x) => x.id === hover);
+                    const p = panes[i];
+                    const w = wrapRef.current;
+                    if (!p || !w) return null;
+                    const wr = w.getBoundingClientRect();
+                    const q = p.rogi.map((r) => cornerPos(r));
+                    const pts = q.map((x) => `${x.left},${x.top}`).join(" ");
+                    const sr = (a: { left: number; top: number }, b: { left: number; top: number }) => ({ left: (a.left + b.left) / 2, top: (a.top + b.top) / 2 });
+                    const gora = sr(q[0], q[1]);
+                    const lewa = sr(q[0], q[3]);
+                    const odsun = 18;
+                    return (
+                      <svg className={s.kreatorSvg} width={wr.width} height={wr.height} aria-hidden="true">
+                        <path fillRule="evenodd" d={`M0 0H${wr.width}V${wr.height}H0Z M${q.map((x) => `${x.left} ${x.top}`).join(" L")} Z`} className={s.kreatorMaska} />
+                        <polygon points={pts} className={s.kreatorObrys} />
+                        <line x1={q[0].left} y1={q[0].top - odsun} x2={q[1].left} y2={q[1].top - odsun} className={s.kreatorStrz} markerStart="url(#wk1)" markerEnd="url(#wk2)" />
+                        <line x1={q[0].left - odsun} y1={q[0].top} x2={q[3].left - odsun} y2={q[3].top} className={s.kreatorStrz} markerStart="url(#wk1)" markerEnd="url(#wk2)" />
+                        <text x={gora.left} y={gora.top - odsun - 7} textAnchor="middle" className={s.kreatorTxt}>szerokość</text>
+                        <text x={lewa.left - odsun - 7} y={lewa.top} textAnchor="end" dominantBaseline="middle" className={s.kreatorTxt}>wysokość</text>
+                        <text x={(q[0].left + q[2].left) / 2} y={(q[0].top + q[2].top) / 2} textAnchor="middle" dominantBaseline="middle" className={s.kreatorNr}>{i + 1}</text>
+                        <defs>
+                          <marker id="wk2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2dd4bf" /></marker>
+                          <marker id="wk1" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" fill="#2dd4bf" /></marker>
+                        </defs>
+                      </svg>
+                    );
+                  })() : null}
+                  {/* numery szyb (wycena) i podświetlenie szyby wskazanej na liście */}
+                  {gotowyObraz && wEtap !== "kreator" && (zakladka === "wycena" || hover) ? panes.map((p, i) => {
+                    const c = p.rogi.reduce((a, r) => [a[0] + r[0] / 4, a[1] + r[1] / 4], [0, 0]) as Pt;
+                    return <span key={`nr-${p.id}`} className={`${s.paneBadge} ${hover === p.id ? s.paneBadgeOn : ""}`} style={cornerPos(c)}>{i + 1}</span>;
+                  }) : null}
+                  {hover && gotowyObraz && wEtap !== "kreator" ? (() => {
+                    const p = panes.find((x) => x.id === hover);
+                    const w = wrapRef.current;
+                    if (!p || !w) return null;
+                    const wr = w.getBoundingClientRect();
+                    return (
+                      <svg className={s.hlSvg} width={wr.width} height={wr.height} aria-hidden="true">
+                        <polygon points={p.rogi.map((r) => { const q = cornerPos(r); return `${q.left},${q.top}`; }).join(" ")} />
+                      </svg>
+                    );
+                  })() : null}
+                  {przedPo !== null ? <div className={s.split} style={{ left: cornerPos([przedPo, 0]).left }}><span>przed | po</span></div> : null}
+                  <p className={s.disclaimer}>
+                    Wizualizacja poglądowa{wynik.uporzadkowane ? " · zdjęcie uporządkowane automatycznie" : ""} – kolory, faktura i proporcje mogą się różnić. Wymiary mierzysz sam.
+                  </p>
+                  {!gotowyObraz ? <div className={s.loading}>Wczytujemy…</div> : null}
+                </div>
+              </div>
+
+              {/* karta otwierana przyciskiem pod zdjęciem: na komputerze obok zdjęcia, na telefonie od dołu */}
+              {zakladka ? (
+                <div className={s.karta} role="dialog" aria-label="Ustawienia plis">
+                  <div className={s.kartaHead}>
+                    <b>{zakladka === "grupa" ? "Rodzaj tkaniny" : zakladka === "tkanina" ? "Kolor tkaniny" : zakladka === "listwy" ? "Kolor listew i montaż" : zakladka === "wycena" ? (wEtap === "kreator" ? "Twoje wymiary" : wEtap === "podsumowanie" ? "Twój zestaw" : "Wycena") : "Popraw obrys szyb"}</b>
+                    <button type="button" aria-label="Zamknij" onClick={() => { setZakladka(null); setEdycja(false); setWEtap("wycena"); setInfo(""); }}>×</button>
+                  </div>
+                  <div className={s.kartaBody}>
+                    {zakladka === "grupa" && katalog ? (
+                      <div className={s.grupy}>
+                        {katalog.kolekcje.map((k) => (
+                          <button key={k.id} type="button" className={`${s.grupa} ${(kolekcja || katalog.kolekcje[0]?.id) === k.id ? s.on : ""}`}
+                            onClick={() => {
+                              setKolekcja(k.id);
+                              const pierwsza = katalog.tkaniny.find((t) => t.kolekcja === k.id && t.id === aktywna?.tkanina) ? null : katalog.tkaniny.find((t) => t.kolekcja === k.id);
+                              if (pierwsza) ustawTkanine(pierwsza.id);
+                              setZakladka("tkanina");
+                            }}>
+                            <b>{k.nazwa}</b>
+                            <small>{k.opis}</small>
+                            <span className={s.grupaTag}>{k.zaciemnia ? "zaciemnia" : `przepuszcza ok. ${Math.round(k.transmisja * 100)} % światła`}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {zakladka === "tkanina" && katalog ? (
+                      <>
+                        {wynik.rekomendacje?.zestawy?.length ? (
+                          <div className={s.reco}>
+                            <p className={s.label}>Dobrane do Twojego wnętrza</p>
+                            {wynik.rekomendacje.zestawy.map((z) => {
+                              const t = katalog.tkaniny.find((x) => x.id === z.tkanina);
+                              return (
+                                <button key={z.tkanina} type="button" className={`${s.recoItem} ${aktywna?.tkanina === z.tkanina ? s.on : ""}`}
+                                  onClick={() => { ustawTkanine(z.tkanina); if (t) setKolekcja(t.kolekcja); wizEvent("wiz_rekomendacja", token, { rodzaj: z.rodzaj, tkanina: z.tkanina }); }}>
+                                  <span className={s.sw} style={{ backgroundImage: t ? `url(${mini(t.miniatura || t.tekstura, 128)})` : undefined, backgroundColor: t?.kolor }} />
+                                  <span><b>{z.nazwa}</b><small>{z.uzasadnienie}</small></span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                        <p className={s.label}>{katalog.kolekcje.find((k) => k.id === (kolekcja || katalog.kolekcje[0]?.id))?.nazwa} · <button type="button" className={s.link} onClick={() => setZakladka("grupa")}>zmień rodzaj</button></p>
+                        <div className={s.gridTk}>
+                          {tkaninyKolekcji.map((t) => (
+                            <div key={t.id} className={`${s.swItem} ${aktywna?.tkanina === t.id ? s.on : ""}`}>
+                              <button type="button" title={t.nazwa} className={s.swPick} onClick={() => ustawTkanine(t.id)}>
+                                <span className={s.swFoto} style={{ backgroundImage: `url(${mini(t.miniatura || t.tekstura, 256)})`, backgroundColor: t.kolor }} />
+                                <small><b>{t.kod}</b>{t.nazwa.replace(t.kod, "").replace(/[()]/g, "").trim()}</small>
+                              </button>
+                              <button type="button" className={s.lupaBtn} aria-label={`Powiększ ${t.nazwa}`} onClick={() => { setLupa(t.id); setLupaZoom(null); wizEvent("wiz_lupa", token, { tkanina: t.id }); }}>⤢</button>
+                            </div>
+                          ))}
+                        </div>
+                        <p className={s.small}>To prawdziwe zdjęcia naszych tkanin. Kliknij ⤢, żeby obejrzeć z bliska splot i kolor.</p>
+                      </>
+                    ) : null}
+
+                    {zakladka === "listwy" && katalog ? (
+                      <>
+                        {wynik.rekomendacje?.listwa ? <p className={s.hint}>Podpowiedź: <b>{wynik.rekomendacje.listwa.nazwa}</b> – {wynik.rekomendacje.listwa.uzasadnienie}</p> : null}
+                        <div className={s.grid}>
+                          {katalog.listwy.map((l) => (
+                            <button key={l.id} type="button" className={`${s.swBtn} ${aktywna?.listwa === l.id ? s.on : ""}`} onClick={() => ustawListwe(l.id)}>
+                              <span className={s.sw} style={l.zdjecie ? { backgroundImage: `url(${l.zdjecie})`, backgroundSize: "260% auto", backgroundPosition: "18% 50%", backgroundColor: l.kolor } : { background: l.kolor }} />
+                              <small>{l.nazwa}</small>
+                            </button>
+                          ))}
+                        </div>
+                        <p className={s.label}>Montaż</p>
+                        <div className={s.chips}>
+                          <button type="button" className={montaz === "standard" ? s.chipOn : s.chip} onClick={() => setMontaz("standard")}>Przykręcany (standard)</button>
+                          <button type="button" className={montaz === "bezinwazyjny" ? s.chipOn : s.chip} onClick={() => setMontaz("bezinwazyjny")}>Bez wiercenia</button>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {zakladka === "wycena" ? (
+                      <>
+                        <WizWycena
+                          szyby={wycenaSzyby}
+                          etap={wEtap}
+                          montaz={montaz}
+                          onEtap={setWEtap}
+                          onHover={setHover}
+                          onChange={(rows) => setPanes((prev) => prev.map((p) => {
+                            const r = rows.find((x) => x.id === p.id);
+                            return r ? { ...p, wpisSzerMm: r.szerMm ?? null, wpisWysMm: r.wysMm ?? null, zmierzone: r.zmierzone, pomin: r.pomin } : p;
+                          }))}
+                          onEvent={(n, d) => wizEvent(n, token, d)}
+                        />
+                        {wEtap !== "kreator" ? kontaktForm("wycena") : null}
+                      </>
+                    ) : null}
+
+                    {zakladka === "szyby" ? (
+                      <>
+                        <p className={s.hint}>Przeciągnij kółka dokładnie w rogi szyby (tam, gdzie szkło styka się z ramą). Belki przesuwasz palcem na zdjęciu.</p>
+                        <div className={s.actions}>
+                          <button type="button" className={s.secondary} onClick={dodajSzybe}>+ Dodaj szybę</button>
+                          {panes.length ? <button type="button" className={s.secondary} onClick={usunSzybe}>Usuń zaznaczoną</button> : null}
+                          <button type="button" className={s.primary} onClick={() => { setEdycja(false); setZakladka(null); setInfo(""); }}>Gotowe</button>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
             </div>
 
-            <div className={s.panel}>
-              {blad ? <p className={s.error}>{blad}</p> : null}
-              {info ? <p className={s.info}>{info}</p> : null}
-              {wynik.scena?.uwagi_dla_klienta ? <p className={s.hint}>{wynik.scena.uwagi_dla_klienta}</p> : null}
-              <div className={s.tabs} role="tablist">
-                {(["tkanina", "listwy", "wycena", "szyby"] as Zakladka[]).map((z) => (
-                  <button key={z} type="button" role="tab" aria-selected={zakladka === z} className={zakladka === z ? s.tabOn : s.tab}
-                    onClick={() => { setZakladka(z); setEdycja(z === "szyby"); if (z === "wycena") wizEvent("wiz_produkt", token, { widok: "wycena" }); }}>
-                    {z === "tkanina" ? "Tkanina" : z === "listwy" ? "Listwy" : z === "wycena" ? `Wycena (${panes.length})` : "Popraw"}
+            {/* przyciski kart: co klient może zmienić */}
+            <div className={s.resTools}>
+              {katalog ? (
+                <>
+                  <button type="button" className={`${s.tool} ${zakladka === "grupa" ? s.toolOn : ""}`} onClick={() => otworzKarte("grupa")}>
+                    <small>Rodzaj tkaniny</small><b>{katalog.kolekcje.find((k) => k.id === tkAkt?.kolekcja)?.nazwa || "Wybierz"}</b>
+                  </button>
+                  <button type="button" className={`${s.tool} ${zakladka === "tkanina" ? s.toolOn : ""}`} onClick={() => otworzKarte("tkanina")}>
+                    <small>Kolor tkaniny</small><b><i style={{ backgroundImage: tkAkt ? `url(${mini(tkAkt.miniatura || tkAkt.tekstura, 64)})` : undefined, backgroundColor: tkAkt?.kolor }} />{tkAkt?.kod || "Wybierz"}</b>
+                  </button>
+                  <button type="button" className={`${s.tool} ${zakladka === "listwy" ? s.toolOn : ""}`} onClick={() => otworzKarte("listwy")}>
+                    <small>Listwy i montaż</small><b><i style={{ backgroundColor: liAkt?.kolor }} />{liAkt?.nazwa || "Wybierz"}</b>
+                  </button>
+                  <button type="button" className={`${s.tool} ${zakladka === "wycena" ? s.toolOn : ""}`} onClick={() => { otworzKarte("wycena"); setWEtap("wycena"); }}>
+                    <small>Wycena ({panes.filter((p) => !p.pomin).length} {panes.length === 1 ? "szyba" : "szyb"})</small><b>{cenaZestawu ? `${cenaZestawu.szacunkowa ? "ok. " : ""}${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł` : "…"}</b>
+                  </button>
+                </>
+              ) : null}
+            </div>
+
+            <div className={s.resCta}>
+              <div className={s.resCtaInfo}>
+                {blad ? <p className={s.error}>{blad}</p> : null}
+                {info && edycja ? <p className={s.info}>{info}</p> : null}
+                {prog ? <p className={s.bundle}>{prog}</p> : null}
+                <div className={s.resLinks}>
+                  <label><input type="checkbox" checked={wszystkie} onChange={(e) => (e.target.checked ? naWszystkie() : setWszystkie(false))} /> Ta sama plisa na wszystkich szybach</label>
+                  <button type="button" className={s.link} onClick={() => setPrzedPo((v) => (v === null ? (canvasRef.current?.width || 0) / 2 : null))}>{przedPo === null ? "Przed / po" : "Zamknij porównanie"}</button>
+                  <button type="button" className={s.link} onClick={() => { otworzKarte("szyby"); setEdycja(true); }}>Popraw obrys</button>
+                  <button type="button" className={s.link} onClick={pobierz}>Zapisz zdjęcie</button>
+                  <button type="button" className={s.link} onClick={zamow} disabled={!panes.length}>Otwórz w konfiguratorze</button>
+                </div>
+              </div>
+              <button type="button" className={s.ctaBig} disabled={!panes.length}
+                onClick={() => { setZakladka("wycena"); setEdycja(false); setWEtap(cenaZestawu && !cenaZestawu.szacunkowa ? "podsumowanie" : "kreator"); wizEvent("wiz_produkt", token, { widok: "zestaw_cta" }); }}>
+                Dodaj zestaw do koszyka
+                {cenaZestawu ? <small>{cenaZestawu.szacunkowa ? `ok. ${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł · najpierw potwierdzisz wymiary` : `${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł · wymiary potwierdzone ✓`}</small> : null}
+              </button>
+            </div>
+
+            {lupa && katalog ? (() => {
+              const t = katalog.tkaniny.find((x) => x.id === lupa);
+              if (!t) return null;
+              const k = katalog.kolekcje.find((x) => x.id === t.kolekcja);
+              return (
+                <div className={s.lupa} role="dialog" aria-label={t.nazwa} onClick={() => setLupa(null)}>
+                  <div className={s.lupaBox} onClick={(e) => e.stopPropagation()}>
+                    <div className={s.lupaFoto}
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        setLupaZoom((z) => (z ? null : { x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 }));
+                      }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={mini(t.miniatura || t.tekstura, 1200)} alt={t.nazwa}
+                        style={lupaZoom ? { transform: "scale(2.6)", transformOrigin: `${lupaZoom.x}% ${lupaZoom.y}%` } : undefined} />
+                      <span className={s.lupaHint}>{lupaZoom ? "Kliknij, aby oddalić" : "Kliknij w zdjęcie, aby przybliżyć splot"}</span>
+                    </div>
+                    <div className={s.lupaInfo}>
+                      <b>{t.nazwa}</b>
+                      <small>{k?.nazwa}{k?.opis ? ` – ${k.opis}` : ""}</small>
+                      <span className={s.grupaTag}>{k?.zaciemnia ? "zaciemnia" : `przepuszcza ok. ${Math.round((t.transmisja || k?.transmisja || 0) * 100)} % światła`}</span>
+                      <div className={s.lupaAkcje}>
+                        <button type="button" className={s.secondary} onClick={() => setLupa(null)}>Zamknij</button>
+                        <button type="button" className={s.primary} onClick={() => { ustawTkanine(t.id); setKolekcja(t.kolekcja); setLupa(null); }}>
+                          {aktywna?.tkanina === t.id ? "✓ Ta tkanina jest na oknie" : "Wybierz tę tkaninę"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })() : null}
+
+            {zdjecia.length > 0 ? (
+              <div className={s.photos}>
+                {zdjecia.map((z) => (
+                  <button key={z.token} type="button" className={`${s.photo} ${z.token === token ? s.photoOn : ""}`} onClick={() => otworzZdjecie(z)}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={z.miniatura} alt="" />
+                    <span>{z.token === token ? panes.length : z.szyb}</span>
                   </button>
                 ))}
-              </div>
-
-              {zakladka === "wycena" ? (
-                <div className={s.tabBody}>
-                  <WizWycena
-                    szyby={panes.map<WycenaSzyba>((p, i) => ({
-                      id: p.id, nr: i + 1, tkanina: p.tkanina, listwa: p.listwa, szacSzerCm: Math.round(p.szerMm / 10), szacWysCm: Math.round(p.wysMm / 10),
-                      pewnosc: p.pewnoscWym ?? null, odniesienia: p.odniesienia || [], szerMm: p.wpisSzerMm, wysMm: p.wpisWysMm, zmierzone: p.zmierzone, pomin: p.pomin,
-                    }))}
-                    onHover={setHover}
-                    onChange={(rows) => setPanes((prev) => prev.map((p) => {
-                      const r = rows.find((x) => x.id === p.id);
-                      return r ? { ...p, wpisSzerMm: r.szerMm ?? null, wpisWysMm: r.wysMm ?? null, zmierzone: r.zmierzone, pomin: r.pomin } : p;
-                    }))}
-                    onEvent={(n, d) => wizEvent(n, token, d)}
-                  />
-                  {kontaktForm("wycena")}
-                </div>
-              ) : null}
-
-              {zakladka === "tkanina" && katalog ? (
-                <div className={s.tabBody}>
-                  {wynik.rekomendacje?.zestawy?.length ? (
-                    <div className={s.reco}>
-                      <p className={s.label}>Dobrane do Twojego wnętrza</p>
-                      {wynik.rekomendacje.zestawy.map((z) => {
-                        const t = katalog.tkaniny.find((x) => x.id === z.tkanina);
-                        return (
-                          <button key={z.tkanina} type="button" className={`${s.recoItem} ${aktywna?.tkanina === z.tkanina ? s.on : ""}`}
-                            onClick={() => { ustawTkanine(z.tkanina); if (t) setKolekcja(t.kolekcja); wizEvent("wiz_rekomendacja", token, { rodzaj: z.rodzaj, tkanina: z.tkanina }); }}>
-                            <span className={s.sw} style={{ backgroundImage: t ? `url(${t.tekstura})` : undefined, backgroundColor: t?.kolor }} />
-                            <span><b>{z.nazwa}</b><small>{z.uzasadnienie}</small></span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                  <div className={s.chips}>
-                    {katalog.kolekcje.map((k) => (
-                      <button key={k.id} type="button" className={(kolekcja || katalog.kolekcje[0]?.id) === k.id ? s.chipOn : s.chip} onClick={() => setKolekcja(k.id)}>
-                        {k.nazwa}
-                      </button>
-                    ))}
-                  </div>
-                  <div className={s.grid}>
-                    {tkaninyKolekcji.map((t) => (
-                      <button key={t.id} type="button" title={t.nazwa} className={`${s.swBtn} ${aktywna?.tkanina === t.id ? s.on : ""}`} onClick={() => ustawTkanine(t.id)}>
-                        <span className={s.sw} style={{ backgroundImage: `url(${t.tekstura})`, backgroundColor: t.kolor }} />
-                        <small>{t.kod}</small>
-                      </button>
-                    ))}
-                  </div>
-                  {tkAkt ? <p className={s.current}>Na szybie: <b>{tkAkt.nazwa}</b> · {katalog.kolekcje.find((k) => k.id === tkAkt.kolekcja)?.nazwa}</p> : null}
-                </div>
-              ) : null}
-
-              {zakladka === "listwy" && katalog ? (
-                <div className={s.tabBody}>
-                  {wynik.rekomendacje?.listwa ? <p className={s.hint}>Podpowiedź: <b>{wynik.rekomendacje.listwa.nazwa}</b> – {wynik.rekomendacje.listwa.uzasadnienie}</p> : null}
-                  <div className={s.grid}>
-                    {katalog.listwy.map((l) => (
-                      <button key={l.id} type="button" className={`${s.swBtn} ${aktywna?.listwa === l.id ? s.on : ""}`} onClick={() => ustawListwe(l.id)}>
-                        <span className={s.sw} style={{ background: l.kolor }} />
-                        <small>{l.nazwa}</small>
-                      </button>
-                    ))}
-                  </div>
-                  <p className={s.label}>Montaż</p>
-                  <div className={s.chips}>
-                    <button type="button" className={montaz === "standard" ? s.chipOn : s.chip} onClick={() => setMontaz("standard")}>Standard (przykręcany)</button>
-                    <button type="button" className={montaz === "bezinwazyjny" ? s.chipOn : s.chip} onClick={() => setMontaz("bezinwazyjny")}>Bezinwazyjny</button>
-                  </div>
-                </div>
-              ) : null}
-
-              {zakladka === "szyby" ? (
-                <div className={s.tabBody}>
-                  <p className={s.hint}>Przeciągnij kółka dokładnie w rogi szyby (tam, gdzie szkło styka się z ramą). Belki przesuwasz palcem na zdjęciu.</p>
-                  <div className={s.actions}>
-                    <button type="button" className={s.secondary} onClick={dodajSzybe}>+ Dodaj szybę</button>
-                    {panes.length ? <button type="button" className={s.secondary} onClick={usunSzybe}>Usuń zaznaczoną</button> : null}
-                    <button type="button" className={s.primary} onClick={() => { setEdycja(false); setZakladka("tkanina"); setInfo(""); }}>Gotowe</button>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className={s.toggles}>
-                <label><input type="checkbox" checked={wszystkie} onChange={(e) => (e.target.checked ? naWszystkie() : setWszystkie(false))} /> Ta sama plisa na wszystkich szybach</label>
-                <button type="button" className={s.link} onClick={() => setPrzedPo((v) => (v === null ? (canvasRef.current?.width || 0) / 2 : null))}>
-                  {przedPo === null ? "Porównaj przed / po" : "Zamknij porównanie"}
-                </button>
-              </div>
-              {prog ? <p className={s.bundle}>{prog}</p> : null}
-              <div className={s.cta}>
-                {zakladka !== "wycena" ? (
-                  <button type="button" className={s.primary} disabled={!panes.length} onClick={() => { setZakladka("wycena"); setEdycja(false); wizEvent("wiz_produkt", token, { widok: "wycena_cta" }); }}>
-                    Wycena i wymiary ({panes.length} {panes.length === 1 ? "szyba" : "szyb"}) →
-                  </button>
+                {zdjecia.length < MAX_ZDJEC ? (
+                  <button type="button" className={s.photoAdd} onClick={noweZdjecie}>+ Dodaj kolejne okno</button>
                 ) : null}
-                <div className={s.ctaRow}>
-                  <button type="button" className={s.secondary} onClick={zamow} disabled={!panes.length}>Otwórz w konfiguratorze</button>
-                  <button type="button" className={s.secondary} onClick={pobierz}>Zapisz zdjęcie</button>
-                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         ) : null}
       </div>
