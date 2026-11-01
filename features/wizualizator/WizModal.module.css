@@ -772,3 +772,10 @@
 .prodPhoto .scanBox { width: fit-content; max-width: 100%; }
 .prodPhoto .scanImg2 { width: auto; max-width: 100%; height: auto; }
 @media (min-width: 900px) { .panel { padding-top: 58px; } }
+
+/* zdjęcie AI (E3) nad płótnem - te same proporcje, więc ten sam rozmiar; przy zmianach znika */
+.aiImg { position: absolute; inset: 0; margin: auto; width: auto; height: auto; max-width: 100%; max-height: 58vh; pointer-events: none; animation: fadeIn 0.6s ease; }
+@media (min-width: 900px) { .aiImg { max-height: 80vh; } }
+.aiBadge { position: absolute; top: 10px; right: 10px; display: inline-flex; align-items: center; gap: 7px; background: rgba(18,33,43,0.82); color: #fff; font-size: 12.5px; font-weight: 600; line-height: 1.2; border-radius: 999px; padding: 6px 11px; pointer-events: none; animation: fadeIn 0.4s ease; max-width: 70%; }
+.aiBadge i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); border-top-color: #2dd4bf; animation: ckSpin 0.9s linear infinite; }
+.aiBadgeOk { background: rgba(15,118,110,0.9); }

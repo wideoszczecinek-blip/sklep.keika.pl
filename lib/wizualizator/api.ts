@@ -190,9 +190,13 @@ export function wizSaveLayout(token: string, uklad: WizUklad, korekta = false): 
   }).catch(() => {});
 }
 
-export async function wizRender(token: string, uklad: WizUklad): Promise<{ ok: boolean; wkrotce?: boolean; komunikat?: string }> {
-  const r = await fetch(`${WIZ_API}/render.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, uklad }) });
-  return ((await r.json().catch(() => null)) as { ok: boolean; komunikat?: string }) || { ok: false };
+export type WizRenderWynik = { ok: boolean; url?: string; cache?: boolean; koszt_pln?: number; ms?: number; komunikat?: string; limit?: boolean };
+
+/** E3: podgląd z renderera (JPEG data URL) → zdjęcie AI tego układu (klucz = skrót układu, wynik trzymany w CRM). */
+export async function wizRender(token: string, uklad: WizUklad, klucz: string, obraz: string): Promise<WizRenderWynik> {
+  const r = await fetch(`${WIZ_API}/render.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, uklad, klucz, obraz }) }).catch(() => null);
+  if (!r) return { ok: false, komunikat: "Brak połączenia" };
+  return ((await r.json().catch(() => null)) as WizRenderWynik) || { ok: false };
 }
 
 export async function wizQrCreate(zrodlo: string): Promise<{ kod: string; url: string } | null> {

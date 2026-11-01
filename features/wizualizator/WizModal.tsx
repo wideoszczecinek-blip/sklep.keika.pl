@@ -63,7 +63,7 @@ function isMobile(): boolean {
 function readSesja(): Zdjecie[] {
   try {
     const j = JSON.parse(window.sessionStorage.getItem(SESJA_KEY) || "[]");
-    return Array.isArray(j) ? j.slice(0, MAX_ZDJEC) : [];
+    return Array.isArray(j) ? j.slice(-MAX_ZDJEC) : []; // najnowsze (otwarte zdjęcie zawsze na liście)
   } catch {
     return [];
   }
@@ -71,7 +71,7 @@ function readSesja(): Zdjecie[] {
 
 function writeSesja(z: Zdjecie[]): void {
   try {
-    window.sessionStorage.setItem(SESJA_KEY, JSON.stringify(z.slice(0, MAX_ZDJEC)));
+    window.sessionStorage.setItem(SESJA_KEY, JSON.stringify(z.slice(-MAX_ZDJEC)));
   } catch {
     /* sesja to wygoda */
   }
@@ -142,6 +142,16 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [hover, setHover] = useState<string | null>(null);
   const [korzysc, setKorzysc] = useState(0);
   const [lead, setLead] = useState({ email: "", wyslane: false, blad: "" });
+  // zdjęcie AI (E3) dla bieżącego układu: podgląd WebGL na żywo, po chwili spokoju fotorealistyczne zdjęcie z CRM
+  const [ai, setAi] = useState<{ klucz: string; url: string } | null>(null);
+  const [aiTrwa, setAiTrwa] = useState(false);
+  const [aiInfo, setAiInfo] = useState("");
+  const [texTick, setTexTick] = useState(0);
+  const aiOffRef = useRef(false);
+  const aiTimerRef = useRef(0);
+  // gotowe wizualizacje tej sesji - przełączanie między zdjęciami bez ponownego odpytywania CRM
+  const cacheRef = useRef(new Map<string, { wynik: WizWynik; status: WizStatus | null; panes: PaneState[]; sel: number; montaz: "standard" | "bezinwazyjny"; ai: { klucz: string; url: string } | null }>());
+  const zCacheRef = useRef<{ token: string; panes: PaneState[]; sel: number; montaz: "standard" | "bezinwazyjny"; ai: { klucz: string; url: string } | null } | null>(null);
   const mobile = useMemo(isMobile, []);
   const bundle = useBundleDiscountRules();
 
@@ -325,6 +335,18 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   // ------------------------------------------------------------ wynik → stan szyb
   useEffect(() => {
     if (!wynik || !token) return;
+    const zc = zCacheRef.current;
+    if (zc && zc.token === token) {
+      // powrót do zdjęcia z tej sesji: stan dokładnie taki, jaki klient zostawił
+      zCacheRef.current = null;
+      setPanes(zc.panes);
+      setSel(zc.sel);
+      setMontaz(zc.montaz);
+      setAi(zc.ai);
+      setInfo(wynik.uporzadkowane || status?.podglad?.oczyszczone ? "Uporządkowaliśmy zdjęcie (osoby, bałagan, stare rolety) – tak Twoje okno wygląda z naszą plisą." : "");
+      setZdjecia(readSesja());
+      return;
+    }
     const zapis = status?.uklad;
     const rek = wynik.rekomendacje;
     const tk = startTkanina || rek?.zestawy?.[0]?.tkanina || DOMYSLNA_TKANINA;
@@ -343,6 +365,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     }
     setPanes(szyby);
     setSel(0);
+    setAi(null);
+    aiOffRef.current = false;
     setInfo(wynik.uporzadkowane || status?.podglad?.oczyszczone ? "Uporządkowaliśmy zdjęcie (osoby, bałagan, stare rolety) – tak Twoje okno wygląda z naszą plisą." : "");
     const kol = katalog?.tkaniny.find((t) => t.id === tk)?.kolekcja;
     if (kol) setKolekcja(kol);
@@ -392,7 +416,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     };
   }, [faza, wynik, token]);
 
-  // tekstury tkanin w użyciu
+  // tekstury tkanin i zdjęcia listw w użyciu
   useEffect(() => {
     if (!katalog) return;
     for (const id of new Set(panes.map((p) => p.tkanina))) {
@@ -401,6 +425,16 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       void loadImage(t.tekstura).then((img) => {
         rendRef.current?.addFabric(id, img);
         draw();
+        setTexTick((n) => n + 1);
+      }).catch(() => {});
+    }
+    for (const id of new Set(panes.map((p) => p.listwa))) {
+      const l = katalog.listwy.find((x) => x.id === id);
+      if (!l?.zdjecie || rendRef.current?.hasRail(id)) continue;
+      void loadImage(l.zdjecie).then((img) => {
+        rendRef.current?.addRail(id, img);
+        draw();
+        setTexTick((n) => n + 1);
       }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -422,7 +456,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         return {
           id: p.id, corners: p.rogi, top: p.gora, bottom: p.dol,
           fabric: { id: p.tkanina, color: hexToRgb(t?.kolor || "#EEEEEE"), transmission: t?.transmisja ?? 0.25, texture: null, honeycomb: Boolean(kol?.plaster_miodu) },
-          rail, bracket: p.listwa === "bialy" ? [0.95, 0.95, 0.94] : rail, mount: montaz,
+          rail, railId: p.listwa, bracket: ["bialy", "anoda"].includes(p.listwa) ? [0.95, 0.95, 0.94] : rail, mount: montaz,
           widthMm: p.szerMm, heightMm: p.wysMm, back, front: Math.max(0.45, Math.min(1.1, 0.35 + 0.75 * wokol)),
           pitch: p.swiatlo?.widok?.pitch ?? 0, selected: i === sel,
         };
@@ -434,6 +468,53 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   useEffect(() => {
     if (gotowyObraz) draw();
   }, [draw, gotowyObraz]);
+
+  // klucz bieżącego układu (to, co widać na płótnie) - zdjęcie AI jest ważne tylko dla swojego klucza
+  const klucz = useMemo(() => {
+    const opis = JSON.stringify([montaz, panes.filter((p) => isConvexQuad(p.rogi)).map((p) => [p.tkanina, p.listwa, Math.round(p.gora * 200), Math.round(p.dol * 200), p.rogi.map((r) => [Math.round(r[0]), Math.round(r[1])])])]);
+    let h1 = 0x811c9dc5;
+    let h2 = 0x1b873593;
+    for (let i = 0; i < opis.length; i++) {
+      const c = opis.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+      h2 = Math.imul(h2 ^ c, 2246822519) >>> 0;
+    }
+    return h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
+  }, [panes, montaz]);
+
+  // zdjęcie AI: 2,5 s po ostatniej zmianie (tkanina, listwa, belki, rogi), gdy tekstury są wczytane - klient przeglądający
+  // tkaniny nie zamawia zdjęcia za każdym kliknięciem
+  useEffect(() => {
+    window.clearTimeout(aiTimerRef.current);
+    if (faza !== "gotowa" || !gotowyObraz || edycja || przedPo !== null || !token || !panes.length || aiOffRef.current) return;
+    if (ai?.klucz === klucz) return;
+    const r = rendRef.current;
+    if (!r || !katalog) return;
+    const gotoweTekstury = panes.every((p) => r.hasFabric(p.tkanina) && (!katalog.listwy.find((l) => l.id === p.listwa)?.zdjecie || r.hasRail(p.listwa)));
+    if (!gotoweTekstury) return;
+    const mojKlucz = klucz;
+    aiTimerRef.current = window.setTimeout(() => {
+      draw();
+      window.setTimeout(() => {
+        const rr = rendRef.current;
+        if (!rr) return;
+        const uklad: WizUklad = { szyby: {}, montaz };
+        for (const p of panes) uklad.szyby[p.id] = { tkanina: p.tkanina, listwa: p.listwa, gora: p.gora, dol: p.dol };
+        setAiTrwa(true);
+        void wizRender(token, uklad, mojKlucz, rr.toDataUrl(0.88)).then((res) => {
+          if (res.ok && res.url) {
+            setAi({ klucz: mojKlucz, url: res.url });
+            setAiInfo("");
+          } else {
+            if (res.limit) aiOffRef.current = true;
+            setAiInfo(res.komunikat || "");
+          }
+        }).finally(() => setAiTrwa(false));
+      }, 150);
+    }, 2500);
+    return () => window.clearTimeout(aiTimerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [klucz, faza, gotowyObraz, edycja, przedPo, token, ai, texTick, katalog]);
 
   // zapis układu (z opóźnieniem)
   useEffect(() => {
@@ -625,17 +706,10 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     }
   };
 
-  const pokazDokladnie = async () => {
-    if (!token) return;
-    const uklad: WizUklad = { szyby: {} };
-    for (const p of panes) uklad.szyby[p.id] = { tkanina: p.tkanina, listwa: p.listwa, gora: p.gora, dol: p.dol, rogi: p.rogi };
-    const r = await wizRender(token, uklad);
-    setInfo(r.komunikat || "Dokładny render AI uruchomimy wkrótce.");
-  };
-
   const pobierz = () => {
     const c = canvasRef.current;
     if (!c || !wynik) return;
+    const aiAktualne = ai && ai.klucz === klucz && !edycja && przedPo === null;
     draw();
     window.setTimeout(() => {
       const out = document.createElement("canvas");
@@ -643,7 +717,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       out.height = c.height;
       const ctx = out.getContext("2d");
       if (!ctx) return;
-      ctx.drawImage(c, 0, 0);
+      const aiImg = aiAktualne ? (wrapRef.current?.querySelector("img[data-ai]") as HTMLImageElement | null) : null;
+      if (aiImg && aiImg.complete && aiImg.naturalWidth) ctx.drawImage(aiImg, 0, 0, c.width, c.height);
+      else ctx.drawImage(c, 0, 0);
       const fs = Math.max(14, Math.round(c.width / 70));
       ctx.fillStyle = "rgba(0,0,0,0.55)";
       ctx.fillRect(0, c.height - fs * 2.2, c.width, fs * 2.2);
@@ -657,8 +733,13 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     }, 60);
   };
 
+  const zapamietaj = () => {
+    if (token && wynik && faza === "gotowa") cacheRef.current.set(token, { wynik, status, panes, sel, montaz, ai });
+  };
+
   const noweZdjecie = () => {
     wizEvent("wiz_kolejne_okno", token, { zdjec: zdjecia.length });
+    zapamietaj();
     setToken(null);
     setWynik(null);
     setStatus(null);
@@ -668,11 +749,26 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     setInfo("");
     setBlad("");
     setQr(null);
+    setAi(null);
     setFaza("start");
   };
 
   const otworzZdjecie = (z: Zdjecie) => {
     if (z.token === token) return;
+    zapamietaj();
+    setEdycja(false);
+    setPrzedPo(null);
+    setHover(null);
+    setBlad("");
+    const c = cacheRef.current.get(z.token);
+    if (c) {
+      zCacheRef.current = { token: z.token, panes: c.panes, sel: c.sel, montaz: c.montaz, ai: c.ai };
+      setStatus(c.status);
+      setWynik(c.wynik);
+      setToken(z.token);
+      setFaza("gotowa");
+      return;
+    }
     setWynik(null);
     setPanes([]);
     setToken(z.token);
@@ -911,6 +1007,16 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   onPointerUp={onUp}
                   onPointerCancel={onUp}
                 />
+                {/* zdjęcie AI bieżącego układu leży 1:1 na płótnie; przy każdej zmianie znika i wraca podgląd na żywo */}
+                {ai && ai.klucz === klucz && !edycja && przedPo === null ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img data-ai="1" src={ai.url} alt="" className={s.aiImg} crossOrigin="anonymous" draggable={false} />
+                ) : null}
+                {gotowyObraz && !edycja && przedPo === null ? (
+                  aiTrwa ? <span className={s.aiBadge}><i /> Dopracowujemy zdjęcie…</span>
+                    : ai && ai.klucz === klucz ? <span className={`${s.aiBadge} ${s.aiBadgeOk}`}>✓ Zdjęcie AI</span>
+                      : aiInfo ? <span className={s.aiBadge}>{aiInfo}</span> : null
+                ) : null}
                 {edycja
                   ? panes.map((p, i) =>
                       p.rogi.map((r, k) => (
@@ -1079,7 +1185,6 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                 ) : null}
                 <div className={s.ctaRow}>
                   <button type="button" className={s.secondary} onClick={zamow} disabled={!panes.length}>Otwórz w konfiguratorze</button>
-                  <button type="button" className={s.secondary} onClick={() => void pokazDokladnie()}>Pokaż dokładnie (AI)</button>
                   <button type="button" className={s.secondary} onClick={pobierz}>Zapisz zdjęcie</button>
                 </div>
               </div>

@@ -33,6 +33,7 @@ export type PaneRender = {
   bottom: number; // dolna krawędź belki dolnej, 0–1
   fabric: FabricRender;
   rail: Rgb;
+  railId: string; // listwa z katalogu (tekstura zdjęcia profilu, gdy wczytana)
   bracket: Rgb;
   mount: "standard" | "bezinwazyjny";
   widthMm: number;
@@ -117,23 +118,40 @@ uniform float uPitch;
 uniform float uSplit;
 uniform float uSel;
 uniform float uOutline;
+uniform sampler2D uRailTex; // zdjęcie listwy z katalogu (lico profilu, słoje wzdłuż)
+uniform float uHasRailTex;
+uniform vec3 uRailMean;
+uniform float uRailRep;
+uniform vec2 uMm;           // szerokość i wysokość szyby w mm (rozmiary uchwytów w mm, nie w % szyby)
 varying vec2 vPix;
 
 float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+vec3 railBase(float r, float u) {
+  // kolor listwy z katalogu; okleiny drewnopodobne mają słoje ze zdjęcia profilu (względem jego średniej)
+  if (uHasRailTex > 0.5) {
+    vec3 t = texture2D(uRailTex, vec2(u * uRailRep, clamp(r, 0.03, 0.97))).rgb;
+    return clamp(uRail * t / max(uRailMean, vec3(0.03)), 0.0, 1.0);
+  }
+  return uRail;
+}
 
 vec3 railShade(float r, float u, float pxr) {
   // profil belki jak na filmie 3D: jasna górna krawędź (odblask), płaskie lico z lekkim
   // spadkiem jasności, wyżłobienie (linia łączenia z tkaniną) i zaokrąglony, ciemniejszy spód
+  vec3 base = railBase(r, u);
   float edgeTop = 1.0 - smoothstep(0.0, max(0.06, 1.5 * pxr), r);
-  float face = mix(1.05, 0.93, smoothstep(0.08, 0.78, r));
-  float groove = 1.0 - 0.16 * exp(-pow((r - 0.6) / max(0.035, pxr), 2.0));
-  float bottom = mix(1.0, 0.66, smoothstep(0.78, 1.0, r));
-  vec3 c = uRail * face * groove * bottom;
-  c = mix(c, min(uRail * 1.22 + 0.06, vec3(1.0)), edgeTop * 0.85);
-  // zaślepki na końcach: tworzywo, zaokrąglone (jaśniejszy środek, ciemne krawędzie)
-  float cw = 0.014;
+  float face = mix(1.04, 0.94, smoothstep(0.08, 0.78, r));
+  // rowek: ze zdjęcia listwy (gdy jest), inaczej proceduralny
+  float groove = uHasRailTex > 0.5 ? 1.0 : 1.0 - 0.16 * exp(-pow((r - 0.5) / max(0.035, pxr), 2.0));
+  float bottom = mix(1.0, 0.7, smoothstep(0.8, 1.0, r));
+  vec3 c = base * face * groove * bottom;
+  c = mix(c, min(base * 1.18 + 0.05, vec3(1.0)), edgeTop * 0.7);
+  // zaślepki na końcach (tworzywo w kolorze, bez słojów), zaokrąglone: jaśniejszy środek, ciemne krawędzie
+  float cw = 12.0 / max(uMm.x, 200.0);
   float cap = 1.0 - smoothstep(cw, cw + 0.003, u) * smoothstep(cw, cw + 0.003, 1.0 - u);
-  float capShade = 0.78 + 0.18 * sin(clamp(r, 0.0, 1.0) * 3.1416);
+  float capShade = 0.8 + 0.16 * sin(clamp(r, 0.0, 1.0) * 3.1416);
   c = mix(c, uRail * capShade, cap);
   // szczelina między zaślepką a profilem
   float seam = (1.0 - smoothstep(0.0, 0.0025, abs(u - cw - 0.0015))) + (1.0 - smoothstep(0.0, 0.0025, abs(1.0 - u - cw - 0.0015)));
@@ -174,36 +192,54 @@ void main() {
     // fałda „harmonijka” jak na filmie 3D: górna ścianka do światła (jaśniejsza u grzbietu),
     // dolna w cieniu, ostry jasny grzbiet i ciemna dolina; kontrast rośnie przy ściśnięciu
     float cw = clamp(1.0 / max(pitchPx, 0.5), 0.04, 0.3);
-    float upF = mix(0.99, 1.05 + 0.08 * comp, smoothstep(0.0, 0.5, ph));
-    float dnF = mix(0.97, 0.86 - 0.18 * comp, smoothstep(0.5, 1.0, ph));
+    // tkanina matowa: rozłożona plisa ma płytkie, miękkie fałdy (mały kontrast), ściśnięta - głębsze
+    float upF = mix(0.995, 1.03 + 0.07 * comp, smoothstep(0.0, 0.5, ph));
+    float dnF = mix(0.985, 0.90 - 0.16 * comp, smoothstep(0.5, 1.0, ph));
     float s = ph < 0.5 ? upF : dnF;
     float prof = ph < 0.5 ? 1.0 : -1.0;
     float ridge = 1.0 - smoothstep(0.0, cw * 1.2, abs(ph - 0.5));
-    s += (0.05 + 0.04 * comp) * ridge;
+    s += (0.025 + 0.04 * comp) * ridge;
     float crease = smoothstep(1.0 - cw, 1.0, ph) + (1.0 - smoothstep(0.0, cw * 0.5, ph));
-    s *= 1.0 - (0.10 + 0.20 * comp) * clamp(crease, 0.0, 1.0);
+    s *= 1.0 - (0.07 + 0.18 * comp) * clamp(crease, 0.0, 1.0);
     // drobne fałdy (poniżej ~3 px) uśredniamy, żeby nie migotały
     float aa = clamp((pitchPx - 1.5) / 3.0, 0.0, 1.0);
-    s = mix(0.95, s, aa);
+    s = mix(0.97, s, aa);
     crease *= aa;
     vec3 alb = uFabric;
     if (uHasTex > 0.5) {
-      // tekstura niesie splot i wzór (względem swojej średniej), średni kolor zawsze z katalogu
+      // tekstura niesie splot i wzór (względem swojej średniej, wzmocniony), średni kolor zawsze z katalogu
       vec3 tx = texture2D(uTex, vec2(u * uRep.x, t * uRep.y)).rgb;
-      alb = clamp(uFabric * (tx / max(uTexMean, vec3(0.03))), 0.0, 1.0);
+      alb = clamp(uFabric * mix(vec3(1.0), tx / max(uTexMean, vec3(0.03)), 1.35), 0.0, 1.0);
     }
+    // splot tkaniny w dwóch skalach (włókna ~0,7 mm i nierówności ~2,5 mm) - matowa faktura,
+    // bez niej plisa wygląda jak blacha falista; gaśnie, gdy piksel jest większy od ziarna
+    vec2 gm = vec2(u, t) * uMm;
+    float mmPx = uPx.x / max(uMm.x, 200.0);
+    float fine = (hash(floor(gm / 0.7)) - 0.5) * 0.14 * clamp((mmPx * 0.7 - 0.25) * 2.0, 0.0, 1.0);
+    float coarse = (hash(floor(gm / 2.5) + 7.0) - 0.5) * 0.06 * clamp((mmPx * 2.5 - 0.3) * 1.5, 0.0, 1.0);
+    s *= 1.0 + fine + coarse;
     // krawędzie tkaniny odchodzą od światła, cień belki górnej na fałdach
     float edge = smoothstep(0.0, 0.035, u) * smoothstep(0.0, 0.035, 1.0 - u);
-    s *= mix(0.86, 1.0, edge);
+    s *= mix(0.9, 1.0, edge);
     float dTop = (v - tBot) * uPx.y;
-    s *= 1.0 - 0.24 * exp(-dTop / 5.0);
+    s *= 1.0 - 0.22 * exp(-dTop / 5.0);
     float dBot = (bTop - v) * uPx.y;
-    s *= 1.0 - 0.10 * exp(-dBot / 4.0);
-    vec3 front = alb * s * uFront * uTint;
-    // prześwit: światło zza szyby rozproszone w tkaninie (podwójna warstwa w zagięciu ciemniejsza)
-    vec2 r = vec2(10.0) / uRes;
-    vec3 back = (texture2D(uPhoto, tc).rgb + texture2D(uPhoto, tc + vec2(r.x, 0.0)).rgb + texture2D(uPhoto, tc - vec2(r.x, 0.0)).rgb
-      + texture2D(uPhoto, tc + vec2(0.0, r.y)).rgb + texture2D(uPhoto, tc - vec2(0.0, r.y)).rgb) / 5.0;
+    s *= 1.0 - 0.08 * exp(-dBot / 4.0);
+    // barwa światła pokoju tylko w połowie - kolor próbki ma zostać rozpoznawalny
+    vec3 front = alb * s * uFront * mix(vec3(1.0), uTint, 0.5);
+    // prześwit: światło zza szyby rozproszone w tkaninie - plisa nie pokazuje kształtów za oknem,
+    // tylko miękki blask (12 próbek w promieniu ~3 % zdjęcia)
+    vec2 r1 = vec2(0.03) * vec2(1.0, uRes.x / uRes.y);
+    vec3 back = vec3(0.0);
+    for (int k = 0; k < 8; k++) {
+      float ang = float(k) * 0.7854;
+      back += texture2D(uPhoto, clamp(tc + r1 * vec2(cos(ang), sin(ang)), 0.0, 1.0)).rgb;
+    }
+    for (int k = 0; k < 4; k++) {
+      float ang = float(k) * 1.5708 + 0.3927;
+      back += texture2D(uPhoto, clamp(tc + 0.5 * r1 * vec2(cos(ang), sin(ang)), 0.0, 1.0)).rgb;
+    }
+    back /= 12.0;
     float dbl = 1.0 - 0.3 * crease - 0.15 * comp + 0.06 * prof;
     vec3 diffused = mix(vec3(lum(alb)), alb, 0.8);
     vec3 trans = clamp(uTrans * uBack * 1.25 * diffused * dbl * mix(vec3(1.0), back / max(lum(back), 0.08), 0.12), 0.0, 0.92);
@@ -217,6 +253,8 @@ void main() {
     vec3 lit3 = 1.0 - (1.0 - clamp(front, 0.0, 1.0)) * (1.0 - trans);
     col = vec4(lit3 * (1.0 - cords), 1.0);
   }
+  // ziarno jak w fotografii z telefonu (~1,5 % szumu na piksel) - bez niego render wygląda jak naklejka
+  float grain = (hash(floor(vPix)) - 0.5) * 0.03;
 
   // ---- belki (z grubością profilu widoczną pod kątem)
   float k = uRailH * min(0.9, abs(uPitch) * 3.5);
@@ -230,13 +268,13 @@ void main() {
       float edgeB = 1.0 - smoothstep(fb - px.y, fb + px.y, v);
       vec3 c;
       if (v < a) {
-        c = uRail * 1.1; // wierzch profilu (patrzymy z góry)
+        c = railBase(0.1, u) * 1.08; // wierzch profilu (patrzymy z góry)
       } else if (v > b) {
-        c = uRail * 0.62; // spód profilu (patrzymy z dołu)
+        c = railBase(0.9, u) * 0.66; // spód profilu (patrzymy z dołu)
       } else {
         c = railShade((v - a) / max(b - a, 0.0001), u, px.y / max(b - a, 0.0001));
       }
-      c *= uFront * uTint * 1.04;
+      c *= uFront * mix(vec3(1.0), uTint, 0.5) * 1.02;
       float al = edgeA * edgeB;
       col = vec4(mix(col.rgb, c, al), max(col.a, al));
     }
@@ -249,9 +287,9 @@ void main() {
     col = vec4(vec3(0.0), a);
   }
 
-  // ---- uchwyty na belkach: wypustka na środku, na zewnątrz (górna belka - w górę, dolna - w dół)
-  float tabW = max(0.028, 9.0 * px.x);
-  float tabH = max(uRailH * 0.5, 4.0 * px.y);
+  // ---- uchwyty na belkach: języczek ~24×8 mm na środku, na zewnątrz (górna belka - w górę, dolna - w dół)
+  float tabW = max(12.0 / max(uMm.x, 200.0), 3.0 * px.x);
+  float tabH = max(8.0 / max(uMm.y, 300.0), 2.5 * px.y);
   float hu = abs(u - 0.5);
   if (hu < tabW + px.x) {
     float inU = 1.0 - smoothstep(tabW - px.x, tabW + px.x, hu);
@@ -262,8 +300,8 @@ void main() {
     if (tab > 0.0) {
       float lr = 1.0 - 0.18 * smoothstep(tabW * 0.55, tabW, hu); // boki wypustki w cieniu
       float rr = tA > tB ? (v - (tTop - tabH)) / tabH : (v - bBot) / tabH;
-      vec3 tc = uRail * lr * (tA > tB ? mix(1.12, 0.96, rr) : mix(0.98, 0.72, rr)) * uFront * uTint;
-      col = vec4(mix(col.rgb, tc, tab), max(col.a, tab));
+      vec3 tcol = uRail * lr * (tA > tB ? mix(1.1, 0.96, rr) : mix(0.98, 0.74, rr)) * uFront * mix(vec3(1.0), uTint, 0.5);
+      col = vec4(mix(col.rgb, tcol, tab), max(col.a, tab));
     }
   }
 
@@ -271,26 +309,35 @@ void main() {
   float cu = min(min(abs(u - 0.018), abs(u - 0.03)), min(abs(u - 0.97), abs(u - 0.982)));
   float line = 1.0 - smoothstep(px.x * 0.45, px.x * 1.2, cu);
   if ((v < tTop || v > bBot) && v > -0.01 && v < 1.01 && line > 0.0) {
-    vec3 cc = vec3(0.22, 0.17, 0.13) * uFront;
-    col = vec4(mix(col.rgb, cc, line), max(col.a, line * 0.9));
+    // żyłka napinająca: cienka, jasna, półprzezroczysta - na zdjęciu ledwo widoczna
+    vec3 cc = mix(texture2D(uPhoto, tc).rgb, vec3(0.82, 0.8, 0.76) * uFront, 0.55);
+    float la = line * 0.5;
+    col = vec4(mix(col.rgb, cc, la), max(col.a, la));
   }
 
-  // ---- uchwyty narożne: biały klocek na listwie przyszybowej (montaż standard) albo zaczep na skrzydło (bez wiercenia)
-  float bh = uMount > 0.5 ? 0.05 : max(0.026, 9.0 * px.y);
-  float bw = max(0.06, 18.0 * px.x);
-  bool inBx = (u > -0.012 && u < bw) || (u > 1.0 - bw && u < 1.012);
-  bool inBy = (v > -0.016 && v < bh) || (v > 1.0 - bh && v < 1.016);
+  // ---- uchwyty narożne w prawdziwej skali: montaż standard - mały uchwyt ~10×14 mm przykręcony do listwy
+  // przyszybowej, w większości schowany za belką; bez wiercenia - zaczep ~14×22 mm zakładany na skrzydło
+  float bwMm = uMount > 0.5 ? 14.0 : 10.0;
+  float bhMm = uMount > 0.5 ? 22.0 : 14.0;
+  float bw = bwMm / max(uMm.x, 200.0);
+  float bh = bhMm / max(uMm.y, 300.0);
+  float ox = (uMount > 0.5 ? 6.0 : 3.0) / max(uMm.x, 200.0); // ile wystaje poza szybę (na ramę)
+  float oy = (uMount > 0.5 ? 4.0 : 2.0) / max(uMm.y, 300.0);
+  bool inBx = (u > -ox && u < bw - ox) || (u > 1.0 - bw + ox && u < 1.0 + ox);
+  bool inBy = (v > -oy && v < bh - oy) || (v > 1.0 - bh + oy && v < 1.0 + oy);
   if (inBx && inBy) {
-    float lu = u < 0.5 ? (u + 0.012) / (bw + 0.012) : (1.012 - u) / (bw + 0.012);
-    float lv = v < 0.5 ? (v + 0.016) / (bh + 0.016) : (1.016 - v) / (bh + 0.016);
-    // bryła: jaśniejszy wierzch (od strony szyby), cień na krawędzi przy ramie, zaokrąglone rogi
-    float shade = 0.9 + 0.14 * smoothstep(0.0, 0.35, lv) - 0.12 * smoothstep(0.75, 1.0, lu);
-    float hole = 1.0 - smoothstep(0.0, 1.6 * px.x, min(abs(u - 0.018), abs(u - 0.982)));
-    shade *= 1.0 - 0.4 * hole * step(0.46, lv) * (1.0 - step(0.6, lv));
-    float edgeA = smoothstep(0.0, 1.5 * px.x / (bw + 0.012), lu) * smoothstep(0.0, 1.5 * px.y / (bh + 0.016), lv);
-    vec3 bc = uBracket * shade * uFront * uTint;
+    float lu = u < 0.5 ? (u + ox) / bw : (1.0 + ox - u) / bw;
+    float lv = v < 0.5 ? (v + oy) / bh : (1.0 + oy - v) / bh;
+    // mała bryła z tworzywa: lekki gradient, zaokrąglone rogi, cień przy ramie
+    float shade = 0.92 + 0.1 * smoothstep(0.0, 0.4, lv) - 0.1 * smoothstep(0.7, 1.0, lu);
+    vec2 cr = abs(vec2(lu, lv) - 0.5) * 2.0;
+    float rounded = 1.0 - smoothstep(0.85, 1.0, max(cr.x, cr.y) + 0.25 * min(cr.x, cr.y));
+    float edgeA = rounded * smoothstep(0.0, 1.5 * px.x / bw, lu) * smoothstep(0.0, 1.5 * px.y / bh, lv);
+    vec3 bc = uBracket * shade * uFront * mix(vec3(1.0), uTint, 0.5);
     col = vec4(mix(col.rgb, bc, edgeA), max(col.a, edgeA));
   }
+  // ziarno zdjęcia na wszystkim, co narysowaliśmy
+  col.rgb = clamp(col.rgb + grain * 0.7 * col.a, 0.0, 1.0);
 
   // ---- obrys szyby w trybie edycji
   if (uOutline > 0.5) {
@@ -357,6 +404,8 @@ export class WizRenderer {
   private emptyTex: WebGLTexture;
   private fabricTex = new Map<string, WebGLTexture>();
   private texMean = new Map<string, Rgb>();
+  private railTex = new Map<string, WebGLTexture>();
+  private railMean = new Map<string, Rgb>();
   private w = 1;
   private h = 1;
 
@@ -379,6 +428,7 @@ export class WizRenderer {
     this.paneProg = program(gl, FS_PANE, [
       "uPhoto", "uTex", "uRes", "uInv", "uPx", "uTop", "uBot", "uRailH", "uPleats", "uRep", "uHasTex", "uTexMean", "uFabric", "uTrans", "uBack",
       "uFront", "uTint", "uRail", "uBracket", "uMount", "uHoney", "uPitch", "uSplit", "uSel", "uOutline", "uVp",
+      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uMm",
     ]);
     const b = gl.createBuffer();
     if (!b) throw new Error("buffer");
@@ -449,6 +499,48 @@ export class WizRenderer {
       // obraz bez CORS - zostaje szara średnia
     }
     this.texMean.set(id, mean);
+  }
+
+  hasRail(id: string): boolean {
+    return this.railTex.has(id);
+  }
+
+  /** Zdjęcie listwy z katalogu (profil poziomo, 600×300): wycinamy lico profilu i kafelkujemy wzdłuż belki. */
+  addRail(id: string, img: HTMLImageElement): void {
+    if (this.railTex.has(id)) return;
+    try {
+      const c = document.createElement("canvas");
+      c.width = 512;
+      c.height = 64;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      const sx = img.naturalWidth * 0.06;
+      const sw = img.naturalWidth * 0.46;
+      const sy = img.naturalHeight * 0.3;
+      const sh = img.naturalHeight * 0.4;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 512, 64);
+      // lustrzane odbicie na końcu kafla, żeby słoje nie miały szwu
+      ctx.save();
+      ctx.translate(512, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 512, 64);
+      ctx.restore();
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 256, 64);
+      const d = ctx.getImageData(0, 0, 512, 64).data;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        r += d[i];
+        g += d[i + 1];
+        b += d[i + 2];
+      }
+      const n = d.length / 4;
+      this.railMean.set(id, [r / n / 255, g / n / 255, b / n / 255]);
+      this.railTex.set(id, this.makeTexture(c, true));
+    } catch {
+      // obraz bez CORS - belka w jednolitym kolorze z katalogu
+    }
   }
 
   get size(): [number, number] {
@@ -526,6 +618,15 @@ export class WizRenderer {
       gl.uniform1f(q.u.uBack, p.back);
       gl.uniform1f(q.u.uFront, p.front);
       gl.uniform3f(q.u.uRail, p.rail[0], p.rail[1], p.rail[2]);
+      const rt = this.railTex.get(p.railId);
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, rt || this.emptyTex);
+      gl.uniform1i(q.u.uRailTex, 2);
+      gl.uniform1f(q.u.uHasRailTex, rt ? 1 : 0);
+      const rm = this.railMean.get(p.railId) || [0.8, 0.8, 0.8];
+      gl.uniform3f(q.u.uRailMean, rm[0], rm[1], rm[2]);
+      gl.uniform1f(q.u.uRailRep, wMm / 260); // zdjęcie profilu pokazuje ok. 26 cm listwy
+      gl.uniform2f(q.u.uMm, wMm, hMm);
       gl.uniform3f(q.u.uBracket, p.bracket[0], p.bracket[1], p.bracket[2]);
       gl.uniform1f(q.u.uMount, p.mount === "bezinwazyjny" ? 1 : 0);
       gl.uniform1f(q.u.uHoney, p.fabric.honeycomb ? 1 : 0);
@@ -557,6 +658,8 @@ export class WizRenderer {
     const gl = this.gl;
     for (const t of this.fabricTex.values()) gl.deleteTexture(t);
     this.fabricTex.clear();
+    for (const t of this.railTex.values()) gl.deleteTexture(t);
+    this.railTex.clear();
     if (this.photoTex) gl.deleteTexture(this.photoTex);
     if (this.maskTex) gl.deleteTexture(this.maskTex);
     gl.deleteTexture(this.emptyTex);

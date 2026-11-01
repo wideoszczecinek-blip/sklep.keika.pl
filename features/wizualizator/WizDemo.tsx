@@ -78,21 +78,33 @@ export default function WizDemo() {
         // skan i obrysy szyb
         setScan(t >= 1200 && t < 3000 ? { y: seg(t, 1200, 2600), obrys: seg(t, 1500, 2800) } : null);
         // plisa: zjeżdża (2,8–3,8 s), potem belki w ruchu (3,8–7,2 s), potem kolory
+        // każda szyba pracuje niezależnie: lewa - górna belka schodzi (plisa „od góry”), prawa - dolna belka jeździ
         let dol = 0.06;
         let gora = 0;
-        if (t >= 2800) dol = 0.06 + 0.64 * ease(seg(t, 2800, 3800));
+        let dolL = 0.06;
+        let goraL = 0;
+        if (t >= 2800) {
+          dol = 0.06 + 0.64 * ease(seg(t, 2800, 3800));
+          dolL = 0.06 + 0.86 * ease(seg(t, 2900, 3900));
+        }
         if (t >= 3800 && t < 7200) {
           const u = seg(t, 3800, 7200);
           dol = 0.7 + 0.25 * Math.sin(u * Math.PI * 2) * (1 - u * 0.2);
           gora = 0.22 * Math.sin(u * Math.PI) ** 2;
+          goraL = 0.42 * Math.sin(u * Math.PI * 1.5) ** 2;
+          dolL = 0.92 - 0.12 * Math.sin(u * Math.PI * 2 + 1.2) ** 2;
         }
-        if (t >= 7200) dol = 0.7;
+        if (t >= 7200) {
+          dol = 0.7;
+          goraL = 0.3;
+          dolL = 0.92;
+        }
         const fi = t < 7200 ? 0 : Math.min(TKANINY.length - 1, Math.floor((t - 7200) / 1100));
         const f = fabrics[fi] || { id: "", color: [0.86, 0.84, 0.78] as [number, number, number], tr: 0.3 };
         const panes: PaneRender[] = t < 2800 ? [] : PANES.map((p, i) => ({
-          id: "d" + i, corners: p.rogi, top: i === 1 ? gora : gora * 0.5, bottom: i === 1 ? dol : Math.min(0.98, dol + 0.04),
+          id: "d" + i, corners: p.rogi, top: i === 1 ? gora : goraL, bottom: i === 1 ? dol : dolL,
           fabric: { id: f.id, color: f.color, transmission: f.tr, texture: null, honeycomb: false },
-          rail: [0.94, 0.94, 0.93], bracket: [0.95, 0.95, 0.94], mount: "standard", widthMm: p.wMm, heightMm: p.hMm,
+          rail: [0.94, 0.94, 0.93], railId: "bialy", bracket: [0.95, 0.95, 0.94], mount: "standard", widthMm: p.wMm, heightMm: p.hMm,
           back: 1, front: 0.62 + 0.25 * i, pitch: 0, selected: false,
         }));
         r.render(panes, { tint: [1.06, 0.99, 0.93], split: 1e9, outline: false });
