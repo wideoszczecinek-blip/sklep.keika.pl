@@ -1194,7 +1194,10 @@ export default function CartPage() {
   // się sam i klient od razu widział pole na kod, zanim w ogóle zdecydował,
   // czym płaci. Panel z polami otwiera się dopiero po wybraniu metody -
   // stąd pusty stan początkowy.
-  const [onlinePaymentKind, setOnlinePaymentKind] = useState<PaymentKind | "">("");
+  // 2026-11-01 właściciel: domyślnie BLIK (po wyłączeniu SEZON20 dojścia do kasy spadły z 11–13 do 1–3 dziennie, a zgody
+  // i przycisk „Płacę” pokazywały się dopiero po dotknięciu metody - na telefonie wyglądało jak koniec strony). Wcześniej
+  // (24.09, cofnięta próba 30.09) bez domyślnej metody. Reszta kafli zostaje do wyboru.
+  const [onlinePaymentKind, setOnlinePaymentKind] = useState<PaymentKind | "">("blik");
   // Siatka banków dla "Przelew online" (Przelewy24) - lista z CRM
   // (shop-public/p24_banks, logotypy z CDN P24), pobierana raz.
   const [p24Banks, setP24Banks] = useState<P24Bank[]>([]);
