@@ -167,6 +167,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   // e-mail: jedno pytanie, gdy wizualizacja jest gotowa (właściciel 1.11); „nie chcę” zapamiętane w sesji
   const [emailOkno, setEmailOkno] = useState(false);
   const [emailZgoda, setEmailZgoda] = useState(false);
+  const [emailMarketing, setEmailMarketing] = useState(false); // osobna, dobrowolna zgoda (Agencja 1.11 - ryzyko prawne)
   const [lead, setLead] = useState({ email: "", wyslane: false, blad: "" });
   // zdjęcie AI (E3) dla bieżącego układu: podgląd WebGL na żywo, po chwili spokoju fotorealistyczne zdjęcie z CRM
   const [ai, setAi] = useState<{ klucz: string; url: string } | null>(null);
@@ -315,7 +316,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
   const wyslijKontakt = async (moment: string) => {
     if (!token) return;
-    const r = await wizLead(token, { email: lead.email.trim(), zgoda_kontakt: true, zgoda_marketing: true, moment });
+    const r = await wizLead(token, { email: lead.email.trim(), zgoda_kontakt: true, zgoda_marketing: emailMarketing, moment });
     setLead((l) => ({ ...l, wyslane: r.ok, blad: r.ok ? "" : r.error || "Nie udało się zapisać." }));
   };
 
@@ -1350,6 +1351,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                           etap={wEtap}
                           montaz={montaz}
                           pokoj={pokojTeraz}
+                          wizToken={token || ""}
                           onBezMiarki={() => { setEmailOkno(true); wizEvent("wiz_produkt", token, { widok: "bez_miarki" }); }}
                           onDodano={(d) => {
                             writeSesja(readSesja().map((z) => (z.token === token ? { ...z, wKoszyku: true } : z)));
@@ -1439,13 +1441,17 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   <span className={s.dodanoIco} aria-hidden="true">✓</span>
                   <b>{wEtap === "kreator" ? "Wyślij sobie tę wizualizację" : "Mamy to – Twoja wizualizacja jest gotowa!"}</b>
                   <small>{wEtap === "kreator"
-                    ? "Zmierzysz okna, kiedy będzie Ci wygodnie – link do wizualizacji i wyceny przyjdzie na e-mail, razem z najlepszymi promocjami."
-                    : "Podaj e-mail, a zapiszemy link do niej i wycenę – razem z najlepszymi promocjami. Wrócisz do niej, kiedy zechcesz."}</small>
+                    ? "Zmierzysz okna, kiedy będzie Ci wygodnie – link do wizualizacji i wyceny przyjdzie na e-mail."
+                    : "Podaj e-mail, a wyślemy Ci link do niej i wycenę. Wrócisz do niej, kiedy zechcesz."}</small>
                   <input type="email" inputMode="email" autoComplete="email" autoFocus placeholder="Twój adres e-mail" value={lead.email}
                     onChange={(e) => setLead((l) => ({ ...l, email: e.target.value, blad: "" }))} />
                   <label className={s.emailZgoda}>
                     <input type="checkbox" checked={emailZgoda} onChange={(e) => { setEmailZgoda(e.target.checked); setLead((l) => ({ ...l, blad: "" })); }} />
-                    <span>Akceptuję <a href="/regulamin" target="_blank" rel="noopener">regulamin</a> i chcę dostać e-mailem link do wizualizacji, wycenę i promocje KEIKA (wypiszesz się jednym kliknięciem).</span>
+                    <span>Akceptuję <a href="/regulamin" target="_blank" rel="noopener">regulamin</a> i proszę o link do wizualizacji z wyceną na mój e-mail.</span>
+                  </label>
+                  <label className={s.emailZgoda}>
+                    <input type="checkbox" checked={emailMarketing} onChange={(e) => setEmailMarketing(e.target.checked)} />
+                    <span>🎁 Chcę też dostawać najlepsze promocje KEIKA e-mailem (dobrowolnie, wypiszesz się jednym kliknięciem).</span>
                   </label>
                   {lead.blad ? <p className={s.error}>{lead.blad}</p> : null}
                   <button type="submit" className={s.ctaBig} disabled={!lead.email.trim()}>{wEtap === "kreator" ? "Wyślij mi link" : "Zapisz i pokaż wizualizację"}</button>

@@ -8,7 +8,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { fetchKatalog, wizEvent } from "@/lib/wizualizator/api";
-import { WIZ_OPEN_EVENT, openWizualizator, wizArm, wizForced, wizIsProdHost, type WizOpenDetail } from "@/lib/wizualizator/flag";
+import { WIZ_OPEN_EVENT, openWizualizator, wizArm, wizForced, type WizOpenDetail } from "@/lib/wizualizator/flag";
 import { trackShopStep } from "@/lib/track-step";
 
 const WizModal = dynamic(() => import("./WizModal"), { ssr: false });
@@ -182,7 +182,8 @@ export function WizHost() {
     window.addEventListener(WIZ_OPEN_EVENT, onOpen);
     hostCount += 1;
     const t = (new URLSearchParams(window.location.search).get("wiz_t") || "").toLowerCase();
-    if (/^[a-f0-9]{32}$/.test(t) && !wizIsProdHost()) setOpen({ zrodlo: "link", token: t });
+    // link z maila z wizualizacją (?wiz_t=) otwiera wynik także na produkcji - to wizualizacja tego klienta
+    if (/^[a-f0-9]{32}$/.test(t)) setOpen({ zrodlo: "link", token: t });
     void fetchKatalog().then((k) => {
       if (!k || k.udzial <= 0) return;
       try {

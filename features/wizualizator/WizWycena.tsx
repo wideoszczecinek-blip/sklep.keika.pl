@@ -122,7 +122,9 @@ function RysunekPomiaru({ bez }: { bez: boolean }) {
   );
 }
 
-export default function WizWycena({ szyby, etap, montaz, pokoj, onEtap, onHover, onChange, onEvent, onDodano, onBezMiarki }: {
+export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap, onHover, onChange, onEvent, onDodano, onBezMiarki }: {
+  /** token wizualizacji - trafia do pozycji koszyka i zamówienia */
+  wizToken: string;
   szyby: WycenaSzyba[];
   etap: WycenaEtap;
   montaz: "standard" | "bezinwazyjny";
@@ -263,6 +265,7 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, onEtap, onHover,
         splitFromWidthMm: c.split ? Math.round(liczba(r.szer) * 10) : undefined,
         sagNoticeShown: c.widthMm > sagLimit || undefined,
         sagLimitMm: c.widthMm > sagLimit ? sagLimit : undefined,
+        wizToken,
         optionsNote: `Z Twojego okna · ${pokoj ? `${pokoj} · ` : ""}szyba ${r.nr} (wymiary klienta)`,
       };
       addCartItem(item);
