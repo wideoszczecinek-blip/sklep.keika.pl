@@ -895,7 +895,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     if (!r || !r.tiers?.length || szybWDomu < 2) return ""; // Agencja 1.11: rabat pokazujemy dopiero przy ≥ 2 szybach
     const tier = [...r.tiers].sort((a, b) => b.fromQty - a.fromQty).find((t) => szybWDomu >= t.fromQty);
     const next = [...r.tiers].sort((a, b) => a.fromQty - b.fromQty).find((t) => t.fromQty > szybWDomu);
-    if (tier) return `${szybWDomu} ${szybWDomu === 1 ? "szyba" : szybWDomu < 5 ? "szyby" : "szyb"} = ${szybWDomu} plis${szybWDomu < 5 ? "y" : ""} → −${tier.percent} % na całe zamówienie (${r.label || "rabat ilościowy"}).`;
+    const pokoi = zdjecia.length;
+    const ile = `${szybWDomu} ${szybWDomu === 1 ? "szyba" : szybWDomu % 10 >= 2 && szybWDomu % 10 <= 4 && (szybWDomu < 12 || szybWDomu > 14) ? "szyby" : "szyb"}${pokoi > 1 ? ` w ${pokoi} pokojach` : ""}`;
+    if (tier) return `${ile} = ${szybWDomu} ${szybWDomu === 1 ? "plisa" : szybWDomu % 10 >= 2 && szybWDomu % 10 <= 4 && (szybWDomu < 12 || szybWDomu > 14) ? "plisy" : "plis"}: −${tier.percent} % na całe zamówienie (${(r.label || "rabat ilościowy").split(":")[0].trim()}).`;
     if (next) return `Przy ${next.fromQty} plisach w koszyku −${next.percent} % na całe zamówienie.`;
     return "";
   }, [bundle, szybWDomu]);
@@ -1153,7 +1155,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
           <div className={s.res}>
             <div className={`${s.resStage} ${zakladka ? s.resStageKarta : ""}`}>
               <div className={s.stageCol}>
-                {gotowyObraz && !edycja && przedPo === null && panes.length && zakladka !== "wycena" ? (
+                {gotowyObraz && !edycja && przedPo === null && panes.length && zakladka !== "wycena" && (aiTrwa || (ai && ai.klucz === klucz && aiPokaz) || aiOffRef.current || aiInfo) ? (
                   <div className={`${s.aiBar} ${ai && ai.klucz === klucz && aiPokaz && !aiTrwa ? s.aiBarOk : ""}`} aria-live="polite">
                     {aiTrwa ? (
                       <>
@@ -1171,14 +1173,12 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                         <span className={s.aiIco} aria-hidden="true">i</span>
                         <p><b>{aiInfo || "Realistyczne zdjęcia dla tego okna są już wykorzystane."}</b><small>Kolor i położenie plis nadal zmienisz na podglądzie.</small></p>
                       </>
-                    ) : (
+                    ) : aiInfo ? (
                       <>
-                        <span className={s.aiIco} aria-hidden="true">✨</span>
-                        <p><b>Ustaw plisy po swojemu, a potem zobacz realistyczne zdjęcie</b>
-                          <small>{aiInfo || "Wybierz tkaninę i kolor listew poniżej, przesuń belki na zdjęciu – i kliknij przycisk."}</small></p>
-                        <button type="button" className={s.aiBtn} onClick={() => void generujAi()}>Pokaż realistyczne zdjęcie</button>
+                        <span className={s.aiIco} aria-hidden="true">i</span>
+                        <p><b>{aiInfo}</b><small>Kolor i położenie plis nadal zmienisz na podglądzie.</small></p>
                       </>
-                    )}
+                    ) : null}
                   </div>
                 ) : null}
                 <div className={s.canvasWrap} ref={wrapRef}>
@@ -1190,6 +1190,12 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     onPointerUp={onUp}
                     onPointerCancel={onUp}
                   />
+                  {/* przycisk zdjęcia AI na samym zdjęciu (właściciel 1.11: „nie rzuca się w oczy”), raz pulsuje po wyniku */}
+                  {gotowyObraz && !edycja && przedPo === null && panes.length && !aiTrwa && !aiOffRef.current && !(ai && ai.klucz === klucz && aiPokaz) ? (
+                    <button type="button" className={s.aiNaZdjeciu} onClick={() => void generujAi()}>
+                      <span aria-hidden="true">✨</span><b>Pokaż realistyczne zdjęcie</b><small>Zobacz, jak na prawdziwym zdjęciu</small>
+                    </button>
+                  ) : null}
                   {/* zdjęcie AI bieżącego układu leży 1:1 na płótnie; przy każdej zmianie znika i wraca podgląd na żywo */}
                   {ai && ai.klucz === klucz && aiPokaz && !edycja && przedPo === null ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -1399,7 +1405,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     <small>Listwy i montaż</small><b><i style={{ backgroundColor: liAkt?.kolor }} />{liAkt?.nazwa || "Wybierz"}</b>
                   </button>
                   <button type="button" className={`${s.tool} ${zakladka === "wycena" ? s.toolOn : ""}`} onClick={() => { otworzKarte("wycena"); setWEtap("wycena"); }}>
-                    <small>Wycena ({panes.filter((p) => !p.pomin).length} {panes.length === 1 ? "szyba" : "szyb"})</small><b>{cenaZestawu ? `${cenaZestawu.szacunkowa ? "ok. " : ""}${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł` : "…"}</b>
+                    <small>Wycena ({panes.filter((p) => !p.pomin).length} {panes.length === 1 ? "szyba" : "szyb"})</small><b>{cenaZestawu ? `${cenaZestawu.szacunkowa ? "ok. " : ""}${Math.round(cenaZestawu.poRabacie).toLocaleString("pl-PL")} zł` : "…"}</b>
                   </button>
                 </>
               ) : null}
@@ -1420,8 +1426,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
               </div>
               <button type="button" className={s.ctaBig} disabled={!panes.length}
                 onClick={() => { setZakladka("wycena"); setEdycja(false); setWEtap(cenaZestawu && !cenaZestawu.szacunkowa ? "podsumowanie" : "kreator"); wizEvent("wiz_produkt", token, { widok: "zestaw_cta" }); }}>
-                Dodaj zestaw do koszyka
-                {cenaZestawu ? <small>{cenaZestawu.szacunkowa ? `ok. ${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł · najpierw potwierdzisz wymiary` : `${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł · wymiary potwierdzone ✓`}</small> : null}
+                Dodaj do koszyka{cenaZestawu ? ` · ${cenaZestawu.szacunkowa ? "ok. " : ""}${Math.round(cenaZestawu.poRabacie).toLocaleString("pl-PL")} zł` : ""}
+                <small>{cenaZestawu && !cenaZestawu.szacunkowa ? "wymiary potwierdzone ✓" : "najpierw potwierdzisz wymiary – 2 min"}{cenaZestawu && cenaZestawu.poRabacie < cenaZestawu.suma ? ` · zamiast ${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł` : ""}</small>
               </button>
             </div>
 

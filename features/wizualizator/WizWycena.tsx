@@ -17,6 +17,8 @@ import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { addCartItem, type CartLineItem } from "@/lib/cart";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
 import { openLiveChat } from "@/lib/live-chat";
+import { installmentsAvailable, monthlyInstallment } from "@/lib/installments";
+import { useInstallmentCount, useInstallmentSettings } from "@/lib/installment-settings";
 import s from "./WizModal.module.css";
 
 export type WycenaSzyba = {
@@ -70,9 +72,10 @@ function mountDla(profile: PlisyProfile | null, montaz: "standard" | "bezinwazyj
 }
 
 /** Cena zestawu do przycisku w modalu: wymiary klienta, a gdy ich nie ma - szacunkowe. */
-export function useCenaZestawu(szyby: WycenaSzyba[], montaz: "standard" | "bezinwazyjny"): { suma: number; sztuk: number; szacunkowa: boolean } | null {
+export function useCenaZestawu(szyby: WycenaSzyba[], montaz: "standard" | "bezinwazyjny"): { suma: number; poRabacie: number; sztuk: number; szacunkowa: boolean } | null {
   const [profile, setProfile] = useState<PlisyProfile | null>(null);
   const adjust = useProductPriceAdjustment("plisy");
+  const bundle = useBundleDiscountRules();
   useEffect(() => {
     void fetchPlisyProfile().then(setProfile);
   }, []);
@@ -90,8 +93,9 @@ export function useCenaZestawu(szyby: WycenaSzyba[], montaz: "standard" | "bezin
       suma += c?.total || 0;
       sztuk += c?.qty || 0;
     }
-    return { suma, sztuk, szacunkowa };
-  }, [profile, adjust, szyby, montaz]);
+    const tier = [...(bundle.plisy?.tiers || [])].sort((a, b) => b.fromQty - a.fromQty).find((t) => sztuk >= t.fromQty);
+    return { suma, poRabacie: tier ? Math.round(suma * (1 - tier.percent / 100) * 100) / 100 : suma, sztuk, szacunkowa };
+  }, [profile, adjust, szyby, montaz, bundle]);
 }
 
 /** Rysunek: gdzie mierzyć (szkło między listwami przyszybowymi albo skrzydło przy montażu bez wiercenia). */
@@ -151,6 +155,8 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
   const [blad, setBlad] = useState("");
   const adjust = useProductPriceAdjustment("plisy");
   const bundle = useBundleDiscountRules();
+  const raty = useInstallmentSettings();
+  const [ileRat] = useInstallmentCount();
 
   useEffect(() => {
     void fetchPlisyProfile().then(setProfile);
@@ -185,7 +191,7 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
     const rule = bundle.plisy;
     if (!rule?.tiers?.length || sztuk < 2) return null;
     const tier = [...rule.tiers].sort((a, b) => b.fromQty - a.fromQty).find((t) => sztuk >= t.fromQty);
-    return tier ? { percent: tier.percent, label: rule.label || "CAŁY DOM" } : null;
+    return tier ? { percent: tier.percent, label: (rule.label || "CAŁY DOM").split(":")[0].trim() } : null; // sama nazwa, bez progów w nawiasie
   }, [bundle, sztuk]);
 
   // kreator: bieżąca szyba podświetlona na zdjęciu
@@ -332,15 +338,20 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
   }
 
   // ------------------------------------------------------------ wycena / podsumowanie
+  // (właściciel 1.11: „ta sekcja już sprzedaje” - wymiary rzucają się w oczy, cena jak w sklepie, promocja, wysyłka, PayPo, raty, CTA)
   const podsumowanie = etap === "podsumowanie";
+  const poRabacie = rabat ? Math.round(suma * (1 - rabat.percent / 100) * 100) / 100 : suma;
+  const rata = raty.enabled && installmentsAvailable(poRabacie) ? monthlyInstallment(poRabacie, ileRat, raty.apr) : 0;
   return (
     <div className={s.wycena}>
-      {podsumowanie ? (
-        <p className={s.hint}><b>Twój zestaw</b> – sprawdź wymiary jeszcze raz. Plisę produkujemy dokładnie na te wymiary.</p>
+      {!wszystkieGotowe ? (
+        <div className={s.miarka}>
+          <span aria-hidden="true">📏</span>
+          <p><b>Ceny orientacyjne – wymiary odczytane ze zdjęcia.</b> Przed zamówieniem zmierz okno: 2 minuty, przeprowadzimy Cię szyba po szybie.</p>
+          <button type="button" className={s.ctaBig} onClick={start}>📏 Wpisz dokładne wymiary</button>
+        </div>
       ) : (
-        <p className={s.hint}>
-          <b>Ceny orientacyjne</b> z wymiarów odczytanych ze zdjęcia. Zamówisz po wpisaniu własnych wymiarów – przeprowadzimy Cię szyba po szybie.
-        </p>
+        <p className={s.hint}><b>✓ Wymiary potwierdzone</b> – plisy wyprodukujemy dokładnie na te wymiary.</p>
       )}
       <ol className={s.paneList}>
         {rows.map((r) => {
@@ -352,16 +363,14 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
               <span className={s.paneNr}>{r.nr}</span>
               <div className={s.paneMain}>
                 {r.pomin ? <b>Nie zamawiasz</b> : ok ? <b>{r.szer} × {r.wys} cm <span className={s.badgeOk}>✓ zmierzone</span></b>
-                  : <b>≈ {Math.round(r.szacSzerCm || 0)} × {Math.round(r.szacWysCm || 0)} cm <span className={s.badgeEst}>szacunek</span></b>}
+                  : <b>≈ {Math.round(r.szacSzerCm || 0)} × {Math.round(r.szacWysCm || 0)} cm <span className={s.badgeSzac}>szacunek – zmierz</span></b>}
+                {r.pomin ? null : c ? <small>{ok ? "" : "ok. "}{zl(c.total)}{c.split ? " · 2 plisy (szerokie okno)" : ""}</small> : <small>sprawdź wymiar</small>}
               </div>
-              <div className={s.panePrice}>
-                {r.pomin ? null : c ? <><b>{ok ? "" : "ok. "}{zl(c.total)}</b>{c.split ? <small>2 plisy (szerokie okno)</small> : null}</> : <small>sprawdź wymiar</small>}
-                <button type="button" className={s.link} onClick={() => {
-                  if (r.pomin) update(r.id, { pomin: false });
-                  setKrok(rows.indexOf(r));
-                  onEtap("kreator");
-                }}>{r.pomin ? "Przywróć" : ok ? "Popraw" : "Wpisz wymiary"}</button>
-              </div>
+              <button type="button" className={ok || r.pomin ? s.pigulkaJasna : s.pigulka} onClick={() => {
+                if (r.pomin) update(r.id, { pomin: false });
+                setKrok(rows.indexOf(r));
+                onEtap("kreator");
+              }}>{r.pomin ? "Przywróć" : ok ? "Popraw" : "📏 Wpisz wymiary"}</button>
             </li>
           );
         })}
@@ -376,21 +385,39 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
         </div>
       ) : null}
 
-      <div className={s.sumBox}>
-        <div><span>{aktywne.length} {odm(aktywne.length, "szyba", "szyby", "szyb")} · {sztuk} {odm(sztuk, "plisa", "plisy", "plis")}</span>
-          <b>{wszystkieGotowe ? "" : "ok. "}{zl(suma)}</b></div>
+      <div className={s.cenaBox}>
+        <span className={s.small}>{aktywne.length} {odm(aktywne.length, "szyba", "szyby", "szyb")} · {sztuk} {odm(sztuk, "plisa", "plisy", "plis")}{wszystkieGotowe ? "" : " · cena orientacyjna"}</span>
+        <div className={s.cenaRzad}>
+          {rabat ? <s>{zl(suma)}</s> : null}
+          <b>{wszystkieGotowe ? "" : "ok. "}{zl(poRabacie)}</b>
+        </div>
         {rabat ? (
-          <p className={s.bundle}>
-            {sztuk} {odm(sztuk, "szyba", "szyby", "szyb")} = {sztuk} {odm(sztuk, "plisa", "plisy", "plis")}: −{rabat.percent} % na całe zamówienie ({rabat.label}) – w koszyku ok. <b>{zlKr(suma * (1 - rabat.percent / 100))}</b>.
-          </p>
+          <>
+            <span className={s.oszczedzasz}>Oszczędzasz {zl(suma - poRabacie)}</span>
+            <span className={s.promoLinia}>{sztuk} {odm(sztuk, "plisa", "plisy", "plis")} = −{rabat.percent} % na całe zamówienie ({rabat.label})</span>
+          </>
         ) : null}
-        {blad ? <p className={s.error}>{blad}</p> : null}
+      </div>
+      <ul className={s.zaufanie}>
+        <li>🚚 Wysyłka 0 zł</li>
+        {raty.paypoEnabled ? <li>💳 PayPo – zapłać za 30 dni</li> : null}
+        {rata > 0 ? <li>Raty od {zl(rata)}/mies.</li> : null}
+        <li>🛡️ 5 lat gwarancji · ↩️ 30 dni na zwrot</li>
+      </ul>
+      {blad ? <p className={s.error}>{blad}</p> : null}
+      {/* CTA zawsze widoczne - przyklejone do dołu karty */}
+      <div className={s.ctaDol}>
         {wszystkieGotowe ? (
-          <button type="button" className={s.ctaBig} onClick={doKoszyka}>Dodaj {sztuk === 1 ? "plisę" : `wszystkie ${sztuk} ${odm(sztuk, "plisę", "plisy", "plis")}`} do koszyka</button>
+          <button type="button" className={s.ctaBig} onClick={doKoszyka}>
+            Dodaj {sztuk === 1 ? "plisę" : `wszystkie ${sztuk} ${odm(sztuk, "plisę", "plisy", "plis")}`} do koszyka · {zlKr(poRabacie)}
+            <small>wymiary potwierdzone ✓ · rabat nalicza koszyk</small>
+          </button>
         ) : (
-          <button type="button" className={s.ctaBig} onClick={start}>Wpisz wymiary i zamów zestaw →</button>
+          <button type="button" className={s.ctaBig} onClick={start}>
+            Dodaj do koszyka · ok. {zlKr(poRabacie)}
+            <small>najpierw potwierdzisz wymiary – 2 min</small>
+          </button>
         )}
-        <p className={s.small}>{wszystkieGotowe ? "Rabat ilościowy nalicza koszyk. 30 dni na zwrot, 5 lat gwarancji." : "Bez wpisania własnych wymiarów nie da się zamówić – szacunek ze zdjęcia może się różnić o kilka centymetrów."}</p>
       </div>
     </div>
   );

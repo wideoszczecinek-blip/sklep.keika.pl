@@ -969,3 +969,35 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
 
 .krokPomoc { margin: 0; display: grid; gap: 4px; justify-items: start; }
 .krokPomoc .link { font-size: 12.5px; text-align: left; }
+
+/* panel wyceny „sprzedający” (właściciel 1.11) */
+.miarka { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 14px; padding: 12px; }
+.miarka > span { font-size: 26px; line-height: 1; }
+.miarka p { margin: 0; font-size: 13.5px; line-height: 1.4; color: #451a03; }
+.miarka .ctaBig { grid-column: 1 / -1; width: 100%; min-width: 0; font-size: 16px; padding: 12px 16px; }
+.badgeSzac { display: inline-block; margin-left: 6px; font-size: 11.5px; font-weight: 800; color: #c2410c; background: #ffedd5; border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
+.paneList .paneMain small { display: block; font-size: 12.5px; color: #475569; margin-top: 2px; }
+.pigulka, .pigulkaJasna { flex: none; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.pigulka { border: 0; color: #fff; background: linear-gradient(90deg, #ea580c, #f97316); box-shadow: 0 3px 10px rgba(234,88,12,0.3); }
+.pigulkaJasna { border: 1.5px solid #cbd5e1; color: #334155; background: #fff; }
+.paneRow { align-items: center; }
+.cenaBox { display: grid; gap: 2px; border-top: 1px solid #e3eaee; padding-top: 10px; }
+.cenaRzad { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.cenaRzad s { color: #94a3b8; font-size: 16px; }
+.cenaRzad b { font-size: 28px; font-weight: 900; color: #ea580c; line-height: 1.1; }
+.oszczedzasz { font-size: 13.5px; font-weight: 800; color: #15803d; }
+.promoLinia { font-size: 13px; font-weight: 700; color: #0f766e; }
+.zaufanie { list-style: none; margin: 0; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 4px 14px; background: #f8fafc; border-radius: 12px; font-size: 12.5px; color: #334155; font-weight: 600; }
+.ctaDol { position: sticky; bottom: -16px; margin: 4px -14px -16px; padding: 10px 14px 14px; background: linear-gradient(180deg, rgba(255,255,255,0), #fff 30%); z-index: 2; }
+.ctaDol .ctaBig { width: 100%; min-width: 0; }
+
+/* przycisk zdjęcia AI na zdjęciu */
+.aiNaZdjeciu { position: absolute; top: 12px; right: 12px; z-index: 4; display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left; border: 0; border-radius: 14px; padding: 9px 14px 9px 10px; color: #fff; cursor: pointer; line-height: 1.15;
+  background: linear-gradient(135deg, #7c3aed, #14b8a6); box-shadow: 0 8px 24px rgba(15,23,32,0.45); animation: aiPuls 1.1s ease-in-out 0.8s 2; }
+.aiNaZdjeciu span { grid-row: 1 / 3; font-size: 22px; }
+.aiNaZdjeciu b { font-size: 14.5px; font-weight: 800; }
+.aiNaZdjeciu small { font-size: 11.5px; opacity: 0.92; }
+.aiNaZdjeciu:hover { filter: brightness(1.08); }
+@keyframes aiPuls { 0%, 100% { transform: scale(1); box-shadow: 0 8px 24px rgba(15,23,32,0.45); } 50% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(124,58,237,0.25), 0 8px 24px rgba(15,23,32,0.45); } }
+@media (min-width: 900px) { .res { padding-top: 56px; } } /* zdjęcie pod przyciskami – i × modala */
+@media (max-width: 899px) { .aiNaZdjeciu { top: auto; bottom: 42px; right: 8px; padding: 7px 11px 7px 8px; } .aiNaZdjeciu b { font-size: 13px; } }
