@@ -17,16 +17,35 @@ import qrcode from "qrcode-generator";
 import { type Pt, invert3, apply, paneToImage, isConvexQuad } from "@/lib/wizualizator/homografia";
 import { WizRenderer, hexToRgb, panePixelSize, RAIL_MM, type PaneRender } from "@/lib/wizualizator/renderer";
 import {
-  fetchKatalog, wizEvent, wizQrCreate, wizQrPoll, wizRender, wizRestart, wizSaveLayout, wizStart, wizStatus,
+  fetchKatalog, wizAnaliza, wizEvent, wizLead, wizQrCreate, wizQrPoll, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
   type WizKatalog, type WizStatus, type WizUklad, type WizWynik, type WizSzyba,
 } from "@/lib/wizualizator/api";
 import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
+import WizWycena, { type WycenaSzyba } from "./WizWycena";
 import s from "./WizModal.module.css";
 
-type Faza = "start" | "wysylanie" | "analiza" | "gotowa" | "odrzucona" | "blad";
-type Zakladka = "tkanina" | "listwy" | "szyby";
-type PaneState = { id: string; rogi: Pt[]; gora: number; dol: number; tkanina: string; listwa: string; pewnosc: number; szerMm: number; wysMm: number; swiatlo: WizSzyba["swiatlo"] };
+type Faza = "start" | "wysylanie" | "sprawdzanie" | "popraw" | "analiza" | "gotowa" | "odrzucona" | "blad";
+type Zakladka = "tkanina" | "listwy" | "wycena" | "szyby";
+type PaneState = {
+  id: string; rogi: Pt[]; gora: number; dol: number; tkanina: string; listwa: string; pewnosc: number; szerMm: number; wysMm: number; swiatlo: WizSzyba["swiatlo"];
+  /** wycena: wymiary wpisane przez klienta, potwierdzenie pomiaru, pominięcie */
+  wpisSzerMm?: number | null; wpisWysMm?: number | null; zmierzone?: boolean; pomin?: boolean; odniesienia?: string[]; pewnoscWym?: number | null;
+};
+
+/** Korzyści pokazywane w czasie analizy (bez cen; ceny tylko z konfiguratora). */
+const KORZYSCI = [
+  ["🏭", "Produkujemy na Twój wymiar", "Każda plisa powstaje dokładnie pod Twoją szybę."],
+  ["🛡️", "5 lat gwarancji", "Na mechanizm i tkaninę – spokojnie na lata."],
+  ["↩️", "30 dni na zwrot", "Jeśli coś nie zagra, masz czas na decyzję."],
+  ["🔧", "Montaż bez wiercenia", "Wersja bezinwazyjna – nie naruszasz ramy okna."],
+  ["🎨", "150 tkanin w 5 kolekcjach", "Od przepuszczających światło po pełne zaciemnienie."],
+] as const;
+
+const POMIESZCZENIE: Record<string, string> = {
+  salon: "salon", sypialnia: "sypialnię", kuchnia: "kuchnię", lazienka: "łazienkę", pokoj_dzieciecy: "pokój dziecięcy", biuro: "gabinet",
+  poddasze: "poddasze", jadalnia: "jadalnię", przedpokoj: "przedpokój", inne: "wnętrze",
+};
 type Zdjecie = { token: string; miniatura: string; szyb: number };
 
 const SESJA_KEY = "keika_wiz_sesja_v1";
@@ -116,6 +135,11 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [zdjecia, setZdjecia] = useState<Zdjecie[]>([]);
   const [info, setInfo] = useState("");
   const [gotowyObraz, setGotowyObraz] = useState(false);
+  const [kontrola, setKontrola] = useState<{ komunikat: string; problemy: string[] } | null>(null);
+  const [min, setMin] = useState(false);
+  const [hover, setHover] = useState<string | null>(null);
+  const [korzysc, setKorzysc] = useState(0);
+  const [lead, setLead] = useState({ email: "", telefon: "", zgoda: false, marketing: false, wyslane: false, blad: "" });
   const mobile = useMemo(isMobile, []);
   const bundle = useBundleDiscountRules();
 
@@ -197,12 +221,59 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     try {
       const r = await wizStart(file, { zrodlo, qr: qrKod });
       setToken(r.token);
+      // szybka kontrola (2–4 s): złe zdjęcie → konkretna prośba o poprawkę, zanim zapłacimy za pełną analizę
+      setFaza("sprawdzanie");
+      const k = await wizSprawdz(r.token);
+      if (k.decyzja === "odrzuc") {
+        setBlad(k.komunikat || "Tego zdjęcia nie możemy użyć.");
+        setFaza("odrzucona");
+        return;
+      }
+      if (k.decyzja === "popraw") {
+        setKontrola({ komunikat: k.komunikat, problemy: k.problemy });
+        setFaza("popraw");
+        return;
+      }
+      if (k.oslony) setInfo("Na oknie są już rolety – usuniemy je ze zdjęcia, żeby pokazać plisę.");
+      wizAnaliza(r.token);
       setFaza("analiza");
     } catch (e) {
       setBlad(e instanceof Error ? e.message : "Nie udało się wysłać zdjęcia.");
       setFaza("start");
     }
   }, [zgoda, zrodlo, qrKod]);
+
+  const mimoTo = () => {
+    if (!token) return;
+    wizEvent("wiz_mimo_to", token, { problemy: (kontrola?.problemy || []).join(", ") });
+    wizAnaliza(token);
+    setKontrola(null);
+    setFaza("analiza");
+  };
+
+  // zminimalizowane okno nie blokuje przewijania strony; po powrocie rysujemy od nowa
+  useEffect(() => {
+    document.documentElement.style.overflow = min ? "" : "hidden";
+    if (!min && faza === "gotowa") window.setTimeout(() => draw(), 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [min]);
+
+  // korzyści w czasie oczekiwania (co 4 s)
+  useEffect(() => {
+    if (faza !== "analiza" && faza !== "sprawdzanie") return;
+    const t = window.setInterval(() => setKorzysc((k) => (k + 1) % KORZYSCI.length), 4000);
+    return () => window.clearInterval(t);
+  }, [faza]);
+
+  const wyslijKontakt = async (moment: string) => {
+    if (!token) return;
+    if (!lead.zgoda) {
+      setLead((l) => ({ ...l, blad: "Zaznacz zgodę na kontakt." }));
+      return;
+    }
+    const r = await wizLead(token, { email: lead.email.trim(), telefon: lead.telefon.trim(), zgoda_kontakt: true, zgoda_marketing: lead.marketing, moment });
+    setLead((l) => ({ ...l, wyslane: r.ok, blad: r.ok ? "" : r.error || "Nie udało się zapisać." }));
+  };
 
   // ------------------------------------------------------------ odpytywanie
   useEffect(() => {
@@ -216,6 +287,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         const st = await wizStatus(token);
         if (stop) return;
         setStatus(st);
+        if (st.kontakt) setLead((l) => ({ ...l, wyslane: true }));
+        // powrót do zdjęcia, które zostało przy kontroli (np. link) - analiza jeszcze nie ruszyła
+        if (st.status === "nowa" && n === 3) wizAnaliza(token);
         if (st.status === "gotowa" || st.status === "recznie") {
           if (st.wynik) {
             setWynik(st.wynik);
@@ -258,6 +332,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       return {
         id: p.id, rogi: (z?.rogi as Pt[]) || p.rogi, gora: z?.gora ?? 0, dol: z?.dol ?? 0.68, tkanina: z?.tkanina || tk, listwa: z?.listwa || li,
         pewnosc: p.pewnosc, szerMm: (p.szer_cm || 0) * 10, wysMm: (p.wys_cm || 0) * 10, swiatlo: p.swiatlo,
+        wpisSzerMm: z?.szer_mm ?? null, wpisWysMm: z?.wys_mm ?? null, zmierzone: Boolean(z?.zmierzone), pomin: Boolean(z?.pomin),
+        odniesienia: p.wymiary?.odniesienia || [], pewnoscWym: p.wymiary?.pewnosc ?? null,
       };
     });
     for (const d of zapis?.dodane || []) {
@@ -265,6 +341,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     }
     setPanes(szyby);
     setSel(0);
+    setInfo(status?.podglad?.oczyszczone ? "Usunęliśmy ze zdjęcia obecne rolety – tak Twoje okno wygląda z naszą plisą." : "");
     const kol = katalog?.tkaniny.find((t) => t.id === tk)?.kolekcja;
     if (kol) setKolekcja(kol);
     if (wynik.status === "recznie" || szyby.some((p) => p.pewnosc < 70)) {
@@ -362,7 +439,10 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     window.clearTimeout(saveRef.current);
     saveRef.current = window.setTimeout(() => {
       const uklad: WizUklad = { szyby: {}, montaz, wszystkie, dodane: panes.filter((p) => p.id.startsWith("r")).map((p) => ({ id: p.id, rogi: p.rogi })) };
-      for (const p of panes) uklad.szyby[p.id] = { tkanina: p.tkanina, listwa: p.listwa, gora: Math.round(p.gora * 1000) / 1000, dol: Math.round(p.dol * 1000) / 1000, rogi: p.rogi };
+      for (const p of panes) {
+        uklad.szyby[p.id] = { tkanina: p.tkanina, listwa: p.listwa, gora: Math.round(p.gora * 1000) / 1000, dol: Math.round(p.dol * 1000) / 1000, rogi: p.rogi,
+          szer_mm: p.wpisSzerMm ?? null, wys_mm: p.wpisWysMm ?? null, zmierzone: Boolean(p.zmierzone), pomin: Boolean(p.pomin) };
+      }
       wizSaveLayout(token, uklad, korektaRef.current);
     }, 1200);
   }, [panes, montaz, wszystkie, token, faza]);
@@ -614,19 +694,52 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const tkaninyKolekcji = katalog?.tkaniny.filter((t) => t.kolekcja === (kolekcja || katalog.kolekcje[0]?.id)) || [];
 
   // Portal do <body>: przyciski siedzą w sekcjach z transform/overflow, które przycinałyby position: fixed.
+  const podglad = status?.podglad;
+  const etapy = ["R", "A", "B", "C", "F"];
+  const postep = faza === "sprawdzanie" ? 6 : Math.max(10, Math.round(((etapy.indexOf(status?.etap || "A") + 1) / (etapy.length + 1)) * 100));
+  const kontaktForm = (moment: string) => lead.wyslane ? (
+    <p className={s.leadOk}>✓ Dziękujemy! Wyślemy Ci wizualizację i wycenę – możesz też od razu przejść dalej.</p>
+  ) : (
+    <div className={s.leadBox}>
+      <p className={s.leadTitle}><b>Wyślemy Ci gotową wizualizację i wycenę</b><small>Link ważny 30 dni – wrócisz do niej na spokojnie albo pokażesz domownikom.</small></p>
+      <div className={s.leadRow}>
+        <input type="email" inputMode="email" placeholder="e-mail" value={lead.email} onChange={(e) => setLead((l) => ({ ...l, email: e.target.value }))} />
+        <input type="tel" inputMode="tel" placeholder="albo telefon" value={lead.telefon} onChange={(e) => setLead((l) => ({ ...l, telefon: e.target.value }))} />
+      </div>
+      <label className={s.consent}><input type="checkbox" checked={lead.zgoda} onChange={(e) => setLead((l) => ({ ...l, zgoda: e.target.checked }))} />
+        <span>Zgadzam się na kontakt KEIKA w sprawie tej wizualizacji i wyceny.</span></label>
+      <label className={s.consent}><input type="checkbox" checked={lead.marketing} onChange={(e) => setLead((l) => ({ ...l, marketing: e.target.checked }))} />
+        <span>Chcę dostawać oferty i promocje (dobrowolnie, możesz wypisać się w każdej chwili).</span></label>
+      {lead.blad ? <p className={s.error}>{lead.blad}</p> : null}
+      <button type="button" className={s.secondary} disabled={!lead.email.trim() && !lead.telefon.trim()} onClick={() => void wyslijKontakt(moment)}>Wyślij mi</button>
+    </div>
+  );
+
   return createPortal(
-    <div className={s.overlay} role="dialog" aria-modal="true" aria-label="Zobacz plisę w swoim oknie">
+    <>
+    <div className={`${s.overlay} ${min ? s.hiddenOverlay : ""}`} role="dialog" aria-modal="true" aria-label="Zobacz plisę w swoim oknie">
       <div className={`${s.modal} ${faza === "gotowa" ? s.modalWide : ""}`}>
         <button type="button" className={s.close} onClick={() => { wizEvent("wiz_zamkniete", token, { faza }); onClose(); }} aria-label="Zamknij">×</button>
+        {faza !== "start" ? (
+          <button type="button" className={s.minBtn} onClick={() => { setMin(true); wizEvent("wiz_minimalizuj", token, { faza }); }} aria-label="Zminimalizuj" title="Zminimalizuj – przeglądaj sklep, wrócisz jednym kliknięciem">–</button>
+        ) : null}
 
         {faza === "start" || faza === "wysylanie" ? (
           <div className={s.startBox}>
             <h2 className={s.title}>Zobacz plisę w swoim oknie</h2>
-            <p className={s.lead}>Zrób zdjęcie swojego okna – w kilkadziesiąt sekund pokażemy na nim plisę. Potem zmieniasz tkaninę, kolor listew i przesuwasz belki.</p>
-            <ul className={s.tips}>
-              <li><b>Stań naprzeciwko okna</b> – cała szyba w kadrze.</li>
-              <li><b>Odsłoń szybę</b> – firanka odsunięta, światło dzienne.</li>
-              <li><b>Bez ludzi w kadrze</b> – takich zdjęć nie przetwarzamy.</li>
+            <p className={s.lead}>Zrób zdjęcie okna – w minutę pokażemy na nim plisę, wymiary szacunkowe i wycenę. Potem zmieniasz tkaninę, kolor listew i przesuwasz belki.</p>
+            <div className={s.produkt}>
+              <span className={s.small}>Produkt:</span>
+              <span className={s.chipOn}>Plisy na wymiar</span>
+              <span className={s.chipOff} title="Wkrótce">Rolety dachowe – wkrótce</span>
+              <span className={s.chipOff} title="Wkrótce">Moskitiery – wkrótce</span>
+            </div>
+            <p className={s.label}>Jak zrobić dobre zdjęcie</p>
+            <ul className={s.guide}>
+              <li><span className={s.gIcon} aria-hidden="true">🧍‍➡️🪟</span><b>Na wprost okna</b><small>stań 2–3 kroki od okna, telefon poziomo albo pionowo</small></li>
+              <li><span className={s.gIcon} aria-hidden="true">🖼️</span><b>Całe okno w kadrze</b><small>z ramą i kawałkiem ściany dookoła</small></li>
+              <li><span className={s.gIcon} aria-hidden="true">☀️</span><b>W dzień, szyba odsłonięta</b><small>firanka odsunięta; obecne rolety usuniemy ze zdjęcia sami</small></li>
+              <li><span className={s.gIcon} aria-hidden="true">🚫</span><b>Bez ludzi w kadrze</b><small>takich zdjęć nie przetwarzamy</small></li>
             </ul>
             <label className={s.consent}>
               <input type="checkbox" checked={zgoda} onChange={(e) => setZgoda(e.target.checked)} />
@@ -668,7 +781,19 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
           </div>
         ) : null}
 
-        {faza === "analiza" ? (
+        {faza === "popraw" && kontrola ? (
+          <div className={s.startBox}>
+            <h2 className={s.title}>Prawie! Lepsze zdjęcie da lepszy efekt</h2>
+            <p className={s.lead}>{kontrola.komunikat || "To zdjęcie może dać słabszy wynik."}</p>
+            {kontrola.problemy.length ? <ul className={s.problems}>{kontrola.problemy.map((p) => <li key={p}>{p}</li>)}</ul> : null}
+            <div className={s.actions}>
+              <button type="button" className={s.primary} onClick={noweZdjecie}>Zrób nowe zdjęcie</button>
+              <button type="button" className={s.secondary} onClick={mimoTo}>Spróbuj z tym zdjęciem</button>
+            </div>
+          </div>
+        ) : null}
+
+        {faza === "analiza" || faza === "sprawdzanie" ? (
           <div className={s.progressBox}>
             {status?.obraz?.url ? (
               <div className={s.scanWrap}>
@@ -677,8 +802,24 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                 <div className={s.scanLine} />
               </div>
             ) : null}
-            <p className={s.stage}>{status?.etap_opis || "Analizujemy zdjęcie…"}</p>
-            <p className={s.sub}>Zwykle trwa to 30–60 sekund. Możesz zostawić to okno otwarte.</p>
+            <div className={s.bar}><span style={{ width: `${postep}%` }} /></div>
+            <p className={s.stage}>{faza === "sprawdzanie" ? "Sprawdzamy, czy zdjęcie się nadaje…" : status?.etap_opis || "Analizujemy zdjęcie…"}</p>
+            {info ? <p className={s.sub}>{info}</p> : null}
+            {podglad?.pomieszczenie ? (
+              <div className={s.insight}>
+                <b>Widzę {POMIESZCZENIE[podglad.pomieszczenie] || "wnętrze"}{podglad.styl ? ` w stylu: ${podglad.styl}` : ""}</b>
+                <span>{podglad.okien ? `${podglad.okien} ${podglad.okien === 1 ? "okno" : "okna"}` : ""}{podglad.ramy?.filter(Boolean).length ? ` · ramy: ${podglad.ramy.filter(Boolean).join(", ")}` : ""}{podglad.szyb ? ` · ${podglad.szyb} szyb do zasłonięcia` : ""}</span>
+                {podglad.paleta?.length ? (
+                  <span className={s.palette}>Kolory Twojego wnętrza: {podglad.paleta.map((p) => <i key={p.hex + p.nazwa} style={{ background: p.hex }} title={p.nazwa} />)}</span>
+                ) : null}
+              </div>
+            ) : null}
+            <div className={s.benefit} key={korzysc}>
+              <span aria-hidden="true">{KORZYSCI[korzysc][0]}</span>
+              <div><b>{KORZYSCI[korzysc][1]}</b><small>{KORZYSCI[korzysc][2]}</small></div>
+            </div>
+            {token && faza === "analiza" ? kontaktForm("analiza") : null}
+            <p className={s.sub}>Zwykle trwa to 30–60 sekund. Możesz zminimalizować okno i oglądać sklep – damy znać, gdy będzie gotowe.</p>
             {qrKod ? <p className={s.sub}>Wizualizacja pojawi się też na komputerze.</p> : null}
           </div>
         ) : null}
@@ -725,6 +866,23 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                       )),
                     )
                   : null}
+                {/* numery szyb (lista w „Wycenie”) i podświetlenie szyby wskazanej na liście */}
+                {gotowyObraz && (zakladka === "wycena" || hover) ? panes.map((p, i) => {
+                  const c = p.rogi.reduce((a, r) => [a[0] + r[0] / 4, a[1] + r[1] / 4], [0, 0]) as Pt;
+                  return <span key={`nr-${p.id}`} className={`${s.paneBadge} ${hover === p.id ? s.paneBadgeOn : ""}`} style={cornerPos(c)}>{i + 1}</span>;
+                }) : null}
+                {hover && gotowyObraz ? (() => {
+                  const p = panes.find((x) => x.id === hover);
+                  const c = canvasRef.current;
+                  const w = wrapRef.current;
+                  if (!p || !c || !w) return null;
+                  const wr = w.getBoundingClientRect();
+                  return (
+                    <svg className={s.hlSvg} width={wr.width} height={wr.height} aria-hidden="true">
+                      <polygon points={p.rogi.map((r) => { const q = cornerPos(r); return `${q.left},${q.top}`; }).join(" ")} />
+                    </svg>
+                  );
+                })() : null}
                 {przedPo !== null ? <div className={s.split} style={{ left: cornerPos([przedPo, 0]).left }}><span>przed | po</span></div> : null}
                 <p className={s.disclaimer}>Wizualizacja poglądowa – kolory, faktura i proporcje mogą się różnić. Wymiary mierzysz sam.</p>
                 {!gotowyObraz ? <div className={s.loading}>Wczytujemy…</div> : null}
@@ -750,13 +908,31 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
               {info ? <p className={s.info}>{info}</p> : null}
               {wynik.scena?.uwagi_dla_klienta ? <p className={s.hint}>{wynik.scena.uwagi_dla_klienta}</p> : null}
               <div className={s.tabs} role="tablist">
-                {(["tkanina", "listwy", "szyby"] as Zakladka[]).map((z) => (
+                {(["tkanina", "listwy", "wycena", "szyby"] as Zakladka[]).map((z) => (
                   <button key={z} type="button" role="tab" aria-selected={zakladka === z} className={zakladka === z ? s.tabOn : s.tab}
-                    onClick={() => { setZakladka(z); setEdycja(z === "szyby"); }}>
-                    {z === "tkanina" ? "Tkanina" : z === "listwy" ? "Listwy" : `Szyby (${panes.length})`}
+                    onClick={() => { setZakladka(z); setEdycja(z === "szyby"); if (z === "wycena") wizEvent("wiz_produkt", token, { widok: "wycena" }); }}>
+                    {z === "tkanina" ? "Tkanina" : z === "listwy" ? "Listwy" : z === "wycena" ? `Wycena (${panes.length})` : "Popraw"}
                   </button>
                 ))}
               </div>
+
+              {zakladka === "wycena" ? (
+                <div className={s.tabBody}>
+                  <WizWycena
+                    szyby={panes.map<WycenaSzyba>((p, i) => ({
+                      id: p.id, nr: i + 1, tkanina: p.tkanina, listwa: p.listwa, szacSzerCm: Math.round(p.szerMm / 10), szacWysCm: Math.round(p.wysMm / 10),
+                      pewnosc: p.pewnoscWym ?? null, odniesienia: p.odniesienia || [], szerMm: p.wpisSzerMm, wysMm: p.wpisWysMm, zmierzone: p.zmierzone, pomin: p.pomin,
+                    }))}
+                    onHover={setHover}
+                    onChange={(rows) => setPanes((prev) => prev.map((p) => {
+                      const r = rows.find((x) => x.id === p.id);
+                      return r ? { ...p, wpisSzerMm: r.szerMm ?? null, wpisWysMm: r.wysMm ?? null, zmierzone: r.zmierzone, pomin: r.pomin } : p;
+                    }))}
+                    onEvent={(n, d) => wizEvent(n, token, d)}
+                  />
+                  {kontaktForm("wycena")}
+                </div>
+              ) : null}
 
               {zakladka === "tkanina" && katalog ? (
                 <div className={s.tabBody}>
@@ -832,18 +1008,35 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
               </div>
               {prog ? <p className={s.bundle}>{prog}</p> : null}
               <div className={s.cta}>
-                <button type="button" className={s.primary} onClick={zamow} disabled={!panes.length}>Zamów tę plisę</button>
+                {zakladka !== "wycena" ? (
+                  <button type="button" className={s.primary} disabled={!panes.length} onClick={() => { setZakladka("wycena"); setEdycja(false); wizEvent("wiz_produkt", token, { widok: "wycena_cta" }); }}>
+                    Wycena i wymiary ({panes.length} {panes.length === 1 ? "szyba" : "szyb"}) →
+                  </button>
+                ) : null}
                 <div className={s.ctaRow}>
+                  <button type="button" className={s.secondary} onClick={zamow} disabled={!panes.length}>Otwórz w konfiguratorze</button>
                   <button type="button" className={s.secondary} onClick={() => void pokazDokladnie()}>Pokaż dokładnie (AI)</button>
                   <button type="button" className={s.secondary} onClick={pobierz}>Zapisz zdjęcie</button>
                 </div>
-                <p className={s.small}>Wymiary podajesz w konfiguratorze – zmierz szybę według naszej instrukcji. Cena liczy się w konfiguratorze.</p>
               </div>
             </div>
           </div>
         ) : null}
       </div>
-    </div>,
+    </div>
+    {min ? (
+      <button type="button" className={`${s.pill} ${faza === "gotowa" ? s.pillReady : ""}`} onClick={() => setMin(false)}>
+        {status?.obraz?.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={status.obraz.url} alt="" />
+        ) : null}
+        <span>
+          <b>{faza === "gotowa" ? "Twoja wizualizacja jest gotowa" : faza === "popraw" ? "Sprawdź zdjęcie" : "Przygotowujemy wizualizację…"}</b>
+          <small>{faza === "gotowa" ? "Zobacz plisę w swoim oknie →" : faza === "analiza" || faza === "sprawdzanie" ? `${postep} % · kliknij, aby wrócić` : "Kliknij, aby wrócić"}</small>
+        </span>
+      </button>
+    ) : null}
+    </>,
     document.body,
   );
 }

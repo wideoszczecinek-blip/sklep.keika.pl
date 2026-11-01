@@ -620,3 +620,67 @@
   color: #6b7a84;
   margin: 2px 0 0;
 }
+
+/* ---- E2: minimalizacja, wytyczne, kontrola, oczekiwanie, kontakt, wycena ---- */
+.hiddenOverlay { visibility: hidden; pointer-events: none; }
+.minBtn { position: absolute; top: 8px; right: 56px; z-index: 5; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(255,255,255,0.92); font-size: 24px; line-height: 1; cursor: pointer; color: #1f2a33; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.pill { position: fixed; right: 16px; bottom: 16px; z-index: 2147483001; display: flex; gap: 10px; align-items: center; max-width: min(92vw, 360px); padding: 8px 14px 8px 8px; border: 0; border-radius: 16px; background: #12212b; color: #fff; text-align: left; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+@media (max-width: 760px) { .pill { left: 12px; right: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); max-width: none; } }
+.pill img { width: 54px; height: 54px; object-fit: cover; border-radius: 10px; flex: none; }
+.pill b { display: block; font-size: 14px; }
+.pill small { display: block; font-size: 12px; opacity: 0.8; }
+.pillReady { background: #0f9f8f; animation: pillPulse 1.6s ease-in-out infinite; }
+@keyframes pillPulse { 0%, 100% { box-shadow: 0 10px 30px rgba(15,159,143,0.45); } 50% { box-shadow: 0 10px 40px rgba(15,159,143,0.9); } }
+.produkt { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 12px; }
+.chipOff { border: 1px dashed #d5dee3; border-radius: 999px; padding: 6px 12px; font-size: 13px; color: #94a3b8; }
+.guide { list-style: none; padding: 0; margin: 0 0 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.guide li { background: #f2f7f6; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
+.guide small { color: #52616b; font-size: 12px; line-height: 1.35; }
+.gIcon { font-size: 24px; line-height: 1.2; }
+.problems { margin: 0 0 14px; padding-left: 20px; color: #92400e; font-size: 14px; }
+.bar { height: 6px; background: #e6eef1; border-radius: 999px; overflow: hidden; margin: 6px 0 10px; }
+.bar span { display: block; height: 100%; background: linear-gradient(90deg, #0f9f8f, #2dd4bf); transition: width 0.8s ease; }
+.insight { background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 12px; padding: 10px 12px; margin: 10px 0; text-align: left; display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
+.palette { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: #42515c; }
+.palette i { width: 16px; height: 16px; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+.benefit { display: flex; gap: 10px; align-items: center; text-align: left; background: #fff7ed; border-radius: 12px; padding: 10px 12px; margin: 8px 0; animation: fadeIn 0.6s ease; }
+.benefit > span { font-size: 26px; }
+.benefit b { display: block; font-size: 14px; }
+.benefit small { display: block; font-size: 12.5px; color: #52616b; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.leadBox { text-align: left; border: 1px solid #e3eaee; border-radius: 14px; padding: 12px; margin: 10px 0; display: grid; gap: 8px; }
+.leadTitle { margin: 0; }
+.leadTitle small { display: block; font-size: 12.5px; color: #52616b; font-weight: 400; }
+.leadRow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.leadRow input { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; font-size: 15px; min-width: 0; }
+.leadBox .consent { margin: 0; }
+.leadOk { background: #ecfdf3; color: #05603a; border-radius: 10px; padding: 9px 11px; font-size: 13.5px; }
+.paneBadge { position: absolute; transform: translate(-50%, -50%); width: 28px; height: 28px; border-radius: 50%; background: rgba(18,33,43,0.85); color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; line-height: 1; pointer-events: none; box-shadow: 0 0 0 2px #fff; }
+.paneBadgeOn { background: #0f9f8f; width: 34px; height: 34px; }
+.hlSvg { position: absolute; left: 0; top: 0; pointer-events: none; }
+.hlSvg polygon { fill: rgba(45, 212, 191, 0.18); stroke: #2dd4bf; stroke-width: 3; animation: pillPulse 1.2s ease-in-out infinite; }
+.wycena { display: grid; gap: 10px; }
+.paneList { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.paneRow { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: start; border: 2px solid #fde68a; background: #fffbeb; border-radius: 12px; padding: 10px; }
+.paneOk { border-color: #86efac; background: #f0fdf4; }
+.paneOff { opacity: 0.5; border-color: #e3eaee; background: #f8fafc; }
+.paneNr { width: 28px; height: 28px; border-radius: 50%; background: #12212b; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+.paneMain { display: grid; gap: 6px; min-width: 0; }
+.paneDims { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+.paneDims input { width: 58px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 7px; font-size: 15px; font-weight: 600; text-align: center; }
+.badgeEst { background: #fef3c7; color: #92400e; border-radius: 999px; padding: 2px 8px; font-size: 11.5px; font-weight: 700; }
+.badgeOk { background: #dcfce7; color: #166534; border-radius: 999px; padding: 2px 8px; font-size: 11.5px; font-weight: 700; }
+.measured { display: flex; gap: 6px; align-items: flex-start; font-size: 12.5px; cursor: pointer; }
+.measured input { accent-color: #0f9f8f; width: 17px; height: 17px; margin-top: 1px; }
+.panePrice { text-align: right; display: grid; gap: 2px; justify-items: end; }
+.panePrice b { font-size: 15px; }
+.panePrice small { font-size: 11.5px; color: #64748b; }
+.sumBox { border-top: 1px solid #e3eaee; padding-top: 10px; display: grid; gap: 8px; }
+.sumBox > div { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; }
+.sumBox > div b { font-size: 20px; }
+@media (max-width: 520px) {
+  .guide { grid-template-columns: 1fr; }
+  .leadRow { grid-template-columns: 1fr; }
+  .paneRow { grid-template-columns: 26px 1fr; }
+  .panePrice { grid-column: 2; text-align: left; justify-items: start; }
+}

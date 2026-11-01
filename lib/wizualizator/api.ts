@@ -44,6 +44,7 @@ export type WizSzyba = {
   szer_cm: number;
   wys_cm: number;
   swiatlo: { za_szyba: number; wokol: number; widok: { yaw: number; pitch: number } } | null;
+  wymiary?: { szacunkowe: boolean; pewnosc?: number; odniesienia?: string[]; szer_min?: number; szer_max?: number; wys_min?: number; wys_max?: number };
 };
 
 export type WizWynik = {
@@ -81,9 +82,11 @@ export type WizStatus = {
   obraz?: { url: string; szer: number; wys: number };
   wynik?: WizWynik | null;
   uklad?: WizUklad | null;
+  podglad?: { pomieszczenie: string; styl: string; opis: string; okien: number; ramy: string[]; paleta: { hex: string; nazwa: string }[]; pora: string; za_oknem: string; szyb?: number; oczyszczone?: boolean } | null;
+  kontakt?: boolean;
 };
 
-export type WizUkladSzyba = { tkanina: string; listwa: string; gora: number; dol: number; rogi?: Pt[] };
+export type WizUkladSzyba = { tkanina: string; listwa: string; gora: number; dol: number; rogi?: Pt[]; szer_mm?: number | null; wys_mm?: number | null; zmierzone?: boolean; pomin?: boolean };
 export type WizUklad = { szyby: Record<string, WizUkladSzyba>; montaz?: string; wszystkie?: boolean; dodane?: { id: string; rogi: Pt[] }[] };
 
 let katalogPromise: Promise<WizKatalog | null> | null = null;
@@ -138,9 +141,30 @@ export async function wizStart(file: File, opts: { zrodlo: string; qr?: string; 
   const r = await fetch(`${WIZ_API}/start.php`, { method: "POST", body: fd });
   const j = (await r.json().catch(() => null)) as { ok?: boolean; token?: string; error?: string } | null;
   if (!r.ok || !j?.ok || !j.token) throw new Error(j?.error || "Nie udało się wysłać zdjęcia - sprawdź internet i spróbuj jeszcze raz.");
-  // Analiza biegnie w CRM po odpowiedzi; nie czekamy na nią tutaj.
-  void fetch(`${WIZ_API}/analiza.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: j.token }), keepalive: true }).catch(() => {});
   return { token: j.token };
+}
+
+/** Szybka kontrola zdjęcia (etap Q, 2–4 s) - przed pełną analizą. */
+export async function wizSprawdz(token: string): Promise<{ decyzja: "ok" | "popraw" | "odrzuc"; komunikat: string; problemy: string[]; oslony: boolean }> {
+  try {
+    const r = await fetch(`${WIZ_API}/sprawdz.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token }) });
+    const j = await r.json();
+    if (j && j.ok) return { decyzja: j.decyzja || "ok", komunikat: j.komunikat || "", problemy: j.problemy || [], oslony: Boolean(j.oslony) };
+  } catch {
+    // kontrola nie blokuje - pełna analiza i tak sprawdzi zdjęcie
+  }
+  return { decyzja: "ok", komunikat: "", problemy: [], oslony: false };
+}
+
+/** Pełna analiza (etapy R, A–G) - biegnie w CRM po odpowiedzi, postęp w wizStatus. */
+export function wizAnaliza(token: string): void {
+  void fetch(`${WIZ_API}/analiza.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token }), keepalive: true }).catch(() => {});
+}
+
+export async function wizLead(token: string, dane: { email?: string; telefon?: string; imie?: string; zgoda_kontakt: boolean; zgoda_marketing: boolean; moment: string }): Promise<{ ok: boolean; error?: string }> {
+  const r = await fetch(`${WIZ_API}/lead.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, ...dane }) }).catch(() => null);
+  if (!r) return { ok: false, error: "Brak połączenia" };
+  return ((await r.json().catch(() => null)) as { ok: boolean; error?: string }) || { ok: false };
 }
 
 export async function wizStatus(token: string): Promise<WizStatus> {
