@@ -1001,3 +1001,13 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
 @keyframes aiPuls { 0%, 100% { transform: scale(1); box-shadow: 0 8px 24px rgba(15,23,32,0.45); } 50% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(124,58,237,0.25), 0 8px 24px rgba(15,23,32,0.45); } }
 @media (min-width: 900px) { .res { padding-top: 56px; } } /* zdjęcie pod przyciskami – i × modala */
 @media (max-width: 899px) { .aiNaZdjeciu { top: auto; bottom: 42px; right: 8px; padding: 7px 11px 7px 8px; } .aiNaZdjeciu b { font-size: 13px; } }
+
+/* kreator: podpowiedź jednostki i mini-okno „czy na pewno zmierzone” */
+.krokJedn { margin: 0; font-size: 13px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 8px 10px; color: #7c2d12; }
+.kreator { position: relative; }
+.krokPytanie { position: absolute; inset: -4px; z-index: 5; display: grid; place-items: center; background: rgba(255,255,255,0.88); backdrop-filter: blur(2px); border-radius: 14px; animation: fadeIn 0.2s ease; }
+.krokPytanie > div { display: grid; gap: 8px; max-width: 320px; background: #fff; border: 2px solid #f59e0b; border-radius: 16px; padding: 16px; box-shadow: 0 16px 40px rgba(0,0,0,0.2); }
+.krokPytanie b { font-size: 16px; }
+.krokPytanie small { font-size: 13px; color: #52616b; line-height: 1.45; }
+.krokPytanieAkcje { display: flex; gap: 8px; flex-wrap: wrap; }
+.krokPytanieAkcje button { flex: 1 1 auto; padding: 10px 12px; }

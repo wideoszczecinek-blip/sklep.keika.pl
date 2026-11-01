@@ -164,7 +164,7 @@ export function wizAnaliza(token: string): void {
 }
 
 export async function wizLead(token: string, dane: { email?: string; telefon?: string; imie?: string; zgoda_kontakt: boolean; zgoda_marketing: boolean; moment: string }): Promise<{ ok: boolean; error?: string }> {
-  const r = await fetch(`${WIZ_API}/lead.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, ...dane }) }).catch(() => null);
+  const r = await fetch(`${WIZ_API}/lead.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, ...dane, baza: window.location.origin }) }).catch(() => null); // link w mailu prowadzi tam, skąd klient przyszedł (jak kod QR)
   if (!r) return { ok: false, error: "Brak połączenia" };
   return ((await r.json().catch(() => null)) as { ok: boolean; error?: string }) || { ok: false };
 }
