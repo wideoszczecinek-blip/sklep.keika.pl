@@ -1062,6 +1062,15 @@ export default function ConfiguratorPanel({
         .join(", ")} na całe zamówienie`
     : "";
   const showPlisyPromoLine = Boolean(plisyPromoLine) && (!plisyTopTier || plisyUnitsInSet < plisyTopTier.fromQty);
+  const stickyCtaVisible = stickyCtaEligible && !finalSubmitInView && !typingInField;
+  // Jeden element przy dolnej krawędzi naraz: gdy pasek jest widoczny, dok
+  // koszyka („W koszyku 3 pozycje · Przejdź do koszyka”) ustępuje (CSS po
+  // klasie na body) i wraca od razu, gdy pasek znika.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.toggle("has-plisy-sticky-cta", stickyCtaVisible);
+    return () => document.body.classList.remove("has-plisy-sticky-cta");
+  }, [stickyCtaVisible]);
 
   // Stan formularza dla analityki "na czym stanął" (lib/configurator-state):
   // heartbeat i page_exit niosą, które kroki gotowe, czego brakuje i czy
@@ -2381,7 +2390,7 @@ export default function ConfiguratorPanel({
 
       {/* Pasek mobilny „Dodaj do koszyka” (AGN-439/444/448) - przez portal, bo
           panel ma własny kontekst pozycjonowania i uwięziłby position: fixed. */}
-      {stickyCtaEligible && !finalSubmitInView && !typingInField && typeof document !== "undefined"
+      {stickyCtaVisible && typeof document !== "undefined"
         ? createPortal(
             <div className="plisy-sticky-cta" role="region" aria-label="Dodaj do koszyka">
               <div className="plisy-sticky-cta-row">

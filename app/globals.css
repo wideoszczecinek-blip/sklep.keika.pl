@@ -24149,3 +24149,9 @@ dl.zl-table > div.is-price {
   .plisy-sticky-cta-note { display: block; margin-top: 0.32rem; font-size: 0.68rem; line-height: 1.3; color: #3b4a5e; text-align: center; }
 }
 @keyframes plisyStickyIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* Gdy pasek „Dodaj do koszyka” jest na ekranie, dok koszyka na telefonie ustępuje (jeden element przy dolnej krawędzi naraz). */
+@media (max-width: 760px) {
+  body.has-plisy-sticky-cta .product-cart-dock.is-visible { opacity: 0; transform: translateY(110%); pointer-events: none; }
+  .plisy-sticky-cta-note { font-size: 0.66rem; }
+}
