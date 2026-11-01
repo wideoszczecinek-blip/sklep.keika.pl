@@ -121,10 +121,13 @@ function RysunekPomiaru({ bez }: { bez: boolean }) {
   );
 }
 
-export default function WizWycena({ szyby, etap, montaz, onEtap, onHover, onChange, onEvent }: {
+export default function WizWycena({ szyby, etap, montaz, pokoj, onEtap, onHover, onChange, onEvent, onDodano }: {
   szyby: WycenaSzyba[];
   etap: WycenaEtap;
   montaz: "standard" | "bezinwazyjny";
+  /** nazwa pokoju (trafia do pozycji koszyka, żeby klient i produkcja wiedzieli, które okno) */
+  pokoj: string;
+  onDodano: (info: { sztuk: number; suma: number }) => void;
   onEtap: (e: WycenaEtap) => void;
   onHover: (id: string | null) => void;
   onChange: (szyby: WycenaSzyba[]) => void;
@@ -257,11 +260,12 @@ export default function WizWycena({ szyby, etap, montaz, onEtap, onHover, onChan
         splitFromWidthMm: c.split ? Math.round(liczba(r.szer) * 10) : undefined,
         sagNoticeShown: c.widthMm > sagLimit || undefined,
         sagLimitMm: c.widthMm > sagLimit ? sagLimit : undefined,
+        optionsNote: `${pokoj ? `${pokoj} · ` : ""}szyba ${r.nr} (z wizualizacji, wymiary klienta)`,
       };
       addCartItem(item);
     }
-    onEvent("wiz_do_koszyka", { pozycji: ceny.length, sztuk, suma: Math.round(suma) });
-    window.location.href = "/koszyk";
+    onEvent("wiz_do_koszyka", { pozycji: ceny.length, sztuk, suma: Math.round(suma), pokoj });
+    onDodano({ sztuk, suma });
   };
 
   if (!profile) return <p className={s.hint}>Wczytujemy cennik…</p>;

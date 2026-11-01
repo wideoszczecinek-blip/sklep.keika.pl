@@ -47,10 +47,16 @@ const POMIESZCZENIE: Record<string, string> = {
   salon: "salon", sypialnia: "sypialnię", kuchnia: "kuchnię", lazienka: "łazienkę", pokoj_dzieciecy: "pokój dziecięcy", biuro: "gabinet",
   poddasze: "poddasze", jadalnia: "jadalnię", przedpokoj: "przedpokój", inne: "wnętrze",
 };
-type Zdjecie = { token: string; miniatura: string; szyb: number };
+type Zdjecie = { token: string; miniatura: string; szyb: number; nazwa?: string; wKoszyku?: boolean };
+
+/** Domyślna nazwa pokoju z rozpoznania sceny (etap A) - klient może ją zmienić. */
+const NAZWA_POKOJU: Record<string, string> = {
+  salon: "Salon", sypialnia: "Sypialnia", kuchnia: "Kuchnia", lazienka: "Łazienka", pokoj_dzieciecy: "Pokój dziecięcy", biuro: "Gabinet",
+  poddasze: "Poddasze", jadalnia: "Jadalnia", przedpokoj: "Przedpokój", inne: "Pokój",
+};
 
 const SESJA_KEY = "keika_wiz_sesja_v1";
-const MAX_ZDJEC = 5;
+const MAX_ZDJEC = 8; // pokoje w jednej sesji (właściciel 1.11: kolejne pokoje = większy koszyk)
 /** Prawdziwe zdjęcie próbki (makro 2048 px z katalogu) w rozmiarze do siatki/lupy - przez optymalizator obrazów sklepu. */
 const mini = (url: string, w: number) => (url ? `/_next/image?url=${encodeURIComponent(url)}&w=${w}&q=75` : "");
 /** Pasek postępu analizy: etap silnika → zakres paska (%) i typowy czas (s). Kolejność: Q → A → [0] → B → C → F. */
@@ -155,6 +161,12 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [min, setMin] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
   const [korzysc, setKorzysc] = useState(0);
+  // podmiana zdjęcia po porządkowaniu: stare pod spodem, nowe „wjeżdża” (klient widzi, co zniknęło)
+  const [zdjPrzed, setZdjPrzed] = useState<string | null>(null);
+  const zdjUrlRef = useRef<string | null>(null);
+  // e-mail: jedno pytanie, gdy wizualizacja jest gotowa (właściciel 1.11); „nie chcę” zapamiętane w sesji
+  const [emailOkno, setEmailOkno] = useState(false);
+  const [emailZgoda, setEmailZgoda] = useState(false);
   const [lead, setLead] = useState({ email: "", wyslane: false, blad: "" });
   // zdjęcie AI (E3) dla bieżącego układu: podgląd WebGL na żywo, po chwili spokoju fotorealistyczne zdjęcie z CRM
   const [ai, setAi] = useState<{ klucz: string; url: string } | null>(null);
@@ -163,6 +175,10 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [aiPokaz, setAiPokaz] = useState(true);
   // lupa: duże prawdziwe zdjęcie próbki (właściciel 1.11: wybór tkanin na prawdziwych swatchach z powiększeniem)
   const [lupa, setLupa] = useState<string | null>(null);
+  // pokoje: nazwa bieżącego, okno nazywania przed kolejnym pokojem, potwierdzenie dodania do koszyka
+  const [pokojDialog, setPokojDialog] = useState<null | "kolejny" | "nazwa">(null);
+  const [pokojNazwa, setPokojNazwa] = useState("");
+  const [dodano, setDodano] = useState<{ sztuk: number; suma: number } | null>(null);
   const [lupaZoom, setLupaZoom] = useState<{ x: number; y: number } | null>(null); // klient może wrócić do ustawiania bez zmiany układu
   const aiOffRef = useRef(false);
   // gotowe wizualizacje tej sesji - przełączanie między zdjęciami bez ponownego odpytywania CRM
@@ -293,7 +309,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   // korzyści w czasie oczekiwania (co 4 s)
   useEffect(() => {
     if (faza !== "analiza" && faza !== "sprawdzanie") return;
-    const t = window.setInterval(() => setKorzysc((k) => (k + 1) % KORZYSCI.length), 4000);
+    const t = window.setInterval(() => setKorzysc((k) => k + 1), 5000); // banerki: promocja + korzyści (indeks modulo długość listy)
     return () => window.clearInterval(t);
   }, [faza]);
 
@@ -315,6 +331,17 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     return () => window.clearInterval(id);
   }, [faza]);
 
+  useEffect(() => {
+    const u = status?.obraz?.url || null;
+    if (u && zdjUrlRef.current && u !== zdjUrlRef.current && (faza === "analiza" || faza === "sprawdzanie")) {
+      setZdjPrzed(zdjUrlRef.current);
+      const t = window.setTimeout(() => setZdjPrzed(null), 2600);
+      zdjUrlRef.current = u;
+      return () => window.clearTimeout(t);
+    }
+    zdjUrlRef.current = u;
+  }, [status?.obraz?.url, faza]);
+
   // ------------------------------------------------------------ odpytywanie
   useEffect(() => {
     if (!token || faza !== "analiza") return;
@@ -334,6 +361,13 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
           if (st.wynik) {
             setWynik(st.wynik);
             setFaza("gotowa");
+            let pytany = false;
+            try {
+              pytany = window.sessionStorage.getItem("keika_wiz_email") === "1";
+            } catch {
+              /* sesja to wygoda */
+            }
+            if (!st.kontakt && !pytany) window.setTimeout(() => setEmailOkno(true), 900);
             return;
           }
         } else if (st.status === "odrzucona") {
@@ -403,8 +437,17 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       setZakladka("szyby");
       setInfo(szyby.length ? "Sprawdź, czy obrys pasuje do szyby - przeciągnij kółka w rogi szyby." : "Nie znaleźliśmy szyby automatycznie. Dodaj ją i przeciągnij kółka w rogi szyby.");
     }
-    const lista = readSesja().filter((z) => z.token !== token);
-    lista.push({ token, miniatura: wynik.obraz?.url || "", szyb: szyby.length });
+    const stare = readSesja();
+    const byl = stare.find((z) => z.token === token);
+    const lista = stare.filter((z) => z.token !== token);
+    // nazwa pokoju: zapisana albo z rozpoznania sceny; „Sypialnia 2”, gdy taka już jest
+    let nazwa = byl?.nazwa || NAZWA_POKOJU[wynik.scena?.pomieszczenie?.typ || ""] || "Pokój";
+    if (!byl?.nazwa && lista.some((z) => z.nazwa === nazwa)) {
+      let n = 2;
+      while (lista.some((z) => z.nazwa === `${nazwa} ${n}`)) n++;
+      nazwa = `${nazwa} ${n}`;
+    }
+    lista.push({ token, miniatura: wynik.obraz?.url || "", szyb: szyby.length, nazwa, wKoszyku: byl?.wKoszyku });
     writeSesja(lista);
     setZdjecia(readSesja());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -820,6 +863,17 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     pewnosc: p.pewnoscWym ?? null, odniesienia: p.odniesienia || [], szerMm: p.wpisSzerMm, wysMm: p.wpisWysMm, zmierzone: p.zmierzone, pomin: p.pomin,
   })), [panes]);
   const cenaZestawu = useCenaZestawu(wycenaSzyby, montaz);
+  const pokojTeraz = zdjecia.find((z) => z.token === token)?.nazwa || "Pokój";
+  const zapiszNazwe = (nazwa: string) => {
+    const n = nazwa.trim().slice(0, 40) || pokojTeraz;
+    writeSesja(readSesja().map((z) => (z.token === token ? { ...z, nazwa: n } : z)));
+    setZdjecia(readSesja());
+    return n;
+  };
+  const kolejnyPokoj = () => {
+    setPokojNazwa(pokojTeraz);
+    setPokojDialog("kolejny");
+  };
   const otworzKarte = (k: Exclude<Zakladka, null>) => {
     if (zakladka === k) {
       setZakladka(null);
@@ -867,21 +921,6 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const dalej = KOLEJNOSC_ETAPOW.slice(KOLEJNOSC_ETAPOW.indexOf(etapTeraz) + 1).filter((e) => e !== "0" || porzadek);
   const zostalo = Math.max(3, ep.s - wEtapie) + dalej.reduce((a, e) => a + ETAPY_POSTEP[e].s, 0);
   const dluzej = wEtapie > ep.s * 2.2;
-  // Kontakt: tylko e-mail, z zachętą (właściciel 1.11). Zgoda wyrażana przyciskiem - informacja obok.
-  const kontaktForm = (moment: string) => lead.wyslane ? (
-    <p className={s.leadOk}>✓ Gotowe! Najlepsze promocje i tę wizualizację wyślemy na Twój e-mail.</p>
-  ) : (
-    <div className={s.leadBox}>
-      <p className={s.leadTitle}><b>🎁 Zostaw e-mail i nie przegap najlepszych promocji</b><small>Wyślemy Ci też tę wizualizację z wyceną – wrócisz do niej, kiedy zechcesz.</small></p>
-      <div className={s.leadRow1}>
-        <input type="email" inputMode="email" autoComplete="email" placeholder="Twój e-mail" value={lead.email} onChange={(e) => setLead((l) => ({ ...l, email: e.target.value }))} />
-        <button type="button" className={s.primary} disabled={!lead.email.trim()} onClick={() => void wyslijKontakt(moment)}>Chcę promocje</button>
-      </div>
-      {lead.blad ? <p className={s.error}>{lead.blad}</p> : null}
-      <small className={s.consentLine}>Klikając, zgadzasz się na wysyłkę ofert i promocji KEIKA e-mailem oraz tej wizualizacji. Wypiszesz się jednym kliknięciem.</small>
-    </div>
-  );
-
   return createPortal(
     <>
     <div className={`${s.overlay} ${min ? s.hiddenOverlay : ""}`} role="dialog" aria-modal="true" aria-label="Zobacz plisę w swoim oknie">
@@ -995,20 +1034,66 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
             <div className={s.prodPhoto}>
               {status?.obraz?.url ? (
                 <div className={s.scanBox}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img key={status.obraz.url} src={status.obraz.url} alt="" className={s.scanImg2} />
-                  {podglad?.rogi?.length ? (
-                    <svg className={s.scanSvg} viewBox={`0 0 ${status.obraz.szer} ${status.obraz.wys}`} preserveAspectRatio="none" aria-hidden="true">
-                      {podglad.rogi.map((q, i) => (
-                        <g key={i}>
-                          <polygon points={q.map((p) => p.join(",")).join(" ")} />
-                          <text x={q.reduce((a, p) => a + p[0], 0) / 4} y={q.reduce((a, p) => a + p[1], 0) / 4}>{i + 1}</text>
-                        </g>
-                      ))}
-                    </svg>
+                  {zdjPrzed ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={zdjPrzed} alt="" className={s.scanImg2} />
                   ) : null}
-                  <div className={s.scanLine} />
-                  {podglad?.uporzadkowane ? <span className={s.scanTag}>✨ Zdjęcie uporządkowane</span> : null}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img key={status.obraz.url} src={status.obraz.url} alt="" className={`${s.scanImg2} ${zdjPrzed ? s.scanNowe : ""}`} />
+                  {zdjPrzed ? <div className={s.scanWipeLine} /> : null}
+                  {podglad?.rogi?.length && !zdjPrzed ? (() => {
+                    const W = status.obraz!.szer;
+                    const etapG = ["C", "F"].includes(status?.etap || "") || Boolean(podglad.wym);
+                    // punkt w czworokącie (u, v ∈ 0..1) - siatka „perspektywy” na szybie
+                    const pkt = (q: number[][], u: number, v: number) => [
+                      (1 - u) * (1 - v) * q[0][0] + u * (1 - v) * q[1][0] + u * v * q[2][0] + (1 - u) * v * q[3][0],
+                      (1 - u) * (1 - v) * q[0][1] + u * (1 - v) * q[1][1] + u * v * q[2][1] + (1 - u) * v * q[3][1],
+                    ];
+                    return (
+                      <svg className={s.scanSvg} viewBox={`0 0 ${W} ${status.obraz!.wys}`} preserveAspectRatio="none" aria-hidden="true">
+                        {podglad.rogi!.map((q, i) => {
+                          const g = pkt(q, 0.5, 0);
+                          const wym = podglad.wym?.[i];
+                          return (
+                            <g key={i} style={{ animationDelay: `${i * 0.25}s` }} className={s.scanSzyba}>
+                              <polygon points={q.map((p) => p.join(",")).join(" ")} pathLength={100} />
+                              {etapG ? [0.25, 0.5, 0.75].map((t) => {
+                                const a1 = pkt(q, t, 0); const b1 = pkt(q, t, 1); const a2 = pkt(q, 0, t); const b2 = pkt(q, 1, t);
+                                return (
+                                  <g key={t} className={s.scanSiatka}>
+                                    <line x1={a1[0]} y1={a1[1]} x2={b1[0]} y2={b1[1]} />
+                                    <line x1={a2[0]} y1={a2[1]} x2={b2[0]} y2={b2[1]} />
+                                  </g>
+                                );
+                              }) : null}
+                              <text x={q.reduce((a, p) => a + p[0], 0) / 4} y={q.reduce((a, p) => a + p[1], 0) / 4}>{i + 1}</text>
+                              {wym && wym[0] > 0 ? (
+                                <text x={g[0]} y={g[1] - W * 0.012} className={s.scanWym} style={{ fontSize: Math.max(14, W * 0.022) }}>≈ {wym[0]} × {wym[1]} cm</text>
+                              ) : null}
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    );
+                  })() : null}
+                  {!zdjPrzed ? <div className={s.scanLine} /> : null}
+                  {podglad?.uporzadkowane ? (
+                    <div className={s.scanUsun}>
+                      <span>✨ Uporządkowaliśmy zdjęcie</span>
+                      {(podglad.usuniete || []).map((u, i) => <span key={u} style={{ animationDelay: `${0.4 + i * 0.35}s` }}>✓ usunięte: {u}</span>)}
+                    </div>
+                  ) : null}
+                  {/* banerki: promocja sklepu i korzyści wjeżdżają po kolei */}
+                  {(() => {
+                    const lista: [string, string, string][] = [...(promo ? [["🏷️", promo.tytul, promo.opis] as [string, string, string]] : []), ...KORZYSCI.map((k) => [...k] as [string, string, string])];
+                    const b = lista[korzysc % lista.length];
+                    return (
+                      <div className={s.baner} key={korzysc}>
+                        <span aria-hidden="true">{b[0]}</span>
+                        <div><b>{b[1]}</b><small>{b[2]}</small></div>
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : <div className={s.scanEmpty}>Wysyłamy zdjęcie…</div>}
             </div>
@@ -1039,14 +1124,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
               {podglad?.paleta?.length ? (
                 <span className={s.palette}>Kolory Twojego wnętrza: {podglad.paleta.map((p) => <i key={p.hex + p.nazwa} style={{ background: p.hex }} title={p.nazwa} />)}</span>
               ) : null}
-              <div className={s.benefit} key={korzysc}>
-                <span aria-hidden="true">{KORZYSCI[korzysc][0]}</span>
-                <div><b>{KORZYSCI[korzysc][1]}</b><small>{KORZYSCI[korzysc][2]}</small></div>
-              </div>
-              {token && faza === "analiza" ? kontaktForm("analiza") : null}
               <p className={s.sub}>Możesz zminimalizować okno (–) i oglądać sklep – damy znać, gdy wizualizacja będzie gotowa.</p>
               {qrKod ? <p className={s.sub}>Wizualizacja pojawi się też na komputerze.</p> : null}
-              {promo ? <div className={s.promoBar}><b>{promo.tytul}</b><span>{promo.opis}</span></div> : null}
             </div>
           </div>
         ) : null}
@@ -1264,6 +1343,14 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                           szyby={wycenaSzyby}
                           etap={wEtap}
                           montaz={montaz}
+                          pokoj={pokojTeraz}
+                          onDodano={(d) => {
+                            writeSesja(readSesja().map((z) => (z.token === token ? { ...z, wKoszyku: true } : z)));
+                            setZdjecia(readSesja());
+                            setDodano(d);
+                            setZakladka(null);
+                            setWEtap("wycena");
+                          }}
                           onEtap={setWEtap}
                           onHover={setHover}
                           onChange={(rows) => setPanes((prev) => prev.map((p) => {
@@ -1272,7 +1359,6 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                           }))}
                           onEvent={(n, d) => wizEvent(n, token, d)}
                         />
-                        {wEtap !== "kreator" ? kontaktForm("wycena") : null}
                       </>
                     ) : null}
 
@@ -1331,6 +1417,83 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
               </button>
             </div>
 
+            {emailOkno && !lead.wyslane ? (
+              <div className={s.lupa} role="dialog" aria-label="Zapisz wizualizację">
+                <form className={s.pokojBox} onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!emailZgoda) {
+                    setLead((l) => ({ ...l, blad: "Zaznacz akceptację regulaminu." }));
+                    return;
+                  }
+                  void wyslijKontakt("gotowa").then(() => {
+                    try { window.sessionStorage.setItem("keika_wiz_email", "1"); } catch { /* sesja */ }
+                  });
+                }}>
+                  <span className={s.dodanoIco} aria-hidden="true">✓</span>
+                  <b>Mamy to – Twoja wizualizacja jest gotowa!</b>
+                  <small>Podaj e-mail, a zapiszemy link do niej i wycenę – razem z najlepszymi promocjami. Wrócisz do niej, kiedy zechcesz.</small>
+                  <input type="email" inputMode="email" autoComplete="email" autoFocus placeholder="Twój adres e-mail" value={lead.email}
+                    onChange={(e) => setLead((l) => ({ ...l, email: e.target.value, blad: "" }))} />
+                  <label className={s.emailZgoda}>
+                    <input type="checkbox" checked={emailZgoda} onChange={(e) => { setEmailZgoda(e.target.checked); setLead((l) => ({ ...l, blad: "" })); }} />
+                    <span>Akceptuję <a href="/regulamin" target="_blank" rel="noopener">regulamin</a> i chcę dostać e-mailem link do wizualizacji, wycenę i promocje KEIKA (wypiszesz się jednym kliknięciem).</span>
+                  </label>
+                  {lead.blad ? <p className={s.error}>{lead.blad}</p> : null}
+                  <button type="submit" className={s.ctaBig} disabled={!lead.email.trim()}>Zapisz i pokaż wizualizację</button>
+                  <button type="button" className={s.emailPomin} onClick={() => {
+                    setEmailOkno(false);
+                    try { window.sessionStorage.setItem("keika_wiz_email", "1"); } catch { /* sesja */ }
+                    wizEvent("wiz_email_pomin", token, {});
+                  }}>Nie chcę podawać e-maila</button>
+                </form>
+              </div>
+            ) : null}
+
+            {pokojDialog ? (
+              <div className={s.lupa} role="dialog" aria-label="Nazwa pokoju" onClick={() => setPokojDialog(null)}>
+                <form className={s.pokojBox} onClick={(e) => e.stopPropagation()}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const n = zapiszNazwe(pokojNazwa);
+                    wizEvent("wiz_pokoj", token, { nazwa: n, kolejny: pokojDialog === "kolejny" });
+                    const dalej = pokojDialog === "kolejny";
+                    setPokojDialog(null);
+                    if (dalej) {
+                      setDodano(null);
+                      noweZdjecie();
+                    }
+                  }}>
+                  <b>{pokojDialog === "kolejny" ? "Nazwij ten pokój, zanim przejdziesz do kolejnego" : "Nazwa pokoju"}</b>
+                  <small>{pokojDialog === "kolejny" ? "Dzięki temu w wycenie i w koszyku od razu zobaczysz, które plisy są do którego pokoju." : "Zobaczysz ją w wycenie i w koszyku."}</small>
+                  <input autoFocus value={pokojNazwa} maxLength={40} placeholder="np. Salon, Sypialnia, Pokój Zosi" onChange={(e) => setPokojNazwa(e.target.value)} />
+                  <div className={s.chips}>
+                    {["Salon", "Sypialnia", "Kuchnia", "Pokój dziecięcy", "Gabinet", "Łazienka"].map((n) => (
+                      <button key={n} type="button" className={pokojNazwa === n ? s.chipOn : s.chip} onClick={() => setPokojNazwa(n)}>{n}</button>
+                    ))}
+                  </div>
+                  <div className={s.lupaAkcje}>
+                    <button type="button" className={s.secondary} onClick={() => setPokojDialog(null)}>Anuluj</button>
+                    <button type="submit" className={s.primary}>{pokojDialog === "kolejny" ? "Dalej: zdjęcie kolejnego pokoju →" : "Zapisz"}</button>
+                  </div>
+                </form>
+              </div>
+            ) : null}
+
+            {dodano ? (
+              <div className={s.lupa} role="dialog" aria-label="Dodano do koszyka" onClick={() => setDodano(null)}>
+                <div className={s.pokojBox} onClick={(e) => e.stopPropagation()}>
+                  <span className={s.dodanoIco} aria-hidden="true">✓</span>
+                  <b>{pokojTeraz}: {dodano.sztuk} {dodano.sztuk === 1 ? "plisa" : dodano.sztuk < 5 ? "plisy" : "plis"} w koszyku</b>
+                  <small>Masz jeszcze inne okna? Dodaj kolejny pokój – zrobisz to samo w minutę{prog ? `, a rabat CAŁY DOM liczy się od wszystkich plis w koszyku` : ""}.</small>
+                  {prog ? <p className={s.bundle}>{prog}</p> : null}
+                  <div className={s.lupaAkcje}>
+                    {zdjecia.length < MAX_ZDJEC ? <button type="button" className={s.secondary} onClick={() => { setDodano(null); kolejnyPokoj(); }}>+ Dodaj kolejny pokój</button> : null}
+                    <button type="button" className={s.ctaBig} onClick={() => { window.location.href = "/koszyk"; }}>Przejdź do koszyka</button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {lupa && katalog ? (() => {
               const t = katalog.tkaniny.find((x) => x.id === lupa);
               if (!t) return null;
@@ -1367,14 +1530,19 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
             {zdjecia.length > 0 ? (
               <div className={s.photos}>
                 {zdjecia.map((z) => (
-                  <button key={z.token} type="button" className={`${s.photo} ${z.token === token ? s.photoOn : ""}`} onClick={() => otworzZdjecie(z)}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={z.miniatura} alt="" />
-                    <span>{z.token === token ? panes.length : z.szyb}</span>
-                  </button>
+                  <div key={z.token} className={s.pokoj}>
+                    <button type="button" className={`${s.photo} ${z.token === token ? s.photoOn : ""}`} onClick={() => otworzZdjecie(z)}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={z.miniatura} alt="" />
+                      <span>{z.wKoszyku ? "✓ " : ""}{z.token === token ? panes.length : z.szyb}</span>
+                    </button>
+                    {z.token === token ? (
+                      <button type="button" className={s.pokojNazwa} title="Zmień nazwę" onClick={() => { setPokojNazwa(z.nazwa || ""); setPokojDialog("nazwa"); }}>{z.nazwa || "Pokój"} ✎</button>
+                    ) : <small className={s.pokojNazwa}>{z.nazwa || "Pokój"}</small>}
+                  </div>
                 ))}
                 {zdjecia.length < MAX_ZDJEC ? (
-                  <button type="button" className={s.photoAdd} onClick={noweZdjecie}>+ Dodaj kolejne okno</button>
+                  <button type="button" className={s.photoAdd} onClick={kolejnyPokoj}>+ Dodaj kolejny pokój</button>
                 ) : null}
               </div>
             ) : null}

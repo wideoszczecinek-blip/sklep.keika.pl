@@ -84,7 +84,7 @@ export type WizStatus = {
   obraz?: { url: string; szer: number; wys: number };
   wynik?: WizWynik | null;
   uklad?: WizUklad | null;
-  podglad?: { pomieszczenie: string; styl: string; opis: string; okien: number; ramy: string[]; paleta: { hex: string; nazwa: string }[]; pora: string; za_oknem: string; szyb?: number; oczyszczone?: boolean; rogi?: number[][][]; uporzadkowane?: boolean } | null;
+  podglad?: { pomieszczenie: string; styl: string; opis: string; okien: number; ramy: string[]; paleta: { hex: string; nazwa: string }[]; pora: string; za_oknem: string; szyb?: number; oczyszczone?: boolean; rogi?: number[][][]; uporzadkowane?: boolean; usuniete?: string[]; wym?: number[][] } | null;
   kontakt?: boolean;
 };
 
