@@ -216,7 +216,7 @@ const PlisyDachoweConfiguratorPanel = dynamic(() => import("@/features/plisy-dac
 // razem z resztą sekcji, a nie doładować po hydratacji (LCP).
 import PlisyHeroPhotos from "@/features/plisy/PlisyHeroPhotos";
 import PlisyVisualizer from "@/features/plisy/PlisyVisualizer";
-import { WizButton, WizHost } from "@/features/wizualizator/WizEntry";
+import { WizButton, WizHost, WizPlywajacy, WizPowrot } from "@/features/wizualizator/WizEntry";
 import PlisyReviews from "@/features/plisy/Reviews";
 import PlisyMeasureGuide from "@/features/plisy/MeasureGuide";
 import PlisyMeasureShare from "@/features/plisy/MeasureShare";
@@ -3985,8 +3985,10 @@ export default function Home({
                         )}
                       </PromoCountdownBanner>
                       {/* Wizualizator „Twoje okno” (?wiz=1 / test A/B z CRM) */}
+                      <WizPowrot />
                       <WizButton zrodlo="plisy-oferta" />
                       <WizHost />
+                      <WizPlywajacy zrodlo="plisy-plywajacy" />
                       <PlisyFilmLoop
                         id="film-oferta"
                         src={PLISY_FILM.oferta.src}

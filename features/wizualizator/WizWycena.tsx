@@ -16,6 +16,7 @@ import {
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { addCartItem, type CartLineItem } from "@/lib/cart";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
+import { openLiveChat } from "@/lib/live-chat";
 import s from "./WizModal.module.css";
 
 export type WycenaSzyba = {
@@ -121,13 +122,15 @@ function RysunekPomiaru({ bez }: { bez: boolean }) {
   );
 }
 
-export default function WizWycena({ szyby, etap, montaz, pokoj, onEtap, onHover, onChange, onEvent, onDodano }: {
+export default function WizWycena({ szyby, etap, montaz, pokoj, onEtap, onHover, onChange, onEvent, onDodano, onBezMiarki }: {
   szyby: WycenaSzyba[];
   etap: WycenaEtap;
   montaz: "standard" | "bezinwazyjny";
   /** nazwa pokoju (trafia do pozycji koszyka, żeby klient i produkcja wiedzieli, które okno) */
   pokoj: string;
   onDodano: (info: { sztuk: number; suma: number }) => void;
+  /** „Nie masz teraz miarki?” - zapis wizualizacji na e-mail i powrót później */
+  onBezMiarki: () => void;
   onEtap: (e: WycenaEtap) => void;
   onHover: (id: string | null) => void;
   onChange: (szyby: WycenaSzyba[]) => void;
@@ -260,7 +263,7 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, onEtap, onHover,
         splitFromWidthMm: c.split ? Math.round(liczba(r.szer) * 10) : undefined,
         sagNoticeShown: c.widthMm > sagLimit || undefined,
         sagLimitMm: c.widthMm > sagLimit ? sagLimit : undefined,
-        optionsNote: `${pokoj ? `${pokoj} · ` : ""}szyba ${r.nr} (z wizualizacji, wymiary klienta)`,
+        optionsNote: `Z Twojego okna · ${pokoj ? `${pokoj} · ` : ""}szyba ${r.nr} (wymiary klienta)`,
       };
       addCartItem(item);
     }
@@ -301,7 +304,11 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, onEtap, onHover,
               onChange={(e) => { setBlad(""); update(biezaca.id, { wys: e.target.value, zmierzone: false }); }} /> cm</span>
           </label>
         </div>
-        <p className={s.krokSzac}>Szacunek ze zdjęcia: ok. {Math.round(biezaca.szacSzerCm || 0)} × {Math.round(biezaca.szacWysCm || 0)} cm – tylko podpowiedź, plisę produkujemy z Twoich wymiarów.</p>
+        <p className={s.krokSzac}>Na oko ok. {Math.round(biezaca.szacSzerCm || 0)} × {Math.round(biezaca.szacWysCm || 0)} cm – nie zamawiaj po tym. Zmierz miarką, to 2 minuty.</p>
+        <p className={s.krokPomoc}>
+          <button type="button" className={s.link} onClick={onBezMiarki}>Nie masz teraz miarki? Wyślij sobie tę wizualizację na e-mail i dokończ później</button>
+          <button type="button" className={s.link} onClick={() => { onEvent("wiz_czat", { krok: "wymiary" }); openLiveChat("Mam pytanie o pomiar plisy (wizualizacja)"); }}>Masz pytanie o pomiar? Napisz na czacie</button>
+        </p>
         <label className={s.measured}>
           <input type="checkbox" checked={Boolean(biezaca.zmierzone)} disabled={!wpisane(biezaca)}
             onChange={(e) => { setBlad(""); update(biezaca.id, { zmierzone: e.target.checked }); }} />
@@ -371,12 +378,12 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, onEtap, onHover,
           <b>{wszystkieGotowe ? "" : "ok. "}{zl(suma)}</b></div>
         {rabat ? (
           <p className={s.bundle}>
-            {rabat.label}: −{rabat.percent} % na całe zamówienie przy {sztuk} szt. – w koszyku ok. <b>{zlKr(suma * (1 - rabat.percent / 100))}</b>.
+            {sztuk} {odm(sztuk, "szyba", "szyby", "szyb")} = {sztuk} {odm(sztuk, "plisa", "plisy", "plis")}: −{rabat.percent} % na całe zamówienie ({rabat.label}) – w koszyku ok. <b>{zlKr(suma * (1 - rabat.percent / 100))}</b>.
           </p>
         ) : null}
         {blad ? <p className={s.error}>{blad}</p> : null}
         {wszystkieGotowe ? (
-          <button type="button" className={s.ctaBig} onClick={doKoszyka}>Dodaj zestaw do koszyka</button>
+          <button type="button" className={s.ctaBig} onClick={doKoszyka}>Dodaj {sztuk === 1 ? "plisę" : `wszystkie ${sztuk} ${odm(sztuk, "plisę", "plisy", "plis")}`} do koszyka</button>
         ) : (
           <button type="button" className={s.ctaBig} onClick={start}>Wpisz wymiary i zamów zestaw →</button>
         )}

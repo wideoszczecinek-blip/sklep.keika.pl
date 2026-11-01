@@ -24165,3 +24165,24 @@ dl.zl-table > div.is-price {
 .wiz-entry-text small { display: block; font-size: 0.82rem; color: #42515c; line-height: 1.35; }
 .wiz-entry-arrow { font-size: 26px; color: #0f9f8f; flex: none; }
 .wiz-entry-link { background: none; border: 0; padding: 4px 0; color: #0f766e; font-weight: 600; font-size: 0.9rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Wizualizator: wejścia (Agencja 1.11) */
+.wiz-entry-kadry { position: relative; flex: none; width: 92px; height: 62px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.wiz-entry-kadry i { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; animation: wizKadr 6s infinite; }
+.wiz-entry-kadry i:nth-child(2) { animation-delay: 2s; }
+.wiz-entry-kadry i:nth-child(3) { animation-delay: 4s; }
+@keyframes wizKadr { 0% { opacity: 0; } 6% { opacity: 1; } 33% { opacity: 1; } 40% { opacity: 0; } 100% { opacity: 0; } }
+@media (min-width: 900px) { .wiz-entry-kadry { width: 132px; height: 88px; } }
+/* wyższa szczegółowość: karta ceny konfiguratora nadpisuje style przycisków */
+html body button.wiz-entry-cena { display: block; width: 100%; margin-top: 8px; padding: 8px 10px; border: 1px dashed #0f9f8f; border-radius: 10px; background: #f0fdfa; color: #12212b; font-size: 0.86rem; text-align: left; cursor: pointer; line-height: 1.35; }
+html body button.wiz-entry-cena b { color: #0f766e; }
+html body button.wiz-entry-cena:hover { background: #e6faf6; }
+.wiz-entry-fab { position: fixed; right: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 900; display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 999px; padding: 12px 16px; background: linear-gradient(90deg, #0f766e, #14b8a6); color: #fff; font-weight: 800; font-size: 0.95rem; box-shadow: 0 10px 26px rgba(15,118,110,0.4); cursor: pointer; animation: wizFab 0.4s ease both; }
+.wiz-entry-fab span { font-size: 1.15rem; }
+@keyframes wizFab { from { opacity: 0; transform: translateY(14px) scale(0.95); } to { opacity: 1; transform: none; } }
+.wiz-entry-powrot { display: flex; align-items: center; gap: 6px; margin: 10px 0; border: 1.5px solid #0f9f8f; border-radius: 14px; background: #f0fdfa; padding: 6px; }
+.wiz-entry-powrot > button:first-child { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border: 0; background: none; text-align: left; cursor: pointer; padding: 0; color: #12212b; }
+.wiz-entry-powrot img { width: 64px; height: 46px; object-fit: cover; border-radius: 8px; flex: none; }
+.wiz-entry-powrot b { display: block; font-size: 0.95rem; }
+.wiz-entry-powrot small { display: block; font-size: 0.82rem; color: #0f766e; font-weight: 700; }
+.wiz-entry-powrot-x { border: 0; background: none; font-size: 22px; line-height: 1; color: #64748b; cursor: pointer; padding: 4px 8px; }

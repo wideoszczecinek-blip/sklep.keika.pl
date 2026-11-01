@@ -35,12 +35,12 @@ type PaneState = {
 };
 
 /** Korzyści pokazywane w czasie analizy (bez cen; ceny tylko z konfiguratora). */
+/** Korzyści na banerkach w czasie analizy (Agencja 1.11: po jednym zdaniu). */
 const KORZYSCI = [
-  ["🏭", "Produkujemy na Twój wymiar", "Każda plisa powstaje dokładnie pod Twoją szybę."],
-  ["🛡️", "5 lat gwarancji", "Na mechanizm i tkaninę – spokojnie na lata."],
-  ["↩️", "30 dni na zwrot", "Jeśli coś nie zagra, masz czas na decyzję."],
-  ["🔧", "Montaż bez wiercenia", "Wersja bezinwazyjna – nie naruszasz ramy okna."],
-  ["🎨", "150 tkanin w 5 kolekcjach", "Od przepuszczających światło po pełne zaciemnienie."],
+  ["🏭", "Produkujemy na wymiar Twojego okna", ""],
+  ["🎨", "150 tkanin, w tym zaciemniające i termiczne", ""],
+  ["🔧", "Montaż bez wiercenia albo na listwy", ""],
+  ["🛡️", "5 lat gwarancji · 30 dni na zwrot", ""],
 ] as const;
 
 const POMIESZCZENIE: Record<string, string> = {
@@ -448,6 +448,11 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       nazwa = `${nazwa} ${n}`;
     }
     lista.push({ token, miniatura: wynik.obraz?.url || "", szyb: szyby.length, nazwa, wKoszyku: byl?.wKoszyku });
+    try {
+      window.localStorage.setItem("keika_wiz_ostatnia", JSON.stringify({ token, miniatura: wynik.obraz?.url || "", data: new Date().toISOString(), szyb: szyby.length }));
+    } catch {
+      /* pasek powrotu to wygoda */
+    }
     writeSesja(lista);
     setZdjecia(readSesja());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -887,7 +892,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const szybWDomu = zdjecia.reduce((a, z) => a + (z.token === token ? panes.length : z.szyb), 0);
   const prog = useMemo(() => {
     const r = bundle.plisy;
-    if (!r || !r.tiers?.length || szybWDomu < 1) return "";
+    if (!r || !r.tiers?.length || szybWDomu < 2) return ""; // Agencja 1.11: rabat pokazujemy dopiero przy ≥ 2 szybach
     const tier = [...r.tiers].sort((a, b) => b.fromQty - a.fromQty).find((t) => szybWDomu >= t.fromQty);
     const next = [...r.tiers].sort((a, b) => a.fromQty - b.fromQty).find((t) => t.fromQty > szybWDomu);
     if (tier) return `${szybWDomu} ${szybWDomu === 1 ? "szyba" : szybWDomu < 5 ? "szyby" : "szyb"} = ${szybWDomu} plis${szybWDomu < 5 ? "y" : ""} → −${tier.percent} % na całe zamówienie (${r.label || "rabat ilościowy"}).`;
@@ -1090,7 +1095,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     return (
                       <div className={s.baner} key={korzysc}>
                         <span aria-hidden="true">{b[0]}</span>
-                        <div><b>{b[1]}</b><small>{b[2]}</small></div>
+                        <div><b>{b[1]}</b>{b[2] ? <small>{b[2]}</small> : null}</div>
                       </div>
                     );
                   })()}
@@ -1102,16 +1107,16 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
               <div className={s.progressRow} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={postep}>
                 <b>{postep} %</b>
                 <div className={s.progressTrack}><span style={{ width: `${postep}%` }} /></div>
-                <small>{dluzej ? (etapTeraz === "0" ? "Porządkowanie zdjęcia trwa dziś dłużej – jeszcze chwila…" : "Jeszcze chwila…") : `zostało ok. ${Math.round(zostalo / 5) * 5 || 5} s`}</small>
+                <small>{dluzej ? (etapTeraz === "0" ? "Porządkowanie zdjęcia trwa dziś dłużej – jeszcze chwila…" : "Jeszcze chwila, dopracowuję szyby…") : `zostało ok. ${Math.round(zostalo / 5) * 5 || 5} s`}</small>
               </div>
               <ol className={s.checklist}>
                 {[
-                  { id: "Q", t: "Sprawdzamy zdjęcie", done: faza !== "sprawdzanie" },
-                  { id: "0", t: "Porządkujemy zdjęcie (osoby, bałagan, stare rolety)", done: ["A", "B", "C", "F"].includes(status?.etap || "") || Boolean(podglad?.pomieszczenie), skip: !podglad?.uporzadkowane && Boolean(podglad?.szyb) },
-                  { id: "A", t: podglad?.pomieszczenie ? `Rozpoznaliśmy: ${POMIESZCZENIE[podglad.pomieszczenie] || "wnętrze"}${podglad.okien ? `, ${podglad.okien} ${podglad.okien === 1 ? "okno" : "okna"}` : ""}` : "Rozpoznajemy pokój i okna", done: Boolean(podglad?.pomieszczenie) },
-                  { id: "B", t: podglad?.szyb ? `Znaleźliśmy ${podglad.szyb} ${podglad.szyb === 1 ? "szybę" : podglad.szyb < 5 ? "szyby" : "szyb"} – dopasowujemy plisy` : "Szukamy krawędzi szyb", done: Boolean(podglad?.szyb) },
-                  { id: "C", t: "Szacujemy wymiary i dobieramy kolory do wnętrza", done: status?.etap === "F" },
-                  { id: "F", t: "Ustawiamy światło i perspektywę", done: false },
+                  { id: "Q", t: "Szukam okna", done: faza !== "sprawdzanie" },
+                  { id: "0", t: "Porządkuję zdjęcie (osoby, bałagan, stare rolety)", done: ["A", "B", "C", "F"].includes(status?.etap || "") || Boolean(podglad?.pomieszczenie), skip: !podglad?.uporzadkowane && Boolean(podglad?.szyb) },
+                  { id: "A", t: podglad?.pomieszczenie ? `Sprawdzam światło i kolory wnętrza – widzę ${POMIESZCZENIE[podglad.pomieszczenie] || "wnętrze"}` : "Sprawdzam światło i kolory wnętrza", done: Boolean(podglad?.pomieszczenie) },
+                  { id: "B", t: podglad?.szyb ? `Zaznaczam szyby – ${podglad.szyb} ${podglad.szyb === 1 ? "szyba" : podglad.szyb < 5 ? "szyby" : "szyb"}` : "Zaznaczam szyby", done: Boolean(podglad?.szyb) },
+                  { id: "C", t: "Dobieram tkaniny do Twojego pokoju", done: status?.etap === "F" },
+                  { id: "F", t: "Nakładam plisy", done: false },
                 ].filter((k) => !k.skip).map((k) => {
                   const now = !k.done && (k.id === (faza === "sprawdzanie" ? "Q" : status?.etap || "A") || (k.id === "A" && !status?.etap));
                   return (
@@ -1253,7 +1258,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   })() : null}
                   {przedPo !== null ? <div className={s.split} style={{ left: cornerPos([przedPo, 0]).left }}><span>przed | po</span></div> : null}
                   <p className={s.disclaimer}>
-                    Wizualizacja poglądowa{wynik.uporzadkowane ? " · zdjęcie uporządkowane automatycznie" : ""} – kolory, faktura i proporcje mogą się różnić. Wymiary mierzysz sam.
+                    Wizualizacja poglądowa{wynik.uporzadkowane ? " · zdjęcie uporządkowane automatycznie" : ""}. Kolory i proporcje mogą się różnić.
                   </p>
                   {!gotowyObraz ? <div className={s.loading}>Wczytujemy…</div> : null}
                 </div>
@@ -1344,6 +1349,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                           etap={wEtap}
                           montaz={montaz}
                           pokoj={pokojTeraz}
+                          onBezMiarki={() => { setEmailOkno(true); wizEvent("wiz_produkt", token, { widok: "bez_miarki" }); }}
                           onDodano={(d) => {
                             writeSesja(readSesja().map((z) => (z.token === token ? { ...z, wKoszyku: true } : z)));
                             setZdjecia(readSesja());
@@ -1430,8 +1436,10 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   });
                 }}>
                   <span className={s.dodanoIco} aria-hidden="true">✓</span>
-                  <b>Mamy to – Twoja wizualizacja jest gotowa!</b>
-                  <small>Podaj e-mail, a zapiszemy link do niej i wycenę – razem z najlepszymi promocjami. Wrócisz do niej, kiedy zechcesz.</small>
+                  <b>{wEtap === "kreator" ? "Wyślij sobie tę wizualizację" : "Mamy to – Twoja wizualizacja jest gotowa!"}</b>
+                  <small>{wEtap === "kreator"
+                    ? "Zmierzysz okna, kiedy będzie Ci wygodnie – link do wizualizacji i wyceny przyjdzie na e-mail, razem z najlepszymi promocjami."
+                    : "Podaj e-mail, a zapiszemy link do niej i wycenę – razem z najlepszymi promocjami. Wrócisz do niej, kiedy zechcesz."}</small>
                   <input type="email" inputMode="email" autoComplete="email" autoFocus placeholder="Twój adres e-mail" value={lead.email}
                     onChange={(e) => setLead((l) => ({ ...l, email: e.target.value, blad: "" }))} />
                   <label className={s.emailZgoda}>
@@ -1439,7 +1447,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     <span>Akceptuję <a href="/regulamin" target="_blank" rel="noopener">regulamin</a> i chcę dostać e-mailem link do wizualizacji, wycenę i promocje KEIKA (wypiszesz się jednym kliknięciem).</span>
                   </label>
                   {lead.blad ? <p className={s.error}>{lead.blad}</p> : null}
-                  <button type="submit" className={s.ctaBig} disabled={!lead.email.trim()}>Zapisz i pokaż wizualizację</button>
+                  <button type="submit" className={s.ctaBig} disabled={!lead.email.trim()}>{wEtap === "kreator" ? "Wyślij mi link" : "Zapisz i pokaż wizualizację"}</button>
                   <button type="button" className={s.emailPomin} onClick={() => {
                     setEmailOkno(false);
                     try { window.sessionStorage.setItem("keika_wiz_email", "1"); } catch { /* sesja */ }

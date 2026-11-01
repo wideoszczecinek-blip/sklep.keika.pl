@@ -966,3 +966,6 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
 .emailZgoda a { color: #0f766e; font-weight: 600; }
 .pokojBox .ctaBig { width: 100%; }
 .emailPomin { border: 0; background: none; color: #94a3b8; font-size: 12.5px; text-decoration: underline; cursor: pointer; justify-self: center; padding: 4px; }
+
+.krokPomoc { margin: 0; display: grid; gap: 4px; justify-items: start; }
+.krokPomoc .link { font-size: 12.5px; text-align: left; }
