@@ -1,0 +1,52 @@
+/**
+ * Kto widzi przycisk „Zobacz plisę w swoim oknie”.
+ *  - ?wiz=1 w adresie → zawsze (zapamiętane na urządzeniu; ?wiz=0 zdejmuje),
+ *  - test A/B: udział z CRM (Sklep WWW → Wizualizator, domyślnie 0 do odbioru E2),
+ *    los stały dla visitor_id (FNV-1a, własna sól - niezależny od testu koszyka).
+ * Otwieranie: jedno okno na stronę, wołane zdarzeniem (kilka przycisków, jeden modal).
+ */
+import { getVisitorId } from "@/lib/analytics-context";
+
+const FORCE_KEY = "keika_wiz_force";
+export const WIZ_OPEN_EVENT = "keika:wiz-open";
+/** Konfigurator plis słucha tego zdarzenia: „Zamów tę plisę” ustawia tkaninę i listwy. */
+export const WIZ_PICK_EVENT = "keika:wiz-wybor";
+
+export type WizOpenDetail = { zrodlo: string; tkanina?: string; listwa?: string; token?: string };
+export type WizPickDetail = { hardwareId?: string; fabricGroupId?: string; fabricId?: string };
+
+function hashToPercent(text: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0) % 100;
+}
+
+/** true/false wymuszone adresem lub wcześniej zapamiętane; null = decyduje test. */
+export function wizForced(): boolean | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const q = new URLSearchParams(window.location.search).get("wiz");
+    if (q === "1") window.localStorage.setItem(FORCE_KEY, "1");
+    if (q === "0") window.localStorage.removeItem(FORCE_KEY);
+    return window.localStorage.getItem(FORCE_KEY) === "1" ? true : null;
+  } catch {
+    return null;
+  }
+}
+
+export function wizBucket(): number {
+  return hashToPercent(`wizualizator|${getVisitorId() || "anon"}`);
+}
+
+/** Grupa testu dla zdarzeń: „wiz” (widzi przycisk) / „bez” / „wymuszone”. */
+export function wizArm(share: number): "wiz" | "bez" | "wymuszone" {
+  if (wizForced()) return "wymuszone";
+  return wizBucket() < share ? "wiz" : "bez";
+}
+
+export function openWizualizator(detail: WizOpenDetail): void {
+  window.dispatchEvent(new CustomEvent<WizOpenDetail>(WIZ_OPEN_EVENT, { detail }));
+}

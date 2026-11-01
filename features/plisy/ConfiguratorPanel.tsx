@@ -15,6 +15,8 @@
 // directly in the CRM admin panel, and a live fetch means those edits show
 // up without a frontend redeploy.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { WizButton } from "@/features/wizualizator/WizEntry";
+import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
 import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
@@ -330,6 +332,30 @@ export default function ConfiguratorPanel({
 
   const [selectedFabricId, setSelectedFabricId] = useState(seed.fabricId || "");
   const [stepThreeCollapsed, setStepThreeCollapsed] = useState(Boolean(seed.fabricId));
+
+  // Wizualizator „Twoje okno”: „Zamów tę plisę” przenosi tkaninę i kolor
+  // listew z wizualizacji prosto do kroków (montaż i wymiary klient wybiera sam).
+  useEffect(() => {
+    const onPick = (e: Event) => {
+      const d = (e as CustomEvent<WizPickDetail>).detail || {};
+      if (d.hardwareId) {
+        setSelectedHardwareId(d.hardwareId);
+        setStepOneChosen(true);
+        setStepOneCollapsed(true);
+      }
+      if (d.fabricGroupId) {
+        setSelectedFabricGroupId(d.fabricGroupId);
+        setStepTwoCollapsed(true);
+      }
+      if (d.fabricId) {
+        setSelectedFabricId(d.fabricId);
+        setStepThreeCollapsed(true);
+      }
+      trackShopStep("wiz_wybor_w_konfiguratorze", d.fabricId || "", { hardware: d.hardwareId || "" });
+    };
+    window.addEventListener(WIZ_PICK_EVENT, onPick);
+    return () => window.removeEventListener(WIZ_PICK_EVENT, onPick);
+  }, []);
 
   const [dimensionUnit, setDimensionUnit] = useState<DimensionUnit>(readStoredUnit);
   const [width, setWidth] = useState(() => (initialValues?.widthMm ? mmToInput(initialValues.widthMm, readStoredUnit()) : ""));
@@ -2167,6 +2193,7 @@ export default function ConfiguratorPanel({
                       >
                         🔍 Zobacz duże zdjęcia tkanin
                       </button>
+                      <WizButton zrodlo="konfigurator-tkanina" variant="link" tkanina={selectedFabricId || undefined} listwa={selectedHardwareId || undefined} />
                       {samplesEnabled ? (
                         <a
                           className="plisy-fabric-gallery-cta"

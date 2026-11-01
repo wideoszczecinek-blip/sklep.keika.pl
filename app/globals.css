@@ -24155,3 +24155,13 @@ dl.zl-table > div.is-price {
   body.has-plisy-sticky-cta .product-cart-dock.is-visible { opacity: 0; transform: translateY(110%); pointer-events: none; }
   .plisy-sticky-cta-note { font-size: 0.66rem; }
 }
+
+/* Wizualizator „Twoje okno” - przyciski wejścia (features/wizualizator/WizEntry.tsx). */
+.wiz-entry-card { display: flex; align-items: center; gap: 12px; width: 100%; margin: 12px 0; padding: 12px 14px; border: 2px solid #0f9f8f; border-radius: 14px; background: linear-gradient(135deg, #f0fdfa, #ffffff); text-align: left; cursor: pointer; color: #12212b; box-shadow: 0 6px 18px rgba(15, 159, 143, 0.12); }
+.wiz-entry-card:hover { background: #e6faf6; }
+.wiz-entry-icon { font-size: 26px; line-height: 1; flex: none; }
+.wiz-entry-text { flex: 1; min-width: 0; }
+.wiz-entry-text b { display: block; font-size: 1rem; }
+.wiz-entry-text small { display: block; font-size: 0.82rem; color: #42515c; line-height: 1.35; }
+.wiz-entry-arrow { font-size: 26px; color: #0f9f8f; flex: none; }
+.wiz-entry-link { background: none; border: 0; padding: 4px 0; color: #0f766e; font-weight: 600; font-size: 0.9rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
