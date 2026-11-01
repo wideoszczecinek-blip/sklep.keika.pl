@@ -1880,11 +1880,12 @@ export default function CartPage() {
     if (!rule) return "";
     const tiers = [...rule.tiers].sort((a, b) => a.fromQty - b.fromQty);
     const parts = tiers.map((tier, index) => {
-      const pct = `−${tier.percent.toLocaleString("pl-PL")} %`;
+      const pct = `-${tier.percent.toLocaleString("pl-PL")} %`;
       if (index === tiers.length - 1) return `${tier.fromQty} i więcej ${pct}`;
       return `${tier.fromQty} ${tier.fromQty < 5 ? "produkty" : "produktów"} ${pct}`;
     });
-    return `Kod SEZON20 zakończył się 29.10. Teraz rabat ${QTY_PROMO.name} liczy się sam, bez kodu: ${parts.join(", ")} na całe zamówienie.`;
+    // Brzmienie od Agencji (AGN-701), progi z reguł CRM.
+    return `Kod SEZON20 już nie obowiązuje. Zamiast niego działa promocja ${QTY_PROMO.name}: ${parts.join(", ")} na całe zamówienie. Rabat liczy się automatycznie w koszyku, nie trzeba wpisywać kodu.`;
   }
 
   async function checkDiscountCode(codeOverride?: string) {
