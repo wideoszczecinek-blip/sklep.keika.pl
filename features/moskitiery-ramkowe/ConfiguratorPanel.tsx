@@ -233,7 +233,7 @@ export default function ConfiguratorPanel({
   };
   const widthNum = toMm(dimensionWidth);
   const heightNum = toMm(dimensionHeight);
-  const quantityNum = Math.max(1, Number(dimensionQuantity) || 1);
+  const quantityNum = Math.min(20, Math.max(1, Math.round(Number(dimensionQuantity) || 1)));
   // Below MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM isn't a manufacturable frame -
   // flagged separately from "not filled in yet" so there's a clear inline
   // reason once the customer has actually typed something too small.

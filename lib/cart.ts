@@ -200,15 +200,19 @@ function readSupplierOrder(raw: unknown): SsSupplierOrder | undefined {
   };
 }
 
+/** Górny limit sztuk w jednej pozycji koszyka (AGN-674, 1.11.2026): pole ilości
+ * przyjęło kiedyś 7766279631452241920 szt. i koszyk na 10^19 zł psuł analizy. */
+export const CART_QTY_MAX = 99;
+
 export function readCartItems(): CartLineItem[] {
   return readCartRows()
     .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object")
     .map((row) => {
       const qtyRaw = Number(row.qty ?? row.quantity ?? row.count ?? 1);
-      const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+      const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? Math.min(CART_QTY_MAX, qtyRaw) : 1;
       const price = Number(row.price ?? row.unit_price ?? row.unitPrice ?? 0) || 0;
       const explicitTotal = Number(row.total ?? row.line_total ?? row.price_total ?? NaN);
-      const total = Number.isFinite(explicitTotal) ? explicitTotal : price * qty;
+      const total = Number.isFinite(explicitTotal) && !(qtyRaw > CART_QTY_MAX) ? explicitTotal : price * qty;
       return {
         id: String(row.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`),
         productSlug: String(row.productSlug ?? ""),
@@ -421,7 +425,7 @@ function trackCartEventToCrm(eventName: string, productSlug: string, item: CartL
 }
 
 export function updateCartItemQty(id: string, qty: number): CartLineItem[] {
-  const safeQty = Math.max(1, Math.round(qty) || 1);
+  const safeQty = Math.min(CART_QTY_MAX, Math.max(1, Math.round(qty) || 1));
   const items = readCartItems().map((item) =>
     item.id === id ? { ...item, qty: safeQty, total: item.price * safeQty } : item,
   );

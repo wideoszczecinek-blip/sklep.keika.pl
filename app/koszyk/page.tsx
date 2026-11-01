@@ -1213,6 +1213,8 @@ export default function CartPage() {
   const [paynowBanks, setPaynowBanks] = useState<P24Bank[]>([]);
   const [paynowBankId, setPaynowBankId] = useState<number>(0);
   const [paynowBlikCode, setPaynowBlikCode] = useState("");
+  // AGN-671 (1.11.2026): po odrzuconym BLIK-u pod komunikatem przycisk „Wybierz inną metodę płatności”.
+  const [paynowBlikFailed, setPaynowBlikFailed] = useState(false);
   const [paynowPolling, setPaynowPolling] = useState(false);
   const [paynowPollTimeout, setPaynowPollTimeout] = useState(false);
   // Domyślnie WŁĄCZONE (do czasu odpowiedzi CRM): gdyby pobranie ustawień
@@ -2436,11 +2438,12 @@ export default function CartPage() {
               if (checkJson.ok && !checkJson.paid && ["REJECTED", "ERROR", "EXPIRED", "ABANDONED"].includes(pnStatus)) {
                 setPaynowPolling(false);
                 setPaynowBlikCode("");
+                setPaynowBlikFailed(pnStatus !== "EXPIRED");
                 submittedRef.current = false;
                 setError(
                   pnStatus === "EXPIRED"
                     ? "Czas na potwierdzenie płatności minął. Wygeneruj nowy kod BLIK w aplikacji banku i spróbuj jeszcze raz."
-                    : "Płatność BLIK nie została potwierdzona w aplikacji banku. Wygeneruj nowy kod i spróbuj jeszcze raz - nic nie zostało pobrane.",
+                    : "Płatność nie przeszła - nic nie zostało pobrane. Sprawdź kod BLIK (wygeneruj nowy w aplikacji banku) i spróbuj ponownie albo wybierz inną metodę.",
                 );
                 trackCheckoutIssue("payment_failed_client", `paynow_blik_${pnStatus.toLowerCase()}`, { order_code: orderCode });
                 return;
@@ -2690,6 +2693,7 @@ export default function CartPage() {
                   if (event.key === "Enter" && digits.length === 6 && termsAccepted && !isSubmitting) {
                     event.preventDefault();
                     setError("");
+                    setPaynowBlikFailed(false);
                     submittedRef.current = false;
                     void submitOrder({ paynowBlikCode: digits }).catch(() => {});
                   }
@@ -2700,6 +2704,20 @@ export default function CartPage() {
             </div>
           </div>
           <PaynowGdprNotice />
+          {error && paynowBlikFailed ? (
+            <button
+              type="button"
+              className="cart-payment-assurance-chat cart-blik-other-method"
+              onClick={() => {
+                trackCheckoutIssue("payment_method_switch", "blik_failed", {});
+                setPaynowBlikFailed(false);
+                setError("");
+                scrollToSection(paymentSectionRef);
+              }}
+            >
+              Wybierz inną metodę płatności
+            </button>
+          ) : null}
           {paynowPollTimeout ? (
             <div className="cart-checkout-error">
               Nie otrzymaliśmy jeszcze potwierdzenia z banku. Sprawdź aplikację banku - jeśli zatwierdziłeś(-aś)
@@ -2717,6 +2735,7 @@ export default function CartPage() {
                 return;
               }
               setError("");
+              setPaynowBlikFailed(false);
               submittedRef.current = false;
               void submitOrder({ paynowBlikCode: digits }).catch(() => {});
             }}

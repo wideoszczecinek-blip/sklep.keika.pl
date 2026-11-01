@@ -24118,6 +24118,7 @@ dl.zl-table > div.is-price {
 /* Sekcja Płatność: stała linia pod paskiem zaufania (1.11.2026, AGN-438/445/449). */
 .cart-payment-assurance { margin: 0.35rem 0 0.75rem; font-size: 0.8rem; line-height: 1.45; color: inherit; opacity: 0.88; }
 .cart-payment-assurance strong { font-weight: 800; }
+.cart-blik-other-method { display: inline-block; margin: 0 0 0.6rem; font-size: 0.85rem; }
 .cart-payment-assurance-chat { appearance: none; background: none; border: 0; padding: 0; margin: 0; font: inherit; font-weight: 700; color: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 
 /* Szablon /produkt/[slug]: plakietka pod ceną (1.11.2026, AGN-450). */

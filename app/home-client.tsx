@@ -3337,7 +3337,7 @@ export default function Home({
   const meshChosen = Boolean(selectedMeshId);
   const widthNum = Number(dimensionWidth) || 0;
   const heightNum = Number(dimensionHeight) || 0;
-  const quantityNum = Math.max(1, Number(dimensionQuantity) || 1);
+  const quantityNum = Math.min(20, Math.max(1, Math.round(Number(dimensionQuantity) || 1)));
   const hasValidDimensions = widthNum > 0 && heightNum > 0;
   const perimeterMeters = hasValidDimensions ? moskPerimeterMeters(widthNum, heightNum) : null;
   const billedMeters = perimeterMeters !== null ? moskBilledMeters(perimeterMeters) : null;
@@ -6563,6 +6563,7 @@ export default function Home({
               widthCm={plisyQuickDims.widthMm / 10}
               heightCm={plisyQuickDims.heightMm / 10}
               price={plisyQuickWithPromo ?? plisyQuickRegular}
+              promoApplied={plisyQuickWithPromo != null && plisyQuickRegular != null && plisyQuickWithPromo < plisyQuickRegular}
               bottomInset={inAppBrowserBottomInset}
               onClick={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")}
             />

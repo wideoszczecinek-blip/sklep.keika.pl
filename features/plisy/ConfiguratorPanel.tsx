@@ -603,7 +603,7 @@ export default function ConfiguratorPanel({
   const dimensionsValid = profile
     ? ((widthNum >= profile.widthMinMm && widthNum <= profile.widthMaxMm) || splitActive) && heightInRange
     : false;
-  const quantityNum = Math.max(1, Number(quantity) || 1);
+  const quantityNum = Math.min(20, Math.max(1, Math.round(Number(quantity) || 1)));
 
   // Pozycje, które faktycznie pójdą do koszyka: zapisane rozmiary + ten
   // właśnie wpisywany (o ile poprawny). Edytowana pozycja podmienia samą
