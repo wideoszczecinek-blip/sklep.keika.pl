@@ -797,3 +797,13 @@
   .aiBar .aiBtn, .aiBar .aiBtnGhost { width: 100%; }
   .aiBar p { padding-right: 92px; } /* miejsce na przyciski – i × modala */
 }
+
+/* ekran produkcji: odstęp od krawędzi modala (wcześniej zdjęcie i pasek promocji dochodziły do brzegu - „ucięte”) */
+.prodGrid { padding: 22px; }
+@media (max-width: 899px) { .prodGrid { padding: 58px 12px 16px; } }
+.progressRow { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 12px; margin: 2px 0 6px; }
+.progressRow b { font-size: 26px; font-weight: 800; color: #0f766e; line-height: 1; font-variant-numeric: tabular-nums; min-width: 72px; }
+.progressTrack { height: 10px; background: #e6eef1; border-radius: 999px; overflow: hidden; }
+.progressTrack span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #0f9f8f, #2dd4bf, #0f9f8f); background-size: 200% 100%; animation: postepPrzelew 1.6s linear infinite; transition: width 0.5s ease; }
+.progressRow small { grid-column: 1 / -1; font-size: 12.5px; color: #52616b; }
+@keyframes postepPrzelew { to { background-position: -200% 0; } }

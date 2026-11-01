@@ -51,6 +51,16 @@ type Zdjecie = { token: string; miniatura: string; szyb: number };
 
 const SESJA_KEY = "keika_wiz_sesja_v1";
 const MAX_ZDJEC = 5;
+/** Pasek postępu analizy: etap silnika → zakres paska (%) i typowy czas (s). Kolejność: Q → A → [0] → B → C → F. */
+const ETAPY_POSTEP: Record<string, { od: number; do: number; s: number }> = {
+  Q: { od: 0, do: 8, s: 3 },
+  A: { od: 8, do: 34, s: 14 },
+  "0": { od: 34, do: 60, s: 15 },
+  B: { od: 60, do: 66, s: 2 },
+  C: { od: 66, do: 94, s: 24 },
+  F: { od: 94, do: 98, s: 2 },
+};
+const KOLEJNOSC_ETAPOW = ["Q", "A", "0", "B", "C", "F"];
 const DOMYSLNA_TKANINA = "pp153";
 const DOMYSLNA_LISTWA = "bialy";
 const DRAFT_KEY = "keika_plisy_draft_v1";
@@ -285,6 +295,18 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     const r = await wizLead(token, { email: lead.email.trim(), zgoda_kontakt: true, zgoda_marketing: true, moment });
     setLead((l) => ({ ...l, wyslane: r.ok, blad: r.ok ? "" : r.error || "Nie udało się zapisać." }));
   };
+
+  // ------------------------------------------------------------ postęp analizy (pasek z % i szacowanym czasem)
+  const etapRef = useRef<{ etap: string; t: number }>({ etap: "", t: 0 });
+  const [, setTykniecie] = useState(0);
+  useEffect(() => {
+    if (faza !== "analiza" && faza !== "sprawdzanie") {
+      etapRef.current = { etap: "", t: 0 };
+      return;
+    }
+    const id = window.setInterval(() => setTykniecie((n) => n + 1), 500);
+    return () => window.clearInterval(id);
+  }, [faza]);
 
   // ------------------------------------------------------------ odpytywanie
   useEffect(() => {
@@ -744,6 +766,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   };
 
   const noweZdjecie = () => {
+    etapRef.current = { etap: "", t: 0 };
     wizEvent("wiz_kolejne_okno", token, { zdjec: zdjecia.length });
     zapamietaj();
     setToken(null);
@@ -807,8 +830,20 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
   // Portal do <body>: przyciski siedzą w sekcjach z transform/overflow, które przycinałyby position: fixed.
   const podglad = status?.podglad;
-  const etapy = ["0", "R", "A", "B", "C", "F"];
-  const postep = faza === "sprawdzanie" ? 6 : Math.max(10, Math.round(((etapy.indexOf(status?.etap || "A") + 1) / (etapy.length + 1)) * 100));
+  // postęp: zakres etapu + czas w etapie (krzywa dochodzi do końca zakresu, nigdy go nie przeskakuje)
+  const etapTeraz = faza === "sprawdzanie" ? "Q" : ETAPY_POSTEP[status?.etap || ""] ? (status?.etap as string) : "A";
+  const teraz = Date.now();
+  if (faza === "analiza" || faza === "sprawdzanie") {
+    if (etapRef.current.etap !== etapTeraz) etapRef.current = { etap: etapTeraz, t: teraz };
+  }
+  const ep = ETAPY_POSTEP[etapTeraz];
+  const wEtapie = etapRef.current.t ? (teraz - etapRef.current.t) / 1000 : 0;
+  const postep = Math.round(ep.od + (ep.do - ep.od) * (1 - Math.exp(-wEtapie / ep.s)));
+  // zostało: reszta bieżącego etapu + typowe czasy następnych (porządkowanie tylko, gdy zdjęcie go wymaga)
+  const porzadek = etapTeraz === "0" || Boolean(podglad?.uporzadkowane);
+  const dalej = KOLEJNOSC_ETAPOW.slice(KOLEJNOSC_ETAPOW.indexOf(etapTeraz) + 1).filter((e) => e !== "0" || porzadek);
+  const zostalo = Math.max(3, ep.s - wEtapie) + dalej.reduce((a, e) => a + ETAPY_POSTEP[e].s, 0);
+  const dluzej = wEtapie > ep.s * 2.2;
   // Kontakt: tylko e-mail, z zachętą (właściciel 1.11). Zgoda wyrażana przyciskiem - informacja obok.
   const kontaktForm = (moment: string) => lead.wyslane ? (
     <p className={s.leadOk}>✓ Gotowe! Najlepsze promocje i tę wizualizację wyślemy na Twój e-mail.</p>
@@ -956,6 +991,11 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
             </div>
             <div className={s.prodPanel}>
               <p className={s.label}>Twoja wizualizacja powstaje</p>
+              <div className={s.progressRow} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={postep}>
+                <b>{postep} %</b>
+                <div className={s.progressTrack}><span style={{ width: `${postep}%` }} /></div>
+                <small>{dluzej ? (etapTeraz === "0" ? "Porządkowanie zdjęcia trwa dziś dłużej – jeszcze chwila…" : "Jeszcze chwila…") : `zostało ok. ${Math.round(zostalo / 5) * 5 || 5} s`}</small>
+              </div>
               <ol className={s.checklist}>
                 {[
                   { id: "Q", t: "Sprawdzamy zdjęcie", done: faza !== "sprawdzanie" },
@@ -981,7 +1021,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                 <div><b>{KORZYSCI[korzysc][1]}</b><small>{KORZYSCI[korzysc][2]}</small></div>
               </div>
               {token && faza === "analiza" ? kontaktForm("analiza") : null}
-              <p className={s.sub}>Zwykle 30–60 sekund. Możesz zminimalizować okno (–) i oglądać sklep – damy znać, gdy będzie gotowe.</p>
+              <p className={s.sub}>Możesz zminimalizować okno (–) i oglądać sklep – damy znać, gdy wizualizacja będzie gotowa.</p>
               {qrKod ? <p className={s.sub}>Wizualizacja pojawi się też na komputerze.</p> : null}
               {promo ? <div className={s.promoBar}><b>{promo.tytul}</b><span>{promo.opis}</span></div> : null}
             </div>
