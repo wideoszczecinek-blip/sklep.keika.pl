@@ -20,7 +20,7 @@
 // Grupa B pilota: te same reguły liczą „ciche pokazy” (assistant_nudge / action=ghost) bez
 // żadnego dymka - także bez starego chat-nudge (czysta kontrola).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   CART_ADDED_EVENT,
   applyToConfigurator,
@@ -145,6 +145,7 @@ export default function AssistantNudges({ productSlug, active }: { productSlug: 
   const maxScrollRef = useRef(0);
   const pendingRef = useRef<MomentId | null>(null);
   const firedThisPageRef = useRef<Set<string>>(new Set());
+  const bubbleRef = useRef<HTMLDivElement>(null);
 
   armRef.current = arm;
   nudgeRef.current = nudge;
@@ -417,10 +418,36 @@ export default function AssistantNudges({ productSlug, active }: { productSlug: 
     setNudge(null);
   }
 
+  // Dymek wisi pod przyciskiem czatu (right: 0), a ten na telefonie stoi w środku nagłówka -
+  // lewa część wychodziła poza ekran (zgłoszenie właściciela 1.11, 412 px). Przesuwamy dymek
+  // w granice okna z marginesem 12 px; strzałka zostaje pod przyciskiem (--as-nudge-shift).
+  // Liczone od przycisku (offsetParent), nie od samego dymka - ten w chwili pomiaru jest
+  // jeszcze w animacji wejścia (scale).
+  useLayoutEffect(() => {
+    const el = bubbleRef.current;
+    if (!el) return;
+    const place = () => {
+      const anchor = el.offsetParent as HTMLElement | null;
+      if (!anchor) return;
+      const margin = 12;
+      const viewport = document.documentElement.clientWidth || window.innerWidth;
+      const anchorRight = anchor.getBoundingClientRect().right;
+      const left = anchorRight - el.offsetWidth;
+      let shift = 0;
+      if (left < margin) shift = margin - left;
+      else if (anchorRight > viewport - margin) shift = viewport - margin - anchorRight;
+      el.style.right = shift ? `${-shift}px` : "";
+      el.style.setProperty("--as-nudge-shift", `${shift}px`);
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [nudge, arm]);
+
   if (!nudge || arm !== "A") return null;
 
   return (
-    <div className="as-nudge" role="status" aria-live="polite">
+    <div ref={bubbleRef} className="as-nudge" role="status" aria-live="polite">
       <span className="as-nudge-arrow" aria-hidden="true" />
       <button type="button" className="as-nudge-close" aria-label="Nie pokazuj więcej podpowiedzi" onClick={dismiss}>
         ×
