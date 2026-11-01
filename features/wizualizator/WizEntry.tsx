@@ -8,7 +8,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { fetchKatalog, wizEvent } from "@/lib/wizualizator/api";
-import { WIZ_OPEN_EVENT, openWizualizator, wizArm, wizForced, wizIsProdHost, type WizOpenDetail } from "@/lib/wizualizator/flag";
+import { WIZ_OPEN_EVENT, openWizualizator, wizArm, wizForced, wizFromAd, type WizOpenDetail } from "@/lib/wizualizator/flag";
 import { trackShopStep } from "@/lib/track-step";
 
 const WizModal = dynamic(() => import("./WizModal"), { ssr: false });
@@ -41,7 +41,21 @@ function useWizVisible(): boolean | null {
 
 let hostCount = 0;
 
-export function WizButton({ zrodlo, variant = "karta", tkanina, listwa }: { zrodlo: string; variant?: "karta" | "link"; tkanina?: string; listwa?: string }) {
+/** Ostatnia wizualizacja klienta (pasek „dokończ wycenę” przy powrocie na /plisy). Zapisuje WizModal. */
+export const WIZ_OSTATNIA_KEY = "keika_wiz_ostatnia";
+export type WizOstatnia = { token: string; miniatura: string; data: string; szyb: number };
+
+/**
+ * Warianty (decyzja Agencji 1.11, lejek „Twoje okno”):
+ *  - karta: hero/oferta - 3 klatki (zdjęcie → szyby → plisy) i „Zobacz plisę w swoim oknie 📸”,
+ *  - link: w kroku tkaniny konfiguratora („Nie wiesz, która? Zobacz w swoim oknie”),
+ *  - cena: jedna linia pod ceną konfiguratora (największa strata w lejku: widzą cenę, nie dodają).
+ */
+export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfiguruj }: {
+  zrodlo: string; variant?: "karta" | "link" | "cena"; tkanina?: string; listwa?: string;
+  /** karta w hero: drugi przycisk „Mam wymiary – konfiguruję” (przewija do konfiguratora) */
+  onKonfiguruj?: () => void;
+}) {
   const visible = useWizVisible();
   const [own, setOwn] = useState(false);
   useEffect(() => {
@@ -56,19 +70,107 @@ export function WizButton({ zrodlo, variant = "karta", tkanina, listwa }: { zrod
   if (variant === "link") {
     return (
       <button type="button" className="wiz-entry-link" onClick={open}>
-        📷 Zobacz tę tkaninę w swoim oknie
+        📷 Nie wiesz, która? Zobacz w swoim oknie
       </button>
     );
   }
-  return (
+  if (variant === "cena") {
+    return (
+      <button type="button" className="wiz-entry-cena" onClick={open}>
+        Nie jesteś pewien koloru? <b>Zobacz tę plisę w swoim oknie →</b>
+      </button>
+    );
+  }
+  const karta = (
     <button type="button" className="wiz-entry-card" onClick={open}>
-      <span className="wiz-entry-icon" aria-hidden="true">📷</span>
+      <span className="wiz-entry-kadry" aria-hidden="true">
+        <i style={{ backgroundImage: "url(/wizualizator-kadr-1.jpg)" }} />
+        <i style={{ backgroundImage: "url(/wizualizator-kadr-2.jpg)" }} />
+        <i style={{ backgroundImage: "url(/wizualizator-kadr-3.jpg)" }} />
+      </span>
       <span className="wiz-entry-text">
-        <b>Zobacz plisę w swoim oknie</b>
-        <small>Zrób zdjęcie okna – w minutę zobaczysz na nim plisę w wybranym kolorze.</small>
+        <b>Zobacz plisę w swoim oknie 📸</b>
+        <small>Wrzuć zdjęcie okna – 30 sekund i widzisz plisę na swojej szybie, w wybranym kolorze.</small>
       </span>
       <span className="wiz-entry-arrow" aria-hidden="true">›</span>
     </button>
+  );
+  if (!onKonfiguruj) return karta;
+  return (
+    <div className="wiz-entry-hero">
+      {karta}
+      <button type="button" className="wiz-entry-konf" onClick={onKonfiguruj}>Mam wymiary – konfiguruję →</button>
+    </div>
+  );
+}
+
+/**
+ * Pływający przycisk na stronie plis (telefon i komputer), prawy dół. Chowa się, gdy na ekranie jest
+ * konfigurator albo pasek „Dodaj do koszyka” - żeby nie zasłaniał zakupu.
+ */
+export function WizPlywajacy({ zrodlo }: { zrodlo: string }) {
+  const visible = useWizVisible();
+  const [schowany, setSchowany] = useState(true);
+  useEffect(() => {
+    if (!visible) return;
+    const sprawdz = () => {
+      const pasek = document.querySelector(".plisy-sticky-cta");
+      const konf = document.querySelector(".hero-product-config-panel");
+      let wKonf = false;
+      if (konf) {
+        const r = konf.getBoundingClientRect();
+        wKonf = r.top < window.innerHeight * 0.8 && r.bottom > window.innerHeight * 0.2;
+      }
+      setSchowany(Boolean(pasek) || wKonf || window.scrollY < 300);
+    };
+    sprawdz();
+    window.addEventListener("scroll", sprawdz, { passive: true });
+    window.addEventListener("resize", sprawdz);
+    const t = window.setInterval(sprawdz, 1500);
+    return () => {
+      window.removeEventListener("scroll", sprawdz);
+      window.removeEventListener("resize", sprawdz);
+      window.clearInterval(t);
+    };
+  }, [visible]);
+  if (!visible || schowany) return null;
+  return (
+    <button type="button" className="wiz-entry-fab" onClick={() => openWizualizator({ zrodlo })}>
+      <span aria-hidden="true">📷</span> W swoim oknie
+    </button>
+  );
+}
+
+/** Powrót klienta po użyciu narzędzia: pasek u góry /plisy z miniaturą - kliknięcie otwiera wynik. */
+export function WizPowrot() {
+  const visible = useWizVisible();
+  const [o, setO] = useState<WizOstatnia | null>(null);
+  const [zamkniety, setZamkniety] = useState(false);
+  useEffect(() => {
+    if (!visible) return;
+    let j: WizOstatnia | null = null;
+    try {
+      j = JSON.parse(window.localStorage.getItem(WIZ_OSTATNIA_KEY) || "null") as WizOstatnia | null;
+    } catch {
+      /* brak - nic nie pokazujemy */
+    }
+    // tylko 30 dni (zdjęcia w CRM są kasowane po 30 dniach)
+    if (!j?.token || !/^[a-f0-9]{32}$/.test(j.token) || Date.now() - Date.parse(j.data) >= 29 * 864e5) return;
+    const ostatnia = j;
+    const t = window.setTimeout(() => setO(ostatnia), 0);
+    return () => window.clearTimeout(t);
+  }, [visible]);
+  if (!visible || !o || zamkniety) return null;
+  const data = new Date(o.data).toLocaleDateString("pl-PL", { day: "numeric", month: "long" });
+  return (
+    <div className="wiz-entry-powrot">
+      <button type="button" onClick={() => { wizEvent("wiz_otwarte", o.token, { zrodlo: "powrot" }); openWizualizator({ zrodlo: "powrot", token: o.token }); }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {o.miniatura ? <img src={o.miniatura} alt="" /> : null}
+        <span><b>Twoja wizualizacja z {data}</b><small>{o.szyb} {o.szyb === 1 ? "szyba" : o.szyb < 5 ? "szyby" : "szyb"} · dokończ wycenę →</small></span>
+      </button>
+      <button type="button" className="wiz-entry-powrot-x" aria-label="Ukryj" onClick={() => setZamkniety(true)}>×</button>
+    </div>
   );
 }
 
@@ -80,8 +182,13 @@ export function WizHost() {
     window.addEventListener(WIZ_OPEN_EVENT, onOpen);
     hostCount += 1;
     const t = (new URLSearchParams(window.location.search).get("wiz_t") || "").toLowerCase();
-    if (/^[a-f0-9]{32}$/.test(t) && !wizIsProdHost()) setOpen({ zrodlo: "link", token: t });
+    // link z maila z wizualizacją (?wiz_t=) otwiera wynik także na produkcji - to wizualizacja tego klienta
+    if (/^[a-f0-9]{32}$/.test(t)) setOpen({ zrodlo: "link", token: t });
+    // wejście z reklamy (?wiz=start): od razu okno wizualizatora - gdy narzędzie jest uruchomione (albo ?wiz=1 poza produkcją)
+    const zReklamy = new URLSearchParams(window.location.search).get("wiz") === "start";
+    if (zReklamy) wizFromAd(); // zapamiętaj wejście z reklamy (poza grupą kontrolną) na kolejne strony
     void fetchKatalog().then((k) => {
+      if (zReklamy && !t && (wizForced() || (k && k.wlaczony && k.udzial > 0))) setOpen({ zrodlo: "reklama" });
       if (!k || k.udzial <= 0) return;
       try {
         if (window.sessionStorage.getItem(AB_LOGGED_KEY)) return;

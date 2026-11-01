@@ -47,9 +47,26 @@ export function wizBucket(): number {
   return hashToPercent(`wizualizator|${getVisitorId() || "anon"}`);
 }
 
-/** Grupa testu dla zdarzeń: „wiz” (widzi przycisk) / „bez” / „wymuszone”. */
-export function wizArm(share: number): "wiz" | "bez" | "wymuszone" {
+/**
+ * Wejście z reklamy wizualizatora (Agencja 1.11): /plisy?wiz=start otwiera narzędzie od razu i zawsze pokazuje
+ * przycisk temu urządzeniu - ruch z reklamy NIE trafia do 10 % grupy kontrolnej (kontrola = tylko ruch organiczny).
+ * Działa także na produkcji, ale tylko gdy wizualizator jest uruchomiony (udział w CRM > 0).
+ */
+const REKLAMA_KEY = "keika_wiz_reklama";
+export function wizFromAd(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (new URLSearchParams(window.location.search).get("wiz") === "start") window.localStorage.setItem(REKLAMA_KEY, "1");
+    return window.localStorage.getItem(REKLAMA_KEY) === "1";
+  } catch {
+    return new URLSearchParams(window.location.search).get("wiz") === "start";
+  }
+}
+
+/** Grupa testu dla zdarzeń: „wiz” (widzi przycisk) / „bez” / „wymuszone” / „reklama” (wejście z reklamy, poza testem). */
+export function wizArm(share: number): "wiz" | "bez" | "wymuszone" | "reklama" {
   if (wizForced()) return "wymuszone";
+  if (wizFromAd()) return "reklama";
   return wizBucket() < share ? "wiz" : "bez";
 }
 

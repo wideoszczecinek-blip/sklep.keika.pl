@@ -79,6 +79,8 @@ export type CartLineItem = {
   /** Żaluzje, na ścianę: miejsce nad wnęką wliczone w wysokość (mm). */
   spaceAboveMm?: number;
   previewImageUrl?: string;
+  /** Wizualizator „Twoje okno” (1.11.2026): token wizualizacji, z której przyszła pozycja - KPI testu A/B. */
+  wizToken?: string;
   /** Żaluzje: rysunek z wyborów klienta i szczegóły pozycji w grupach. */
   drawing?: ZaluzjaDrawingData;
   detailGroups?: ZaluzjaDetailGroup[];
@@ -239,6 +241,7 @@ export function readCartItems(): CartLineItem[] {
         stackMm: Number(row.stackMm ?? 0) > 0 ? Number(row.stackMm) : undefined,
         spaceAboveMm: row.spaceAboveMm !== undefined && row.spaceAboveMm !== null && Number(row.spaceAboveMm) >= 0 ? Number(row.spaceAboveMm) : undefined,
         previewImageUrl: row.previewImageUrl ? String(row.previewImageUrl) : undefined,
+        wizToken: /^[a-f0-9]{32}$/.test(String(row.wizToken ?? "")) ? String(row.wizToken) : undefined,
         drawing: readZaluzjaDrawing(row.drawing),
         detailGroups: readZaluzjaDetailGroups(row.detailGroups),
         splitFromWidthMm: Number(row.splitFromWidthMm ?? 0) > 0 ? Number(row.splitFromWidthMm) : undefined,

@@ -504,6 +504,7 @@ function buildQuotePayloadFromCart(
       .join(", ");
     return {
       id: item.id || `position-${index + 1}`,
+      ...(item.wizToken ? { wiz_token: item.wizToken } : {}),
       product_slug: item.productSlug || "produkt",
       product_label: item.productLabel,
       quantity: item.qty,
@@ -2291,6 +2292,8 @@ export default function CartPage() {
         body: JSON.stringify({
           quote_code: quoteCode,
           session_token: checkoutSessionToken,
+          // Wizualizator: z których wizualizacji przyszły pozycje (CRM zapisuje w zamówieniu i łączy z wizualizacją)
+          wizualizacje: Array.from(new Set(items.map((item) => item.wizToken).filter(Boolean))),
           customer: { name: `${f.firstName} ${f.lastName}`.trim(), phone: f.phone, email: f.email },
           consents: (() => {
             // Marketing: decyzja z paska ciasteczek (jedno pytanie o oferty

@@ -16,6 +16,7 @@
 // up without a frontend redeploy.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WizButton } from "@/features/wizualizator/WizEntry";
+import { DIMENSION_UNIT_STORAGE_KEY, inputToMm, looksLikeCm as wygladaNaCm, mmToInput, readStoredUnit, timesTenFix as poprawkaJednostki, type DimensionUnit } from "@/features/plisy/wymiary";
 import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
 import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
@@ -138,27 +139,7 @@ function formatZl(value: number): string {
 // nudge when mm is on and both numbers are tiny, the SEZON20 price the
 // cart will actually charge next to the regular one, and a way out for the
 // customer who simply hasn't measured yet (openMeasureLater).
-type DimensionUnit = "mm" | "cm";
-const DIMENSION_UNIT_STORAGE_KEY = "keika_dimension_unit_v1";
-
-function readStoredUnit(): DimensionUnit {
-  try {
-    if (typeof window === "undefined") return "cm";
-    return window.localStorage.getItem(DIMENSION_UNIT_STORAGE_KEY) === "mm" ? "mm" : "cm";
-  } catch {
-    return "cm";
-  }
-}
-
-function mmToInput(mm: number, unit: DimensionUnit): string {
-  return unit === "cm" ? String(Math.round(mm) / 10) : String(Math.round(mm));
-}
-
-function inputToMm(raw: string, unit: DimensionUnit): number {
-  const n = Number(String(raw).replace(",", "."));
-  if (!Number.isFinite(n) || n <= 0) return 0;
-  return unit === "cm" ? Math.round(n * 10) : Math.round(n);
-}
+// (funkcje jednostek i podpowiedzi „czy chodziło o…” - features/plisy/wymiary.ts, wspólne z wizualizatorem)
 
 // Steps 1-4 survive a remount and a return visit for a week: the customer
 // who left to measure (or came back through "Konfiguruj to okno" up top,
@@ -653,12 +634,7 @@ export default function ConfiguratorPanel({
   // "60 x 120" typed while mm is on: both numbers under half the smallest
   // plisa - centimetres, almost certainly. Offer the switch instead of a
   // range nobody reads.
-  const looksLikeCm =
-    dimensionUnit === "mm" &&
-    !dimensionsValid &&
-    widthNum > 0 &&
-    heightNum > 0 &&
-    (profile ? widthNum < profile.widthMinMm / 2 && heightNum < profile.heightMinMm / 2 : false);
+  const looksLikeCm = !dimensionsValid && (profile ? wygladaNaCm(widthNum, heightNum, dimensionUnit, profile) : false);
   const formatRange = (minMm: number, maxMm: number) =>
     dimensionUnit === "cm" ? `${minMm / 10}–${maxMm / 10} cm` : `${minMm}–${maxMm} mm`;
   // "15 × 120" w centymetrach (audyt 2026-10-01: 6 osób wpisało 15 cm
@@ -666,17 +642,7 @@ export default function ConfiguratorPanel({
   // pasuje - pytamy "czy chodziło o 150 cm?" zamiast pokazywać sam zakres.
   // 2026-10-15: także w drugą stronę - "1200 × 1500" przy centymetrach to
   // milimetry (12 × 15 metrów nikt nie ma), więc dzielimy przez 10.
-  const timesTenFix = (() => {
-    if (!profile || dimensionUnit !== "cm" || dimensionsValid || widthNum <= 0 || heightNum <= 0) return null;
-    const fixAxis = (v: number, min: number, max: number) => (v < min ? v * 10 : v > max ? v / 10 : v);
-    const fixW = fixAxis(widthNum, profile.widthMinMm, profile.widthMaxMm * 2);
-    const fixH = fixAxis(heightNum, profile.heightMinMm, profile.heightMaxMm);
-    if (fixW === widthNum && fixH === heightNum) return null;
-    const wOk = fixW >= profile.widthMinMm && fixW <= profile.widthMaxMm * 2;
-    const hOk = fixH >= profile.heightMinMm && fixH <= profile.heightMaxMm;
-    const fromMm = fixW < widthNum || fixH < heightNum;
-    return wOk && hOk ? { widthMm: Math.round(fixW), heightMm: Math.round(fixH), fromMm } : null;
-  })();
+  const timesTenFix = !profile || dimensionsValid ? null : poprawkaJednostki(widthNum, heightNum, dimensionUnit, profile);
   function applyTimesTenFix() {
     if (!timesTenFix) return;
     trackShopStep("dimensions_times_ten_fix", "plisy", { from_w: widthNum, from_h: heightNum, to_w: timesTenFix.widthMm, to_h: timesTenFix.heightMm });
@@ -1727,6 +1693,8 @@ export default function ConfiguratorPanel({
                   </span>
                 ) : null}
                 <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+                {/* Agencja 1.11: najwięcej osób odpada po zobaczeniu ceny - tu zaproszenie do wizualizacji z bieżącą tkaniną */}
+                <WizButton zrodlo="konfigurator-cena" variant="cena" tkanina={selectedFabricId || undefined} listwa={selectedHardwareId || undefined} />
                 <QtyPromoTiers
                   productSlug="plisy"
                   total={amount}
