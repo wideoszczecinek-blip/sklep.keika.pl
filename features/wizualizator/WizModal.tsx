@@ -141,7 +141,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [min, setMin] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
   const [korzysc, setKorzysc] = useState(0);
-  const [lead, setLead] = useState({ email: "", telefon: "", zgoda: false, marketing: false, wyslane: false, blad: "" });
+  const [lead, setLead] = useState({ email: "", wyslane: false, blad: "" });
   const mobile = useMemo(isMobile, []);
   const bundle = useBundleDiscountRules();
 
@@ -273,11 +273,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
   const wyslijKontakt = async (moment: string) => {
     if (!token) return;
-    if (!lead.zgoda) {
-      setLead((l) => ({ ...l, blad: "Zaznacz zgodę na kontakt." }));
-      return;
-    }
-    const r = await wizLead(token, { email: lead.email.trim(), telefon: lead.telefon.trim(), zgoda_kontakt: true, zgoda_marketing: lead.marketing, moment });
+    const r = await wizLead(token, { email: lead.email.trim(), zgoda_kontakt: true, zgoda_marketing: true, moment });
     setLead((l) => ({ ...l, wyslane: r.ok, blad: r.ok ? "" : r.error || "Nie udało się zapisać." }));
   };
 
@@ -697,34 +693,39 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     return "";
   }, [bundle, szybWDomu]);
 
+  // promocja sklepu na dole ekranu oczekiwania (reguły rabatu ilościowego z CRM, właściwe dla danego sklepu)
+  const promo = useMemo(() => {
+    const r = bundle.plisy;
+    if (!r?.tiers?.length) return null;
+    const progi = [...r.tiers].sort((a, b) => a.fromQty - b.fromQty).map((t) => `${t.fromQty}${t === r.tiers[r.tiers.length - 1] ? "+" : ""} szt. −${t.percent} %`).join(" · ");
+    return { tytul: (r.label || "Promocja").split(":")[0].trim(), opis: `${progi} na całe zamówienie – plisy, moskitiery i rolety razem` };
+  }, [bundle]);
+
   const tkaninyKolekcji = katalog?.tkaniny.filter((t) => t.kolekcja === (kolekcja || katalog.kolekcje[0]?.id)) || [];
 
   // Portal do <body>: przyciski siedzą w sekcjach z transform/overflow, które przycinałyby position: fixed.
   const podglad = status?.podglad;
   const etapy = ["0", "R", "A", "B", "C", "F"];
   const postep = faza === "sprawdzanie" ? 6 : Math.max(10, Math.round(((etapy.indexOf(status?.etap || "A") + 1) / (etapy.length + 1)) * 100));
+  // Kontakt: tylko e-mail, z zachętą (właściciel 1.11). Zgoda wyrażana przyciskiem - informacja obok.
   const kontaktForm = (moment: string) => lead.wyslane ? (
-    <p className={s.leadOk}>✓ Dziękujemy! Wyślemy Ci wizualizację i wycenę – możesz też od razu przejść dalej.</p>
+    <p className={s.leadOk}>✓ Gotowe! Najlepsze promocje i tę wizualizację wyślemy na Twój e-mail.</p>
   ) : (
     <div className={s.leadBox}>
-      <p className={s.leadTitle}><b>Wyślemy Ci gotową wizualizację i wycenę</b><small>Link ważny 30 dni – wrócisz do niej na spokojnie albo pokażesz domownikom.</small></p>
-      <div className={s.leadRow}>
-        <input type="email" inputMode="email" placeholder="e-mail" value={lead.email} onChange={(e) => setLead((l) => ({ ...l, email: e.target.value }))} />
-        <input type="tel" inputMode="tel" placeholder="albo telefon" value={lead.telefon} onChange={(e) => setLead((l) => ({ ...l, telefon: e.target.value }))} />
+      <p className={s.leadTitle}><b>🎁 Zostaw e-mail i nie przegap najlepszych promocji</b><small>Wyślemy Ci też tę wizualizację z wyceną – wrócisz do niej, kiedy zechcesz.</small></p>
+      <div className={s.leadRow1}>
+        <input type="email" inputMode="email" autoComplete="email" placeholder="Twój e-mail" value={lead.email} onChange={(e) => setLead((l) => ({ ...l, email: e.target.value }))} />
+        <button type="button" className={s.primary} disabled={!lead.email.trim()} onClick={() => void wyslijKontakt(moment)}>Chcę promocje</button>
       </div>
-      <label className={s.consent}><input type="checkbox" checked={lead.zgoda} onChange={(e) => setLead((l) => ({ ...l, zgoda: e.target.checked }))} />
-        <span>Zgadzam się na kontakt KEIKA w sprawie tej wizualizacji i wyceny.</span></label>
-      <label className={s.consent}><input type="checkbox" checked={lead.marketing} onChange={(e) => setLead((l) => ({ ...l, marketing: e.target.checked }))} />
-        <span>Chcę dostawać oferty i promocje (dobrowolnie, możesz wypisać się w każdej chwili).</span></label>
       {lead.blad ? <p className={s.error}>{lead.blad}</p> : null}
-      <button type="button" className={s.secondary} disabled={!lead.email.trim() && !lead.telefon.trim()} onClick={() => void wyslijKontakt(moment)}>Wyślij mi</button>
+      <small className={s.consentLine}>Klikając, zgadzasz się na wysyłkę ofert i promocji KEIKA e-mailem oraz tej wizualizacji. Wypiszesz się jednym kliknięciem.</small>
     </div>
   );
 
   return createPortal(
     <>
     <div className={`${s.overlay} ${min ? s.hiddenOverlay : ""}`} role="dialog" aria-modal="true" aria-label="Zobacz plisę w swoim oknie">
-      <div className={`${s.modal} ${faza === "gotowa" || faza === "start" || faza === "wysylanie" ? s.modalWide : ""}`}>
+      <div className={`${s.modal} ${faza === "gotowa" || faza === "start" || faza === "wysylanie" || faza === "analiza" || faza === "sprawdzanie" ? s.modalWide : ""}`}>
         <button type="button" className={s.close} onClick={() => { wizEvent("wiz_zamkniete", token, { faza }); onClose(); }} aria-label="Zamknij">×</button>
         {faza !== "start" ? (
           <button type="button" className={s.minBtn} onClick={() => { setMin(true); wizEvent("wiz_minimalizuj", token, { faza }); }} aria-label="Zminimalizuj" title="Zminimalizuj – przeglądaj sklep, wrócisz jednym kliknięciem">–</button>
@@ -830,33 +831,58 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         ) : null}
 
         {faza === "analiza" || faza === "sprawdzanie" ? (
-          <div className={s.progressBox}>
-            {status?.obraz?.url ? (
-              <div className={s.scanWrap}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={status.obraz.url} alt="" className={s.scanImg} />
-                <div className={s.scanLine} />
-              </div>
-            ) : null}
-            <div className={s.bar}><span style={{ width: `${postep}%` }} /></div>
-            <p className={s.stage}>{faza === "sprawdzanie" ? "Sprawdzamy, czy zdjęcie się nadaje…" : status?.etap_opis || "Analizujemy zdjęcie…"}</p>
-            {info ? <p className={s.sub}>{info}</p> : null}
-            {podglad?.pomieszczenie ? (
-              <div className={s.insight}>
-                <b>Widzę {POMIESZCZENIE[podglad.pomieszczenie] || "wnętrze"}{podglad.styl ? ` w stylu: ${podglad.styl}` : ""}</b>
-                <span>{podglad.okien ? `${podglad.okien} ${podglad.okien === 1 ? "okno" : "okna"}` : ""}{podglad.ramy?.filter(Boolean).length ? ` · ramy: ${podglad.ramy.filter(Boolean).join(", ")}` : ""}{podglad.szyb ? ` · ${podglad.szyb} szyb do zasłonięcia` : ""}</span>
-                {podglad.paleta?.length ? (
-                  <span className={s.palette}>Kolory Twojego wnętrza: {podglad.paleta.map((p) => <i key={p.hex + p.nazwa} style={{ background: p.hex }} title={p.nazwa} />)}</span>
-                ) : null}
-              </div>
-            ) : null}
-            <div className={s.benefit} key={korzysc}>
-              <span aria-hidden="true">{KORZYSCI[korzysc][0]}</span>
-              <div><b>{KORZYSCI[korzysc][1]}</b><small>{KORZYSCI[korzysc][2]}</small></div>
+          <div className={s.prodGrid}>
+            <div className={s.prodPhoto}>
+              {status?.obraz?.url ? (
+                <div className={s.scanBox}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img key={status.obraz.url} src={status.obraz.url} alt="" className={s.scanImg2} />
+                  {podglad?.rogi?.length ? (
+                    <svg className={s.scanSvg} viewBox={`0 0 ${status.obraz.szer} ${status.obraz.wys}`} preserveAspectRatio="none" aria-hidden="true">
+                      {podglad.rogi.map((q, i) => (
+                        <g key={i}>
+                          <polygon points={q.map((p) => p.join(",")).join(" ")} />
+                          <text x={q.reduce((a, p) => a + p[0], 0) / 4} y={q.reduce((a, p) => a + p[1], 0) / 4}>{i + 1}</text>
+                        </g>
+                      ))}
+                    </svg>
+                  ) : null}
+                  <div className={s.scanLine} />
+                  {podglad?.uporzadkowane ? <span className={s.scanTag}>✨ Zdjęcie uporządkowane</span> : null}
+                </div>
+              ) : <div className={s.scanEmpty}>Wysyłamy zdjęcie…</div>}
             </div>
-            {token && faza === "analiza" ? kontaktForm("analiza") : null}
-            <p className={s.sub}>Zwykle trwa to 30–60 sekund. Możesz zminimalizować okno i oglądać sklep – damy znać, gdy będzie gotowe.</p>
-            {qrKod ? <p className={s.sub}>Wizualizacja pojawi się też na komputerze.</p> : null}
+            <div className={s.prodPanel}>
+              <p className={s.label}>Twoja wizualizacja powstaje</p>
+              <ol className={s.checklist}>
+                {[
+                  { id: "Q", t: "Sprawdzamy zdjęcie", done: faza !== "sprawdzanie" },
+                  { id: "0", t: "Porządkujemy zdjęcie (osoby, bałagan, stare rolety)", done: ["A", "B", "C", "F"].includes(status?.etap || "") || Boolean(podglad?.pomieszczenie), skip: !podglad?.uporzadkowane && Boolean(podglad?.szyb) },
+                  { id: "A", t: podglad?.pomieszczenie ? `Rozpoznaliśmy: ${POMIESZCZENIE[podglad.pomieszczenie] || "wnętrze"}${podglad.okien ? `, ${podglad.okien} ${podglad.okien === 1 ? "okno" : "okna"}` : ""}` : "Rozpoznajemy pokój i okna", done: Boolean(podglad?.pomieszczenie) },
+                  { id: "B", t: podglad?.szyb ? `Znaleźliśmy ${podglad.szyb} ${podglad.szyb === 1 ? "szybę" : podglad.szyb < 5 ? "szyby" : "szyb"} – dopasowujemy plisy` : "Szukamy krawędzi szyb", done: Boolean(podglad?.szyb) },
+                  { id: "C", t: "Szacujemy wymiary i dobieramy kolory do wnętrza", done: status?.etap === "F" },
+                  { id: "F", t: "Ustawiamy światło i perspektywę", done: false },
+                ].filter((k) => !k.skip).map((k) => {
+                  const now = !k.done && (k.id === (faza === "sprawdzanie" ? "Q" : status?.etap || "A") || (k.id === "A" && !status?.etap));
+                  return (
+                    <li key={k.id} className={k.done ? s.ckDone : now ? s.ckNow : s.ckWait}>
+                      <span aria-hidden="true">{k.done ? "✓" : now ? "" : "•"}</span>{k.t}
+                    </li>
+                  );
+                })}
+              </ol>
+              {podglad?.paleta?.length ? (
+                <span className={s.palette}>Kolory Twojego wnętrza: {podglad.paleta.map((p) => <i key={p.hex + p.nazwa} style={{ background: p.hex }} title={p.nazwa} />)}</span>
+              ) : null}
+              <div className={s.benefit} key={korzysc}>
+                <span aria-hidden="true">{KORZYSCI[korzysc][0]}</span>
+                <div><b>{KORZYSCI[korzysc][1]}</b><small>{KORZYSCI[korzysc][2]}</small></div>
+              </div>
+              {token && faza === "analiza" ? kontaktForm("analiza") : null}
+              <p className={s.sub}>Zwykle 30–60 sekund. Możesz zminimalizować okno (–) i oglądać sklep – damy znać, gdy będzie gotowe.</p>
+              {qrKod ? <p className={s.sub}>Wizualizacja pojawi się też na komputerze.</p> : null}
+              {promo ? <div className={s.promoBar}><b>{promo.tytul}</b><span>{promo.opis}</span></div> : null}
+            </div>
           </div>
         ) : null}
 

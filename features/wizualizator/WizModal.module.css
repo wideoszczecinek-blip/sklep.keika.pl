@@ -734,3 +734,41 @@
 .secondaryBig { background: #eef3f5; color: #12212b; border: 0; border-radius: 14px; padding: 16px 20px; font-size: 16px; font-weight: 700; cursor: pointer; }
 .bigCheck { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #0f9f8f, #22c55e); color: #fff; font-size: 34px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 28px rgba(15,159,143,0.35); }
 .phoneBox .newPill { align-self: flex-start; }
+
+/* Ekran produkcji (1.11): zdjęcie z obrysami szyb na żywo + lista etapów + promocja sklepu */
+.prodGrid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.prodPhoto { min-width: 0; }
+.scanBox { position: relative; border-radius: 14px; overflow: hidden; background: #0f1a20; line-height: 0; }
+.scanImg2 { width: 100%; max-height: 58vh; object-fit: contain; display: block; animation: fadeIn 0.7s ease; }
+.scanSvg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.scanSvg polygon { fill: rgba(45, 212, 191, 0.16); stroke: #2dd4bf; stroke-width: 0.45%; stroke-linejoin: round; vector-effect: non-scaling-stroke; stroke-dasharray: 10 6; animation: paneDash 1.2s linear infinite, fadeIn 0.6s ease; }
+.scanSvg text { fill: #fff; font-weight: 800; font-size: 46px; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: rgba(15, 26, 32, 0.75); stroke-width: 8px; }
+@keyframes paneDash { to { stroke-dashoffset: -32; } }
+.scanTag { position: absolute; left: 10px; top: 10px; background: rgba(255,255,255,0.94); color: #0f766e; font-size: 12.5px; font-weight: 700; line-height: 1.2; border-radius: 999px; padding: 6px 11px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); animation: fadeIn 0.6s ease; }
+.scanEmpty { display: grid; place-items: center; min-height: 240px; border-radius: 14px; background: #eef2f4; color: #52616b; font-size: 14px; }
+.prodPanel { min-width: 0; display: grid; gap: 8px; align-content: start; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.checklist li { display: flex; gap: 10px; align-items: center; font-size: 14px; line-height: 1.35; }
+.checklist li > span { flex: 0 0 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+.ckDone { color: #1f2d36; animation: fadeIn 0.5s ease; }
+.ckDone > span { background: #14b8a6; color: #fff; }
+.ckNow { color: #0f766e; font-weight: 700; }
+.ckNow > span { border: 2.5px solid #99f6e4; border-top-color: #0d9488; animation: ckSpin 0.9s linear infinite; }
+.ckWait { color: #94a3b8; }
+.ckWait > span { background: #f1f5f9; color: #cbd5e1; }
+@keyframes ckSpin { to { transform: rotate(360deg); } }
+.leadRow1 { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.leadRow1 input { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; font-size: 15px; min-width: 0; }
+.promoBar { display: grid; gap: 2px; background: linear-gradient(90deg, #0f766e, #14b8a6); color: #fff; border-radius: 12px; padding: 10px 14px; margin-top: 4px; }
+.promoBar b { font-size: 14.5px; letter-spacing: 0.02em; }
+.promoBar span { font-size: 13px; opacity: 0.95; }
+@media (max-width: 899px) {
+  .prodGrid { grid-template-columns: 1fr; gap: 12px; }
+  .scanImg2 { max-height: 40vh; }
+  .leadRow1 { grid-template-columns: 1fr; }
+}
+.prodPanel > .label:first-child { margin-top: 12px; padding-right: 100px; font-size: 13px; color: #0f766e; }
+.prodPhoto { display: grid; justify-items: center; }
+.prodPhoto .scanBox { width: fit-content; max-width: 100%; }
+.prodPhoto .scanImg2 { width: auto; max-width: 100%; height: auto; }
+@media (min-width: 900px) { .panel { padding-top: 58px; } }

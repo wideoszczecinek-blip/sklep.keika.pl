@@ -121,18 +121,23 @@ varying vec2 vPix;
 
 float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
-vec3 railShade(float r, float u) {
-  // profil aluminiowy: odblask u góry, zaokrąglony dół, cienka linia łączenia
-  float prof = 1.06 - 0.18 * smoothstep(0.35, 1.0, r) + 0.12 * exp(-pow((r - 0.18) / 0.12, 2.0));
-  prof *= 1.0 - 0.10 * smoothstep(0.92, 1.0, r);
-  vec3 c = uRail * prof;
-  // zaślepki na końcach (tworzywo, trochę ciemniejsze)
-  float cap = 1.0 - smoothstep(0.012, 0.016, u) * smoothstep(0.012, 0.016, 1.0 - u);
-  c = mix(c, uRail * 0.82, cap);
-  // uchwyt na środku belki
-  float hu = abs(u - 0.5);
-  float grip = (1.0 - smoothstep(0.028, 0.031, hu)) * smoothstep(0.18, 0.24, r) * (1.0 - smoothstep(0.76, 0.82, r));
-  c = mix(c, uRail * (0.78 + 0.25 * (1.0 - r)), grip);
+vec3 railShade(float r, float u, float pxr) {
+  // profil belki jak na filmie 3D: jasna górna krawędź (odblask), płaskie lico z lekkim
+  // spadkiem jasności, wyżłobienie (linia łączenia z tkaniną) i zaokrąglony, ciemniejszy spód
+  float edgeTop = 1.0 - smoothstep(0.0, max(0.06, 1.5 * pxr), r);
+  float face = mix(1.05, 0.93, smoothstep(0.08, 0.78, r));
+  float groove = 1.0 - 0.16 * exp(-pow((r - 0.6) / max(0.035, pxr), 2.0));
+  float bottom = mix(1.0, 0.66, smoothstep(0.78, 1.0, r));
+  vec3 c = uRail * face * groove * bottom;
+  c = mix(c, min(uRail * 1.22 + 0.06, vec3(1.0)), edgeTop * 0.85);
+  // zaślepki na końcach: tworzywo, zaokrąglone (jaśniejszy środek, ciemne krawędzie)
+  float cw = 0.014;
+  float cap = 1.0 - smoothstep(cw, cw + 0.003, u) * smoothstep(cw, cw + 0.003, 1.0 - u);
+  float capShade = 0.78 + 0.18 * sin(clamp(r, 0.0, 1.0) * 3.1416);
+  c = mix(c, uRail * capShade, cap);
+  // szczelina między zaślepką a profilem
+  float seam = (1.0 - smoothstep(0.0, 0.0025, abs(u - cw - 0.0015))) + (1.0 - smoothstep(0.0, 0.0025, abs(1.0 - u - cw - 0.0015)));
+  c *= 1.0 - 0.25 * clamp(seam, 0.0, 1.0);
   return c;
 }
 
@@ -166,13 +171,17 @@ void main() {
     float pitchPx = span / uPleats * uPx.y;
     // fałda: górna ścianka do światła, dolna w lekkim cieniu; przy rozłożonej plisie
     // fałdy są płytkie (mały kontrast), przy ściśniętej - głębokie
-    float lit = 1.035 + 0.09 * comp;
-    float sh = 0.90 - 0.22 * comp;
-    float prof = sin(ph * 6.2832);
-    float s = prof > 0.0 ? mix(1.0, lit, prof) : mix(1.0, sh, -prof);
+    // fałda „harmonijka” jak na filmie 3D: górna ścianka do światła (jaśniejsza u grzbietu),
+    // dolna w cieniu, ostry jasny grzbiet i ciemna dolina; kontrast rośnie przy ściśnięciu
     float cw = clamp(1.0 / max(pitchPx, 0.5), 0.04, 0.3);
-    float crease = smoothstep(1.0 - cw, 1.0, ph);
-    s *= 1.0 - (0.06 + 0.2 * comp) * crease;
+    float upF = mix(0.99, 1.05 + 0.08 * comp, smoothstep(0.0, 0.5, ph));
+    float dnF = mix(0.97, 0.86 - 0.18 * comp, smoothstep(0.5, 1.0, ph));
+    float s = ph < 0.5 ? upF : dnF;
+    float prof = ph < 0.5 ? 1.0 : -1.0;
+    float ridge = 1.0 - smoothstep(0.0, cw * 1.2, abs(ph - 0.5));
+    s += (0.05 + 0.04 * comp) * ridge;
+    float crease = smoothstep(1.0 - cw, 1.0, ph) + (1.0 - smoothstep(0.0, cw * 0.5, ph));
+    s *= 1.0 - (0.10 + 0.20 * comp) * clamp(crease, 0.0, 1.0);
     // drobne fałdy (poniżej ~3 px) uśredniamy, żeby nie migotały
     float aa = clamp((pitchPx - 1.5) / 3.0, 0.0, 1.0);
     s = mix(0.95, s, aa);
@@ -201,7 +210,7 @@ void main() {
     // linki przez otwory w tkaninie (nie w plastrze miodu)
     float cords = 0.0;
     if (uHoney < 0.5) {
-      float cu = min(min(abs(u - 0.045), abs(u - 0.06)), min(abs(u - 0.94), abs(u - 0.955)));
+      float cu = min(min(abs(u - 0.018), abs(u - 0.03)), min(abs(u - 0.97), abs(u - 0.982)));
       cords = (1.0 - smoothstep(0.0, px.x * 1.1, cu)) * 0.18;
     }
     // światło z pokoju + prześwit (mieszanie „screen”: jasna tkanina pod słońce nie przepala się do bieli)
@@ -225,7 +234,7 @@ void main() {
       } else if (v > b) {
         c = uRail * 0.62; // spód profilu (patrzymy z dołu)
       } else {
-        c = railShade((v - a) / max(b - a, 0.0001), u);
+        c = railShade((v - a) / max(b - a, 0.0001), u, px.y / max(b - a, 0.0001));
       }
       c *= uFront * uTint * 1.04;
       float al = edgeA * edgeB;
@@ -240,25 +249,47 @@ void main() {
     col = vec4(vec3(0.0), a);
   }
 
-  // ---- linki nad belką górną i pod belką dolną (od uchwytu do uchwytu)
-  if (v < tTop || v > bBot) {
-    float cu = min(min(abs(u - 0.045), abs(u - 0.06)), min(abs(u - 0.94), abs(u - 0.955)));
-    float line = 1.0 - smoothstep(px.x * 0.45, px.x * 1.2, cu);
-    if (v > -0.01 && v < 1.01 && line > 0.0) {
-      vec3 cc = vec3(0.20, 0.15, 0.12) * uFront;
-      col = vec4(mix(col.rgb, cc, line), max(col.a, line * 0.9));
+  // ---- uchwyty na belkach: wypustka na środku, na zewnątrz (górna belka - w górę, dolna - w dół)
+  float tabW = max(0.028, 9.0 * px.x);
+  float tabH = max(uRailH * 0.5, 4.0 * px.y);
+  float hu = abs(u - 0.5);
+  if (hu < tabW + px.x) {
+    float inU = 1.0 - smoothstep(tabW - px.x, tabW + px.x, hu);
+    // górna belka: nad nią; dolna: pod nią
+    float tA = smoothstep(tTop - tabH - px.y, tTop - tabH + px.y, v) * (1.0 - smoothstep(tTop - px.y, tTop + px.y, v));
+    float tB = smoothstep(bBot - px.y, bBot + px.y, v) * (1.0 - smoothstep(bBot + tabH - px.y, bBot + tabH + px.y, v));
+    float tab = inU * max(tA, tB);
+    if (tab > 0.0) {
+      float lr = 1.0 - 0.18 * smoothstep(tabW * 0.55, tabW, hu); // boki wypustki w cieniu
+      float rr = tA > tB ? (v - (tTop - tabH)) / tabH : (v - bBot) / tabH;
+      vec3 tc = uRail * lr * (tA > tB ? mix(1.12, 0.96, rr) : mix(0.98, 0.72, rr)) * uFront * uTint;
+      col = vec4(mix(col.rgb, tc, tab), max(col.a, tab));
     }
   }
 
-  // ---- uchwyty narożne (montaż)
-  float bh = uMount > 0.5 ? 0.045 : 0.022;
-  float bw = 0.085;
-  bool inBx = (u > -0.006 && u < bw) || (u > 1.0 - bw && u < 1.006);
-  bool inBy = (v > -0.012 && v < bh) || (v > 1.0 - bh && v < 1.012);
+  // ---- linki: po dwie przy każdej krawędzi szyby, od uchwytu narożnego do uchwytu (przez otwory w tkaninie i belkach)
+  float cu = min(min(abs(u - 0.018), abs(u - 0.03)), min(abs(u - 0.97), abs(u - 0.982)));
+  float line = 1.0 - smoothstep(px.x * 0.45, px.x * 1.2, cu);
+  if ((v < tTop || v > bBot) && v > -0.01 && v < 1.01 && line > 0.0) {
+    vec3 cc = vec3(0.22, 0.17, 0.13) * uFront;
+    col = vec4(mix(col.rgb, cc, line), max(col.a, line * 0.9));
+  }
+
+  // ---- uchwyty narożne: biały klocek na listwie przyszybowej (montaż standard) albo zaczep na skrzydło (bez wiercenia)
+  float bh = uMount > 0.5 ? 0.05 : max(0.026, 9.0 * px.y);
+  float bw = max(0.06, 18.0 * px.x);
+  bool inBx = (u > -0.012 && u < bw) || (u > 1.0 - bw && u < 1.012);
+  bool inBy = (v > -0.016 && v < bh) || (v > 1.0 - bh && v < 1.016);
   if (inBx && inBy) {
-    float lu = u < 0.5 ? u / bw : (1.0 - u) / bw;
-    float shade = 0.92 + 0.12 * smoothstep(0.0, 0.3, lu) - 0.1 * smoothstep(0.7, 1.0, lu);
-    col = vec4(uBracket * shade * uFront * uTint, 1.0);
+    float lu = u < 0.5 ? (u + 0.012) / (bw + 0.012) : (1.012 - u) / (bw + 0.012);
+    float lv = v < 0.5 ? (v + 0.016) / (bh + 0.016) : (1.016 - v) / (bh + 0.016);
+    // bryła: jaśniejszy wierzch (od strony szyby), cień na krawędzi przy ramie, zaokrąglone rogi
+    float shade = 0.9 + 0.14 * smoothstep(0.0, 0.35, lv) - 0.12 * smoothstep(0.75, 1.0, lu);
+    float hole = 1.0 - smoothstep(0.0, 1.6 * px.x, min(abs(u - 0.018), abs(u - 0.982)));
+    shade *= 1.0 - 0.4 * hole * step(0.46, lv) * (1.0 - step(0.6, lv));
+    float edgeA = smoothstep(0.0, 1.5 * px.x / (bw + 0.012), lu) * smoothstep(0.0, 1.5 * px.y / (bh + 0.016), lv);
+    vec3 bc = uBracket * shade * uFront * uTint;
+    col = vec4(mix(col.rgb, bc, edgeA), max(col.a, edgeA));
   }
 
   // ---- obrys szyby w trybie edycji
