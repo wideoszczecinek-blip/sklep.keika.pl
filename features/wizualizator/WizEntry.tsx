@@ -8,7 +8,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { fetchKatalog, wizEvent } from "@/lib/wizualizator/api";
-import { WIZ_OPEN_EVENT, openWizualizator, wizArm, wizForced, type WizOpenDetail } from "@/lib/wizualizator/flag";
+import { WIZ_OPEN_EVENT, openWizualizator, wizArm, wizForced, wizFromAd, type WizOpenDetail } from "@/lib/wizualizator/flag";
 import { trackShopStep } from "@/lib/track-step";
 
 const WizModal = dynamic(() => import("./WizModal"), { ssr: false });
@@ -184,7 +184,11 @@ export function WizHost() {
     const t = (new URLSearchParams(window.location.search).get("wiz_t") || "").toLowerCase();
     // link z maila z wizualizacją (?wiz_t=) otwiera wynik także na produkcji - to wizualizacja tego klienta
     if (/^[a-f0-9]{32}$/.test(t)) setOpen({ zrodlo: "link", token: t });
+    // wejście z reklamy (?wiz=start): od razu okno wizualizatora - gdy narzędzie jest uruchomione (albo ?wiz=1 poza produkcją)
+    const zReklamy = new URLSearchParams(window.location.search).get("wiz") === "start";
+    if (zReklamy) wizFromAd(); // zapamiętaj wejście z reklamy (poza grupą kontrolną) na kolejne strony
     void fetchKatalog().then((k) => {
+      if (zReklamy && !t && (wizForced() || (k && k.wlaczony && k.udzial > 0))) setOpen({ zrodlo: "reklama" });
       if (!k || k.udzial <= 0) return;
       try {
         if (window.sessionStorage.getItem(AB_LOGGED_KEY)) return;
