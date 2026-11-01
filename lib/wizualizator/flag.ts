@@ -24,9 +24,15 @@ function hashToPercent(text: string): number {
   return (hash >>> 0) % 100;
 }
 
+/** Domena produkcyjna: bez polecenia właściciela (udział w CRM > 0) klienci nie widzą wizualizatora - ?wiz=1 tu nie działa. */
+const PROD_HOSTS = ["sklep.keika.pl", "www.sklep.keika.pl"];
+export function wizIsProdHost(): boolean {
+  return typeof window !== "undefined" && PROD_HOSTS.includes(window.location.hostname);
+}
+
 /** true/false wymuszone adresem lub wcześniej zapamiętane; null = decyduje test. */
 export function wizForced(): boolean | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || wizIsProdHost()) return null;
   try {
     const q = new URLSearchParams(window.location.search).get("wiz");
     if (q === "1") window.localStorage.setItem(FORCE_KEY, "1");

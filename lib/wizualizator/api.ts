@@ -173,7 +173,7 @@ export async function wizQrCreate(zrodlo: string): Promise<{ kod: string; url: s
   const r = await fetch(`${WIZ_API}/qr.php`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_token: getSessionToken(), visitor_id: getVisitorId(), zrodlo }),
+    body: JSON.stringify({ session_token: getSessionToken(), visitor_id: getVisitorId(), zrodlo, baza: window.location.origin }),
   }).catch(() => null);
   if (!r || !r.ok) return null;
   const j = (await r.json().catch(() => null)) as { ok?: boolean; kod?: string; url?: string } | null;
