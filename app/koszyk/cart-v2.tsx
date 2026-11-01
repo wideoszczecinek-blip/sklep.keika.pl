@@ -32,6 +32,7 @@ import { Component, useCallback, useEffect, useRef, useState, type Dispatch, typ
 import { formatPln, type CartLineItem } from "@/lib/cart";
 import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
 import PaymentTrustTicker from "@/app/components/payment-trust-ticker";
+import PaymentAssuranceLine from "@/app/components/payment-assurance-line";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPreview";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
@@ -1063,6 +1064,7 @@ export default function CartV2(props: CartV2Props) {
         {/* Pasek zaufania pod kwotą (właściciel, 2026-10-03) - ten sam co
             w starym koszyku, żeby obie grupy testu go miały. */}
         <PaymentTrustTicker />
+        <PaymentAssuranceLine />
         {p.isCod ? p.codBlock : p.paymentChooser()}
       </div>
     </>

@@ -808,6 +808,12 @@ export default function ProductPage({ params }: { params?: { slug?: string } }) 
               {productBadge ? <span className="catalog-product-badge">{productBadge}</span> : null}
               <h1>{foundProduct.name || "Produkt"}</h1>
               <h2>{foundProduct.price_from || "Cena po konfiguracji"}</h2>
+              {/* Plakietka pod ceną jak na landingach plis i moskitier ramkowych
+                  (Analityczka strony 1.11.2026, AGN-450): ten sam wzór, te same obietnice. */}
+              <div className="plv2-offer-badge product-offer-badge">
+                <span>🛡 5 lat gwarancji</span>
+                <span>↩ 30 dni na zwrot</span>
+              </div>
               <p>{productLead}</p>
               <div className="product-anchor-nav">
                 {galleryTiles.length > 0 ? <a href="#galeria">Galeria</a> : null}

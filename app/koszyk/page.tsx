@@ -92,6 +92,7 @@ import { PaynowGdprNotice } from "@/app/components/paynow-gdpr";
 import InstallmentTileHint from "@/app/components/installment-tile-hint";
 import CartTrustBlock from "@/app/components/cart-trust-block";
 import PaymentTrustTicker from "@/app/components/payment-trust-ticker";
+import PaymentAssuranceLine from "@/app/components/payment-assurance-line";
 import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
 import ExpressWalletCheckout, { type WalletContact } from "@/app/components/express-wallet-checkout";
 import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
@@ -4485,6 +4486,7 @@ export default function CartPage() {
                     </span>
                   </div>
                   <PaymentTrustTicker />
+                  <PaymentAssuranceLine />
                   {paymentMethod === "cod" ? (
                     <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
                       Płatność za pobraniem

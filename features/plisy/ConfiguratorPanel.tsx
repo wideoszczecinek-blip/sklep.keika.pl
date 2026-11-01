@@ -23,7 +23,8 @@ import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configura
 import { ASSISTANT_APPLY_EVENT, takePendingAssistantApply, type AssistantApply } from "@/lib/assistant";
 import { usePlisyFavourites } from "@/lib/plisy-favourites";
 import { useBackToClose } from "@/lib/use-back-to-close";
-import { applyPromoToPrice, getPromoRemainingMs, PROMO_CODE, type PromoPreview } from "@/lib/promo";
+import { applyPromoToPrice, getPromoRemainingMs, PROMO_CODE, QTY_PROMO, type PromoPreview } from "@/lib/promo";
+import { useBundleDiscountRules } from "@/lib/bundle-discount";
 import { ensurePromoQuoteCode } from "@/lib/promo-save";
 import PromoSaveModal from "@/app/components/promo-save-modal";
 import InstallmentOffer from "@/app/components/installment-offer";
@@ -996,6 +997,71 @@ export default function ConfiguratorPanel({
   // silently dropped.
   const canFinalSubmit =
     bracketChosen && fabricChosen && hasSizes && setGrandTotal !== null;
+
+  // Pasek „Dodaj do koszyka” przyklejony do dołu ekranu na telefonie
+  // (Analityczka strony Agencji AI, 1.11.2026 - AGN-439/444/448: 36 sesji
+  // tygodniowo miało cenę i komplet opcji, a nie kliknęło przycisku; 88 %
+  // ruchu to telefony, gdzie przycisk bywa pod ekranem). Tylko na stronie
+  // produktu, gdy zestaw da się wysłać, a właściwy przycisk jest poza
+  // ekranem; znika przy aktywnym polu wpisywania (otwarta klawiatura).
+  // Nie zmienia cen ani logiki rabatu - wywołuje ten sam handleFinalSubmit.
+  const finalSubmitRef = useRef<HTMLButtonElement | null>(null);
+  const [finalSubmitInView, setFinalSubmitInView] = useState(true);
+  const [typingInField, setTypingInField] = useState(false);
+  const stickyCtaEligible = Boolean(onAddVariant) && !isCartEdit && canFinalSubmit;
+  useEffect(() => {
+    if (!stickyCtaEligible) return;
+    const node = finalSubmitRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      setFinalSubmitInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[entries.length - 1];
+        if (entry) setFinalSubmitInView(entry.isIntersecting);
+      },
+      { threshold: 0.2 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [stickyCtaEligible]);
+  useEffect(() => {
+    if (!stickyCtaEligible || typeof document === "undefined") return;
+    const isField = (target: EventTarget | Element | null) =>
+      target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName);
+    const onFocusIn = (event: FocusEvent) => {
+      if (isField(event.target)) setTypingInField(true);
+    };
+    const onFocusOut = () => {
+      window.setTimeout(() => setTypingInField(isField(document.activeElement)), 60);
+    };
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    setTypingInField(isField(document.activeElement));
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, [stickyCtaEligible]);
+  // Jedno zdanie o CAŁY DOM z progów z CRM (zapas: QTY_PROMO.tiers) - pod
+  // ceną zestawu i w pasku mobilnym; znika, gdy klient już ma najwyższy próg.
+  const bundleRules = useBundleDiscountRules();
+  const plisyPromoTiers = (bundleRules.plisy?.tiers?.length ? bundleRules.plisy.tiers : QTY_PROMO.tiers)
+    .map((tier) => ({ fromQty: tier.fromQty, percent: tier.percent }))
+    .sort((a, b) => a.fromQty - b.fromQty);
+  const plisyUnitsInSet = effectivePositions.reduce((sum, position) => sum + position.qty, 0);
+  const plisyTopTier = plisyPromoTiers.length ? plisyPromoTiers[plisyPromoTiers.length - 1] : null;
+  const plisyPromoLine = plisyPromoTiers.length
+    ? `${QTY_PROMO.name}: ${plisyPromoTiers
+        .map((tier, index) => {
+          const last = index === plisyPromoTiers.length - 1;
+          const noun = tier.fromQty >= 2 && tier.fromQty <= 4 ? "produkty" : "produktów";
+          return `${tier.fromQty} ${last ? "i więcej" : noun} -${tier.percent} %`;
+        })
+        .join(", ")} na całe zamówienie`
+    : "";
+  const showPlisyPromoLine = Boolean(plisyPromoLine) && (!plisyTopTier || plisyUnitsInSet < plisyTopTier.fromQty);
 
   // Stan formularza dla analityki "na czym stanął" (lib/configurator-state):
   // heartbeat i page_exit niosą, które kroki gotowe, czego brakuje i czy
@@ -2273,7 +2339,14 @@ export default function ConfiguratorPanel({
                       klient faktycznie zapłaci (właściciel, 2026-09-24). */}
                   <InstallmentOffer amount={payableGrandTotal} variant="compact" />
 
+                  {/* Linia o CAŁY DOM nad przyciskiem (AGN-439): produkty mogą
+                      być różne, liczy się ich liczba w koszyku. */}
+                  {showPlisyPromoLine && onAddVariant ? (
+                    <p className="plisy-final-promo-note">{plisyPromoLine}. Produkty mogą być różne.</p>
+                  ) : null}
+
                   <button
+                    ref={finalSubmitRef}
                     type="button"
                     className="hero-product-add-to-cart"
                     onClick={handleFinalSubmit}
@@ -2305,6 +2378,35 @@ export default function ConfiguratorPanel({
       {!selectedHardwareId ? (
         <p className="hero-product-config-hint">Wybierz kolor mechanizmu, aby przejść do kolejnego kroku.</p>
       ) : null}
+
+      {/* Pasek mobilny „Dodaj do koszyka” (AGN-439/444/448) - przez portal, bo
+          panel ma własny kontekst pozycjonowania i uwięziłby position: fixed. */}
+      {stickyCtaEligible && !finalSubmitInView && !typingInField && typeof document !== "undefined"
+        ? createPortal(
+            <div className="plisy-sticky-cta" role="region" aria-label="Dodaj do koszyka">
+              <div className="plisy-sticky-cta-row">
+                <span className="plisy-sticky-cta-price">
+                  <strong>{formatZl(payableGrandTotal ?? setGrandTotal ?? 0)}</strong>
+                  <small>{priceScopeLabel}</small>
+                </span>
+                <button
+                  type="button"
+                  className="hero-product-add-to-cart plisy-sticky-cta-btn"
+                  onClick={() => {
+                    trackShopStep("add_to_cart_sticky", "plisy", { positions: effectivePositions.length, units: plisyUnitsInSet });
+                    handleFinalSubmit();
+                  }}
+                >
+                  Dodaj do koszyka
+                </button>
+              </div>
+              <small className="plisy-sticky-cta-note">
+                5 lat gwarancji · 30 dni na zwrot{showPlisyPromoLine ? ` · ${plisyPromoLine}` : ""}
+              </small>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {!onZoom && internalZoomPreview ? (
         <div
