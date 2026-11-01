@@ -483,17 +483,27 @@ export class WizRenderer {
   addFabric(id: string, img: HTMLImageElement): void {
     if (this.fabricTex.has(id)) return;
     this.fabricTex.set(id, this.makeTexture(img, true));
-    // średni kolor kafla (1×1) - shader liczy wzór względem niego
+    // średni kolor kafla - shader liczy wzór względem niego. Liczony z 64×64 pikseli: zmniejszenie do 1×1
+    // przeglądarka robi z kilku punktów, nie z całego kafla, i kolor plisy uciekał od próbki (właściciel 1.11)
     let mean: Rgb = [0.8, 0.8, 0.8];
     try {
       const c = document.createElement("canvas");
-      c.width = 1;
-      c.height = 1;
+      c.width = 64;
+      c.height = 64;
       const ctx = c.getContext("2d");
       if (ctx) {
-        ctx.drawImage(img, 0, 0, 1, 1);
-        const d = ctx.getImageData(0, 0, 1, 1).data;
-        mean = [d[0] / 255, d[1] / 255, d[2] / 255];
+        ctx.drawImage(img, 0, 0, 64, 64);
+        const d = ctx.getImageData(0, 0, 64, 64).data;
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          r += d[i];
+          g += d[i + 1];
+          b += d[i + 2];
+        }
+        const n = d.length / 4;
+        mean = [r / n / 255, g / n / 255, b / n / 255];
       }
     } catch {
       // obraz bez CORS - zostaje szara średnia

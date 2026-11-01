@@ -43,7 +43,7 @@ export type WizSzyba = {
   pewnosc: number;
   szer_cm: number;
   wys_cm: number;
-  swiatlo: { za_szyba: number; wokol: number; widok: { yaw: number; pitch: number } } | null;
+  swiatlo: { za_szyba: number; za_szyba_rgb?: [number, number, number]; wokol: number; widok: { yaw: number; pitch: number } } | null;
   wymiary?: { szacunkowe: boolean; pewnosc?: number; odniesienia?: string[]; szer_min?: number; szer_max?: number; wys_min?: number; wys_max?: number };
 };
 

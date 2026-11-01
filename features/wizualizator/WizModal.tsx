@@ -146,9 +146,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [ai, setAi] = useState<{ klucz: string; url: string } | null>(null);
   const [aiTrwa, setAiTrwa] = useState(false);
   const [aiInfo, setAiInfo] = useState("");
-  const [texTick, setTexTick] = useState(0);
+  const [aiPokaz, setAiPokaz] = useState(true); // klient może wrócić do ustawiania bez zmiany układu
   const aiOffRef = useRef(false);
-  const aiTimerRef = useRef(0);
   // gotowe wizualizacje tej sesji - przełączanie między zdjęciami bez ponownego odpytywania CRM
   const cacheRef = useRef(new Map<string, { wynik: WizWynik; status: WizStatus | null; panes: PaneState[]; sel: number; montaz: "standard" | "bezinwazyjny"; ai: { klucz: string; url: string } | null }>());
   const zCacheRef = useRef<{ token: string; panes: PaneState[]; sel: number; montaz: "standard" | "bezinwazyjny"; ai: { klucz: string; url: string } | null } | null>(null);
@@ -425,7 +424,6 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       void loadImage(t.tekstura).then((img) => {
         rendRef.current?.addFabric(id, img);
         draw();
-        setTexTick((n) => n + 1);
       }).catch(() => {});
     }
     for (const id of new Set(panes.map((p) => p.listwa))) {
@@ -434,7 +432,6 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       void loadImage(l.zdjecie).then((img) => {
         rendRef.current?.addRail(id, img);
         draw();
-        setTexTick((n) => n + 1);
       }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -451,7 +448,12 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         const kol = katalog.kolekcje.find((k) => k.id === t?.kolekcja);
         const l = katalog.listwy.find((x) => x.id === p.listwa);
         const rail = hexToRgb(l?.kolor || "#EFEFF0");
-        const back = p.swiatlo?.za_szyba ?? 0.7;
+        // prześwit tylko przy jasno za oknem: nocą „jasność za szybą” to odbicia lamp w szkle, a nie światło,
+        // które przechodzi przez tkaninę - wtedy plisa wyglądała na szarą i wyblakłą (właściciel 1.11)
+        const zaRgb = p.swiatlo?.za_szyba_rgb;
+        const zaLum = zaRgb ? 0.299 * zaRgb[0] + 0.587 * zaRgb[1] + 0.114 * zaRgb[2] : 160;
+        const nocKoef = sw?.pora === "noc" ? 0.15 : Math.max(0.15, Math.min(1, (zaLum - 45) / 110));
+        const back = (p.swiatlo?.za_szyba ?? 0.7) * nocKoef;
         const wokol = p.swiatlo?.wokol ?? sw?.jasnosc_pokoju ?? 0.6;
         return {
           id: p.id, corners: p.rogi, top: p.gora, bottom: p.dol,
@@ -482,39 +484,43 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     return h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
   }, [panes, montaz]);
 
-  // zdjęcie AI: 2,5 s po ostatniej zmianie (tkanina, listwa, belki, rogi), gdy tekstury są wczytane - klient przeglądający
-  // tkaniny nie zamawia zdjęcia za każdym kliknięciem
-  useEffect(() => {
-    window.clearTimeout(aiTimerRef.current);
-    if (faza !== "gotowa" || !gotowyObraz || edycja || przedPo !== null || !token || !panes.length || aiOffRef.current) return;
-    if (ai?.klucz === klucz) return;
-    const r = rendRef.current;
-    if (!r || !katalog) return;
-    const gotoweTekstury = panes.every((p) => r.hasFabric(p.tkanina) && (!katalog.listwy.find((l) => l.id === p.listwa)?.zdjecie || r.hasRail(p.listwa)));
-    if (!gotoweTekstury) return;
+  // zdjęcie AI tylko na życzenie klienta (właściciel 1.11): najpierw ustawia tkaninę, listwy i belki na podglądzie,
+  // potem jednym przyciskiem dostaje realistyczne zdjęcie tego układu; każda zmiana wraca do podglądu na żywo
+  const generujAi = async () => {
+    if (!token || aiTrwa || aiOffRef.current || !katalog) return;
     const mojKlucz = klucz;
-    aiTimerRef.current = window.setTimeout(() => {
-      draw();
-      window.setTimeout(() => {
-        const rr = rendRef.current;
-        if (!rr) return;
-        const uklad: WizUklad = { szyby: {}, montaz };
-        for (const p of panes) uklad.szyby[p.id] = { tkanina: p.tkanina, listwa: p.listwa, gora: p.gora, dol: p.dol };
-        setAiTrwa(true);
-        void wizRender(token, uklad, mojKlucz, rr.toDataUrl(0.88)).then((res) => {
-          if (res.ok && res.url) {
-            setAi({ klucz: mojKlucz, url: res.url });
-            setAiInfo("");
-          } else {
-            if (res.limit) aiOffRef.current = true;
-            setAiInfo(res.komunikat || "");
-          }
-        }).finally(() => setAiTrwa(false));
-      }, 150);
-    }, 2500);
-    return () => window.clearTimeout(aiTimerRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [klucz, faza, gotowyObraz, edycja, przedPo, token, ai, texTick, katalog]);
+    setAiInfo("");
+    setAiTrwa(true);
+    setAiPokaz(true);
+    // tekstury tkanin i zdjęcia listw muszą być na płótnie (AI ma się wzorować na prawdziwym kolorze)
+    for (let i = 0; i < 40; i++) {
+      const r = rendRef.current;
+      if (r && panes.every((p) => r.hasFabric(p.tkanina) && (!katalog.listwy.find((l) => l.id === p.listwa)?.zdjecie || r.hasRail(p.listwa)))) break;
+      await new Promise((res) => window.setTimeout(res, 100));
+    }
+    draw();
+    await new Promise((res) => window.setTimeout(res, 120));
+    const rr = rendRef.current;
+    if (!rr) {
+      setAiTrwa(false);
+      return;
+    }
+    const uklad: WizUklad = { szyby: {}, montaz };
+    for (const p of panes) uklad.szyby[p.id] = { tkanina: p.tkanina, listwa: p.listwa, gora: p.gora, dol: p.dol };
+    const res = await wizRender(token, uklad, mojKlucz, rr.toDataUrl(0.88));
+    setAiTrwa(false);
+    if (res.ok && res.url) {
+      setAi({ klucz: mojKlucz, url: res.url });
+    } else {
+      if (res.limit) aiOffRef.current = true;
+      setAiInfo(res.komunikat || "Nie udało się przygotować zdjęcia - spróbuj za chwilę.");
+    }
+  };
+  // nowa zmiana układu = znowu podgląd na żywo; zdjęcie wróci, jeśli klient ustawi dokładnie to samo
+  useEffect(() => {
+    setAiPokaz(true);
+    setAiInfo((t) => (aiOffRef.current ? t : ""));
+  }, [klucz]);
 
   // zapis układu (z opóźnieniem)
   useEffect(() => {
@@ -709,7 +715,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const pobierz = () => {
     const c = canvasRef.current;
     if (!c || !wynik) return;
-    const aiAktualne = ai && ai.klucz === klucz && !edycja && przedPo === null;
+    const aiAktualne = ai && ai.klucz === klucz && aiPokaz && !edycja && przedPo === null;
     draw();
     window.setTimeout(() => {
       const out = document.createElement("canvas");
@@ -998,6 +1004,34 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         {faza === "gotowa" && wynik ? (
           <div className={s.result}>
             <div className={s.stageCol}>
+              {gotowyObraz && !edycja && przedPo === null && panes.length ? (
+                <div className={`${s.aiBar} ${ai && ai.klucz === klucz && aiPokaz && !aiTrwa ? s.aiBarOk : ""}`} aria-live="polite">
+                  {aiTrwa ? (
+                    <>
+                      <span className={s.aiSpin} aria-hidden="true" />
+                      <p><b>Przygotowujemy realistyczne zdjęcie Twojego okna…</b><small>To potrwa około 10 sekund.</small></p>
+                    </>
+                  ) : ai && ai.klucz === klucz && aiPokaz ? (
+                    <>
+                      <span className={s.aiIco} aria-hidden="true">✓</span>
+                      <p><b>Tak będzie wyglądać Twoje okno z tymi plisami</b><small>Chcesz coś zmienić? Wróć do ustawień – kolor i położenie plis zmienisz dalej na żywo.</small></p>
+                      <button type="button" className={s.aiBtnGhost} onClick={() => setAiPokaz(false)}>Zmień ustawienia</button>
+                    </>
+                  ) : aiOffRef.current ? (
+                    <>
+                      <span className={s.aiIco} aria-hidden="true">i</span>
+                      <p><b>{aiInfo || "Realistyczne zdjęcia dla tego okna są już wykorzystane."}</b><small>Kolor i położenie plis nadal zmienisz na podglądzie.</small></p>
+                    </>
+                  ) : (
+                    <>
+                      <span className={s.aiIco} aria-hidden="true">✨</span>
+                      <p><b>Ustaw plisy po swojemu, a potem zobacz realistyczne zdjęcie</b>
+                        <small>{aiInfo || "Wybierz tkaninę i kolor listew, przesuń belki tak, jak lubisz – i kliknij przycisk."}</small></p>
+                      <button type="button" className={s.aiBtn} onClick={() => void generujAi()}>Pokaż realistyczne zdjęcie</button>
+                    </>
+                  )}
+                </div>
+              ) : null}
               <div className={s.canvasWrap} ref={wrapRef}>
                 <canvas
                   ref={canvasRef}
@@ -1008,14 +1042,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   onPointerCancel={onUp}
                 />
                 {/* zdjęcie AI bieżącego układu leży 1:1 na płótnie; przy każdej zmianie znika i wraca podgląd na żywo */}
-                {ai && ai.klucz === klucz && !edycja && przedPo === null ? (
+                {ai && ai.klucz === klucz && aiPokaz && !edycja && przedPo === null ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img data-ai="1" src={ai.url} alt="" className={s.aiImg} crossOrigin="anonymous" draggable={false} />
-                ) : null}
-                {gotowyObraz && !edycja && przedPo === null ? (
-                  aiTrwa ? <span className={s.aiBadge}><i /> Dopracowujemy zdjęcie…</span>
-                    : ai && ai.klucz === klucz ? <span className={`${s.aiBadge} ${s.aiBadgeOk}`}>✓ Zdjęcie AI</span>
-                      : aiInfo ? <span className={s.aiBadge}>{aiInfo}</span> : null
                 ) : null}
                 {edycja
                   ? panes.map((p, i) =>
