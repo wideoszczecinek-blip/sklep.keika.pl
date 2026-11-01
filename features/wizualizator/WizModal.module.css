@@ -684,3 +684,7 @@
   .paneRow { grid-template-columns: 26px 1fr; }
   .panePrice { grid-column: 2; text-align: left; justify-items: start; }
 }
+
+@media (max-width: 899px) {
+  .startBox .actions { position: sticky; bottom: 0; background: #fff; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); margin: 0 -2px; box-shadow: 0 -8px 16px rgba(255,255,255,0.9); }
+}
