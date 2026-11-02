@@ -7,7 +7,7 @@ import styles from "@/app/moskitiery/moskitiery-v2.module.css";
  * jedno pole „Akceptuję regulamin” w oknie e-mail). Osobna strona, żeby regulamin sklepu (CRM → strony formalne)
  * nie zmieniał się przed uruchomieniem wizualizatora dla klientów.
  */
-const REGULAMIN_WIZUALIZATORA_WERSJA = "2026-11-01";
+const REGULAMIN_WIZUALIZATORA_WERSJA = "2026-11-02";
 
 export const metadata: Metadata = {
   title: "Regulamin wizualizatora „Twoje okno” | KEIKA",
@@ -40,7 +40,10 @@ export default function RegulaminWizualizatoraPage() {
 
             <h2>§ 3. Wizualizacja i wymiary</h2>
             <p>
-              Wizualizacja jest poglądowa – kolory, faktura i proporcje mogą się różnić od produktu. Wymiary odczytane ze zdjęcia są wyłącznie szacunkowe.
+              Wizualizacja – także realistyczne zdjęcie przygotowane przez AI – jest wyłącznie poglądowa: kolory, odcienie, przezierność tkaniny, faktura,
+              proporcje i wygląd gotowej plisy mogą się różnić od widocznych na wizualizacji (m.in. przez ustawienia ekranu, oświetlenie oraz jakość i perspektywę
+              zdjęcia). Wizualizacja nie jest opisem produktu ani określeniem jego właściwości – o cechach zamówionej plisy decydują parametry wybrane
+              w konfiguratorze i wzornik tkanin (<a href="/regulamin">Regulamin sklepu</a>, § 3 ust. 7). Wymiary odczytane ze zdjęcia są wyłącznie szacunkowe.
               Plisy produkujemy na wymiar podany przez Ciebie: zamówienie z wizualizatora jest możliwe dopiero po wpisaniu wymiarów zmierzonych według instrukcji
               i potwierdzeniu pomiaru przy każdej szybie. Za wymiary odpowiada osoba, która je podaje.
             </p>
