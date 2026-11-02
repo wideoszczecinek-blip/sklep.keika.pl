@@ -226,22 +226,20 @@ import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
-import { PlisyHeroGallery, PlisyOfferCard, PlisyProofLine, PlisyStickyBar, PlisyWhyGrid, usePaypoEnabled } from "@/features/plisy/LandingV2";
+import { PlisyHeroGallery, PlisyOfferCard, PlisyStickyBar, usePaypoEnabled } from "@/features/plisy/LandingV2";
 import {
+  LejekBezRyzyka,
   LejekCeny,
   LejekDostawa,
+  LejekDowod,
   LejekOpis,
   LejekPomiar,
-  LejekPremium,
   LejekTkaniny,
-  LejekZaufanie,
   PremiumPrzedPo,
   PremiumQuality,
   PremiumQuotes,
   faqWgObiekcji,
 } from "@/features/plisy/Premium";
-import { usePremiumLook } from "@/lib/premium-look";
-import { useCompanyRating } from "@/features/plisy/Reviews";
 import { plisyQuickPrice } from "@/features/plisy/shared";
 import MoskitieryQuickPrice from "@/features/moskitiery-ramkowe/QuickPrice";
 import MoskitieryHeroPhotos from "@/features/moskitiery-ramkowe/HeroPhotos";
@@ -1598,10 +1596,7 @@ export default function Home({
   // pierwsza opcja) i to, co z wyceny wchodzi do konfiguratora.
   const [plisyQuickMountId, setPlisyQuickMountId] = useState("");
   const [plisyPrefillMountId, setPlisyPrefillMountId] = useState("");
-  const plisyCompanyRating = useCompanyRating();
   const plisyPaypoEnabled = usePaypoEnabled();
-  // Test „premium” strony plis (właściciel 2.11, 50/50, wyłącznik w CRM) - lib/premium-look.ts
-  const plisyPremium = usePremiumLook() === "premium";
   // Szybka wycena moskitier: typowe okno na start, klient zmienia suwakami.
   // Start od okna z reklam (2026-10-02): nowe kreacje moskitier mówią
   // "65 × 130 cm — 95,68 zł z SEZON20", a wycena otwierała się na 90 × 140 /
@@ -3984,13 +3979,6 @@ export default function Home({
                   ) : null}
                   {plisyV2 ? (
                     <>
-                      {plisyCompanyRating ? (
-                        <PlisyProofLine
-                          average={plisyCompanyRating.average}
-                          total={plisyCompanyRating.total}
-                          onClick={() => scrollToProductSection("opinie")}
-                        />
-                      ) : null}
                       {(() => {
                         const oferta = (
                           <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
@@ -4005,7 +3993,6 @@ export default function Home({
                                 paypoEnabled={plisyPaypoEnabled}
                                 phone={contactPhone}
                                 onQuote={scrollToPlisyQuote}
-                                premium={plisyPremium}
                               />
                             )}
                           </PromoCountdownBanner>
@@ -4021,11 +4008,11 @@ export default function Home({
                         );
                         // Lejek v2 (właściciel 2.11, test „premium”): co to + opinie + bezpieczne zakupy → 5 lat gwarancji i zwrot
                         // → wizualizator z animacją belek → film → karta ceny (konfigurator) → jakość. Klasycznie bez zmian.
-                        return plisyPremium ? (
+                        return (
                           <>
+                            <LejekDowod onOpinie={() => scrollToProductSection("opinie")} />
                             <LejekOpis cena={plisyQuickRegular} szer={plisyQuickDims.widthMm / 10} wys={plisyQuickDims.heightMm / 10} />
-                            <LejekZaufanie />
-                            <LejekPremium />
+                            <LejekBezRyzyka onPomiar={openMeasurementInstructions} />
                             <WizPowrot />
                             <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
                             <WizHost />
@@ -4033,17 +4020,6 @@ export default function Home({
                             {film}
                             {oferta}
                             <PremiumQuality />
-                          </>
-                        ) : (
-                          <>
-                            {/* Wizualizator „Twoje okno” - baner nad kartą ceny (właściciel 2.11: „mało widoczny, nie sprzedamy go tak”) */}
-                            <WizPowrot />
-                            <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
-                            {oferta}
-                            {/* Wizualizator „Twoje okno” (?wiz=1 / test A/B z CRM): okno narzędzia i pływający przycisk */}
-                            <WizHost />
-                            <WizPlywajacy zrodlo="plisy-plywajacy" />
-                            {film}
                           </>
                         );
                       })()}
@@ -4481,7 +4457,7 @@ export default function Home({
                               }
                               return (
                                 <>
-                                  {plisyPremium ? (
+                                  {(
                                     // lejek v2: cena za typowe okna → tkanina do pokoju → kolekcje → przed/po → pomiar → dostawa → opinie
                                     <>
                                       <LejekCeny
@@ -4501,11 +4477,6 @@ export default function Home({
                                       <LejekPomiar onAnimacja={openMeasurementInstructions} onCzat={() => openCrispChat("Zdjęcie mojego okna – pomożecie z wymiarem plisy?")} />
                                       <LejekDostawa paypo={plisyPaypoEnabled} />
                                       <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
-                                    </>
-                                  ) : (
-                                    <>
-                                      {collections}
-                                      <PlisyWhyGrid phone={contactPhone} />
                                     </>
                                   )}
                                   <details
@@ -5358,8 +5329,8 @@ export default function Home({
                               const faqWszystkie = productLanding?.faq?.length
                                 ? productLanding.faq
                                 : builtinFaqForSlug(productSlugFromSelected(displayedProduct));
-                              // lejek v2 (test „premium”): najpierw pytania, które zatrzymują zakup
-                              const faqEntries = plisyPremium && plisyV2 ? faqWgObiekcji(faqWszystkie) : faqWszystkie;
+                              // lejek plis: najpierw pytania, które zatrzymują zakup
+                              const faqEntries = plisyV2 ? faqWgObiekcji(faqWszystkie) : faqWszystkie;
                               const shownFaq = faqExpanded ? faqEntries : faqEntries.slice(0, FAQ_INITIAL_COUNT);
                               return (
                                 <>

@@ -1,11 +1,10 @@
 "use client";
 
-// Pasek zaufania przy podsumowaniu i płatności - tylko grupa testu „premium” (lib/premium-look.ts).
+// Pasek zaufania przy podsumowaniu i płatności (od 2.11 dla wszystkich - test „premium” zakończony).
 // Agencja 2.11: od wyłączenia SEZON20 z koszyka do kasy przechodzi 12 % zamiast 31 % - cenę trzeba uzasadnić
 // jakością: 5 lat gwarancji · 30 dni na zwrot · dostawa 0 zł · produkcja na wymiar, raty i PayPo, krótko dlaczego warto.
 import { useEffect, useState } from "react";
 import { crmGetJson } from "@/lib/crm-get";
-import { usePremiumLook } from "@/lib/premium-look";
 import { PremiumPerks } from "@/features/plisy/Premium";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 
@@ -33,9 +32,7 @@ function useRatyPaypo(): { raty: boolean; paypo: boolean } {
 }
 
 export default function CartTrust({ shippingFree }: { shippingFree: boolean }) {
-  const premium = usePremiumLook() === "premium";
   const { raty, paypo } = useRatyPaypo();
-  if (!premium) return null;
   const platnosc = [raty ? "raty" : "", paypo ? "PayPo – zapłać za 30 dni" : ""].filter(Boolean).join(" albo ");
   return (
     <div className="pm-cart-trust">
