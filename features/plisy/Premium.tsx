@@ -12,6 +12,8 @@ import { useWizVisible } from "@/features/wizualizator/WizEntry";
 import { useCompanyRating, useCompanyReviews } from "./Reviews";
 import { opinieLabel } from "./LandingV2";
 import { COMPANY_LEGAL } from "@/lib/company-legal";
+import { useBundleDiscountRules } from "@/lib/bundle-discount";
+import { QTY_PROMO } from "@/lib/promo";
 
 const img = (src: string, w = 700) => `/_next/image?url=${encodeURIComponent(src)}&w=${w}&q=75`;
 
@@ -284,4 +286,229 @@ export function LejekPremium() {
       <PremiumSeal />
     </div>
   );
+}
+
+// ---------------------------------------------------------------- dalsze sekcje lejka (plan 2.11, artefakt „Lejek plis KEIKA”)
+
+/** Polskie dni wolne (stałe + Wielkanoc, Boże Ciało, od 2025 także Wigilia). */
+function swieta(rok: number): Set<string> {
+  const a = rok % 19, b = Math.floor(rok / 100), c = rok % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mies = Math.floor((h + l - 7 * m + 114) / 31), dzien = ((h + l - 7 * m + 114) % 31) + 1;
+  const wlk = new Date(rok, mies - 1, dzien);
+  const plus = (n: number) => {
+    const x = new Date(wlk);
+    x.setDate(x.getDate() + n);
+    return `${x.getMonth() + 1}-${x.getDate()}`;
+  };
+  return new Set(["1-1", "1-6", "5-1", "5-3", "8-15", "11-1", "11-11", "12-24", "12-25", "12-26", plus(1), plus(60)]);
+}
+
+/** Dzień wysyłki: produkcja 7 dni roboczych (bez weekendów i świąt) od jutra. */
+export function dzienWysylki(od: Date = new Date(), dni = 7): Date {
+  const d = new Date(od.getFullYear(), od.getMonth(), od.getDate());
+  let n = 0;
+  while (n < dni) {
+    d.setDate(d.getDate() + 1);
+    const wolne = d.getDay() === 0 || d.getDay() === 6 || swieta(d.getFullYear()).has(`${d.getMonth() + 1}-${d.getDate()}`);
+    if (!wolne) n++;
+  }
+  return d;
+}
+
+const zl2 = (v: number) => `${v.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+
+const TYPOWE: [string, number, number][] = [
+  ["Okno uchylne w łazience lub kuchni", 50, 110],
+  ["Okno pokojowe", 60, 140],
+  ["Duże okno", 80, 150],
+  ["Drzwi balkonowe", 70, 210],
+];
+
+/** Ile kosztują plisy do typowych okien + CAŁY DOM na przykładzie mieszkania - ceny z cennika konfiguratora. */
+export function LejekCeny({ cena, onWymiar }: {
+  cena: (szerCm: number, wysCm: number) => number | null;
+  onWymiar: (szerCm: number, wysCm: number) => void;
+}) {
+  const reguly = useBundleDiscountRules();
+  const progi = (reguly.plisy?.tiers?.length ? reguly.plisy.tiers : QTY_PROMO.tiers).map((t) => ({ fromQty: t.fromQty, percent: t.percent }));
+  const wiersze = TYPOWE.map(([nazwa, w, h]) => ({ nazwa, w, h, c: cena(w, h) }));
+  if (wiersze.some((x) => x.c === null)) return null;
+  const okno = wiersze[1].c as number;
+  const balkon = wiersze[3].c as number;
+  const dwa = okno * 2;
+  const trzy = okno * 2 + balkon;
+  const p2 = progi.find((p) => p.fromQty === 2)?.percent ?? 0;
+  const p3 = [...progi].sort((a, b) => b.fromQty - a.fromQty).find((p) => p.fromQty <= 3)?.percent ?? 0;
+  const poRabacie = (kwota: number, proc: number) => Math.round(kwota * (1 - proc / 100) * 100) / 100;
+  return (
+    <section className="pm-section lj-ceny" aria-labelledby="lj-ceny-t">
+      <p className="pm-eyebrow">Cena</p>
+      <h2 id="lj-ceny-t" className="pm-title">Ile kosztują plisy do Twoich okien</h2>
+      <p className="pm-lead">Kolekcja Klasyczne, montaż przykręcany – ceny z konfiguratora. Kliknij okno, żeby wpisać jego wymiar.</p>
+      <div className="lj-ceny-grid">
+        {wiersze.map((x) => (
+          <button
+            key={x.nazwa}
+            type="button"
+            className="lj-ceny-row"
+            onClick={() => {
+              trackShopStep("lejek_cena_typowa", "plisy", { w: x.w, h: x.h });
+              onWymiar(x.w, x.h);
+            }}
+          >
+            <span>
+              <b>{x.nazwa}</b>
+              <small>{x.w} × {x.h} cm</small>
+            </span>
+            <strong>{zl2(x.c as number)}</strong>
+          </button>
+        ))}
+      </div>
+      {p2 || p3 ? (
+        <div className="lj-dom">
+          <p className="lj-dom-t">Promocja CAŁY DOM – rabat na całe zamówienie</p>
+          <ul>
+            {p2 ? (
+              <li>
+                <span>2 okna 60 × 140 cm</span>
+                <s>{zl2(dwa)}</s>
+                <b>{zl2(poRabacie(dwa, p2))}</b>
+                <em>−{p2} %</em>
+              </li>
+            ) : null}
+            {p3 ? (
+              <li>
+                <span>Mieszkanie: 2 okna i drzwi balkonowe</span>
+                <s>{zl2(trzy)}</s>
+                <b>{zl2(poRabacie(trzy, p3))}</b>
+                <em>−{p3} %</em>
+              </li>
+            ) : null}
+          </ul>
+          <small>Ta sama tkanina we wszystkich oknach to ten sam odcień. Rabat nalicza koszyk.</small>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+const POKOJE = [
+  { pokoj: "Sypialnia", co: "Podgumowane (Blackout)", czemu: "Zaciemnia – podgumowany rdzeń blokuje światło, także latem o świcie." },
+  { pokoj: "Salon i jadalnia", co: "Klasyczne albo DUO plaster miodu", czemu: "Rozprasza światło i chroni prywatność, w pokoju dalej jest jasno." },
+  { pokoj: "Okna od południa, poddasze", co: "Reflex albo DUO TERMO", czemu: "Powłoka od strony szyby odbija słońce – mniej nagrzewania latem." },
+  { pokoj: "Biuro, pokój dziecka", co: "Klasyczne albo Blackout", czemu: "Mniej odblasków na ekranie, a w pokoju dziecka zaciemnienie na drzemkę." },
+];
+
+/** Dobór tkaniny przez pomieszczenie (wzór Stylus) - przed listą 5 kolekcji. */
+export function LejekTkaniny({ onKolekcje }: { onKolekcje: () => void }) {
+  const wiz = useWizVisible();
+  return (
+    <section className="pm-section" aria-labelledby="lj-tk-t">
+      <p className="pm-eyebrow">Tkanina</p>
+      <h2 id="lj-tk-t" className="pm-title">Która tkanina do którego pokoju</h2>
+      <div className="lj-pokoje">
+        {POKOJE.map((p) => (
+          <div key={p.pokoj} className="lj-pokoj">
+            <b>{p.pokoj}</b>
+            <span className="lj-pokoj-co">{p.co}</span>
+            <span>{p.czemu}</span>
+          </div>
+        ))}
+      </div>
+      <div className="lj-akcje">
+        {wiz ? (
+          <button
+            type="button"
+            className="pm-btn"
+            onClick={() => {
+              trackShopStep("lejek_tkanina_wiz", "plisy", {});
+              openWizualizator({ zrodlo: "lejek-tkaniny" });
+            }}
+          >
+            Zobacz kolor w swoim oknie
+          </button>
+        ) : null}
+        <button type="button" className="pm-link" onClick={onKolekcje}>
+          Wszystkie 150 tkanin z cenami →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** Pomiar w 2 minuty + co, jeśli się pomylisz (tylko to, co dziś obowiązuje - FAQ „Co jeśli źle zmierzę?”). */
+export function LejekPomiar({ onAnimacja, onCzat }: { onAnimacja: () => void; onCzat: () => void }) {
+  return (
+    <section className="pm-section" aria-labelledby="lj-pom-t">
+      <p className="pm-eyebrow">Pomiar</p>
+      <h2 id="lj-pom-t" className="pm-title">Zmierzysz w 2 minuty. A jeśli się pomylisz – pomożemy.</h2>
+      <div className="lj-pomiar">
+        <div>
+          <b>Montaż przykręcany</b>
+          <span>Szerokość i wysokość szyby od środka uszczelki do środka uszczelki naprzeciwko. Niczego nie odejmujesz.</span>
+        </div>
+        <div>
+          <b>Montaż bez wiercenia</b>
+          <span>Szerokość: szyba razem z obiema listwami przyszybowymi. Wysokość: całe skrzydło okna.</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="pm-btn"
+        onClick={() => {
+          trackShopStep("lejek_pomiar_animacja", "plisy", {});
+          onAnimacja();
+        }}
+      >
+        Zobacz animację pomiaru
+      </button>
+      <div className="lj-pomylka">
+        <b>Pomyliłeś wymiar?</b>
+        <span>
+          Napisz od razu po zamówieniu – jeśli plisa nie weszła jeszcze do produkcji, poprawimy wymiar bez kosztów. Po montażu chroni Cię 30 dni na
+          zwrot.
+        </span>
+        <button
+          type="button"
+          className="pm-link"
+          onClick={() => {
+            trackShopStep("lejek_pomiar_czat", "plisy", {});
+            onCzat();
+          }}
+        >
+          Wyślij zdjęcie okna na czacie – podpowiemy wymiar →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** Kiedy dostanę i jak zapłacę. */
+export function LejekDostawa({ paypo }: { paypo: boolean }) {
+  const d = dzienWysylki();
+  const kiedy = ["w niedzielę", "w poniedziałek", "we wtorek", "w środę", "w czwartek", "w piątek", "w sobotę"][d.getDay()];
+  const dzien = `${kiedy}, ${d.toLocaleDateString("pl-PL", { day: "numeric", month: "long" })}`;
+  return (
+    <section className="pm-section lj-dost" aria-labelledby="lj-dost-t">
+      <p className="pm-eyebrow">Dostawa i płatność</p>
+      <h2 id="lj-dost-t" className="pm-title">Zamów dziś – wyślemy najpóźniej {dzien}</h2>
+      <ul className="lj-dost-l">
+        <li><b>Produkcja 7 dni roboczych</b> u nas w Polsce, potem kurier w 24 h. Darmowa dostawa od 79 zł.</li>
+        <li><b>Płatność:</b> BLIK, karta, przelew{paypo ? ", PayPo – zapłać za 30 dni" : ""}, raty albo za pobraniem.</li>
+        <li><b>30 dni na zwrot</b> bez podania przyczyny – także plis zrobionych na Twój wymiar.</li>
+      </ul>
+    </section>
+  );
+}
+
+/** FAQ w lejku: najpierw pytania, które zatrzymują zakup (zwrot, pomyłka, dopasowanie, wiercenie, czas, kolor, światło). */
+export function faqWgObiekcji<T extends { question: string }>(lista: T[]): T[] {
+  const kolejnosc = [/zwróc|gwarancj/i, /źle zmierz/i, /do jakich okien|otwieraniu/i, /wiercić/i, /długo czekam/i, /próbki|kolor/i, /światła/i];
+  const waga = (q: string) => {
+    const i = kolejnosc.findIndex((r) => r.test(q));
+    return i < 0 ? 100 : i;
+  };
+  return [...lista].sort((a, b) => waga(a.question) - waga(b.question));
 }

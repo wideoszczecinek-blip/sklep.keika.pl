@@ -44,6 +44,9 @@ export default function CartTrust({ shippingFree }: { shippingFree: boolean }) {
         Produkujemy sami, w Polsce, od 2015 – każde zamówienie robimy na Twój wymiar, dlatego dajemy 5 lat gwarancji.
         {platnosc ? ` Możesz też wybrać ${platnosc}.` : ""}
       </p>
+      <p className="pm-cart-why">
+        <b>Sprawdź jeszcze raz wymiary w koszyku.</b> Pomyłkę poprawimy bez kosztów, dopóki zamówienie nie weszło do produkcji – napisz albo zadzwoń zaraz po zamówieniu.
+      </p>
     </div>
   );
 }

@@ -24306,3 +24306,37 @@ html.keika-premium .plisy-sticky-cta-note { font-weight: 700; color: #0e3431; }
 .pm-cart-trust { margin: 0.75rem 0 0.2rem; padding: 0.75rem 0.85rem; border-radius: 0.9rem; background: #f6f3ea; border: 1px solid #e7dfc8; }
 .pm-cart-trust .pm-perks { margin: 0; }
 .pm-cart-why { margin: 0.5rem 0 0; font-size: 0.78rem; line-height: 1.45; color: #4a5b6e; }
+
+/* lejek v2 – ceny, tkaniny, pomiar, dostawa (2.11) */
+.lj-ceny-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+@media (max-width: 760px) { .lj-ceny-grid { grid-template-columns: 1fr; } }
+.lj-ceny-row { display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; border: 1px solid #dbe3ee; border-radius: 0.9rem; background: #fff; cursor: pointer; font-family: inherit; text-align: left; color: #16314e; }
+.lj-ceny-row:hover { border-color: #0f766e; }
+.lj-ceny-row span { display: grid; gap: 0.1rem; }
+.lj-ceny-row b { font-size: 0.95rem; }
+.lj-ceny-row small { font-size: 0.8rem; color: #64748b; }
+.lj-ceny-row strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lj-dom { margin-top: 0.9rem; padding: 0.85rem 1rem; border-radius: 0.9rem; background: #f6f3ea; border: 1px solid #e7dfc8; display: grid; gap: 0.5rem; }
+.lj-dom-t { margin: 0 !important; font-size: 0.95rem !important; font-weight: 800; color: #0e3431; line-height: 1.3 !important; }
+.lj-dom ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.lj-dom li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 0.6rem; align-items: baseline; font-size: 0.9rem; color: #334155; font-variant-numeric: tabular-nums; }
+.lj-dom li s { color: #94a3b8; }
+.lj-dom li b { color: #16314e; }
+.lj-dom li em { font-style: normal; font-weight: 800; color: #0f766e; }
+.lj-dom small { font-size: 0.8rem; color: #64748b; }
+@media (max-width: 420px) { .lj-dom li { grid-template-columns: minmax(0, 1fr) auto; } .lj-dom li span { grid-column: 1 / -1; } }
+.lj-pokoje { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+@media (max-width: 760px) { .lj-pokoje { grid-template-columns: 1fr; } }
+.lj-pokoj { display: grid; gap: 0.2rem; padding: 0.8rem 1rem; border: 1px solid #e6ebf1; border-radius: 0.9rem; background: #fff; font-size: 0.88rem; color: #475569; }
+.lj-pokoj b { font-size: 1rem; color: #12233a; }
+.lj-pokoj-co { font-weight: 700; color: #0f766e; }
+.lj-akcje { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1.2rem; margin-top: 0.4rem; }
+.lj-akcje .pm-btn { margin: 0.6rem 0 0; }
+.lj-pomiar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+@media (max-width: 760px) { .lj-pomiar { grid-template-columns: 1fr; } }
+.lj-pomiar div { display: grid; gap: 0.25rem; padding: 0.8rem 1rem; border-radius: 0.9rem; border: 1px solid #e6ebf1; background: #fff; font-size: 0.88rem; color: #475569; }
+.lj-pomiar b { color: #12233a; font-size: 0.98rem; }
+.lj-pomylka { margin-top: 0.9rem; display: grid; gap: 0.3rem; padding: 0.85rem 1rem; border-left: 4px solid #0f766e; background: #effaf8; border-radius: 0.6rem; font-size: 0.9rem; color: #334155; }
+.lj-pomylka b { color: #0e3431; }
+.lj-pomylka .pm-link { justify-self: start; margin-top: 0.2rem; }
+.lj-dost-l { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; font-size: 0.95rem; color: #334155; }

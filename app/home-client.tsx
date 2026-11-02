@@ -227,7 +227,19 @@ import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
 import { PlisyHeroGallery, PlisyOfferCard, PlisyProofLine, PlisyStickyBar, PlisyWhyGrid, usePaypoEnabled } from "@/features/plisy/LandingV2";
-import { LejekOpis, LejekPremium, LejekZaufanie, PremiumPrzedPo, PremiumQuality, PremiumQuotes } from "@/features/plisy/Premium";
+import {
+  LejekCeny,
+  LejekDostawa,
+  LejekOpis,
+  LejekPomiar,
+  LejekPremium,
+  LejekTkaniny,
+  LejekZaufanie,
+  PremiumPrzedPo,
+  PremiumQuality,
+  PremiumQuotes,
+  faqWgObiekcji,
+} from "@/features/plisy/Premium";
 import { usePremiumLook } from "@/lib/premium-look";
 import { useCompanyRating } from "@/features/plisy/Reviews";
 import { plisyQuickPrice } from "@/features/plisy/shared";
@@ -4469,14 +4481,32 @@ export default function Home({
                               }
                               return (
                                 <>
-                                  {collections}
                                   {plisyPremium ? (
+                                    // lejek v2: cena za typowe okna → tkanina do pokoju → kolekcje → przed/po → pomiar → dostawa → opinie
                                     <>
+                                      <LejekCeny
+                                        cena={(w, h) =>
+                                          plisyProfile
+                                            ? plisyQuickPrice(plisyProfile, w * 10, h * 10, plisyPriceAdjustmentPercent, plisyProfile.mountOptions[0] || null)
+                                            : null
+                                        }
+                                        onWymiar={(w, h) => {
+                                          setPlisyQuickDims({ widthMm: w * 10, heightMm: h * 10 });
+                                          scrollToPlisyQuote();
+                                        }}
+                                      />
+                                      <LejekTkaniny onKolekcje={scrollToPlisyQuote} />
+                                      {collections}
                                       <PremiumPrzedPo />
+                                      <LejekPomiar onAnimacja={openMeasurementInstructions} onCzat={() => openCrispChat("Zdjęcie mojego okna – pomożecie z wymiarem plisy?")} />
+                                      <LejekDostawa paypo={plisyPaypoEnabled} />
                                       <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
                                     </>
                                   ) : (
-                                    <PlisyWhyGrid phone={contactPhone} />
+                                    <>
+                                      {collections}
+                                      <PlisyWhyGrid phone={contactPhone} />
+                                    </>
                                   )}
                                   <details
                                     className="plv2-more"
@@ -5325,9 +5355,11 @@ export default function Home({
                         ).length ? (
                           <div className="hero-product-faq">
                             {(() => {
-                              const faqEntries = productLanding?.faq?.length
+                              const faqWszystkie = productLanding?.faq?.length
                                 ? productLanding.faq
                                 : builtinFaqForSlug(productSlugFromSelected(displayedProduct));
+                              // lejek v2 (test „premium”): najpierw pytania, które zatrzymują zakup
+                              const faqEntries = plisyPremium && plisyV2 ? faqWgObiekcji(faqWszystkie) : faqWszystkie;
                               const shownFaq = faqExpanded ? faqEntries : faqEntries.slice(0, FAQ_INITIAL_COUNT);
                               return (
                                 <>
