@@ -6,7 +6,7 @@
  * Widoczność: ?wiz=1 albo los testu A/B z udziałem z CRM (lib/wizualizator/flag.ts).
  */
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchKatalog, wizEvent } from "@/lib/wizualizator/api";
 import { WIZ_OPEN_EVENT, openWizualizator, wizArm, wizForced, wizFromAd, type WizOpenDetail } from "@/lib/wizualizator/flag";
 import { trackShopStep } from "@/lib/track-step";
@@ -51,6 +51,57 @@ export type WizOstatnia = { token: string; miniatura: string; data: string; szyb
  *  - link: w kroku tkaniny konfiguratora („Nie wiesz, która? Zobacz w swoim oknie”),
  *  - cena: jedna linia pod ceną konfiguratora (największa strata w lejku: widzą cenę, nie dodają).
  */
+/** Etapy animacji banera (sekundy filmu 4,6 s): zdjęcie → plisy we wszystkich oknach → belki → kolory. */
+const ETAPY_BANERA: [number, string][] = [[0, "Twoje zdjęcie"], [0.7, "Plisy w każdym oknie"], [1.5, "Przesuwasz belki"], [2.7, "Zmieniasz kolor"]];
+
+/**
+ * Animacja banera (właściciel 2.11: „duży salon z otwartą kuchnią, okno tarasowe, okno przy stole, okno w kuchni –
+ * zdjęcie, zmiana plis we wszystkich oknach, poruszanie belkami i zmiana koloru, cykl 4–5 s – klient musi wiedzieć,
+ * co się dzieje”). Klatki z prawdziwego renderera na wyniku analizy zdjęcia (Unsplash, Clay Banks). Wideo ładuje się
+ * dopiero, gdy baner jest na ekranie (preload none + play przy widoczności); do tego czasu lekki plakat (LCP).
+ */
+function BanerAnimacja({ onClick }: { onClick: () => void }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  const [etap, setEtap] = useState(0);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v || typeof IntersectionObserver === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) void v.play().catch(() => {});
+      else v.pause();
+    }, { threshold: 0.3 });
+    io.observe(v);
+    return () => io.disconnect();
+  }, []);
+  const czas = () => {
+    const t = ref.current?.currentTime || 0;
+    let e = 0;
+    ETAPY_BANERA.forEach(([od], i) => {
+      if (t >= od) e = i;
+    });
+    if (t >= 4.1) e = 0; // plisy chowają się przed kolejnym obiegiem
+    setEtap(e);
+  };
+  return (
+    <>
+      <button type="button" className="wiz-baner-foto" onClick={onClick} aria-label="Zobacz plisę na zdjęciu swojego okna – wrzuć zdjęcie">
+        <video ref={ref} className="wiz-baner-wideo" poster="/wizualizator-baner-poster.webp" muted loop playsInline preload="none" onTimeUpdate={czas} aria-hidden="true">
+          <source src="/wizualizator-baner.webm" type="video/webm" />
+          <source src="/wizualizator-baner.mp4" type="video/mp4" />
+        </video>
+        <span className="wiz-baner-chip">📸 Twoje zdjęcie → plisa w 1 minutę</span>
+        <span className="wiz-baner-pg">Wizualizacja poglądowa</span>
+      </button>
+      <ol className="wiz-baner-etapy" aria-label="Jak działa wizualizacja">
+        {ETAPY_BANERA.map(([, nazwa], i) => (
+          <li key={nazwa} className={i === etap ? "is-on" : i < etap ? "is-done" : ""}><b>{i + 1}</b>{nazwa}</li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
 export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfiguruj }: {
   zrodlo: string; variant?: "karta" | "link" | "cena"; tkanina?: string; listwa?: string;
   /** karta w hero: drugi przycisk „Mam wymiary – konfiguruję” (przewija do konfiguratora) */
@@ -86,16 +137,10 @@ export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfig
   // z korzyścią i pomarańczowy przycisk. Całe zdjęcie też otwiera narzędzie.
   const karta = (
     <div className="wiz-baner">
-      <button type="button" className="wiz-baner-foto" onClick={open} aria-label="Zobacz plisę na zdjęciu swojego okna – wrzuć zdjęcie">
-        <span className="wiz-baner-warstwa" style={{ backgroundImage: "url(/wizualizator-baner-przed.webp)" }} aria-hidden="true" />
-        <span className="wiz-baner-warstwa wiz-baner-po" style={{ backgroundImage: "url(/wizualizator-baner-po.webp)" }} aria-hidden="true" />
-        <span className="wiz-baner-linia" aria-hidden="true" />
-        <span className="wiz-baner-chip">📸 Twoje zdjęcie → plisa w 1 minutę</span>
-        <span className="wiz-baner-pg">Wizualizacja poglądowa</span>
-      </button>
+      <BanerAnimacja onClick={open} />
       <div className="wiz-baner-tresc">
         <b>Zobacz plisę na zdjęciu swojego okna</b>
-        <small>Wrzuć zdjęcie – pokażemy plisę na Twoich szybach w 150 kolorach tkanin. Za darmo, bez rejestracji.</small>
+        <small>Wrzuć zdjęcie pokoju – pokażemy plisy we wszystkich oknach. Przesuwasz belki, zmieniasz kolor (150 tkanin). Za darmo, bez rejestracji.</small>
       </div>
       <button type="button" className="wiz-baner-cta" onClick={open}>📸 Wrzuć zdjęcie okna</button>
     </div>

@@ -24196,13 +24196,16 @@ html body button.wiz-entry-konf:hover { border-color: #0f9f8f; }
 .wiz-baner { margin: 14px 0; border-radius: 18px; overflow: hidden; background: #fff; border: 2px solid #0f9f8f; box-shadow: 0 12px 30px rgba(15, 159, 143, 0.18); }
 .wiz-entry-hero .wiz-baner { margin: 0 0 8px; }
 html body button.wiz-baner-foto { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; padding: 0; border: 0; border-radius: 0; background: #0f172a; cursor: pointer; overflow: hidden; }
-.wiz-baner-warstwa { position: absolute; inset: 0; background-size: cover; background-position: center; }
-@media (min-width: 1024px) { html body button.wiz-baner-foto { aspect-ratio: 21 / 9; } .wiz-baner-warstwa { background-position: center 35%; } }
-.wiz-baner-po { animation: wiz-baner-zjazd 6s ease-in-out infinite; }
-.wiz-baner-linia { position: absolute; left: 0; right: 0; height: 3px; background: #fff; box-shadow: 0 0 14px rgba(45, 212, 191, 0.9); animation: wiz-baner-linia 6s ease-in-out infinite; }
-@keyframes wiz-baner-zjazd { 0%, 12% { clip-path: inset(0 0 100% 0); } 45%, 82% { clip-path: inset(0 0 0 0); } 96%, 100% { clip-path: inset(0 0 100% 0); } }
-@keyframes wiz-baner-linia { 0%, 12% { top: 0; opacity: 1; } 45% { top: calc(100% - 3px); opacity: 1; } 50%, 90% { opacity: 0; } 96%, 100% { top: 0; opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .wiz-baner-po { animation: none; clip-path: none; } .wiz-baner-linia { display: none; } }
+/* animacja salonu (2.11): wideo 960×540 z renderera, okna w górnej części kadru */
+.wiz-baner-wideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; display: block; }
+@media (min-width: 1024px) { html body button.wiz-baner-foto { aspect-ratio: 21 / 9; } }
+.wiz-baner-etapy { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0; padding: 8px 12px 0; list-style: none; }
+.wiz-baner-etapy li { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 4px; border-radius: 999px; background: #f1f5f9; color: #64748b; font-size: 0.78rem; font-weight: 700; transition: background 0.25s, color 0.25s; }
+.wiz-baner-etapy li b { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #cbd5e1; color: #fff; font-size: 0.7rem; }
+.wiz-baner-etapy li.is-done { color: #0f766e; }
+.wiz-baner-etapy li.is-done b { background: #5eead4; }
+.wiz-baner-etapy li.is-on { background: #0f9f8f; color: #fff; }
+.wiz-baner-etapy li.is-on b { background: #fff; color: #0f9f8f; }
 .wiz-baner-chip { position: absolute; left: 10px; top: 10px; padding: 6px 11px; border-radius: 999px; background: rgba(255, 255, 255, 0.95); color: #0f3d37; font-size: 0.82rem; font-weight: 800; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); }
 .wiz-baner-pg { position: absolute; right: 8px; bottom: 6px; font-size: 0.66rem; font-weight: 600; color: rgba(255, 255, 255, 0.9); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
 .wiz-baner-tresc { padding: 12px 14px 4px; color: #12212b; }
