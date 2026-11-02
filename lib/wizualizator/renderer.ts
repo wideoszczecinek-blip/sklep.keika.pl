@@ -42,6 +42,8 @@ export type PaneRender = {
   front: number; // światło z pokoju na przód plisy 0–1.2
   pitch: number; // kąt patrzenia (etap F): > 0 = z dołu
   selected: boolean;
+  /** rodzaj osłony: plisa okienna (domyślnie), plisa dachowa albo roleta dachowa - obie w prowadnicach bocznych */
+  kind?: "plisa" | "plisa-dachowa" | "roleta-dachowa";
 };
 
 export type SceneRender = {
@@ -54,6 +56,9 @@ export type SceneRender = {
 export const PLEAT_MM = 20;
 export const RAIL_MM = 22;
 export const TILE_MM = 42;
+/** Okna dachowe: kaseta rolety (wałek z tkaniną) i prowadnica boczna (mm). */
+export const KASETA_MM = 46;
+export const PROWADNICA_MM = 16;
 
 const VS = `
 attribute vec2 aPos;
@@ -123,6 +128,9 @@ uniform float uHasRailTex;
 uniform vec3 uRailMean;
 uniform float uRailRep;
 uniform vec2 uMm;           // szerokość i wysokość szyby w mm (rozmiary uchwytów w mm, nie w % szyby)
+uniform float uKind;        // 0 plisa okienna, 1 plisa dachowa, 2 roleta dachowa
+uniform float uTopH;        // wysokość górnej belki / kasety (część wysokości szyby)
+uniform float uGuide;       // szerokość prowadnicy bocznej (część szerokości szyby), 0 = bez prowadnic
 varying vec2 vPix;
 
 float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
@@ -168,12 +176,12 @@ void main() {
   vec2 px = 1.0 / max(uPx, vec2(1.0));
   vec2 tc = vPix / uRes;
 
-  float x0 = -0.008;
-  float x1 = 1.008;
+  float x0 = uKind > 0.5 ? -0.75 * uGuide - 0.004 : -0.008;
+  float x1 = uKind > 0.5 ? 1.0 + 0.75 * uGuide + 0.004 : 1.008;
   float inX = smoothstep(x0 - px.x, x0 + px.x, u) * (1.0 - smoothstep(x1 - px.x, x1 + px.x, u));
 
   float tTop = uTop;
-  float tBot = uTop + uRailH;
+  float tBot = uTop + uTopH;
   float bTop = uBot - uRailH;
   float bBot = uBot;
   float span = max(bTop - tBot, 0.0);
@@ -185,7 +193,9 @@ void main() {
   // ---- tkanina
   if (v >= tBot && v <= bTop && span > 0.0) {
     float t = (v - tBot) / span;
-    float ph = fract(t * uPleats);
+    bool roleta = uKind > 1.5;
+    if (roleta) t = (v - tBot) / max(1.0 - tBot - uRailH, 0.001);
+    float ph = roleta ? 0.25 : fract(t * uPleats);
     float pitchPx = span / uPleats * uPx.y;
     // fałda: górna ścianka do światła, dolna w lekkim cieniu; przy rozłożonej plisie
     // fałdy są płytkie (mały kontrast), przy ściśniętej - głębokie
@@ -201,6 +211,12 @@ void main() {
     s += (0.025 + 0.04 * comp) * ridge;
     float crease = smoothstep(1.0 - cw, 1.0, ph) + (1.0 - smoothstep(0.0, cw * 0.5, ph));
     s *= 1.0 - (0.07 + 0.18 * comp) * clamp(crease, 0.0, 1.0);
+    if (roleta) {
+      // roleta: płaska, napięta tkanina - tylko bardzo łagodne podłużne pofalowanie i jaśniejszy środek
+      s = 1.0 + 0.012 * sin(u * 37.0 + 1.3) - 0.03 * pow(abs(u - 0.5) * 2.0, 3.0);
+      prof = 0.0;
+      crease = 0.0;
+    }
     // drobne fałdy (poniżej ~3 px) uśredniamy, żeby nie migotały
     float aa = clamp((pitchPx - 1.5) / 3.0, 0.0, 1.0);
     s = mix(0.97, s, aa);
@@ -240,12 +256,12 @@ void main() {
       back += texture2D(uPhoto, clamp(tc + 0.5 * r1 * vec2(cos(ang), sin(ang)), 0.0, 1.0)).rgb;
     }
     back /= 12.0;
-    float dbl = 1.0 - 0.3 * crease - 0.15 * comp + 0.06 * prof;
+    float dbl = roleta ? 1.0 : 1.0 - 0.3 * crease - 0.15 * comp + 0.06 * prof;
     vec3 diffused = mix(vec3(lum(alb)), alb, 0.8);
     vec3 trans = clamp(uTrans * uBack * 1.25 * diffused * dbl * mix(vec3(1.0), back / max(lum(back), 0.08), 0.12), 0.0, 0.92);
     // linki przez otwory w tkaninie (nie w plastrze miodu)
     float cords = 0.0;
-    if (uHoney < 0.5) {
+    if (uHoney < 0.5 && uKind < 0.5) {
       float cu = min(min(abs(u - 0.018), abs(u - 0.03)), min(abs(u - 0.97), abs(u - 0.982)));
       cords = (1.0 - smoothstep(0.0, px.x * 1.1, cu)) * 0.18;
     }
@@ -271,6 +287,11 @@ void main() {
         c = railBase(0.1, u) * 1.08; // wierzch profilu (patrzymy z góry)
       } else if (v > b) {
         c = railBase(0.9, u) * 0.66; // spód profilu (patrzymy z dołu)
+      } else if (i == 0 && uKind > 1.5) {
+        // kaseta rolety: zaokrąglona obudowa wałka - odblask u góry, cień ku dołowi, szczelina wylotu tkaniny
+        float r = (v - a) / max(b - a, 0.0001);
+        c = railBase(r, u) * (0.78 + 0.32 * sin(r * 3.1416 * 0.9 + 0.25));
+        c *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, max(0.05, 2.0 * px.y / max(b - a, 0.0001)), 1.0 - r));
       } else {
         c = railShade((v - a) / max(b - a, 0.0001), u, px.y / max(b - a, 0.0001));
       }
@@ -294,7 +315,7 @@ void main() {
   if (hu < tabW + px.x) {
     float inU = 1.0 - smoothstep(tabW - px.x, tabW + px.x, hu);
     // górna belka: nad nią; dolna: pod nią
-    float tA = smoothstep(tTop - tabH - px.y, tTop - tabH + px.y, v) * (1.0 - smoothstep(tTop - px.y, tTop + px.y, v));
+    float tA = uKind > 1.5 ? 0.0 : smoothstep(tTop - tabH - px.y, tTop - tabH + px.y, v) * (1.0 - smoothstep(tTop - px.y, tTop + px.y, v));
     float tB = smoothstep(bBot - px.y, bBot + px.y, v) * (1.0 - smoothstep(bBot + tabH - px.y, bBot + tabH + px.y, v));
     float tab = inU * max(tA, tB);
     if (tab > 0.0) {
@@ -308,7 +329,7 @@ void main() {
   // ---- linki: po dwie przy każdej krawędzi szyby, od uchwytu narożnego do uchwytu (przez otwory w tkaninie i belkach)
   float cu = min(min(abs(u - 0.018), abs(u - 0.03)), min(abs(u - 0.97), abs(u - 0.982)));
   float line = 1.0 - smoothstep(px.x * 0.45, px.x * 1.2, cu);
-  if ((v < tTop || v > bBot) && v > -0.01 && v < 1.01 && line > 0.0) {
+  if (uKind < 0.5 && (v < tTop || v > bBot) && v > -0.01 && v < 1.01 && line > 0.0) {
     // żyłka napinająca: cienka, jasna, półprzezroczysta - na zdjęciu ledwo widoczna
     vec3 cc = mix(texture2D(uPhoto, tc).rgb, vec3(0.82, 0.8, 0.76) * uFront, 0.55);
     float la = line * 0.5;
@@ -325,7 +346,7 @@ void main() {
   float oy = (uMount > 0.5 ? 4.0 : 2.0) / max(uMm.y, 300.0);
   bool inBx = (u > -ox && u < bw - ox) || (u > 1.0 - bw + ox && u < 1.0 + ox);
   bool inBy = (v > -oy && v < bh - oy) || (v > 1.0 - bh + oy && v < 1.0 + oy);
-  if (inBx && inBy) {
+  if (uKind < 0.5 && inBx && inBy) {
     float lu = u < 0.5 ? (u + ox) / bw : (1.0 + ox - u) / bw;
     float lv = v < 0.5 ? (v + oy) / bh : (1.0 + oy - v) / bh;
     // mała bryła z tworzywa: lekki gradient, zaokrąglone rogi, cień przy ramie
@@ -335,6 +356,22 @@ void main() {
     float edgeA = rounded * smoothstep(0.0, 1.5 * px.x / bw, lu) * smoothstep(0.0, 1.5 * px.y / bh, lv);
     vec3 bc = uBracket * shade * uFront * mix(vec3(1.0), uTint, 0.5);
     col = vec4(mix(col.rgb, bc, edgeA), max(col.a, edgeA));
+  }
+  // ---- prowadnice boczne (okna dachowe): profil aluminiowy na całej wysokości szyby, w kolorze osprzętu,
+  // zachodzi ok. 1/4 szerokości na szkło; zaokrąglony: jaśniejszy środek, ciemniejsze krawędzie i rowek po wewnętrznej stronie
+  if (uKind > 0.5 && uGuide > 0.0) {
+    float gIn = 0.25 * uGuide;
+    float gL = (u > gIn - uGuide && u < gIn) ? (u - (gIn - uGuide)) / uGuide : -1.0;
+    float gR = (u > 1.0 - gIn && u < 1.0 - gIn + uGuide) ? 1.0 - (u - (1.0 - gIn)) / uGuide : -1.0;
+    float gq = max(gL, gR);
+    if (gq >= 0.0 && v > -0.012 && v < 1.012) {
+      float sh = 0.8 + 0.26 * sin(gq * 3.1416);
+      sh *= 1.0 - 0.3 * (1.0 - smoothstep(0.0, 0.12, abs(gq - 0.85)));
+      vec3 gc = railBase(gq, v * 3.0) * sh * uFront * mix(vec3(1.0), uTint, 0.5) * 1.02;
+      float ga = smoothstep(0.0, 1.5 * px.x / uGuide, gq) * smoothstep(0.0, 1.5 * px.x / uGuide, 1.0 - gq);
+      ga *= smoothstep(-0.012, -0.012 + px.y, v) * (1.0 - smoothstep(1.012 - px.y, 1.012, v));
+      col = vec4(mix(col.rgb, gc, ga), max(col.a, ga));
+    }
   }
   // ziarno zdjęcia na wszystkim, co narysowaliśmy
   col.rgb = clamp(col.rgb + grain * 0.7 * col.a, 0.0, 1.0);
@@ -428,7 +465,7 @@ export class WizRenderer {
     this.paneProg = program(gl, FS_PANE, [
       "uPhoto", "uTex", "uRes", "uInv", "uPx", "uTop", "uBot", "uRailH", "uPleats", "uRep", "uHasTex", "uTexMean", "uFabric", "uTrans", "uBack",
       "uFront", "uTint", "uRail", "uBracket", "uMount", "uHoney", "uPitch", "uSplit", "uSel", "uOutline", "uVp",
-      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uMm",
+      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uMm", "uKind", "uTopH", "uGuide",
     ]);
     const b = gl.createBuffer();
     if (!b) throw new Error("buffer");
@@ -611,7 +648,12 @@ export class WizRenderer {
       const hMm = Math.max(300, p.heightMm || 1200);
       const wMm = Math.max(200, p.widthMm || hMm * (pw / Math.max(ph, 1)));
       const railH = Math.max(RAIL_MM / hMm, 4 / Math.max(ph, 1));
-      gl.uniform1f(q.u.uTop, p.top);
+      const kind = p.kind === "roleta-dachowa" ? 2 : p.kind === "plisa-dachowa" ? 1 : 0;
+      gl.uniform1f(q.u.uKind, kind);
+      // roleta: kaseta z wałkiem na górze szyby (stała), plisa: górna belka jak dolna
+      gl.uniform1f(q.u.uTopH, kind === 2 ? Math.max(KASETA_MM / hMm, 6 / Math.max(ph, 1)) : railH);
+      gl.uniform1f(q.u.uGuide, kind > 0 ? Math.max(PROWADNICA_MM / wMm, 3 / Math.max(pw, 1)) : 0);
+      gl.uniform1f(q.u.uTop, kind === 2 ? 0 : p.top);
       gl.uniform1f(q.u.uBot, p.bottom);
       gl.uniform1f(q.u.uRailH, railH);
       gl.uniform1f(q.u.uPleats, Math.max(8, Math.round(hMm / PLEAT_MM)));
@@ -643,7 +685,8 @@ export class WizRenderer {
       gl.uniform1f(q.u.uPitch, p.pitch);
       gl.uniform1f(q.u.uSel, p.selected ? 1 : 0);
       // obszar rysowania: szyba z marginesem na uchwyty, linki i grubość belek
-      const m: Pt[] = [[-0.03, -0.06], [1.03, -0.06], [1.03, 1.06], [-0.03, 1.06]].map((x) => apply(H as Mat3, x as Pt));
+      const mx = kind > 0 ? 0.03 + PROWADNICA_MM / wMm : 0.03;
+      const m: Pt[] = [[-mx, -0.06], [1 + mx, -0.06], [1 + mx, 1.06], [-mx, 1.06]].map((x) => apply(H as Mat3, x as Pt));
       this.drawPoly(q, [m[0][0], m[0][1], m[1][0], m[1][1], m[2][0], m[2][1], m[0][0], m[0][1], m[2][0], m[2][1], m[3][0], m[3][1]]);
     }
 

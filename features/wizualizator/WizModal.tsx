@@ -17,7 +17,7 @@ import qrcode from "qrcode-generator";
 import { type Pt, invert3, apply, paneToImage, isConvexQuad } from "@/lib/wizualizator/homografia";
 import { WizRenderer, hexToRgb, panePixelSize, RAIL_MM, type PaneRender } from "@/lib/wizualizator/renderer";
 import {
-  fetchKatalog, wizAnaliza, wizEvent, wizLead, wizQrCreate, wizQrPoll, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
+  fetchKatalog, wizAnaliza, wizEvent, wizLead, wizQrCreate, wizQrPoll, wizQrSkan, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
   type WizKatalog, type WizStatus, type WizUklad, type WizWynik, type WizSzyba,
 } from "@/lib/wizualizator/api";
 import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
@@ -154,6 +154,10 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [przedPo, setPrzedPo] = useState<number | null>(null);
   const [edycja, setEdycja] = useState(false);
   const [qr, setQr] = useState<{ kod: string; url: string } | null>(null);
+  // telefon zeskanował kod - komputer czeka na zdjęcie (właściciel 2.11: zdjęcie telefonem mocno pokazane na komputerze)
+  const [qrSkan, setQrSkan] = useState(false);
+  // przykładowe okno (Agencja 2.11: „Nie masz teraz zdjęcia?”) - wspólna wizualizacja demo, bez zapisu i bez kosztu AI
+  const [demo, setDemo] = useState(false);
   const [zdjecia, setZdjecia] = useState<Zdjecie[]>([]);
   const [info, setInfo] = useState("");
   const [gotowyObraz, setGotowyObraz] = useState(false);
@@ -197,6 +201,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const saveRef = useRef(0);
   const korektaRef = useRef(false);
   const zTelefonuRef = useRef(false);
+  const demoRef = useRef(false);
 
   // ------------------------------------------------------------ start
   useEffect(() => {
@@ -218,13 +223,19 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Telefon po zeskanowaniu kodu: komputer pokaże „Telefon połączony – zrób zdjęcie okna”
+  useEffect(() => {
+    if (qrKod) wizQrSkan(qrKod);
+  }, [qrKod]);
+
   // Komputer: kod QR do telefonu (tylko z ekranu startowego, nie na stronie telefonu)
   useEffect(() => {
     if (mobile || qrKod || faza !== "start" || qr) return;
     void wizQrCreate(zrodlo).then((q) => {
       if (q) {
         setQr(q);
-        wizEvent("wiz_qr", null, { zrodlo });
+        setQrSkan(false);
+        wizEvent("wiz_qr_pokazany", null, { zrodlo });
       }
     });
   }, [mobile, qrKod, faza, qr, zrodlo]);
@@ -248,7 +259,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         setQr(null);
         return;
       }
-      window.setTimeout(tick, 3000);
+      if (r?.status === "skan") setQrSkan(true);
+      window.setTimeout(tick, r?.status === "skan" ? 2000 : 3000);
     };
     const t = window.setTimeout(tick, 3000);
     return () => {
@@ -265,6 +277,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     }
     setBlad("");
     setFaza("wysylanie");
+    wizEvent("wiz_zdjecie_wybrane", null, { zrodlo, kb: Math.round(file.size / 1024), qr: Boolean(qrKod) });
     try {
       const r = await wizStart(file, { zrodlo, qr: qrKod });
       setToken(r.token);
@@ -283,6 +296,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       }
       if (k.oslony || k.osoby || k.balagan) setInfo("Uporządkujemy zdjęcie (osoby, bałagan, stare rolety), żeby pokazać plisę w najlepszym świetle.");
       wizAnaliza(r.token);
+      wizEvent("wiz_start_analizy", r.token, { qr: Boolean(qrKod) });
       // telefon z kodu QR: klient wybiera, gdzie ogląda wynik
       setFaza(qrKod ? "qr_gotowe" : "analiza");
     } catch (e) {
@@ -295,6 +309,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     if (!token) return;
     wizEvent("wiz_mimo_to", token, { problemy: (kontrola?.problemy || []).join(", ") });
     wizAnaliza(token);
+    wizEvent("wiz_start_analizy", token, { mimo_to: true });
     setKontrola(null);
     setFaza(qrKod ? "qr_gotowe" : "analiza");
   };
@@ -367,7 +382,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
             } catch {
               /* sesja to wygoda */
             }
-            if (!st.kontakt && !pytany) window.setTimeout(() => setEmailOkno(true), 900);
+            if (!st.kontakt && !pytany && !demoRef.current) window.setTimeout(() => setEmailOkno(true), 900);
             return;
           }
         } else if (st.status === "odrzucona") {
@@ -437,6 +452,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       setZakladka("szyby");
       setInfo(szyby.length ? "Sprawdź, czy obrys pasuje do szyby - przeciągnij kółka w rogi szyby." : "Nie znaleźliśmy szyby automatycznie. Dodaj ją i przeciągnij kółka w rogi szyby.");
     }
+    if (demoRef.current) return;
     const stare = readSesja();
     const byl = stare.find((z) => z.token === token);
     const lista = stare.filter((z) => z.token !== token);
@@ -601,7 +617,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
   // zapis układu (z opóźnieniem)
   useEffect(() => {
-    if (!token || faza !== "gotowa" || !panes.length) return;
+    if (!token || faza !== "gotowa" || !panes.length || demo) return;
     window.clearTimeout(saveRef.current);
     saveRef.current = window.setTimeout(() => {
       const uklad: WizUklad = { szyby: {}, montaz, wszystkie, dodane: panes.filter((p) => p.id.startsWith("r")).map((p) => ({ id: p.id, rogi: p.rogi })) };
@@ -611,7 +627,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       }
       wizSaveLayout(token, uklad, korektaRef.current);
     }, 1200);
-  }, [panes, montaz, wszystkie, token, faza]);
+  }, [panes, montaz, wszystkie, token, faza, demo]);
 
   // ------------------------------------------------------------ wskaźnik na zdjęciu
   const toImg = (e: { clientX: number; clientY: number }): Pt | null => {
@@ -820,10 +836,22 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     if (token && wynik && faza === "gotowa") cacheRef.current.set(token, { wynik, status, panes, sel, montaz, ai });
   };
 
+  /** „Nie masz teraz zdjęcia? Zobacz na przykładowym oknie” - gotowa wizualizacja z CRM (bez kosztu AI). */
+  const pokazDemo = () => {
+    if (!katalog?.demo) return;
+    demoRef.current = true;
+    setDemo(true);
+    setToken(katalog.demo);
+    setFaza("analiza");
+    wizEvent("wiz_demo", katalog.demo, { zrodlo });
+  };
+
   const noweZdjecie = () => {
     etapRef.current = { etap: "", t: 0 };
-    wizEvent("wiz_kolejne_okno", token, { zdjec: zdjecia.length });
-    zapamietaj();
+    wizEvent("wiz_kolejne_okno", token, { zdjec: zdjecia.length, z_demo: demoRef.current });
+    if (!demoRef.current) zapamietaj();
+    demoRef.current = false;
+    setDemo(false);
     setToken(null);
     setWynik(null);
     setStatus(null);
@@ -1003,16 +1031,28 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   <button type="button" className={s.secondary} onClick={() => fileRef.current?.click()}>Wybierz z galerii</button>
                 </div>
               ) : (
-                <div className={s.qrCard}>
-                  <div className={s.qrImg}>{qr ? <QrKod url={qr.url} /> : <span className={s.qrWait}>…</span>}</div>
-                  <div className={s.qrText}>
-                    <b>Zeskanuj telefonem</b>
-                    <small>Otwórz aparat, zrób zdjęcie okna – wizualizacja pojawi się tutaj, na komputerze.</small>
-                    <span className={s.or}>albo</span>
-                    <button type="button" className={s.secondary} onClick={() => fileRef.current?.click()}>Wybierz zdjęcie z komputera</button>
+                // komputer (właściciel 2.11): GŁÓWNA opcja to duży kod QR - zdjęcie robisz telefonem, wynik na dużym ekranie
+                <div className={s.qrBig}>
+                  <div className={s.qrBigHead}>
+                    <b>📱 Zrób zdjęcie okna telefonem</b>
+                    <small>Zeskanuj kod aparatem telefonu – wynik pojawi się tutaj, na dużym ekranie.</small>
                   </div>
+                  {qrSkan ? (
+                    <div className={s.qrPolaczono}>
+                      <span className={s.qrPuls} aria-hidden="true">📱</span>
+                      <b>Telefon połączony – zrób zdjęcie okna</b>
+                      <small>Czekamy na zdjęcie z telefonu. Gdy je wyślesz, wizualizacja pojawi się tutaj.</small>
+                    </div>
+                  ) : (
+                    <div className={s.qrBigImg}>{qr ? <QrKod url={qr.url} /> : <span className={s.qrWait}>…</span>}</div>
+                  )}
+                  <button type="button" className={s.qrPlik} onClick={() => fileRef.current?.click()}>albo wybierz plik z komputera</button>
                 </div>
               )}
+              {faza === "start" && katalog?.demo ? (
+                <button type="button" className={s.demoLink} onClick={pokazDemo}>Nie masz teraz zdjęcia? <b>Zobacz na przykładowym oknie →</b></button>
+              ) : null}
+              <p className={s.zaufanie}>🔒 Zdjęcie widzisz tylko Ty, usuwamy je po 30 dniach.</p>
               <p className={s.tidy}>✨ Osoby, bałagan i stare rolety usuniemy ze zdjęcia automatycznie.</p>
               <p className={s.consentLine}>
                 Wysyłając zdjęcie, zgadzasz się na jego przetworzenie przez KEIKA w celu przygotowania wizualizacji. Przechowujemy je 30 dni, nie używamy w reklamach;
@@ -1191,7 +1231,12 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     onPointerCancel={onUp}
                   />
                   {/* przycisk zdjęcia AI na samym zdjęciu (właściciel 1.11: „nie rzuca się w oczy”), raz pulsuje po wyniku */}
-                  {gotowyObraz && !edycja && przedPo === null && panes.length && !aiTrwa && !aiOffRef.current && !(ai && ai.klucz === klucz && aiPokaz) ? (
+                  {demo && gotowyObraz ? (
+                    <button type="button" className={s.demoPasek} onClick={noweZdjecie}>
+                      <b>Przykładowe okno</b><small>Pobaw się tkaninami i belkami – potem zrób zdjęcie swojego okna →</small>
+                    </button>
+                  ) : null}
+                  {!demo && gotowyObraz && !edycja && przedPo === null && panes.length && !aiTrwa && !aiOffRef.current && !(ai && ai.klucz === klucz && aiPokaz) ? (
                     <button type="button" className={s.aiNaZdjeciu} onClick={() => void generujAi()}>
                       <span aria-hidden="true">✨</span><b>Pokaż realistyczne zdjęcie</b><small>Zobacz, jak na prawdziwym zdjęciu</small>
                     </button>
@@ -1424,11 +1469,18 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   <button type="button" className={s.link} onClick={zamow} disabled={!panes.length}>Otwórz w konfiguratorze</button>
                 </div>
               </div>
+              {demo ? (
+                <button type="button" className={s.ctaBig} onClick={noweZdjecie}>
+                  📷 Teraz zrób zdjęcie swojego okna
+                  <small>za minutę zobaczysz plisę na swojej szybie i jej cenę</small>
+                </button>
+              ) : (
               <button type="button" className={s.ctaBig} disabled={!panes.length}
                 onClick={() => { setZakladka("wycena"); setEdycja(false); setWEtap(cenaZestawu && !cenaZestawu.szacunkowa ? "podsumowanie" : "kreator"); wizEvent("wiz_produkt", token, { widok: "zestaw_cta" }); }}>
                 Dodaj do koszyka{cenaZestawu ? ` · ${cenaZestawu.szacunkowa ? "ok. " : ""}${Math.round(cenaZestawu.poRabacie).toLocaleString("pl-PL")} zł` : ""}
                 <small>{cenaZestawu && !cenaZestawu.szacunkowa ? "wymiary potwierdzone ✓" : "najpierw potwierdzisz wymiary – 2 min"}{cenaZestawu && cenaZestawu.poRabacie < cenaZestawu.suma ? ` · zamiast ${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł` : ""}</small>
               </button>
+              )}
             </div>
 
             {emailOkno && !lead.wyslane ? (
