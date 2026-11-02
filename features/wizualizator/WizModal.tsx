@@ -17,7 +17,7 @@ import qrcode from "qrcode-generator";
 import { type Pt, invert3, apply, paneToImage, isConvexQuad } from "@/lib/wizualizator/homografia";
 import { WizRenderer, hexToRgb, panePixelSize, RAIL_MM, type PaneRender } from "@/lib/wizualizator/renderer";
 import {
-  fetchKatalog, wizAnaliza, wizEvent, wizLead, wizQrCreate, wizQrPoll, wizQrSkan, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
+  fetchKatalog, wizAnaliza, wizEvent, wizLead, wizPodglad, wizQrCreate, wizQrPoll, wizQrSkan, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
   type WizKatalog, type WizStatus, type WizUklad, type WizWynik, type WizSzyba,
 } from "@/lib/wizualizator/api";
 import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
@@ -626,6 +626,20 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
           szer_mm: p.wpisSzerMm ?? null, wys_mm: p.wpisWysMm ?? null, zmierzone: Boolean(p.zmierzone), pomin: Boolean(p.pomin) };
       }
       wizSaveLayout(token, uklad, korektaRef.current);
+      // zrzut tego, co klient widzi (plisy w tkaninie i ułożeniu belek) - CRM pokazuje go w karcie wizualizacji
+      const c = canvasRef.current;
+      if (c && c.width) {
+        try {
+          const sk = Math.min(1, 900 / Math.max(c.width, c.height));
+          const o = document.createElement("canvas");
+          o.width = Math.round(c.width * sk);
+          o.height = Math.round(c.height * sk);
+          o.getContext("2d")?.drawImage(c, 0, 0, o.width, o.height);
+          wizPodglad(token, o.toDataURL("image/jpeg", 0.72));
+        } catch {
+          // płótno bez dostępu (CORS) - CRM odtworzy podgląd z układu
+        }
+      }
     }, 1200);
   }, [panes, montaz, wszystkie, token, faza, demo]);
 
@@ -1200,12 +1214,12 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     {aiTrwa ? (
                       <>
                         <span className={s.aiSpin} aria-hidden="true" />
-                        <p><b>Przygotowujemy realistyczne zdjęcie Twojego okna…</b><small>To potrwa około 10 sekund.</small></p>
+                        <p><b>Przygotowujemy realistyczne zdjęcie Twojego okna…</b><small>To potrwa około 10 sekund. Zdjęcie AI jest poglądowe – kolory i wygląd gotowej plisy mogą się różnić.</small></p>
                       </>
                     ) : ai && ai.klucz === klucz && aiPokaz ? (
                       <>
                         <span className={s.aiIco} aria-hidden="true">✓</span>
-                        <p><b>Tak będzie wyglądać Twoje okno z tymi plisami</b><small>Chcesz coś zmienić? Wróć do ustawień – kolor i położenie plis zmienisz dalej na żywo.</small></p>
+                        <p><b>Tak mogą wyglądać plisy w Twoim oknie</b><small>Zdjęcie przygotowane przez AI jest poglądowe – kolory, odcienie i wygląd gotowej plisy mogą się różnić. Chcesz coś zmienić? Wróć do ustawień.</small></p>
                         <button type="button" className={s.aiBtnGhost} onClick={() => setAiPokaz(false)}>Zmień ustawienia</button>
                       </>
                     ) : aiOffRef.current ? (
@@ -1245,6 +1259,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   {ai && ai.klucz === klucz && aiPokaz && !edycja && przedPo === null ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img data-ai="1" src={ai.url} alt="" className={s.aiImg} crossOrigin="anonymous" draggable={false} />
+                  ) : null}
+                  {ai && ai.klucz === klucz && aiPokaz && !edycja && przedPo === null ? (
+                    <span className={s.aiZnak}>Zdjęcie AI · poglądowe – kolory mogą się różnić</span>
                   ) : null}
                   {edycja
                     ? panes.map((p, i) =>
@@ -1310,7 +1327,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   })() : null}
                   {przedPo !== null ? <div className={s.split} style={{ left: cornerPos([przedPo, 0]).left }}><span>przed | po</span></div> : null}
                   <p className={s.disclaimer}>
-                    Wizualizacja poglądowa{wynik.uporzadkowane ? " · zdjęcie uporządkowane automatycznie" : ""}. Kolory i proporcje mogą się różnić.
+                    Wizualizacja poglądowa{wynik.uporzadkowane ? " · zdjęcie uporządkowane automatycznie" : ""}. Kolory, odcienie i wygląd gotowej plisy mogą się różnić (ekran, oświetlenie, zdjęcie). Wiążą parametry z konfiguratora i wzornik tkanin – <a href="/regulamin" target="_blank" rel="noopener">Regulamin §3 ust. 7</a>.
                   </p>
                   {!gotowyObraz ? <div className={s.loading}>Wczytujemy…</div> : null}
                 </div>

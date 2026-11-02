@@ -192,6 +192,16 @@ export function wizSaveLayout(token: string, uklad: WizUklad, korekta = false): 
   }).catch(() => {});
 }
 
+/** Ostatni widok klienta (mały JPEG z renderera) - do karty wizualizacji w CRM („co zobaczył klient”, 2.11). */
+export function wizPodglad(token: string, obraz: string): void {
+  void fetch(`${WIZ_API}/podglad.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ t: token, obraz }),
+    keepalive: obraz.length < 60000,
+  }).catch(() => {});
+}
+
 export type WizRenderWynik = { ok: boolean; url?: string; cache?: boolean; koszt_pln?: number; ms?: number; komunikat?: string; limit?: boolean };
 
 /** E3: podgląd z renderera (JPEG data URL) → zdjęcie AI tego układu (klucz = skrót układu, wynik trzymany w CRM). */
