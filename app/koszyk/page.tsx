@@ -99,6 +99,7 @@ import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import CartV2, { CartV2Boundary } from "./cart-v2";
+import CartTrust from "./cart-trust";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
 // every validation error, failed discount code, and failed order/payment
@@ -4044,6 +4045,7 @@ export default function CartPage() {
                     </span>
                   </div>
 
+                  <CartTrust shippingFree={shippingFee === 0 && deliveryMethod !== PICKUP_METHOD.id} />
                   {/* Oferta ratalna przy każdej kwocie - raty są włączone
                       na koncie P24 (właściciel, 2026-09-24). */}
                   <InstallmentOffer amount={payableTotal} />
@@ -4554,6 +4556,7 @@ export default function CartPage() {
                   </div>
                   <PaymentTrustTicker />
                   <PaymentAssuranceLine />
+                  <CartTrust shippingFree={shippingFee === 0 && deliveryMethod !== PICKUP_METHOD.id} />
                   {paymentMethod === "cod" ? (
                     <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
                       Płatność za pobraniem

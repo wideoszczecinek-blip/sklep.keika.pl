@@ -227,6 +227,8 @@ import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
 import { PlisyHeroGallery, PlisyOfferCard, PlisyProofLine, PlisyStickyBar, PlisyWhyGrid, usePaypoEnabled } from "@/features/plisy/LandingV2";
+import { PremiumPrzedPo, PremiumQuality, PremiumQuotes, PremiumStrip } from "@/features/plisy/Premium";
+import { usePremiumLook } from "@/lib/premium-look";
 import { useCompanyRating } from "@/features/plisy/Reviews";
 import { plisyQuickPrice } from "@/features/plisy/shared";
 import MoskitieryQuickPrice from "@/features/moskitiery-ramkowe/QuickPrice";
@@ -1586,6 +1588,8 @@ export default function Home({
   const [plisyPrefillMountId, setPlisyPrefillMountId] = useState("");
   const plisyCompanyRating = useCompanyRating();
   const plisyPaypoEnabled = usePaypoEnabled();
+  // Test „premium” strony plis (właściciel 2.11, 50/50, wyłącznik w CRM) - lib/premium-look.ts
+  const plisyPremium = usePremiumLook() === "premium";
   // Szybka wycena moskitier: typowe okno na start, klient zmienia suwakami.
   // Start od okna z reklam (2026-10-02): nowe kreacje moskitier mówią
   // "65 × 130 cm — 95,68 zł z SEZON20", a wycena otwierała się na 90 × 140 /
@@ -3975,6 +3979,7 @@ export default function Home({
                           onClick={() => scrollToProductSection("opinie")}
                         />
                       ) : null}
+                      {plisyPremium ? <PremiumStrip /> : null}
                       {/* Wizualizator „Twoje okno” - baner nad kartą ceny (właściciel 2.11: „mało widoczny, nie sprzedamy go tak”) */}
                       <WizPowrot />
                       <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
@@ -3990,6 +3995,7 @@ export default function Home({
                             paypoEnabled={plisyPaypoEnabled}
                             phone={contactPhone}
                             onQuote={scrollToPlisyQuote}
+                            premium={plisyPremium}
                           />
                         )}
                       </PromoCountdownBanner>
@@ -4003,6 +4009,7 @@ export default function Home({
                         label="oferta"
                         caption="Otwierasz okno – plisa zostaje przy skrzydle, trzymają ją sznurki prowadzące."
                       />
+                      {plisyPremium ? <PremiumQuality /> : null}
                     </>
                   ) : null}
                     <div className="hero-product-content">
@@ -4438,7 +4445,14 @@ export default function Home({
                               return (
                                 <>
                                   {collections}
-                                  <PlisyWhyGrid phone={contactPhone} />
+                                  {plisyPremium ? (
+                                    <>
+                                      <PremiumPrzedPo />
+                                      <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
+                                    </>
+                                  ) : (
+                                    <PlisyWhyGrid phone={contactPhone} />
+                                  )}
                                   <details
                                     className="plv2-more"
                                     onToggle={(event) => {

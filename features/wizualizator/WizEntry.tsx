@@ -16,7 +16,7 @@ const WizModal = dynamic(() => import("./WizModal"), { ssr: false });
 const AB_LOGGED_KEY = "keika_wiz_ab_logged";
 
 /** Czy pokazać przycisk tej osobie (null = jeszcze nie wiadomo). */
-function useWizVisible(): boolean | null {
+export function useWizVisible(): boolean | null {
   const [visible, setVisible] = useState<boolean | null>(null);
   useEffect(() => {
     let cancelled = false;

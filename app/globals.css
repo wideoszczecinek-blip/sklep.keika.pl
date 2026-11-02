@@ -24213,3 +24213,81 @@ html body button.wiz-baner-foto { position: relative; display: block; width: 100
 .wiz-baner-tresc small { display: block; margin-top: 4px; font-size: 0.9rem; line-height: 1.35; color: #475569; }
 html body button.wiz-baner-cta { display: block; width: calc(100% - 28px); margin: 10px 14px 14px; padding: 13px 14px; border: 0; border-radius: 12px; background: #ea580c; color: #fff; font-size: 1.02rem; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(234, 88, 12, 0.3); }
 html body button.wiz-baner-cta:hover { background: #c2410c; }
+
+/* ===== Test „premium” strony plis (2.11, lib/premium-look.ts, features/plisy/Premium.tsx) =====
+   Pieczęć gwarancji przy cenie, sekcja jakości z detalami, przed/po, cytaty, linia zaufania; w grupie premium
+   spokojniejsze plakietki i przyciski pośrednie (html.keika-premium). Ceny i promocje bez zmian. */
+.pm-seal-row { display: flex; align-items: center; gap: 0.8rem; margin: 0.75rem 0 0.2rem; padding: 0.7rem 0.75rem; border-radius: 0.9rem; background: linear-gradient(135deg, #f6f3ea, #fbfaf6); border: 1px solid #e7dfc8; }
+.pm-seal { flex: 0 0 auto; width: 4.1rem; height: 4.1rem; border-radius: 50%; display: grid; place-items: center; grid-template-rows: auto auto; align-content: center; background: radial-gradient(circle at 30% 25%, #1d5b55, #0e3431); color: #fff; box-shadow: 0 0 0 3px #fff, 0 0 0 4.5px #c8a75a, 0 6px 16px rgba(14, 52, 49, 0.28); text-align: center; line-height: 1; }
+.pm-seal b { font-size: 1.55rem; font-weight: 800; color: #f1dca3; }
+.pm-seal span { font-size: 0.5rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; margin-top: 0.12rem; }
+.pm-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; margin: 0.35rem 0 0.2rem !important; font-size: 0.92rem !important; line-height: 1.3 !important; color: #334155; }
+.pm-strip b { color: #0e3431; }
+.pm-strip-seal { display: inline-grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #1d5b55, #0e3431); color: #f1dca3; font-size: 0.78rem; font-weight: 800; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px #c8a75a; }
+.pm-strip-sep { color: #94a3b8; }
+html.keika-premium .plv2-offer-lines i { display: none; }
+html.keika-premium .plv2-offer-lines li:nth-child(3) { display: none; }
+.pm-quote p { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.pm-seal-text { display: grid; gap: 0.15rem; min-width: 0; }
+.pm-seal-text strong { font-size: 0.95rem; color: #16314e; }
+.pm-seal-text span { font-size: 0.8rem; color: #4a5b6e; line-height: 1.4; }
+.pm-perks { list-style: none; display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; margin: 0.6rem 0 0; padding: 0; font-size: 0.8rem; font-weight: 600; color: #334155; }
+.pm-perks li { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.pm-perks svg { color: #0f766e; flex: 0 0 auto; }
+.pm-perks--center { justify-content: center; margin-top: 1.2rem; }
+
+.pm-quality, .pm-section { margin: 2.6rem 0 1.4rem; text-align: left; }
+.pm-eyebrow { margin: 0 0 0.35rem !important; font-size: 0.72rem !important; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #a07d33; line-height: 1.3 !important; }
+.pm-title { margin: 0 0 0.6rem; font-size: clamp(1.45rem, 1.1rem + 1.2vw, 2rem); font-weight: 750; line-height: 1.2; color: #12233a; letter-spacing: -0.01em; }
+.pm-lead { margin: 0 0 1.2rem !important; max-width: 46rem; font-size: 1rem !important; line-height: 1.6 !important; color: #475569; }
+.pm-quality-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.pm-quality-card { margin: 0; border-radius: 1.1rem; overflow: hidden; background: #fff; border: 1px solid #e6ebf1; box-shadow: 0 12px 30px rgba(18, 35, 58, 0.06); }
+.pm-quality-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #eef1f4; }
+.pm-quality-card figcaption { display: grid; gap: 0.3rem; padding: 0.85rem 1rem 1.05rem; }
+.pm-quality-card b { font-size: 1.02rem; color: #12233a; }
+.pm-quality-card span { font-size: 0.86rem; line-height: 1.5; color: #475569; }
+@media (max-width: 760px) {
+  .pm-quality-grid { grid-template-columns: 1fr; gap: 0.8rem; }
+  .pm-quality-card { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); }
+  /* wysokość karty z podpisu, zdjęcie wypełnia (wysokie zdjęcie nie rozciąga karty) */
+  .pm-quality-card img { height: 0; min-height: 100%; aspect-ratio: auto; }
+  .pm-quality-card figcaption { padding: 0.7rem 0.8rem; }
+  .pm-quality-card span { font-size: 0.82rem; }
+}
+
+.pm-ba-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+@media (max-width: 760px) { .pm-ba-grid { grid-template-columns: 1fr; } }
+.pm-ba { margin: 0; }
+.pm-ba-frame { position: relative; aspect-ratio: 3 / 2; border-radius: 1.1rem; overflow: hidden; background: #e9edf2; cursor: ew-resize; touch-action: pan-y; user-select: none; }
+.pm-ba-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.pm-ba-przed { position: absolute; inset: 0; }
+.pm-ba-line { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.35); pointer-events: none; }
+.pm-ba-line i { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2.3rem; height: 2.3rem; border-radius: 50%; background: #fff; color: #12233a; font-style: normal; font-weight: 800; font-size: 0.85rem; display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+.pm-ba-tag { position: absolute; top: 0.7rem; padding: 0.22rem 0.6rem; border-radius: 999px; background: rgba(15, 23, 42, 0.72); color: #fff; font-size: 0.72rem; font-weight: 700; pointer-events: none; }
+.pm-ba-tag.is-l { left: 0.7rem; }
+.pm-ba-tag.is-r { right: 0.7rem; }
+.pm-ba figcaption { margin-top: 0.45rem; font-size: 0.8rem; color: #64748b; }
+.pm-btn { display: flex; align-items: center; justify-content: center; margin: 1.1rem auto 0; max-width: 360px; width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1.5px solid #12233a; background: #12233a; color: #fff; font-family: inherit; font-weight: 750; font-size: 0.98rem; cursor: pointer; }
+.pm-btn:hover { background: #1f3654; }
+
+.pm-quotes-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+@media (max-width: 760px) { .pm-quotes-grid { grid-template-columns: 1fr; } }
+.pm-quote { margin: 0; padding: 1rem 1.1rem; border-radius: 1rem; background: #fff; border: 1px solid #e6ebf1; display: grid; gap: 0.45rem; align-content: start; }
+.pm-quote p { margin: 0 !important; font-size: 0.95rem !important; line-height: 1.55 !important; color: #1e293b; }
+.pm-quote footer { font-size: 0.76rem; color: #64748b; }
+.pm-stars { color: #d4a72c; letter-spacing: 0.08em; font-size: 0.9em; }
+.pm-link { margin-top: 0.8rem; border: 0; background: none; padding: 0; color: #0f766e; font-family: inherit; font-weight: 700; font-size: 0.92rem; cursor: pointer; }
+
+/* grupa premium: spokojniej - mniej krzykliwych plakietek i pomarańczowych przycisków pośrednich */
+html.keika-premium .plv2-offer { border-color: #e2ddd0; box-shadow: 0 14px 36px rgba(18, 35, 58, 0.08); }
+html.keika-premium .plv2-offer-code { background: #f3f5f8; color: #12233a; font-weight: 700; }
+html.keika-premium .plv2-offer-lines { gap: 0.4rem; color: #334155; }
+html.keika-premium .hero-product-section-cta .pl-inline-cta-button { background: #fff; color: #12233a; border: 1.5px solid #12233a; box-shadow: none; }
+html.keika-premium .plisy-price-card-perks { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 700; color: #0e3431; background: #f6f3ea; border: 1px solid #e7dfc8; border-radius: 999px; padding: 0.3rem 0.75rem; }
+html.keika-premium .plisy-price-card-perks::before { content: "5"; display: inline-grid; place-items: center; width: 1.15rem; height: 1.15rem; border-radius: 50%; background: #0e3431; color: #f1dca3; font-size: 0.7rem; font-weight: 800; }
+html.keika-premium .plisy-sticky-cta-note { font-weight: 700; color: #0e3431; }
+
+/* koszyk i kasa (grupa premium) */
+.pm-cart-trust { margin: 0.75rem 0 0.2rem; padding: 0.75rem 0.85rem; border-radius: 0.9rem; background: #f6f3ea; border: 1px solid #e7dfc8; }
+.pm-cart-trust .pm-perks { margin: 0; }
+.pm-cart-why { margin: 0.5rem 0 0; font-size: 0.78rem; line-height: 1.45; color: #4a5b6e; }
