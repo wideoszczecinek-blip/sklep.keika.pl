@@ -11,20 +11,9 @@ import { openWizualizator } from "@/lib/wizualizator/flag";
 import { useWizVisible } from "@/features/wizualizator/WizEntry";
 import { useCompanyRating, useCompanyReviews } from "./Reviews";
 import { opinieLabel } from "./LandingV2";
+import { COMPANY_LEGAL } from "@/lib/company-legal";
 
 const img = (src: string, w = 700) => `/_next/image?url=${encodeURIComponent(src)}&w=${w}&q=75`;
-
-/** Krótki pasek pod tytułem: gwarancja widoczna nad zgięciem także na komputerze (tam karta ceny jest niżej). */
-export function PremiumStrip() {
-  return (
-    <p className="pm-strip">
-      <span className="pm-strip-seal" aria-hidden="true">5</span>
-      <b>5 lat gwarancji</b>
-      <span className="pm-strip-sep" aria-hidden="true">·</span>
-      <span>Produkujemy na wymiar od 2015</span>
-    </p>
-  );
-}
 
 /** Pieczęć gwarancji przy cenie - zamiast drobnych plakietek. */
 export function PremiumSeal() {
@@ -36,7 +25,7 @@ export function PremiumSeal() {
       </div>
       <div className="pm-seal-text">
         <strong>Produkujemy na wymiar od 2015</strong>
-        <span>Każdą plisę robimy sami, w Polsce – dlatego dajemy na nią 5 lat gwarancji.</span>
+        <span>Każdą plisę robimy sami, w Polsce – dlatego dajemy na nią 5 lat gwarancji. Nie spodoba się? Masz 30 dni na zwrot.</span>
       </div>
     </div>
   );
@@ -239,5 +228,60 @@ export function PremiumQuotes({ onAll }: { onAll?: () => void }) {
         </button>
       ) : null}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------- lejek v2 (właściciel 2.11: „na samej górze, jak klient
+// z zimnego ruchu wejdzie, musi zobaczyć, co to, opis, mały social proof, zbicie obiekcji – jak będzie wiedział, gdzie jest
+// i że to nie scam, to wtedy widzi premium: 5 lat gwarancji, zwrot, wizualizator, galeria, animacja z ruchem belek
+// i konfigurator z wyceną”). Dane sprzedawcy z lib/company-legal.ts (te same co w regulaminie).
+
+/** Co to jest - jedno zdanie dla kogoś, kto pierwszy raz widzi plisę, i cena „od” w jednej linii. */
+export function LejekOpis({ cena, szer, wys }: { cena: number | null; szer: number; wys: number }) {
+  return (
+    <div className="lj-opis">
+      <p>
+        Osłona z tkaniny plisowanej montowana na skrzydle okna. Dwie ruchome listwy – zasłaniasz górę, dół albo środek szyby,
+        a okno otwierasz i uchylasz jak zwykle. Bez wiercenia albo przykręcana, produkowana na Twój wymiar.
+      </p>
+      {cena !== null ? (
+        <p className="lj-cena">
+          Okno {String(szer).replace(".", ",")} × {String(wys).replace(".", ",")} cm: <b>{cena.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł</b>
+          <span> · cena rośnie z wymiarem</span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const IKONY_Z = {
+  firma: "M3 21V8l9-5 9 5v13 M9 21v-6h6v6",
+  tel: "M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2",
+  karta: "M3 6h18v12H3z M3 10h18 M7 15h4",
+  zwrot: IKONY.zwrot,
+};
+
+/** Bezpieczne zakupy: prawdziwy sprzedawca, telefon, płatność przez operatorów, zwrot - odpowiedź na „czy to nie oszustwo”. */
+export function LejekZaufanie() {
+  const c = COMPANY_LEGAL;
+  return (
+    <section className="lj-zauf" aria-label="Bezpieczne zakupy">
+      <p className="lj-zauf-t">Bezpieczne zakupy u producenta</p>
+      <ul>
+        <li><Ikona d={IKONY_Z.firma} /><span><b>{c.legalName}</b> · {c.street}, {c.postalCode} {c.city} · NIP {c.nip} · produkujemy od {c.producingSince}</span></li>
+        <li><Ikona d={IKONY_Z.tel} /><span><b><a href={c.phoneHref} onClick={() => trackShopStep("call_click", "plisy", { source: "zaufanie" })}>{c.phone}</a></b> · {c.hours} · czat na stronie</span></li>
+        <li><Ikona d={IKONY_Z.karta} /><span>Płacisz przez <b>Przelewy24, PayNow lub Stripe</b> – BLIK, karta, PayPo, raty albo za pobraniem</span></li>
+        <li><Ikona d={IKONY_Z.zwrot} /><span><b>30 dni na zwrot</b> bez podania przyczyny – także plis zrobionych na Twój wymiar</span></li>
+      </ul>
+    </section>
+  );
+}
+
+/** Premium: pieczęć 5 lat gwarancji i zwrot obok siebie - zaraz po bloku zaufania. */
+export function LejekPremium() {
+  return (
+    <div className="lj-prem">
+      <PremiumSeal />
+    </div>
   );
 }
