@@ -63,12 +63,25 @@ const ETAPY_BANERA: [number, string][] = [[0, "Twoje zdjęcie"], [0.7, "Plisy w 
 function BanerAnimacja({ onClick }: { onClick: () => void }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const [etap, setEtap] = useState(0);
+  const [blad, setBlad] = useState(false);
   useEffect(() => {
     const v = ref.current;
     if (!v || typeof IntersectionObserver === "undefined") return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // atrybut muted z SSR nie trafia do HTML, a bez wyciszenia przeglądarka nie odtworzy filmu sama
+    v.muted = true;
+    v.defaultMuted = true;
+    let ponowiono = false;
+    const graj = () => {
+      if (v.error && !ponowiono) {
+        // 2.11: VP9 w Chrome na części Windowsów dawał MEDIA_ERR_DECODE – teraz tylko H.264, przy błędzie jedna próba od nowa
+        ponowiono = true;
+        v.load();
+      }
+      void v.play().catch(() => {});
+    };
     const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) void v.play().catch(() => {});
+      if (e.isIntersecting) graj();
       else v.pause();
     }, { threshold: 0.3 });
     io.observe(v);
@@ -86,10 +99,14 @@ function BanerAnimacja({ onClick }: { onClick: () => void }) {
   return (
     <>
       <button type="button" className="wiz-baner-foto" onClick={onClick} aria-label="Zobacz plisę na zdjęciu swojego okna – wrzuć zdjęcie">
-        <video ref={ref} className="wiz-baner-wideo" poster="/wizualizator-baner-poster.webp" muted loop playsInline preload="none" onTimeUpdate={czas} aria-hidden="true">
-          <source src="/wizualizator-baner.webm" type="video/webm" />
-          <source src="/wizualizator-baner.mp4" type="video/mp4" />
-        </video>
+        {/* tylko MP4 (H.264, yuv420p) – gra wszędzie; przy błędzie dekodowania zostaje plakat */}
+        {blad ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="wiz-baner-wideo" src="/wizualizator-baner-poster.webp" alt="" aria-hidden="true" />
+        ) : (
+          <video ref={ref} className="wiz-baner-wideo" src="/wizualizator-baner.mp4?v=2" poster="/wizualizator-baner-poster.webp" muted loop playsInline preload="none"
+            onTimeUpdate={czas} onError={() => { if (ref.current?.error && ref.current.error.code !== 1) setBlad(true); }} aria-hidden="true" />
+        )}
         <span className="wiz-baner-chip">📸 Twoje zdjęcie → plisa w 1 minutę</span>
         <span className="wiz-baner-pg">Wizualizacja poglądowa</span>
       </button>
