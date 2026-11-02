@@ -10,6 +10,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { crmGetJson } from "@/lib/crm-get";
 import { PROMO_CODE, QTY_PROMO } from "@/lib/promo";
+import { useBundleDiscountRules } from "@/lib/bundle-discount";
 import { trackShopStep } from "@/lib/track-step";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 import { PLISY_HERO_PHOTOS } from "./gallery";
@@ -296,6 +297,21 @@ export function PlisyStickyBar({
   bottomInset: number;
   onClick: () => void;
 }) {
+  // AGN-716 (2.11): cena w pasku = 1 szt. z cennika, a CAŁY DOM osobną
+  // linią (progi z CRM, zapas QTY_PROMO.tiers) - jak w pasku u góry i kaflach.
+  const bundleRules = useBundleDiscountRules();
+  const promoTiers = (bundleRules.plisy?.tiers?.length ? bundleRules.plisy.tiers : QTY_PROMO.tiers)
+    .map((tier) => ({ fromQty: tier.fromQty, percent: tier.percent }))
+    .sort((a, b) => a.fromQty - b.fromQty);
+  const promoLine = promoTiers.length
+    ? `${QTY_PROMO.name}: ${promoTiers
+        .map((tier, index) =>
+          index === promoTiers.length - 1
+            ? `${tier.fromQty}+ -${tier.percent} %`
+            : `${tier.fromQty} ${tier.fromQty <= 4 ? "produkty" : "produktów"} -${tier.percent} %`,
+        )
+        .join(", ")}`
+    : "";
   return (
     <div
       className={`plv2-bar ${visible ? "is-visible" : ""}`}
@@ -307,6 +323,7 @@ export function PlisyStickyBar({
         <small>
           {String(widthCm).replace(".", ",")} × {String(heightCm).replace(".", ",")} cm{price !== null && promoApplied ? ` · z kodem ${PROMO_CODE}` : ""}
         </small>
+        {promoLine && !promoApplied ? <small className="plv2-bar-promo">{promoLine}</small> : null}
       </div>
       <button
         type="button"
