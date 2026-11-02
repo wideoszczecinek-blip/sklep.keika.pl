@@ -15,7 +15,7 @@ import { trackShopStep } from "@/lib/track-step";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 import { PLISY_HERO_PHOTOS } from "./gallery";
 import PlisyHeroScene from "./PlisyHeroScene";
-import { PremiumPerks, PremiumSeal } from "./Premium";
+import { PremiumPerks } from "./Premium";
 import { PlisyFilmSlide } from "./FilmClips";
 
 const HERO_ALT = [
@@ -208,7 +208,7 @@ export function PlisyOfferCard({
         )}
       </div>
       {/* Obietnica z reklam „jakość” widoczna od razu pod ceną (właściciel 16.10, #87). */}
-      {premium ? <PremiumSeal /> : null}
+      {/* lejek v2: pieczęć gwarancji stoi wyżej (LejekPremium), w karcie tylko linia zaufania pod przyciskiem */}
       <div className="plv2-offer-badge" hidden={premium}>
         <span>🛡 5 lat gwarancji</span>
         <span>↩ 30 dni na zwrot</span>

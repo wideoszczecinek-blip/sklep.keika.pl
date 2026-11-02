@@ -227,7 +227,7 @@ import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
 import { PlisyHeroGallery, PlisyOfferCard, PlisyProofLine, PlisyStickyBar, PlisyWhyGrid, usePaypoEnabled } from "@/features/plisy/LandingV2";
-import { PremiumPrzedPo, PremiumQuality, PremiumQuotes, PremiumStrip } from "@/features/plisy/Premium";
+import { LejekOpis, LejekPremium, LejekZaufanie, PremiumPrzedPo, PremiumQuality, PremiumQuotes } from "@/features/plisy/Premium";
 import { usePremiumLook } from "@/lib/premium-look";
 import { useCompanyRating } from "@/features/plisy/Reviews";
 import { plisyQuickPrice } from "@/features/plisy/shared";
@@ -3979,37 +3979,62 @@ export default function Home({
                           onClick={() => scrollToProductSection("opinie")}
                         />
                       ) : null}
-                      {plisyPremium ? <PremiumStrip /> : null}
-                      {/* Wizualizator „Twoje okno” - baner nad kartą ceny (właściciel 2.11: „mało widoczny, nie sprzedamy go tak”) */}
-                      <WizPowrot />
-                      <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
-                      <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
-                        {(promo) => (
-                          <PlisyOfferCard
-                            regular={plisyQuickRegular}
-                            withPromo={plisyQuickWithPromo}
-                            promoRemainingText={promo && topPromoActive ? promo.remainingText : null}
-                            widthCm={plisyQuickDims.widthMm / 10}
-                            heightCm={plisyQuickDims.heightMm / 10}
-                            leadTime={PLISY_LEAD_TIME_LABEL}
-                            paypoEnabled={plisyPaypoEnabled}
-                            phone={contactPhone}
-                            onQuote={scrollToPlisyQuote}
-                            premium={plisyPremium}
+                      {(() => {
+                        const oferta = (
+                          <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
+                            {(promo) => (
+                              <PlisyOfferCard
+                                regular={plisyQuickRegular}
+                                withPromo={plisyQuickWithPromo}
+                                promoRemainingText={promo && topPromoActive ? promo.remainingText : null}
+                                widthCm={plisyQuickDims.widthMm / 10}
+                                heightCm={plisyQuickDims.heightMm / 10}
+                                leadTime={PLISY_LEAD_TIME_LABEL}
+                                paypoEnabled={plisyPaypoEnabled}
+                                phone={contactPhone}
+                                onQuote={scrollToPlisyQuote}
+                                premium={plisyPremium}
+                              />
+                            )}
+                          </PromoCountdownBanner>
+                        );
+                        const film = (
+                          <PlisyFilmLoop
+                            id="film-oferta"
+                            src={PLISY_FILM.oferta.src}
+                            poster={PLISY_FILM.oferta.poster}
+                            label="oferta"
+                            caption="Otwierasz okno – plisa zostaje przy skrzydle, trzymają ją sznurki prowadzące."
                           />
-                        )}
-                      </PromoCountdownBanner>
-                      {/* Wizualizator „Twoje okno” (?wiz=1 / test A/B z CRM): okno narzędzia i pływający przycisk */}
-                      <WizHost />
-                      <WizPlywajacy zrodlo="plisy-plywajacy" />
-                      <PlisyFilmLoop
-                        id="film-oferta"
-                        src={PLISY_FILM.oferta.src}
-                        poster={PLISY_FILM.oferta.poster}
-                        label="oferta"
-                        caption="Otwierasz okno – plisa zostaje przy skrzydle, trzymają ją sznurki prowadzące."
-                      />
-                      {plisyPremium ? <PremiumQuality /> : null}
+                        );
+                        // Lejek v2 (właściciel 2.11, test „premium”): co to + opinie + bezpieczne zakupy → 5 lat gwarancji i zwrot
+                        // → wizualizator z animacją belek → film → karta ceny (konfigurator) → jakość. Klasycznie bez zmian.
+                        return plisyPremium ? (
+                          <>
+                            <LejekOpis cena={plisyQuickRegular} szer={plisyQuickDims.widthMm / 10} wys={plisyQuickDims.heightMm / 10} />
+                            <LejekZaufanie />
+                            <LejekPremium />
+                            <WizPowrot />
+                            <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
+                            <WizHost />
+                            <WizPlywajacy zrodlo="plisy-plywajacy" />
+                            {film}
+                            {oferta}
+                            <PremiumQuality />
+                          </>
+                        ) : (
+                          <>
+                            {/* Wizualizator „Twoje okno” - baner nad kartą ceny (właściciel 2.11: „mało widoczny, nie sprzedamy go tak”) */}
+                            <WizPowrot />
+                            <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
+                            {oferta}
+                            {/* Wizualizator „Twoje okno” (?wiz=1 / test A/B z CRM): okno narzędzia i pływający przycisk */}
+                            <WizHost />
+                            <WizPlywajacy zrodlo="plisy-plywajacy" />
+                            {film}
+                          </>
+                        );
+                      })()}
                     </>
                   ) : null}
                     <div className="hero-product-content">
