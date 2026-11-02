@@ -1962,7 +1962,9 @@ export default function CartPage() {
     }
     if (Math.abs(appliedDiscountSubtotalRef.current - subtotal) < 0.005) return;
     appliedDiscountSubtotalRef.current = subtotal;
-    if (subtotal <= 0) {
+    // RATUJ- (kod za zapis) liczy się wg liczby sztuk i przy 2 szt. zastępuje CAŁY DOM - zawsze pytamy CRM,
+    // zamiast zdejmować kod dlatego, że pakiet porównany ze starą kwotą kodu objął wszystkie sztuki.
+    if (subtotal <= 0 && !isRescueSignupCode(appliedDiscount.code)) {
       setAppliedDiscount(null);
       return;
     }
