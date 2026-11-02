@@ -15,6 +15,7 @@ import { trackShopStep } from "@/lib/track-step";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 import { PLISY_HERO_PHOTOS } from "./gallery";
 import PlisyHeroScene from "./PlisyHeroScene";
+import { PremiumPerks, PremiumSeal } from "./Premium";
 import { PlisyFilmSlide } from "./FilmClips";
 
 const HERO_ALT = [
@@ -163,6 +164,7 @@ export function PlisyOfferCard({
   paypoEnabled,
   phone,
   onQuote,
+  premium = false,
 }: {
   regular: number | null;
   withPromo: number | null;
@@ -174,6 +176,8 @@ export function PlisyOfferCard({
   paypoEnabled: boolean;
   phone: string;
   onQuote: () => void;
+  /** test „premium” (lib/premium-look.ts): pieczęć gwarancji zamiast plakietek, linia zaufania pod przyciskiem */
+  premium?: boolean;
 }) {
   const discounted = regular !== null && withPromo !== null && withPromo < regular;
   const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`;
@@ -204,7 +208,8 @@ export function PlisyOfferCard({
         )}
       </div>
       {/* Obietnica z reklam „jakość” widoczna od razu pod ceną (właściciel 16.10, #87). */}
-      <div className="plv2-offer-badge">
+      {premium ? <PremiumSeal /> : null}
+      <div className="plv2-offer-badge" hidden={premium}>
         <span>🛡 5 lat gwarancji</span>
         <span>↩ 30 dni na zwrot</span>
         <span>🇵🇱 polska produkcja</span>
@@ -246,6 +251,7 @@ export function PlisyOfferCard({
           <span aria-hidden="true">📞</span> Zadzwoń: {phone}
         </a>
       </div>
+      {premium ? <PremiumPerks /> : null}
     </div>
   );
 }

@@ -38,6 +38,7 @@ import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPrevi
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
 import InstallmentOffer from "@/app/components/installment-offer";
+import CartTrust from "./cart-trust";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "@/app/moskitiery-ramkowe-reviews-data";
@@ -771,6 +772,7 @@ export default function CartV2(props: CartV2Props) {
             <span>Do zapłaty</span>
             <span>{formatPln(p.payableTotal)}</span>
           </div>
+          <CartTrust shippingFree={!p.isPickup && p.shippingFee === 0} />
           {p.shippingFee > 0 && p.amountToFreeShipping > 0 ? (
             <p className="cv2-free-ship">
               Brakuje <strong>{formatPln(p.amountToFreeShipping)}</strong> do darmowej dostawy.
@@ -1042,6 +1044,7 @@ export default function CartV2(props: CartV2Props) {
   const screenPay = (
     <>
       <h1 className="cv2-q">{p.isCod ? "Potwierdź zamówienie" : "Jak płacisz?"}</h1>
+      <CartTrust shippingFree={!p.isPickup && p.shippingFee === 0} />
       <div className="cv2-recap">
         <p>
           <strong>{fullName}</strong>

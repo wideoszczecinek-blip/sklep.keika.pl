@@ -42,7 +42,7 @@ const COMPANY_RATING_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/alle
 const COMPANY_REVIEWS_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/company_reviews_public.php";
 type CompanyReview = { id: string; author: string; date: string; stars: number; text: string };
 
-function useCompanyReviews(): CompanyReview[] {
+export function useCompanyReviews(): CompanyReview[] {
   const [rows, setRows] = useState<CompanyReview[]>([]);
   useEffect(() => {
     let alive = true;
