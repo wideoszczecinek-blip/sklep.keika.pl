@@ -51,6 +51,8 @@ type Props = {
   onNameplateRejectMatch?: () => void;
   onNameplateReportMissing?: () => void;
   autoFocus?: boolean;
+  /** „rolety” albo „plisy” - ten sam wybór okna służy obu konfiguratorom dachowym (2.11: plisy pisały „wymiar rolety”). */
+  produktDopelniacz?: string;
 };
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif";
@@ -90,6 +92,7 @@ export default function RoofWindowSearchSelector({
   onNameplateRejectMatch,
   onNameplateReportMissing,
   autoFocus = false,
+  produktDopelniacz = "rolety",
 }: Props) {
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
@@ -137,7 +140,7 @@ export default function RoofWindowSearchSelector({
       <div className="rd-search">
         <p className="rd-search-lead">
           Wpisz producenta i model okna albo zrób zdjęcie tabliczki znamionowej — model odczytamy automatycznie i dobierzemy
-          wymiar rolety.
+          wymiar {produktDopelniacz}.
         </p>
         <div className="rd-search-actions">
           {photoButton("rd-chip rd-chip--photo", "Wgraj zdjęcie tabliczki")}

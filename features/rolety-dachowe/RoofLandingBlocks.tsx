@@ -210,7 +210,7 @@ export function RoofHardwareStrip({ profile, onZoom }: { profile: RoofBlindProfi
   );
 }
 
-export function RoofLibraryTeaser({ library, onSearch }: { library: RoofWindowLibraryItem[]; onSearch: (query: string) => void }) {
+export function RoofLibraryTeaser({ library, onSearch, produktDopelniacz = "rolety" }: { library: RoofWindowLibraryItem[]; onSearch: (query: string) => void; produktDopelniacz?: string }) {
   const producers = useMemo(() => libraryProducers(library), [library]);
   const [query, setQuery] = useState("");
   const top = producers.slice(0, 6);
@@ -219,7 +219,7 @@ export function RoofLibraryTeaser({ library, onSearch }: { library: RoofWindowLi
       <div className="rd-library-head">
         <h2 className="hero-product-section-title">{library.length ? `${library.length} modeli okien w bibliotece` : "Biblioteka modeli okien"}</h2>
         <p className="rd-how-lead">
-          {top.length ? top.map((entry) => entry.name).join(" · ") : "Velux · Fakro · Roto · OKPOL · Dakstra · Optilight"} — wybierasz model, a wymiar rolety dobieramy sami. Nie ma Twojego okna? Podajesz dwa wymiary.
+          {top.length ? top.map((entry) => entry.name).join(" · ") : "Velux · Fakro · Roto · OKPOL · Dakstra · Optilight"} — wybierasz model, a wymiar {produktDopelniacz} dobieramy sami. Nie ma Twojego okna? Podajesz dwa wymiary.
         </p>
       </div>
       <form
