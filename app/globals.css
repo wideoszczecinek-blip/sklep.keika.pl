@@ -24291,6 +24291,11 @@ html.keika-premium .plisy-sticky-cta-note { font-weight: 700; color: #0e3431; }
 .lj-opis { display: grid; gap: 0.35rem; margin: 0.45rem 0 0.2rem; max-width: 620px; }
 .lj-opis p { margin: 0 !important; font-size: 0.98rem !important; line-height: 1.5 !important; color: #334155; }
 .lj-opis .lj-cena { font-size: 0.92rem !important; color: #16314e; }
+.lj-cechy { list-style: none; margin: 0.15rem 0 0.1rem; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.35rem 1rem; }
+@media (max-width: 760px) { .lj-cechy { grid-template-columns: 1fr; } }
+.lj-cechy li { position: relative; padding-left: 1.2rem; font-size: 0.9rem; line-height: 1.4; color: #334155; }
+.lj-cechy li::before { content: ""; position: absolute; left: 0.15rem; top: 0.42rem; width: 0.5rem; height: 0.28rem; border-left: 2px solid #0f766e; border-bottom: 2px solid #0f766e; transform: rotate(-45deg); }
+.lj-cechy b { color: #16314e; }
 .lj-opis .lj-cena b { font-size: 1.05rem; }
 .lj-opis .lj-cena span { color: #64748b; }
 .lj-zauf { margin: 0.75rem 0 0.2rem; max-width: 620px; padding: 0.75rem 0.85rem; border: 1px solid #dbe3ee; border-radius: 0.9rem; background: #fff; }

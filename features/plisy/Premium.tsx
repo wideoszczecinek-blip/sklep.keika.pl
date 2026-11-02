@@ -242,10 +242,19 @@ export function PremiumQuotes({ onAll }: { onAll?: () => void }) {
 export function LejekOpis({ cena, szer, wys }: { cena: number | null; szer: number; wys: number }) {
   return (
     <div className="lj-opis">
+      {/* właściciel 2.11: „brakuje na samej górze zwykłego opisu produktu” - fakty z landing-content.ts */}
       <p>
-        Osłona z tkaniny plisowanej montowana na skrzydle okna. Dwie ruchome listwy – zasłaniasz górę, dół albo środek szyby,
-        a okno otwierasz i uchylasz jak zwykle. Bez wiercenia albo przykręcana, produkowana na Twój wymiar.
+        <b>Plisa okienna</b> to osłona z tkaniny plisowanej montowana bezpośrednio na skrzydle okna. Ma dwie ruchome listwy: zasłaniasz górę,
+        dół albo środek szyby, a okno otwierasz i uchylasz jak zwykle. Każdą plisę produkujemy na wymiar Twojego okna.
       </p>
+      <ul className="lj-cechy">
+        <li><b>Na wymiar</b> – szerokość od 20 do 150 cm, wysokość od 20 do 230 cm</li>
+        <li><b>Montaż bez wiercenia</b> (uchwyty na skrzydło) albo przykręcany – około 15 minut</li>
+        <li><b>150 tkanin w 5 kolekcjach</b> – od dekoracyjnych po zaciemniające i termoizolacyjne</li>
+        <li><b>10 kolorów aluminiowych profili</b> – dobierzesz do koloru ramy</li>
+        <li><b>Do okien i drzwi balkonowych</b> PCV, drewnianych i aluminiowych</li>
+        <li><b>Bez sznurków i łańcuszków</b>, tkaniny antystatyczne – łatwe w czyszczeniu</li>
+      </ul>
       {cena !== null ? (
         <p className="lj-cena">
           Okno {String(szer).replace(".", ",")} × {String(wys).replace(".", ",")} cm: <b>{cena.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł</b>
