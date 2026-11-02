@@ -24402,13 +24402,11 @@ html body button.wiz-baner-cta:hover { background: #c2410c; }
   position: fixed;
   inset: 0;
   z-index: 140;
-  background: rgba(19, 40, 67, 0.5);
-  backdrop-filter: blur(8px);
+  background: rgba(19, 40, 67, 0.62);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  animation: rescueModalFadeIn 0.25s ease both;
 }
 .ratuj-modal {
   position: relative;
@@ -24421,13 +24419,6 @@ html body button.wiz-baner-cta:hover { background: #c2410c; }
   color: var(--ink);
   box-shadow: 0 24px 60px rgba(15, 40, 89, 0.28);
   border-top: 6px solid #ffc72c;
-  animation: rescueModalRise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .ratuj-overlay,
-  .ratuj-modal {
-    animation: none;
-  }
 }
 .ratuj-close {
   position: absolute;
@@ -24624,4 +24615,22 @@ html body button.wiz-baner-cta:hover { background: #c2410c; }
   font-variant-numeric: tabular-nums;
   font-size: 16px;
   color: #ffc72c;
+}
+.ratuj-countdown-narrow {
+  display: none;
+}
+@media (max-width: 560px) {
+  .ratuj-countdown {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13.5px;
+  }
+  .ratuj-countdown-wide {
+    display: none;
+  }
+  .ratuj-countdown-narrow {
+    display: inline;
+    white-space: nowrap;
+  }
 }

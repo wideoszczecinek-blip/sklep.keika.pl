@@ -275,9 +275,10 @@ export function RescueSignup(props: {
       {showCountdown && expiresAtMs !== null && now > 0 && expiresAtMs > now ? (
         <div className="ratuj-countdown" role="status">
           <span className="ratuj-countdown-badge">−{Math.round(issued?.percent || percent || 10)}%</span>
-          <span className="ratuj-countdown-text">
+          <span className="ratuj-countdown-text ratuj-countdown-wide">
             Kod <strong>{appliedCode}</strong> naliczony · ważny jeszcze
           </span>
+          <span className="ratuj-countdown-text ratuj-countdown-narrow">Twój kod ważny jeszcze</span>
           <strong className="ratuj-countdown-clock">{formatRescueClock(expiresAtMs - now)}</strong>
         </div>
       ) : null}
