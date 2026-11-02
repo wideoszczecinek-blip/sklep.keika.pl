@@ -156,6 +156,11 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [qr, setQr] = useState<{ kod: string; url: string } | null>(null);
   // telefon zeskanował kod - komputer czeka na zdjęcie (właściciel 2.11: zdjęcie telefonem mocno pokazane na komputerze)
   const [qrSkan, setQrSkan] = useState(false);
+  // AGN-914 (3.11): 0 skanów na 77 kodów - po 20 s bez skanu wyraźna druga droga (plik z komputera); odnowienia kodu liczone osobno
+  const [qrDlugo, setQrDlugo] = useState(false);
+  const qrIleRef = useRef(0);
+  // AGN-914: po wyniku z ceną szacunkową jednorazowa zachęta do wpisania wymiarów (6 z 165 otwarć wpisało wymiary)
+  const [zachetaWym, setZachetaWym] = useState(false);
   // przykładowe okno (Agencja 2.11: „Nie masz teraz zdjęcia?”) - wspólna wizualizacja demo, bez zapisu i bez kosztu AI
   const [demo, setDemo] = useState(false);
   const [zdjecia, setZdjecia] = useState<Zdjecie[]>([]);
@@ -241,10 +246,18 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       if (q) {
         setQr(q);
         setQrSkan(false);
-        wizEvent("wiz_qr_pokazany", null, { zrodlo });
+        setQrDlugo(false);
+        wizEvent("wiz_qr_pokazany", null, { zrodlo, ponowny: qrIleRef.current > 0 });
+        qrIleRef.current += 1;
       }
     });
   }, [mobile, qrKod, faza, qr, zrodlo]);
+
+  useEffect(() => {
+    if (!qr || qrSkan || faza !== "start") return;
+    const t = window.setTimeout(() => setQrDlugo(true), 20000);
+    return () => window.clearTimeout(t);
+  }, [qr, qrSkan, faza]);
 
   // ...i czekanie, aż telefon wyśle zdjęcie
   useEffect(() => {
@@ -262,7 +275,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         return;
       }
       if (r?.status === "wygasl") {
-        setQr(null);
+        // nowy kod dopiero, gdy klient wróci do karty - odnowienia co 30 min w tle zawyżały „pokazania” (AGN-914)
+        if (document.visibilityState === "visible") setQr(null);
+        else document.addEventListener("visibilitychange", () => setQr(null), { once: true });
         return;
       }
       if (r?.status === "skan") setQrSkan(true);
@@ -994,7 +1009,30 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     pewnosc: p.pewnoscWym ?? null, odniesienia: p.odniesienia || [], szerMm: p.wpisSzerMm, wysMm: p.wpisWysMm, zmierzone: p.zmierzone, pomin: p.pomin,
   })), [panes]);
   const cenaZestawu = useCenaZestawu(wycenaSzyby, montaz);
-  const pokojTeraz = zdjecia.find((z) => z.token === token)?.nazwa || "Pokój";
+  const szacunkowa = Boolean(cenaZestawu?.szacunkowa);
+  // zachęta do wymiarów: wynik z ceną szacunkową, bez otwartych okienek i podpowiedzi, po 12 s - raz na wizualizację
+  useEffect(() => {
+    if (faza !== "gotowa" || !gotowyObraz || demo || !token || !szacunkowa || zakladka || emailOkno || pokojDialog || lupa || podp || edycja || przedPo !== null) return;
+    try {
+      if (window.localStorage.getItem(`keika_wiz_zwym_${token}`)) return;
+    } catch {
+      // bez pamięci przeglądarki zachęta pokaże się raz na otwarcie
+    }
+    const t = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(`keika_wiz_zwym_${token}`, "1");
+      } catch {
+        // jw.
+      }
+      setZachetaWym(true);
+      wizEvent("wiz_zacheta_wymiary", token, {});
+    }, 12000);
+    return () => window.clearTimeout(t);
+  }, [faza, gotowyObraz, demo, token, szacunkowa, zakladka, emailOkno, pokojDialog, lupa, podp, edycja, przedPo]);
+  useEffect(() => {
+    if (zakladka || !szacunkowa) setZachetaWym(false);
+  }, [zakladka, szacunkowa]);
+  const pokojTeraz =zdjecia.find((z) => z.token === token)?.nazwa || "Pokój";
   const zapiszNazwe = (nazwa: string) => {
     const n = nazwa.trim().slice(0, 40) || pokojTeraz;
     writeSesja(readSesja().map((z) => (z.token === token ? { ...z, nazwa: n } : z)));
@@ -1133,7 +1171,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                 <div className={s.qrBig}>
                   <div className={s.qrBigHead}>
                     <b>📱 Zrób zdjęcie okna telefonem</b>
-                    <small>Zeskanuj kod aparatem telefonu – wynik pojawi się tutaj, na dużym ekranie.</small>
+                    <small>Otwórz aparat w telefonie i skieruj go na kod – bez instalowania aplikacji. Wynik pojawi się tutaj, na dużym ekranie.</small>
                   </div>
                   {qrSkan ? (
                     <div className={s.qrPolaczono}>
@@ -1144,7 +1182,14 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   ) : (
                     <div className={s.qrBigImg}>{qr ? <QrKod url={qr.url} /> : <span className={s.qrWait}>…</span>}</div>
                   )}
-                  <button type="button" className={s.qrPlik} onClick={() => fileRef.current?.click()}>albo wybierz plik z komputera</button>
+                  {qrDlugo && !qrSkan ? (
+                    <div className={s.qrAlt}>
+                      <b>Nie masz telefonu pod ręką?</b>
+                      <button type="button" className={s.secondary} onClick={() => { wizEvent("wiz_qr_alternatywa", null, { wybor: "plik" }); fileRef.current?.click(); }}>🖼️ Wybierz zdjęcie okna z komputera</button>
+                    </div>
+                  ) : (
+                    <button type="button" className={s.qrPlik} onClick={() => fileRef.current?.click()}>albo wybierz plik z komputera</button>
+                  )}
                 </div>
               )}
               {faza === "start" && katalog?.demo ? (
@@ -1570,6 +1615,13 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                 {blad ? <p className={s.error}>{blad}</p> : null}
                 {info && edycja ? <p className={s.info}>{info}</p> : null}
                 {prog ? <p className={s.bundle}>{prog}</p> : null}
+                {zachetaWym && !demo ? (
+                  <button type="button" className={s.zachetaWym}
+                    onClick={() => { setZachetaWym(false); setZakladka("wycena"); setEdycja(false); setWEtap("kreator"); wizEvent("wiz_produkt", token, { widok: "zacheta_wymiary" }); }}>
+                    <span aria-hidden="true">📏</span>
+                    <span><b>Masz miarkę? Wpisz wymiary okna</b><small>Teraz cena jest z wymiarów odczytanych ze zdjęcia. Po pomiarze zobaczysz cenę dokładnie dla Twojego okna – 2 minuty.</small></span>
+                  </button>
+                ) : null}
                 <div className={s.resLinks}>
                   <label><input type="checkbox" checked={wszystkie} onChange={(e) => (e.target.checked ? naWszystkie() : setWszystkie(false))} /> Ta sama plisa na wszystkich szybach</label>
                   <button type="button" className={s.link} onClick={() => setPrzedPo((v) => (v === null ? (canvasRef.current?.width || 0) / 2 : null))}>{przedPo === null ? "Przed / po" : "Zamknij porównanie"}</button>
