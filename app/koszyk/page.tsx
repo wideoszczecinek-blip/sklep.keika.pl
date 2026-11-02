@@ -85,6 +85,8 @@ import {
 import { getRescueGrant, RESCUE_GRANT_EVENT, type RescueGrant } from "@/lib/rescue";
 import { formatEscapeDeadline } from "@/lib/escape-offer";
 import { EscapeOfferCartReveal, EscapeOfferCountdownChip, useCartEscapeOffer } from "../components/escape-offer";
+import { RescueSignup } from "../components/rescue-signup";
+import { cartUnits, isRescueSignupCode } from "@/lib/rescue-signup";
 import { useBackToClose } from "@/lib/use-back-to-close";
 import InstallmentOffer from "@/app/components/installment-offer";
 import { buildPaymentTiles, resolveProvider, type PaymentRouting, type PaymentProvider } from "@/app/components/payment-methods";
@@ -1114,7 +1116,10 @@ export default function CartPage() {
   // 23.10.2026) - CRM i tak nie przyzna nowej oferty przy takim kodzie, a tu
   // wyłączamy też rabat przyznany wcześniej, żeby kwota w koszyku zgadzała
   // się z tym, co policzy quote_save.php.
-  const strongCodeApplied = Boolean(appliedDiscount && appliedDiscount.type === "percent" && appliedDiscount.value >= 25);
+  // Kod −10 % za zapis (RATUJ-, 2.11.2026) tak samo - rabaty się nie sumują.
+  const strongCodeApplied = Boolean(
+    appliedDiscount && ((appliedDiscount.type === "percent" && appliedDiscount.value >= 25) || isRescueSignupCode(appliedDiscount.code)),
+  );
   const rescueGrant = strongCodeApplied ? null : rescueGrantRaw;
   const combinedDiscountPercent =
     (appliedDiscount?.type === "percent" ? appliedDiscount.value : 0) + (rescueGrant?.percent || 0);
@@ -1899,7 +1904,8 @@ export default function CartPage() {
         const response = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/discount_code_check.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, subtotal }),
+          // units: kod −10 % za zapis (RATUJ-) działa tylko przy 1 sztuce (CRM).
+          body: JSON.stringify({ code, subtotal, units: cartUnits(items) }),
         });
         return (await response.json()) as DiscountCheckResponse;
       };
@@ -1926,7 +1932,8 @@ export default function CartPage() {
       setAppliedDiscount(null);
       // Kod osobisty, który CRM odrzucił (wygasł / użyty) - nie trzymamy go,
       // żeby przy następnym wejściu koszyk wrócił do SEZON20.
-      if (getPersonalCode()?.code === code.toUpperCase()) clearPersonalCode();
+      // Wyjątek: RATUJ- przy 2+ sztukach - wraca sam, gdy klient wróci do 1 sztuki.
+      if (getPersonalCode()?.code === code.toUpperCase() && !(isRescueSignupCode(code) && cartUnits(items) !== 1)) clearPersonalCode();
       setDiscountError(
         retiredPromoCodeMessage(code) || (checkError instanceof Error ? checkError.message : "Nie udało się sprawdzić kodu."),
       );
@@ -3604,6 +3611,18 @@ export default function CartPage() {
       <div className="cart-page-gradient-bg" aria-hidden="true" />
       <PromoTopStrip productSlug={cartPromoSlug} variant="static" />
       <EscapeOfferCartReveal controller={escapeOffer} payable={payableTotal} payableWithoutOffer={payableTotal + rescueAmount} />
+      <RescueSignup
+        items={items}
+        hydrated={hydrated}
+        orderInProgress={orderState !== null}
+        orderConfirmed={Boolean(orderConfirmed)}
+        appliedCode={appliedDiscount?.code ?? null}
+        discountBase={Math.max(0, summary.total - combinedSavings)}
+        onApplyCode={(code) => {
+          setDiscountCodeInput(code);
+          void checkDiscountCode(code);
+        }}
+      />
       {cartEmailNudge.open ? (
         <PromoSaveModal
           variant="cart"

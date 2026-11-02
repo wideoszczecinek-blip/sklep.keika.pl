@@ -30,6 +30,7 @@ import {
 import { ESCAPE_BAR_PENDING, ESCAPE_RETURN_BAR, setScreenWindow } from "@/lib/assistant";
 import { formatPromoRemaining } from "@/lib/promo";
 import { trackShopStep } from "@/lib/track-step";
+import { isRescueSignupCode, rescueClaimsExit, rescueOwnsCart } from "@/lib/rescue-signup";
 
 const EXIT_REMINDER_SESSION_KEY = "keika_escape_exit_reminded";
 /** Telefon i tablet: "koniec koszyka bez formularza" liczy się jako wyjście
@@ -46,7 +47,8 @@ export function useActiveEscapeOffer(): { offer: EscapeOfferState | null; remain
       // łączy się z 5 % dla wychodzących - przy takim kodzie oferta znika
       // z paska, koszyka i okienka (właściciel, 23.10.2026).
       const personal = getPersonalCode();
-      const next = personal && personal.verified && personal.percent >= 25 ? null : getActiveEscapeOffer();
+      // Kod −10 % za zapis (RATUJ-, 2.11.2026) też zastępuje 5 % - rabaty się nie sumują.
+      const next = personal && personal.verified && (personal.percent >= 25 || isRescueSignupCode(personal.code)) ? null : getActiveEscapeOffer();
       setOffer((current) => (current?.quoteCode === next?.quoteCode && current?.expiresAtMs === next?.expiresAtMs ? current : next));
       setNow(Date.now());
     };
@@ -100,7 +102,9 @@ export function useCartEscapeOffer(options: {
       current.contactUntouched &&
       !current.hasOrderDraft &&
       !current.orderConfirmed &&
-      !current.foreignCode
+      !current.foreignCode &&
+      // Koszyk z 1 sztuką ma własną ofertę przy wyjściu (−10 % za zapis, lib/rescue-signup.ts).
+      !rescueOwnsCart(current.items)
     );
   }, []);
 
@@ -135,6 +139,8 @@ export function useCartEscapeOffer(options: {
     const cached = exitCacheRef.current;
     if (cached && Date.now() - cached.at < 2000) return cached.promise;
     const promise = (async () => {
+      // Wyjście wzięło okienko −10 % za zapis - ani 5 %, ani „koszyk na e-mail”.
+      if (rescueClaimsExit()) return true;
       if (!canAsk()) return false;
       const active = getActiveEscapeOffer();
       if (active) {
