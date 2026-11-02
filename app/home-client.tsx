@@ -227,6 +227,7 @@ import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
 import { PlisyHeroGallery, PlisyOfferCard, PlisyStickyBar, usePaypoEnabled } from "@/features/plisy/LandingV2";
+import { LejekGaleria } from "@/features/plisy/LejekGaleria";
 import {
   LejekBezRyzyka,
   LejekCeny,
@@ -4017,6 +4018,7 @@ export default function Home({
                             <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
                             <WizHost />
                             <WizPlywajacy zrodlo="plisy-plywajacy" />
+                            <LejekGaleria onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
                             {film}
                             {oferta}
                             <PremiumQuality />
