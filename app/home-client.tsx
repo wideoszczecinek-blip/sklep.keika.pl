@@ -107,6 +107,7 @@ import {
 import {
   ROLETY_DACHOWE_STARTING_PRICE,
   fetchRoofBlindProfile,
+  calcRoletyDachowePrice,
   roofBlindStartingPrice,
   type ConfiguratorResult as RoletyDachoweConfiguratorResult,
   type RoofBlindProfile,
@@ -166,7 +167,7 @@ import {
   PD_SPEC_ITEMS,
   PD_SUBTITLE,
 } from "@/features/plisy-dachowe/landing-content";
-import { PD_STARTING_PRICE_FALLBACK, pdPriceMultiplier, pdStartingPrice, type ConfiguratorResult as PlisyDachoweConfiguratorResult } from "@/features/plisy-dachowe/shared";
+import { PD_STARTING_PRICE_FALLBACK, pdCheapestPriceForSize, pdPriceMultiplier, pdStartingPrice, type ConfiguratorResult as PlisyDachoweConfiguratorResult } from "@/features/plisy-dachowe/shared";
 import {
   isPlisyPlaceholderCopy,
   PLISY_H1,
@@ -228,6 +229,7 @@ import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
 import { PlisyHeroGallery, PlisyOfferCard, PlisyStickyBar, usePaypoEnabled } from "@/features/plisy/LandingV2";
 import { LejekGaleria } from "@/features/plisy/LejekGaleria";
+import { DachBezRyzyka, DachCeny, DachOpis, DachPomiar, dachFaqWgObiekcji, typoweOkna } from "@/features/dachowe/LejekDachowy";
 import {
   LejekBezRyzyka,
   LejekCeny,
@@ -1642,6 +1644,24 @@ export default function Home({
   const pdStartingPriceValue = plisyProfile
     ? pdStartingPrice(plisyProfile, pdPriceAdjustmentPercent)
     : applyPriceAdjustment(PD_STARTING_PRICE_FALLBACK, pdPriceAdjustmentPercent);
+  // Lejek dachowy (2.11): ceny najczęstszych okien - najtańsza konfiguracja jak w szybkiej wycenie
+  // (rolety: biała kaseta + pierwsza tkanina cennika, plisy: biały osprzęt + najtańsza kolekcja).
+  const rdTypoweCena = useMemo(
+    () =>
+      typoweOkna(rdLibrary, (w, h) =>
+        rdProfile && rdProfile.materialTypes[0]
+          ? calcRoletyDachowePrice(rdProfile.tables, w, h, rdProfile.hardware[0]?.id || "bialy", rdProfile.materialTypes[0].id, roletyPriceAdjustmentPercent)
+          : null,
+      ),
+    [rdLibrary, rdProfile, roletyPriceAdjustmentPercent],
+  );
+  const pdTypoweCena = useMemo(
+    () => typoweOkna(rdLibrary, (w, h) => pdCheapestPriceForSize(plisyProfile, w, h, pdPriceAdjustmentPercent)),
+    [rdLibrary, plisyProfile, pdPriceAdjustmentPercent],
+  );
+  const scrollToDachWycena = () => {
+    document.getElementById("dach-wycena")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   // Desktop-only "Powiększ" toggle on .hero-product-config-panel (shared by
   // every product's configurator, applied once here instead of per-product).
   // Pure CSS state - no scroll position or config selection is touched by
@@ -4503,6 +4523,10 @@ export default function Home({
                                 price by window model, description, how it works,
                                 fabric collections priced x1,25, hardware, library
                                 teaser, callout). */}
+                            {/* Lejek (właściciel 2.11, wzorem /plisy): zdjęcia → co to jest → opinie → bez ryzyka (dobór po tabliczce) → jakość →
+                                ceny typowych okien z CAŁY DOM → wycena → tkaniny → pomiar → opinie. Bez wizualizatora (wersja dachowa niegotowa). */}
+                            <PdHeroPhotos />
+
                             <div className="pl-trust-row">
                               <span className="pl-price">
                                 od {formatStartingPrice(pdStartingPriceValue)} zł
@@ -4515,88 +4539,62 @@ export default function Home({
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
 
-                            {/* Pierwszy ekran (audyt 2026-10-01): start wyceny zaraz pod
-                                plakietkami, prawdziwe zdjęcia tuż pod nim, opis niżej - ci,
-                                którzy od razu wycenili okno, kupowali kilka razy częściej. */}
-                            <PdQuickPrice
-                              profile={plisyProfile}
-                              library={rdLibrary}
-                              preselect={pdPreselect}
-                              promo={topPromoActive ? topPromoPreview : null}
-                              fabricGroupId={pdQuickGroup}
-                              onFabricGroupChange={setPdQuickGroup}
-                              onSelectionChange={(selection) =>
-                                setPdQuickDims({
-                                  widthMm: selection.widthMm,
-                                  heightMm: selection.heightMm,
-                                  label: selection.widthMm
-                                    ? selection.item
-                                      ? buildRoofWindowDisplayLabel(selection.item)
-                                      : `${selection.widthMm} × ${selection.heightMm} mm`
-                                    : "",
-                                })
-                              }
-                              onConfigure={(selection) => {
-                                setPdQuickDims({
-                                  widthMm: selection.widthMm,
-                                  heightMm: selection.heightMm,
-                                  label: selection.item ? buildRoofWindowDisplayLabel(selection.item) : `${selection.widthMm} × ${selection.heightMm} mm`,
-                                });
-                                setPdLastResult(null);
-                                setPdPrefill({
-                                  windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
-                                  windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
-                                  fabricGroupId: selection.fabricGroupId || undefined,
-                                });
-                                setPdConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
-                              }}
+                            <DachOpis
+                              produkt="plisy-dachowe"
+                              liczbaModeli={rdLibrary.length}
+                              przyklad={pdTypoweCena.find((o) => /MK06/.test(o.okno)) || null}
+                              onWycen={() => scrollToDachWycena()}
                             />
-
-                            <PdHeroPhotos />
-
-                            <p className="pl-subtitle">{productLanding?.subtitle && !isPdPlaceholderCopy(productLanding.subtitle) ? productLanding.subtitle : PD_SUBTITLE}</p>
-
-                            <div className="pl-spec-grid">
-                              {(productLanding?.specItems?.length ? productLanding.specItems : PD_SPEC_ITEMS).map((item) => {
-                                const icon = rdSpecIcon(item.label);
-                                const withMeasureCta = /model/i.test(item.label);
-                                return (
-                                  <div className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`} key={item.label}>
-                                    {icon ? <span className="pl-spec-icon">{icon}</span> : null}
-                                    <div className="pl-spec-item-text">
-                                      <span className="pl-spec-label">{item.label}</span>
-                                      <span className="pl-spec-value">{item.value}</span>
-                                      {withMeasureCta ? (
-                                        <button type="button" className="pl-measure-cta" onClick={openMeasurementInstructions}>
-                                          <span aria-hidden="true">📐</span>
-                                          Okno spoza listy? Zobacz, jak zmierzyć
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            <h2 className="hero-product-section-title">Opis produktu</h2>
-                            <div
-                              className="pl-description"
-                              dangerouslySetInnerHTML={{
-                                __html: demoteHeadings(productLanding?.description && !isPdPlaceholderCopy(productLanding.description) ? productLanding.description : PD_DESCRIPTION_HTML),
-                              }}
-                            />
-
-                            <ul className="pl-feature-list">
-                              {(productLanding?.featureBullets?.length ? productLanding.featureBullets : PD_FEATURE_BULLETS).map((bullet) => (
-                                <li key={bullet.lead}>
-                                  <strong>{bullet.lead}</strong>
-                                  {bullet.detail ? <span> — {bullet.detail}</span> : null}
-                                </li>
-                              ))}
-                            </ul>
+                            <LejekDowod onOpinie={() => scrollToProductSection("opinie")} />
+                            <DachBezRyzyka produkt="plisy-dachowe" liczbaModeli={rdLibrary.length} onPomiar={openMeasurementInstructions} />
 
                             <PdHowItWorks />
+
+                            <DachCeny
+                              produkt="plisy-dachowe"
+                              okna={pdTypoweCena}
+                              onOkno={(item) => {
+                                setPdPreselect({ item });
+                                scrollToDachWycena();
+                              }}
+                            />
+
+                            <div id="dach-wycena" className="dach-wycena">
+                            <PdQuickPrice
+                                profile={plisyProfile}
+                                library={rdLibrary}
+                                preselect={pdPreselect}
+                                promo={topPromoActive ? topPromoPreview : null}
+                                fabricGroupId={pdQuickGroup}
+                                onFabricGroupChange={setPdQuickGroup}
+                                onSelectionChange={(selection) =>
+                                  setPdQuickDims({
+                                    widthMm: selection.widthMm,
+                                    heightMm: selection.heightMm,
+                                    label: selection.widthMm
+                                      ? selection.item
+                                        ? buildRoofWindowDisplayLabel(selection.item)
+                                        : `${selection.widthMm} × ${selection.heightMm} mm`
+                                      : "",
+                                  })
+                                }
+                                onConfigure={(selection) => {
+                                  setPdQuickDims({
+                                    widthMm: selection.widthMm,
+                                    heightMm: selection.heightMm,
+                                    label: selection.item ? buildRoofWindowDisplayLabel(selection.item) : `${selection.widthMm} × ${selection.heightMm} mm`,
+                                  });
+                                  setPdLastResult(null);
+                                  setPdPrefill({
+                                    windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
+                                    windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
+                                    fabricGroupId: selection.fabricGroupId || undefined,
+                                  });
+                                  setPdConfigKey((key) => key + 1);
+                                  scrollToConfigPanel();
+                                }}
+                              />
+                            </div>
 
                             <PlisyCollectionsPicker
                               profile={plisyProfile}
@@ -4627,6 +4625,13 @@ export default function Home({
                               }}
                             />
 
+                            <DachPomiar
+                              produkt="plisy-dachowe"
+                              onInstrukcja={openMeasurementInstructions}
+                              onCzat={() => openCrispChat("Zdjęcie mojego okna dachowego – pomożecie dobrać plisę?")}
+                            />
+                            <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
+
                             <div className="pl-callout">
                               <strong>{productLanding?.callout?.title || PD_CALLOUT.title}</strong>
                               <p>{productLanding?.callout?.body || PD_CALLOUT.body}</p>
@@ -4641,6 +4646,10 @@ export default function Home({
                                 from features/rolety-dachowe/landing-content.ts, CRM
                                 fields take over one by one once the owner fills
                                 them. Same section order as plisy. */}
+                            {/* Lejek (właściciel 2.11, wzorem /plisy): zdjęcia → co to jest → opinie → bez ryzyka (dobór po tabliczce) → jakość →
+                                ceny typowych okien z CAŁY DOM → wycena → tkaniny → pomiar → opinie. Bez wizualizatora (wersja dachowa niegotowa). */}
+                            <RoofHeroPhotos />
+
                             <div className="pl-trust-row">
                               <span className="pl-price">
                                 od {formatStartingPrice(roletyStartingPrice)} zł
@@ -4653,94 +4662,62 @@ export default function Home({
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
 
-                            {/* Pierwszy ekran (audyt 2026-10-01): start wyceny zaraz pod
-                                plakietkami, prawdziwe zdjęcia tuż pod nim, opis niżej - ci,
-                                którzy od razu wycenili okno, kupowali kilka razy częściej. */}
-                            <RoofQuickPrice
-                              profile={rdProfile}
-                              library={rdLibrary}
-                              preselect={rdPreselect}
-                              promo={topPromoActive ? topPromoPreview : null}
-                              materialTypeId={rdQuickMaterial}
-                              onMaterialChange={setRdQuickMaterial}
-                              onSelectionChange={(selection) =>
-                                setRdQuickDims({
-                                  widthMm: selection.widthMm,
-                                  heightMm: selection.heightMm,
-                                  label: selection.widthMm
-                                    ? selection.item
-                                      ? buildRoofWindowDisplayLabel(selection.item)
-                                      : `${selection.widthMm} × ${selection.heightMm} mm`
-                                    : "",
-                                })
-                              }
-                              onConfigure={(selection) => {
-                                setRdQuickDims({
-                                  widthMm: selection.widthMm,
-                                  heightMm: selection.heightMm,
-                                  label: selection.item ? buildRoofWindowDisplayLabel(selection.item) : `${selection.widthMm} × ${selection.heightMm} mm`,
-                                });
-                                setRdLastResult(null);
-                                setRdPrefill({
-                                  windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
-                                  windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
-                                  materialTypeId: selection.materialTypeId || undefined,
-                                });
-                                setRdConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
-                              }}
+                            <DachOpis
+                              produkt="rolety-dachowe"
+                              liczbaModeli={rdLibrary.length}
+                              przyklad={rdTypoweCena.find((o) => /MK06/.test(o.okno)) || null}
+                              onWycen={() => scrollToDachWycena()}
                             />
-
-                            <RoofHeroPhotos />
-
-                            <p className="pl-subtitle">
-                              {isRdPlaceholderCopy(productLanding?.subtitle) ? RD_SUBTITLE : productLanding!.subtitle}
-                            </p>
-
-                            <div className="pl-spec-grid">
-                              {(productLanding?.specItems?.length ? productLanding.specItems : RD_SPEC_ITEMS).map((item) => {
-                                const icon = rdSpecIcon(item.label);
-                                const withMeasureCta = /model/i.test(item.label);
-                                return (
-                                  <div className={`pl-spec-item${withMeasureCta ? " pl-spec-item--wide" : ""}`} key={item.label}>
-                                    {icon ? <span className="pl-spec-icon">{icon}</span> : null}
-                                    <div className="pl-spec-item-text">
-                                      <span className="pl-spec-label">{item.label}</span>
-                                      <span className="pl-spec-value">{item.value}</span>
-                                      {withMeasureCta ? (
-                                        <button type="button" className="pl-measure-cta" onClick={openMeasurementInstructions}>
-                                          <span aria-hidden="true">📐</span>
-                                          Okno spoza listy? Zobacz, jak zmierzyć
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            <h2 className="hero-product-section-title">Opis produktu</h2>
-                            <div
-                              className="pl-description"
-                              dangerouslySetInnerHTML={{
-                                __html: demoteHeadings(
-                                  productLanding?.description && !isRdPlaceholderCopy(productLanding.description)
-                                    ? productLanding.description
-                                    : RD_DESCRIPTION_HTML,
-                                ),
-                              }}
-                            />
-
-                            <ul className="pl-feature-list">
-                              {(productLanding?.featureBullets?.length ? productLanding.featureBullets : RD_FEATURE_BULLETS).map((bullet) => (
-                                <li key={bullet.lead}>
-                                  <strong>{bullet.lead}</strong>
-                                  {bullet.detail ? <span> — {bullet.detail}</span> : null}
-                                </li>
-                              ))}
-                            </ul>
+                            <LejekDowod onOpinie={() => scrollToProductSection("opinie")} />
+                            <DachBezRyzyka produkt="rolety-dachowe" liczbaModeli={rdLibrary.length} onPomiar={openMeasurementInstructions} />
 
                             <RoofHowItWorks />
+
+                            <DachCeny
+                              produkt="rolety-dachowe"
+                              okna={rdTypoweCena}
+                              onOkno={(item) => {
+                                setRdPreselect({ item });
+                                scrollToDachWycena();
+                              }}
+                            />
+
+                            <div id="dach-wycena" className="dach-wycena">
+                            <RoofQuickPrice
+                                profile={rdProfile}
+                                library={rdLibrary}
+                                preselect={rdPreselect}
+                                promo={topPromoActive ? topPromoPreview : null}
+                                materialTypeId={rdQuickMaterial}
+                                onMaterialChange={setRdQuickMaterial}
+                                onSelectionChange={(selection) =>
+                                  setRdQuickDims({
+                                    widthMm: selection.widthMm,
+                                    heightMm: selection.heightMm,
+                                    label: selection.widthMm
+                                      ? selection.item
+                                        ? buildRoofWindowDisplayLabel(selection.item)
+                                        : `${selection.widthMm} × ${selection.heightMm} mm`
+                                      : "",
+                                  })
+                                }
+                                onConfigure={(selection) => {
+                                  setRdQuickDims({
+                                    widthMm: selection.widthMm,
+                                    heightMm: selection.heightMm,
+                                    label: selection.item ? buildRoofWindowDisplayLabel(selection.item) : `${selection.widthMm} × ${selection.heightMm} mm`,
+                                  });
+                                  setRdLastResult(null);
+                                  setRdPrefill({
+                                    windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
+                                    windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
+                                    materialTypeId: selection.materialTypeId || undefined,
+                                  });
+                                  setRdConfigKey((key) => key + 1);
+                                  scrollToConfigPanel();
+                                }}
+                              />
+                            </div>
 
                             <RoofFabricsGuide
                               profile={rdProfile}
@@ -4770,6 +4747,13 @@ export default function Home({
                                 scrollToConfigPanel();
                               }}
                             />
+
+                            <DachPomiar
+                              produkt="rolety-dachowe"
+                              onInstrukcja={openMeasurementInstructions}
+                              onCzat={() => openCrispChat("Zdjęcie mojego okna dachowego – pomożecie dobrać roletę?")}
+                            />
+                            <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
 
                             <div className="pl-callout">
                               <strong>{productLanding?.callout?.title || RD_CALLOUT.title}</strong>
@@ -5332,7 +5316,12 @@ export default function Home({
                                 ? productLanding.faq
                                 : builtinFaqForSlug(productSlugFromSelected(displayedProduct));
                               // lejek plis: najpierw pytania, które zatrzymują zakup
-                              const faqEntries = plisyV2 ? faqWgObiekcji(faqWszystkie) : faqWszystkie;
+                              const slugFaq = productSlugFromSelected(displayedProduct);
+                              const faqEntries = plisyV2
+                                ? faqWgObiekcji(faqWszystkie)
+                                : slugFaq === "plisy-dachowe" || slugFaq === "rolety-dachowe"
+                                  ? dachFaqWgObiekcji(faqWszystkie)
+                                  : faqWszystkie;
                               const shownFaq = faqExpanded ? faqEntries : faqEntries.slice(0, FAQ_INITIAL_COUNT);
                               return (
                                 <>
