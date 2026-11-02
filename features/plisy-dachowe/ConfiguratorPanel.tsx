@@ -689,6 +689,7 @@ export default function ConfiguratorPanel({
         )}
         <div className="hero-product-step-body">
           <RoofWindowSearchSelector
+            produktDopelniacz="plisy"
             query={windowQuery}
             results={searchResults}
             selectedItem={windowChoice?.kind === "library" ? windowChoice.item : null}

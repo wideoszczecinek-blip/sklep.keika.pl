@@ -4616,6 +4616,7 @@ export default function Home({
                             <PdHardwareStrip onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
 
                             <RoofLibraryTeaser
+                              produktDopelniacz="plisy"
                               library={rdLibrary}
                               onSearch={(query) => {
                                 setPdLastResult(null);

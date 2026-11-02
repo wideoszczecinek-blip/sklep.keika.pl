@@ -197,6 +197,12 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const fileRef = useRef<HTMLInputElement | null>(null);
   const camRef = useRef<HTMLInputElement | null>(null);
   const dragRef = useRef<{ kind: "gora" | "dol" | "rog" | "split"; pane: number; corner?: number; off: number } | null>(null);
+  // Podpowiedź po wyniku (Agencja 2.11: belki rusza 55 %, kolor zmienia 30 % klientów): łapka zsuwa dolną belkę pierwszej
+  // szyby i wraca do pozycji z AI, potem napis i podświetlony „Kolor tkaniny”. Raz na wizualizację, znika przy dotknięciu.
+  const [podp, setPodp] = useState<{ reka: { left: number; top: number } | null; napis: boolean } | null>(null);
+  const podpAnimRef = useRef<{ pane: number; dol: number } | null>(null);
+  const podpRafRef = useRef(0);
+  const podpTokenRef = useRef<string | null>(null);
   const rafRef = useRef(0);
   const saveRef = useRef(0);
   const korektaRef = useRef(false);
@@ -549,7 +555,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         const back = (p.swiatlo?.za_szyba ?? 0.7) * nocKoef;
         const wokol = p.swiatlo?.wokol ?? sw?.jasnosc_pokoju ?? 0.6;
         return {
-          id: p.id, corners: p.rogi, top: p.gora, bottom: p.dol,
+          id: p.id, corners: p.rogi, top: p.gora, bottom: podpAnimRef.current?.pane === i ? podpAnimRef.current.dol : p.dol,
           fabric: { id: p.tkanina, color: hexToRgb(t?.kolor || "#EEEEEE"), transmission: t?.transmisja ?? 0.25, texture: null, honeycomb: Boolean(kol?.plaster_miodu) },
           rail, railId: p.listwa, bracket: ["bialy", "anoda"].includes(p.listwa) ? [0.95, 0.95, 0.94] : rail, mount: montaz,
           widthMm: p.szerMm, heightMm: p.wysMm, back, front: Math.max(0.45, Math.min(1.1, 0.35 + 0.75 * wokol)),
@@ -563,6 +569,77 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   useEffect(() => {
     if (gotowyObraz) draw();
   }, [draw, gotowyObraz]);
+
+  useEffect(() => {
+    // czeka, aż klient zamknie okno e-maila i inne okienka - wcześniej leciała pod nimi
+    if (faza !== "gotowa" || !gotowyObraz || demo || !token || !panes.length || edycja || przedPo !== null || zakladka || emailOkno || pokojDialog || lupa) return;
+    if (podpTokenRef.current === token) return;
+    let juz = false;
+    try {
+      // powrót z linku w mailu: tylko jeśli klient jeszcze nie ruszał belek
+      juz = Boolean(window.localStorage.getItem(`keika_wiz_podp_${token}`) || window.localStorage.getItem(`keika_wiz_belka_${token}`));
+    } catch {
+      // bez pamięci przeglądarki podpowiedź pokaże się raz na otwarcie
+    }
+    if (juz) {
+      podpTokenRef.current = token;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      podpTokenRef.current = token;
+      try {
+        window.localStorage.setItem(`keika_wiz_podp_${token}`, "1");
+      } catch {
+        // jw.
+      }
+      const ruch = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      wizEvent("wiz_podpowiedz", token, { ruch });
+      const p = panes[0];
+      const H = paneToImage(p.rogi);
+      if (!ruch || !H) {
+        setPodp({ reka: null, napis: true });
+        return;
+      }
+      const baza = p.dol;
+      const cel = baza <= 0.72 ? Math.min(0.97, baza + 0.25) : Math.max(p.gora + 0.18, baza - 0.3);
+      const t0 = performance.now();
+      const gladko = (x: number) => x * x * (3 - 2 * x);
+      const krok = (now: number) => {
+        const t = Math.min(1, (now - t0) / 2200);
+        // łapka chwyta → belka w dół → chwila → z powrotem do pozycji z AI
+        const k = t < 0.15 ? 0 : t < 0.5 ? gladko((t - 0.15) / 0.35) : t < 0.6 ? 1 : t < 0.95 ? 1 - gladko((t - 0.6) / 0.35) : 0;
+        const dol = baza + (cel - baza) * k;
+        podpAnimRef.current = { pane: 0, dol };
+        draw();
+        setPodp({ reka: cornerPos(apply(H, [0.5, dol])), napis: false });
+        if (t < 1) {
+          podpRafRef.current = requestAnimationFrame(krok);
+        } else {
+          podpAnimRef.current = null;
+          draw();
+          setPodp({ reka: null, napis: true });
+        }
+      };
+      podpRafRef.current = requestAnimationFrame(krok);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [faza, gotowyObraz, demo, token, panes, edycja, przedPo, zakladka, emailOkno, pokojDialog, lupa, draw]);
+
+  // pierwsze dotknięcie gdziekolwiek chowa podpowiedź (także w trakcie animacji - belka wraca na miejsce z AI)
+  const podpJest = Boolean(podp);
+  useEffect(() => {
+    if (!podpJest) return;
+    const zamknij = () => {
+      cancelAnimationFrame(podpRafRef.current);
+      if (podpAnimRef.current) {
+        podpAnimRef.current = null;
+        draw();
+      }
+      setPodp(null);
+    };
+    document.addEventListener("pointerdown", zamknij, { capture: true, once: true });
+    return () => document.removeEventListener("pointerdown", zamknij, { capture: true });
+  }, [podpJest, draw]);
 
   // klucz bieżącego układu (to, co widać na płótnie) - zdjęcie AI jest ważne tylko dla swojego klucza
   const klucz = useMemo(() => {
@@ -716,7 +793,14 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const onUp = () => {
     const d = dragRef.current;
     dragRef.current = null;
-    if (d && (d.kind === "gora" || d.kind === "dol")) wizEvent("wiz_belka", token, { belka: d.kind });
+    if (d && (d.kind === "gora" || d.kind === "dol")) {
+      wizEvent("wiz_belka", token, { belka: d.kind });
+      try {
+        if (token) window.localStorage.setItem(`keika_wiz_belka_${token}`, "1");
+      } catch {
+        // tylko pamięć podpowiedzi
+      }
+    }
     if (d?.kind === "split") wizEvent("wiz_przed_po", token, {});
   };
 
@@ -1244,6 +1328,14 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     onPointerUp={onUp}
                     onPointerCancel={onUp}
                   />
+                  {podp?.reka ? (
+                    <span className={s.podpReka} style={{ left: podp.reka.left, top: podp.reka.top }} aria-hidden="true">👆</span>
+                  ) : null}
+                  {podp?.napis ? (
+                    <div className={s.podpNapis} role="status">
+                      {isMobile() ? "Przesuń belkę palcem" : "Przeciągnij belkę myszką"} · {isMobile() ? "Stuknij" : "Kliknij"} „Kolor tkaniny”, żeby zmienić tkaninę
+                    </div>
+                  ) : null}
                   {/* przycisk zdjęcia AI na samym zdjęciu (właściciel 1.11: „nie rzuca się w oczy”), raz pulsuje po wyniku */}
                   {demo && gotowyObraz ? (
                     <button type="button" className={s.demoPasek} onClick={noweZdjecie}>
@@ -1460,7 +1552,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   <button type="button" className={`${s.tool} ${zakladka === "grupa" ? s.toolOn : ""}`} onClick={() => otworzKarte("grupa")}>
                     <small>Rodzaj tkaniny</small><b>{katalog.kolekcje.find((k) => k.id === tkAkt?.kolekcja)?.nazwa || "Wybierz"}</b>
                   </button>
-                  <button type="button" className={`${s.tool} ${zakladka === "tkanina" ? s.toolOn : ""}`} onClick={() => otworzKarte("tkanina")}>
+                  <button type="button" className={`${s.tool} ${zakladka === "tkanina" ? s.toolOn : ""} ${podp?.napis ? s.toolPodp : ""}`} onClick={() => otworzKarte("tkanina")}>
                     <small>Kolor tkaniny</small><b><i style={{ backgroundImage: tkAkt ? `url(${mini(tkAkt.miniatura || tkAkt.tekstura, 64)})` : undefined, backgroundColor: tkAkt?.kolor }} />{tkAkt?.kod || "Wybierz"}</b>
                   </button>
                   <button type="button" className={`${s.tool} ${zakladka === "listwy" ? s.toolOn : ""}`} onClick={() => otworzKarte("listwy")}>
