@@ -32,6 +32,8 @@ export type WizKatalog = {
   listwy: WizListwa[];
   montaz: { id: string; nazwa: string; opis: string }[];
   zastrzezenie: string;
+  /** przykładowe okno (gotowa wizualizacja „demo” w CRM) - „Nie masz teraz zdjęcia?” (2.11) */
+  demo?: string;
 };
 
 export type WizSzyba = {
@@ -210,10 +212,16 @@ export async function wizQrCreate(zrodlo: string): Promise<{ kod: string; url: s
   return j?.ok && j.kod && j.url ? { kod: j.kod, url: j.url } : null;
 }
 
-export async function wizQrPoll(kod: string): Promise<{ status: "czeka" | "jest" | "wygasl"; token?: string } | null> {
+/** „skan” = telefon otworzył stronę z kodu, zdjęcia jeszcze nie ma (komputer pokazuje „Telefon połączony”). */
+export async function wizQrPoll(kod: string): Promise<{ status: "czeka" | "skan" | "jest" | "wygasl"; token?: string } | null> {
   const r = await fetch(`${WIZ_API}/qr.php?kod=${encodeURIComponent(kod)}`, { cache: "no-store" }).catch(() => null);
   if (!r || !r.ok) return null;
-  return (await r.json().catch(() => null)) as { status: "czeka" | "jest" | "wygasl"; token?: string } | null;
+  return (await r.json().catch(() => null)) as { status: "czeka" | "skan" | "jest" | "wygasl"; token?: string } | null;
+}
+
+/** Telefon po zeskanowaniu kodu: znak dla komputera (i zdarzenie wiz_qr_zeskanowany w CRM). */
+export function wizQrSkan(kod: string): void {
+  void fetch(`${WIZ_API}/qr.php?kod=${encodeURIComponent(kod)}&skan=1`, { cache: "no-store" }).catch(() => {});
 }
 
 /** Zdarzenie: tabela wizualizatora w CRM + analityka sklepu (lejek, Agencja → zachowania). */
