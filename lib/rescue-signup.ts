@@ -143,6 +143,22 @@ export function rescuePercentForUnits(settings: RescueSignupSettings | null, uni
   return Math.max(0, Number(settings.tiers[String(units)]) || 0);
 }
 
+/** Liczby sztuk, przy których kod działa (procent > 0), rosnąco - np. [1, 2]. */
+export function rescueCodeUnits(settings: RescueSignupSettings | null): number[] {
+  if (!settings) return [];
+  return Object.keys(settings.tiers)
+    .map(Number)
+    .filter((n) => n >= 1 && rescuePercentForUnits(settings, n) > 0)
+    .sort((a, b) => a - b);
+}
+
+/** Procent CAŁY DOM (reguła na całe zamówienie) przy danej liczbie sztuk; 0 = brak rabatu. */
+export function bundlePercentFor(tiers: Array<{ fromQty: number; percent: number }>, units: number): number {
+  let pct = 0;
+  for (const t of tiers) if (units >= t.fromQty) pct = t.percent;
+  return pct;
+}
+
 function readDeviceShownAt(): number {
   let at = 0;
   try {

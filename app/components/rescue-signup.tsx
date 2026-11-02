@@ -8,12 +8,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { formatPln, type CartLineItem } from "@/lib/cart";
 import { PERSONAL_CODE_EVENT, getPersonalCode } from "@/lib/personal-code";
 import {
+  bundlePercentFor,
   cartUnits,
   formatRescueClock,
   isRescueSignupCode,
   loadRescueSignupSettings,
   markRescueShown,
   registerRescueEligibility,
+  rescueCodeUnits,
   rescueOwnsCart,
   rescuePercentForUnits,
   rescueShownRecently,
@@ -43,9 +45,11 @@ export function RescueSignup(props: {
   appliedCode: string | null;
   /** Kwota, od której liczy się kod (produkty po korektach) - do „taniej o X zł”. */
   discountBase: number;
+  /** Progi CAŁY DOM (reguła na całe zamówienie) - kod zastępuje ten rabat, nie dokłada się do niego. */
+  bundleTiers: Array<{ fromQty: number; percent: number }>;
   onApplyCode: (code: string) => void;
 }) {
-  const { items, hydrated, orderInProgress, orderConfirmed, appliedCode, discountBase, onApplyCode } = props;
+  const { items, hydrated, orderInProgress, orderConfirmed, appliedCode, discountBase, bundleTiers, onApplyCode } = props;
   const [settings, setSettings] = useState<RescueSignupSettings | null>(null);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -233,16 +237,16 @@ export function RescueSignup(props: {
     trackRescue("rescue_order", String(appliedCode), { units });
   }, [orderConfirmed, appliedCode, units]);
 
-  // Klient dołożył drugą sztukę (kod odpadł, liczy się CAŁY DOM) i wrócił do
-  // jednej - kod z zapisu wraca sam.
+  // Klient zmienił liczbę sztuk (np. dołożył trzecią - kod odpadł, liczy się
+  // CAŁY DOM) i wrócił do liczby, przy której kod działa - kod z zapisu wraca sam.
   const prevUnitsRef = useRef(units);
   useEffect(() => {
     const prev = prevUnitsRef.current;
     prevUnitsRef.current = units;
-    if (!settings || appliedCode || units !== 1 || prev <= 1 || orderInProgress) return;
+    if (!settings || appliedCode || units === prev || percent <= 0 || orderInProgress) return;
     const personal = getPersonalCode();
     if (personal && isRescueSignupCode(personal.code)) onApplyCode(personal.code);
-  }, [units, appliedCode, settings, orderInProgress, onApplyCode]);
+  }, [units, percent, appliedCode, settings, orderInProgress, onApplyCode]);
 
   // Licznik 24 h w koszyku, gdy kod z zapisu jest naliczony.
   const [expiresAtMs, setExpiresAtMs] = useState<number | null>(null);
@@ -268,13 +272,35 @@ export function RescueSignup(props: {
     };
   }, [showCountdown]);
 
-  const saving = percent > 0 ? Math.round(discountBase * percent) / 100 : 0;
+  // Rabaty się nie sumują: przy 2 sztukach kod zastępuje CAŁY DOM, więc klient
+  // zyskuje tylko różnicę (np. −15 % zamiast −10 % = dodatkowe 5 %).
+  const bundleNow = bundlePercentFor(bundleTiers, units);
+  const saving = percent > bundleNow ? Math.round(discountBase * (percent - bundleNow)) / 100 : 0;
+  const hours = settings?.hours || 24;
+  const codeUnits = rescueCodeUnits(settings);
+  const maxCodeUnits = codeUnits.length ? codeUnits[codeUnits.length - 1] : 1;
+  const bundleAfter = bundlePercentFor(bundleTiers, maxCodeUnits + 1);
+  const unitsWord = (n: number) => `${n} ${n === 1 ? "sztuki" : "sztuk"}`;
+  const afterText = bundleAfter > 0 ? ` Przy ${maxCodeUnits + 1} i więcej sztukach liczy się CAŁY DOM −${bundleAfter} %.` : "";
+  let fineText: string;
+  if (bundleNow > 0) {
+    fineText = `Kod jednorazowy, ważny ${hours} h, na zamówienie ${unitsWord(units)}. Zastępuje rabat CAŁY DOM −${bundleNow} % (rabaty się nie sumują).${afterText}`;
+  } else if (codeUnits.length > 1) {
+    const variants = codeUnits.map((n) => {
+      const pct = rescuePercentForUnits(settings, n);
+      const bp = bundlePercentFor(bundleTiers, n);
+      return `${unitsWord(n)} (−${pct} %${bp > 0 ? ` zamiast CAŁY DOM −${bp} %` : ""})`;
+    });
+    fineText = `Kod jednorazowy, ważny ${hours} h, na zamówienie ${variants.join(" albo ")}. Rabaty się nie sumują.${afterText}`;
+  } else {
+    fineText = `Kod jednorazowy, ważny ${hours} h, na zamówienie ${unitsWord(units)}. Nie łączy się z innymi rabatami.${afterText}`;
+  }
 
   return (
     <>
       {showCountdown && expiresAtMs !== null && now > 0 && expiresAtMs > now ? (
         <div className="ratuj-countdown" role="status">
-          <span className="ratuj-countdown-badge">−{Math.round(issued?.percent || percent || 10)}%</span>
+          <span className="ratuj-countdown-badge">−{Math.round(percent || issued?.percent || 10)}%</span>
           <span className="ratuj-countdown-text ratuj-countdown-wide">
             Kod <strong>{appliedCode}</strong> naliczony · ważny jeszcze
           </span>
@@ -304,14 +330,15 @@ export function RescueSignup(props: {
               <form onSubmit={submit} noValidate>
                 <p className="ratuj-eyebrow">Zanim wyjdziesz</p>
                 <h2 id="ratuj-title">
-                  −{Math.round(percent)}% na to zamówienie
+                  {bundleNow > 0 ? `−${Math.round(percent)}% zamiast −${bundleNow}% na to zamówienie` : `−${Math.round(percent)}% na to zamówienie`}
                 </h2>
                 <p className="ratuj-lead">
                   Zapisz się do newslettera KEIKA - kod wyślemy na e-mail i od razu naliczymy w koszyku.
                   {saving > 0 ? (
                     <>
                       {" "}
-                      Zaoszczędzisz <strong>{formatPln(saving)}</strong>.
+                      {bundleNow > 0 ? "Zaoszczędzisz dodatkowo " : "Zaoszczędzisz "}
+                      <strong>{formatPln(saving)}</strong>.
                     </>
                   ) : null}
                 </p>
@@ -337,9 +364,7 @@ export function RescueSignup(props: {
                 <button type="button" className="ratuj-skip" onClick={() => close("dismiss")}>
                   Nie, dziękuję
                 </button>
-                <p className="ratuj-fine">
-                  Kod jednorazowy, ważny {settings?.hours || 24} h, na zamówienie 1 sztuki. Nie łączy się z innymi rabatami - przy 2 i więcej sztukach liczy się promocja CAŁY DOM.
-                </p>
+                <p className="ratuj-fine">{fineText}</p>
                 <p className="ratuj-fine">
                   Administratorem danych jest KEIKA Renata Kisiel. Adres wykorzystamy do wysłania kodu, a na podstawie zgody - do wysyłki informacji handlowych.
                   Szczegóły w <Link href="/legal/prywatnosc">polityce prywatności</Link>.

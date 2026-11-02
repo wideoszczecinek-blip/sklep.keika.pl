@@ -1932,8 +1932,9 @@ export default function CartPage() {
       setAppliedDiscount(null);
       // Kod osobisty, który CRM odrzucił (wygasł / użyty) - nie trzymamy go,
       // żeby przy następnym wejściu koszyk wrócił do SEZON20.
-      // Wyjątek: RATUJ- przy 2+ sztukach - wraca sam, gdy klient wróci do 1 sztuki.
-      if (getPersonalCode()?.code === code.toUpperCase() && !(isRescueSignupCode(code) && cartUnits(items) !== 1)) clearPersonalCode();
+      // Wyjątek: RATUJ- odrzucony tylko przez liczbę sztuk - wraca sam, gdy klient wróci do liczby, przy której działa.
+      const unitsOnly = isRescueSignupCode(code) && checkError instanceof Error && checkError.message.includes("za zapis działa przy");
+      if (getPersonalCode()?.code === code.toUpperCase() && !unitsOnly) clearPersonalCode();
       setDiscountError(
         retiredPromoCodeMessage(code) || (checkError instanceof Error ? checkError.message : "Nie udało się sprawdzić kodu."),
       );
@@ -3618,6 +3619,7 @@ export default function CartPage() {
         orderConfirmed={Boolean(orderConfirmed)}
         appliedCode={appliedDiscount?.code ?? null}
         discountBase={Math.max(0, summary.total - combinedSavings)}
+        bundleTiers={Object.values(bundleRules).find((rule) => rule.wholeOrder)?.tiers ?? []}
         onApplyCode={(code) => {
           setDiscountCodeInput(code);
           void checkDiscountCode(code);
