@@ -3969,6 +3969,9 @@ export default function Home({
                           onClick={() => scrollToProductSection("opinie")}
                         />
                       ) : null}
+                      {/* Wizualizator „Twoje okno” - baner nad kartą ceny (właściciel 2.11: „mało widoczny, nie sprzedamy go tak”) */}
+                      <WizPowrot />
+                      <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
                       <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
                         {(promo) => (
                           <PlisyOfferCard
@@ -3984,9 +3987,7 @@ export default function Home({
                           />
                         )}
                       </PromoCountdownBanner>
-                      {/* Wizualizator „Twoje okno” (?wiz=1 / test A/B z CRM) */}
-                      <WizPowrot />
-                      <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
+                      {/* Wizualizator „Twoje okno” (?wiz=1 / test A/B z CRM): okno narzędzia i pływający przycisk */}
                       <WizHost />
                       <WizPlywajacy zrodlo="plisy-plywajacy" />
                       <PlisyFilmLoop

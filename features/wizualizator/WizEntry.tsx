@@ -81,19 +81,24 @@ export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfig
       </button>
     );
   }
+  // Baner (właściciel 2.11: „baner zobacz plisę jest mało widoczny i mało zachęcający – nie sprzedamy go tak”):
+  // duże zdjęcie prawdziwego okna, na którym plisa „zjeżdża” jak w narzędziu (przed → po w pętli), nagłówek
+  // z korzyścią i pomarańczowy przycisk. Całe zdjęcie też otwiera narzędzie.
   const karta = (
-    <button type="button" className="wiz-entry-card" onClick={open}>
-      <span className="wiz-entry-kadry" aria-hidden="true">
-        <i style={{ backgroundImage: "url(/wizualizator-kadr-1.jpg)" }} />
-        <i style={{ backgroundImage: "url(/wizualizator-kadr-2.jpg)" }} />
-        <i style={{ backgroundImage: "url(/wizualizator-kadr-3.jpg)" }} />
-      </span>
-      <span className="wiz-entry-text">
-        <b>Zobacz plisę w swoim oknie 📸</b>
-        <small>Wrzuć zdjęcie okna – 30 sekund i widzisz plisę na swojej szybie, w wybranym kolorze.</small>
-      </span>
-      <span className="wiz-entry-arrow" aria-hidden="true">›</span>
-    </button>
+    <div className="wiz-baner">
+      <button type="button" className="wiz-baner-foto" onClick={open} aria-label="Zobacz plisę na zdjęciu swojego okna – wrzuć zdjęcie">
+        <span className="wiz-baner-warstwa" style={{ backgroundImage: "url(/wizualizator-baner-przed.webp)" }} aria-hidden="true" />
+        <span className="wiz-baner-warstwa wiz-baner-po" style={{ backgroundImage: "url(/wizualizator-baner-po.webp)" }} aria-hidden="true" />
+        <span className="wiz-baner-linia" aria-hidden="true" />
+        <span className="wiz-baner-chip">📸 Twoje zdjęcie → plisa w 1 minutę</span>
+        <span className="wiz-baner-pg">Wizualizacja poglądowa</span>
+      </button>
+      <div className="wiz-baner-tresc">
+        <b>Zobacz plisę na zdjęciu swojego okna</b>
+        <small>Wrzuć zdjęcie – pokażemy plisę na Twoich szybach w 150 kolorach tkanin. Za darmo, bez rejestracji.</small>
+      </div>
+      <button type="button" className="wiz-baner-cta" onClick={open}>📸 Wrzuć zdjęcie okna</button>
+    </div>
   );
   if (!onKonfiguruj) return karta;
   return (
