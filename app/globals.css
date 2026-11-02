@@ -22290,7 +22290,7 @@ body:has(.cart-page--v2) .site-footer {
 .plv2-bar-info { display: grid; min-width: 0; }
 .plv2-bar-info b { font-size: 1.05rem; font-weight: 900; color: #16314e; font-variant-numeric: tabular-nums; }
 .plv2-bar-info small { font-size: 0.72rem; color: #4a5b6e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.plv2-bar-info small.plv2-bar-promo { color: #c2410c; font-weight: 800; }
+.plv2-bar-info small.plv2-bar-promo { color: #c2410c; font-weight: 800; white-space: normal; line-height: 1.2; }
 .plv2-bar .plv2-bar-btn { width: auto; margin: 0; padding: 0.7rem 1.1rem; font-size: 0.95rem; white-space: nowrap; flex: 0 0 auto; }
 @media (min-width: 1101px) { .plv2-bar { display: none; } }
 .home-root.plisy-v2 .hero-full { scroll-padding-bottom: 5rem; }
