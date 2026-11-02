@@ -24216,7 +24216,7 @@ html body button.wiz-baner-cta:hover { background: #c2410c; }
 
 /* ===== Test „premium” strony plis (2.11, lib/premium-look.ts, features/plisy/Premium.tsx) =====
    Pieczęć gwarancji przy cenie, sekcja jakości z detalami, przed/po, cytaty, linia zaufania; w grupie premium
-   spokojniejsze plakietki i przyciski pośrednie (html.keika-premium). Ceny i promocje bez zmian. */
+   spokojniejsze plakietki. Ceny i promocje bez zmian. Od 2.11 jedna wersja (bez testu). */
 .pm-seal-row { display: flex; align-items: center; gap: 0.8rem; margin: 0.75rem 0 0.2rem; padding: 0.7rem 0.75rem; border-radius: 0.9rem; background: linear-gradient(135deg, #f6f3ea, #fbfaf6); border: 1px solid #e7dfc8; }
 .pm-seal { flex: 0 0 auto; width: 4.1rem; height: 4.1rem; border-radius: 50%; display: grid; place-items: center; grid-template-rows: auto auto; align-content: center; background: radial-gradient(circle at 30% 25%, #1d5b55, #0e3431); color: #fff; box-shadow: 0 0 0 3px #fff, 0 0 0 4.5px #c8a75a, 0 6px 16px rgba(14, 52, 49, 0.28); text-align: center; line-height: 1; }
 .pm-seal b { font-size: 1.55rem; font-weight: 800; color: #f1dca3; }
@@ -24225,8 +24225,8 @@ html body button.wiz-baner-cta:hover { background: #c2410c; }
 .pm-strip b { color: #0e3431; }
 .pm-strip-seal { display: inline-grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #1d5b55, #0e3431); color: #f1dca3; font-size: 0.78rem; font-weight: 800; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px #c8a75a; }
 .pm-strip-sep { color: #94a3b8; }
-html.keika-premium .plv2-offer-lines i { display: none; }
-html.keika-premium .plv2-offer-lines li:nth-child(3) { display: none; }
+.plv2-offer-lines i { display: none; }
+.plv2-offer-lines li:nth-child(3) { display: none; }
 .pm-quote p { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
 .pm-seal-text { display: grid; gap: 0.15rem; min-width: 0; }
 .pm-seal-text strong { font-size: 0.95rem; color: #16314e; }
@@ -24279,13 +24279,12 @@ html.keika-premium .plv2-offer-lines li:nth-child(3) { display: none; }
 .pm-link { margin-top: 0.8rem; border: 0; background: none; padding: 0; color: #0f766e; font-family: inherit; font-weight: 700; font-size: 0.92rem; cursor: pointer; }
 
 /* grupa premium: spokojniej - mniej krzykliwych plakietek i pomarańczowych przycisków pośrednich */
-html.keika-premium .plv2-offer { border-color: #e2ddd0; box-shadow: 0 14px 36px rgba(18, 35, 58, 0.08); }
-html.keika-premium .plv2-offer-code { background: #f3f5f8; color: #12233a; font-weight: 700; }
-html.keika-premium .plv2-offer-lines { gap: 0.4rem; color: #334155; }
-html.keika-premium .hero-product-section-cta .pl-inline-cta-button { background: #fff; color: #12233a; border: 1.5px solid #12233a; box-shadow: none; }
-html.keika-premium .plisy-price-card-perks { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 700; color: #0e3431; background: #f6f3ea; border: 1px solid #e7dfc8; border-radius: 999px; padding: 0.3rem 0.75rem; }
-html.keika-premium .plisy-price-card-perks::before { content: "5"; display: inline-grid; place-items: center; width: 1.15rem; height: 1.15rem; border-radius: 50%; background: #0e3431; color: #f1dca3; font-size: 0.7rem; font-weight: 800; }
-html.keika-premium .plisy-sticky-cta-note { font-weight: 700; color: #0e3431; }
+.plv2-offer { border-color: #e2ddd0; box-shadow: 0 14px 36px rgba(18, 35, 58, 0.08); }
+.plv2-offer-code { background: #f3f5f8; color: #12233a; font-weight: 700; }
+.plv2-offer-lines { gap: 0.4rem; color: #334155; }
+.plisy-price-card-perks { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 700; color: #0e3431; background: #f6f3ea; border: 1px solid #e7dfc8; border-radius: 999px; padding: 0.3rem 0.75rem; }
+.plisy-price-card-perks::before { content: "5"; display: inline-grid; place-items: center; width: 1.15rem; height: 1.15rem; border-radius: 50%; background: #0e3431; color: #f1dca3; font-size: 0.7rem; font-weight: 800; }
+.plisy-sticky-cta-note { font-weight: 700; color: #0e3431; }
 
 /* lejek v2 (2.11): co to, bezpieczne zakupy, potem premium */
 .lj-opis { display: grid; gap: 0.35rem; margin: 0.45rem 0 0.2rem; max-width: 620px; }
@@ -24345,3 +24344,25 @@ html.keika-premium .plisy-sticky-cta-note { font-weight: 700; color: #0e3431; }
 .lj-pomylka b { color: #0e3431; }
 .lj-pomylka .pm-link { justify-self: start; margin-top: 0.2rem; }
 .lj-dost-l { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; font-size: 0.95rem; color: #334155; }
+
+/* góra strony plis (2.11): wypukły dowód społeczny, opis sprzedażowy, „Kupujesz bez ryzyka” */
+.lj-dowod { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.3rem 0.9rem; align-items: center; width: 100%; max-width: 620px; margin: 0.5rem 0 0.3rem; padding: 0.7rem 0.9rem; border: 1px solid #e7dfc8; border-radius: 0.9rem; background: #fffdf7; font-family: inherit; text-align: left; cursor: pointer; color: #16314e; }
+.lj-dowod-ocena { display: grid; justify-items: center; line-height: 1; }
+.lj-dowod-ocena b { font-size: 2.1rem; font-weight: 900; color: #12233a; }
+.lj-dowod-ocena .pm-stars { font-size: 0.85rem; margin-top: 0.15rem; }
+.lj-dowod-liczby { display: grid; gap: 0.1rem; font-size: 0.95rem; }
+.lj-dowod-liczby b { font-size: 1.05rem; }
+.lj-dowod-liczby span { font-size: 0.85rem; color: #475569; }
+.lj-dowod-liczby .lj-dowod-l1 { font-size: 0.95rem; color: #16314e; }
+.lj-dowod-cytat { grid-column: 1 / -1; font-size: 0.88rem; font-style: italic; color: #334155; line-height: 1.45; border-top: 1px solid #efe8d5; padding-top: 0.45rem; }
+.lj-opis-lead { font-size: 1.12rem !important; font-weight: 800; color: #12233a !important; }
+.lj-ryzyko { margin: 1rem 0 0.4rem; max-width: 620px; padding: 1rem; border-radius: 1rem; background: #0f2e2b; color: #e7f3f1; }
+.lj-ryzyko h2 { margin: 0 0 0.7rem; font-size: 1.3rem; color: #fff; }
+.lj-ryzyko-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+@media (max-width: 760px) { .lj-ryzyko-grid { grid-template-columns: 1fr; } }
+.lj-r { display: grid; gap: 0.25rem; align-content: start; padding: 0.75rem 0.85rem; border-radius: 0.8rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); font-size: 0.86rem; line-height: 1.45; color: #cfe5e1; }
+.lj-r.is-main { grid-column: 1 / -1; background: rgba(241,220,163,0.14); border-color: rgba(241,220,163,0.45); }
+.lj-r b { font-size: 1rem; color: #fff; }
+.lj-r svg { color: #f1dca3; width: 20px; height: 20px; }
+.lj-r .pm-link { color: #f1dca3; justify-self: start; text-decoration: none; margin-top: 0.15rem; }
+.lj-r-pieczec { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #1d5b55, #0e3431); color: #f1dca3; font-weight: 800; box-shadow: 0 0 0 2px #c8a75a; }

@@ -1,6 +1,6 @@
 "use client";
 
-// Wersja „premium” strony plis (test A/B, lib/premium-look.ts; właściciel 2.11: „pokazać klientom, że te plisy
+// Strona plis jako lejek (właściciel 2.11, od 2.11 jedna wersja bez testu; wcześniej: „pokazać klientom, że te plisy
 // to coś więcej, że to premium look – dać wizualizację, podkreślić 5 lat gwarancji – jakość”). Treść tylko z faktów,
 // które strona już podaje (landing-content.ts): produkujemy sami od 2015, 5 lat gwarancji, 30 dni na zwrot,
 // 150 tkanin w 5 kolekcjach (antystatyczne), aluminiowe profile w 10 kolorach, dwie ruchome listwy, sznurki
@@ -233,32 +233,56 @@ export function PremiumQuotes({ onAll }: { onAll?: () => void }) {
   );
 }
 
-// ---------------------------------------------------------------- lejek v2 (właściciel 2.11: „na samej górze, jak klient
-// z zimnego ruchu wejdzie, musi zobaczyć, co to, opis, mały social proof, zbicie obiekcji – jak będzie wiedział, gdzie jest
-// i że to nie scam, to wtedy widzi premium: 5 lat gwarancji, zwrot, wizualizator, galeria, animacja z ruchem belek
-// i konfigurator z wyceną”). Dane sprzedawcy z lib/company-legal.ts (te same co w regulaminie).
+// ---------------------------------------------------------------- góra strony (właściciel 2.11: „na samej górze klient z zimnego ruchu musi
+// zobaczyć, co to, opis, mały social proof, zbicie obiekcji”; potem: „brak opisu produktu, wypukłych social proof i zbicia obiekcji – jest
+// niemarketingowy – ma być jeden, bez testów i porządny”). Fakty: landing-content.ts, company-legal.ts, CRM (zamówienia 2026, opinie).
 
-/** Co to jest - jedno zdanie dla kogoś, kto pierwszy raz widzi plisę, i cena „od” w jednej linii. */
+/** Liczba zamówień we wszystkich kanałach w 2026 r. (CRM `orders` od 19.02.2026: 7727 przy 2.11) - zaokrąglona w dół. */
+const ZAMOWIEN_2026 = "ponad 7 000";
+
+/** Wypukły dowód społeczny tuż pod tytułem: duża ocena, liczba opinii i zamówień, jeden krótki cytat. */
+export function LejekDowod({ onOpinie }: { onOpinie: () => void }) {
+  const rating = useCompanyRating();
+  const reviews = useCompanyReviews();
+  const cytat = useMemo(() => {
+    const pasujace = reviews.filter((r) => r.stars === 5 && r.text.length >= 40 && r.text.length <= 130);
+    return [...pasujace].sort((a, b) => punkty(b.text) - punkty(a.text))[0] || null;
+  }, [reviews]);
+  if (!rating) return null;
+  const ocena = (Math.round(rating.average * 10) / 10).toLocaleString("pl-PL", { minimumFractionDigits: 1 });
+  return (
+    <button type="button" className="lj-dowod" onClick={onOpinie} aria-label={`Ocena ${ocena} na 5 – zobacz opinie`}>
+      <span className="lj-dowod-ocena"><b>{ocena}</b><span className="pm-stars">★★★★★</span></span>
+      <span className="lj-dowod-liczby">
+        <span className="lj-dowod-l1"><b>{opinieLabel(rating.total)}</b> klientów</span>
+        <span>{ZAMOWIEN_2026} zamówień w 2026 r.</span>
+      </span>
+      {cytat ? <span className="lj-dowod-cytat">„{cytat.text}”</span> : null}
+    </button>
+  );
+}
+
+/** Opis produktu napisany sprzedażowo - korzyści, potem cena przykładowego okna. */
 export function LejekOpis({ cena, szer, wys }: { cena: number | null; szer: number; wys: number }) {
   return (
     <div className="lj-opis">
-      {/* właściciel 2.11: „brakuje na samej górze zwykłego opisu produktu” - fakty z landing-content.ts */}
+      <p className="lj-opis-lead">Światło i prywatność dokładnie tam, gdzie chcesz.</p>
       <p>
-        <b>Plisa okienna</b> to osłona z tkaniny plisowanej montowana bezpośrednio na skrzydle okna. Ma dwie ruchome listwy: zasłaniasz górę,
-        dół albo środek szyby, a okno otwierasz i uchylasz jak zwykle. Każdą plisę produkujemy na wymiar Twojego okna.
+        Plisę przesuwasz z góry i z dołu, więc zasłaniasz tylko tę część okna, którą trzeba – sąsiad nie zajrzy, a w pokoju dalej jest jasno.
+        Zakładasz ją na skrzydło w kwadrans, bez wiercenia, a okno otwierasz i uchylasz jak zwykle. Robimy ją na wymiar Twojego okna, co do milimetra.
       </p>
       <ul className="lj-cechy">
-        <li><b>Na wymiar</b> – szerokość od 20 do 150 cm, wysokość od 20 do 230 cm</li>
-        <li><b>Montaż bez wiercenia</b> (uchwyty na skrzydło) albo przykręcany – około 15 minut</li>
-        <li><b>150 tkanin w 5 kolekcjach</b> – od dekoracyjnych po zaciemniające i termoizolacyjne</li>
-        <li><b>10 kolorów aluminiowych profili</b> – dobierzesz do koloru ramy</li>
-        <li><b>Do okien i drzwi balkonowych</b> PCV, drewnianych i aluminiowych</li>
-        <li><b>Bez sznurków i łańcuszków</b>, tkaniny antystatyczne – łatwe w czyszczeniu</li>
+        <li><b>Ty decydujesz o świetle</b> – zasłaniasz górę, dół albo środek szyby</li>
+        <li><b>Montaż w ok. 15 minut</b> – bez wiercenia i bez śladów, albo przykręcana</li>
+        <li><b>Okno działa jak dawniej</b> – plisa jedzie razem ze skrzydłem</li>
+        <li><b>Od delikatnej po pełne zaciemnienie</b> – 150 tkanin w 5 kolekcjach</li>
+        <li><b>Pasuje do Twojej ramy</b> – 10 kolorów aluminiowych profili</li>
+        <li><b>Bez zwisających sznurków</b> – tkaniny antystatyczne, łatwe w czyszczeniu</li>
       </ul>
       {cena !== null ? (
         <p className="lj-cena">
           Okno {String(szer).replace(".", ",")} × {String(wys).replace(".", ",")} cm: <b>{cena.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł</b>
-          <span> · cena rośnie z wymiarem</span>
+          <span> · cenę dla swojego okna zobaczysz po wpisaniu wymiaru</span>
         </p>
       ) : null}
     </div>
@@ -267,33 +291,49 @@ export function LejekOpis({ cena, szer, wys }: { cena: number | null; szer: numb
 
 const IKONY_Z = {
   firma: "M3 21V8l9-5 9 5v13 M9 21v-6h6v6",
-  tel: "M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2",
-  karta: "M3 6h18v12H3z M3 10h18 M7 15h4",
+  zegar: "M12 7v5l3 2 M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18",
+  miara: IKONY.miara,
   zwrot: IKONY.zwrot,
 };
 
-/** Bezpieczne zakupy: prawdziwy sprzedawca, telefon, płatność przez operatorów, zwrot - odpowiedź na „czy to nie oszustwo”. */
-export function LejekZaufanie() {
+/** Zbicie obiekcji - mocna sekcja zaraz po opisie: zwrot, gwarancja, pomyłka w pomiarze, „czy to nie oszustwo”, termin. */
+export function LejekBezRyzyka({ onPomiar }: { onPomiar: () => void }) {
   const c = COMPANY_LEGAL;
+  const d = dzienWysylki();
+  const kiedy = ["w niedzielę", "w poniedziałek", "we wtorek", "w środę", "w czwartek", "w piątek", "w sobotę"][d.getDay()];
   return (
-    <section className="lj-zauf" aria-label="Bezpieczne zakupy">
-      <p className="lj-zauf-t">Bezpieczne zakupy u producenta</p>
-      <ul>
-        <li><Ikona d={IKONY_Z.firma} /><span><b>{c.legalName}</b> · {c.street}, {c.postalCode} {c.city} · NIP {c.nip} · produkujemy od {c.producingSince}</span></li>
-        <li><Ikona d={IKONY_Z.tel} /><span><b><a href={c.phoneHref} onClick={() => trackShopStep("call_click", "plisy", { source: "zaufanie" })}>{c.phone}</a></b> · {c.hours} · czat na stronie</span></li>
-        <li><Ikona d={IKONY_Z.karta} /><span>Płacisz przez <b>Przelewy24, PayNow lub Stripe</b> – BLIK, karta, PayPo, raty albo za pobraniem</span></li>
-        <li><Ikona d={IKONY_Z.zwrot} /><span><b>30 dni na zwrot</b> bez podania przyczyny – także plis zrobionych na Twój wymiar</span></li>
-      </ul>
+    <section className="lj-ryzyko" aria-labelledby="lj-ryzyko-t">
+      <h2 id="lj-ryzyko-t">Kupujesz bez ryzyka</h2>
+      <div className="lj-ryzyko-grid">
+        <div className="lj-r is-main">
+          <Ikona d={IKONY_Z.zwrot} />
+          <b>30 dni na zwrot – także plis na wymiar</b>
+          <span>Plis robionych na wymiar zwykle nie da się oddać. U nas tak: odsyłasz w 30 dni bez podania przyczyny, oddajemy pieniądze.</span>
+        </div>
+        <div className="lj-r">
+          <span className="lj-r-pieczec" aria-hidden="true">5</span>
+          <b>5 lat gwarancji</b>
+          <span>Produkujemy sami, od {c.producingSince} roku – dlatego ręczymy za każdą plisę przez 5 lat.</span>
+        </div>
+        <div className="lj-r">
+          <Ikona d={IKONY_Z.miara} />
+          <b>Pomyłka w pomiarze? Poprawimy</b>
+          <span>Napisz zaraz po zamówieniu – zanim plisa trafi do produkcji, zmienimy wymiar bez kosztów.</span>
+          <button type="button" className="pm-link" onClick={onPomiar}>Jak zmierzyć w 2 minuty →</button>
+        </div>
+        <div className="lj-r">
+          <Ikona d={IKONY_Z.firma} />
+          <b>Prawdziwa firma, bezpieczna płatność</b>
+          <span>{c.legalName}, {c.street}, {c.postalCode} {c.city}, NIP {c.nip}. Płacisz przez Przelewy24, PayNow lub Stripe – BLIK, kartą, w ratach, PayPo albo przy odbiorze.</span>
+          <a href={c.phoneHref} className="pm-link" onClick={() => trackShopStep("call_click", "plisy", { source: "bez_ryzyka" })}>{c.phone} · {c.hours}</a>
+        </div>
+        <div className="lj-r">
+          <Ikona d={IKONY_Z.zegar} />
+          <b>Wyślemy najpóźniej {kiedy}, {d.toLocaleDateString("pl-PL", { day: "numeric", month: "long" })}</b>
+          <span>7 dni roboczych produkcji u nas w Polsce, potem kurier w 24 h. Darmowa dostawa od 79 zł.</span>
+        </div>
+      </div>
     </section>
-  );
-}
-
-/** Premium: pieczęć 5 lat gwarancji i zwrot obok siebie - zaraz po bloku zaufania. */
-export function LejekPremium() {
-  return (
-    <div className="lj-prem">
-      <PremiumSeal />
-    </div>
   );
 }
 
