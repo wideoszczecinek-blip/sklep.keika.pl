@@ -32,7 +32,6 @@ import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/Configurator
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
 import { bundleDiscountHintText, bundleDiscountSummary, bundleLostToCodeText, bundleOrCode, calcBundleDiscount, setBundleDiscountsFromConfig, useBundleDiscountRules } from "@/lib/bundle-discount";
-import { readMarketingConsent, saveMarketingConsent } from "@/lib/marketing-consent";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
 import PromoSaveModal from "../components/promo-save-modal";
@@ -92,16 +91,14 @@ import InstallmentOffer from "@/app/components/installment-offer";
 import { buildPaymentTiles, resolveProvider, type PaymentRouting, type PaymentProvider } from "@/app/components/payment-methods";
 import { PaynowGdprNotice } from "@/app/components/paynow-gdpr";
 import InstallmentTileHint from "@/app/components/installment-tile-hint";
-import CartTrustBlock from "@/app/components/cart-trust-block";
-import PaymentTrustTicker from "@/app/components/payment-trust-ticker";
-import PaymentAssuranceLine from "@/app/components/payment-assurance-line";
 import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
 import ExpressWalletCheckout, { type WalletContact } from "@/app/components/express-wallet-checkout";
 import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import CartV2, { CartV2Boundary } from "./cart-v2";
-import CartTrust from "./cart-trust";
+import CartTrust, { CartFinance } from "./cart-trust";
+import OrderOffers from "@/app/components/order-offers";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
 // every validation error, failed discount code, and failed order/payment
@@ -963,20 +960,6 @@ export default function CartPage() {
   // payment method. Single link/document: "Regulamin sklepu i płatności"
   // (shop terms and payment terms live together, not as two documents).
   const [termsAccepted, setTermsAccepted] = useState(false);
-  // Zgody marketingowe wracają do kasy (właściciel 31.10: „zgody zbierać - na pewno od zamawiających - tak jak to zazwyczaj
-  // jest: zaznacz wszystkie albo rozbite: regulamin sklepu, płatności, promocje”). Zwarty blok przy regulaminie, bez
-  // akordeonu (lekcja z 28.09: akordeon nad „Zamawiam” obniżył konwersję). Nic nie jest zaznaczone z góry; jeśli klient
-  // zgodził się wcześniej w pasku ciasteczek, pola marketingowe startują zaznaczone (to jego decyzja).
-  const [mktEmail, setMktEmail] = useState(false);
-  const [mktSms, setMktSms] = useState(false);
-  const mktTouchedRef = useRef(false);
-  useEffect(() => {
-    const prior = readMarketingConsent();
-    if (prior?.accepted) {
-      setMktEmail(true);
-      setMktSms(true);
-    }
-  }, []);
   // O marketing pytamy w pasku ciasteczek, nie w koszyku (właściciel,
   // 2026-09-28: "wracamy do prostego checkoutu ... strasznie spadła
   // konwersja"). Poprzedni akordeon "Akceptuję regulaminy i zgody" z dwiema
@@ -1209,7 +1192,7 @@ export default function CartPage() {
   // 2026-11-01 właściciel: domyślnie BLIK (po wyłączeniu SEZON20 dojścia do kasy spadły z 11–13 do 1–3 dziennie, a zgody
   // i przycisk „Płacę” pokazywały się dopiero po dotknięciu metody - na telefonie wyglądało jak koniec strony). Wcześniej
   // (24.09, cofnięta próba 30.09) bez domyślnej metody. Reszta kafli zostaje do wyboru.
-  const [onlinePaymentKind, setOnlinePaymentKind] = useState<PaymentKind | "">("blik");
+  const [onlinePaymentKind, setOnlinePaymentKind] = useState<PaymentKind | "">("");
   // Siatka banków dla "Przelew online" (Przelewy24) - lista z CRM
   // (shop-public/p24_banks, logotypy z CDN P24), pobierana raz.
   const [p24Banks, setP24Banks] = useState<P24Bank[]>([]);
@@ -1321,23 +1304,10 @@ export default function CartPage() {
   const amountToFreeShipping = freeShippingPilot ? 0 : Math.max(0, FREE_SHIPPING_THRESHOLD - summary.total);
 
   useEffect(() => {
-    // Kurier zaznaczony z góry (właściciel, 2026-09-28): 65% wchodzących do
-    // koszyka nie klikało żadnej metody i nigdy nie widziało pól formularza.
-    // Zapamiętany wybór z draftu (restore wyżej) i tak nadpisze ten domyślny.
-    if (deliveryMethod === "") {
-      const courier = availableDeliveryMethods.find((method) => method.id === COURIER_METHOD.id) || availableDeliveryMethods[0];
-      if (courier && items.length > 0) setDeliveryMethod(courier.id);
-      return;
+    if (deliveryMethod && !availableDeliveryMethods.some((method) => method.id === deliveryMethod)) {
+      setDeliveryMethod("");
     }
-    if (!availableDeliveryMethods.some((method) => method.id === deliveryMethod)) {
-      setDeliveryMethod(availableDeliveryMethods[0].id);
-    }
-    // Re-check when the set of available methods changes - and once the cart
-    // has loaded from storage (items.length flips 0 -> 1), because the method
-    // ids alone stay identical and the default courier would never be set.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableDeliveryMethods.map((m) => m.id).join(","), items.length > 0]);
-
+  }, [availableDeliveryMethods, deliveryMethod]);
   // Kod pocztowy: myślnik wstawia się sam po dwóch cyfrach, a po pełnym kodzie
   // miasto uzupełnia się z bazy kodów (api.zippopotam.us, bez klucza, CORS).
   // Miasta wpisanego ręcznie nigdy nie nadpisujemy (2026-09-28).
@@ -2343,17 +2313,10 @@ export default function CartPage() {
           wizualizacje: Array.from(new Set(items.map((item) => item.wizToken).filter(Boolean))),
           customer: { name: `${f.firstName} ${f.lastName}`.trim(), phone: f.phone, email: f.email },
           consents: (() => {
-            // Marketing: decyzja z paska ciasteczek (jedno pytanie o oferty
-            // e-mailem i SMS-em), razem ze śladem kiedy i gdzie padła.
-            // Od 31.10 klient decyduje w kasie (pola niżej); bez dotknięcia pól zostaje decyzja z paska.
-            const marketing = readMarketingConsent();
-            const touched = mktTouchedRef.current;
             return {
               terms: ta,
-              marketing_email: mktEmail,
-              marketing_sms: mktSms,
-              marketing_source: touched ? "checkout" : marketing?.source || (mktEmail || mktSms ? "checkout" : ""),
-              marketing_decided_at: touched ? new Date().toISOString() : marketing?.decidedAt || "",
+              marketing_email: false,
+              marketing_sms: false,
               accepted_at: new Date().toISOString(),
               version: "2026-10-31",
             };
@@ -3111,7 +3074,7 @@ export default function CartPage() {
               </span>
               <span className="cart-pay-tile-check" aria-hidden="true" />
             </label>
-            {active ? <div className="cart-pay-tile-panel">{renderMethodPanel(tile.kind)}</div> : null}
+            {active ? <div className="cart-pay-tile-panel checkout-payment-expand">{renderMethodPanel(tile.kind)}</div> : null}
           </div>
         );
       })}
@@ -3255,33 +3218,9 @@ export default function CartPage() {
     postcode: form.postcode,
     address1: form.address1,
   };
-  // Zgody w kasie (31.10): „Zaznacz wszystkie” + regulamin sklepu i płatności (wymagany) + oferty e-mailem + oferty SMS-em.
-  const setMarketing = (email: boolean, sms: boolean) => {
-    mktTouchedRef.current = true;
-    setMktEmail(email);
-    setMktSms(sms);
-    saveMarketingConsent(email || sms, "checkout");
-    trackCheckoutIssue("checkout_marketing", (email ? "email" : "") + (sms ? "+sms" : "") || "off");
-  };
-  const allConsents = termsAccepted && mktEmail && mktSms;
   const termsCheckbox =
     !paymentConfirmed && items.length > 0 ? (
       <div className="cart-consents">
-        <label className={`cart-terms-checkbox cart-consents-all ${allConsents ? "is-accepted" : ""}`}>
-          <input
-            type="checkbox"
-            checked={allConsents}
-            onChange={(event) => {
-              const on = event.target.checked;
-              setTermsAccepted(on);
-              trackCheckoutIssue("checkout_terms", on ? "on" : "off");
-              setMarketing(on, on);
-            }}
-          />
-          <span>
-            <strong>Zaznacz wszystkie</strong>
-          </span>
-        </label>
       <label className={`cart-terms-checkbox ${termsAccepted ? "is-accepted" : ""}`}>
         <input
           type="checkbox"
@@ -3314,14 +3253,6 @@ export default function CartPage() {
           . <span className="cart-consents-req">(wymagane)</span>
         </span>
       </label>
-        <label className={`cart-terms-checkbox ${mktEmail ? "is-accepted" : ""}`}>
-          <input type="checkbox" checked={mktEmail} onChange={(event) => setMarketing(event.target.checked, mktSms)} />
-          <span>Chcę dostawać e-mailem informacje o promocjach i nowościach (rabaty, kody tylko dla klientów). Zgodę mogę wycofać w każdej chwili.</span>
-        </label>
-        <label className={`cart-terms-checkbox ${mktSms ? "is-accepted" : ""}`}>
-          <input type="checkbox" checked={mktSms} onChange={(event) => setMarketing(mktEmail, event.target.checked)} />
-          <span>Chcę dostawać SMS-em informacje o promocjach.</span>
-        </label>
       </div>
     ) : null;
   useEffect(() => {
@@ -3537,9 +3468,7 @@ export default function CartPage() {
     nipLookupError,
     isCod: paymentMethod === "cod",
     paymentChooser: renderPaymentKindChooser,
-    hasBlikTile: paymentTiles.some((tile) => tile.kind === "blik"),
     onlinePaymentKind,
-    preselectPaymentKind: (kind: "blik") => setOnlinePaymentKind(kind),
     codBlock: (
       <>
         {error ? <div className="cart-checkout-error">{error}</div> : null}
@@ -3657,6 +3586,7 @@ export default function CartPage() {
               Numer zamówienia: <strong>{orderState.orderCode}</strong>
             </p>
 
+            <OrderOffers orderCode={orderState.orderCode} accessToken={orderState.accessToken || undefined} />
             <div className="cart-thankyou-note">
               {orderState.paymentProvider === "transfer" ? (
                 <p>
@@ -4001,9 +3931,7 @@ export default function CartPage() {
                     </div>
                   ) : null}
                   {bundle.hint ? (
-                    <div className="cart-page-summary-row is-muted">
-                      <span>{bundleDiscountHintText(bundle)}</span>
-                      <span />
+                    <div className="checkout-bundle-banner"><strong>Promocja CAŁY DOM</strong><span>{bundleDiscountHintText(bundle)}</span>
                     </div>
                   ) : null}
                   {bundle.lostToCode ? (
@@ -4071,7 +3999,7 @@ export default function CartPage() {
                   <CartTrust shippingFree={shippingFee === 0 && deliveryMethod !== PICKUP_METHOD.id} />
                   {/* Oferta ratalna przy każdej kwocie - raty są włączone
                       na koncie P24 (właściciel, 2026-09-24). */}
-                  <InstallmentOffer amount={payableTotal} />
+                  <CartFinance amount={payableTotal} />
 
                   {shippingFee > 0 && amountToFreeShipping > 0 ? (
                     <p className="cart-free-shipping-progress">
@@ -4115,8 +4043,6 @@ export default function CartPage() {
                 pod nią kwoty już po rabatach (właściciel, 2026-09-24).
                 Był tu też przycisk "Zapisz / udostępnij link" - usunięty:
                 w koszyku był tylko wygodną furtką do odłożenia zakupu. */}
-
-
             <div className="cart-checkout-layout">
               <div className="cart-checkout-left" onBlurCapture={handleCheckoutFieldBlur}>
                 {showExpressWallets ? (
@@ -4187,9 +4113,6 @@ export default function CartPage() {
                     </p>
                   </section>
                 ) : null}
-
-                <CartTrustBlock />
-
                 {/* Dostawa jako akordeon (właściciel, 2026-09-24): wybór
                     metody od razu otwiera pola, których ta metoda wymaga -
                     kurier prosi o adres, paczkomat o dane odbiorcy i punkt,
@@ -4380,7 +4303,7 @@ export default function CartPage() {
                     środku - wychodzi z założenia, że faktura zwykle idzie na
                     inne dane niż paczka; gdy są te same, jest przycisk
                     "Skopiuj dane z dostawy". */}
-                <section className="cart-checkout-form-card cart-buyer-card">
+                <section className="cart-checkout-form-card cart-buyer-card" style={deliveryMethod ? undefined : { display: "none" }}>
                   <fieldset className="cart-checkout-form" disabled={dataLocked}>
                     <label className="cart-toggle-checkbox cart-toggle-checkbox--framed">
                       <input
@@ -4577,9 +4500,7 @@ export default function CartPage() {
                       <strong>{formatPln(payableTotal)}</strong>
                     </span>
                   </div>
-                  <PaymentTrustTicker />
-                  <PaymentAssuranceLine />
-                  <CartTrust shippingFree={shippingFee === 0 && deliveryMethod !== PICKUP_METHOD.id} />
+                  <p className="checkout-payment-safe">Bezpieczne płatności przez Przelewy24, PayNow i Stripe.</p>
                   {paymentMethod === "cod" ? (
                     <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
                       Płatność za pobraniem

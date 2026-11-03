@@ -5,6 +5,7 @@
 // jakością: 5 lat gwarancji · 30 dni na zwrot · dostawa 0 zł · produkcja na wymiar, raty i PayPo, krótko dlaczego warto.
 import { useEffect, useState } from "react";
 import { crmGetJson } from "@/lib/crm-get";
+import InstallmentOffer from "@/app/components/installment-offer";
 import { PremiumPerks } from "@/features/plisy/Premium";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 
@@ -32,18 +33,27 @@ function useRatyPaypo(): { raty: boolean; paypo: boolean } {
 }
 
 export default function CartTrust({ shippingFree }: { shippingFree: boolean }) {
+  return <div className="pm-cart-trust"><PremiumPerks shippingFree={shippingFree} /></div>;
+}
+
+export function CartFinance({ amount }: { amount: number }) {
   const { raty, paypo } = useRatyPaypo();
-  const platnosc = [raty ? "raty" : "", paypo ? "PayPo – zapłać za 30 dni" : ""].filter(Boolean).join(" albo ");
+  const [choice, setChoice] = useState<"raty" | "paypo">("raty");
+  if (!raty && !paypo) return null;
+  const active = raty && paypo ? choice : raty ? "raty" : "paypo";
   return (
-    <div className="pm-cart-trust">
-      <PremiumPerks shippingFree={shippingFree} />
-      <p className="pm-cart-why">
-        Produkujemy sami, w Polsce, od 2015 – każde zamówienie robimy na Twój wymiar, dlatego dajemy 5 lat gwarancji.
-        {platnosc ? ` Możesz też wybrać ${platnosc}.` : ""}
-      </p>
-      <p className="pm-cart-why">
-        <b>Sprawdź jeszcze raz wymiary w koszyku.</b> Pomyłkę poprawimy bez kosztów, dopóki zamówienie nie weszło do produkcji – napisz albo zadzwoń zaraz po zamówieniu.
-      </p>
-    </div>
+    <section className="checkout-finance" aria-label="Elastyczne płatności">
+      <div className="checkout-finance-card" key={active}>
+        <span className="checkout-finance-mark" aria-hidden="true">{active === "raty" ? "%" : "30"}</span>
+        <div>
+          <strong>{active === "raty" ? "Rozłóż płatność na raty" : "PayPo · zapłać do 30 dni"}</strong>
+          {active === "raty" ? <InstallmentOffer amount={amount} /> : <p>Wybierz PayPo przy płatności. Decyzję otrzymasz online.</p>}
+        </div>
+      </div>
+      {raty && paypo ? <div className="checkout-finance-switch" aria-label="Karty płatności">
+        <button type="button" aria-pressed={active === "raty"} onClick={() => setChoice("raty")}>Raty</button>
+        <button type="button" aria-pressed={active === "paypo"} onClick={() => setChoice("paypo")}>PayPo</button>
+      </div> : null}
+    </section>
   );
 }

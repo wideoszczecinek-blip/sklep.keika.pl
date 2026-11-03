@@ -31,14 +31,11 @@ import Link from "next/link";
 import { Component, useCallback, useEffect, useRef, useState, type Dispatch, type FocusEvent, type ReactNode, type SetStateAction } from "react";
 import { formatPln, type CartLineItem } from "@/lib/cart";
 import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
-import PaymentTrustTicker from "@/app/components/payment-trust-ticker";
-import PaymentAssuranceLine from "@/app/components/payment-assurance-line";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPreview";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
-import InstallmentOffer from "@/app/components/installment-offer";
-import CartTrust from "./cart-trust";
+import CartTrust, { CartFinance } from "./cart-trust";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "@/app/moskitiery-ramkowe-reviews-data";
@@ -159,9 +156,7 @@ export type CartV2Props = {
   // płatność
   isCod: boolean;
   paymentChooser: () => ReactNode;
-  hasBlikTile: boolean;
   onlinePaymentKind: string;
-  preselectPaymentKind: (kind: "blik") => void;
   codBlock: ReactNode;
   transferReady: boolean;
   submitTransfer: () => void;
@@ -389,16 +384,9 @@ export default function CartV2(props: CartV2Props) {
     if (step === 3 && !p.deliveryDataReady) goTo(2, "pop");
   }, [step, p.deliveryDataReady, goTo]);
 
-  // BLIK zaznaczony przy wejściu w płatność (bez zdarzenia "wybrał metodę" -
-  // to nasz wybór, nie klienta).
-  const blikPreselectedRef = useRef(false);
-  useEffect(() => {
-    if (step !== 3 || blikPreselectedRef.current) return;
-    blikPreselectedRef.current = true;
-    if (!p.isCod && p.onlinePaymentKind === "" && p.hasBlikTile && !p.hasOrderDraft) p.preselectPaymentKind("blik");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
-
+  const [deliveryHint, setDeliveryHint] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
   const isPaczkomat = p.deliveryMethod === p.paczkomatMethodId;
   const advance = () => {
     if (step === 0) {
@@ -408,6 +396,7 @@ export default function CartV2(props: CartV2Props) {
       return;
     }
     if (step === 1) {
+      if (!p.deliveryMethod) { setDeliveryHint(true); return; }
       if (isPaczkomat && !p.selectedPaczkomat) {
         setPaczkomatHint(true);
         document.querySelector(".cv2-paczkomat")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -428,9 +417,21 @@ export default function CartV2(props: CartV2Props) {
       }
       p.track("checkout_next", "platnosc", { design: "v2" });
       p.track("cart_v2_step", STEP_NAMES[3], {});
-      goTo(3);
+      if (verifying) return;
+      setVerifying(true);
     }
   };
+
+  useEffect(() => {
+    if (!verifying) return;
+    const timer = window.setTimeout(() => {
+      setVerifying(false);
+      if (!p.deliveryDataReady || step !== 2) return;
+      setDeliveryConfirmed(true);
+      goTo(3);
+    }, 480);
+    return () => window.clearTimeout(timer);
+  }, [verifying, p.deliveryDataReady, step, goTo]);
 
   const fullName = `${p.form.firstName}${p.form.lastName ? ` ${p.form.lastName}` : ""}`;
   const [nameDraft, setNameDraft] = useState<string | null>(null);
@@ -502,10 +503,7 @@ export default function CartV2(props: CartV2Props) {
         </div>
       ) : null}
       {p.bundleHint ? (
-        <div className="cv2-row cv2-row-hint">
-          <span>{p.bundleHint}</span>
-          <span />
-        </div>
+        <div className="checkout-bundle-banner"><strong>Promocja CAŁY DOM</strong><span>{p.bundleHint}</span></div>
       ) : null}
       {p.appliedDiscount ? (
         <div className="cv2-row">
@@ -810,7 +808,7 @@ export default function CartV2(props: CartV2Props) {
           )}
           {p.discountError ? <p className="cv2-code-error">{p.discountError}</p> : null}
         </div>
-        <InstallmentOffer amount={p.payableTotal} />
+        <CartFinance amount={p.payableTotal} />
       </section>
       <div ref={p.escapeBottomRef} className="escape-offer-sentinel" aria-hidden="true" />
     </>
@@ -820,6 +818,7 @@ export default function CartV2(props: CartV2Props) {
   const screenDelivery = (
     <>
       <h1 className="cv2-q">Jak dostarczyć zamówienie?</h1>
+      {deliveryHint && !p.deliveryMethod ? <p className="cv2-inline-error" role="alert">Wybierz sposób dostawy.</p> : null}
       <div className="cv2-tiles" role="radiogroup" aria-label="Sposób dostawy">
         {p.deliveryMethods.map((method) => {
           const active = p.deliveryMethod === method.id;
@@ -890,7 +889,8 @@ export default function CartV2(props: CartV2Props) {
           </button>
         ) : null}
       </p>
-      <fieldset className="cv2-form" disabled={p.dataLocked}>
+      {verifying ? <p className="checkout-delivery-status is-checking" role="status">Sprawdzamy kompletność danych…</p> : null}
+      <fieldset className="cv2-form" disabled={p.dataLocked || verifying}>
         <Field label="E-mail" fieldKey="email" valid={p.valid.email} error={p.fieldError("email")} wide>
           <input
             type="email"
@@ -1044,7 +1044,8 @@ export default function CartV2(props: CartV2Props) {
   const screenPay = (
     <>
       <h1 className="cv2-q">{p.isCod ? "Potwierdź zamówienie" : "Jak płacisz?"}</h1>
-      <CartTrust shippingFree={!p.isPickup && p.shippingFee === 0} />
+
+      {deliveryConfirmed ? <p className="checkout-delivery-status" role="status">✓ Dane dostawy są kompletne</p> : null}
       <div className="cv2-recap">
         <p>
           <strong>{fullName}</strong>
@@ -1056,7 +1057,7 @@ export default function CartV2(props: CartV2Props) {
         </p>
         {!p.dataLocked ? (
           <button type="button" className="cv2-link" onClick={goBack}>
-            Zmień
+            Edytuj
           </button>
         ) : null}
       </div>
@@ -1066,8 +1067,7 @@ export default function CartV2(props: CartV2Props) {
         </p>
         {/* Pasek zaufania pod kwotą (właściciel, 2026-10-03) - ten sam co
             w starym koszyku, żeby obie grupy testu go miały. */}
-        <PaymentTrustTicker />
-        <PaymentAssuranceLine />
+        <p className="checkout-payment-safe">Bezpieczne płatności przez Przelewy24, PayNow i Stripe.</p>
         {p.isCod ? p.codBlock : p.paymentChooser()}
       </div>
     </>
@@ -1165,7 +1165,7 @@ export default function CartV2(props: CartV2Props) {
           <strong>{formatPln(p.payableTotal)}</strong>
         </div>
         {step < 3 ? (
-          <button type="button" className="cv2-bar-cta" onClick={advance}>
+          <button type="button" className="cv2-bar-cta" onClick={advance} disabled={verifying}>
             {barLabel}
             {step === 0 ? <small>to potrwa minutę</small> : null}
           </button>
