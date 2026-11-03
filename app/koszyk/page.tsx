@@ -3974,72 +3974,9 @@ export default function CartPage() {
                   {/* Oferta ratalna przy każdej kwocie - raty są włączone
                       na koncie P24 (właściciel, 2026-09-24). */}
                   <CartFinance amount={payableTotal} />
-
-                  {shippingFee > 0 && amountToFreeShipping > 0 ? (
-                    <p className="cart-free-shipping-progress">
-                      Brakuje <strong>{formatPln(amountToFreeShipping)}</strong> do <strong>darmowej dostawy</strong>.{" "}
-                      <a href="/produkt/moskitiery-ramkowe" className="cart-free-shipping-cta">
-                        Wyceń dodatkową moskitierę
-                      </a>
-                    </p>
-                  ) : null}
-
-                  {sezon20Promo ? (
-                    <button type="button" className="cart-promo-banner" onClick={applySezon20Promo}>
-                      <span className="cart-promo-banner-label">
-                        Zamów z kodem rabatowym SEZON20{" "}
-                        {sezon20Promo.type === "percent"
-                          ? `-${sezon20Promo.value.toLocaleString("pl-PL")}%`
-                          : `-${formatPln(sezon20Promo.value)}`}
-                      </span>
-                      <strong className="cart-promo-banner-price">
-                        {formatPln(
-                          Math.max(
-                            0,
-                            summary.total -
-                              combinedSavings -
-                              sezon20Promo.amount +
-                              shippingFee +
-                              orderSurcharge +
-                              (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
-                          ),
-                        )}
-                      </strong>
-                    </button>
-                  ) : null}
-                </div>
-              </section>
-            ) : (
-              <p className="cart-page-order-note">Koszyk opróżniony po złożeniu zamówienia poniżej.</p>
-            )}
-
-            {/* Pozycje i podsumowanie w jednej karcie: lista zwinięta,
-                pod nią kwoty już po rabatach (właściciel, 2026-09-24).
-                Był tu też przycisk "Zapisz / udostępnij link" - usunięty:
-                w koszyku był tylko wygodną furtką do odłożenia zakupu. */}
-            <div className="cart-checkout-layout">
-              <div className="cart-checkout-left" onBlurCapture={handleCheckoutFieldBlur}>
-                {showExpressWallets ? (
-                  <ExpressWalletCheckout
-                    publishableKey={STRIPE_PUBLISHABLE_KEY}
-                    amountGrosze={Math.round(payableTotal * 100)}
-                    onCreateOrder={(contact) => submitOrder({ stripeMethod: "wallets", wallet: contact })}
-                    onPaid={handleWalletPaid}
-                    onAvailability={setExpressWalletsAvailable}
-                  />
-                ) : null}
-                {/* Dostawa jako akordeon (właściciel, 2026-09-24): wybór
-                    metody od razu otwiera pola, których ta metoda wymaga -
-                    kurier prosi o adres, paczkomat o dane odbiorcy i punkt,
-                    odbiór osobisty tylko o kontakt. Wszystkie pola piszą do
-                    tego samego stanu formularza, więc przełączenie metody
-                    nie kasuje tego, co klient już wpisał. */}
                 <section className="cart-delivery-card cart-delivery-card--accordion" ref={shippingAddressSectionRef}>
                   <h2>Dostawa i dane odbiorcy</h2>
-                  <details className="checkout-delivery-fold" ref={classicDeliveryFold} data-checkout-delivery-fold onToggle={(event) => {
-                    if (event.currentTarget.open && deliveryCheck === "complete") setDeliveryCheck("idle");
-                  }}>
-                    <summary>{deliveryCheck === "complete" ? "Edytuj dane dostawy" : "Wybierz sposób dostawy"}</summary>
+                  <div className="checkout-delivery-fold" style={deliveryCheck === "complete" ? { display: "none" } : undefined}>
                   <div className="cart-delivery-options">
                     {availableDeliveryMethods.map((method) => {
                       const isPaczkomat = method.id === PACZKOMAT_METHOD.id;
@@ -4215,10 +4152,71 @@ export default function CartPage() {
                     </button>
                   )}
                     {deliveryDataReady ? <button type="button" className="checkout-confirm-data" disabled={deliveryCheck === "checking"} onClick={() => setDeliveryCheck("checking")}>Potwierdź dane dostawy</button> : null}
-                  </details>
-                  {deliveryCheck === "complete" && deliveryDataReady ? <p className="checkout-delivery-summary"><strong>{form.firstName} {form.lastName}</strong><br />{selectedPaczkomat?.id || [form.address1, form.postcode, form.city].filter(Boolean).join(" ")}</p> : null}
+                  </div>
+                  {deliveryCheck === "complete" && deliveryDataReady ? <p className="checkout-delivery-summary"><strong>{form.firstName} {form.lastName}</strong><br />{selectedPaczkomat?.id || [form.address1, form.postcode, form.city].filter(Boolean).join(" ")} <button type="button" onClick={() => setDeliveryCheck("idle")}>Edytuj</button></p> : null}
                   {deliveryCheck !== "idle" ? <DeliveryFeedback key={deliveryCheck} checking={deliveryCheck === "checking"} complete={deliveryCheck === "complete"} /> : null}
                 </section>
+
+                  {shippingFee > 0 && amountToFreeShipping > 0 ? (
+                    <p className="cart-free-shipping-progress">
+                      Brakuje <strong>{formatPln(amountToFreeShipping)}</strong> do <strong>darmowej dostawy</strong>.{" "}
+                      <a href="/produkt/moskitiery-ramkowe" className="cart-free-shipping-cta">
+                        Wyceń dodatkową moskitierę
+                      </a>
+                    </p>
+                  ) : null}
+
+                  {sezon20Promo ? (
+                    <button type="button" className="cart-promo-banner" onClick={applySezon20Promo}>
+                      <span className="cart-promo-banner-label">
+                        Zamów z kodem rabatowym SEZON20{" "}
+                        {sezon20Promo.type === "percent"
+                          ? `-${sezon20Promo.value.toLocaleString("pl-PL")}%`
+                          : `-${formatPln(sezon20Promo.value)}`}
+                      </span>
+                      <strong className="cart-promo-banner-price">
+                        {formatPln(
+                          Math.max(
+                            0,
+                            summary.total -
+                              combinedSavings -
+                              sezon20Promo.amount +
+                              shippingFee +
+                              orderSurcharge +
+                              (paymentMethod === "cod" ? COD_SURCHARGE_AMOUNT : 0),
+                          ),
+                        )}
+                      </strong>
+                    </button>
+                  ) : null}
+                </div>
+              </section>
+            ) : (
+              <p className="cart-page-order-note">Koszyk opróżniony po złożeniu zamówienia poniżej.</p>
+            )}
+
+            {/* Pozycje i podsumowanie w jednej karcie: lista zwinięta,
+                pod nią kwoty już po rabatach (właściciel, 2026-09-24).
+                Był tu też przycisk "Zapisz / udostępnij link" - usunięty:
+                w koszyku był tylko wygodną furtką do odłożenia zakupu. */}
+            <div className="cart-checkout-layout">
+              <div className="cart-checkout-left" onBlurCapture={handleCheckoutFieldBlur}>
+                {showExpressWallets ? (
+                  <ExpressWalletCheckout
+                    publishableKey={STRIPE_PUBLISHABLE_KEY}
+                    amountGrosze={Math.round(payableTotal * 100)}
+                    onCreateOrder={(contact) => submitOrder({ stripeMethod: "wallets", wallet: contact })}
+                    onPaid={handleWalletPaid}
+                    onAvailability={setExpressWalletsAvailable}
+                  />
+                ) : null}
+                {/* Dostawa jako akordeon (właściciel, 2026-09-24): wybór
+                    metody od razu otwiera pola, których ta metoda wymaga -
+                    kurier prosi o adres, paczkomat o dane odbiorcy i punkt,
+                    odbiór osobisty tylko o kontakt. Wszystkie pola piszą do
+                    tego samego stanu formularza, więc przełączenie metody
+                    nie kasuje tego, co klient już wpisał. */}
+
 
                 {/* Dane kupującego i faktura w jednym, zwiniętym bloku
                     (właściciel, 2026-09-24): domyślnie kupujący = odbiorca,

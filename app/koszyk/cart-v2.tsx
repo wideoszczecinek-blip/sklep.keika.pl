@@ -375,31 +375,17 @@ export default function CartV2(props: CartV2Props) {
     if (step === 3 && !p.deliveryDataReady) goTo(2, "pop");
   }, [step, p.deliveryDataReady, goTo]);
 
-  const deliveryOptionsRef = useRef<HTMLDetailsElement>(null);
+
   const [deliveryHint, setDeliveryHint] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
   const isPaczkomat = p.deliveryMethod === p.paczkomatMethodId;
   const advance = () => {
-    if (step === 0) {
-      p.track("cart_v2_start", "zamawiam", {});
-      p.track("cart_v2_step", STEP_NAMES[1], {});
-      goTo(1);
-      return;
-    }
-    if (step === 1) {
-      if (!p.deliveryMethod) { setDeliveryHint(true); if (deliveryOptionsRef.current) deliveryOptionsRef.current.open = true; return; }
-      if (isPaczkomat && !p.selectedPaczkomat) {
-        setPaczkomatHint(true);
-        document.querySelector(".cv2-paczkomat")?.scrollIntoView({ behavior: "smooth", block: "center" });
-        return;
-      }
-      p.track("cart_v2_step", STEP_NAMES[2], {});
-      goTo(2);
-      window.setTimeout(() => {
-        const input = screenRef.current?.querySelector<HTMLInputElement>(".cv2-form input");
-        if (input && !input.value) input.focus({ preventScroll: true });
-      }, 420);
+    if (step === 0 || step === 1) {
+      if (!p.deliveryMethod) { setDeliveryHint(true); document.querySelector(".cv2-tiles")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+      if (isPaczkomat && !p.selectedPaczkomat) { setPaczkomatHint(true); document.querySelector(".cv2-paczkomat")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+      if (!p.deliveryDataReady) { p.jumpToFirstProblem(); return; }
+      if (!verifying) setVerifying(true);
       return;
     }
     if (step === 2) {
@@ -418,7 +404,7 @@ export default function CartV2(props: CartV2Props) {
     if (!verifying) return;
     const timer = window.setTimeout(() => {
       setVerifying(false);
-      if (!p.deliveryDataReady || step !== 2) return;
+      if (!p.deliveryDataReady || (step !== 0 && step !== 1 && step !== 2)) return;
       setDeliveryConfirmed(true);
       goTo(3);
     }, 900);
@@ -676,7 +662,7 @@ export default function CartV2(props: CartV2Props) {
   );
 
   // ===== Ekran 0: zamówienie =====
-  const screenOrder = (
+  const screenOrder = () => (
     <>
       <section className="cv2-hero">
         <div className={`cv2-hero-visuals${p.items.length > 1 ? " is-multi" : ""}`}>
@@ -801,6 +787,8 @@ export default function CartV2(props: CartV2Props) {
           {p.discountError ? <p className="cv2-code-error">{p.discountError}</p> : null}
         </div>
         <CartFinance amount={p.payableTotal} />
+        {screenDelivery}
+        {p.deliveryMethod && (!isPaczkomat || p.selectedPaczkomat) ? screenData : null}
       </section>
       <div ref={p.escapeBottomRef} className="escape-offer-sentinel" aria-hidden="true" />
     </>
@@ -811,14 +799,14 @@ export default function CartV2(props: CartV2Props) {
     <>
       <h1 className="cv2-q">Jak dostarczyć zamówienie?</h1>
       {deliveryHint && !p.deliveryMethod ? <p className="cv2-inline-error" role="alert">Wybierz sposób dostawy.</p> : null}
-      <details className="checkout-delivery-fold" ref={deliveryOptionsRef}>
-        <summary>{activeDelivery?.label || "Wybierz sposób dostawy"}</summary>
+
+
       <div className="cv2-tiles" role="radiogroup" aria-label="Sposób dostawy">
         {p.deliveryMethods.map((method) => {
           const active = p.deliveryMethod === method.id;
           return (
             <label key={method.id} className={`cv2-tile${active ? " is-active" : ""}`}>
-              <input type="radio" name="delivery-method" value={method.id} checked={active} onChange={() => { p.chooseDelivery(method); if (method.id !== p.paczkomatMethodId) goTo(2); }} disabled={p.dataLocked} />
+              <input type="radio" name="delivery-method" value={method.id} checked={active} onChange={() => { p.chooseDelivery(method); setDeliveryHint(false); }} disabled={p.dataLocked} />
               <span className="cv2-tile-icon">{deliveryIcon(method.id, p.paczkomatMethodId, p.pickupMethodId)}</span>
               <span className="cv2-tile-copy">
                 <strong>{method.label}</strong>
@@ -836,7 +824,6 @@ export default function CartV2(props: CartV2Props) {
         </div>
       ) : null}
 
-      </details>
     </>
   );
 
@@ -1017,7 +1004,7 @@ export default function CartV2(props: CartV2Props) {
           {p.requiresAddress ? `: ${p.form.address1}, ${p.form.postcode} ${p.form.city}` : ""}
         </p>
         {!p.dataLocked ? (
-          <button type="button" className="cv2-link" onClick={goBack}>
+          <button type="button" className="cv2-link" onClick={() => goTo(0, "pop")}>
             Edytuj
           </button>
         ) : null}
@@ -1034,7 +1021,7 @@ export default function CartV2(props: CartV2Props) {
     </>
   );
 
-  const barLabel = step === 0 ? "Zamawiam" : step === 1 ? "Dalej" : step === 2 ? "Dalej: płatność" : "";
+  const barLabel = step === 0 ? "Dalej: płatność" : step === 1 ? "Dalej" : step === 2 ? "Dalej: płatność" : "";
 
   return (
     <div className={`cv2 cv2--step${step}${p.hasEscapeOffer ? " has-escape-offer" : ""}`}>
@@ -1100,7 +1087,7 @@ export default function CartV2(props: CartV2Props) {
 
       {verifying || (step === 3 && deliveryConfirmed) ? <DeliveryFeedback key={verifying ? "checking" : "complete"} checking={verifying} complete={step === 3 && deliveryConfirmed} /> : null}
       <div className="cv2-screen" key={step} ref={screenRef}>
-        {step === 0 ? screenOrder : step === 1 ? screenDelivery : step === 2 ? screenData : screenPay}
+        {step === 0 ? screenOrder() : step === 1 ? screenDelivery : step === 2 ? screenData : screenPay}
       </div>
 
       <p className="cv2-foot">
