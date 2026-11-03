@@ -19,7 +19,7 @@ const PANES: { rogi: Pt[]; wMm: number; hMm: number }[] = [
   { rogi: [[485.8, 150.3], [752.6, 181.3], [762.4, 622.1], [484, 667.3]], wMm: 650, hMm: 1100 },
 ];
 const TKANINY = ["pp153", "pp166", "pp158"];
-const ETAPY = ["Twoje zdjęcie", "AI znajduje szyby", "Plisa na Twoim oknie", "Przesuwasz belki", "Zmieniasz kolor"];
+const ETAPY = ["Zdjęcie", "Kolory", "Podgląd", "Wycena"];
 const LOOP = 11000;
 
 const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
@@ -73,7 +73,7 @@ export default function WizDemo() {
         raf = requestAnimationFrame(frame);
         if (!visible) return;
         const t = (now - t0) % LOOP;
-        const e = t < 1200 ? 0 : t < 2800 ? 1 : t < 3800 ? 2 : t < 7200 ? 3 : 4;
+        const e = t < 3800 ? 0 : t < 7200 ? 1 : t < 9700 ? 2 : 3;
         setEtap((p) => (p === e ? p : e));
         // skan i obrysy szyb
         setScan(t >= 1200 && t < 3000 ? { y: seg(t, 1200, 2600), obrys: seg(t, 1500, 2800) } : null);
@@ -152,7 +152,7 @@ export default function WizDemo() {
         ))}
       </div>
       {!gotowe ? <div className={s.loading}>…</div> : null}
-      <span className={s.demoBadge}>Wizualizacja poglądowa</span>
+      <span className={s.demoBadge}>{etap === 3 ? "Wymiary ze zdjęcia dają orientacyjną cenę" : "Wizualizacja poglądowa"}</span>
     </div>
   );
 }

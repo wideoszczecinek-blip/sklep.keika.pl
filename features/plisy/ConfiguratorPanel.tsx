@@ -331,6 +331,12 @@ export default function ConfiguratorPanel({
   useEffect(() => {
     const onPick = (e: Event) => {
       const d = (e as CustomEvent<WizPickDetail>).detail || {};
+      if (d.requireDimensions) {
+        setWidth("");
+        setHeight("");
+        setPositions([]);
+        setEditingPositionId(null);
+      }
       if (d.hardwareId) {
         setSelectedHardwareId(d.hardwareId);
         setStepOneChosen(true);
@@ -1256,7 +1262,7 @@ export default function ConfiguratorPanel({
     return (
       <>
         <header>
-          <strong>Sprawdź cenę swojej plisy</strong>
+          <strong>Konfigurator plisy PREMIUM</strong>
         </header>
         <p className="hero-product-config-hint">Wczytuję konfigurator…</p>
       </>
@@ -1267,7 +1273,7 @@ export default function ConfiguratorPanel({
     return (
       <>
         <header>
-          <strong>Sprawdź cenę swojej plisy</strong>
+          <strong>Konfigurator plisy PREMIUM</strong>
         </header>
         <p className="hero-product-config-hint">
           Nie udało się wczytać konfiguratora. Odśwież stronę lub spróbuj ponownie za chwilę.
@@ -1303,7 +1309,7 @@ export default function ConfiguratorPanel({
   return (
     <>
       <header>
-        <strong>Sprawdź cenę swojej plisy</strong>
+        <strong>Konfigurator plisy PREMIUM</strong>
       </header>
 
       {/* KROK 1: sposób montażu */}
@@ -1617,7 +1623,7 @@ export default function ConfiguratorPanel({
                 onClick={handleAddPosition}
                 disabled={!dimensionsValid}
               >
-                {editingPositionId ? "Zapisz zmiany" : "+ Dodaj kolejne okno"}
+                {editingPositionId ? "Zapisz zmiany" : "+ Dodaj kolejną plisę"}
               </button>
             </div>
           </div>

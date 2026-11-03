@@ -13,7 +13,7 @@ export const WIZ_OPEN_EVENT = "keika:wiz-open";
 export const WIZ_PICK_EVENT = "keika:wiz-wybor";
 
 export type WizOpenDetail = { zrodlo: string; tkanina?: string; listwa?: string; token?: string };
-export type WizPickDetail = { hardwareId?: string; fabricGroupId?: string; fabricId?: string };
+export type WizPickDetail = { hardwareId?: string; fabricGroupId?: string; fabricId?: string; requireDimensions?: boolean };
 
 function hashToPercent(text: string): number {
   let hash = 0x811c9dc5;

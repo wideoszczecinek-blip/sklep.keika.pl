@@ -7,16 +7,14 @@
 // przycisk), jeden stały przycisk pod kciukiem zamiast czterech zakładek.
 // Reszta landingu (wycena, kolekcje, opinie, instrukcje, FAQ) to istniejące
 // komponenty w nowej kolejności - patrz app/home-client.tsx, gałąź plisy.
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { crmGetJson } from "@/lib/crm-get";
 import { PROMO_CODE, QTY_PROMO } from "@/lib/promo";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
 import { trackShopStep } from "@/lib/track-step";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 import { PLISY_HERO_PHOTOS } from "./gallery";
-import PlisyHeroScene from "./PlisyHeroScene";
 import { PremiumPerks } from "./Premium";
-import { PlisyFilmSlide } from "./FilmClips";
 
 const HERO_ALT = [
   "Biała plisa okienna KEIKA zamontowana w oknie, tkanina opuszczona od góry",
@@ -63,76 +61,57 @@ export function usePaypoEnabled(): boolean {
   return enabled;
 }
 
-/** Galeria na górze: prawdziwe zdjęcia z montaży do przesuwania + animowana
- * prezentacja jako ostatni kadr (właściciel 2026-09-16 chciał ją zostawić;
- * liderzy otwierają stronę zdjęciem, więc zdjęcie jest pierwsze). */
+const HERO_BENEFITS = [
+  ["5 lat gwarancji", "M12 22s7-3 7-10V5l-7-3-7 3v7c0 7 7 10 7 10Z M9 12l2 2 4-4"],
+  ["30 dni na zwrot", "M12 21S3 16 3 9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 7-9 12-9 12Z M9 12l2 2 4-4"],
+  ["Produkt polski", "M4 22V3h16v12H4 M4 9h16"],
+  ["Aluminiowa belka", "M3 8h18v8H3z M7 8v8 M17 8v8"],
+  ["Grube tkaniny", "m3 8 9-5 9 5-9 5-9-5Z M3 12l9 5 9-5 M3 16l9 5 9-5"],
+] as const;
+
 export function PlisyHeroGallery() {
   const photos = PLISY_HERO_PHOTOS;
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [active, setActive] = useState(0);
-  // Drugi slajd = cały film 3D plisy (Agencja AI 30.10.2026: „zdjęcie główne zostaje, film zaraz po nim”).
-  const FILM_AT = 1;
-  const slidesCount = photos.length + 2;
+  const [playing, setPlaying] = useState(true);
 
   useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    let frame = 0;
-    const onScroll = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        const index = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
-        setActive((prev) => (prev === index ? prev : index));
-      });
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, []);
-
-  const goTo = (index: number) => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    el.scrollTo({ left: index * el.clientWidth, behavior: "smooth" });
-    trackShopStep("hero_gallery_dot", "plisy", { index });
-  };
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!playing || preference.matches) return;
+    const timer = window.setInterval(() => setActive((index) => (index + 1) % photos.length), 5200);
+    return () => window.clearInterval(timer);
+  }, [photos.length, playing]);
 
   return (
-    <div className="plv2-gallery" role="region" aria-label="Zdjęcia plis KEIKA z montaży">
-      <div className="plv2-gallery-scroller" ref={scrollerRef}>
+    <div className="plv2-gallery" role="region" aria-label="Zdjęcia i zalety plis KEIKA">
+      <div className="plv2-photo-stage">
         {photos.map((src, index) => (
-          <Fragment key={src}>
-            {index === FILM_AT ? <PlisyFilmSlide active={active === FILM_AT} /> : null}
-            <figure className="plv2-slide">
-              <img src={heroSrc(src)} alt={HERO_ALT[index] || "Plisa KEIKA na oknie"} loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : undefined} />
-            </figure>
-          </Fragment>
+          <figure key={src} className={`plv2-slide ${index === active ? "is-active" : ""}`} aria-hidden={index !== active}>
+            <img src={heroSrc(src)} alt={HERO_ALT[index] || "Plisa KEIKA na oknie"} decoding="async" fetchPriority={index === 0 ? "high" : "low"} />
+          </figure>
         ))}
-        <figure className="plv2-slide plv2-slide--scene" aria-label="Animowana prezentacja plisy">
-          <PlisyHeroScene active={active === slidesCount - 1} />
-        </figure>
+        <div className="plv2-gallery-dots" aria-label="Sterowanie zdjęciami">
+          {photos.map((src, index) => (
+            <button key={src} type="button" className={index === active ? "is-active" : ""} aria-label={`Zdjęcie ${index + 1}`} aria-pressed={index === active} onClick={() => {
+              setPlaying(false);
+              setActive(index);
+              trackShopStep("hero_gallery_dot", "plisy", { index });
+            }} />
+          ))}
+          <button type="button" className="plv2-gallery-pause" aria-label={playing ? "Wstrzymaj karuzelę" : "Wznów karuzelę"} onClick={() => setPlaying(!playing)}>{playing ? "Ⅱ" : "▶"}</button>
+        </div>
       </div>
-      <span className="plv2-gallery-chip">Własna produkcja od 2015</span>
-      <div className="plv2-gallery-dots" aria-label="Wybierz zdjęcie">
-        {Array.from({ length: slidesCount }, (_, index) => (
-          <button
-            key={index}
-            type="button"
-            className={index === active ? "is-active" : ""}
-            aria-label={index === FILM_AT ? "Film" : index === slidesCount - 1 ? "Prezentacja" : `Zdjęcie ${index < FILM_AT ? index + 1 : index}`}
-            aria-pressed={index === active ? "true" : "false"}
-            onClick={() => goTo(index)}
-          />
+      <ul className="plv2-photo-benefits">
+        {HERO_BENEFITS.map(([label, path]) => (
+          <li key={label}>
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={path} /></svg>
+            {label}
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }
 
-/** Wiersz dowodu pod tytułem: ocena firmy i liczba opinii (dane z CRM). */
 export function PlisyProofLine({ average, total, onClick }: { average: number; total: number; onClick?: () => void }) {
   if (!total) return null;
   const rounded = Math.round(average * 10) / 10;

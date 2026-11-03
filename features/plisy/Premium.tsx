@@ -5,7 +5,7 @@
 // które strona już podaje (landing-content.ts): produkujemy sami od 2015, 5 lat gwarancji, 30 dni na zwrot,
 // 150 tkanin w 5 kolekcjach (antystatyczne), aluminiowe profile w 10 kolorach, dwie ruchome listwy, sznurki
 // prowadzące, montaż bez wiercenia. Ceny i promocje bez zmian. Zdjęcia poniżej pierwszego ekranu - leniwie (LCP).
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { trackShopStep } from "@/lib/track-step";
 import { openWizualizator } from "@/lib/wizualizator/flag";
 import { useWizVisible } from "@/features/wizualizator/WizEntry";
@@ -191,7 +191,7 @@ const punkty = (t: string) =>
   (/plis/i.test(t) ? 6 : 0) + (/(jako|starann|solidn|posłuż|wykonan|estetyczn|pięk)/i.test(t) ? 3 : 0) + (/(idealn|dopasow|na wymiar)/i.test(t) ? 1 : 0);
 
 /** Ocena i trzy krótkie cytaty klientów (bez źródeł - tak jak sekcja Opinie). */
-export function PremiumQuotes({ onAll }: { onAll?: () => void }) {
+export function PremiumQuotes({ onAll, rotate = false }: { onAll?: () => void; rotate?: boolean }) {
   const rating = useCompanyRating();
   const reviews = useCompanyReviews();
   const cytaty = useMemo(() => {
@@ -203,6 +203,12 @@ export function PremiumQuotes({ onAll }: { onAll?: () => void }) {
       .slice(0, 3)
       .map((x) => x.r);
   }, [reviews]);
+  const [activeQuote, setActiveQuote] = useState(0);
+  useEffect(() => {
+    if (!rotate || cytaty.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setActiveQuote((index) => (index + 1) % cytaty.length), 7500);
+    return () => window.clearInterval(timer);
+  }, [rotate, cytaty.length]);
   if (!rating && !cytaty.length) return null;
   return (
     <section className="pm-section pm-quotes" aria-labelledby="pm-quotes-title">
@@ -218,7 +224,7 @@ export function PremiumQuotes({ onAll }: { onAll?: () => void }) {
       </h2>
       {rating ? <p className="pm-lead">{opinieLabel(rating.total)} klientów KEIKA</p> : null}
       <div className="pm-quotes-grid">
-        {cytaty.map((r) => (
+        {(rotate ? cytaty.slice(activeQuote, activeQuote + 1) : cytaty).map((r) => (
           <blockquote key={r.id || r.text} className="pm-quote">
             <span className="pm-stars" aria-label="5 na 5">★★★★★</span>
             <p>„{r.text}”</p>

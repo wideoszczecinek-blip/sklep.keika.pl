@@ -900,10 +900,10 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     const p = panes[sel] || panes[0];
     if (!p || !katalog) return;
     const t = katalog.tkaniny.find((x) => x.id === p.tkanina);
-    const pick: WizPickDetail = { hardwareId: p.listwa, fabricGroupId: t?.kolekcja, fabricId: p.tkanina };
+    const pick: WizPickDetail = { hardwareId: p.listwa, fabricGroupId: t?.kolekcja, fabricId: p.tkanina, requireDimensions: true };
     try {
       const prev = JSON.parse(window.localStorage.getItem(DRAFT_KEY) || "{}");
-      window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...prev, ...pick, savedAt: Date.now() }));
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...prev, ...pick, widthMm: undefined, heightMm: undefined, savedAt: Date.now() }));
     } catch {
       /* szkic to wygoda */
     }
@@ -1627,7 +1627,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   <button type="button" className={s.link} onClick={() => setPrzedPo((v) => (v === null ? (canvasRef.current?.width || 0) / 2 : null))}>{przedPo === null ? "Przed / po" : "Zamknij porównanie"}</button>
                   <button type="button" className={s.link} onClick={() => { otworzKarte("szyby"); setEdycja(true); }}>Popraw obrys</button>
                   <button type="button" className={s.link} onClick={pobierz}>Zapisz zdjęcie</button>
-                  <button type="button" className={s.link} onClick={zamow} disabled={!panes.length}>Otwórz w konfiguratorze</button>
+                  <button type="button" className={s.link} onClick={zamow} disabled={!panes.length}>Przenieś do konfiguratora</button>
                 </div>
               </div>
               {demo ? (

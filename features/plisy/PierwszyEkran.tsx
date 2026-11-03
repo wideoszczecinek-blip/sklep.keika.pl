@@ -24,7 +24,7 @@ export function PlisyPierwszyEkran() {
   return (
     <div className="pe-gora">
       <p className="pe-naglowek">Prywatność, kiedy chcesz. Światło, kiedy potrzebujesz.</p>
-      <p className="pe-zdanie">Zasłonisz dół, górę albo środek szyby – sąsiad nie zajrzy, a w pokoju dalej jest jasno.</p>
+      <p className="pe-zdanie">Dwie ruchome belki pozwalają zasłonić górę, dół albo środek szyby. Daj sobie tyle prywatności i światła, ile akurat potrzebujesz. Wybierz tkaninę dekoracyjną, która rozprasza światło, lub podgumowaną, gdy zależy Ci na zaciemnieniu. Ponad 150 tkanin i 10 kolorów belek pozwoli Ci dopasować plisę do okna i wnętrza.</p>
       <ul className="pe-znaczki">
         <li>Montaż bez wiercenia</li>
         <li>5 lat gwarancji</li>

@@ -706,7 +706,7 @@
 .demoStep, .demoStepOn { font-size: 12px; padding: 5px 10px; border-radius: 999px; background: rgba(15, 23, 32, 0.55); color: rgba(255,255,255,0.7); backdrop-filter: blur(6px); transition: all 0.35s ease; }
 .demoStepOn { background: #0f9f8f; color: #fff; font-weight: 700; transform: scale(1.05); box-shadow: 0 6px 18px rgba(15,159,143,0.45); }
 .demoBadge { position: absolute; left: 12px; bottom: 8px; font-size: 11px; color: rgba(255,255,255,0.8); line-height: 1.3; }
-@media (max-width: 899px) { .demoSteps { display: none; } }
+@media (max-width: 899px) { .demoSteps { left: 6px; right: 6px; bottom: 29px; gap: 3px; } .demoStep, .demoStepOn { font-size: 10px; padding: 4px 6px; } }
 .newPill { background: linear-gradient(90deg, #0f9f8f, #22c55e); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.03em; }
 .chipOnSm { background: #12212b; color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 600; }
 .titleBig { font-size: clamp(24px, 3vw, 34px); line-height: 1.12; font-weight: 800; margin: 6px 40px 10px 0; color: #0b1720; letter-spacing: -0.01em; }

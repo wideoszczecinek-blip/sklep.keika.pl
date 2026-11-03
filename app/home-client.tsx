@@ -3957,6 +3957,11 @@ export default function Home({
                       {/* Strona plis 3.11 (plan Agencji, jedna wersja): pierwszy ekran z wyceną → wizualizator → opinie →
                           galeria → Dlaczego KEIKA; niżej tkanina, pomiar, bezpieczny zakup, FAQ, końcowy przycisk. */}
                       <PlisyPierwszyEkran />
+                      <section className="pm-section" aria-labelledby="plisy-szybka-wycena">
+                        <h2 id="plisy-szybka-wycena" className="pm-title">Sprawdź szybką wycenę</h2>
+                        <p className="pm-lead">Wpisz przybliżone wymiary i wybierz rodzaj tkaniny, aby poznać orientacyjną cenę.</p>
+                        <button type="button" className="pm-link" onClick={scrollToConfigPanel}>Przejdź do pełnej konfiguracji →</button>
+                      </section>
                       <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
                         {(promo) => (
                           <PlisyQuickPrice
@@ -3980,11 +3985,20 @@ export default function Home({
                       </PromoCountdownBanner>
                       <LejekOcena onOpinie={() => scrollToProductSection("opinie")} />
                       <WizPowrot />
-                      <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
+                      <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToConfigPanel} />
+                      <section className="pm-section plisy-guide" aria-labelledby="plisy-guide-title">
+                        <h2 id="plisy-guide-title" className="pm-title">Pomiar i montaż plisy</h2>
+                        <PlisyFilmLoop {...PLISY_FILM.caly} label="Prezentacja plisy w 3D" />
+                        <details><summary>Instrukcja pomiaru</summary><PlisyMeasureGuide /></details>
+                        <details><summary>Instrukcja montażu</summary><button type="button" className="pm-link" onClick={openMountFilm}>Zobacz film montażowy →</button></details>
+                      </section>
+                      <button type="button" className="pm-btn" onClick={scrollToConfigPanel}>Skonfiguruj swoją plisę</button>
                       <WizHost />
                       <WizPlywajacy zrodlo="plisy-plywajacy" />
-                      <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
+                      <PremiumQuotes rotate onAll={() => scrollToProductSection("opinie")} />
                       <LejekGaleria onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
+                      <LejekTkaniny onKolekcje={scrollToConfigPanel} />
+                      <button type="button" className="pm-btn" onClick={scrollToConfigPanel}>Wybierz tkaninę w konfiguratorze</button>
                       <LejekDlaczego />
                     </>
                   ) : null}
@@ -4403,7 +4417,6 @@ export default function Home({
                                   {(
                                     // strona plis 3.11: tkanina do pokoju → pomiar → bezpieczny zakup (reszta na górze strony)
                                     <>
-                                      <LejekTkaniny onKolekcje={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")} />
                                       <LejekPomiar onAnimacja={openMeasurementInstructions} onCzat={() => openCrispChat("Zdjęcie mojego okna – pomożecie z wymiarem plisy?")} />
                                       <LejekBezpiecznie onPomiar={openMeasurementInstructions} />
                                     </>
