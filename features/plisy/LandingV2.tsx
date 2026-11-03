@@ -17,9 +17,9 @@ import { PLISY_HERO_PHOTOS } from "./gallery";
 import { PremiumPerks } from "./Premium";
 
 const HERO_ALT = [
-  "Biała plisa okienna KEIKA zamontowana w oknie, tkanina opuszczona od góry",
-  "Plisa okienna KEIKA w antracytowej tkaninie na oknie dwuskrzydłowym - zdjęcie z montażu u klienta",
-  "Plisy okienne KEIKA w sali konferencyjnej - szare tkaniny, regulacja od góry",
+  "Jasne plisy w salonie – wizualizacja aranżacji",
+  "Antracytowe plisy w sypialni – wizualizacja aranżacji",
+  "Biała plisa okienna KEIKA – zdjęcie produktu",
 ];
 // 700 to szerokość z listy dozwolonych w optymalizatorze (ta sama co kafelki
 // w PlisyHeroPhotos) - na telefonie z DPR 3 wystarcza do 390 px kadru.
@@ -70,7 +70,7 @@ const HERO_BENEFITS = [
 ] as const;
 
 export function PlisyHeroGallery() {
-  const photos = PLISY_HERO_PHOTOS;
+  const photos = ["/plisy/hero-salon-inspiracja.webp", "/plisy/hero-sypialnia-inspiracja.webp", PLISY_HERO_PHOTOS[0]];
   const [active, setActive] = useState(0);
   const [playing, setPlaying] = useState(true);
   const benefitGroups = [HERO_BENEFITS.slice(0, 2), HERO_BENEFITS.slice(2, 4), HERO_BENEFITS.slice(4)];
@@ -90,6 +90,7 @@ export function PlisyHeroGallery() {
             <img src={heroSrc(src)} alt={HERO_ALT[index] || "Plisa KEIKA na oknie"} decoding="async" fetchPriority={index === 0 ? "high" : "low"} />
           </figure>
         ))}
+        {active < 2 ? <span className="plv2-inspiration-note">Wizualizacja aranżacji</span> : null}
         <ul className="plv2-photo-benefits" key={active}>
           {(benefitGroups[active] || benefitGroups[0]).map(([label, path]) => (
             <li key={label}>

@@ -33,6 +33,7 @@ import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 // miarki pod ręką. Wersja v1 zostaje nietknięta (powrót jednym przełącznikiem).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
+import { useBundleDiscountRules } from "@/lib/bundle-discount";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import { PLISY_COLLECTIONS } from "./landing-content";
@@ -107,6 +108,7 @@ export default function PlisyQuickPrice({
   onWpisane?: () => void;
 }) {
   const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
+  const bundleRule = useBundleDiscountRules().plisy;
   const isV2 = variant === "v2";
 
   // Slider bounds = the production limits (20-150 x 20-230 cm), the same
@@ -402,30 +404,31 @@ export default function PlisyQuickPrice({
         ) : (
           <>
         {wyborTkaniny ? (
-          <div className="pl-quick-tkaniny" role="radiogroup" aria-label="Rodzaj tkaniny">
-            <b className="pl-quick-krok">
-              Jaki materiał?<small>Wybierz rodzaj tkaniny – policzymy cenę dokładnie dla niego</small>
-            </b>
-            {PLISY_COLLECTIONS.map((c) => (
-              <button
-                key={c.groupId}
-                type="button"
-                role="radio"
-                aria-checked={groupId === c.groupId ? "true" : "false"}
-                className={`pl-quick-tk ${groupId === c.groupId ? "is-active" : ""}`}
-                onClick={() => {
-                  trackShopStep("quick_price_tkanina", "plisy", { group: c.groupId, width_mm: widthMm, height_mm: heightMm });
-                  onGroupChange?.(c.groupId);
-                  onWpisane?.();
-                }}
-              >
-                <strong>{c.name}</strong>
-                <small>{c.blackout ? (c.thermal ? "zaciemnia, chroni przed ciepłem" : "zaciemnia") : c.thermal ? "przepuszcza światło, mniej nagrzewania" : "przepuszcza światło, chroni prywatność"}</small>
-              </button>
-            ))}
+          <div className="pl-quick-comparison">
+            <div className="pl-quick-comparison-head"><strong>Porównaj tkaniny</strong><span>Orientacyjnie · {cmText(widthCm)} × {cmText(heightCm)} cm</span></div>
+            <div className="pl-quick-comparison-list" role="radiogroup" aria-label="Wybierz rodzaj tkaniny">
+              {PLISY_COLLECTIONS.map((c) => {
+                const amount = profile && inRange ? plisyQuickPrice(profile, widthMm, heightMm, priceAdjustmentPercent, selectedMount, c.groupId) : null;
+                const tier = bundleRule?.wholeOrder ? bundleRule.tiers[bundleRule.tiers.length - 1] : null;
+                const names: Record<string, string> = { clasic: "Dekoracyjna", reflex: "Dekoracyjna Reflex", blackout: "Blackout", duo: "DUO plaster miodu", "duo-blackout": "DUO Termo" };
+                return <div className="pl-quick-comparison-row" key={c.groupId}>
+                  <button type="button" role="radio" aria-checked={groupId === c.groupId} className={`pl-quick-comparison-choice ${groupId === c.groupId ? "is-active" : ""}`} onClick={() => {
+                    trackShopStep("quick_price_tkanina", "plisy", { group: c.groupId, width_mm: widthMm, height_mm: heightMm });
+                    onGroupChange?.(c.groupId); onWpisane?.();
+                  }}>
+                    <span className="pl-quick-comparison-name">{names[c.groupId] || c.name}</span>
+                    <span className="pl-quick-comparison-price">{amount === null ? "Wycena w konfiguratorze" : <>{tier ? <><strong>{zl(Math.round(amount * (100 - tier.percent)) / 100)}</strong><small>przy {tier.fromQty}+ szt.</small><s>{zl(amount)}</s></> : <strong>{zl(amount)}</strong>}</>}</span>
+                  </button>
+                  <details className="pl-quick-comparison-info"><summary aria-label={`Informacje: ${names[c.groupId] || c.name}`}>i</summary><p>{c.what}</p></details>
+                </div>;
+              })}
+            </div>
+            {bundleRule?.wholeOrder && bundleRule.tiers.length ? <p className="pl-quick-comparison-note">Cena promocyjna przy {bundleRule.tiers[bundleRule.tiers.length - 1].fromQty} lub więcej produktach objętych promocją CAŁY DOM. Cena przekreślona dotyczy zakupu bez rabatu. Ostateczna cena zależy od konfiguracji i zawartości koszyka.</p> : <p className="pl-quick-comparison-note">Cena orientacyjna dla montażu przykręcanego. Ostateczna cena zależy od konfiguracji.</p>}
+            {split ? <p className="pl-quick-comparison-note">Szerokie okno wyceniamy jako dwie plisy — podana cena obejmuje obie.</p> : null}
+            <button type="button" className="pl-quick-cta pl-quick-cta--v2" disabled={!inRange} onClick={configure}>Wybierz szczegóły i skonfiguruj →</button>
+            {onMeasureGuide ? <button type="button" className="pl-quick-measure" onClick={onMeasureGuide}>Jak zmierzyć okno? →</button> : null}
           </div>
-        ) : null}
-        {wyborTkaniny && !kolekcja ? null : (
+        ) : (
           <>
         <div className="pl-quick-priceline" aria-live="polite">
           <span className="pl-quick-priceline-label">

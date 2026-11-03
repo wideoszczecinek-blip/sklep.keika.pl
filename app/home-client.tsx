@@ -3959,7 +3959,7 @@ export default function Home({
                       <PlisyPierwszyEkran />
                       <section className="pm-section" aria-labelledby="plisy-szybka-wycena">
                         <h2 id="plisy-szybka-wycena" className="pm-title">Sprawdź szybką wycenę</h2>
-                        <p className="pm-lead">Wpisz przybliżone wymiary i wybierz rodzaj tkaniny, aby poznać orientacyjną cenę.</p>
+                        <p className="pm-lead">Wpisz przybliżone wymiary i porównaj orientacyjne ceny różnych tkanin.</p>
                         <button type="button" className="pm-link" onClick={scrollToConfigPanel}>Przejdź do pełnej konfiguracji →</button>
                       </section>
                       <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">

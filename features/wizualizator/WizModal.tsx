@@ -34,6 +34,14 @@ type PaneState = {
   wpisSzerMm?: number | null; wpisWysMm?: number | null; zmierzone?: boolean; pomin?: boolean; odniesienia?: string[]; pewnoscWym?: number | null;
 };
 
+/** Initial presentation only; saved layouts and subsequent manual edits win. */
+function losoweUlozeniePlisy(): { gora: number; dol: number } {
+  const wysokosc = 0.3 + Math.random() * 0.4;
+  const miejsce = Math.floor(Math.random() * 3);
+  const gora = miejsce === 0 ? 0 : miejsce === 1 ? 1 - wysokosc : (1 - wysokosc) * (0.25 + Math.random() * 0.5);
+  return { gora, dol: gora + wysokosc };
+}
+
 const KORZYSCI = [
   { theme: "warranty", title: "Jakość gwarantowana", first: "5 lat gwarancji", second: "30 dni na zwrot", path: "M32 7l20 8v15c0 13-9 21-20 27C21 51 12 43 12 30V15z M22 31l7 7 14-15" },
   { theme: "materials", title: "Polska jakość zamiast marketowej taniochy", first: "Aluminiowy profil", second: "Grube tkaniny premium", path: "M7 13h50v12H7z M12 32l10 8 10-8 10 8 10-8 M12 43l10 8 10-8 10 8 10-8" },
@@ -449,8 +457,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     const li = startListwa || rek?.listwa?.id || DOMYSLNA_LISTWA;
     const szyby = (wynik.szyby || []).map<PaneState>((p) => {
       const z = zapis?.szyby?.[p.id];
+      const start = losoweUlozeniePlisy();
       return {
-        id: p.id, rogi: (z?.rogi as Pt[]) || p.rogi, gora: z?.gora ?? 0, dol: z?.dol ?? 0.68, tkanina: z?.tkanina || tk, listwa: z?.listwa || li,
+        id: p.id, rogi: (z?.rogi as Pt[]) || p.rogi, gora: z?.gora ?? start.gora, dol: z?.dol ?? start.dol, tkanina: z?.tkanina || tk, listwa: z?.listwa || li,
         pewnosc: p.pewnosc, szerMm: (p.szer_cm || 0) * 10, wysMm: (p.wys_cm || 0) * 10, swiatlo: p.swiatlo,
         wpisSzerMm: z?.szer_mm ?? null, wpisWysMm: z?.wys_mm ?? null, zmierzone: Boolean(z?.zmierzone), pomin: Boolean(z?.pomin),
         odniesienia: p.wymiary?.odniesienia || [], pewnoscWym: p.wymiary?.pewnosc ?? null,

@@ -24853,3 +24853,29 @@ html body button.pl-quick-tk.is-active { border-color: #d94d00; background: #fff
 .plisy-price-card .qty-promo-tile-label, .plisy-price-card .qty-promo-tile strong, .plisy-price-card .qty-promo-tile small, .plisy-price-card .qty-promo-tile-was { color: #173b32; }
 .plisy-price-card .qty-promo-tile-label em { color: #96330e; }
 .plisy-price-card .qty-promo-foot, .plisy-price-card .qty-promo-foot a { color: #173b32; }
+
+/* Plisy: czytelne porównanie cen po podaniu wymiarów. */
+.pl-quick-comparison { margin-top: 1rem; }
+.pl-quick-comparison-head { display:flex; justify-content:space-between; align-items:baseline; gap:.6rem; flex-wrap:wrap; margin-bottom:.45rem; color:#172c40; }
+.pl-quick-comparison-head strong { font-size:1.08rem; }
+.pl-quick-comparison-head span { font-size:.78rem; color:#526474; }
+.pl-quick-comparison-list { border:1px solid #dbe4e5; border-radius:14px; background:#fff; }
+.pl-quick-comparison-row { display:flex; align-items:center; border-bottom:1px solid #e9eeee; }
+.pl-quick-comparison-row:last-child { border-bottom:0; }
+.pl-quick-comparison-choice { flex:1; min-width:0; display:flex; align-items:center; justify-content:space-between; gap:.35rem; padding:.7rem .45rem .7rem .8rem; color:#193448; background:transparent; border:0; text-align:left; cursor:pointer; }
+.pl-quick-comparison-choice.is-active { background:#e8f5f1; box-shadow:inset 3px 0 #008679; }
+.pl-quick-comparison-name { font-weight:700; font-size:.88rem; }
+.pl-quick-comparison-price { display:flex; align-items:baseline; justify-content:flex-end; gap:.3rem; flex-wrap:wrap; text-align:right; }
+.pl-quick-comparison-price strong { color:#087e6e; white-space:nowrap; font-size:.92rem; }
+.pl-quick-comparison-price small { color:#506471; font-size:.68rem; white-space:nowrap; }
+.pl-quick-comparison-price s { color:#647580; font-size:.72rem; white-space:nowrap; }
+.pl-quick-comparison-info { position:relative; flex:none; margin:0 .65rem 0 .1rem; }
+.pl-quick-comparison-info summary { display:grid; place-items:center; width:1.35rem; height:1.35rem; border:1px solid #8ba3a5; border-radius:50%; color:#37635f; font-size:.76rem; font-weight:700; cursor:pointer; list-style:none; }
+.pl-quick-comparison-info summary::-webkit-details-marker { display:none; }
+.pl-quick-comparison-info p { position:absolute; z-index:5; right:0; top:1.5rem; width:min(270px,75vw); margin:0; padding:.75rem; background:#173b3b; color:#fff; border-radius:10px; box-shadow:0 8px 25px #102f3040; font-size:.8rem; }
+.pl-quick-comparison-note { margin:.6rem 0; color:#526474; font-size:.75rem; line-height:1.4; }
+@media (max-width:760px) {
+  body:has(.consent-bar) .home-root.plisy-v2 .plv2-bar { visibility:hidden; pointer-events:none; }
+  body:has(.home-root.plisy-v2) .consent-bar { bottom:calc(env(safe-area-inset-bottom, 0px) + .5rem); }
+}
+.plv2-inspiration-note { position:absolute; z-index:2; right:.6rem; bottom:.5rem; padding:.2rem .45rem; border-radius:4px; color:#fff; background:#102c32b8; font-size:.62rem; }
