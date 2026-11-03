@@ -2360,8 +2360,10 @@ export default function ConfiguratorPanel({
                   </button>
                   {/* AGN-937: pomiar to najczęstszy temat czatu, a część osób widzi
                       cenę i nie dodaje do koszyka - ten sam przewodnik co
-                      „Jak mierzyć?” w kroku wymiarów, bez blokowania zakupu. */}
-                  {onAddVariant && !isCartEdit && hasSizes ? (
+                      „Jak mierzyć?” w kroku wymiarów, bez blokowania zakupu.
+                      Warunek jak przy „Dodaj podobną” (onAddVariant), bo
+                      isCartEdit włącza też montaż z szybkiej wyceny. */}
+                  {onAddVariant && hasSizes ? (
                     <button
                       type="button"
                       className="plisy-final-measure-link"
