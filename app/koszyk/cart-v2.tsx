@@ -35,7 +35,8 @@ import PlisaPreview from "@/features/plisy/PlisaPreview";
 import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPreview";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
-import CartTrust, { CartFinance } from "./cart-trust";
+import CartTrust, { CartFinance, BundleBanner } from "./cart-trust";
+import DeliveryFeedback from "./delivery-feedback";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "@/app/moskitiery-ramkowe-reviews-data";
@@ -95,16 +96,6 @@ export type CartV2Props = {
   checkDiscountCode: () => void;
   removeDiscountCode: () => void;
   // termin
-  expressEligible: boolean;
-  expressSelected: boolean;
-  chooseExpress: (on: boolean) => void;
-  expressFeeAmount: number;
-  dispatchStandardLabel: string;
-  dispatchExpressLabel: string;
-  dispatchCutoffLabel: string;
-  plisyLeadTime: boolean;
-  roletyLeadTime: boolean;
-  roletyLeadTimeLabel: string;
   // dostawa i dane
   deliveryMethods: DeliveryOption[];
   deliveryMethod: string;
@@ -384,6 +375,7 @@ export default function CartV2(props: CartV2Props) {
     if (step === 3 && !p.deliveryDataReady) goTo(2, "pop");
   }, [step, p.deliveryDataReady, goTo]);
 
+  const deliveryOptionsRef = useRef<HTMLDetailsElement>(null);
   const [deliveryHint, setDeliveryHint] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
@@ -396,7 +388,7 @@ export default function CartV2(props: CartV2Props) {
       return;
     }
     if (step === 1) {
-      if (!p.deliveryMethod) { setDeliveryHint(true); return; }
+      if (!p.deliveryMethod) { setDeliveryHint(true); if (deliveryOptionsRef.current) deliveryOptionsRef.current.open = true; return; }
       if (isPaczkomat && !p.selectedPaczkomat) {
         setPaczkomatHint(true);
         document.querySelector(".cv2-paczkomat")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -429,7 +421,7 @@ export default function CartV2(props: CartV2Props) {
       if (!p.deliveryDataReady || step !== 2) return;
       setDeliveryConfirmed(true);
       goTo(3);
-    }, 480);
+    }, 900);
     return () => window.clearTimeout(timer);
   }, [verifying, p.deliveryDataReady, step, goTo]);
 
@@ -503,7 +495,7 @@ export default function CartV2(props: CartV2Props) {
         </div>
       ) : null}
       {p.bundleHint ? (
-        <div className="checkout-bundle-banner"><strong>Promocja CAŁY DOM</strong><span>{p.bundleHint}</span></div>
+        <BundleBanner text={p.bundleHint} />
       ) : null}
       {p.appliedDiscount ? (
         <div className="cv2-row">
@@ -819,12 +811,14 @@ export default function CartV2(props: CartV2Props) {
     <>
       <h1 className="cv2-q">Jak dostarczyć zamówienie?</h1>
       {deliveryHint && !p.deliveryMethod ? <p className="cv2-inline-error" role="alert">Wybierz sposób dostawy.</p> : null}
+      <details className="checkout-delivery-fold" ref={deliveryOptionsRef}>
+        <summary>{activeDelivery?.label || "Wybierz sposób dostawy"}</summary>
       <div className="cv2-tiles" role="radiogroup" aria-label="Sposób dostawy">
         {p.deliveryMethods.map((method) => {
           const active = p.deliveryMethod === method.id;
           return (
             <label key={method.id} className={`cv2-tile${active ? " is-active" : ""}`}>
-              <input type="radio" name="delivery-method" value={method.id} checked={active} onChange={() => p.chooseDelivery(method)} disabled={p.dataLocked} />
+              <input type="radio" name="delivery-method" value={method.id} checked={active} onChange={() => { p.chooseDelivery(method); if (method.id !== p.paczkomatMethodId) goTo(2); }} disabled={p.dataLocked} />
               <span className="cv2-tile-icon">{deliveryIcon(method.id, p.paczkomatMethodId, p.pickupMethodId)}</span>
               <span className="cv2-tile-copy">
                 <strong>{method.label}</strong>
@@ -842,37 +836,7 @@ export default function CartV2(props: CartV2Props) {
         </div>
       ) : null}
 
-      {p.expressEligible ? (
-        <>
-          <h2 className="cv2-q2">Kiedy wysłać?</h2>
-          <div className="cv2-tiles" role="radiogroup" aria-label="Termin realizacji">
-            <label className={`cv2-tile${!p.expressSelected ? " is-active" : ""}`}>
-              <input type="radio" name="dispatch-speed" value="standard" checked={!p.expressSelected} onChange={() => p.chooseExpress(false)} disabled={p.dataLocked} />
-              <span className="cv2-tile-icon">{ICON.box}</span>
-              <span className="cv2-tile-copy">
-                <strong>Standard</strong>
-                <small>{p.dispatchStandardLabel ? `Wysyłka ${p.dispatchStandardLabel}` : "Wysyłka zwykle w 3 dni robocze"}</small>
-              </span>
-              <span className="cv2-tile-price is-free">0 zł</span>
-            </label>
-            <label className={`cv2-tile${p.expressSelected ? " is-active" : ""}`}>
-              <input type="radio" name="dispatch-speed" value="express" checked={p.expressSelected} onChange={() => p.chooseExpress(true)} disabled={p.dataLocked} />
-              <span className="cv2-tile-icon is-bolt">{ICON.bolt}</span>
-              <span className="cv2-tile-copy">
-                <strong>Ekspres - priorytet produkcji</strong>
-                <small>
-                  Wysyłka {p.dispatchExpressLabel || "jutro"}. Do {p.dispatchCutoffLabel || "12:00"} w dzień roboczy wysyłamy tego samego dnia.
-                </small>
-              </span>
-              <span className="cv2-tile-price">+{formatPln(p.expressFeeAmount)}</span>
-            </label>
-          </div>
-        </>
-      ) : p.plisyLeadTime ? (
-        <p className="cv2-lead-time">Realizacja 7 dni roboczych.</p>
-      ) : p.roletyLeadTime ? (
-        <p className="cv2-lead-time">Realizacja {p.roletyLeadTimeLabel}.</p>
-      ) : null}
+      </details>
     </>
   );
 
@@ -889,7 +853,6 @@ export default function CartV2(props: CartV2Props) {
           </button>
         ) : null}
       </p>
-      {verifying ? <p className="checkout-delivery-status is-checking" role="status">Sprawdzamy kompletność danych…</p> : null}
       <fieldset className="cv2-form" disabled={p.dataLocked || verifying}>
         <Field label="E-mail" fieldKey="email" valid={p.valid.email} error={p.fieldError("email")} wide>
           <input
@@ -1044,8 +1007,6 @@ export default function CartV2(props: CartV2Props) {
   const screenPay = (
     <>
       <h1 className="cv2-q">{p.isCod ? "Potwierdź zamówienie" : "Jak płacisz?"}</h1>
-
-      {deliveryConfirmed ? <p className="checkout-delivery-status" role="status">✓ Dane dostawy są kompletne</p> : null}
       <div className="cv2-recap">
         <p>
           <strong>{fullName}</strong>
@@ -1137,6 +1098,7 @@ export default function CartV2(props: CartV2Props) {
         </div>
       ) : null}
 
+      {verifying || (step === 3 && deliveryConfirmed) ? <DeliveryFeedback key={verifying ? "checking" : "complete"} checking={verifying} complete={step === 3 && deliveryConfirmed} /> : null}
       <div className="cv2-screen" key={step} ref={screenRef}>
         {step === 0 ? screenOrder : step === 1 ? screenDelivery : step === 2 ? screenData : screenPay}
       </div>

@@ -25,7 +25,7 @@ import {
 import RoletyDachoweConfiguratorPanel from "@/features/rolety-dachowe/ConfiguratorPanel";
 import PlisyConfiguratorPanel from "@/features/plisy/ConfiguratorPanel";
 import RoletyConfiguratorPanel from "@/features/rolety/ConfiguratorPanel";
-import { isRoletySlug, roletyCartLeadTimeLabel, roletyFitsPaczkomat, type RoletySlug } from "@/features/rolety/shared";
+import { isRoletySlug, roletyFitsPaczkomat, type RoletySlug } from "@/features/rolety/shared";
 import { ssStoredOptions, ssSupplierSummaryRows } from "@/features/rolety/ss-options";
 import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPreview";
 import PlisyDachoweConfiguratorPanel from "@/features/plisy-dachowe/ConfiguratorPanel";
@@ -76,10 +76,8 @@ import {
   EXPRESS_NOTE_LINE,
   EXPRESS_POSITION_SLUG,
   EXPRESS_SUMMARY,
-  fetchDispatchInfo,
   isExpressSelected,
   setExpressSelected,
-  type DispatchInfo,
 } from "@/lib/express";
 import { getRescueGrant, RESCUE_GRANT_EVENT, type RescueGrant } from "@/lib/rescue";
 import { formatEscapeDeadline } from "@/lib/escape-offer";
@@ -97,7 +95,8 @@ import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import CartV2, { CartV2Boundary } from "./cart-v2";
-import CartTrust, { CartFinance } from "./cart-trust";
+import CartTrust, { CartFinance, BundleBanner } from "./cart-trust";
+import DeliveryFeedback from "./delivery-feedback";
 import OrderOffers from "@/app/components/order-offers";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
@@ -772,25 +771,12 @@ export default function CartPage() {
   // "Ekspres" production priority (see lib/express.ts) - carried over from
   // the landing-page toggle via localStorage, switchable here too.
   const [expressSelected, setExpressSelectedState] = useState(false);
-  const [dispatchInfo, setDispatchInfo] = useState<DispatchInfo | null>(null);
   useEffect(() => {
-    setExpressSelectedState(isExpressSelected());
     const sync = () => setExpressSelectedState(isExpressSelected());
+    sync();
     window.addEventListener(EXPRESS_CHANGED_EVENT, sync);
-    let cancelled = false;
-    void fetchDispatchInfo("moskitiery-ramkowe").then((info) => {
-      if (!cancelled) setDispatchInfo(info);
-    });
-    return () => {
-      cancelled = true;
-      window.removeEventListener(EXPRESS_CHANGED_EVENT, sync);
-    };
+    return () => window.removeEventListener(EXPRESS_CHANGED_EVENT, sync);
   }, []);
-  function chooseExpress(on: boolean) {
-    setExpressSelected(on);
-    setExpressSelectedState(on);
-    trackCheckoutIssue("express_toggled", on ? "on" : "off", { place: "koszyk" });
-  }
   // Ekspres jest priorytetem w kolejce produkcyjnej MOSKITIER - inne
   // produkty (plisy, rolety dachowe...) mają własne, ręcznie ustalane
   // terminy, więc koszyk z czymkolwiek innym w środku nie dostaje tej
@@ -799,21 +785,6 @@ export default function CartPage() {
   // nie doliczyła się po cichu.
   const expressEligible =
     EXPRESS_ENABLED && items.length > 0 && items.every((item) => item.productSlug === "moskitiery-ramkowe");
-  // Plisy: stały termin 7 dni roboczych (właściciel, 2026-09-28, 31.10.2026); koszyk
-  // z moskitierami i plisami jedzie razem, więc obowiązuje dłuższy termin.
-  // Rolety/plisy dachowe mają terminy ustalane ręcznie - bez deklaracji.
-  const plisyLeadTime =
-    items.length > 0 &&
-    items.some((item) => item.productSlug === "plisy") &&
-    items.every((item) => item.productSlug === "plisy" || item.productSlug === "moskitiery-ramkowe");
-  // Rolety mini (2026-10-17): realizacja do 10 dni roboczych, żaluzje do
-  // 15 (najdłuższy wygrywa). Koszyk z roletami i plisami/moskitierami
-  // dostaje ten dłuższy termin; dachowe nadal bez deklaracji.
-  const roletyLeadTimeLabel = roletyCartLeadTimeLabel(items.map((item) => item.productSlug));
-  const roletyLeadTime =
-    items.length > 0 &&
-    items.some((item) => isRoletySlug(item.productSlug)) &&
-    items.every((item) => isRoletySlug(item.productSlug) || item.productSlug === "plisy" || item.productSlug === "moskitiery-ramkowe");
   useEffect(() => {
     if (!expressEligible && expressSelected) {
       setExpressSelected(false);
@@ -3165,6 +3136,8 @@ export default function CartPage() {
     trackCheckoutIssue("checkout_fix_field", key);
   };
   const jumpToFirstProblem = () => {
+    const fold = document.querySelector<HTMLDetailsElement>("[data-checkout-delivery-fold]");
+    if (fold) fold.open = true;
     setShowAllFieldErrors(true);
     if (checkoutProblems.length) jumpToField(checkoutProblems[0].key);
   };
@@ -3345,6 +3318,18 @@ export default function CartPage() {
   // Nowy koszyk zastępuje tylko widok koszyka z formularzem; pusty koszyk,
   // podziękowanie i wszystkie okna (kod SMS, regulamin, edycja) są wspólne.
   const isV2Body = cartDesign === "v2" && items.length > 0 && !(orderConfirmed && orderState);
+  const [deliveryCheck, setDeliveryCheck] = useState<"idle" | "checking" | "complete">("idle");
+  const classicDeliveryFold = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (deliveryCheck !== "checking") return;
+    const timer = window.setTimeout(() => {
+      if (!deliveryDataReady || isV2Body) { setDeliveryCheck("idle"); return; }
+      if (classicDeliveryFold.current) classicDeliveryFold.current.open = false;
+      setDeliveryCheck("complete");
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [deliveryCheck, deliveryDataReady, isV2Body]);
+
   const buildV2Props = () => ({
     items,
     backHref,
@@ -3392,16 +3377,6 @@ export default function CartPage() {
     clearDiscountError: () => setDiscountError(""),
     checkDiscountCode: () => void checkDiscountCode(),
     removeDiscountCode,
-    expressEligible,
-    expressSelected,
-    chooseExpress,
-    expressFeeAmount: EXPRESS_FEE_AMOUNT,
-    dispatchStandardLabel: dispatchInfo?.standardLabel || "",
-    dispatchExpressLabel: dispatchInfo?.expressLabel || "",
-    dispatchCutoffLabel: dispatchInfo?.cutoffLabel || "",
-    plisyLeadTime: !expressEligible && plisyLeadTime,
-    roletyLeadTime: !expressEligible && roletyLeadTime,
-    roletyLeadTimeLabel,
     deliveryMethods: availableDeliveryMethods,
     deliveryMethod,
     chooseDelivery: (method: { id: string; label: string }) => {
@@ -3931,8 +3906,7 @@ export default function CartPage() {
                     </div>
                   ) : null}
                   {bundle.hint ? (
-                    <div className="checkout-bundle-banner"><strong>Promocja CAŁY DOM</strong><span>{bundleDiscountHintText(bundle)}</span>
-                    </div>
+                    <BundleBanner text={bundleDiscountHintText(bundle)} />
                   ) : null}
                   {bundle.lostToCode ? (
                     <div className="cart-page-summary-row is-muted">
@@ -4054,65 +4028,6 @@ export default function CartPage() {
                     onAvailability={setExpressWalletsAvailable}
                   />
                 ) : null}
-                {expressEligible ? (
-                  <section className="cart-delivery-card cart-dispatch-card">
-                    <h2>Termin realizacji</h2>
-                    <div className="cart-delivery-options">
-                      <label className={`cart-delivery-option ${!expressSelected ? "is-active" : ""}`}>
-                        <input
-                          type="radio"
-                          name="dispatch-speed"
-                          value="standard"
-                          checked={!expressSelected}
-                          onChange={() => chooseExpress(false)}
-                          disabled={dataLocked}
-                        />
-                        <span className="cart-delivery-option-copy">
-                          <strong>Standard</strong>
-                          <small>
-                            {dispatchInfo ? `Wysyłka ${dispatchInfo.standardLabel}` : "Wysyłka zwykle w 3 dni robocze"}
-                          </small>
-                        </span>
-                        <span className="cart-delivery-option-price">Gratis</span>
-                      </label>
-                      <label className={`cart-delivery-option cart-delivery-option--express ${expressSelected ? "is-active" : ""}`}>
-                        <input
-                          type="radio"
-                          name="dispatch-speed"
-                          value="express"
-                          checked={expressSelected}
-                          onChange={() => chooseExpress(true)}
-                          disabled={dataLocked}
-                        />
-                        <span className="cart-delivery-option-copy">
-                          <strong>⚡ Ekspres - priorytet produkcji</strong>
-                          <small>
-                            Wysyłka {dispatchInfo ? dispatchInfo.expressLabel : "jutro"}. Do {dispatchInfo?.cutoffLabel || "12:00"} w dzień
-                            roboczy wysyłamy tego samego dnia.
-                          </small>
-                        </span>
-                        <span className="cart-delivery-option-price">+{formatPln(EXPRESS_FEE_AMOUNT)}</span>
-                      </label>
-                    </div>
-                  </section>
-                ) : null}
-
-                {!expressEligible && plisyLeadTime ? (
-                  <section className="cart-delivery-card cart-dispatch-card">
-                    <h2>Termin realizacji</h2>
-                    <p className="cart-dispatch-static">
-                      <strong>Realizacja 7 dni roboczych.</strong>
-                    </p>
-                  </section>
-                ) : null}
-                {!expressEligible && roletyLeadTime ? (
-                  <section className="cart-delivery-card cart-dispatch-card">
-                    <h2>Termin realizacji</h2>
-                    <p className="cart-dispatch-static">
-                      <strong>Realizacja {roletyLeadTimeLabel}.</strong>
-                    </p>
-                  </section>
-                ) : null}
                 {/* Dostawa jako akordeon (właściciel, 2026-09-24): wybór
                     metody od razu otwiera pola, których ta metoda wymaga -
                     kurier prosi o adres, paczkomat o dane odbiorcy i punkt,
@@ -4121,6 +4036,10 @@ export default function CartPage() {
                     nie kasuje tego, co klient już wpisał. */}
                 <section className="cart-delivery-card cart-delivery-card--accordion" ref={shippingAddressSectionRef}>
                   <h2>Dostawa i dane odbiorcy</h2>
+                  <details className="checkout-delivery-fold" ref={classicDeliveryFold} data-checkout-delivery-fold onToggle={(event) => {
+                    if (event.currentTarget.open && deliveryCheck === "complete") setDeliveryCheck("idle");
+                  }}>
+                    <summary>{deliveryCheck === "complete" ? "Edytuj dane dostawy" : "Wybierz sposób dostawy"}</summary>
                   <div className="cart-delivery-options">
                     {availableDeliveryMethods.map((method) => {
                       const isPaczkomat = method.id === PACZKOMAT_METHOD.id;
@@ -4295,6 +4214,10 @@ export default function CartPage() {
                       + Dodaj uwagi do zamówienia
                     </button>
                   )}
+                    {deliveryDataReady ? <button type="button" className="checkout-confirm-data" disabled={deliveryCheck === "checking"} onClick={() => setDeliveryCheck("checking")}>Potwierdź dane dostawy</button> : null}
+                  </details>
+                  {deliveryCheck === "complete" && deliveryDataReady ? <p className="checkout-delivery-summary"><strong>{form.firstName} {form.lastName}</strong><br />{selectedPaczkomat?.id || [form.address1, form.postcode, form.city].filter(Boolean).join(" ")}</p> : null}
+                  {deliveryCheck !== "idle" ? <DeliveryFeedback key={deliveryCheck} checking={deliveryCheck === "checking"} complete={deliveryCheck === "complete"} /> : null}
                 </section>
 
                 {/* Dane kupującego i faktura w jednym, zwiniętym bloku

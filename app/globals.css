@@ -24817,3 +24817,28 @@ html body button.pl-quick-tk.is-active { border-color: #d94d00; background: #fff
 .checkout-order-offers > div { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .7rem; }
 .checkout-order-offers button { border: 1px solid #2c6758; border-radius: 999px; padding: .55rem .9rem; color: #20493f; background: transparent; font: inherit; font-weight: 650; cursor: pointer; }
 .checkout-order-offers button:first-child { color: white; background: #24564a; }
+
+.checkout-delivery-fold > summary { cursor: pointer; padding: .85rem 1rem; margin: .55rem 0; border: 1px solid #c4ded3; border-radius: 12px; background: #f0f8f4; color: #173f35; font-weight: 750; }
+.checkout-delivery-fold[open] > summary { background: #e5f4ed; }
+
+.checkout-finance { position: relative; isolation: isolate; border: 1px solid #e7dbcd; background: linear-gradient(90deg,#fbf3e8 20%,#fbf3e8db 48%,#fbf3e800 82%), url("/checkout/elastyczne-platnosci.jpg") center right / cover; color: #25322a; }
+.checkout-finance-card { display: grid; justify-items: start; gap: .65rem; padding: 1rem clamp(1rem,4vw,1.55rem); min-height: 135px; }
+.checkout-finance-logo { display: block; width: 106px; height: 32px; object-fit: contain; object-position: left center; padding: 5px 9px; border-radius: 7px; background: #fff; }
+.checkout-finance-copy { max-width: min(76%, 360px); }
+.checkout-finance-copy > strong { display: block; font-size: clamp(1.15rem,4vw,1.6rem); line-height: 1.1; letter-spacing: -.035em; }
+.checkout-finance-copy p { margin-top: .55rem; }
+.checkout-finance-switch { padding-inline: clamp(1rem,4vw,1.55rem); }
+.checkout-finance-switch button { border-color: #b7ae9f; background: #fffffff0; }
+.checkout-finance-switch button[aria-pressed="true"] { background: #283d30; border-color: #283d30; }
+.checkout-bundle-banner { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(66px, auto) minmax(0,1fr); align-items: center; gap: .8rem; overflow: hidden; padding: .85rem 1rem; border: 0; border-radius: 17px; color: #fff; background: radial-gradient(ellipse at 0 100%,#3d6b51,transparent 62%),#19372c; }
+.checkout-bundle-banner::after { content: ""; position: absolute; z-index: -1; inset: 0; opacity: .2; background: repeating-linear-gradient(120deg,transparent 0 18px,#d8ead5 19px,transparent 20px 35px); mask-image: linear-gradient(90deg,transparent 50%,#000); }
+.checkout-bundle-art { display: grid; place-items: center; min-width: 62px; min-height: 58px; border: 1px solid #ffffff50; border-radius: 13px; background: #ffffff14; color: #f4d78e; }
+.checkout-bundle-art b { padding: .2rem .35rem; font-size: clamp(1.2rem,5vw,1.65rem); letter-spacing: -.045em; }
+.checkout-bundle-copy { display: grid; gap: .25rem; }
+.checkout-bundle-copy strong { color: #f6dc9c; letter-spacing: .11em; font-size: .7rem; }
+.checkout-bundle-copy span { font-size: .88rem; font-weight: 650; line-height: 1.3; }
+.checkout-check-overlay { position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center; padding: 1.2rem; background: #10251d55; }
+.checkout-check-overlay .checkout-delivery-status { padding: 1rem 1.15rem; box-shadow: 0 16px 48px #0d211b40; }
+.checkout-check-toast { position: fixed; z-index: 2147483000; inset-inline: 1rem; top: max(1rem, env(safe-area-inset-top)); display: flex; justify-content: center; pointer-events: none; }
+.checkout-check-toast .checkout-delivery-status { box-shadow: 0 10px 30px #10251d38; }
+.checkout-confirm-data { margin: .7rem 0; border: 0; border-radius: 999px; padding: .6rem .9rem; background: #24564a; color: white; font: inherit; font-weight: 650; cursor: pointer; }
