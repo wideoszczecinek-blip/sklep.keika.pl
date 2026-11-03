@@ -31,27 +31,54 @@ export const FOOTER_LINKS = [
   { href: "/moje-zamowienia", label: "Moje zamówienia" },
 ] as const;
 
-// Stała lista bez Przelewy24 - metody P24 (przelew online / raty / PayPo)
-// dokleja paymentMethodsLabel() wg flag z CRM (site.checkout.p24_*), żeby
-// stopka nigdy nie obiecywała rat/PayPo, których konto P24 jeszcze nie ma.
-export const PAYMENT_METHODS_LABEL = "BLIK, karta płatnicza (Visa, Mastercard), Revolut Pay, przelew tradycyjny, płatność za pobraniem";
-export const PAYMENT_OPERATORS_LABEL = "Stripe oraz Przelewy24 (PayPro S.A.)";
+// Metody i operatorzy płatności (3.11: stopka mówiła „Operator płatności: Stripe”, a BLIK, przelew online i PayPo
+// idą przez PayNow - ujednolicone wg ustawień sklepu w CRM, site.checkout.payment_routing). Do czasu odpowiedzi
+// CRM - stan z 3.11.2026 (BLIK, przelew, PayPo: PayNow; karta i portfele: Stripe; raty: Przelewy24).
+export const PAYMENT_METHODS_LABEL = "BLIK, karta płatnicza (Visa, Mastercard), Revolut Pay, przelew online, raty, PayPo, przelew tradycyjny, płatność za pobraniem";
+export const PAYMENT_OPERATORS_LABEL = "PayNow (mBank), Stripe oraz Przelewy24 (PayPro S.A.)";
 
-export function paymentMethodsLabel(flags?: {
+export type PaymentFlags = {
+  p24_enabled?: boolean;
   p24_transfer_enabled?: boolean;
   p24_installments_enabled?: boolean;
   p24_paypo_enabled?: boolean;
-} | null): string {
-  const p24: string[] = [];
-  if (flags?.p24_transfer_enabled) p24.push("przelew online");
-  if (flags?.p24_installments_enabled) p24.push("raty");
-  if (flags?.p24_paypo_enabled) p24.push("PayPo");
+  payment_routing?: Record<string, { enabled?: boolean; provider?: string } | undefined>;
+};
+
+const OPERATORZY: [string, string][] = [
+  ["paynow", "PayNow (mBank)"],
+  ["stripe", "Stripe"],
+  ["p24", "Przelewy24 (PayPro S.A.)"],
+];
+
+export function paymentMethodsLabel(flags?: PaymentFlags | null): string {
+  if (!flags) return PAYMENT_METHODS_LABEL;
+  const r = flags.payment_routing || {};
   const base = "BLIK, karta płatnicza (Visa, Mastercard), Revolut Pay";
   const tail = "przelew tradycyjny, płatność za pobraniem";
-  return p24.length ? `${base}, ${p24.join(", ")} (Przelewy24), ${tail}` : `${base}, ${tail}`;
+  const extra: string[] = [];
+  if (Object.keys(r).length) {
+    if (r.transfer?.enabled) extra.push("przelew online");
+    if (r.installments?.enabled) extra.push("raty");
+    if (r.paypo?.enabled) extra.push("PayPo");
+  } else {
+    if (flags.p24_transfer_enabled) extra.push("przelew online");
+    if (flags.p24_installments_enabled) extra.push("raty");
+    if (flags.p24_paypo_enabled) extra.push("PayPo");
+  }
+  return [base, ...extra, tail].join(", ");
 }
 
-export function paymentOperatorsLabel(flags?: { p24_enabled?: boolean } | null): string {
-  return flags?.p24_enabled ? PAYMENT_OPERATORS_LABEL : "Stripe";
+export function paymentOperatorsLabel(flags?: PaymentFlags | null): string {
+  if (!flags) return PAYMENT_OPERATORS_LABEL;
+  const r = flags.payment_routing || {};
+  const uzyte = new Set<string>();
+  for (const v of Object.values(r)) if (v?.enabled && v.provider) uzyte.add(v.provider);
+  // raty bez wskazanego dostawcy = Przelewy24 (tylko tam są raty); bez routingu - dawna reguła
+  if ((r.installments?.enabled && !r.installments.provider && flags.p24_enabled) || (!Object.keys(r).length && flags.p24_enabled)) uzyte.add("p24");
+  if (!Object.keys(r).length) uzyte.add("stripe");
+  const lista = OPERATORZY.filter(([id]) => uzyte.has(id)).map(([, nazwa]) => nazwa);
+  if (!lista.length) return "Stripe";
+  return lista.length === 1 ? lista[0] : `${lista.slice(0, -1).join(", ")} oraz ${lista[lista.length - 1]}`;
 }
 export const DELIVERY_METHODS_LABEL = "kurier, Paczkomat InPost, odbiór osobisty w Szczecinku";

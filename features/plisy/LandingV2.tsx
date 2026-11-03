@@ -289,8 +289,13 @@ export function PlisyStickyBar({
   promoApplied = false,
   bottomInset,
   onClick,
+  wpisane = true,
+  onSprawdz,
 }: {
   visible: boolean;
+  /** 3.11: dopóki klient nie wpisał wymiarów, pasek nie pokazuje cudzej ceny - „Sprawdź cenę” przewija do pól. */
+  wpisane?: boolean;
+  onSprawdz?: () => void;
   widthCm: number;
   heightCm: number;
   price: number | null;
@@ -322,10 +327,12 @@ export function PlisyStickyBar({
       aria-hidden={visible ? "false" : "true"}
     >
       <div className="plv2-bar-info">
-        <b>{price !== null ? zlPlain(price) : "Twoje okno"}</b>
-        <small>
-          {String(widthCm).replace(".", ",")} × {String(heightCm).replace(".", ",")} cm{price !== null && promoApplied ? ` · z kodem ${PROMO_CODE}` : ""}
-        </small>
+        <b>{!wpisane ? "Ile za Twoje okno?" : price !== null ? zlPlain(price) : "Twoje okno"}</b>
+        {wpisane ? (
+          <small>
+            {String(widthCm).replace(".", ",")} × {String(heightCm).replace(".", ",")} cm{price !== null && promoApplied ? ` · z kodem ${PROMO_CODE}` : ""}
+          </small>
+        ) : null}
         {promoLine && !promoApplied ? <small className="plv2-bar-promo">{promoLine}</small> : null}
       </div>
       <button
@@ -333,11 +340,12 @@ export function PlisyStickyBar({
         className="plv2-btn plv2-bar-btn"
         tabIndex={visible ? 0 : -1}
         onClick={() => {
-          trackShopStep("sticky_bar_click", "plisy", { price: price ?? 0 });
-          onClick();
+          trackShopStep("sticky_bar_click", "plisy", { price: wpisane ? price ?? 0 : 0, wpisane });
+          if (!wpisane && onSprawdz) onSprawdz();
+          else onClick();
         }}
       >
-        Wybierz tkaninę →
+        {wpisane ? "Wybierz tkaninę →" : "Sprawdź cenę"}
       </button>
     </div>
   );

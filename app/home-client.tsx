@@ -119,15 +119,10 @@ import RoofReviews from "@/features/rolety-dachowe/Reviews";
 import { RD_ALL_PHOTOS, buildRdGalleryCategories } from "@/features/rolety-dachowe/gallery";
 import {
   RD_CALLOUT,
-  RD_DESCRIPTION_HTML,
   RD_FAQ,
-  RD_FEATURE_BULLETS,
   RD_H1,
   RD_INSTRUCTION_STEPS,
   RD_PRIMARY_CTA,
-  RD_SPEC_ITEMS,
-  RD_SUBTITLE,
-  isRdPlaceholderCopy,
 } from "@/features/rolety-dachowe/landing-content";
 import { buildRoofWindowDisplayLabel, fetchRoofWindowLibrary, type RoofWindowLibraryItem } from "@/features/rolety-dachowe/roof-window-library";
 import { readUrlPrefill, type UrlPrefill } from "@/lib/merchant-variants";
@@ -157,15 +152,10 @@ import PdReviews from "@/features/plisy-dachowe/Reviews";
 import { PD_ALL_PHOTOS, buildPdGalleryCategories } from "@/features/plisy-dachowe/gallery";
 import {
   PD_CALLOUT,
-  PD_DESCRIPTION_HTML,
-  isPdPlaceholderCopy,
   PD_FAQ,
-  PD_FEATURE_BULLETS,
   PD_H1,
   PD_INSTRUCTION_STEPS,
   PD_PRIMARY_CTA,
-  PD_SPEC_ITEMS,
-  PD_SUBTITLE,
 } from "@/features/plisy-dachowe/landing-content";
 import { PD_STARTING_PRICE_FALLBACK, pdCheapestPriceForSize, pdPriceMultiplier, pdStartingPrice, type ConfiguratorResult as PlisyDachoweConfiguratorResult } from "@/features/plisy-dachowe/shared";
 import {
@@ -175,7 +165,6 @@ import {
   PLISY_LANDING_V2,
   PLISY_DEFAULT_HEIGHT_MM,
   PLISY_DEFAULT_WIDTH_MM,
-  PLISY_LEAD_TIME_LABEL,
   PLISY_PRIMARY_CTA,
   PLISY_DESCRIPTION_HTML,
   PLISY_CALLOUT,
@@ -227,19 +216,14 @@ import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
-import { PlisyHeroGallery, PlisyOfferCard, PlisyStickyBar, usePaypoEnabled } from "@/features/plisy/LandingV2";
+import { PlisyHeroGallery, PlisyStickyBar } from "@/features/plisy/LandingV2";
 import { LejekGaleria } from "@/features/plisy/LejekGaleria";
+import { LejekBezpiecznie, LejekDlaczego, LejekKoniec, LejekOcena, PlisyPierwszyEkran } from "@/features/plisy/PierwszyEkran";
 import { DachBezRyzyka, DachCeny, DachOpis, DachPomiar, dachFaqWgObiekcji, typoweOkna } from "@/features/dachowe/LejekDachowy";
 import {
-  LejekBezRyzyka,
-  LejekCeny,
-  LejekDostawa,
   LejekDowod,
-  LejekOpis,
   LejekPomiar,
   LejekTkaniny,
-  PremiumPrzedPo,
-  PremiumQuality,
   PremiumQuotes,
   faqWgObiekcji,
 } from "@/features/plisy/Premium";
@@ -846,51 +830,6 @@ function productSectionCtaLabel(product: SelectedProductView | null): string {
   return "Skonfiguruj i zobacz cenę";
 }
 
-// Small suggestive icons for plisy's 4 built-in spec labels (see
-// features/plisy/landing-content.ts) - keyed by exact label like
-// moskitieryRamkoweSpecIcon above, so a CRM-renamed item simply has none.
-// Spec-tile icons for rolety dachowe (features/rolety-dachowe/landing-content.ts).
-function rdSpecIcon(label: string): React.ReactNode | null {
-  const common = { viewBox: "0 0 24 24", fill: "none", "aria-hidden": true } as const;
-  const stroke = { stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
-  const key = label.toLowerCase();
-  if (key.includes("model")) {
-    return (
-      <svg {...common}>
-        <path d="M4 18L12 5l8 13" {...stroke} />
-        <path d="M8 18v-6h8v6" {...stroke} />
-        <circle cx="12" cy="9" r="1.2" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (key.includes("kaseta") || key.includes("alumin")) {
-    return (
-      <svg {...common}>
-        <rect x="3" y="4" width="18" height="5" rx="1.5" {...stroke} />
-        <path d="M6 9v11M18 9v11M6 20h12" {...stroke} />
-      </svg>
-    );
-  }
-  if (key.includes("zatrzym") || key.includes("hamul")) {
-    return (
-      <svg {...common}>
-        <path d="M4 5h16" {...stroke} />
-        <path d="M4 12h16" {...stroke} strokeWidth="2.6" />
-        <path d="M12 13v6M9 19h6" {...stroke} />
-      </svg>
-    );
-  }
-  if (key.includes("gwaranc")) {
-    return (
-      <svg {...common}>
-        <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" {...stroke} />
-        <path d="M9 12l2 2 4-4" {...stroke} />
-      </svg>
-    );
-  }
-  return null;
-}
-
 // Built-in FAQ per product (CRM entries take over when the owner fills them).
 function builtinFaqForSlug(slug: string): ProductFaqEntry[] {
   if (slug === "plisy") return PLISY_FAQ;
@@ -899,6 +838,9 @@ function builtinFaqForSlug(slug: string): ProductFaqEntry[] {
   return [];
 }
 
+// Small suggestive icons for plisy's 4 built-in spec labels (see
+// features/plisy/landing-content.ts) - keyed by exact label like
+// moskitieryRamkoweSpecIcon above, so a CRM-renamed item simply has none.
 function plisySpecIcon(label: string): React.ReactNode | null {
   const common = { viewBox: "0 0 24 24", fill: "none", "aria-hidden": true } as const;
   const stroke = { stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
@@ -1465,8 +1407,11 @@ function ConfiguratorPanelSkeleton() {
 export default function Home({
   initialProductSlug = "",
   zaluzjeModel = null,
+  plisyCenaStart = null,
 }: {
   initialProductSlug?: string;
+  /** /plisy (3.11): cena plisy 50 × 110 cm policzona na serwerze - pierwszy ekran nie miga „Ładuję cennik”. */
+  plisyCenaStart?: number | null;
   /** Strona jednego modelu żaluzji (/zaluzje/<slug>): slug i nazwa z serwera. */
   zaluzjeModel?: { slug: string; name: string } | null;
 }) {
@@ -1599,7 +1544,6 @@ export default function Home({
   // pierwsza opcja) i to, co z wyceny wchodzi do konfiguratora.
   const [plisyQuickMountId, setPlisyQuickMountId] = useState("");
   const [plisyPrefillMountId, setPlisyPrefillMountId] = useState("");
-  const plisyPaypoEnabled = usePaypoEnabled();
   // Szybka wycena moskitier: typowe okno na start, klient zmienia suwakami.
   // Start od okna z reklam (2026-10-02): nowe kreacje moskitier mówią
   // "65 × 130 cm — 95,68 zł z SEZON20", a wycena otwierała się na 90 × 140 /
@@ -2931,6 +2875,12 @@ export default function Home({
     ? plisyQuickPrice(plisyProfile, plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyPriceAdjustmentPercent, plisyV2 ? plisyQuickMount : null)
     : null;
   const plisyQuickWithPromo = plisyQuickRegular !== null ? applyPromoToPrice(plisyQuickRegular, topPromoActive ? topPromoPreview : null) : null;
+  // Pierwszy ekran plis (3.11): „od … · plisa 50 × 110 cm” - z serwera, potem z cennika w przeglądarce (ta sama funkcja).
+  const plisyOdCena = plisyProfile
+    ? plisyQuickPrice(plisyProfile, 500, 1100, plisyPriceAdjustmentPercent, plisyProfile.mountOptions[0] || null)
+    : plisyCenaStart;
+  // Klient wpisał oba wymiary w wycenie na górze - dopiero wtedy pasek na dole pokazuje cenę jego okna.
+  const [plisyWpisane, setPlisyWpisane] = useState(false);
   function openPlisyConfiguratorFromQuote(widthMm: number, heightMm: number, mountId: string) {
     setPlisyLastResult(null);
     setPlisyPrefillDims({ widthMm, heightMm });
@@ -2953,7 +2903,7 @@ export default function Home({
       }, 400);
       return;
     }
-    const target = document.querySelector<HTMLElement>("#pl-quick-price-anchor");
+    const target = quick || document.querySelector<HTMLElement>("#pl-quick-price-anchor");
     const container = target?.closest<HTMLElement>(".hero-full");
     if (target && container && container.scrollHeight > container.clientHeight) {
       const delta = target.getBoundingClientRect().top - container.getBoundingClientRect().top - 72;
@@ -4000,51 +3950,36 @@ export default function Home({
                   ) : null}
                   {plisyV2 ? (
                     <>
-                      {(() => {
-                        const oferta = (
-                          <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
-                            {(promo) => (
-                              <PlisyOfferCard
-                                regular={plisyQuickRegular}
-                                withPromo={plisyQuickWithPromo}
-                                promoRemainingText={promo && topPromoActive ? promo.remainingText : null}
-                                widthCm={plisyQuickDims.widthMm / 10}
-                                heightCm={plisyQuickDims.heightMm / 10}
-                                leadTime={PLISY_LEAD_TIME_LABEL}
-                                paypoEnabled={plisyPaypoEnabled}
-                                phone={contactPhone}
-                                onQuote={scrollToPlisyQuote}
-                              />
-                            )}
-                          </PromoCountdownBanner>
-                        );
-                        const film = (
-                          <PlisyFilmLoop
-                            id="film-oferta"
-                            src={PLISY_FILM.oferta.src}
-                            poster={PLISY_FILM.oferta.poster}
-                            label="oferta"
-                            caption="Otwierasz okno – plisa zostaje przy skrzydle, trzymają ją sznurki prowadzące."
+                      {/* Strona plis 3.11 (plan Agencji, jedna wersja): pierwszy ekran z wyceną → wizualizator → opinie →
+                          galeria → Dlaczego KEIKA; niżej tkanina, pomiar, bezpieczny zakup, FAQ, końcowy przycisk. */}
+                      <PlisyPierwszyEkran cenaOd={plisyOdCena} />
+                      <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
+                        {(promo) => (
+                          <PlisyQuickPrice
+                            variant="v2"
+                            profile={plisyProfile}
+                            promo={topPromoActive ? topPromoPreview : null}
+                            widthMm={plisyQuickDims.widthMm}
+                            heightMm={plisyQuickDims.heightMm}
+                            onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
+                            mountId={plisyQuickMount?.id || ""}
+                            onMountChange={setPlisyQuickMountId}
+                            onMeasureGuide={openMeasurementInstructions}
+                            onMountFilm={openMountFilm}
+                            onSaveLater={promo ? promo.openModal : undefined}
+                            onConfigure={openPlisyConfiguratorFromQuote}
+                            onWpisane={() => setPlisyWpisane(true)}
                           />
-                        );
-                        // Lejek v2 (właściciel 2.11, test „premium”): co to + opinie + bezpieczne zakupy → 5 lat gwarancji i zwrot
-                        // → wizualizator z animacją belek → film → karta ceny (konfigurator) → jakość. Klasycznie bez zmian.
-                        return (
-                          <>
-                            <LejekDowod onOpinie={() => scrollToProductSection("opinie")} />
-                            <LejekOpis cena={plisyQuickRegular} szer={plisyQuickDims.widthMm / 10} wys={plisyQuickDims.heightMm / 10} />
-                            <LejekBezRyzyka onPomiar={openMeasurementInstructions} />
-                            <WizPowrot />
-                            <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
-                            <WizHost />
-                            <WizPlywajacy zrodlo="plisy-plywajacy" />
-                            <LejekGaleria onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
-                            {film}
-                            {oferta}
-                            <PremiumQuality />
-                          </>
-                        );
-                      })()}
+                        )}
+                      </PromoCountdownBanner>
+                      <LejekOcena onOpinie={() => scrollToProductSection("opinie")} />
+                      <WizPowrot />
+                      <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToPlisyQuote} />
+                      <WizHost />
+                      <WizPlywajacy zrodlo="plisy-plywajacy" />
+                      <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
+                      <LejekGaleria onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
+                      <LejekDlaczego />
                     </>
                   ) : null}
                     <div className="hero-product-content">
@@ -4359,27 +4294,7 @@ export default function Home({
                             {/* Landing v2 (2026-10-11): wycena z polami i montażem
                                 (features/plisy/QuickPrice.tsx variant="v2"), zapis
                                 wyceny na później = ten sam modal co "Zapisz link". */}
-                            <div id="pl-quick-price-anchor" />
-                            {plisyV2 ? (
-                              <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
-                                {(promo) => (
-                                  <PlisyQuickPrice
-                                    variant="v2"
-                                    profile={plisyProfile}
-                                    promo={topPromoActive ? topPromoPreview : null}
-                                    widthMm={plisyQuickDims.widthMm}
-                                    heightMm={plisyQuickDims.heightMm}
-                                    onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
-                                    mountId={plisyQuickMount?.id || ""}
-                                    onMountChange={setPlisyQuickMountId}
-                                    onMeasureGuide={openMeasurementInstructions}
-                                    onMountFilm={openMountFilm}
-                                    onSaveLater={promo ? promo.openModal : undefined}
-                                    onConfigure={openPlisyConfiguratorFromQuote}
-                                  />
-                                )}
-                              </PromoCountdownBanner>
-                            ) : (
+                            {plisyV2 ? null : (
                               <PlisyQuickPrice
                                 collapsible
                                 defaultOpen
@@ -4480,25 +4395,11 @@ export default function Home({
                               return (
                                 <>
                                   {(
-                                    // lejek v2: cena za typowe okna → tkanina do pokoju → kolekcje → przed/po → pomiar → dostawa → opinie
+                                    // strona plis 3.11: tkanina do pokoju → pomiar → bezpieczny zakup (reszta na górze strony)
                                     <>
-                                      <LejekCeny
-                                        cena={(w, h) =>
-                                          plisyProfile
-                                            ? plisyQuickPrice(plisyProfile, w * 10, h * 10, plisyPriceAdjustmentPercent, plisyProfile.mountOptions[0] || null)
-                                            : null
-                                        }
-                                        onWymiar={(w, h) => {
-                                          setPlisyQuickDims({ widthMm: w * 10, heightMm: h * 10 });
-                                          scrollToPlisyQuote();
-                                        }}
-                                      />
-                                      <LejekTkaniny onKolekcje={scrollToPlisyQuote} />
-                                      {collections}
-                                      <PremiumPrzedPo />
+                                      <LejekTkaniny onKolekcje={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")} />
                                       <LejekPomiar onAnimacja={openMeasurementInstructions} onCzat={() => openCrispChat("Zdjęcie mojego okna – pomożecie z wymiarem plisy?")} />
-                                      <LejekDostawa paypo={plisyPaypoEnabled} />
-                                      <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
+                                      <LejekBezpiecznie onPomiar={openMeasurementInstructions} />
                                     </>
                                   )}
                                   <details
@@ -5363,6 +5264,7 @@ export default function Home({
                             {productSectionCtaLabel(displayedProduct)}
                           </button>
                         </div>
+                        {plisyV2 ? <LejekKoniec onCena={scrollToPlisyQuote} /> : null}
                       </section>
                       <section id="product-section-instrukcje" ref={instrukcjeSectionRef} className="hero-product-section">
                       <h2 className="hero-product-section-title">Instrukcje</h2>
@@ -6609,6 +6511,8 @@ export default function Home({
               promoApplied={plisyQuickWithPromo != null && plisyQuickRegular != null && plisyQuickWithPromo < plisyQuickRegular}
               bottomInset={inAppBrowserBottomInset}
               onClick={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")}
+              wpisane={plisyWpisane}
+              onSprawdz={scrollToPlisyQuote}
             />
           ) : null}
           {displayedProduct && !plisyV2 ? (

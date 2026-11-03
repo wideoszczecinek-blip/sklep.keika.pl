@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Home from "../home-client";
-import { getPricedProduct } from "@/lib/agent-catalog";
+import { fetchPriceAdjustments, getPricedProduct } from "@/lib/agent-catalog";
+import { fetchPlisyProfileWith, plisyQuickPrice } from "@/features/plisy/shared";
 import { JsonLdScripts, productPageJsonLd } from "@/lib/structured-data";
 import { PLISY_LEAD_TIME_LABEL } from "@/features/plisy/landing-content";
 
@@ -41,12 +42,23 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: [IMAGE] },
 };
 
+/** Cena plisy 50 × 110 cm (pierwsza kolekcja, pierwszy montaż, korekta ceny z CRM) - ta sama funkcja co w przeglądarce,
+ * żeby pierwszy ekran nie migał „Ładuję cennik” (3.11). Brak CRM = null, wtedy szkielet tej samej wysokości. */
+async function cenaStartowa(): Promise<number | null> {
+  try {
+    const [profile, adjustments] = await Promise.all([fetchPlisyProfileWith({ next: { revalidate: 3600 } }), fetchPriceAdjustments()]);
+    return profile ? plisyQuickPrice(profile, 500, 1100, adjustments[SLUG] || 0, profile.mountOptions[0] || null) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function PlisyPage() {
-  const product = await getPricedProduct(SLUG);
+  const [product, plisyCenaStart] = await Promise.all([getPricedProduct(SLUG), cenaStartowa()]);
   return (
     <>
       <JsonLdScripts data={productPageJsonLd(product)} />
-      <Home initialProductSlug={SLUG} />
+      <Home initialProductSlug={SLUG} plisyCenaStart={plisyCenaStart} />
     </>
   );
 }

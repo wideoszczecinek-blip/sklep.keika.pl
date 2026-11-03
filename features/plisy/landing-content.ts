@@ -91,7 +91,8 @@ export const PLISY_H1 = "Solidne plisy na wymiar";
  * wymiarach/koszykach tydzień po tygodniu. Powrót: false tutaj albo
  * ?landing=v1 w adresie (podgląd starej wersji). */
 export const PLISY_LANDING_V2 = true;
-export const PLISY_H1_V2 = "Plisy na wymiar";
+// 3.11: mały napis nad dużą korzyścią (pierwszy ekran) - H1 zostaje dla SEO
+export const PLISY_H1_V2 = "Plisy na wymiar · własna produkcja od 2015";
 
 export const PLISY_SUBTITLE =
   "Plisy okienne na wymiar od polskiego producenta. Regulacja z góry i z dołu, montaż bez wiercenia lub z wierceniem, 150 tkanin i 10 kolorów profili do wyboru. Cenę dla swojego okna sprawdzisz od razu w konfiguratorze.";

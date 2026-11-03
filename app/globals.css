@@ -24395,3 +24395,59 @@ html body button.wiz-baner-cta:hover { background: #c2410c; }
 .dach-opis .pm-btn { margin: 0.7rem 0 0; }
 .dach-wycena { scroll-margin-top: 96px; margin: 1.4rem 0 0.4rem; }
 .dach-ryzyko .lj-r:last-child { grid-column: 1 / -1; }
+
+/* ===== Strona plis 3.11 (plan Agencji): pierwszy ekran z wyceną, krócej, jaśniej ===== */
+.home-root.plisy-v2 .hero-product-panel h1 { font-size: 0.86rem; font-weight: 700; letter-spacing: 0.02em; color: #5b6b7c; margin: 0.6rem 0 0.15rem; line-height: 1.3; }
+.pe-gora { display: grid; gap: 0.4rem; margin: 0 0 0.75rem; max-width: 620px; }
+.pe-naglowek { margin: 0 !important; font-size: clamp(1.55rem, 6.4vw, 2.3rem) !important; font-weight: 800; line-height: 1.12 !important; color: #12233a !important; letter-spacing: -0.015em; }
+.pe-zdanie { margin: 0 !important; font-size: 1rem !important; line-height: 1.45 !important; color: #334155 !important; }
+.pe-cena { margin: 0.1rem 0 0 !important; min-height: 1.7rem; font-size: 0.98rem !important; color: #16314e !important; }
+.pe-cena b { font-size: 1.35rem; color: #12233a; }
+.pe-cena-szkielet { display: inline-block; width: 13rem; height: 1.35rem; border-radius: 0.4rem; background: linear-gradient(90deg, #eef2f6, #e2e8f0, #eef2f6); vertical-align: middle; }
+.pe-znaczki { list-style: none; margin: 0.15rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.35rem; }
+.pe-znaczki li { display: grid; place-items: center; text-align: center; min-height: 2.6rem; padding: 0.3rem 0.25rem; border-radius: 0.6rem; background: #f0faf8; border: 1px solid #cdeee8; color: #0f5f57; font-size: 0.72rem; font-weight: 700; line-height: 1.2; }
+.pl-quick--v2 .pl-quick-bez { text-align: center; color: #64748b; }
+.pe-ocena { display: block; width: 100%; max-width: 620px; margin: 0.55rem 0 0.2rem; padding: 0; border: 0; background: none; font: inherit; font-size: 0.88rem; color: #334155; text-align: left; cursor: pointer; min-height: 1.3rem; }
+.pe-ocena b { color: #12233a; }
+.pe-ocena .pm-stars { font-size: 0.82rem; }
+.pe-dlaczego { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+@media (max-width: 760px) { .pe-dlaczego { grid-template-columns: 1fr; } }
+.pe-dlaczego li { display: grid; gap: 0.2rem; padding: 0.75rem 0.85rem; border-radius: 0.8rem; background: #f8fafc; border: 1px solid #e5eaf0; font-size: 0.9rem; line-height: 1.45; color: #334155; }
+.pe-dlaczego b { color: #12233a; font-size: 0.98rem; }
+.pe-bezp { display: grid; gap: 0.4rem; max-width: 620px; }
+.pe-bezp details { border: 1px solid #e3e9ef; border-radius: 0.7rem; background: #fff; }
+.pe-bezp summary { display: flex; align-items: center; gap: 0.55rem; padding: 0.7rem 0.85rem; cursor: pointer; list-style: none; font-weight: 700; font-size: 0.94rem; color: #12233a; }
+.pe-bezp summary::-webkit-details-marker { display: none; }
+.pe-bezp summary::after { content: "+"; margin-left: auto; color: #94a3b8; font-weight: 400; font-size: 1.2rem; }
+.pe-bezp details[open] summary::after { content: "–"; }
+.pe-bezp-ok { display: grid; place-items: center; flex: 0 0 1.35rem; height: 1.35rem; border-radius: 50%; background: #dcfce7; color: #15803d; font-size: 0.8rem; }
+.pe-bezp details p { margin: 0 !important; padding: 0 0.85rem 0.8rem 2.75rem; font-size: 0.88rem !important; line-height: 1.5 !important; color: #475569; }
+.pe-koniec { display: grid; gap: 0.4rem; margin: 1.6rem 0 0.4rem; padding: 1rem; border-radius: 1rem; background: #f0faf8; border: 1px solid #cdeee8; text-align: center; }
+.pe-koniec p { margin: 0 !important; color: #334155; font-size: 0.95rem !important; }
+.pe-koniec .pm-btn { margin: 0.3rem auto 0; }
+/* jedna galeria i jeden wizualizator na stronie plis: zakładkowe sekcje z dawnego układu schowane */
+.home-root.plisy-v2 #product-section-galeria,
+.home-root.plisy-v2 #product-section-wizualizacja { display: none; }
+@media (min-width: 1101px) {
+  .home-root.plisy-v2 .hero-product-panel h1 { font-size: 0.95rem; }
+  .pe-naglowek { font-size: 2.4rem !important; }
+}
+.plisy-coll-card-nazwa { display: block; width: 100%; order: 3; font-size: 0.72rem; font-weight: 600; opacity: 0.85; letter-spacing: 0.01em; }
+/* pierwszy ekran telefonu (3.11): pola wymiarów mają być widoczne bez przewijania - niższe zdjęcie i ciaśniej */
+@media (max-width: 760px) {
+  .home-root.plisy-v2 .plv2-slide { aspect-ratio: 16 / 9; }
+  .home-root.plisy-v2 .plv2-gallery { margin-bottom: 0.3rem; }
+  .home-root.plisy-v2 .hero-product-panel h1 { margin: 0.35rem 0 0.1rem; }
+  .home-root.plisy-v2 .pe-gora { gap: 0.3rem; margin-bottom: 0.5rem; }
+  .home-root.plisy-v2 .pe-zdanie { font-size: 0.95rem !important; }
+  .home-root.plisy-v2 .pl-quick--v2 { margin-top: 0.4rem; }
+}
+@media (max-width: 760px) {
+  .home-root.plisy-v2 .hero-product-panel { row-gap: 0.55rem; }
+  .home-root.plisy-v2 .plv2-gallery { margin-bottom: 0; }
+  .home-root.plisy-v2 .plv2-slide { aspect-ratio: 2 / 1; }
+  .home-root.plisy-v2 .hero-product-panel h1 { margin: 0; }
+  .home-root.plisy-v2 .pe-gora { margin-bottom: 0; }
+  .home-root.plisy-v2 .pl-quick--v2 { margin-top: 0; }
+  .home-root.plisy-v2 .pl-quick--v2 .pl-quick-size { display: none; }
+}

@@ -55,6 +55,7 @@ import {
   formatPriceDeltaBadge,
   findPlisyMountByLabel,
   plisyMountLabel,
+  plisyMountNazwa,
   plisyMountShortNote,
   type FabricGroup,
   type FabricSwatch,
@@ -177,6 +178,17 @@ function writeDraft(draft: PlisyDraft) {
   } catch {
     /* private mode / quota - the draft is a convenience, nothing depends on it */
   }
+}
+
+/** Kolekcja opisana przeznaczeniem (3.11, plan Agencji) - nazwa handlowa zostaje mniejsza pod spodem. */
+function przeznaczenieKolekcji(group: { id: string; label: string }): string {
+  const k = `${group.id} ${group.label}`.toLowerCase();
+  if (/duo[- ]?(blackout|termo)|termo/.test(k)) return "Zaciemnienie i izolacja";
+  if (/duo|plaster/.test(k)) return "Dodatkowa izolacja";
+  if (/blackout|podgum/.test(k)) return "Zaciemnia, do sypialni";
+  if (/reflex/.test(k)) return "Odbija słońce, mniej nagrzewania";
+  if (/clasic|klasycz/.test(k)) return "Przepuszcza światło";
+  return "";
 }
 
 export default function ConfiguratorPanel({
@@ -1244,7 +1256,7 @@ export default function ConfiguratorPanel({
     return (
       <>
         <header>
-          <strong>Wyceń plisę do swojego okna</strong>
+          <strong>Sprawdź cenę swojej plisy</strong>
         </header>
         <p className="hero-product-config-hint">Wczytuję konfigurator…</p>
       </>
@@ -1255,7 +1267,7 @@ export default function ConfiguratorPanel({
     return (
       <>
         <header>
-          <strong>Wyceń plisę do swojego okna</strong>
+          <strong>Sprawdź cenę swojej plisy</strong>
         </header>
         <p className="hero-product-config-hint">
           Nie udało się wczytać konfiguratora. Odśwież stronę lub spróbuj ponownie za chwilę.
@@ -1291,7 +1303,7 @@ export default function ConfiguratorPanel({
   return (
     <>
       <header>
-        <strong>Wyceń plisę do swojego okna</strong>
+        <strong>Sprawdź cenę swojej plisy</strong>
       </header>
 
       {/* KROK 1: sposób montażu */}
@@ -1313,7 +1325,7 @@ export default function ConfiguratorPanel({
               Wybierz sposób montażu
             </span>
             <span className="hero-product-step-head-meta">
-              {selectedMount ? <strong>{plisyMountLabel(selectedMount)}</strong> : null}
+              {selectedMount ? <strong>{plisyMountNazwa(selectedMount)}</strong> : null}
               {stepMountCollapsed ? (
                 <span className="hero-product-step-head-change">Zmień</span>
               ) : (
@@ -1345,7 +1357,7 @@ export default function ConfiguratorPanel({
                           }
                         />
                         <span className="plisy-mount-pick-text">
-                          <strong>{plisyMountLabel(option)}</strong>
+                          <strong>{plisyMountNazwa(option)}</strong>
                           <span>{plisyMountShortNote(option)}</span>
                         </span>
                         {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
@@ -1358,8 +1370,8 @@ export default function ConfiguratorPanel({
                         <button
                           type="button"
                           className="config-option-zoom"
-                          aria-label={`Powiększ: ${plisyMountLabel(option)}`}
-                          onClick={() => openZoom({ title: plisyMountLabel(option), urls: [option.imageUrl], index: 0 })}
+                          aria-label={`Powiększ: ${plisyMountNazwa(option)}`}
+                          onClick={() => openZoom({ title: plisyMountNazwa(option), urls: [option.imageUrl], index: 0 })}
                         >
                           🔍
                         </button>
@@ -1723,8 +1735,8 @@ export default function ConfiguratorPanel({
                   <span className="plisy-mount-alert-icon" aria-hidden="true">!</span>
                   <h3 id="plisy-mount-alert-title">Inny montaż = inne wymiary</h3>
                   <p>
-                    Wpisane wymiary są do montażu <strong>{selectedMount ? plisyMountLabel(selectedMount) : "poprzedniego"}</strong>.
-                    Przy montażu <strong>{plisyMountLabel(pendingMount)}</strong> okno mierzy się inaczej:
+                    Wpisane wymiary są do montażu <strong>{selectedMount ? plisyMountNazwa(selectedMount) : "poprzedniego"}</strong>.
+                    Przy montażu <strong>{plisyMountNazwa(pendingMount)}</strong> okno mierzy się inaczej:
                   </p>
                   <p className="plisy-mount-alert-how">
                     {toNonInvasive
@@ -1781,7 +1793,7 @@ export default function ConfiguratorPanel({
             <span className={`hero-product-step-check ${selectedHardware ? "" : "is-muted"}`} aria-hidden="true">
               {selectedHardware ? "✓" : "3"}
             </span>
-            Wybierz kolor mechanizmu
+            Kolor listew
           </span>
           <span className="hero-product-step-head-meta">
             {selectedHardware && stepOneCollapsed ? (
@@ -1982,7 +1994,8 @@ export default function ConfiguratorPanel({
                         </span>
                         <span className="plisy-coll-card-body">
                           <span className="plisy-coll-card-head">
-                            <strong>{group.label}</strong>
+                            <strong>{przeznaczenieKolekcji(group) || group.label}</strong>
+                            {przeznaczenieKolekcji(group) ? <small className="plisy-coll-card-nazwa">{group.label}</small> : null}
                             <span className="plisy-coll-card-badges">
                               {meta.badges.map((badge) => (
                                 <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : badge === "Plaster miodu" ? "is-structure" : ""}`}>
@@ -2279,7 +2292,7 @@ export default function ConfiguratorPanel({
                       {selectedMount ? (
                         <div>
                           <dt>Rodzaj montażu</dt>
-                          <dd>{plisyMountLabel(selectedMount)}</dd>
+                          <dd>{plisyMountNazwa(selectedMount)}</dd>
                         </div>
                       ) : null}
                       {selectedBracket ? (
@@ -2304,7 +2317,7 @@ export default function ConfiguratorPanel({
                   </div>
                   {!hasSizes ? (
                     <div className="plisy-missing-dims">
-                      <span>Brakuje wymiarów okna — bez nich nie policzymy ceny.</span>
+                      <span>Wpisz szerokość i wysokość, aby zobaczyć cenę.</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -2380,7 +2393,7 @@ export default function ConfiguratorPanel({
         </>
       ) : null}
       {!selectedHardwareId ? (
-        <p className="hero-product-config-hint">Wybierz kolor mechanizmu, aby przejść do kolejnego kroku.</p>
+        <p className="hero-product-config-hint">Wybierz kolor listew, aby przejść dalej.</p>
       ) : null}
 
       {/* Pasek mobilny „Dodaj do koszyka” (AGN-439/444/448) - przez portal, bo

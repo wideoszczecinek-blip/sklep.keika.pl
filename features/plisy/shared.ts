@@ -561,6 +561,13 @@ export function plisyMountLabel(option: { id?: string; label?: string } | null |
   return plisyMountDisplay(option)?.label || String(option?.label || "");
 }
 
+/** Krótka nazwa montażu NA EKRANIE (3.11, plan Agencji): „Klasyczny – przykręcany” / „Bez wiercenia – na zaczepy”.
+ * Do koszyka i zamówienia idzie dalej plisyMountLabel() - tę nazwę czyta dokument produkcyjny w CRM. */
+export function plisyMountNazwa(option: { id?: string; label?: string } | null | undefined): string {
+  if (!option) return "";
+  return /bezinwazyjn/i.test(`${option.id || ""} ${option.label || ""}`) ? "Bez wiercenia – na zaczepy" : "Klasyczny – przykręcany";
+}
+
 /** Jedna linijka pod nazwą montażu na kafelku wyboru. */
 export function plisyMountShortNote(option: { id?: string; label?: string } | null | undefined): string {
   return plisyMountDisplay(option)?.short || "";

@@ -38,7 +38,7 @@ import { PLISY_COLLECTIONS } from "./landing-content";
 import UnitAskModal from "./UnitAskModal";
 import {
   isPlisyMountNonInvasive,
-  plisyMountLabel,
+  plisyMountNazwa,
   plisyQuickPrice,
   PLISY_HEIGHT_MAX_MM,
   PLISY_HEIGHT_MIN_MM,
@@ -71,6 +71,7 @@ export default function PlisyQuickPrice({
   onMeasureGuide,
   onMountFilm,
   onSaveLater,
+  onWpisane,
 }: {
   /** Akordeon: nagłówek "Szybka wycena" z rozmiarem i ceną, suwaki pod
    * spodem. Na landingu plis blok siedzi wysoko, zaraz pod plakietkami,
@@ -95,6 +96,8 @@ export default function PlisyQuickPrice({
   /** Film montażu (animacja 3D) - tylko przy montażu przykręcanym, bo pokazuje wkręty w listwę. */
   onMountFilm?: () => void;
   onSaveLater?: () => void;
+  /** v2 (pierwszy ekran, 3.11): klient wpisał oba wymiary - pasek na dole pokazuje wtedy cenę jego okna. */
+  onWpisane?: () => void;
 }) {
   const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
   const isV2 = variant === "v2";
@@ -140,13 +143,20 @@ export default function PlisyQuickPrice({
   // wpisuje go od razu zamiast celować suwakiem. Tekst trzymany lokalnie,
   // żeby dało się skasować pole i wpisać liczbę od nowa; do strony idzie
   // dopiero wartość mieszcząca się w zakresie produkcji.
-  const [widthText, setWidthText] = useState(cmText(widthCm));
-  const [heightText, setHeightText] = useState(cmText(heightCm));
+  // v2 (pierwszy ekran, 3.11): pola puste z podpowiedzią, cena dopiero po wpisaniu obu wymiarów albo „Oblicz cenę”.
+  const [pokaz, setPokaz] = useState(!isV2);
+  const ruszoneRef = useRef(!isV2);
+  const poleWRef = useRef<HTMLInputElement | null>(null);
+  const poleHRef = useRef<HTMLInputElement | null>(null);
+  const [widthText, setWidthText] = useState(isV2 ? "" : cmText(widthCm));
+  const [heightText, setHeightText] = useState(isV2 ? "" : cmText(heightCm));
   useEffect(() => {
+    if (!ruszoneRef.current) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setWidthText((current) => (Number(current.replace(",", ".")) === widthCm ? current : cmText(widthCm)));
   }, [widthCm]);
   useEffect(() => {
+    if (!ruszoneRef.current) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHeightText((current) => (Number(current.replace(",", ".")) === heightCm ? current : cmText(heightCm)));
   }, [heightCm]);
@@ -200,9 +210,21 @@ export default function PlisyQuickPrice({
     // "Nie, to centymetry" - wtedy zwykła ścieżka: dociągamy do zakresu.
     for (const g of pending) commitSize(g.axis, String(g.raw), true);
   }
+  const wZakresie = (raw: string, axis: "w" | "h") => {
+    const v = Number(String(raw).replace(",", "."));
+    return Number.isFinite(v) && v >= (axis === "w" ? minW : minH) && v <= (axis === "w" ? maxW : maxH);
+  };
+  function pokazCene(zrodlo: string) {
+    if (pokaz) return;
+    setPokaz(true);
+    trackShopStep("quick_price_shown", "plisy", { zrodlo });
+    onWpisane?.();
+  }
   function typeSize(raw: string, axis: "w" | "h") {
+    ruszoneRef.current = true;
     if (axis === "w") setWidthText(raw);
     else setHeightText(raw);
+    if (isV2 && wZakresie(raw, axis) && wZakresie(axis === "w" ? heightText : widthText, axis === "w" ? "h" : "w")) pokazCene("wpisanie");
     // Pytanie o jednostkę dopiero po wyjściu z pola (commitSize) - w trakcie
     // pisania "1200" przechodzi przez "1" i "12", które też są poza zakresem.
     setUnitGuess((list) => list.filter((x) => x.axis !== axis));
@@ -263,8 +285,28 @@ export default function PlisyQuickPrice({
     onConfigure(widthMm, heightMm, selectedMount?.id || "");
   };
 
+  const oblicz = () => {
+    if (!wZakresie(widthText, "w")) {
+      poleWRef.current?.focus();
+      return;
+    }
+    if (!wZakresie(heightText, "h")) {
+      poleHRef.current?.focus();
+      return;
+    }
+    commitSize("w");
+    commitSize("h");
+    pokazCene("przycisk");
+  };
+
   const numberField = (axis: "w" | "h") => (
     <input
+      ref={axis === "w" ? poleWRef : poleHRef}
+      placeholder={isV2 ? (axis === "w" ? "np. 60" : "np. 140") : undefined}
+      enterKeyHint={axis === "w" ? "next" : "done"}
+      onKeyDown={(event) => {
+        if (isV2 && event.key === "Enter") oblicz();
+      }}
       type="text" data-dim-input="" autoComplete="off"
       inputMode="decimal"
       min={axis === "w" ? minW : minH}
@@ -309,10 +351,10 @@ export default function PlisyQuickPrice({
 
   if (isV2) {
     return (
-      <div className="pl-quick pl-quick--v2" role="group" aria-label="Wyceń swoje okno">
+      <div className={`pl-quick pl-quick--v2 ${pokaz ? "is-cena" : ""}`} role="group" aria-label="Sprawdź cenę swojej plisy">
         <div className="pl-quick-head">
-          <span className="pl-quick-title">Wyceń swoje okno</span>
-          <span className="pl-quick-size">wpisz wymiary w cm</span>
+          <span className="pl-quick-title">Sprawdź cenę swojej plisy</span>
+          <span className="pl-quick-size">wymiary okna w cm</span>
         </div>
         <div className="pl-quick-fields">
           <label className="pl-quick-field">
@@ -331,6 +373,39 @@ export default function PlisyQuickPrice({
           </label>
         </div>
         {unitGuessNotice}
+        {!pokaz ? (
+          <>
+            <button type="button" className="pl-quick-cta pl-quick-cta--v2" onClick={oblicz}>
+              Oblicz cenę mojej plisy
+            </button>
+            <span className="pl-quick-note pl-quick-bez">Bez rejestracji i bez zobowiązań</span>
+            {onMeasureGuide ? (
+              <button type="button" className="pl-quick-measure" onClick={onMeasureGuide}>
+                <span aria-hidden="true">📐</span> Jak zmierzyć okno? Animacja, 2 minuty
+              </button>
+            ) : null}
+          </>
+        ) : (
+          <>
+        <div className="pl-quick-priceline" aria-live="polite">
+          <span className="pl-quick-priceline-label">
+            Twoja plisa {cmText(widthCm)} × {cmText(heightCm)} cm · Klasyczne
+            {selectedMount ? ` · ${isPlisyMountNonInvasive(selectedMount.id) || isPlisyMountNonInvasive(selectedMount.label) ? "bez wiercenia" : "przykręcana"}` : ""}
+          </span>
+          {regular === null ? (
+            <span className="pl-quick-na">{profile ? "Ten wymiar wyceni konfigurator" : "Liczymy cenę…"}</span>
+          ) : withPromo !== null && withPromo < regular ? (
+            <span className="pl-quick-amounts">
+              <strong>{zl(withPromo)}</strong>
+              <s>{zl(regular)}</s>
+              <small>z kodem {PROMO_CODE}</small>
+            </span>
+          ) : (
+            <span className="pl-quick-amounts">
+              <strong>{zl(regular)}</strong>
+            </span>
+          )}
+        </div>
         {mountOptions.length ? (
           <div className="pl-quick-mounts" role="radiogroup" aria-label="Sposób montażu">
             {mountOptions.map((option) => {
@@ -350,7 +425,7 @@ export default function PlisyQuickPrice({
                   }}
                 >
                   {option.imageUrl ? <img src={option.imageUrl} alt="" loading="lazy" decoding="async" /> : null}
-                  <strong>{plisyMountLabel(option)}</strong>
+                  <strong>{plisyMountNazwa(option)}</strong>
                   <small>{nonInvasive ? "uchwyty na skrzydło, bez śladów" : "wkręty do listwy, najpewniejszy"}</small>
                 </button>
               );
@@ -362,30 +437,6 @@ export default function PlisyQuickPrice({
             <span aria-hidden="true">▶</span> Zobacz montaż (film, 15 s)
           </button>
         ) : null}
-        {onMeasureGuide ? (
-          <button type="button" className="pl-quick-measure" onClick={onMeasureGuide}>
-            <span aria-hidden="true">📐</span> Jak zmierzyć okno? Animacja, 2 minuty
-          </button>
-        ) : null}
-        <div className="pl-quick-priceline" aria-live="polite">
-          <span className="pl-quick-priceline-label">
-            {cmText(widthCm)} × {cmText(heightCm)} cm · Klasyczne
-            {selectedMount ? ` · ${isPlisyMountNonInvasive(selectedMount.id) || isPlisyMountNonInvasive(selectedMount.label) ? "bezinwazyjny" : "przykręcany"}` : ""}
-          </span>
-          {regular === null ? (
-            <span className="pl-quick-na">{profile ? "Ten wymiar wyceni konfigurator" : "Ładuję cennik…"}</span>
-          ) : withPromo !== null && withPromo < regular ? (
-            <span className="pl-quick-amounts">
-              <strong>{zl(withPromo)}</strong>
-              <s>{zl(regular)}</s>
-              <small>z kodem {PROMO_CODE}</small>
-            </span>
-          ) : (
-            <span className="pl-quick-amounts">
-              <strong>{zl(regular)}</strong>
-            </span>
-          )}
-        </div>
         {split ? (
           <span className="pl-quick-split">Okno {cmText(widthCm)} cm zrobimy z 2 plis po {cmText(pieceWidthMm / 10)} cm — cena za obie.</span>
         ) : null}
@@ -405,6 +456,13 @@ export default function PlisyQuickPrice({
             Nie masz miarki pod ręką? Zapisz wycenę na później
           </button>
         ) : null}
+        {onMeasureGuide ? (
+          <button type="button" className="pl-quick-measure" onClick={onMeasureGuide}>
+            <span aria-hidden="true">📐</span> Jak zmierzyć okno? Animacja, 2 minuty
+          </button>
+        ) : null}
+          </>
+        )}
       </div>
     );
   }
