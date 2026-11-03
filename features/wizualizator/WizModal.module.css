@@ -1069,3 +1069,43 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
   .startGrid { min-width: 0; }
   .demoMedia { max-width: 72svh; }
 }
+
+.benefitCard {
+  --benefit-base: #133d37;
+  --benefit-accent: #e8d696;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: clamp(58px, 17%, 94px) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(12px, 3vw, 24px);
+  width: 100%;
+  min-height: 126px;
+  box-sizing: border-box;
+  margin-top: 10px;
+  padding: clamp(12px, 3vw, 24px);
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 12% 0%, #ffffff2b, transparent 55%), var(--benefit-base);
+  color: white;
+  box-shadow: 0 8px 24px #102f2426;
+  line-height: 1.25;
+  animation: wiz-benefit-enter .48s cubic-bezier(.2,.7,.2,1) both;
+}
+.benefitCard[data-theme="materials"] { --benefit-base: #243e54; --benefit-accent: #c7e7f6; }
+.benefitCard[data-theme="durability"] { --benefit-base: #372c4e; --benefit-accent: #e4d4ff; }
+.benefitCard[data-theme="producer"] { --benefit-base: #672c37; --benefit-accent: #ffe0dd; }
+.benefitCard[data-theme="promo"] { --benefit-base: #13594f; --benefit-accent: #d2fbec; }
+.benefitCard > svg {
+  width: 100%; aspect-ratio: 1; padding: 15%; box-sizing: border-box;
+  border: 1px solid #ffffff55; border-radius: 22%; color: var(--benefit-accent);
+  background: linear-gradient(145deg, #ffffff30, #ffffff09);
+  animation: wiz-benefit-icon .55s .09s ease both;
+}
+.benefitCard strong { display: block; font-size: clamp(1.04rem, 3.8vw, 1.6rem); letter-spacing: -.025em; text-wrap: balance; }
+.benefitDetails { display: flex; flex-wrap: wrap; gap: 5px 8px; margin-top: 8px; }
+.benefitDetails span { display: inline-block; color: var(--benefit-accent); font-size: clamp(.74rem, 2.9vw, .95rem); font-weight: 700; }
+.benefitCard[data-theme="warranty"] .benefitDetails span { padding: 4px 7px; border: 1px solid #ffffff3d; border-radius: 6px; background: #ffffff10; }
+@keyframes wiz-benefit-enter { from { opacity: .4; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@keyframes wiz-benefit-icon { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .benefitCard, .benefitCard > svg { animation: none; } }

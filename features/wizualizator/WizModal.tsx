@@ -34,13 +34,11 @@ type PaneState = {
   wpisSzerMm?: number | null; wpisWysMm?: number | null; zmierzone?: boolean; pomin?: boolean; odniesienia?: string[]; pewnoscWym?: number | null;
 };
 
-/** Korzyści pokazywane w czasie analizy (bez cen; ceny tylko z konfiguratora). */
-/** Korzyści na banerkach w czasie analizy (Agencja 1.11: po jednym zdaniu). */
 const KORZYSCI = [
-  ["🏭", "Produkujemy na wymiar Twojego okna", ""],
-  ["🎨", "150 tkanin, w tym zaciemniające i termiczne", ""],
-  ["🔧", "Montaż bez wiercenia albo na listwy", ""],
-  ["🛡️", "5 lat gwarancji · 30 dni na zwrot", ""],
+  { theme: "warranty", title: "Jakość gwarantowana", first: "5 lat gwarancji", second: "30 dni na zwrot", path: "M32 7l20 8v15c0 13-9 21-20 27C21 51 12 43 12 30V15z M22 31l7 7 14-15" },
+  { theme: "materials", title: "Polska jakość zamiast marketowej taniochy", first: "Aluminiowy profil", second: "Grube tkaniny premium", path: "M7 13h50v12H7z M12 32l10 8 10-8 10 8 10-8 M12 43l10 8 10-8 10 8 10-8" },
+  { theme: "durability", title: "Plisa na lata", first: "Stalowe trzpienie prowadzące sznurki", second: "Chronią sznurki przed przecieraniem", path: "M13 11v42m38-42v42 M13 17h38m-38 30h38 M24 17v12q0 7 8 7t8 7v4 M40 17v12q0 7-8 7t-8 7v4" },
+  { theme: "producer", title: "Polski producent", first: "Wieloletnie doświadczenie", second: "Produkujemy w Polsce od 2015 roku", path: "M14 56V10m0 2c13-10 23 10 38 0v28c-15 10-25-10-38 0m0-14c13-10 23 10 38 0" },
 ] as const;
 
 const POMIESZCZENIE: Record<string, string> = {
@@ -1285,20 +1283,27 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                       {(podglad.usuniete || []).map((u, i) => <span key={u} style={{ animationDelay: `${0.4 + i * 0.35}s` }}>✓ usunięte: {u}</span>)}
                     </div>
                   ) : null}
-                  {/* banerki: promocja sklepu i korzyści wjeżdżają po kolei */}
-                  {(() => {
-                    // CAŁY DOM na banerkach dopiero, gdy wykryto ≥ 2 szyby (Agencja 1.11)
-                    const lista: [string, string, string][] = [...(promo && (podglad?.szyb || 0) >= 2 ? [["🏷️", promo.tytul, promo.opis] as [string, string, string]] : []), ...KORZYSCI.map((k) => [...k] as [string, string, string])];
-                    const b = lista[korzysc % lista.length];
-                    return (
-                      <div className={s.baner} key={korzysc}>
-                        <span aria-hidden="true">{b[0]}</span>
-                        <div><b>{b[1]}</b>{b[2] ? <small>{b[2]}</small> : null}</div>
-                      </div>
-                    );
-                  })()}
                 </div>
               ) : <div className={s.scanEmpty}>Wysyłamy zdjęcie…</div>}
+            {(() => {
+                const hasPromo = promo && (podglad?.szyb || 0) >= 2;
+                const index = korzysc % (KORZYSCI.length + (hasPromo ? 1 : 0));
+                const card = KORZYSCI[index];
+                return (
+                  <aside className={s.benefitCard} data-theme={card?.theme || "promo"} key={index} aria-label="Zalety plis KEIKA">
+                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d={card?.path || "M8 10h25l22 22-23 23L10 33z M20 20h.1"} />
+                    </svg>
+                    <div>
+                      <strong>{card?.title || promo?.tytul}</strong>
+                      <div className={s.benefitDetails}>
+                        <span>{card?.first || promo?.opis}</span>
+                        {card?.second ? <span>{card.second}</span> : null}
+                      </div>
+                    </div>
+                  </aside>
+                );
+              })()}
             </div>
             <div className={s.prodPanel}>
               <p className={s.label}>Twoja wizualizacja powstaje</p>
