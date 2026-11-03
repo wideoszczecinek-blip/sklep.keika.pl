@@ -6,6 +6,7 @@
 // Karuzela jak dawna galeria (właściciel 2.11: „na zasadzie karuzeli”): jedno duże zdjęcie, strzałki, przesuwanie
 // palcem, miniatury pod spodem, powiększenie po kliknięciu.
 // Tylko prawdziwe zdjęcia: montaże w domach i biurach + zdjęcia produktu z aparatu (sesja 5–6.09.2026).
+// 3.11 właściciel: 4 zdjęcia „to nie są nasze” usunięte (dom-okno-biala, biuro-sciana-biala, detal-uchwyt, detal-falda) - czekamy na nowe własne.
 // Pliki: public/plisy/galeria/*.webp, przygotowane skryptem (kadr, ciemne zdjęcia pod światło rozjaśnione
 // lokalnym kontrastem, kolory tkanin bez zmian).
 import { useEffect, useRef, useState } from "react";
@@ -15,17 +16,13 @@ type Zdjecie = { src: string; opis: string; grupa: "dom" | "biuro" | "detal" };
 
 const ZDJECIA: Zdjecie[] = [
   { src: "dom-okno-gora-dol", grupa: "dom", opis: "Okno dwuskrzydłowe: jedna plisa opuszczona z góry, druga podniesiona od dołu" },
-  { src: "dom-okno-biala", grupa: "dom", opis: "Biała plisa zasłania dół okna, górą wpada światło" },
   { src: "dom-balkon-antracyt", grupa: "dom", opis: "Drzwi balkonowe z antracytowymi plisami na obu skrzydłach" },
   { src: "biuro-sala", grupa: "biuro", opis: "Sala konferencyjna: plisy w trzech rzędach okien" },
   { src: "dom-balkon-szara", grupa: "dom", opis: "Szara plisa na drzwiach balkonowych" },
   { src: "detal-profile-kolory", grupa: "detal", opis: "Profile w 10 kolorach, w tym 4 drewnopodobne – tu pięć z nich" },
   { src: "biuro-okna", grupa: "biuro", opis: "Biuro: plisy w górnych i środkowych skrzydłach okien" },
   { src: "detal-dwie-tkaniny", grupa: "detal", opis: "Z bliska: fałdy tkaniny i górny profil z uchwytem" },
-  { src: "biuro-sciana-biala", grupa: "biuro", opis: "Białe plisy na przeszklonej ścianie biura" },
   { src: "detal-plaster-miodu", grupa: "detal", opis: "Tkanina o strukturze plastra miodu" },
-  { src: "detal-uchwyt", grupa: "detal", opis: "Dolny uchwyt sznurków – plisa zostaje przy skrzydle, gdy otwierasz okno" },
-  { src: "detal-falda", grupa: "detal", opis: "Krawędź fałd z boku – równe, sztywne plisowanie" },
 ];
 
 const GRUPY: { id: "wszystkie" | Zdjecie["grupa"]; label: string }[] = [
