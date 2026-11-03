@@ -2328,8 +2328,7 @@ export default function ConfiguratorPanel({
                   </span>
                 ) : null}
                 <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
-                {/* Agencja 1.11: najwięcej osób odpada po zobaczeniu ceny - tu zaproszenie do wizualizacji z bieżącą tkaniną */}
-                <WizButton zrodlo="konfigurator-cena" variant="cena" tkanina={selectedFabricId || undefined} listwa={selectedHardwareId || undefined} />
+
                 <QtyPromoTiers
                   productSlug="plisy"
                   total={amount}
