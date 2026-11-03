@@ -24699,3 +24699,35 @@ html body button.wiz-baner-cta:hover { background: #c2410c; }
     white-space: nowrap;
   }
 }
+
+/* ===== Doradca tkanin na stronie plis (3.11, features/plisy/DoradcaTkanin.tsx): 3 pytania, filtry, siatka próbek ===== */
+.dt-krok { margin: 0.9rem 0 0; }
+.dt-krok > b { display: flex; align-items: center; gap: 0.45rem; font-size: 1rem; color: #12233a; margin-bottom: 0.45rem; }
+.dt-krok > b span { display: inline-grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: 50%; background: #0f766e; color: #fff; font-size: 0.8rem; }
+.dt-chipy { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+html body .dt-chipy button { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.85rem; border-radius: 999px; border: 1.5px solid #d6dee6; background: #fff; color: #1e293b; font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer; }
+html body .dt-chipy button:hover { border-color: #0f9f8f; }
+html body .dt-chipy button.is-on { background: #0f766e; border-color: #0f766e; color: #fff; }
+.dt-kolory i { display: inline-block; width: 1rem; height: 1rem; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); }
+.dt-rada { margin: 0.6rem 0 0; padding: 0.6rem 0.8rem; border-radius: 0.7rem; background: #ecfdf5; border: 1px solid #a7f3d0; font-size: 0.88rem; line-height: 1.45; color: #134e4a; }
+.dt-ile { margin: 1rem 0 0.5rem; font-size: 0.88rem; color: #475569; font-weight: 600; }
+.dt-siatka { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
+@media (max-width: 900px) { .dt-siatka { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .dt-siatka { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+html body .dt-siatka button { position: relative; display: grid; width: 100%; padding: 0; border: 1.5px solid #e2e8f0; border-radius: 0.8rem; overflow: hidden; background: #fff; text-align: left; cursor: pointer; font: inherit; }
+html body .dt-siatka button:hover { border-color: #0f9f8f; }
+html body .dt-siatka button.is-on { border-color: #0f766e; box-shadow: 0 0 0 2px #0f766e; }
+.dt-siatka img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.dt-siatka span { display: grid; gap: 0.05rem; padding: 0.4rem 0.55rem 0.5rem; }
+.dt-siatka span b { font-size: 0.85rem; color: #12233a; text-transform: capitalize; }
+.dt-siatka span small { font-size: 0.72rem; color: #64748b; }
+.dt-siatka em { position: absolute; top: 0.35rem; left: 0.35rem; padding: 0.15rem 0.45rem; border-radius: 999px; background: #0f766e; color: #fff; font-size: 0.68rem; font-style: normal; font-weight: 800; }
+.dt-wiecej, .dt-cennik { display: inline-block; margin-top: 0.7rem; }
+.dt-wybrana { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 0.9rem; align-items: start; margin-top: 0.9rem; padding: 0.8rem; border-radius: 0.9rem; border: 2px solid #0f766e; background: #f0fdfa; }
+.dt-wybrana img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 0.6rem; }
+.dt-wybrana b { display: block; font-size: 1.02rem; color: #12233a; text-transform: capitalize; }
+.dt-wybrana small { display: block; margin-top: 0.2rem; font-size: 0.84rem; color: #475569; line-height: 1.4; }
+.dt-wybrana-akcje { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; margin-top: 0.7rem; }
+@media (max-width: 520px) { .dt-wybrana { grid-template-columns: 6rem minmax(0, 1fr); } }
+/* pomiar (3.11): animacja w pętli widoczna od razu na stronie */
+.lj-pomiar-anim { margin: 0.8rem 0 0.4rem; border-radius: 0.9rem; overflow: hidden; border: 1px solid #e2e8f0; background: #fff; }
