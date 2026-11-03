@@ -59,7 +59,7 @@ export default function WizDemo() {
       const img = new Image();
       img.src = "/wizualizator-demo.jpg";
       await img.decode().catch(() => null);
-      if (stop) return;
+      if (stop || !img.naturalWidth) return;
       r.setPhoto(img);
       const k = await fetchKatalog();
       for (const id of TKANINY) {
@@ -138,20 +138,24 @@ export default function WizDemo() {
   }, []);
 
   return (
-    <div className={s.demo} ref={wrapRef} aria-label="Animacja: ze zdjęcia okna powstaje wizualizacja plisy">
-      <canvas ref={canvasRef} className={s.demoCanvas} width={DEMO_W} height={DEMO_H} />
-      {scan ? (
-        <>
-          <div className={s.demoScan} style={{ top: `${scan.y * 100}%` }} />
-          <svg className={s.demoSvg} viewBox={`0 0 ${DEMO_W} ${DEMO_H}`} preserveAspectRatio="none" aria-hidden="true">
-            {PANES.map((p, i) => (
-              <polygon key={i} points={p.rogi.map((q) => q.join(",")).join(" ")} pathLength={100}
-                style={{ strokeDasharray: 100, strokeDashoffset: 100 - scan.obrys * 100 }} />
-            ))}
-          </svg>
-        </>
-      ) : null}
-      {lapka ? <span className={s.demoHand} style={{ left: lapka.x, top: lapka.y }} aria-hidden="true">👆</span> : null}
+    <div className={s.demo} aria-label="Animacja: ze zdjęcia okna powstaje wizualizacja plisy">
+      <div className={s.demoMedia} ref={wrapRef}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className={s.demoPhoto} src="/wizualizator-demo.jpg" alt="Okno demonstracyjne" width={DEMO_W} height={DEMO_H} />
+        <canvas ref={canvasRef} className={s.demoCanvas} style={{ visibility: gotowe ? "visible" : "hidden" }} width={DEMO_W} height={DEMO_H} />
+        {scan ? (
+          <>
+            <div className={s.demoScan} style={{ top: `${scan.y * 100}%` }} />
+            <svg className={s.demoSvg} viewBox={`0 0 ${DEMO_W} ${DEMO_H}`} preserveAspectRatio="none" aria-hidden="true">
+              {PANES.map((p, i) => (
+                <polygon key={i} points={p.rogi.map((q) => q.join(",")).join(" ")} pathLength={100}
+                  style={{ strokeDasharray: 100, strokeDashoffset: 100 - scan.obrys * 100 }} />
+              ))}
+            </svg>
+          </>
+        ) : null}
+        {lapka ? <span className={s.demoHand} style={{ left: lapka.x, top: lapka.y }} aria-hidden="true">👆</span> : null}
+      </div>
       <div className={s.demoStory}>
         <ol className={s.demoProgress}>
           {ETAPY.map((name, index) => (
@@ -161,7 +165,6 @@ export default function WizDemo() {
         <p key={etap} className={s.demoCaption}>{CAPTIONS[etap]}</p>
       </div>
 
-      {!gotowe ? <div className={s.loading}>…</div> : null}
     </div>
   );
 }

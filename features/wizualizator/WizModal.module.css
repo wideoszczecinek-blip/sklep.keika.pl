@@ -695,11 +695,12 @@
   .startGrid { grid-template-columns: minmax(0, 1.25fr) minmax(380px, 1fr); min-height: min(720px, 88vh); }
   .startGrid .startBox { padding: 34px 34px 26px; display: flex; flex-direction: column; justify-content: center; }
 }
-.demo { position: relative; background: #0b1218; overflow: hidden; display: flex; align-items: center; justify-content: center; line-height: 0; }
+.demo { position: relative; min-width: 0; background: #0b1218; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
 @media (min-width: 900px) { .demo { border-radius: 18px 0 0 18px; } }
-.demoCanvas { width: 100%; height: auto; display: block; }
+.demoMedia { position: relative; width: 100%; aspect-ratio: 1200 / 801; margin-inline: auto; }
+.demoPhoto, .demoCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .demoScan { position: absolute; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, #5eead4, transparent); box-shadow: 0 0 22px 4px rgba(94, 234, 212, 0.65); pointer-events: none; }
-.demoSvg { position: absolute; left: 0; width: 100%; height: auto; aspect-ratio: 1200 / 801; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.demoSvg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .demoSvg polygon { fill: rgba(94, 234, 212, 0.12); stroke: #5eead4; stroke-width: 4; vector-effect: non-scaling-stroke; }
 .demoHand { position: absolute; transform: translate(-20%, -10%); font-size: 34px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); pointer-events: none; }
 .demoSteps { position: absolute; left: 12px; right: 12px; bottom: 34px; display: flex; flex-wrap: wrap; gap: 6px; line-height: 1.3; pointer-events: none; }
@@ -1062,3 +1063,9 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
 .demoCaption { min-height: 2.6em; margin: 8px 0 0; font-size: .86rem; line-height: 1.3; animation: demo-caption .35s ease both; }
 @keyframes demo-caption { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .demoCaption { animation: none; } }
+
+@media (max-width: 899px) {
+  .modal { height: 100dvh; }
+  .startGrid { min-width: 0; }
+  .demoMedia { max-width: 72svh; }
+}
