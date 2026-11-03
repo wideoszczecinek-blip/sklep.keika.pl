@@ -73,6 +73,7 @@ export function PlisyHeroGallery() {
   const photos = PLISY_HERO_PHOTOS;
   const [active, setActive] = useState(0);
   const [playing, setPlaying] = useState(true);
+  const benefitGroups = [HERO_BENEFITS.slice(0, 2), HERO_BENEFITS.slice(2, 4), HERO_BENEFITS.slice(4)];
 
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -89,6 +90,15 @@ export function PlisyHeroGallery() {
             <img src={heroSrc(src)} alt={HERO_ALT[index] || "Plisa KEIKA na oknie"} decoding="async" fetchPriority={index === 0 ? "high" : "low"} />
           </figure>
         ))}
+        <ul className="plv2-photo-benefits" key={active}>
+          {(benefitGroups[active] || benefitGroups[0]).map(([label, path]) => (
+            <li key={label}>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={path} /></svg>
+              {label}
+            </li>
+          ))}
+        </ul>
+
         <div className="plv2-gallery-dots" aria-label="Sterowanie zdjęciami">
           {photos.map((src, index) => (
             <button key={src} type="button" className={index === active ? "is-active" : ""} aria-label={`Zdjęcie ${index + 1}`} aria-pressed={index === active} onClick={() => {
@@ -100,14 +110,7 @@ export function PlisyHeroGallery() {
           <button type="button" className="plv2-gallery-pause" aria-label={playing ? "Wstrzymaj karuzelę" : "Wznów karuzelę"} onClick={() => setPlaying(!playing)}>{playing ? "Ⅱ" : "▶"}</button>
         </div>
       </div>
-      <ul className="plv2-photo-benefits">
-        {HERO_BENEFITS.map(([label, path]) => (
-          <li key={label}>
-            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={path} /></svg>
-            {label}
-          </li>
-        ))}
-      </ul>
+
     </div>
   );
 }

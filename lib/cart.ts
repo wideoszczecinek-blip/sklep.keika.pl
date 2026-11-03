@@ -290,7 +290,8 @@ export function findEquivalentCartItem(items: CartLineItem[], candidate: CartLin
       item.qty === candidate.qty &&
       Math.abs(item.total - candidate.total) < 0.01 &&
       (item.modelLabel || "") === (candidate.modelLabel || "") &&
-      (item.mountLabel || "") === (candidate.mountLabel || ""),
+      (item.mountLabel || "") === (candidate.mountLabel || "") &&
+      (item.notes || "") === (candidate.notes || ""),
   );
 }
 

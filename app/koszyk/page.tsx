@@ -5166,6 +5166,7 @@ export default function CartPage() {
               <PlisyConfiguratorPanel
                 key={editingItem.id}
                 initialValues={{
+                  notes: editingItem.notes,
                   // Plisy's option data is fetched live from the CRM inside
                   // the panel itself (see features/plisy/shared.ts), not a
                   // static local constant like the other two products above
@@ -5187,6 +5188,7 @@ export default function CartPage() {
                 submitLabel="Zapisz zmiany"
                 onSubmit={(result) => {
                   const updated = updateCartItemConfig(editingItem.id, {
+                    notes: result.notes,
                     hardwareLabel: result.hardwareLabel,
                     meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
                     mountLabel: result.mountLabel || undefined,

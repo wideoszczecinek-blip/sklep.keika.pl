@@ -468,6 +468,7 @@ export function formatPriceDeltaBadge(priceDelta: number, priceDeltaType: PriceD
 }
 
 export type ConfiguratorInitialValues = {
+  notes?: string;
   mountId?: string;
   bracketColorId?: string;
   hardwareId?: string;
@@ -609,6 +610,7 @@ export function splitPlisyMountLabel(label: string | undefined): { mountLabel: s
 }
 
 export type ConfiguratorResult = {
+  notes?: string;
   mountId: string;
   mountLabel: string;
   /** Non-invasive mount only - the bracket colour sub-step. */

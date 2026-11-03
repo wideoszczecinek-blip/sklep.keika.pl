@@ -24760,3 +24760,18 @@ html body button.pl-quick-tk.is-active { border-color: #d94d00; background: #fff
 
 .plisy-guide details { padding: .75rem 1rem; margin-top: .45rem; border: 1px solid #dbe5ef; border-radius: .75rem; background: #f6f9fc; }
 .plisy-guide summary { cursor: pointer; font-weight: 700; color: #16314e; }
+
+.hero-product-config-panel:has(.plisy-premium-heading) { background: #f3f7f6; color: #193b38; }
+.hero-product-config-panel:has(.plisy-premium-heading) .hero-product-step-accordion { background: #fff; border-color: #d6e5e1; }
+.plisy-premium-heading { color: #193b38; }
+.plisy-position-notes { display: grid; gap: .35rem; margin: .75rem 0; font-weight: 600; }
+.plisy-position-notes input { width: 100%; padding: .7rem; border: 1px solid #c4d8d3; border-radius: .55rem; background: #fff; color: #193b38; }
+
+.pe-opis { display: grid; gap: .6rem; line-height: 1.5; }
+.pe-opis p { margin: 0; }
+.plv2-photo-stage .plv2-photo-benefits { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; justify-content: flex-start; align-items: flex-start; flex-direction: column; gap: .4rem; padding: 1.8rem .75rem .65rem; background: linear-gradient(transparent, #102623db); pointer-events: none; }
+.plv2-photo-stage .plv2-photo-benefits li { gap: .45rem; padding: .35rem .6rem; border: 1px solid #ffffff3d; border-radius: .55rem; background: #17332eeb; color: #fff; font-size: clamp(.75rem, 3.4vw, .94rem); animation: plisy-benefit-in .55s ease both; }
+.plv2-photo-stage .plv2-photo-benefits li:nth-child(2) { animation-delay: .13s; }
+.plv2-photo-stage .plv2-gallery-dots { bottom: auto; top: .55rem; }
+@keyframes plisy-benefit-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .plv2-photo-stage .plv2-photo-benefits li { animation: none; } }

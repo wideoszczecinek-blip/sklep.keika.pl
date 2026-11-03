@@ -78,6 +78,7 @@ type ZoomPreview = { title: string; urls: string[]; index: number };
 // wyborze kolekcji można pokazać cenę TYCH okien.
 type PlisyPosition = {
   wiz?: WizPosition;
+  notes?: string;
   id: string;
   /** Szerokość JEDNEJ plisy (przy podziale - połowa okna). */
   widthMm: number;
@@ -92,7 +93,7 @@ type PlisyPosition = {
 
 /** Okna na pozycję: przy podziale qty to plisy (2 na okno). */
 function wizRows(positions: WizPosition[] = []): PlisyPosition[] {
-  return positions.map((wiz, index) => ({ id: `wiz-${index}`, widthMm: 0, heightMm: 0, qty: 1, wiz }));
+  return positions.map((wiz, index) => ({ id: `wiz-${index}`, widthMm: 0, heightMm: 0, qty: 1, wiz, notes: wiz.room }));
 }
 
 function windowsInPosition(position: PlisyPosition): number {
@@ -366,6 +367,7 @@ export default function ConfiguratorPanel({
   const [dimensionUnit, setDimensionUnit] = useState<DimensionUnit>(readStoredUnit);
   const [width, setWidth] = useState(() => (initialValues?.widthMm ? mmToInput(initialValues.widthMm, readStoredUnit()) : ""));
   const [height, setHeight] = useState(() => (initialValues?.heightMm ? mmToInput(initialValues.heightMm, readStoredUnit()) : ""));
+  const [positionNotes, setPositionNotes] = useState(initialValues?.notes || "");
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const lastTrackedDimsRef = useRef("");
 
@@ -553,7 +555,6 @@ export default function ConfiguratorPanel({
   const bracketChosen = !bracketRequired || Boolean(selectedBracket);
   const stepBracketRef = useRef<HTMLButtonElement | null>(null);
   // Later step numbers shift by one while the bracket sub-step is showing.
-  const stepShift = bracketRequired ? 1 : 0;
   const selectedFabricGroup = useMemo(
     () => profile?.fabricGroups.find((group) => group.id === selectedFabricGroupId) || null,
     [profile, selectedFabricGroupId],
@@ -619,6 +620,7 @@ export default function ConfiguratorPanel({
   const typedPosition: PlisyPosition | null = dimensionsValid
     ? {
         id: editingPositionId || "__typed",
+        notes: positionNotes.trim() || undefined,
         wiz: positions.find((position) => position.id === editingPositionId)?.wiz,
         widthMm: pieceWidthMm,
         heightMm: heightNum,
@@ -837,7 +839,8 @@ export default function ConfiguratorPanel({
     dimensionsValid
       ? {
           id: editingPositionId || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          wiz: positions.find((position) => position.id === editingPositionId)?.wiz,
+          notes: positionNotes.trim() || undefined,
+        wiz: positions.find((position) => position.id === editingPositionId)?.wiz,
         widthMm: pieceWidthMm,
           heightMm: heightNum,
           qty: splitActive ? quantityNum * 2 : quantityNum,
@@ -907,6 +910,7 @@ export default function ConfiguratorPanel({
   }
 
   function clearPositionForm() {
+    setPositionNotes("");
     setWidth("");
     setHeight("");
     setQuantity("1");
@@ -936,6 +940,7 @@ export default function ConfiguratorPanel({
   // opens the size step on it; "+ Dodaj kolejną" becomes "Zapisz zmiany".
   function handleEditPosition(position: PlisyPosition) {
     setEditingPositionId(position.id);
+    setPositionNotes(position.notes || "");
     setWidth(position.widthMm ? mmToInput(position.splitFromMm || position.widthMm, dimensionUnit) : "");
     setHeight(position.heightMm ? mmToInput(position.heightMm, dimensionUnit) : "");
     setQuantity(String(windowsInPosition(position)));
@@ -1283,6 +1288,7 @@ export default function ConfiguratorPanel({
         totalPrice: price.total,
         oversizeSurchargeAmount: plisyOversizeSurcharge(position.widthMm),
         splitFromWidthMm: position.splitFromMm,
+        notes: position.notes,
         sagNoticeShown: position.widthMm > rowSagLimit,
         sagLimitMm: rowSagLimit,
       };
@@ -1344,7 +1350,7 @@ export default function ConfiguratorPanel({
 
   return (
     <>
-      <header>
+      <header className="plisy-premium-heading">
         <strong>Konfigurator plisy PREMIUM</strong>
       </header>
 
@@ -1428,9 +1434,567 @@ export default function ConfiguratorPanel({
         </section>
       ) : null}
 
-      {/* KROK 2: wymiary i ilość - zaraz po montażu (właściciel, 2026-10-01:
-          "cena po wymiarach"). Montaż zostaje krokiem 1, bo to on decyduje,
-          jak się mierzy okno. */}
+      {/* KROK 3: kolor mechanizmu */}
+      {/* Alert zmiany montażu - na najwyższym poziomie, bo montaż można zmienić
+          na każdym etapie (wcześniej siedział w gałęzi po wyborze koloru). */}
+      {pendingMount && typeof document !== "undefined"
+        ? (() => {
+            const toNonInvasive = isPlisyMountNonInvasive(pendingMount.id) || isPlisyMountNonInvasive(pendingMount.label);
+            const cancel = () => {
+              trackShopStep("mount_change_cancel", pendingMount.label, { positions: positions.length });
+              setPendingMount(null);
+            };
+            return createPortal(
+              <div className="instruction-modal plisy-mount-alert" role="alertdialog" aria-modal="true" aria-labelledby="plisy-mount-alert-title" onClick={cancel}>
+                <div className="instruction-modal-shell plisy-mount-alert-shell" onClick={(event) => event.stopPropagation()}>
+                  <span className="plisy-mount-alert-icon" aria-hidden="true">!</span>
+                  <h3 id="plisy-mount-alert-title">Inny montaż = inne wymiary</h3>
+                  <p>
+                    Wpisane wymiary są do montażu <strong>{selectedMount ? plisyMountNazwa(selectedMount) : "poprzedniego"}</strong>.
+                    Przy montażu <strong>{plisyMountNazwa(pendingMount)}</strong> okno mierzy się inaczej:
+                  </p>
+                  <p className="plisy-mount-alert-how">
+                    {toNonInvasive
+                      ? "szerokość od kreseczki do kreseczki na skrzydle, a wysokość to całe skrzydło."
+                      : "w świetle szyby, od połowy uszczelki do połowy uszczelki."}
+                  </p>
+                  <p>
+                    Po zmianie usuniemy wpisane wymiary
+                    {positions.length === 2 ? " obu okien" : positions.length > 2 ? ` wszystkich ${positions.length} okien` : ""} – trzeba je
+                    zmierzyć i wpisać od nowa.
+                  </p>
+                  {/* Instrukcja pomiaru pod NOWY montaż od razu w alercie
+                      (właściciel, 07.10) - nie trzeba jej szukać po zmianie. */}
+                  <div className="plisy-mount-alert-guide">
+                    <PlisyMeasureGuide fixedMode={toNonInvasive ? "bezinwazyjny" : "standard"} startDelayMs={500} unit={dimensionUnit} />
+                  </div>
+                  <div className="plisy-mount-alert-actions">
+                    <button
+                      type="button"
+                      className="plisy-mount-alert-confirm"
+                      onClick={() => {
+                        trackShopStep("mount_change_confirm", pendingMount.label, { positions: positions.length });
+                        const option = pendingMount;
+                        setPendingMount(null);
+                        applyMountChange(option);
+                      }}
+                    >
+                      Zmieniam montaż, wpiszę nowe wymiary
+                    </button>
+                    <button type="button" className="plisy-mount-alert-cancel" onClick={cancel}>
+                      Zostaję przy obecnym montażu
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            );
+          })()
+        : null}
+
+      {guideBubble("hardware")}
+      <section className={`hero-product-step-accordion hero-product-step-accordion--hardware-color ${stepOneCollapsed ? "is-collapsed" : ""}`}>
+        <button
+          type="button"
+          ref={stepOneRef}
+          className="hero-product-step-head"
+          onClick={() => {
+            trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed });
+            setStepOneCollapsed((prev) => !prev);
+          }}
+          aria-expanded={stepOneCollapsed ? "false" : "true"}
+        >
+          <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+            <span className={`hero-product-step-check ${selectedHardware ? "" : "is-muted"}`} aria-hidden="true">
+              {selectedHardware ? "✓" : "2"}
+            </span>
+            Kolor listew
+          </span>
+          <span className="hero-product-step-head-meta">
+            {selectedHardware && stepOneCollapsed ? (
+              <span
+                className="hero-product-step-head-swatch"
+                style={buildPlisyHardwareSwatchStyle(selectedHardware.imageUrl, selectedHardware.color)}
+                aria-hidden="true"
+              />
+            ) : null}
+            {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
+            {stepOneCollapsed ? (
+              <span className="hero-product-step-head-change">Zmień</span>
+            ) : (
+              <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+            )}
+          </span>
+        </button>
+        <div className="hero-product-step-body">
+          {/* Na tym kroku stawało najwięcej osób zaraz po cenie (audyt 1-7.10)
+              - wybór był bez żadnej wskazówki. */}
+          <p className="hero-product-config-hint">Wybierz kolor najbliższy ramie okna – listwy plisy zleją się wtedy z oknem.</p>
+          <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid hero-product-hardware-color-grid">
+            {profile.hardware.map((option, index) => {
+              const isActive = option.id === selectedHardwareId;
+              const isLastSolo = profile.hardware.length % 3 === 1 && index === profile.hardware.length - 1;
+              return (
+                <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""} ${isLastSolo ? "is-last-solo" : ""}`}>
+                  <button
+                    type="button"
+                    className="hardware-card-main"
+                    onClick={() => {
+                      trackShopStep("select_hardware_color", option.label, { option_id: option.id });
+                      setSelectedHardwareId(option.id);
+                      setStepOneCollapsed(true);
+                      if (!stepOneChosen) setStepOneChosen(true);
+                      window.setTimeout(() => {
+                        scrollStepIntoView(bracketRequired && !selectedBracketId ? stepBracketRef.current : stepTwoRef.current);
+                      }, 380);
+                    }}
+                  >
+                    <span
+                      className="hardware-card-image"
+                      style={buildPlisyHardwareSwatchStyle(option.imageUrl, option.color)}
+                    />
+                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                    <span className="hardware-card-footer">
+                      <span className="hardware-dot" style={{ background: option.color }} />
+                      <strong>{option.label}</strong>
+                    </span>
+                  </button>
+                  {option.imageUrl ? (
+                    <button
+                      type="button"
+                      className="config-option-zoom"
+                      aria-label={`Powiększ: ${option.label}`}
+                      onClick={() => openZoom({ title: option.label, urls: [option.imageUrl], index: 0 })}
+                    >
+                      🔍
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* KROK 4: kolor uchwytów - tylko montaż bezinwazyjny */}
+      {selectedHardwareId && bracketRequired ? guideBubble("bracket") : null}
+      {selectedHardwareId && bracketRequired ? (
+        <section className={`hero-product-step-accordion hero-product-step-accordion--bracket ${stepBracketCollapsed ? "is-collapsed" : ""}`}>
+          <button
+            type="button"
+            ref={stepBracketRef}
+            className="hero-product-step-head"
+            onClick={() => {
+              trackShopStep("configurator_step_toggle", "bracket_color", { collapsed_after: !stepBracketCollapsed });
+              setStepBracketCollapsed((prev) => !prev);
+            }}
+            aria-expanded={stepBracketCollapsed ? "false" : "true"}
+          >
+            <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+              <span className={`hero-product-step-check ${selectedBracket ? "" : "is-muted"}`} aria-hidden="true">
+                {selectedBracket ? "✓" : "2"}
+              </span>
+              Wybierz kolor uchwytów bezinwazyjnych
+            </span>
+            <span className="hero-product-step-head-meta">
+              {selectedBracket && stepBracketCollapsed ? (
+                <span className="hero-product-step-head-swatch" style={{ background: selectedBracket.color }} aria-hidden="true" />
+              ) : null}
+              {selectedBracket ? <strong>{selectedBracket.label}</strong> : null}
+              {stepBracketCollapsed ? (
+                <span className="hero-product-step-head-change">Zmień</span>
+              ) : (
+                <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+              )}
+            </span>
+          </button>
+          <div className="hero-product-step-body">
+            <p className="hero-product-config-hint">Uchwyty zakładane na skrzydło są widoczne od strony pokoju — dobierz kolor do okna.</p>
+            <div className="plisy-bracket-grid">
+              {PLISY_BRACKET_COLORS.map((entry) => {
+                const isActive = entry.id === selectedBracketId;
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className={`plisy-bracket-option ${isActive ? "is-active" : ""}`}
+                    onClick={() => {
+                      trackShopStep("select_bracket_color", entry.label, { option_id: entry.id });
+                      setSelectedBracketId(entry.id);
+                      setStepBracketCollapsed(true);
+                      window.setTimeout(() => {
+                        scrollStepIntoView(stepTwoRef.current);
+                      }, 380);
+                    }}
+                  >
+                    <span className="plisy-bracket-dot" style={{ background: entry.color }} aria-hidden="true" />
+                    <strong>{entry.label}</strong>
+                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {selectedHardwareId && !bracketChosen ? (
+        <p className="hero-product-config-hint">Wybierz kolor uchwytów, aby przejść do kolejnego kroku.</p>
+      ) : null}
+
+      {selectedHardwareId && bracketChosen ? (
+        <>
+          {/* KROK 4/5: kolekcja tkanin */}
+          {guideBubble("group")}
+          <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
+            <button
+              type="button"
+              ref={stepTwoRef}
+              className="hero-product-step-head"
+              onClick={() => {
+                trackShopStep("configurator_step_toggle", "fabric_group", { collapsed_after: !stepTwoCollapsed });
+                setStepTwoCollapsed((prev) => !prev);
+              }}
+              aria-expanded={stepTwoCollapsed ? "false" : "true"}
+            >
+              <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+                <span className={`hero-product-step-check ${fabricGroupChosen ? "" : "is-muted"}`} aria-hidden="true">
+                  {fabricGroupChosen ? "✓" : "3"}
+                </span>
+                Wybierz typ tkaniny
+              </span>
+              <span className="hero-product-step-head-meta">
+                {selectedFabricGroup ? <strong>{selectedFabricGroup.label}</strong> : null}
+                {stepTwoCollapsed ? (
+                  <span className="hero-product-step-head-change">Zmień</span>
+                ) : (
+                  <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+                )}
+              </span>
+            </button>
+            <div
+              className="hero-product-step-body"
+              style={stepTwoCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}
+            >
+              {/* Kafelek mówi tylko to, co potrzebne do wyboru: nazwa,
+                  plakietki, ile kolorów i - gdy wymiary są już znane - cena.
+                  Cały opis kolekcji siedzi pod ikoną "i" (właściciel,
+                  2026-09-24: "za dużo treści pod swatchami"). */}
+              {hasSizes ? (
+                <p className="hero-product-config-hint">Ceny policzone dla Twoich wymiarów ({sizeSummaryText}).</p>
+              ) : null}
+              <div className="plisy-coll-grid">
+                {profile.fabricGroups.map((group) => {
+                  const isActive = group.id === selectedFabricGroupId;
+                  const kind = plisyCollectionKind(group);
+                  const meta = plisyCollectionMeta(kind);
+                  const groupTotal = priceForSet(effectivePositions, group.id, null);
+                  return (
+                    <div key={group.id} className={`plisy-coll-cell ${isActive ? "is-active" : ""}`}>
+                      <button
+                        type="button"
+                        className={`hero-product-mesh-option plisy-coll-card ${isActive ? "is-active" : ""}`}
+                        onClick={() => {
+                          trackShopStep("select_fabric_group", group.label, { option_id: group.id });
+                          pickFabricGroup(group.id);
+                        }}
+                      >
+                        {/* Tło kafelka: cztery zdjęcia tkanin z TEJ kolekcji,
+                            przenikające się płynnie (właściciel, 2026-09-24).
+                            Ikona zostaje na wierzchu, a warstwa przyciemniająca
+                            trzyma czytelność nazwy i plakietek. */}
+                        <PlisyCollectionBackdrop group={group} />
+                        <span className="plisy-coll-card-visual">
+                          <PlisyCollectionVisual kind={kind} />
+                        </span>
+                        <span className="plisy-coll-card-body">
+                          <span className="plisy-coll-card-head">
+                            <strong>{przeznaczenieKolekcji(group) || group.label}</strong>
+                            {przeznaczenieKolekcji(group) ? <small className="plisy-coll-card-nazwa">{group.label}</small> : null}
+                            <span className="plisy-coll-card-badges">
+                              {meta.badges.map((badge) => (
+                                <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : badge === "Plaster miodu" ? "is-structure" : ""}`}>
+                                  {badge}
+                                </span>
+                              ))}
+                            </span>
+                          </span>
+                          <span className="plisy-coll-card-meta">
+                            {group.swatches.length ? (
+                              <span className="plisy-coll-card-count">{plisyColorCountLabel(group.swatches.length)}</span>
+                            ) : null}
+                            {groupTotal !== null ? (
+                              <span className="plisy-coll-card-price">
+                                {renderPrice(groupTotal)}
+                                <em>{priceScopeLabel}</em>
+                              </span>
+                            ) : null}
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="plisy-coll-card-info"
+                        aria-label={`Informacje o kolekcji ${group.label}`}
+                        title="Co to za kolekcja?"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          trackShopStep("fabric_group_info", group.label, { option_id: group.id });
+                          setCollectionInfoId(group.id);
+                        }}
+                      >
+                        i
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {collectionInfoGroup && typeof document !== "undefined"
+            ? createPortal(
+                <div
+                  className="instruction-modal instruction-modal--collection"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={`Kolekcja ${collectionInfoGroup.label}`}
+                  onClick={() => setCollectionInfoId("")}
+                >
+                  <div className="instruction-modal-shell instruction-modal-shell--collection" onClick={(event) => event.stopPropagation()}>
+                    <button type="button" className="instruction-modal-close" aria-label="Zamknij" onClick={() => setCollectionInfoId("")}>
+                      ×
+                    </button>
+                    <div className="plisy-coll-modal-head">
+                      <span className="plisy-coll-card-visual">
+                        <PlisyCollectionVisual kind={plisyCollectionKind(collectionInfoGroup)} />
+                      </span>
+                      <div>
+                        <h3>{collectionInfoGroup.label}</h3>
+                        <span className="plisy-coll-card-badges">
+                          {plisyCollectionMeta(plisyCollectionKind(collectionInfoGroup)).badges.map((badge) => (
+                            <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : badge === "Plaster miodu" ? "is-structure" : ""}`}>
+                              {badge}
+                            </span>
+                          ))}
+                        </span>
+                      </div>
+                    </div>
+                    <p>{plisyCollectionMeta(plisyCollectionKind(collectionInfoGroup)).light}</p>
+                    {collectionInfoGroup.note ? <p>{collectionInfoGroup.note}</p> : null}
+                    <p className="plisy-coll-modal-count">
+                      {plisyColorCountLabel(collectionInfoGroup.swatches.length)} do wyboru w tej kolekcji.
+                    </p>
+                    <button
+                      type="button"
+                      className="plisy-coll-modal-cta"
+                      onClick={() => {
+                        const group = collectionInfoGroup;
+                        trackShopStep("select_fabric_group", group.label, { option_id: group.id, source: "info_modal" });
+                        setCollectionInfoId("");
+                        pickFabricGroup(group.id);
+                      }}
+                    >
+                      Wybieram tę kolekcję
+                    </button>
+                  </div>
+                </div>,
+                document.body,
+              )
+            : null}
+
+          {fabricGroupChosen ? (
+            <>
+              {/* KROK 5/6: kolor tkaniny */}
+              {guideBubble("fabric")}
+              <section className={`hero-product-step-accordion hero-product-step-accordion--fabric-color ${stepThreeCollapsed ? "is-collapsed" : ""}`}>
+                <button
+                  type="button"
+                  ref={stepThreeRef}
+                  className="hero-product-step-head"
+                  onClick={() => {
+                    trackShopStep("configurator_step_toggle", "fabric_color", { collapsed_after: !stepThreeCollapsed });
+                    setStepThreeCollapsed((prev) => !prev);
+                  }}
+                  aria-expanded={stepThreeCollapsed ? "false" : "true"}
+                >
+                  <span className="hero-product-config-step-title hero-product-config-step-title--muted">
+                    <span className={`hero-product-step-check ${fabricChosen ? "" : "is-muted"}`} aria-hidden="true">
+                      {fabricChosen ? "✓" : "4"}
+                    </span>
+                    Wybierz kolor tkaniny
+                  </span>
+                  <span className="hero-product-step-head-meta">
+                    {selectedFabric && stepThreeCollapsed ? (
+                      <span
+                        className="hero-product-step-head-swatch"
+                        style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl, selectedFabric.color)}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                    {selectedFabric ? <strong>{selectedFabric.label}</strong> : null}
+                    {stepThreeCollapsed ? (
+                      <span className="hero-product-step-head-change">Zmień</span>
+                    ) : (
+                      <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
+                    )}
+                  </span>
+                </button>
+                <div className="hero-product-step-body">
+                  {/* Ulubione tkaniny zaznaczone na landingu ("Którą kolekcję
+                      tkanin wybrać") - tu wracają jako skrót, także wtedy, gdy
+                      pochodzą z innej kolekcji (wybór przełącza kolekcję). */}
+                  {favouriteSwatches.length ? (
+                    <div className="plisy-fav-strip">
+                      <span className="plisy-fav-strip-label">★ Twoje ulubione</span>
+                      <div className="plisy-fav-strip-items">
+                        {favouriteSwatches.map((entry) => (
+                          <button
+                            key={entry.swatch.id}
+                            type="button"
+                            className={`plisy-fav-chip ${entry.swatch.id === selectedFabricId ? "is-active" : ""}`}
+                            title={`${entry.swatch.label} · ${entry.group.label}`}
+                            onClick={() => {
+                              trackShopStep("select_fabric_color", entry.swatch.label, { option_id: entry.swatch.id, source: "favourites" });
+                              if (entry.group.id !== selectedFabricGroupId) setSelectedFabricGroupId(entry.group.id);
+                              setSelectedFabricId(entry.swatch.id);
+                              setStepThreeCollapsed(true);
+                              setStepTwoCollapsed(true);
+                              window.setTimeout(() => {
+                                setStepDimsCollapsed(false);
+                          scrollStepIntoView(positionFormRef.current || stepFourRef.current);
+                              }, 380);
+                            }}
+                          >
+                            <span
+                              className="plisy-fav-chip-swatch"
+                              style={buildPlisyHardwareSwatchStyle(entry.swatch.thumbnailUrl, entry.swatch.color)}
+                              aria-hidden="true"
+                            />
+                            <span>{entry.swatch.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {swatchesForGroup.length ? (
+                    <div className="plisy-fabric-tools">
+                      <button
+                        type="button"
+                        className="plisy-fabric-gallery-cta"
+                        onClick={() => {
+                          const at = Math.max(0, swatchesForGroup.findIndex((swatch) => swatch.id === selectedFabricId));
+                          setFabricGalleryIndex(at);
+                          trackShopStep("fabric_gallery_open", selectedFabricGroup?.label || "", { source: "cta" });
+                        }}
+                      >
+                        🔍 Zobacz duże zdjęcia tkanin
+                      </button>
+                      <WizButton zrodlo="konfigurator-tkanina" variant="link" tkanina={selectedFabricId || undefined} listwa={selectedHardwareId || undefined} />
+                      {samplesEnabled ? (
+                        <a
+                          className="plisy-fabric-gallery-cta"
+                          href={`/probki?t=${encodeURIComponent(
+                            [
+                              ...(selectedFabricId ? [`${selectedFabricGroupId}.${selectedFabricId}`] : []),
+                              ...favouriteSwatches.map((entry) => `${entry.group.id}.${entry.swatch.id}`),
+                            ]
+                              .filter((v, i, all) => all.indexOf(v) === i)
+                              .slice(0, 5)
+                              .join(","),
+                          )}`}
+                          onClick={() => trackShopStep("samples_entry", selectedFabricGroup?.label || "", { source: "configurator" })}
+                        >
+                          🧵 Zamów bezpłatne próbki
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
+                    {swatchesForGroup.map((swatch, swatchIndex) => {
+                      const isActive = swatch.id === selectedFabricId;
+                      return (
+                        <div key={swatch.id} className="plisy-swatch-cell">
+                          <button
+                            type="button"
+                            className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
+                            title={swatch.label}
+                            onClick={() => {
+                              trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id });
+                              setSelectedFabricId(swatch.id);
+                              setStepThreeCollapsed(true);
+                              window.setTimeout(() => {
+                                setStepDimsCollapsed(false);
+                          scrollStepIntoView(positionFormRef.current || stepFourRef.current);
+                              }, 380);
+                            }}
+                          >
+                            <span
+                              className="hero-product-mesh-option-image"
+                              style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)}
+                            />
+                            <strong>{swatch.label}</strong>
+                          </button>
+                          <button
+                            type="button"
+                            className={`plisy-swatch-fav ${isFavouriteSwatch(swatch.id) ? "is-on" : ""}`}
+                            aria-label={isFavouriteSwatch(swatch.id) ? `Usuń ${swatch.label} z ulubionych` : `Dodaj ${swatch.label} do ulubionych`}
+                            aria-pressed={isFavouriteSwatch(swatch.id)}
+                            title={isFavouriteSwatch(swatch.id) ? "W ulubionych" : "Dodaj do ulubionych"}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleFavouriteSwatch(swatch.id);
+                              trackShopStep("fabric_favourite", swatch.label, {
+                                option_id: swatch.id,
+                                on: !isFavouriteSwatch(swatch.id),
+                                source: "configurator",
+                              });
+                            }}
+                          >
+                            ♥
+                          </button>
+                          <button
+                            type="button"
+                            className="plisy-swatch-zoom"
+                            aria-label={`Powiększ ${swatch.label}`}
+                            title="Powiększ"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setFabricGalleryIndex(swatchIndex);
+                              trackShopStep("fabric_gallery_open", swatch.label, { source: "swatch", option_id: swatch.id });
+                            }}
+                          >
+                            🔍
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {fabricGalleryIndex !== null && swatchesForGroup.length ? (
+                    <PlisyFabricGallery
+                      swatches={swatchesForGroup}
+                      index={Math.min(fabricGalleryIndex, swatchesForGroup.length - 1)}
+                      collectionLabel={selectedFabricGroup?.label || "Tkaniny"}
+                      selectedId={selectedFabricId}
+                      onIndexChange={setFabricGalleryIndex}
+                      onClose={() => setFabricGalleryIndex(null)}
+                      onPick={(swatch) => {
+                        trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id, source: "gallery" });
+                        setSelectedFabricId(swatch.id);
+                        setFabricGalleryIndex(null);
+                        setStepThreeCollapsed(true);
+                        window.setTimeout(() => {
+                          setStepDimsCollapsed(false);
+                          scrollStepIntoView(positionFormRef.current || stepFourRef.current);
+                        }, 380);
+                      }}
+                    />
+                  ) : null}
+                </div>
+              </section>
+
+              {fabricChosen ? (<>
+              {/* Krok 5: wymiary poszczególnych plis */}
       <section
         className={`hero-product-step-accordion hero-product-step-accordion--dimensions ${stepDimsCollapsed ? "is-collapsed" : ""}`}
       >
@@ -1445,7 +2009,7 @@ export default function ConfiguratorPanel({
         >
           <span className="hero-product-config-step-title hero-product-config-step-title--muted">
             <span className={`hero-product-step-check ${hasSizes ? "" : "is-muted"}`} aria-hidden="true">
-              {hasSizes ? "✓" : "2"}
+              {hasSizes ? "✓" : "5"}
             </span>
             Wymiary i ilość
           </span>
@@ -1651,6 +2215,10 @@ export default function ConfiguratorPanel({
                 Kolejna plisa w tych samych kolorach i tkaninie - wpisz tylko jej wymiar.
               </p>
             ) : null}
+            <label className="plisy-position-notes">
+              Uwagi (opcjonalnie)
+              <input type="text" value={positionNotes} maxLength={500} placeholder="np. salon lub łazienka" onChange={(event) => setPositionNotes(event.target.value)} />
+            </label>
             <div className="plisy-position-form-footer">
               <span className="plisy-position-price">{totalPrice !== null && positions.length > 0 ? renderPrice(totalPrice) : ""}</span>
               <button
@@ -1772,562 +2340,7 @@ export default function ConfiguratorPanel({
         </div>
       ) : null}
 
-      {/* KROK 3: kolor mechanizmu */}
-      {/* Alert zmiany montażu - na najwyższym poziomie, bo montaż można zmienić
-          na każdym etapie (wcześniej siedział w gałęzi po wyborze koloru). */}
-      {pendingMount && typeof document !== "undefined"
-        ? (() => {
-            const toNonInvasive = isPlisyMountNonInvasive(pendingMount.id) || isPlisyMountNonInvasive(pendingMount.label);
-            const cancel = () => {
-              trackShopStep("mount_change_cancel", pendingMount.label, { positions: positions.length });
-              setPendingMount(null);
-            };
-            return createPortal(
-              <div className="instruction-modal plisy-mount-alert" role="alertdialog" aria-modal="true" aria-labelledby="plisy-mount-alert-title" onClick={cancel}>
-                <div className="instruction-modal-shell plisy-mount-alert-shell" onClick={(event) => event.stopPropagation()}>
-                  <span className="plisy-mount-alert-icon" aria-hidden="true">!</span>
-                  <h3 id="plisy-mount-alert-title">Inny montaż = inne wymiary</h3>
-                  <p>
-                    Wpisane wymiary są do montażu <strong>{selectedMount ? plisyMountNazwa(selectedMount) : "poprzedniego"}</strong>.
-                    Przy montażu <strong>{plisyMountNazwa(pendingMount)}</strong> okno mierzy się inaczej:
-                  </p>
-                  <p className="plisy-mount-alert-how">
-                    {toNonInvasive
-                      ? "szerokość od kreseczki do kreseczki na skrzydle, a wysokość to całe skrzydło."
-                      : "w świetle szyby, od połowy uszczelki do połowy uszczelki."}
-                  </p>
-                  <p>
-                    Po zmianie usuniemy wpisane wymiary
-                    {positions.length === 2 ? " obu okien" : positions.length > 2 ? ` wszystkich ${positions.length} okien` : ""} – trzeba je
-                    zmierzyć i wpisać od nowa.
-                  </p>
-                  {/* Instrukcja pomiaru pod NOWY montaż od razu w alercie
-                      (właściciel, 07.10) - nie trzeba jej szukać po zmianie. */}
-                  <div className="plisy-mount-alert-guide">
-                    <PlisyMeasureGuide fixedMode={toNonInvasive ? "bezinwazyjny" : "standard"} startDelayMs={500} unit={dimensionUnit} />
-                  </div>
-                  <div className="plisy-mount-alert-actions">
-                    <button
-                      type="button"
-                      className="plisy-mount-alert-confirm"
-                      onClick={() => {
-                        trackShopStep("mount_change_confirm", pendingMount.label, { positions: positions.length });
-                        const option = pendingMount;
-                        setPendingMount(null);
-                        applyMountChange(option);
-                      }}
-                    >
-                      Zmieniam montaż, wpiszę nowe wymiary
-                    </button>
-                    <button type="button" className="plisy-mount-alert-cancel" onClick={cancel}>
-                      Zostaję przy obecnym montażu
-                    </button>
-                  </div>
-                </div>
-              </div>,
-              document.body,
-            );
-          })()
-        : null}
-
-      {guideBubble("hardware")}
-      <section className={`hero-product-step-accordion hero-product-step-accordion--hardware-color ${stepOneCollapsed ? "is-collapsed" : ""}`}>
-        <button
-          type="button"
-          ref={stepOneRef}
-          className="hero-product-step-head"
-          onClick={() => {
-            trackShopStep("configurator_step_toggle", "hardware_color", { collapsed_after: !stepOneCollapsed });
-            setStepOneCollapsed((prev) => !prev);
-          }}
-          aria-expanded={stepOneCollapsed ? "false" : "true"}
-        >
-          <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-            <span className={`hero-product-step-check ${selectedHardware ? "" : "is-muted"}`} aria-hidden="true">
-              {selectedHardware ? "✓" : "3"}
-            </span>
-            Kolor listew
-          </span>
-          <span className="hero-product-step-head-meta">
-            {selectedHardware && stepOneCollapsed ? (
-              <span
-                className="hero-product-step-head-swatch"
-                style={buildPlisyHardwareSwatchStyle(selectedHardware.imageUrl, selectedHardware.color)}
-                aria-hidden="true"
-              />
-            ) : null}
-            {selectedHardware ? <strong>{selectedHardware.label}</strong> : null}
-            {stepOneCollapsed ? (
-              <span className="hero-product-step-head-change">Zmień</span>
-            ) : (
-              <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-            )}
-          </span>
-        </button>
-        <div className="hero-product-step-body">
-          {/* Na tym kroku stawało najwięcej osób zaraz po cenie (audyt 1-7.10)
-              - wybór był bez żadnej wskazówki. */}
-          <p className="hero-product-config-hint">Wybierz kolor najbliższy ramie okna – listwy plisy zleją się wtedy z oknem.</p>
-          <div className="hardware-grid hardware-grid--visual hero-product-hardware-grid hero-product-hardware-color-grid">
-            {profile.hardware.map((option, index) => {
-              const isActive = option.id === selectedHardwareId;
-              const isLastSolo = profile.hardware.length % 3 === 1 && index === profile.hardware.length - 1;
-              return (
-                <div key={option.id} className={`hardware-card ${isActive ? "is-active" : ""} ${isLastSolo ? "is-last-solo" : ""}`}>
-                  <button
-                    type="button"
-                    className="hardware-card-main"
-                    onClick={() => {
-                      trackShopStep("select_hardware_color", option.label, { option_id: option.id });
-                      setSelectedHardwareId(option.id);
-                      setStepOneCollapsed(true);
-                      if (!stepOneChosen) setStepOneChosen(true);
-                      window.setTimeout(() => {
-                        scrollStepIntoView(bracketRequired && !selectedBracketId ? stepBracketRef.current : stepTwoRef.current);
-                      }, 380);
-                    }}
-                  >
-                    <span
-                      className="hardware-card-image"
-                      style={buildPlisyHardwareSwatchStyle(option.imageUrl, option.color)}
-                    />
-                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                    <span className="hardware-card-footer">
-                      <span className="hardware-dot" style={{ background: option.color }} />
-                      <strong>{option.label}</strong>
-                    </span>
-                  </button>
-                  {option.imageUrl ? (
-                    <button
-                      type="button"
-                      className="config-option-zoom"
-                      aria-label={`Powiększ: ${option.label}`}
-                      onClick={() => openZoom({ title: option.label, urls: [option.imageUrl], index: 0 })}
-                    >
-                      🔍
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* KROK 4: kolor uchwytów - tylko montaż bezinwazyjny */}
-      {selectedHardwareId && bracketRequired ? guideBubble("bracket") : null}
-      {selectedHardwareId && bracketRequired ? (
-        <section className={`hero-product-step-accordion hero-product-step-accordion--bracket ${stepBracketCollapsed ? "is-collapsed" : ""}`}>
-          <button
-            type="button"
-            ref={stepBracketRef}
-            className="hero-product-step-head"
-            onClick={() => {
-              trackShopStep("configurator_step_toggle", "bracket_color", { collapsed_after: !stepBracketCollapsed });
-              setStepBracketCollapsed((prev) => !prev);
-            }}
-            aria-expanded={stepBracketCollapsed ? "false" : "true"}
-          >
-            <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-              <span className={`hero-product-step-check ${selectedBracket ? "" : "is-muted"}`} aria-hidden="true">
-                {selectedBracket ? "✓" : "4"}
-              </span>
-              Wybierz kolor uchwytów bezinwazyjnych
-            </span>
-            <span className="hero-product-step-head-meta">
-              {selectedBracket && stepBracketCollapsed ? (
-                <span className="hero-product-step-head-swatch" style={{ background: selectedBracket.color }} aria-hidden="true" />
-              ) : null}
-              {selectedBracket ? <strong>{selectedBracket.label}</strong> : null}
-              {stepBracketCollapsed ? (
-                <span className="hero-product-step-head-change">Zmień</span>
-              ) : (
-                <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-              )}
-            </span>
-          </button>
-          <div className="hero-product-step-body">
-            <p className="hero-product-config-hint">Uchwyty zakładane na skrzydło są widoczne od strony pokoju — dobierz kolor do okna.</p>
-            <div className="plisy-bracket-grid">
-              {PLISY_BRACKET_COLORS.map((entry) => {
-                const isActive = entry.id === selectedBracketId;
-                return (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className={`plisy-bracket-option ${isActive ? "is-active" : ""}`}
-                    onClick={() => {
-                      trackShopStep("select_bracket_color", entry.label, { option_id: entry.id });
-                      setSelectedBracketId(entry.id);
-                      setStepBracketCollapsed(true);
-                      window.setTimeout(() => {
-                        scrollStepIntoView(stepTwoRef.current);
-                      }, 380);
-                    }}
-                  >
-                    <span className="plisy-bracket-dot" style={{ background: entry.color }} aria-hidden="true" />
-                    <strong>{entry.label}</strong>
-                    {isActive ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {selectedHardwareId && !bracketChosen ? (
-        <p className="hero-product-config-hint">Wybierz kolor uchwytów, aby przejść do kolejnego kroku.</p>
-      ) : null}
-
-      {selectedHardwareId && bracketChosen ? (
-        <>
-          {/* KROK 4/5: kolekcja tkanin */}
-          {guideBubble("group")}
-          <section className={`hero-product-step-accordion ${stepTwoCollapsed ? "is-collapsed" : ""}`}>
-            <button
-              type="button"
-              ref={stepTwoRef}
-              className="hero-product-step-head"
-              onClick={() => {
-                trackShopStep("configurator_step_toggle", "fabric_group", { collapsed_after: !stepTwoCollapsed });
-                setStepTwoCollapsed((prev) => !prev);
-              }}
-              aria-expanded={stepTwoCollapsed ? "false" : "true"}
-            >
-              <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                <span className={`hero-product-step-check ${fabricGroupChosen ? "" : "is-muted"}`} aria-hidden="true">
-                  {fabricGroupChosen ? "✓" : String(4 + stepShift)}
-                </span>
-                Wybierz kolekcję tkaniny
-              </span>
-              <span className="hero-product-step-head-meta">
-                {selectedFabricGroup ? <strong>{selectedFabricGroup.label}</strong> : null}
-                {stepTwoCollapsed ? (
-                  <span className="hero-product-step-head-change">Zmień</span>
-                ) : (
-                  <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-                )}
-              </span>
-            </button>
-            <div
-              className="hero-product-step-body"
-              style={stepTwoCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}
-            >
-              {/* Kafelek mówi tylko to, co potrzebne do wyboru: nazwa,
-                  plakietki, ile kolorów i - gdy wymiary są już znane - cena.
-                  Cały opis kolekcji siedzi pod ikoną "i" (właściciel,
-                  2026-09-24: "za dużo treści pod swatchami"). */}
-              {hasSizes ? (
-                <p className="hero-product-config-hint">Ceny policzone dla Twoich wymiarów ({sizeSummaryText}).</p>
-              ) : null}
-              <div className="plisy-coll-grid">
-                {profile.fabricGroups.map((group) => {
-                  const isActive = group.id === selectedFabricGroupId;
-                  const kind = plisyCollectionKind(group);
-                  const meta = plisyCollectionMeta(kind);
-                  const groupTotal = priceForSet(effectivePositions, group.id, null);
-                  return (
-                    <div key={group.id} className={`plisy-coll-cell ${isActive ? "is-active" : ""}`}>
-                      <button
-                        type="button"
-                        className={`hero-product-mesh-option plisy-coll-card ${isActive ? "is-active" : ""}`}
-                        onClick={() => {
-                          trackShopStep("select_fabric_group", group.label, { option_id: group.id });
-                          pickFabricGroup(group.id);
-                        }}
-                      >
-                        {/* Tło kafelka: cztery zdjęcia tkanin z TEJ kolekcji,
-                            przenikające się płynnie (właściciel, 2026-09-24).
-                            Ikona zostaje na wierzchu, a warstwa przyciemniająca
-                            trzyma czytelność nazwy i plakietek. */}
-                        <PlisyCollectionBackdrop group={group} />
-                        <span className="plisy-coll-card-visual">
-                          <PlisyCollectionVisual kind={kind} />
-                        </span>
-                        <span className="plisy-coll-card-body">
-                          <span className="plisy-coll-card-head">
-                            <strong>{przeznaczenieKolekcji(group) || group.label}</strong>
-                            {przeznaczenieKolekcji(group) ? <small className="plisy-coll-card-nazwa">{group.label}</small> : null}
-                            <span className="plisy-coll-card-badges">
-                              {meta.badges.map((badge) => (
-                                <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : badge === "Plaster miodu" ? "is-structure" : ""}`}>
-                                  {badge}
-                                </span>
-                              ))}
-                            </span>
-                          </span>
-                          <span className="plisy-coll-card-meta">
-                            {group.swatches.length ? (
-                              <span className="plisy-coll-card-count">{plisyColorCountLabel(group.swatches.length)}</span>
-                            ) : null}
-                            {groupTotal !== null ? (
-                              <span className="plisy-coll-card-price">
-                                {renderPrice(groupTotal)}
-                                <em>{priceScopeLabel}</em>
-                              </span>
-                            ) : null}
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        className="plisy-coll-card-info"
-                        aria-label={`Informacje o kolekcji ${group.label}`}
-                        title="Co to za kolekcja?"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          trackShopStep("fabric_group_info", group.label, { option_id: group.id });
-                          setCollectionInfoId(group.id);
-                        }}
-                      >
-                        i
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          {collectionInfoGroup && typeof document !== "undefined"
-            ? createPortal(
-                <div
-                  className="instruction-modal instruction-modal--collection"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label={`Kolekcja ${collectionInfoGroup.label}`}
-                  onClick={() => setCollectionInfoId("")}
-                >
-                  <div className="instruction-modal-shell instruction-modal-shell--collection" onClick={(event) => event.stopPropagation()}>
-                    <button type="button" className="instruction-modal-close" aria-label="Zamknij" onClick={() => setCollectionInfoId("")}>
-                      ×
-                    </button>
-                    <div className="plisy-coll-modal-head">
-                      <span className="plisy-coll-card-visual">
-                        <PlisyCollectionVisual kind={plisyCollectionKind(collectionInfoGroup)} />
-                      </span>
-                      <div>
-                        <h3>{collectionInfoGroup.label}</h3>
-                        <span className="plisy-coll-card-badges">
-                          {plisyCollectionMeta(plisyCollectionKind(collectionInfoGroup)).badges.map((badge) => (
-                            <span key={badge} className={`plisy-coll-card-badge ${badge === "Zaciemnia" ? "is-dark" : badge === "Termo" ? "is-thermo" : badge === "Plaster miodu" ? "is-structure" : ""}`}>
-                              {badge}
-                            </span>
-                          ))}
-                        </span>
-                      </div>
-                    </div>
-                    <p>{plisyCollectionMeta(plisyCollectionKind(collectionInfoGroup)).light}</p>
-                    {collectionInfoGroup.note ? <p>{collectionInfoGroup.note}</p> : null}
-                    <p className="plisy-coll-modal-count">
-                      {plisyColorCountLabel(collectionInfoGroup.swatches.length)} do wyboru w tej kolekcji.
-                    </p>
-                    <button
-                      type="button"
-                      className="plisy-coll-modal-cta"
-                      onClick={() => {
-                        const group = collectionInfoGroup;
-                        trackShopStep("select_fabric_group", group.label, { option_id: group.id, source: "info_modal" });
-                        setCollectionInfoId("");
-                        pickFabricGroup(group.id);
-                      }}
-                    >
-                      Wybieram tę kolekcję
-                    </button>
-                  </div>
-                </div>,
-                document.body,
-              )
-            : null}
-
-          {fabricGroupChosen ? (
-            <>
-              {/* KROK 5/6: kolor tkaniny */}
-              {guideBubble("fabric")}
-              <section className={`hero-product-step-accordion hero-product-step-accordion--fabric-color ${stepThreeCollapsed ? "is-collapsed" : ""}`}>
-                <button
-                  type="button"
-                  ref={stepThreeRef}
-                  className="hero-product-step-head"
-                  onClick={() => {
-                    trackShopStep("configurator_step_toggle", "fabric_color", { collapsed_after: !stepThreeCollapsed });
-                    setStepThreeCollapsed((prev) => !prev);
-                  }}
-                  aria-expanded={stepThreeCollapsed ? "false" : "true"}
-                >
-                  <span className="hero-product-config-step-title hero-product-config-step-title--muted">
-                    <span className={`hero-product-step-check ${fabricChosen ? "" : "is-muted"}`} aria-hidden="true">
-                      {fabricChosen ? "✓" : String(5 + stepShift)}
-                    </span>
-                    Wybierz kolor tkaniny
-                  </span>
-                  <span className="hero-product-step-head-meta">
-                    {selectedFabric && stepThreeCollapsed ? (
-                      <span
-                        className="hero-product-step-head-swatch"
-                        style={buildPlisyHardwareSwatchStyle(selectedFabric.thumbnailUrl, selectedFabric.color)}
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    {selectedFabric ? <strong>{selectedFabric.label}</strong> : null}
-                    {stepThreeCollapsed ? (
-                      <span className="hero-product-step-head-change">Zmień</span>
-                    ) : (
-                      <span className="hero-product-step-head-chevron" aria-hidden="true">▴</span>
-                    )}
-                  </span>
-                </button>
-                <div className="hero-product-step-body">
-                  {/* Ulubione tkaniny zaznaczone na landingu ("Którą kolekcję
-                      tkanin wybrać") - tu wracają jako skrót, także wtedy, gdy
-                      pochodzą z innej kolekcji (wybór przełącza kolekcję). */}
-                  {favouriteSwatches.length ? (
-                    <div className="plisy-fav-strip">
-                      <span className="plisy-fav-strip-label">★ Twoje ulubione</span>
-                      <div className="plisy-fav-strip-items">
-                        {favouriteSwatches.map((entry) => (
-                          <button
-                            key={entry.swatch.id}
-                            type="button"
-                            className={`plisy-fav-chip ${entry.swatch.id === selectedFabricId ? "is-active" : ""}`}
-                            title={`${entry.swatch.label} · ${entry.group.label}`}
-                            onClick={() => {
-                              trackShopStep("select_fabric_color", entry.swatch.label, { option_id: entry.swatch.id, source: "favourites" });
-                              if (entry.group.id !== selectedFabricGroupId) setSelectedFabricGroupId(entry.group.id);
-                              setSelectedFabricId(entry.swatch.id);
-                              setStepThreeCollapsed(true);
-                              setStepTwoCollapsed(true);
-                              window.setTimeout(() => {
-                                scrollStepIntoView(stepFourRef.current);
-                              }, 380);
-                            }}
-                          >
-                            <span
-                              className="plisy-fav-chip-swatch"
-                              style={buildPlisyHardwareSwatchStyle(entry.swatch.thumbnailUrl, entry.swatch.color)}
-                              aria-hidden="true"
-                            />
-                            <span>{entry.swatch.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  {swatchesForGroup.length ? (
-                    <div className="plisy-fabric-tools">
-                      <button
-                        type="button"
-                        className="plisy-fabric-gallery-cta"
-                        onClick={() => {
-                          const at = Math.max(0, swatchesForGroup.findIndex((swatch) => swatch.id === selectedFabricId));
-                          setFabricGalleryIndex(at);
-                          trackShopStep("fabric_gallery_open", selectedFabricGroup?.label || "", { source: "cta" });
-                        }}
-                      >
-                        🔍 Zobacz duże zdjęcia tkanin
-                      </button>
-                      <WizButton zrodlo="konfigurator-tkanina" variant="link" tkanina={selectedFabricId || undefined} listwa={selectedHardwareId || undefined} />
-                      {samplesEnabled ? (
-                        <a
-                          className="plisy-fabric-gallery-cta"
-                          href={`/probki?t=${encodeURIComponent(
-                            [
-                              ...(selectedFabricId ? [`${selectedFabricGroupId}.${selectedFabricId}`] : []),
-                              ...favouriteSwatches.map((entry) => `${entry.group.id}.${entry.swatch.id}`),
-                            ]
-                              .filter((v, i, all) => all.indexOf(v) === i)
-                              .slice(0, 5)
-                              .join(","),
-                          )}`}
-                          onClick={() => trackShopStep("samples_entry", selectedFabricGroup?.label || "", { source: "configurator" })}
-                        >
-                          🧵 Zamów bezpłatne próbki
-                        </a>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  <div className="hero-product-mesh-grid hero-product-mesh-grid--visual">
-                    {swatchesForGroup.map((swatch, swatchIndex) => {
-                      const isActive = swatch.id === selectedFabricId;
-                      return (
-                        <div key={swatch.id} className="plisy-swatch-cell">
-                          <button
-                            type="button"
-                            className={`hero-product-mesh-option hero-product-mesh-option--visual ${isActive ? "is-active" : ""}`}
-                            title={swatch.label}
-                            onClick={() => {
-                              trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id });
-                              setSelectedFabricId(swatch.id);
-                              setStepThreeCollapsed(true);
-                              window.setTimeout(() => {
-                                scrollStepIntoView(stepFourRef.current);
-                              }, 380);
-                            }}
-                          >
-                            <span
-                              className="hero-product-mesh-option-image"
-                              style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)}
-                            />
-                            <strong>{swatch.label}</strong>
-                          </button>
-                          <button
-                            type="button"
-                            className={`plisy-swatch-fav ${isFavouriteSwatch(swatch.id) ? "is-on" : ""}`}
-                            aria-label={isFavouriteSwatch(swatch.id) ? `Usuń ${swatch.label} z ulubionych` : `Dodaj ${swatch.label} do ulubionych`}
-                            aria-pressed={isFavouriteSwatch(swatch.id)}
-                            title={isFavouriteSwatch(swatch.id) ? "W ulubionych" : "Dodaj do ulubionych"}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleFavouriteSwatch(swatch.id);
-                              trackShopStep("fabric_favourite", swatch.label, {
-                                option_id: swatch.id,
-                                on: !isFavouriteSwatch(swatch.id),
-                                source: "configurator",
-                              });
-                            }}
-                          >
-                            ♥
-                          </button>
-                          <button
-                            type="button"
-                            className="plisy-swatch-zoom"
-                            aria-label={`Powiększ ${swatch.label}`}
-                            title="Powiększ"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setFabricGalleryIndex(swatchIndex);
-                              trackShopStep("fabric_gallery_open", swatch.label, { source: "swatch", option_id: swatch.id });
-                            }}
-                          >
-                            🔍
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {fabricGalleryIndex !== null && swatchesForGroup.length ? (
-                    <PlisyFabricGallery
-                      swatches={swatchesForGroup}
-                      index={Math.min(fabricGalleryIndex, swatchesForGroup.length - 1)}
-                      collectionLabel={selectedFabricGroup?.label || "Tkaniny"}
-                      selectedId={selectedFabricId}
-                      onIndexChange={setFabricGalleryIndex}
-                      onClose={() => setFabricGalleryIndex(null)}
-                      onPick={(swatch) => {
-                        trackShopStep("select_fabric_color", swatch.label, { option_id: swatch.id, source: "gallery" });
-                        setSelectedFabricId(swatch.id);
-                        setFabricGalleryIndex(null);
-                        setStepThreeCollapsed(true);
-                        window.setTimeout(() => {
-                          scrollStepIntoView(stepFourRef.current);
-                        }, 380);
-                      }}
-                    />
-                  ) : null}
-                </div>
-              </section>
-
+              </>) : null}
               {/* Podgląd, informacja o ugięciu, kwota i "Dodaj do koszyka" */}
               {fabricChosen ? (
                 <div ref={stepFourRef} className="hero-product-mini-summary is-revealed">
@@ -2381,7 +2394,7 @@ export default function ConfiguratorPanel({
                           }, 80);
                         }}
                       >
-                        Wpisz wymiary (krok 2)
+                        Wpisz wymiary
                       </button>
                     </div>
                   ) : null}

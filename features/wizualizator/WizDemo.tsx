@@ -20,7 +20,13 @@ const PANES: { rogi: Pt[]; wMm: number; hMm: number }[] = [
 ];
 const TKANINY = ["pp153", "pp166", "pp158"];
 const ETAPY = ["Zdjęcie", "Kolory", "Podgląd", "Wycena"];
-const LOOP = 11000;
+const CAPTIONS = [
+  "Zrób zdjęcie. Wizualizator znajdzie szyby i nałoży na nie plisy.",
+  "Dobierz tkaninę i kolor belek do wnętrza.",
+  "Wygeneruj bardziej naturalny podgląd w swoim pokoju.",
+  "Ze zdjęcia oszacujemy wymiary i pokażemy wstępną cenę.",
+];
+const LOOP = 13000;
 
 const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 const seg = (t: number, a: number, b: number) => Math.min(1, Math.max(0, (t - a) / (b - a)));
@@ -73,7 +79,7 @@ export default function WizDemo() {
         raf = requestAnimationFrame(frame);
         if (!visible) return;
         const t = (now - t0) % LOOP;
-        const e = t < 3800 ? 0 : t < 7200 ? 1 : t < 9700 ? 2 : 3;
+        const e = t < 3900 ? 0 : t < 7000 ? 1 : t < 10100 ? 2 : 3;
         setEtap((p) => (p === e ? p : e));
         // skan i obrysy szyb
         setScan(t >= 1200 && t < 3000 ? { y: seg(t, 1200, 2600), obrys: seg(t, 1500, 2800) } : null);
@@ -99,7 +105,7 @@ export default function WizDemo() {
           goraL = 0.3;
           dolL = 0.92;
         }
-        const fi = t < 7200 ? 0 : Math.min(TKANINY.length - 1, Math.floor((t - 7200) / 1100));
+        const fi = t < 7200 ? 0 : Math.min(TKANINY.length - 1, Math.floor((Math.min(t, 9700) - 7200) / 1100));
         const f = fabrics[fi] || { id: "", color: [0.86, 0.84, 0.78] as [number, number, number], tr: 0.3 };
         const panes: PaneRender[] = t < 2800 ? [] : PANES.map((p, i) => ({
           id: "d" + i, corners: p.rogi, top: i === 1 ? gora : goraL, bottom: i === 1 ? dol : dolL,
@@ -146,13 +152,16 @@ export default function WizDemo() {
         </>
       ) : null}
       {lapka ? <span className={s.demoHand} style={{ left: lapka.x, top: lapka.y }} aria-hidden="true">👆</span> : null}
-      <div className={s.demoSteps}>
-        {ETAPY.map((n, i) => (
-          <span key={n} className={i === etap ? s.demoStepOn : s.demoStep}>{i + 1}. {n}</span>
-        ))}
+      <div className={s.demoStory}>
+        <ol className={s.demoProgress}>
+          {ETAPY.map((name, index) => (
+            <li key={name} aria-current={etap === index ? "step" : undefined}>{name}</li>
+          ))}
+        </ol>
+        <p key={etap} className={s.demoCaption}>{CAPTIONS[etap]}</p>
       </div>
+
       {!gotowe ? <div className={s.loading}>…</div> : null}
-      <span className={s.demoBadge}>{etap === 3 ? "Wymiary ze zdjęcia dają orientacyjną cenę" : "Wizualizacja poglądowa"}</span>
     </div>
   );
 }

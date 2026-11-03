@@ -6075,6 +6075,7 @@ export default function Home({
                           createdAt: new Date().toISOString(),
                           oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
                           splitFromWidthMm: result.splitFromWidthMm || undefined,
+                          notes: result.notes,
                           sagNoticeShown: result.sagNoticeShown || undefined,
                           sagLimitMm: result.sagNoticeShown ? result.sagLimitMm : undefined,
                         };
@@ -6107,6 +6108,7 @@ export default function Home({
                           createdAt: new Date().toISOString(),
                           oversizeSurchargeAmount: result.oversizeSurchargeAmount || undefined,
                           splitFromWidthMm: result.splitFromWidthMm || undefined,
+                          notes: result.notes,
                           sagNoticeShown: result.sagNoticeShown || undefined,
                           sagLimitMm: result.sagNoticeShown ? result.sagLimitMm : undefined,
                         };
