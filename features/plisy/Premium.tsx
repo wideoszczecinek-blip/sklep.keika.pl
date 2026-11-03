@@ -9,6 +9,8 @@ import { useMemo, useRef, useState } from "react";
 import { trackShopStep } from "@/lib/track-step";
 import { openWizualizator } from "@/lib/wizualizator/flag";
 import { useWizVisible } from "@/features/wizualizator/WizEntry";
+import { DoradcaTkanin } from "./DoradcaTkanin";
+import PlisyMeasureGuide from "./MeasureGuide";
 import { useCompanyRating, useCompanyReviews } from "./Reviews";
 import { opinieLabel } from "./LandingV2";
 import { COMPANY_LEGAL } from "@/lib/company-legal";
@@ -443,48 +445,9 @@ export function LejekCeny({ cena, onWymiar }: {
   );
 }
 
-const POKOJE = [
-  { pokoj: "Sypialnia", co: "Podgumowane (Blackout)", czemu: "Zaciemnia – podgumowany rdzeń blokuje światło, także latem o świcie." },
-  { pokoj: "Salon i jadalnia", co: "Klasyczne albo DUO plaster miodu", czemu: "Rozprasza światło i chroni prywatność, w pokoju dalej jest jasno." },
-  { pokoj: "Okna od południa, poddasze", co: "Reflex albo DUO TERMO", czemu: "Powłoka od strony szyby odbija słońce – mniej nagrzewania latem." },
-  { pokoj: "Biuro, pokój dziecka", co: "Klasyczne albo Blackout", czemu: "Mniej odblasków na ekranie, a w pokoju dziecka zaciemnienie na drzemkę." },
-];
-
-/** Dobór tkaniny przez pomieszczenie (wzór Stylus) - przed listą 5 kolekcji. */
+/** Doradca tkanin (3.11): ankieta, filtry przeznaczenia i koloru, zapis w konfiguratorze - features/plisy/DoradcaTkanin.tsx. */
 export function LejekTkaniny({ onKolekcje }: { onKolekcje: () => void }) {
-  const wiz = useWizVisible();
-  return (
-    <section className="pm-section" aria-labelledby="lj-tk-t">
-      <p className="pm-eyebrow">Tkanina</p>
-      <h2 id="lj-tk-t" className="pm-title">Która tkanina do którego pokoju</h2>
-      <div className="lj-pokoje">
-        {POKOJE.map((p) => (
-          <div key={p.pokoj} className="lj-pokoj">
-            <b>{p.pokoj}</b>
-            <span className="lj-pokoj-co">{p.co}</span>
-            <span>{p.czemu}</span>
-          </div>
-        ))}
-      </div>
-      <div className="lj-akcje">
-        {wiz ? (
-          <button
-            type="button"
-            className="pm-btn"
-            onClick={() => {
-              trackShopStep("lejek_tkanina_wiz", "plisy", {});
-              openWizualizator({ zrodlo: "lejek-tkaniny" });
-            }}
-          >
-            Zobacz kolor w swoim oknie
-          </button>
-        ) : null}
-        <button type="button" className="pm-link" onClick={onKolekcje}>
-          Wszystkie 150 tkanin z cenami →
-        </button>
-      </div>
-    </section>
-  );
+  return <DoradcaTkanin onKolekcje={onKolekcje} />;
 }
 
 /** Pomiar w 2 minuty + co, jeśli się pomylisz (tylko to, co dziś obowiązuje - FAQ „Co jeśli źle zmierzę?”). */
@@ -503,15 +466,19 @@ export function LejekPomiar({ onAnimacja, onCzat }: { onAnimacja: () => void; on
           <span>Szerokość: szyba razem z obiema listwami przyszybowymi. Wysokość: całe skrzydło okna.</span>
         </div>
       </div>
+      {/* właściciel 3.11: „zapętlona animacja z opisem - musi być widoczna” - gra od razu na stronie, na zmianę oba montaże */}
+      <div className="lj-pomiar-anim">
+        <PlisyMeasureGuide loop startDelayMs={400} />
+      </div>
       <button
         type="button"
-        className="pm-btn"
+        className="pm-link"
         onClick={() => {
           trackShopStep("lejek_pomiar_animacja", "plisy", {});
           onAnimacja();
         }}
       >
-        Zobacz animację pomiaru
+        Instrukcja pomiaru krok po kroku →
       </button>
       <div className="lj-pomylka">
         <b>Pomyliłeś wymiar?</b>

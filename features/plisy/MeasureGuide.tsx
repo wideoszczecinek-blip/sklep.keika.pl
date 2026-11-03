@@ -272,7 +272,10 @@ export default function PlisyMeasureGuide({
   initialMode,
   startDelayMs = 900,
   unit = "mm",
+  loop = false,
 }: {
+  /** Strona plis (3.11): animacja w pętli; bez fixedMode co obieg zmienia montaż (przykręcany ↔ bez wiercenia). */
+  loop?: boolean;
   /** Unit the configurator's fields currently take (cm/mm toggle,
    * 2026-09-17) - step 4 reads "Wpisz w cm" when that's what the field
    * wants, so the guide never tells someone to type mm into a cm field. */
@@ -364,7 +367,15 @@ export default function PlisyMeasureGuide({
       const e = Math.min(TOTAL, now - start);
       setT(e);
       if (e < TOTAL) rafRef.current = requestAnimationFrame(tick);
+      else if (loop) {
+        // pauza na końcowej klatce (odczyt wymiarów), potem kolejny obieg
+        loopTimer = window.setTimeout(() => {
+          if (!fixedMode) setPickedMode((m) => (m === "standard" ? "bezinwazyjny" : "standard"));
+          setRun((r) => r + 1);
+        }, 3200);
+      }
     };
+    let loopTimer = 0;
     // A replay is deliberate, so it starts almost at once; the first play
     // after opening waits for the eye.
     const reset = window.setTimeout(() => setT(0), 0);
@@ -374,9 +385,10 @@ export default function PlisyMeasureGuide({
     return () => {
       window.clearTimeout(reset);
       window.clearTimeout(delay);
+      window.clearTimeout(loopTimer);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [armed, mode, run, reduced, startDelayMs]);
+  }, [armed, mode, run, reduced, startDelayMs, loop, fixedMode]);
 
   /* ---- derive the frame from t ---- */
   const sashO = armed ? easeOut(seg(t, T.sash)) : 1;
