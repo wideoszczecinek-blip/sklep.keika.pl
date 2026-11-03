@@ -2358,6 +2358,21 @@ export default function ConfiguratorPanel({
                   >
                     {submitLabel}
                   </button>
+                  {/* AGN-937: pomiar to najczęstszy temat czatu, a część osób widzi
+                      cenę i nie dodaje do koszyka - ten sam przewodnik co
+                      „Jak mierzyć?” w kroku wymiarów, bez blokowania zakupu. */}
+                  {onAddVariant && !isCartEdit && hasSizes ? (
+                    <button
+                      type="button"
+                      className="plisy-final-measure-link"
+                      onClick={() => {
+                        setMeasureGuideOpen(true);
+                        trackShopStep("configurator_measure_guide", "open", { mount: measureMode, source: "final_summary" });
+                      }}
+                    >
+                      Nie masz pewności co do wymiaru? Zobacz, jak zmierzyć okno
+                    </button>
+                  ) : null}
                   {/* Tylko na stronie produktu (jest onAddVariant) - edycja pozycji
                       w koszyku zmienia jedną sztukę i nie ma zestawu. isCartEdit
                       się tu nie nadaje: montaż z szybkiej wyceny też go włącza. */}
