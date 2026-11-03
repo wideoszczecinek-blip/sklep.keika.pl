@@ -24842,3 +24842,14 @@ html body button.pl-quick-tk.is-active { border-color: #d94d00; background: #fff
 .checkout-check-toast { position: fixed; z-index: 2147483000; inset-inline: 1rem; top: max(1rem, env(safe-area-inset-top)); display: flex; justify-content: center; pointer-events: none; }
 .checkout-check-toast .checkout-delivery-status { box-shadow: 0 10px 30px #10251d38; }
 .checkout-confirm-data { margin: .7rem 0; border: 0; border-radius: 999px; padding: .6rem .9rem; background: #24564a; color: white; font: inherit; font-weight: 650; cursor: pointer; }
+
+/* Czytelne progi promocji w jasnym podsumowaniu konfiguratora plis. */
+.plisy-price-card .qty-promo { background: #fff8ec; color: #173b32; border-color: #b77328; }
+.plisy-price-card .qty-promo-head, .plisy-price-card .qty-promo-head span, .plisy-price-card .qty-promo-head strong { color: #173b32; }
+.plisy-price-card .qty-promo-head .qty-promo-claim { color: #96330e; }
+.plisy-price-card .qty-promo-head .qty-promo-badge { color: #fff; background: #a13912; }
+.plisy-price-card .qty-promo-tile { background: #fff; color: #173b32; border-color: #9caea5; }
+.plisy-price-card .qty-promo-tile.is-best { background: #e7f4ec; border-color: #14613f; }
+.plisy-price-card .qty-promo-tile-label, .plisy-price-card .qty-promo-tile strong, .plisy-price-card .qty-promo-tile small, .plisy-price-card .qty-promo-tile-was { color: #173b32; }
+.plisy-price-card .qty-promo-tile-label em { color: #96330e; }
+.plisy-price-card .qty-promo-foot, .plisy-price-card .qty-promo-foot a { color: #173b32; }
