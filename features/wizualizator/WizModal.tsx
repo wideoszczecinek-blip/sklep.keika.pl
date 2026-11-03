@@ -897,17 +897,29 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   };
 
   const zamow = () => {
-    const p = panes[sel] || panes[0];
-    if (!p || !katalog) return;
-    const t = katalog.tkaniny.find((x) => x.id === p.tkanina);
-    const pick: WizPickDetail = { hardwareId: p.listwa, fabricGroupId: t?.kolekcja, fabricId: p.tkanina, requireDimensions: true };
+    if (!katalog) return;
+    const previousRooms = zdjecia.filter((room) => room.token !== token && !room.wKoszyku);
+    const rooms = [
+      { name: zdjecia.find((room) => room.token === token)?.nazwa, panes },
+      ...previousRooms.map((room) => ({ name: room.nazwa, panes: cacheRef.current.get(room.token)?.panes || [] })),
+    ];
+    const positions = rooms.flatMap((room) => room.panes.filter((pane) => !pane.pomin).map((pane) => ({
+      hardwareId: pane.listwa,
+      fabricGroupId: katalog.tkaniny.find((fabric) => fabric.id === pane.tkanina)?.kolekcja || "",
+      fabricId: pane.tkanina,
+      room: room.name,
+    })));
+    const first = positions[0];
+    if (!first) return;
+    const pick: WizPickDetail = { ...first, requireDimensions: true, positions };
+
     try {
       const prev = JSON.parse(window.localStorage.getItem(DRAFT_KEY) || "{}");
       window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...prev, ...pick, widthMm: undefined, heightMm: undefined, savedAt: Date.now() }));
     } catch {
       /* szkic to wygoda */
     }
-    wizEvent("wiz_do_konfiguratora", token, { tkanina: p.tkanina, listwa: p.listwa, szyb_w_domu: zdjecia.reduce((a, z) => a + z.szyb, 0) });
+    wizEvent("wiz_do_konfiguratora", token, { tkanina: first.fabricId, listwa: first.hardwareId, szyb_w_domu: zdjecia.reduce((a, z) => a + z.szyb, 0) });
     const panel = document.querySelector(".hero-product-config-panel");
     if (panel && window.location.pathname.startsWith("/plisy")) {
       window.dispatchEvent(new CustomEvent<WizPickDetail>(WIZ_PICK_EVENT, { detail: pick }));

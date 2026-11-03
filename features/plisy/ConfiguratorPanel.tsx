@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WizButton } from "@/features/wizualizator/WizEntry";
 import { DIMENSION_UNIT_STORAGE_KEY, inputToMm, looksLikeCm as wygladaNaCm, mmToInput, readStoredUnit, timesTenFix as poprawkaJednostki, type DimensionUnit } from "@/features/plisy/wymiary";
-import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
+import { WIZ_PICK_EVENT, type WizPickDetail, type WizPosition } from "@/lib/wizualizator/flag";
 import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
@@ -77,6 +77,7 @@ type ZoomPreview = { title: string; urls: string[]; index: number };
 // (priceForSize), dzięki czemu zmiana kolekcji przelicza cały zestaw i przy
 // wyborze kolekcji można pokazać cenę TYCH okien.
 type PlisyPosition = {
+  wiz?: WizPosition;
   id: string;
   /** Szerokość JEDNEJ plisy (przy podziale - połowa okna). */
   widthMm: number;
@@ -90,6 +91,10 @@ type PlisyPosition = {
 };
 
 /** Okna na pozycję: przy podziale qty to plisy (2 na okno). */
+function wizRows(positions: WizPosition[] = []): PlisyPosition[] {
+  return positions.map((wiz, index) => ({ id: `wiz-${index}`, widthMm: 0, heightMm: 0, qty: 1, wiz }));
+}
+
 function windowsInPosition(position: PlisyPosition): number {
   return position.splitFromMm ? Math.max(1, Math.round(position.qty / 2)) : position.qty;
 }
@@ -150,6 +155,7 @@ function formatZl(value: number): string {
 const DRAFT_STORAGE_KEY = "keika_plisy_draft_v1";
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 type PlisyDraft = {
+  positions?: WizPosition[];
   mountId?: string;
   bracketColorId?: string;
   hardwareId?: string;
@@ -334,7 +340,8 @@ export default function ConfiguratorPanel({
       if (d.requireDimensions) {
         setWidth("");
         setHeight("");
-        setPositions([]);
+        setPositions(wizRows(d.positions));
+        setStepDimsCollapsed(false);
         setEditingPositionId(null);
       }
       if (d.hardwareId) {
@@ -432,7 +439,7 @@ export default function ConfiguratorPanel({
   // kolejną" below - same mount/hardware/fabric for every position, only
   // width/height/qty differ. Nothing here reaches the cart until the single
   // final add-to-cart button flushes the whole set (see handleFinalSubmit).
-  const [positions, setPositions] = useState<PlisyPosition[]>([]);
+  const [positions, setPositions] = useState<PlisyPosition[]>(() => wizRows(draftSeed?.positions));
 
   useEffect(() => {
     if (isCartEdit) return;
@@ -612,6 +619,7 @@ export default function ConfiguratorPanel({
   const typedPosition: PlisyPosition | null = dimensionsValid
     ? {
         id: editingPositionId || "__typed",
+        wiz: positions.find((position) => position.id === editingPositionId)?.wiz,
         widthMm: pieceWidthMm,
         heightMm: heightNum,
         qty: splitActive ? quantityNum * 2 : quantityNum,
@@ -710,28 +718,45 @@ export default function ConfiguratorPanel({
     qty: number,
     fabricGroupId: string,
     fabric: FabricSwatch | null,
+    hardware = pricingHardware,
   ): { unit: number; total: number } | null {
-    if (!profile || !pricingHardware || !fabricGroupId) return null;
+    if (!profile || !hardware || !fabricGroupId) return null;
     const matrix = calcPlisyPrice(
       { ...profile, priceAdjustmentPercent: profile.priceAdjustmentPercent + priceAdjustmentPercent },
       widthMm,
       heightMm,
-      pricingHardware.id,
+      hardware.id,
       fabricGroupId,
     );
     if (matrix === null) return null;
-    const unit = applyPriceDeltas(matrix, [selectedMount, pricingHardware, fabric]);
+    const unit = applyPriceDeltas(matrix, [selectedMount, hardware, fabric]);
     return { unit, total: Math.round(unit * Math.max(1, qty) * 100) / 100 };
   }
 
   /** Cena całego zestawu w danej kolekcji - null, gdy choć jednej pozycji
    * nie da się wycenić (brak wiersza w matrycy). Tym liczone są ceny
    * pokazywane już przy kafelkach kolekcji. */
+  function positionOptions(position: PlisyPosition) {
+    const pick = position.wiz;
+    const hardware = pick ? profile?.hardware.find((option) => option.id === pick.hardwareId) : selectedHardware;
+    const group = pick ? profile?.fabricGroups.find((option) => option.id === pick.fabricGroupId) : selectedFabricGroup;
+    const fabric = pick ? group?.swatches.find((option) => option.id === pick.fabricId) : selectedFabric;
+    return { hardware, group, fabric };
+  }
+
+  function positionPrice(position: PlisyPosition, groupId: string, fabric: FabricSwatch | null) {
+    if (!position.widthMm || !position.heightMm) return null;
+    if (!position.wiz) return priceForSize(position.widthMm, position.heightMm, position.qty, groupId, fabric);
+    const options = positionOptions(position);
+    if (!options.hardware || !options.group || !options.fabric) return null;
+    return priceForSize(position.widthMm, position.heightMm, position.qty, options.group.id, options.fabric, options.hardware);
+  }
+
   function priceForSet(list: PlisyPosition[], fabricGroupId: string, fabric: FabricSwatch | null): number | null {
     if (list.length === 0) return null;
     let sum = 0;
     for (const position of list) {
-      const price = priceForSize(position.widthMm, position.heightMm, position.qty, fabricGroupId, fabric);
+      const price = positionPrice(position, fabricGroupId, fabric);
       if (!price) return null;
       sum += price.total;
     }
@@ -812,7 +837,8 @@ export default function ConfiguratorPanel({
     dimensionsValid
       ? {
           id: editingPositionId || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          widthMm: pieceWidthMm,
+          wiz: positions.find((position) => position.id === editingPositionId)?.wiz,
+        widthMm: pieceWidthMm,
           heightMm: heightNum,
           qty: splitActive ? quantityNum * 2 : quantityNum,
           ...(splitActive ? { splitFromMm: widthNum } : {}),
@@ -844,7 +870,7 @@ export default function ConfiguratorPanel({
    * stojący przy kroku montażu nie widział. Bez wymiarów zmiana od razu. */
   function handleMountChange(option: MountOption) {
     if (option.id === selectedMountId) return;
-    if (hasSizes || widthNum > 0 || heightNum > 0) {
+    if (positions.some((position) => position.widthMm > 0) || widthNum > 0 || heightNum > 0) {
       trackShopStep("mount_change_prompt", option.label, { positions: positions.length });
       setPendingMount(option);
       return;
@@ -861,9 +887,9 @@ export default function ConfiguratorPanel({
     } else {
       setSelectedBracketId("");
     }
-    if (hasSizes || widthNum > 0 || heightNum > 0) {
+    if (positions.some((position) => position.widthMm > 0) || widthNum > 0 || heightNum > 0) {
       trackShopStep("mount_change_remeasure", option.label, { positions: positions.length, cleared: true });
-      setPositions([]);
+      setPositions((previous) => previous.filter((position) => position.wiz).map((position) => ({ ...position, widthMm: 0, heightMm: 0, splitFromMm: undefined })));
       setWidth("");
       setHeight("");
       setQuantity("1");
@@ -910,8 +936,8 @@ export default function ConfiguratorPanel({
   // opens the size step on it; "+ Dodaj kolejną" becomes "Zapisz zmiany".
   function handleEditPosition(position: PlisyPosition) {
     setEditingPositionId(position.id);
-    setWidth(mmToInput(position.splitFromMm || position.widthMm, dimensionUnit));
-    setHeight(mmToInput(position.heightMm, dimensionUnit));
+    setWidth(position.widthMm ? mmToInput(position.splitFromMm || position.widthMm, dimensionUnit) : "");
+    setHeight(position.heightMm ? mmToInput(position.heightMm, dimensionUnit) : "");
     setQuantity(String(windowsInPosition(position)));
     setStepDimsCollapsed(false);
     trackShopStep("edit_position_open", "plisy", { width_mm: position.widthMm, height_mm: position.heightMm, qty: position.qty });
@@ -1006,7 +1032,7 @@ export default function ConfiguratorPanel({
   // the set right before it's sent, so nothing typed-but-not-yet-added is
   // silently dropped.
   const canFinalSubmit =
-    bracketChosen && fabricChosen && hasSizes && setGrandTotal !== null;
+    bracketChosen && fabricChosen && hasSizes && setGrandTotal !== null && (!editingPositionId || dimensionsValid);
 
   // Pasek „Dodaj do koszyka” przyklejony do dołu ekranu na telefonie
   // (Analityczka strony Agencji AI, 1.11.2026 - AGN-439/444/448: 36 sesji
@@ -1236,10 +1262,20 @@ export default function ConfiguratorPanel({
     // one goes through onSubmit, so the parent's "Dodano do koszyka!"
     // takeover fires exactly once, after the whole set is in the cart.
     finalPositions.forEach((position, index) => {
-      const price = priceForSize(position.widthMm, position.heightMm, position.qty, selectedFabricGroupId, selectedFabric);
+      const price = positionPrice(position, selectedFabricGroupId, selectedFabric);
       if (!price) return;
+      const options = positionOptions(position);
+      const rowSagLimit = plisySagWarningWidthMm(options.group?.id || selectedFabricGroupId);
       const result: ConfiguratorResult = {
         ...base,
+        hardwareId: options.hardware?.id || base.hardwareId,
+        hardwareLabel: options.hardware?.label || base.hardwareLabel,
+        hardwareColor: options.hardware?.color || base.hardwareColor,
+        fabricGroupId: options.group?.id || base.fabricGroupId,
+        fabricGroupLabel: options.group?.label || base.fabricGroupLabel,
+        fabricId: options.fabric?.id || base.fabricId,
+        fabricLabel: options.fabric?.label || base.fabricLabel,
+        fabricColor: options.fabric?.color || base.fabricColor,
         widthMm: position.widthMm,
         heightMm: position.heightMm,
         qty: position.qty,
@@ -1247,8 +1283,8 @@ export default function ConfiguratorPanel({
         totalPrice: price.total,
         oversizeSurchargeAmount: plisyOversizeSurcharge(position.widthMm),
         splitFromWidthMm: position.splitFromMm,
-        sagNoticeShown: position.widthMm > sagLimitMm,
-        sagLimitMm,
+        sagNoticeShown: position.widthMm > rowSagLimit,
+        sagLimitMm: rowSagLimit,
       };
       if (index < finalPositions.length - 1 && onAddVariant) {
         onAddVariant(result);
@@ -1634,11 +1670,12 @@ export default function ConfiguratorPanel({
         <div className="plisy-positions-list">
           <h4>Twój zestaw</h4>
           {positions.map((position, index) => {
-            const rowPrice = priceForSize(position.widthMm, position.heightMm, position.qty, selectedFabricGroupId, selectedFabric);
+            const rowPrice = positionPrice(position, selectedFabricGroupId, selectedFabric);
             return (
               <div key={position.id} className={`plisy-positions-row ${position.id === editingPositionId ? "is-editing" : ""}`}>
                 <span className="plisy-positions-row-label">
-                  {index + 1}. {positionSizeLabel(position)}, {position.qty} szt.
+                  {index + 1}. {position.widthMm ? positionSizeLabel(position) : "Uzupełnij wymiary"}, {position.qty} szt.
+                  {position.wiz ? <small>{position.wiz.room ? ` · ${position.wiz.room}` : ""} · {positionOptions(position).fabric?.label} · {positionOptions(position).hardware?.label}</small> : null}
                 </span>
                 <span className="plisy-positions-row-price">{rowPrice ? renderPrice(rowPrice.total) : "—"}</span>
                 <button
@@ -1647,7 +1684,7 @@ export default function ConfiguratorPanel({
                   onClick={() => handleEditPosition(position)}
                   aria-label={`Edytuj pozycję ${index + 1}`}
                 >
-                  Edytuj
+                  {position.widthMm ? "Edytuj" : "Wpisz wymiary"}
                 </button>
                 <button
                   type="button"
