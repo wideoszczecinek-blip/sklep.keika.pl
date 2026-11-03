@@ -24422,6 +24422,7 @@ html body button.wiz-baner-cta:hover { background: #c2410c; }
 @media (max-width: 760px) { .pe-dlaczego { grid-template-columns: 1fr; } }
 .pe-dlaczego li { display: grid; gap: 0.2rem; padding: 0.75rem 0.85rem; border-radius: 0.8rem; background: #f8fafc; border: 1px solid #e5eaf0; font-size: 0.9rem; line-height: 1.45; color: #334155; }
 .pe-dlaczego b { color: #12233a; font-size: 0.98rem; }
+.pe-dlaczego li:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .pe-bezp { display: grid; gap: 0.4rem; max-width: 620px; }
 .pe-bezp details { border: 1px solid #e3e9ef; border-radius: 0.7rem; background: #fff; }
 .pe-bezp summary { display: flex; align-items: center; gap: 0.55rem; padding: 0.7rem 0.85rem; cursor: pointer; list-style: none; font-weight: 700; font-size: 0.94rem; color: #12233a; }

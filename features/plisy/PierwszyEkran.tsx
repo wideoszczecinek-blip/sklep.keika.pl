@@ -56,18 +56,20 @@ export function LejekOcena({ onOpinie }: { onOpinie: () => void }) {
   );
 }
 
+// Treść właściciela (3.11): „Plisa dopasowana do Ciebie” - pięć punktów jego słowami.
 const DLACZEGO: [string, string][] = [
-  ["Ty decydujesz o świetle", "zasłaniasz górę, dół albo środek szyby, a okno otwierasz jak dawniej – plisa jedzie razem ze skrzydłem"],
-  ["Montaż w ok. 15 minut", "bez wiercenia i bez śladów albo przykręcana do listwy – instrukcja i film w komplecie"],
-  ["150 tkanin w 5 kolekcjach", "od delikatnych, przepuszczających światło po pełne zaciemnienie; 10 kolorów listew"],
-  [`Produkujemy sami, w Polsce, od ${COMPANY_LEGAL.producingSince}`, "każdą plisę robimy na wymiar Twojego okna, co do milimetra"],
+  ["Zasłaniasz dowolną część okna", "górę, dół albo środek szyby – okno otwierasz jak dawniej"],
+  ["Wybierasz rodzaj materiału", "zaciemniający, dekoracyjny albo termiczny"],
+  ["Prosty montaż", "czytelna instrukcja i wsparcie telefoniczne 8–21, 7 dni w tygodniu"],
+  ["5 lat gwarancji", "jesteśmy pewni swojej jakości"],
+  ["30 dni na zwrot", "pełna gwarancja satysfakcji"],
 ];
 
 export function LejekDlaczego() {
   return (
     <section className="pm-section" aria-labelledby="pe-dlaczego-t">
       <p className="pm-eyebrow">Dlaczego KEIKA</p>
-      <h2 id="pe-dlaczego-t" className="pm-title">Plisa, która pasuje do Twojego okna i życia</h2>
+      <h2 id="pe-dlaczego-t" className="pm-title">Plisa dopasowana do Ciebie</h2>
       <ul className="pe-dlaczego">
         {DLACZEGO.map(([b, s]) => (
           <li key={b}>
