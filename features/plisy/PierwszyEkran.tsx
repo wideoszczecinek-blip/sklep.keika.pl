@@ -14,26 +14,17 @@ import { useCompanyRating } from "./Reviews";
 import { opinieLabel } from "./LandingV2";
 import { dzienWysylki } from "./Premium";
 
-const zl = (v: number) => `${v.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
-
 /** Liczba zamówień we wszystkich kanałach w 2026 r. (CRM: 7727 przy 2.11) - zaokrąglona w dół, jak w LejekDowod. */
 const ZAMOWIEN_2026 = "ponad 7 000";
 
 /** Korzyść, jedno zdanie, cena „od” (z serwera, bez migania) i 4 znaczki - nad polami wymiarów. */
-export function PlisyPierwszyEkran({ cenaOd }: { cenaOd: number | null }) {
+// właściciel 3.11: „cena na końcu” - bez „od … zł” na pierwszym ekranie; pierwsza cena, jaką klient widzi,
+// to cena jego okna po wyborze materiału (wycena v2, QuickPrice).
+export function PlisyPierwszyEkran() {
   return (
     <div className="pe-gora">
       <p className="pe-naglowek">Prywatność, kiedy chcesz. Światło, kiedy potrzebujesz.</p>
       <p className="pe-zdanie">Zasłonisz dół, górę albo środek szyby – sąsiad nie zajrzy, a w pokoju dalej jest jasno.</p>
-      <p className="pe-cena">
-        {cenaOd !== null ? (
-          <>
-            od <b>{zl(cenaOd)}</b> · plisa 50 × 110 cm
-          </>
-        ) : (
-          <span className="pe-cena-szkielet" aria-hidden="true" />
-        )}
-      </p>
       <ul className="pe-znaczki">
         <li>Montaż bez wiercenia</li>
         <li>5 lat gwarancji</li>

@@ -1544,6 +1544,9 @@ export default function Home({
   // pierwsza opcja) i to, co z wyceny wchodzi do konfiguratora.
   const [plisyQuickMountId, setPlisyQuickMountId] = useState("");
   const [plisyPrefillMountId, setPlisyPrefillMountId] = useState("");
+  // Wycena v2 (3.11): kolekcja tkaniny wybrana przed ceną - cena na dole i w konfiguratorze dla niej
+  const [plisyQuickGroupId, setPlisyQuickGroupId] = useState("");
+  const [plisyPrefillGroupId, setPlisyPrefillGroupId] = useState("");
   // Szybka wycena moskitier: typowe okno na start, klient zmienia suwakami.
   // Start od okna z reklam (2026-10-02): nowe kreacje moskitier mówią
   // "65 × 130 cm — 95,68 zł z SEZON20", a wycena otwierała się na 90 × 140 /
@@ -2872,7 +2875,7 @@ export default function Home({
     ? plisyProfile.mountOptions.find((option) => option.id === plisyQuickMountId) || plisyProfile.mountOptions[0] || null
     : null;
   const plisyQuickRegular = plisyProfile
-    ? plisyQuickPrice(plisyProfile, plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyPriceAdjustmentPercent, plisyV2 ? plisyQuickMount : null)
+    ? plisyQuickPrice(plisyProfile, plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyPriceAdjustmentPercent, plisyV2 ? plisyQuickMount : null, plisyV2 ? plisyQuickGroupId : "")
     : null;
   const plisyQuickWithPromo = plisyQuickRegular !== null ? applyPromoToPrice(plisyQuickRegular, topPromoActive ? topPromoPreview : null) : null;
   // Pierwszy ekran plis (3.11): „od … · plisa 50 × 110 cm” - z serwera, potem z cennika w przeglądarce (ta sama funkcja).
@@ -2885,6 +2888,7 @@ export default function Home({
     setPlisyLastResult(null);
     setPlisyPrefillDims({ widthMm, heightMm });
     setPlisyPrefillMountId(mountId);
+    setPlisyPrefillGroupId(plisyQuickGroupId);
     setPlisyConfigKey((key) => key + 1);
     scrollToConfigPanel();
   }
@@ -3952,7 +3956,7 @@ export default function Home({
                     <>
                       {/* Strona plis 3.11 (plan Agencji, jedna wersja): pierwszy ekran z wyceną → wizualizator → opinie →
                           galeria → Dlaczego KEIKA; niżej tkanina, pomiar, bezpieczny zakup, FAQ, końcowy przycisk. */}
-                      <PlisyPierwszyEkran cenaOd={plisyOdCena} />
+                      <PlisyPierwszyEkran />
                       <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
                         {(promo) => (
                           <PlisyQuickPrice
@@ -3969,6 +3973,8 @@ export default function Home({
                             onSaveLater={promo ? promo.openModal : undefined}
                             onConfigure={openPlisyConfiguratorFromQuote}
                             onWpisane={() => setPlisyWpisane(true)}
+                            groupId={plisyQuickGroupId}
+                            onGroupChange={setPlisyQuickGroupId}
                           />
                         )}
                       </PromoCountdownBanner>
@@ -6012,7 +6018,7 @@ export default function Home({
                     <PlisyConfiguratorPanel
                       key={plisyConfigKey}
                       initialValues={
-                        plisyLastResult || plisyPrefillDims || plisyPrefillMountId
+                        plisyLastResult || plisyPrefillDims || plisyPrefillMountId || plisyPrefillGroupId
                           ? {
                               ...(plisyLastResult
                                 ? {
@@ -6027,6 +6033,8 @@ export default function Home({
                                 : {}),
                               // Montaż z wyceny v2 - klient nie wybiera go drugi raz.
                               ...(plisyPrefillMountId ? { mountId: plisyPrefillMountId } : {}),
+                              // Kolekcja tkaniny z wyceny v2 (3.11) - klient wybrał materiał przed ceną
+                              ...(plisyPrefillGroupId ? { fabricGroupId: plisyPrefillGroupId } : {}),
                             }
                           : undefined
                       }
@@ -6511,7 +6519,7 @@ export default function Home({
               promoApplied={plisyQuickWithPromo != null && plisyQuickRegular != null && plisyQuickWithPromo < plisyQuickRegular}
               bottomInset={inAppBrowserBottomInset}
               onClick={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")}
-              wpisane={plisyWpisane}
+              wpisane={plisyWpisane && Boolean(plisyQuickGroupId)}
               onSprawdz={scrollToPlisyQuote}
             />
           ) : null}

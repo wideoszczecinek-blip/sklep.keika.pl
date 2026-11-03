@@ -1669,6 +1669,16 @@ export default function ConfiguratorPanel({
       {hasSizes ? (
         <div className="plisy-price-card" aria-live="polite">
           {(() => {
+            // właściciel 3.11: „konieczne jest wybranie przez klienta materiału ZANIM zobaczy cenę … cena na końcu”
+            // (przywiązanie, a bez rozczarowania, gdy po najtańszej „od” wybierze droższe zaciemnienie) - bez „od”
+            if (!fabricGroupChosen) {
+              return (
+                <>
+                  <span className="plisy-price-card-label">Cenę pokażemy, gdy wybierzesz rodzaj tkaniny – zaciemniającą, dekoracyjną albo termiczną.</span>
+                  <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+                </>
+              );
+            }
             const exact = fabricGroupChosen && setGrandTotal !== null;
             const amount = exact ? setGrandTotal : cheapestSetPrice ? cheapestSetPrice.total : null;
             if (amount === null) {

@@ -72,7 +72,13 @@ export default function PlisyQuickPrice({
   onMountFilm,
   onSaveLater,
   onWpisane,
+  groupId = "",
+  onGroupChange,
 }: {
+  /** v2 (właściciel 3.11: „konieczne jest wybranie przez klienta materiału ZANIM zobaczy cenę … cena na końcu”):
+   * po wymiarach klient wybiera kolekcję tkaniny, dopiero potem widzi cenę - dla tej kolekcji. */
+  groupId?: string;
+  onGroupChange?: (groupId: string) => void;
   /** Akordeon: nagłówek "Szybka wycena" z rozmiarem i ceną, suwaki pod
    * spodem. Na landingu plis blok siedzi wysoko, zaraz pod plakietkami,
    * więc domyślnie jest zwinięty - cena i tak jest widoczna w nagłówku. */
@@ -132,11 +138,14 @@ export default function PlisyQuickPrice({
     ? mountOptions.find((option) => option.id === mountId) || mountOptions[0] || null
     : null;
 
+  // najpierw materiał, potem cena (3.11) - tylko w v2 z wyborem kolekcji
+  const wyborTkaniny = isV2 && Boolean(onGroupChange);
+  const kolekcja = PLISY_COLLECTIONS.find((c) => c.groupId === groupId) || null;
   const regular = useMemo(() => {
     if (!profile || !inRange) return null;
-    const groupId = PLISY_COLLECTIONS[0]?.groupId || profile.fabricGroups[0]?.id || "";
-    return plisyQuickPrice(profile, widthMm, heightMm, priceAdjustmentPercent, selectedMount, groupId);
-  }, [profile, inRange, widthMm, heightMm, priceAdjustmentPercent, selectedMount]);
+    const gid = (wyborTkaniny ? groupId : "") || PLISY_COLLECTIONS[0]?.groupId || profile.fabricGroups[0]?.id || "";
+    return plisyQuickPrice(profile, widthMm, heightMm, priceAdjustmentPercent, selectedMount, gid);
+  }, [profile, inRange, widthMm, heightMm, priceAdjustmentPercent, selectedMount, wyborTkaniny, groupId]);
   const withPromo = regular !== null ? applyPromoToPrice(regular, promo) : null;
 
   // Pola liczbowe obok suwaków (właściciel, 2026-09-24): kto zna wymiar,
@@ -387,9 +396,35 @@ export default function PlisyQuickPrice({
           </>
         ) : (
           <>
+        {wyborTkaniny ? (
+          <div className="pl-quick-tkaniny" role="radiogroup" aria-label="Rodzaj tkaniny">
+            <b className="pl-quick-krok">
+              Jaki materiał?<small>Wybierz rodzaj tkaniny – policzymy cenę dokładnie dla niego</small>
+            </b>
+            {PLISY_COLLECTIONS.map((c) => (
+              <button
+                key={c.groupId}
+                type="button"
+                role="radio"
+                aria-checked={groupId === c.groupId ? "true" : "false"}
+                className={`pl-quick-tk ${groupId === c.groupId ? "is-active" : ""}`}
+                onClick={() => {
+                  trackShopStep("quick_price_tkanina", "plisy", { group: c.groupId, width_mm: widthMm, height_mm: heightMm });
+                  onGroupChange?.(c.groupId);
+                  onWpisane?.();
+                }}
+              >
+                <strong>{c.name}</strong>
+                <small>{c.blackout ? (c.thermal ? "zaciemnia, chroni przed ciepłem" : "zaciemnia") : c.thermal ? "przepuszcza światło, mniej nagrzewania" : "przepuszcza światło, chroni prywatność"}</small>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {wyborTkaniny && !kolekcja ? null : (
+          <>
         <div className="pl-quick-priceline" aria-live="polite">
           <span className="pl-quick-priceline-label">
-            Twoja plisa {cmText(widthCm)} × {cmText(heightCm)} cm · Klasyczne
+            Twoja plisa {cmText(widthCm)} × {cmText(heightCm)} cm · {kolekcja ? kolekcja.name : "Klasyczne"}
             {selectedMount ? ` · ${isPlisyMountNonInvasive(selectedMount.id) || isPlisyMountNonInvasive(selectedMount.label) ? "bez wiercenia" : "przykręcana"}` : ""}
           </span>
           {regular === null ? (
@@ -441,7 +476,7 @@ export default function PlisyQuickPrice({
           <span className="pl-quick-split">Okno {cmText(widthCm)} cm zrobimy z 2 plis po {cmText(pieceWidthMm / 10)} cm — cena za obie.</span>
         ) : null}
         <button type="button" className="pl-quick-cta pl-quick-cta--v2" disabled={!inRange} onClick={configure}>
-          Wybierz tkaninę i kolor →
+          {kolekcja ? "Wybierz kolor tkaniny →" : "Wybierz tkaninę i kolor →"}
         </button>
         <span className="pl-quick-note">W cenie 5 lat gwarancji i 30 dni na zwrot. 150 tkanin i 10 kolorów listew wybierzesz w następnym kroku.</span>
         {onSaveLater ? (
@@ -461,6 +496,8 @@ export default function PlisyQuickPrice({
             <span aria-hidden="true">📐</span> Jak zmierzyć okno? Animacja, 2 minuty
           </button>
         ) : null}
+          </>
+        )}
           </>
         )}
       </div>
