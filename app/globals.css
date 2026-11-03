@@ -24210,7 +24210,12 @@ html body button.wiz-baner-foto { position: relative; display: block; width: 100
 .wiz-baner-etapy li.is-on { background: #0f9f8f; color: #fff; }
 .wiz-baner-etapy li.is-on b { background: #fff; color: #0f9f8f; }
 .wiz-baner-chip { position: absolute; left: 10px; top: 10px; padding: 6px 11px; border-radius: 999px; background: rgba(255, 255, 255, 0.95); color: #0f3d37; font-size: 0.82rem; font-weight: 800; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); }
-.wiz-baner-pg { position: absolute; right: 8px; bottom: 6px; font-size: 0.66rem; font-weight: 600; color: rgba(255, 255, 255, 0.9); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+/* napis na animacji (3.11): na dole kadru, na przyciemnieniu - okna z plisami zostają odsłonięte u góry */
+.wiz-baner-napis { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 34px 14px 12px; background: linear-gradient(to top, rgba(8, 20, 28, 0.88), rgba(8, 20, 28, 0.55) 60%, rgba(8, 20, 28, 0)); text-align: left; pointer-events: none; }
+.wiz-baner-napis strong { color: #fff; font-size: 1.32rem; line-height: 1.1; font-weight: 900; letter-spacing: 0.01em; text-transform: uppercase; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); }
+.wiz-baner-napis-cta { display: inline-block; padding: 7px 13px; border-radius: 999px; background: #ea580c; color: #fff; font-size: 0.9rem; font-weight: 800; box-shadow: 0 6px 16px rgba(234, 88, 12, 0.45); }
+@media (min-width: 1024px) { .wiz-baner-napis { padding: 50px 22px 16px; gap: 9px; } .wiz-baner-napis strong { font-size: 2rem; } .wiz-baner-napis-cta { font-size: 1rem; padding: 8px 16px; } }
+.wiz-baner-pg { position: absolute; right: 8px; top: 6px; font-size: 0.66rem; font-weight: 600; color: rgba(255, 255, 255, 0.9); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
 .wiz-baner-tresc { padding: 12px 14px 4px; color: #12212b; }
 .wiz-baner-tresc b { display: block; font-size: 1.18rem; line-height: 1.2; font-weight: 800; letter-spacing: -0.01em; }
 .wiz-baner-tresc small { display: block; margin-top: 4px; font-size: 0.9rem; line-height: 1.35; color: #475569; }

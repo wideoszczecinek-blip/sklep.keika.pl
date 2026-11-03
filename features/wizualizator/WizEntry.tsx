@@ -98,7 +98,7 @@ function BanerAnimacja({ onClick }: { onClick: () => void }) {
   };
   return (
     <>
-      <button type="button" className="wiz-baner-foto" onClick={onClick} aria-label="Zobacz plisę na zdjęciu swojego okna – wrzuć zdjęcie">
+      <button type="button" className="wiz-baner-foto" onClick={onClick} aria-label="Zobacz plisy na Twoich oknach – wygeneruj wizualizację">
         {/* tylko MP4 (H.264, yuv420p) – gra wszędzie; przy błędzie dekodowania zostaje plakat */}
         {blad ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -107,7 +107,11 @@ function BanerAnimacja({ onClick }: { onClick: () => void }) {
           <video ref={ref} className="wiz-baner-wideo" src="/wizualizator-baner.mp4?v=2" poster="/wizualizator-baner-poster.webp" muted loop playsInline preload="none"
             onTimeUpdate={czas} onError={() => { if (ref.current?.error && ref.current.error.code !== 1) setBlad(true); }} aria-hidden="true" />
         )}
-        <span className="wiz-baner-chip">📸 Twoje zdjęcie → plisa w 1 minutę</span>
+        {/* właściciel 3.11: sekcja nazwana wprost już na animacji */}
+        <span className="wiz-baner-napis">
+          <strong>Zobacz plisy na Twoich oknach</strong>
+          <span className="wiz-baner-napis-cta">✨ Wygeneruj wizualizację →</span>
+        </span>
         <span className="wiz-baner-pg">Wizualizacja poglądowa</span>
       </button>
       <ol className="wiz-baner-etapy" aria-label="Jak działa wizualizacja">
@@ -156,10 +160,10 @@ export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfig
     <div className="wiz-baner">
       <BanerAnimacja onClick={open} />
       <div className="wiz-baner-tresc">
-        <b>Zobacz plisę na zdjęciu swojego okna</b>
+        <b>Wygeneruj wizualizację plis na zdjęciu swojego okna</b>
         <small>Wrzuć zdjęcie pokoju – pokażemy plisy we wszystkich oknach. Przesuwasz belki, zmieniasz kolor (150 tkanin). Za darmo, bez rejestracji.</small>
       </div>
-      <button type="button" className="wiz-baner-cta" onClick={open}>📸 Wrzuć zdjęcie okna</button>
+      <button type="button" className="wiz-baner-cta" onClick={open}>📸 Wrzuć zdjęcie i wygeneruj wizualizację</button>
     </div>
   );
   if (!onKonfiguruj) return karta;
