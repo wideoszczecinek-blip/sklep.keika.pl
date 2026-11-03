@@ -1,4 +1,5 @@
 "use client";
+import { numericEntryKey } from "@/app/components/numeric-entry";
 
 // The rolety-dachowe (roof window blind) configurator, rebuilt 2026-09-18 as
 // a port of the Allegro configurator (konfiguruj.com.pl/dachowa) into the
@@ -1073,7 +1074,7 @@ export default function ConfiguratorPanel({
                       <div>
                         <dt>Ilość</dt>
                         <dd>
-                          <input type="number" inputMode="numeric" min={1} max={20} value={quantity} onChange={(event) => setQuantity(event.target.value)} className="rd-qty-input" />
+                          <input type="number" inputMode="numeric" enterKeyHint="done" onKeyDown={numericEntryKey} min={1} max={20} value={quantity} onChange={(event) => setQuantity(event.target.value)} className="rd-qty-input" />
                         </dd>
                       </div>
                       <div>

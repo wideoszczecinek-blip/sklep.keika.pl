@@ -22296,13 +22296,9 @@ body:has(.cart-page--v2) .site-footer {
 .home-root.plisy-v2 .hero-full { scroll-padding-bottom: 5rem; }
 @media (max-width: 1100px) { .home-root.plisy-v2 .hero-product-content { padding-bottom: 4.5rem; } }
 
-/* ===== Landing plis v2 - komputer (2026-10-11) ============================
-   Na szerokim ekranie konfigurator stoi obok w prawej kolumnie, więc wycena
-   z polami i montażem byłaby jego kopią - chowamy ją, a "Wyceń swoje okno"
-   prowadzi do pola szerokości w konfiguratorze. Bloki lewej kolumny
-   rozciągają się na jej całą szerokość (768px) zamiast 560px z pustką. */
+/* Landing plis: na komputerze oferta i szybka wycena obok pełnego konfiguratora. */
 @media (min-width: 1101px) {
-  .home-root.plisy-v2 .pl-quick--v2 { display: none; }
+  .home-root.plisy-v2 .pl-quick--v2 { max-width: none; }
   .home-root.plisy-v2 .plv2-gallery,
   .home-root.plisy-v2 .plv2-offer,
   .home-root.plisy-v2 .plv2-why { max-width: none; }
@@ -24775,3 +24771,24 @@ html body button.pl-quick-tk.is-active { border-color: #d94d00; background: #fff
 .plv2-photo-stage .plv2-gallery-dots { bottom: auto; top: .55rem; }
 @keyframes plisy-benefit-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .plv2-photo-stage .plv2-photo-benefits li { animation: none; } }
+
+.numeric-entry-done { display: none; }
+@media (pointer: coarse) {
+  [data-numeric-entry]:has(input[data-numeric-field]:focus) > .numeric-entry-done,
+  .numeric-entry-done:focus-visible {
+    display: inline-flex; grid-column: 1 / -1; justify-self: end; align-items: center; gap: .45rem;
+    min-height: 36px; padding: .3rem .85rem; border: 1px solid #bed6cf; border-radius: 999px;
+    background: #e9f5f0; color: #173f35; font: inherit; font-size: .85rem; font-weight: 700;
+  }
+}
+
+@media (min-width: 1101px) {
+  .home-root.plisy-v2 .plv2-gallery { border-radius: 1.3rem; }
+  .home-root.plisy-v2 .plv2-photo-stage .plv2-photo-benefits { padding: 2.5rem 1.15rem 1rem; gap: .55rem; }
+  .home-root.plisy-v2 .plv2-photo-stage .plv2-photo-benefits li { padding: .55rem .8rem; font-size: 1rem; }
+  .home-root.plisy-v2 .plv2-photo-stage .plv2-gallery-dots { top: .85rem; right: .85rem; }
+  .home-root.plisy-v2 .pe-opis { max-width: 65ch; font-size: 1rem; gap: .7rem; }
+  .home-root.plisy-v2 .pl-quick--v2 { padding: 1.05rem 1.25rem; border-radius: 1rem; }
+  .home-root.plisy-v2 .pl-quick-fields { gap: 1rem; }
+  .home-root.plisy-v2 .plisy-guide > .plv2-film { max-width: 560px; }
+}

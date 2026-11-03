@@ -1,4 +1,5 @@
 "use client";
+import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 
 // The moskitiery-ramkowe configurator itself (color -> mesh -> dimensions ->
 // price -> submit), extracted so it can be dropped in unchanged wherever a
@@ -867,10 +868,10 @@ export default function ConfiguratorPanel({
                   <span className="hero-product-dimensions-help-cta-arrow" aria-hidden="true">›</span>
                 </button>
               ) : null}
-              <div className="hero-product-dimensions-grid">
+              <div className="hero-product-dimensions-grid" data-numeric-entry="">
                 <label>
                   Szerokość ({dimensionUnit})
-                  <input
+                  <input data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey}
                     type="text" data-dim-input="" autoComplete="off"
                     inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                     step={dimensionUnit === "cm" ? 0.1 : 1}
@@ -884,7 +885,7 @@ export default function ConfiguratorPanel({
                 </label>
                 <label>
                   Wysokość ({dimensionUnit})
-                  <input
+                  <input data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey}
                     type="text" data-dim-input="" autoComplete="off"
                     inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                     step={dimensionUnit === "cm" ? 0.1 : 1}
@@ -898,7 +899,7 @@ export default function ConfiguratorPanel({
                 </label>
                 <label>
                   Ilość
-                  <input
+                  <input data-numeric-field="" enterKeyHint="done" onKeyDown={numericEntryKey}
                     type="number"
                     inputMode="numeric"
                     min={1}
@@ -907,6 +908,8 @@ export default function ConfiguratorPanel({
                     onChange={(event) => setDimensionQuantity(event.target.value)}
                   />
                 </label>
+              <NumericDone />
+
               </div>
               {hasValidDimensions ? (
                 <p className="hero-product-dimensions-echo">

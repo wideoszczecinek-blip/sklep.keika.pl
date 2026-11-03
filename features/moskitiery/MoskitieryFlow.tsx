@@ -1,4 +1,5 @@
 "use client";
+import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -1754,10 +1755,10 @@ export default function MoskitieryFlow({
                     {dimensionsStep.subtitle ? <p>{dimensionsStep.subtitle}</p> : null}
                   </div>
 
-                  <div className={styles.dimensionGrid}>
+                  <div className={styles.dimensionGrid} data-numeric-entry="">
                     <label className={styles.field}>
                       <span>{dimensionsStep.width_label}</span>
-                      <input
+                      <input data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey}
                         type="text" data-dim-input="" autoComplete="off"
                         min="1"
                         step="1"
@@ -1779,7 +1780,7 @@ export default function MoskitieryFlow({
 
                     <label className={styles.field}>
                       <span>{dimensionsStep.height_label}</span>
-                      <input
+                      <input data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey}
                         type="text" data-dim-input="" autoComplete="off"
                         min="1"
                         step="1"
@@ -1801,7 +1802,7 @@ export default function MoskitieryFlow({
 
                     <label className={styles.field}>
                       <span>Ilość sztuk dla tej pozycji</span>
-                      <input
+                      <input data-numeric-field="" enterKeyHint="done" onKeyDown={numericEntryKey}
                         type="number"
                         min="1"
                         step="1"
@@ -1820,6 +1821,8 @@ export default function MoskitieryFlow({
                       />
                       <small>Ta liczba skaluje jednostki do zakupu i wycenę.</small>
                     </label>
+              <NumericDone />
+
                   </div>
                 </article>
               ) : null}

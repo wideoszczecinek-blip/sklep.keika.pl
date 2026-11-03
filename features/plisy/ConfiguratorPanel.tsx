@@ -1,4 +1,5 @@
 "use client";
+import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 
 // The plisy (pleated blind) configurator: kolor mechanizmu -> kolekcja
 // tkaniny -> kolor tkaniny, then (2026-09-09) a live preview + a repeatable
@@ -2100,11 +2101,11 @@ export default function ConfiguratorPanel({
                 onClose={() => setMeasureSave(null)}
               />
             ) : null}
-            <div className="hero-product-dimensions-grid">
+            <div className="hero-product-dimensions-grid" data-numeric-entry="">
               <label>
                 Szerokość ({dimensionUnit})
                 <input
-                  type="text" data-dim-input="" autoComplete="off"
+                  type="text" data-dim-input="" data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey} autoComplete="off"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                   step={dimensionUnit === "cm" ? 0.1 : 1}
                   min={dimensionUnit === "cm" ? profile.widthMinMm / 10 : profile.widthMinMm}
@@ -2118,7 +2119,7 @@ export default function ConfiguratorPanel({
               <label>
                 Wysokość ({dimensionUnit})
                 <input
-                  type="text" data-dim-input="" autoComplete="off"
+                  type="text" data-dim-input="" data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey} autoComplete="off"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                   step={dimensionUnit === "cm" ? 0.1 : 1}
                   min={dimensionUnit === "cm" ? profile.heightMinMm / 10 : profile.heightMinMm}
@@ -2132,7 +2133,7 @@ export default function ConfiguratorPanel({
               <label>
                 Ilość
                 <input
-                  type="number"
+                  type="number" data-numeric-field="" enterKeyHint="done" onKeyDown={numericEntryKey}
                   inputMode="numeric"
                   min={1}
                   max={20}
@@ -2140,6 +2141,7 @@ export default function ConfiguratorPanel({
                   onChange={(event) => setQuantity(event.target.value)}
                 />
               </label>
+              <NumericDone />
             </div>
             {remeasureHint && !dimensionsValid ? (
               <p className="plisy-remeasure-hint" role="status">

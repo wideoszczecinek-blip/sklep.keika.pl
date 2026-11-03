@@ -1,4 +1,5 @@
 "use client";
+import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 
 // Konfigurator rolet mini (dzień-noc i tradycyjne) oraz żaluzji poziomych -
 // jedna implementacja sparametryzowana slugiem (reguły i nazwy kroków w
@@ -1296,10 +1297,10 @@ export default function RoletyConfiguratorPanel({
                 </button>
               </div>
             </div>
-            <div className="hero-product-dimensions-grid">
+            <div className="hero-product-dimensions-grid" data-numeric-entry="">
               <label>
                 {widthFieldLabel} ({dimensionUnit})
-                <input
+                <input data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey}
                   type="text" data-dim-input="" autoComplete="off"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                   step={dimensionUnit === "cm" ? 0.1 : 1}
@@ -1313,7 +1314,7 @@ export default function RoletyConfiguratorPanel({
               </label>
               <label>
                 {heightFieldLabel} ({dimensionUnit})
-                <input
+                <input data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey}
                   type="text" data-dim-input="" autoComplete="off"
                   inputMode={dimensionUnit === "cm" ? "decimal" : "numeric"}
                   step={dimensionUnit === "cm" ? 0.1 : 1}
@@ -1327,8 +1328,10 @@ export default function RoletyConfiguratorPanel({
               </label>
               <label>
                 Ilość
-                <input type="number" inputMode="numeric" min={1} max={ROLETY_QTY_MAX} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+                <input data-numeric-field="" enterKeyHint="done" onKeyDown={numericEntryKey} type="number" inputMode="numeric" min={1} max={ROLETY_QTY_MAX} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
               </label>
+              <NumericDone />
+
             </div>
             {wallMode && inputHeightMm > 0 && stackAboveMm > 0 ? (
               <div className="zl-wall-space" aria-live="polite">

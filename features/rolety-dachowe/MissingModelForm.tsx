@@ -1,4 +1,5 @@
 "use client";
+import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 
 // "Nie ma mojego okna" - the manual path of step 4: producer (from the
 // library, or "Inny"), model as printed on the nameplate, measured A/B in
@@ -249,15 +250,16 @@ export default function MissingModelForm({
             </button>
           ))}
         </div>
-        <div className="rd-form-grid rd-form-grid--dims">
+        <div className="rd-form-grid rd-form-grid--dims" data-numeric-entry="">
           <label className="rd-form-field">
             <span>Wymiar A — szerokość ({unit})</span>
-            <input type="text" data-dim-input="" autoComplete="off" inputMode="decimal" value={dimA} onChange={(event) => setDimA(event.target.value)} placeholder={unit === "cm" ? "np. 78" : "np. 780"} className={touched && !widthOk ? "is-invalid" : ""} />
+            <input type="text" data-dim-input="" autoComplete="off" inputMode="decimal" data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey} value={dimA} onChange={(event) => setDimA(event.target.value)} placeholder={unit === "cm" ? "np. 78" : "np. 780"} className={touched && !widthOk ? "is-invalid" : ""} />
           </label>
           <label className="rd-form-field">
             <span>Wymiar B — wysokość ({unit})</span>
-            <input type="text" data-dim-input="" autoComplete="off" inputMode="decimal" value={dimB} onChange={(event) => setDimB(event.target.value)} placeholder={unit === "cm" ? "np. 118" : "np. 1180"} className={touched && !heightOk ? "is-invalid" : ""} />
+            <input type="text" data-dim-input="" autoComplete="off" inputMode="decimal" data-numeric-field="" enterKeyHint="done" onKeyDown={numericEntryKey} value={dimB} onChange={(event) => setDimB(event.target.value)} placeholder={unit === "cm" ? "np. 118" : "np. 1180"} className={touched && !heightOk ? "is-invalid" : ""} />
           </label>
+          <NumericDone />
         </div>
         {(touched || dimA || dimB) && ((dimA && !widthOk) || (dimB && !heightOk)) ? (
           <p className="hero-product-dimensions-error">

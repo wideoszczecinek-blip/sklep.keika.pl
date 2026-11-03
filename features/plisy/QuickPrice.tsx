@@ -1,4 +1,5 @@
 "use client";
+import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 
 // "Ile za Twoje okno?" - the price for a REAL window (plisy landing
 // analysis 2026-09-17), sitting under the first paragraph of the
@@ -314,8 +315,11 @@ export default function PlisyQuickPrice({
       placeholder={isV2 ? (axis === "w" ? "np. 60" : "np. 140") : undefined}
       enterKeyHint={axis === "w" ? "next" : "done"}
       onKeyDown={(event) => {
-        if (isV2 && event.key === "Enter") oblicz();
+        if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+        numericEntryKey(event);
+        if (isV2 && axis === "h") oblicz();
       }}
+      data-numeric-field=""
       type="text" data-dim-input="" autoComplete="off"
       inputMode="decimal"
       min={axis === "w" ? minW : minH}
@@ -365,7 +369,7 @@ export default function PlisyQuickPrice({
           <span className="pl-quick-title">Sprawdź cenę swojej plisy</span>
           <span className="pl-quick-size">wymiary okna w cm</span>
         </div>
-        <div className="pl-quick-fields">
+        <div className="pl-quick-fields" data-numeric-entry="">
           <label className="pl-quick-field">
             <span>Szerokość</span>
             <span className="pl-quick-num">
@@ -380,6 +384,7 @@ export default function PlisyQuickPrice({
               <em>cm</em>
             </span>
           </label>
+          <NumericDone />
         </div>
         {unitGuessNotice}
         {!pokaz ? (

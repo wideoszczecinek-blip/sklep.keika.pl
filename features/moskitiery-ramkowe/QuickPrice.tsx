@@ -1,4 +1,5 @@
 "use client";
+import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 
 // "Szybka wycena" na landingu moskitier (właściciel, 2026-09-24) - bliźniak
 // bloku z plis (features/plisy/QuickPrice.tsx), tylko prostszy: u moskitier
@@ -182,7 +183,7 @@ export default function MoskitieryQuickPrice({
           </span>
         </span>
       </button>
-      <div className="pl-quick-body" hidden={!open}>
+      <div className="pl-quick-body" data-numeric-entry="" hidden={!open}>
         <div className="pl-quick-slider">
           <span className="pl-quick-slider-label">Szerokość</span>
           <div className="pl-quick-slider-row">
@@ -198,7 +199,7 @@ export default function MoskitieryQuickPrice({
               aria-label="Szerokość moskitiery w centymetrach"
             />
             <span className="pl-quick-num">
-              <input
+              <input data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey}
                 type="text" data-dim-input="" autoComplete="off"
                 inputMode="decimal"
                 min={minCm}
@@ -228,7 +229,7 @@ export default function MoskitieryQuickPrice({
               aria-label="Wysokość moskitiery w centymetrach"
             />
             <span className="pl-quick-num">
-              <input
+              <input data-numeric-field="" enterKeyHint="done" onKeyDown={numericEntryKey}
                 type="text" data-dim-input="" autoComplete="off"
                 inputMode="decimal"
                 min={minCm}
@@ -244,6 +245,8 @@ export default function MoskitieryQuickPrice({
           </div>
         </div>
 
+
+              <NumericDone />
         <div className="pl-quick-row">
           <div className="pl-quick-result" aria-live="polite">
             {bothOverTechnicalLimit ? (

@@ -1,4 +1,5 @@
 "use client";
+import { numericEntryKey } from "@/app/components/numeric-entry";
 
 // The plisy-dachowe (roof-window pleated blind) configurator, 2026-09-19:
 // kolor osprzętu (the old shop's four finishes) -> kolekcja tkaniny ->
@@ -1053,7 +1054,7 @@ export default function ConfiguratorPanel({
                     <div>
                       <dt>Ilość</dt>
                       <dd>
-                        <input type="number" inputMode="numeric" min={1} max={20} value={quantity} onChange={(event) => setQuantity(event.target.value)} className="rd-qty-input" />
+                        <input type="number" inputMode="numeric" enterKeyHint="done" onKeyDown={numericEntryKey} min={1} max={20} value={quantity} onChange={(event) => setQuantity(event.target.value)} className="rd-qty-input" />
                       </dd>
                     </div>
                     <div>

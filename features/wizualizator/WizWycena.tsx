@@ -1,4 +1,5 @@
 "use client";
+import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 
 /**
  * Wizualizator: wycena zestawu i kreator wymiarów (właściciel 1.11: „dodaj zestaw do koszyka – kliknięcie
@@ -336,15 +337,16 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
           <button type="button" className={unit === "cm" ? s.chipOn : s.chip} onClick={() => zmienJednostke("cm")}>cm</button>
           <button type="button" className={unit === "mm" ? s.chipOn : s.chip} onClick={() => zmienJednostke("mm")}>mm</button>
         </div>
-        <div className={s.krokPola}>
+        <div className={s.krokPola} data-numeric-entry="">
           <label>Szerokość
-            <span><input type="text" inputMode="decimal" autoComplete="off" autoFocus value={biezaca.szer} placeholder={`≈ ${wJedn((biezaca.szacSzerCm || 0) * 10)}`}
+            <span><input type="text" inputMode="decimal" data-numeric-field="" enterKeyHint="next" onKeyDown={numericEntryKey} autoComplete="off" value={biezaca.szer} placeholder={`≈ ${wJedn((biezaca.szacSzerCm || 0) * 10)}`}
               onChange={(e) => { setBlad(""); setCzyZmierzone(false); update(biezaca.id, { szer: e.target.value, zmierzone: false }); }} /> {jedn}</span>
           </label>
           <label>Wysokość
-            <span><input type="text" inputMode="decimal" autoComplete="off" value={biezaca.wys} placeholder={`≈ ${wJedn((biezaca.szacWysCm || 0) * 10)}`}
+            <span><input type="text" inputMode="decimal" data-numeric-field="" enterKeyHint="done" onKeyDown={numericEntryKey} autoComplete="off" value={biezaca.wys} placeholder={`≈ ${wJedn((biezaca.szacWysCm || 0) * 10)}`}
               onChange={(e) => { setBlad(""); setCzyZmierzone(false); update(biezaca.id, { wys: e.target.value, zmierzone: false }); }} /> {jedn}</span>
           </label>
+          <NumericDone />
         </div>
         {(() => {
           // „15 × 120” w cm albo „1200 × 1500” w cm (to mm), „60 × 120” w mm (to cm) - jak w konfiguratorze
