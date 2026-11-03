@@ -34,7 +34,7 @@ import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
-import { useProductPriceAdjustment } from "@/lib/price-adjustment";
+import { useProductPriceAdjustment, useProductPriceAdjustmentsReady } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import { PLISY_COLLECTIONS } from "./landing-content";
 import UnitAskModal from "./UnitAskModal";
@@ -108,6 +108,7 @@ export default function PlisyQuickPrice({
   onWpisane?: () => void;
 }) {
   const priceAdjustmentPercent = useProductPriceAdjustment("plisy");
+  const pricesReady = useProductPriceAdjustmentsReady();
   const bundleRule = useBundleDiscountRules().plisy;
   const isV2 = variant === "v2";
 
@@ -408,7 +409,7 @@ export default function PlisyQuickPrice({
             <div className="pl-quick-comparison-head"><strong>Porównaj tkaniny</strong><span>Orientacyjnie · {cmText(widthCm)} × {cmText(heightCm)} cm</span></div>
             <div className="pl-quick-comparison-list" role="radiogroup" aria-label="Wybierz rodzaj tkaniny">
               {PLISY_COLLECTIONS.map((c) => {
-                const amount = profile && inRange ? plisyQuickPrice(profile, widthMm, heightMm, priceAdjustmentPercent, selectedMount, c.groupId) : null;
+                const amount = pricesReady && profile && inRange ? plisyQuickPrice(profile, widthMm, heightMm, priceAdjustmentPercent, selectedMount, c.groupId) : null;
                 const tier = bundleRule?.wholeOrder ? bundleRule.tiers[bundleRule.tiers.length - 1] : null;
                 const names: Record<string, string> = { clasic: "Dekoracyjna", reflex: "Dekoracyjna Reflex", blackout: "Blackout", duo: "DUO plaster miodu", "duo-blackout": "DUO Termo" };
                 return <div className="pl-quick-comparison-row" key={c.groupId}>
@@ -417,7 +418,7 @@ export default function PlisyQuickPrice({
                     onGroupChange?.(c.groupId); onWpisane?.();
                   }}>
                     <span className="pl-quick-comparison-name">{names[c.groupId] || c.name}</span>
-                    <span className="pl-quick-comparison-price">{amount === null ? "Wycena w konfiguratorze" : <>{tier ? <><strong>{zl(Math.round(amount * (100 - tier.percent)) / 100)}</strong><small>przy {tier.fromQty}+ szt.</small><s>{zl(amount)}</s></> : <strong>{zl(amount)}</strong>}</>}</span>
+                    <span className="pl-quick-comparison-price">{amount === null ? (!pricesReady ? "Ładujemy ceny…" : "Wycena w konfiguratorze") : <>{tier ? <><strong>{zl(Math.round(amount * (100 - tier.percent)) / 100)}</strong><small>przy {tier.fromQty}+ szt.</small><s>{zl(amount)}</s></> : <strong>{zl(amount)}</strong>}</>}</span>
                   </button>
                   <details className="pl-quick-comparison-info"><summary aria-label={`Informacje: ${names[c.groupId] || c.name}`}>i</summary><p>{c.what}</p></details>
                 </div>;

@@ -14,6 +14,7 @@ import { useSyncExternalStore } from "react";
 type AdjustmentMap = Record<string, number>;
 
 let adjustments: AdjustmentMap = {};
+let adjustmentsReady = false;
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void): () => void {
@@ -34,6 +35,7 @@ export function setProductPriceAdjustmentsFromConfig(config: unknown): void {
   const next: AdjustmentMap = {};
   const groups = (config as { product_groups?: Array<{ products?: Array<{ slug?: string; price_adjustment_percent?: unknown }> }> } | null)
     ?.product_groups;
+  if (!Array.isArray(groups)) return;
   for (const group of Array.isArray(groups) ? groups : []) {
     for (const product of Array.isArray(group?.products) ? group.products : []) {
       const slug = String(product?.slug || "").trim();
@@ -45,9 +47,15 @@ export function setProductPriceAdjustmentsFromConfig(config: unknown): void {
   const changed =
     Object.keys(next).length !== Object.keys(adjustments).length ||
     Object.entries(next).some(([slug, percent]) => adjustments[slug] !== percent);
-  if (!changed) return;
+  if (!changed && adjustmentsReady) return;
+  adjustmentsReady = true;
   adjustments = next;
   listeners.forEach((listener) => listener());
+}
+
+/** Ceny nie powinny mignąć bez korekty, zanim dotrze konfiguracja CRM. */
+export function useProductPriceAdjustmentsReady(): boolean {
+  return useSyncExternalStore(subscribe, () => adjustmentsReady, () => false);
 }
 
 export function getProductPriceAdjustment(slug: string): number {

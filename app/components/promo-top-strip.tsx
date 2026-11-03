@@ -316,7 +316,8 @@ export default function PromoTopStrip({
             }
           : null;
         if (!promoSlide && variant === "static") return null;
-        return <StripCarousel slides={buildSlides(promoSlide, productSlug, paypoEnabled)} variant={variant} />;
+        const slides = buildSlides(promoSlide, productSlug, paypoEnabled);
+        return <StripCarousel slides={variant === "static" ? slides.filter((slide) => slide.key !== "termin") : slides} variant={variant} />;
       }}
     </PromoCountdownBanner>
   );
