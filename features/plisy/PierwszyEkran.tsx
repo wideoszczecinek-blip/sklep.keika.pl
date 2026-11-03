@@ -51,7 +51,8 @@ export function LejekOcena({ onOpinie }: { onOpinie: () => void }) {
 const DLACZEGO: [string, string][] = [
   ["Zasłaniasz dowolną część okna", "górę, dół albo środek szyby – okno otwierasz jak dawniej"],
   ["Wybierasz rodzaj materiału", "zaciemniający, dekoracyjny albo termiczny"],
-  ["Prosty montaż", "czytelna instrukcja i wsparcie telefoniczne 8–21, 7 dni w tygodniu"],
+  // właściciel 3.11: „wsparcie techniczne jest 7 dni w tyg” (godziny biura w company-legal: pon.–sb.)
+  ["Prosty montaż", "czytelna instrukcja i wsparcie techniczne przez telefon 8–21, 7 dni w tygodniu"],
   ["5 lat gwarancji", "jesteśmy pewni swojej jakości"],
   ["30 dni na zwrot", "pełna gwarancja satysfakcji"],
 ];
