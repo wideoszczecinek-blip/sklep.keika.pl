@@ -36,7 +36,6 @@ import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPrevi
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
 import CartTrust, { CartFinance, BundleBanner } from "./cart-trust";
-import DeliveryFeedback from "./delivery-feedback";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "@/app/moskitiery-ramkowe-reviews-data";
@@ -370,47 +369,18 @@ export default function CartV2(props: CartV2Props) {
     if (p.deliveryDataReady && !p.contactUntouched) goTo(3, "replace");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Dane przestały być kompletne (np. zmiana dostawy) - wracamy na ekran danych.
-  useEffect(() => {
-    if (step === 3 && !p.deliveryDataReady) goTo(2, "pop");
-  }, [step, p.deliveryDataReady, goTo]);
-
-
   const [deliveryHint, setDeliveryHint] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
   const isPaczkomat = p.deliveryMethod === p.paczkomatMethodId;
   const advance = () => {
     if (step === 0 || step === 1) {
       if (!p.deliveryMethod) { setDeliveryHint(true); document.querySelector(".cv2-tiles")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
       if (isPaczkomat && !p.selectedPaczkomat) { setPaczkomatHint(true); document.querySelector(".cv2-paczkomat")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
       if (!p.deliveryDataReady) { p.jumpToFirstProblem(); return; }
-      if (!verifying) setVerifying(true);
+      goTo(3);
       return;
     }
-    if (step === 2) {
-      if (!p.deliveryDataReady) {
-        p.jumpToFirstProblem();
-        return;
-      }
-      p.track("checkout_next", "platnosc", { design: "v2" });
-      p.track("cart_v2_step", STEP_NAMES[3], {});
-      if (verifying) return;
-      setVerifying(true);
-    }
+    if (step === 2) goTo(3);
   };
-
-  useEffect(() => {
-    if (!verifying) return;
-    const timer = window.setTimeout(() => {
-      setVerifying(false);
-      if (!p.deliveryDataReady || (step !== 0 && step !== 1 && step !== 2)) return;
-      setDeliveryConfirmed(true);
-      goTo(3);
-    }, 900);
-    return () => window.clearTimeout(timer);
-  }, [verifying, p.deliveryDataReady, step, goTo]);
-
   const fullName = `${p.form.firstName}${p.form.lastName ? ` ${p.form.lastName}` : ""}`;
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const setFullName = (raw: string) => {
@@ -840,7 +810,7 @@ export default function CartV2(props: CartV2Props) {
           </button>
         ) : null}
       </p>
-      <fieldset className="cv2-form" disabled={p.dataLocked || verifying}>
+      <fieldset className="cv2-form" disabled={p.dataLocked}>
         <Field label="E-mail" fieldKey="email" valid={p.valid.email} error={p.fieldError("email")} wide>
           <input
             type="email"
@@ -1084,8 +1054,6 @@ export default function CartV2(props: CartV2Props) {
           ) : null}
         </div>
       ) : null}
-
-      {verifying || (step === 3 && deliveryConfirmed) ? <DeliveryFeedback key={verifying ? "checking" : "complete"} checking={verifying} complete={step === 3 && deliveryConfirmed} /> : null}
       <div className="cv2-screen" key={step} ref={screenRef}>
         {step === 0 ? screenOrder() : step === 1 ? screenDelivery : step === 2 ? screenData : screenPay}
       </div>
@@ -1114,7 +1082,7 @@ export default function CartV2(props: CartV2Props) {
           <strong>{formatPln(p.payableTotal)}</strong>
         </div>
         {step < 3 ? (
-          <button type="button" className="cv2-bar-cta" onClick={advance} disabled={verifying}>
+          <button type="button" className="cv2-bar-cta" onClick={advance}>
             {barLabel}
             {step === 0 ? <small>to potrwa minutę</small> : null}
           </button>

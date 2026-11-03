@@ -96,7 +96,6 @@ import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share"
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import CartV2, { CartV2Boundary } from "./cart-v2";
 import CartTrust, { CartFinance, BundleBanner } from "./cart-trust";
-import DeliveryFeedback from "./delivery-feedback";
 import OrderOffers from "@/app/components/order-offers";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
@@ -3318,18 +3317,6 @@ export default function CartPage() {
   // Nowy koszyk zastępuje tylko widok koszyka z formularzem; pusty koszyk,
   // podziękowanie i wszystkie okna (kod SMS, regulamin, edycja) są wspólne.
   const isV2Body = cartDesign === "v2" && items.length > 0 && !(orderConfirmed && orderState);
-  const [deliveryCheck, setDeliveryCheck] = useState<"idle" | "checking" | "complete">("idle");
-  const classicDeliveryFold = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    if (deliveryCheck !== "checking") return;
-    const timer = window.setTimeout(() => {
-      if (!deliveryDataReady || isV2Body) { setDeliveryCheck("idle"); return; }
-      if (classicDeliveryFold.current) classicDeliveryFold.current.open = false;
-      setDeliveryCheck("complete");
-    }, 900);
-    return () => window.clearTimeout(timer);
-  }, [deliveryCheck, deliveryDataReady, isV2Body]);
-
   const buildV2Props = () => ({
     items,
     backHref,
@@ -3976,7 +3963,7 @@ export default function CartPage() {
                   <CartFinance amount={payableTotal} />
                 <section className="cart-delivery-card cart-delivery-card--accordion" ref={shippingAddressSectionRef}>
                   <h2>Dostawa i dane odbiorcy</h2>
-                  <div className="checkout-delivery-fold" style={deliveryCheck === "complete" ? { display: "none" } : undefined}>
+                  <div className="checkout-delivery-fold">
                   <div className="cart-delivery-options">
                     {availableDeliveryMethods.map((method) => {
                       const isPaczkomat = method.id === PACZKOMAT_METHOD.id;
@@ -4151,10 +4138,7 @@ export default function CartPage() {
                       + Dodaj uwagi do zamówienia
                     </button>
                   )}
-                    {deliveryDataReady ? <button type="button" className="checkout-confirm-data" disabled={deliveryCheck === "checking"} onClick={() => setDeliveryCheck("checking")}>Potwierdź dane dostawy</button> : null}
                   </div>
-                  {deliveryCheck === "complete" && deliveryDataReady ? <p className="checkout-delivery-summary"><strong>{form.firstName} {form.lastName}</strong><br />{selectedPaczkomat?.id || [form.address1, form.postcode, form.city].filter(Boolean).join(" ")} <button type="button" onClick={() => setDeliveryCheck("idle")}>Edytuj</button></p> : null}
-                  {deliveryCheck !== "idle" ? <DeliveryFeedback key={deliveryCheck} checking={deliveryCheck === "checking"} complete={deliveryCheck === "complete"} /> : null}
                 </section>
 
                   {shippingFee > 0 && amountToFreeShipping > 0 ? (
