@@ -258,7 +258,11 @@ void main() {
     back /= 12.0;
     float dbl = roleta ? 1.0 : 1.0 - 0.3 * crease - 0.15 * comp + 0.06 * prof;
     vec3 diffused = mix(vec3(lum(alb)), alb, 0.8);
-    vec3 trans = clamp(uTrans * uBack * 1.25 * diffused * dbl * mix(vec3(1.0), back / max(lum(back), 0.08), 0.12), 0.0, 0.92);
+    // Realna jasność za szybą wpływa na ilość rozproszonego światła. Mocno
+    // rozmyta próbka daje subtelny blask, bez ostrego widoku przez tkaninę.
+    // Dla blackout (uTrans == 0) nie dodajemy żadnego prześwitu.
+    float daylight = smoothstep(0.08, 0.8, lum(back));
+    vec3 trans = clamp(uTrans * uBack * (0.65 + 1.15 * daylight) * diffused * dbl * mix(vec3(1.0), back / max(lum(back), 0.08), 0.12), 0.0, 0.92);
     // linki przez otwory w tkaninie (nie w plastrze miodu)
     float cords = 0.0;
     if (uHoney < 0.5 && uKind < 0.5) {
