@@ -86,7 +86,7 @@ function stageBusy(): boolean {
   if (keyboardOpen()) return true;
   const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[aria-modal="true"], [role="dialog"], [role="alertdialog"]'));
   if (dialogs.some((el) => !el.classList.contains("as-nudge") && el.offsetParent !== null)) return true;
-  if (document.querySelector(".cart-email-banner, .escape-offer-modal, .promo-save-modal, .rescue-modal")) return true;
+  if (document.querySelector(".cart-email-banner, .escape-offer-modal, .promo-save-modal, .rescue-modal, .ratuj-overlay")) return true;
   return false;
 }
 

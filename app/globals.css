@@ -24127,6 +24127,9 @@ dl.zl-table > div.is-price {
 
 /* Konfigurator plis: linia CAŁY DOM nad przyciskiem i pasek mobilny „Dodaj do koszyka” (1.11.2026, AGN-439/444/448). */
 .plisy-final-promo-note { margin: 0; font-size: 0.8rem; line-height: 1.35; font-weight: 700; color: #bfe9cf; }
+/* Link do przewodnika pomiaru pod „Dodaj do koszyka” (3.11.2026, AGN-937). */
+.plisy-final-measure-link { display: block; width: 100%; margin: 6px 0 0; padding: 2px 0; border: 0; background: none; font: inherit; font-size: 0.82rem; line-height: 1.35; font-weight: 600; color: inherit; opacity: 0.88; text-align: center; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.plisy-final-measure-link:hover { opacity: 1; }
 .plisy-sticky-cta { display: none; }
 @media (max-width: 760px) {
   .plisy-sticky-cta {
@@ -24450,4 +24453,243 @@ html body button.wiz-baner-cta:hover { background: #c2410c; }
   .home-root.plisy-v2 .pe-gora { margin-bottom: 0; }
   .home-root.plisy-v2 .pl-quick--v2 { margin-top: 0; }
   .home-root.plisy-v2 .pl-quick--v2 .pl-quick-size { display: none; }
+}
+
+/* Rabat ratunkowy za zapis (2.11.2026) - app/components/rescue-signup.tsx:
+   okienko przy próbie wyjścia z koszyka z 1 sztuką i licznik 24 h kodu. */
+.ratuj-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  background: rgba(19, 40, 67, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.ratuj-modal {
+  position: relative;
+  width: min(100%, 440px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 28px 22px 20px;
+  border-radius: 20px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 24px 60px rgba(15, 40, 89, 0.28);
+  border-top: 6px solid #ffc72c;
+}
+.ratuj-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ratuj-eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b45309;
+}
+.ratuj-modal h2 {
+  margin: 0 0 8px;
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 900;
+  color: #0f2859;
+}
+.ratuj-lead {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.ratuj-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ratuj-field input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 16px;
+  color: var(--ink);
+  background: #fff;
+}
+.ratuj-field input:focus {
+  outline: none;
+  border-color: #0f2859;
+  box-shadow: 0 0 0 3px rgba(15, 40, 89, 0.12);
+}
+.ratuj-consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  cursor: pointer;
+}
+.ratuj-consent input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: #0f2859;
+}
+.ratuj-error {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+.ratuj-cta {
+  display: block;
+  width: 100%;
+  padding: 15px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: #ffc72c;
+  color: #0f2859;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.ratuj-cta:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+.ratuj-skip {
+  display: block;
+  margin: 8px auto 12px;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.ratuj-fine {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.ratuj-fine a {
+  color: inherit;
+}
+.ratuj-trust {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: center;
+  color: #0f2859;
+}
+.ratuj-done {
+  text-align: center;
+}
+.ratuj-done-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 26px;
+  font-weight: 900;
+}
+.ratuj-done h2 {
+  font-size: 24px;
+}
+.ratuj-done p {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.ratuj-code {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #0f2859;
+  color: #ffc72c;
+  letter-spacing: 0.06em;
+  font-family: Consolas, Menlo, monospace;
+}
+.ratuj-done-deadline {
+  font-weight: 700;
+  color: #b45309;
+}
+.ratuj-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 8px auto 0;
+  padding: 10px 14px;
+  max-width: 1180px;
+  width: calc(100% - 32px);
+  border-radius: 14px;
+  background: #0f2859;
+  color: #fff;
+  font-size: 14px;
+  position: relative;
+  z-index: 2;
+}
+.ratuj-countdown-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ffc72c;
+  color: #0f2859;
+  font-weight: 900;
+}
+.ratuj-countdown-text strong {
+  letter-spacing: 0.04em;
+}
+.ratuj-countdown-clock {
+  font-variant-numeric: tabular-nums;
+  font-size: 16px;
+  color: #ffc72c;
+}
+.ratuj-countdown-narrow {
+  display: none;
+}
+@media (max-width: 560px) {
+  .ratuj-countdown {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13.5px;
+  }
+  .ratuj-countdown-wide {
+    display: none;
+  }
+  .ratuj-countdown-narrow {
+    display: inline;
+    white-space: nowrap;
+  }
 }
