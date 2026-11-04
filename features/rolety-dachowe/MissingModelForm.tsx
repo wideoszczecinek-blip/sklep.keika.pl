@@ -12,6 +12,7 @@ import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { trackShopStep } from "@/lib/track-step";
+import RoofPhoneQr from "./RoofPhoneQr";
 import { ROLETY_DACHOWE_MIN_DIMENSION_MM, type MissingModelRequest } from "./shared";
 import {
   buildRoofWindowDisplayLabel,
@@ -100,7 +101,7 @@ export default function MissingModelForm({
   const modelOk = model.trim().length > 0;
   const canSubmit = producerOk && modelOk && widthOk && heightOk;
 
-  async function handleFiles(list: FileList | null) {
+  async function handleFiles(list: FileList | readonly File[] | null) {
     const files = Array.from(list || []).filter(Boolean);
     if (!files.length) return;
     setUploadError("");
@@ -287,6 +288,7 @@ export default function MissingModelForm({
             />
           </label>
         </div>
+        <RoofPhoneQr enabled={!uploading} onFile={(file) => { void handleFiles([file]); }} />
         {attachments.length ? (
           <ul className="rd-attachments">
             {attachments.map((entry) => (

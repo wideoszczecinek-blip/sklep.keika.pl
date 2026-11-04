@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import RoofPhoneQr from "./RoofPhoneQr";
 import {
   buildRoofWindowDisplayLabel,
   resolveRoofWindowDimensions,
@@ -475,6 +476,7 @@ export default function RoofWindowSearchSelector({
                     <p className="rd-upload-ai">
                       <strong>Analiza AI:</strong> zdjęcie analizuje automat, który może się pomylić — sprawdź wynik, zanim go zapiszesz.
                     </p>
+                    <RoofPhoneQr enabled={isUploadChoiceOpen && !isRecognizing} onFile={(file) => { setIsUploadChoiceOpen(false); onPhotoUpload?.(file); }} />
                     <div className="rd-upload-actions">
                       <button
                         type="button"
