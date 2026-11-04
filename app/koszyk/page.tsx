@@ -1071,7 +1071,7 @@ export default function CartPage() {
   // się z tym, co policzy quote_save.php.
   // Kod −10 % za zapis (RATUJ-, 2.11.2026) tak samo - rabaty się nie sumują.
   const strongCodeApplied = Boolean(
-    appliedDiscount && ((appliedDiscount.type === "percent" && appliedDiscount.value >= 25) || isRescueSignupCode(appliedDiscount.code)),
+    appliedDiscount && ((appliedDiscount.type === "percent" && appliedDiscount.value >= 25) || isRescueSignupCode(appliedDiscount.code) || appliedDiscount.code.toUpperCase().startsWith('WIZ5-')),
   );
   const rescueGrant = strongCodeApplied ? null : rescueGrantRaw;
   const combinedDiscountPercent =
@@ -1858,7 +1858,9 @@ export default function CartPage() {
       // kod (bundleOrCode), kod liczy się tylko od sztuk spoza pakietu.
       const fullBase = Math.max(0, summary.total - combinedSavings);
       let json = await checkOn(fullBase);
-      if (json.ok && json.discount && bundleRaw.discountedBase > 0 && bundleOrCode(bundleRaw, json.discount, fullBase) === bundleRaw) {
+      if (json.ok && json.discount && json.discount.code.toUpperCase().startsWith('WIZ5-')) {
+        json = await checkOn(Math.max(0, fullBase - bundleRaw.savings));
+      } else if (json.ok && json.discount && bundleRaw.discountedBase > 0 && bundleOrCode(bundleRaw, json.discount, fullBase) === bundleRaw) {
         json = await checkOn(Math.max(0, fullBase - bundleRaw.discountedBase));
       }
       if (!json.ok || !json.discount) {

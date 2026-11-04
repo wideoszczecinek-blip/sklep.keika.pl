@@ -196,6 +196,9 @@ export function bundleOrCode(
   fullBase: number,
 ): BundleDiscount {
   if (!code || bundle.savings < 0.01) return bundle;
+  if (code.code.toUpperCase().startsWith('WIZ5-')) {
+    return { ...bundle, discountedBase: bundle.savings };
+  }
   const amountOn = (base: number) => {
     const b = Math.max(0, base);
     const raw = code.type === "amount" ? code.value : roundMoney((b * code.value) / 100);
