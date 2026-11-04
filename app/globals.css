@@ -24122,7 +24122,7 @@ dl.zl-table > div.is-price {
 .product-info-card .product-offer-badge { margin-top: 0.55rem; }
 
 /* Konfigurator plis: linia CAŁY DOM nad przyciskiem i pasek mobilny „Dodaj do koszyka” (1.11.2026, AGN-439/444/448). */
-.plisy-final-promo-note { margin: 0; font-size: 0.8rem; line-height: 1.35; font-weight: 700; color: #bfe9cf; }
+.plisy-final-promo-note { margin: 0; font-size: 0.8rem; line-height: 1.35; font-weight: 700; color: #155247; }
 /* Link do przewodnika pomiaru pod „Dodaj do koszyka” (3.11.2026, AGN-937). */
 .plisy-final-measure-link { display: block; width: 100%; margin: 6px 0 0; padding: 2px 0; border: 0; background: none; font: inherit; font-size: 0.82rem; line-height: 1.35; font-weight: 600; color: inherit; opacity: 0.88; text-align: center; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .plisy-final-measure-link:hover { opacity: 1; }

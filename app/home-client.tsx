@@ -46,7 +46,7 @@ import PromoCountdownBanner from "./components/promo-countdown-banner";
 import PromoTopStrip from "./components/promo-top-strip";
 import { EscapeOfferReturnBar } from "./components/escape-offer";
 import { CART_EMAIL_BAR, setScreenWindow } from "@/lib/assistant";
-import { setBundleDiscountsFromConfig } from "@/lib/bundle-discount";
+import { bundleOrCode, calcBundleDiscount, setBundleDiscountsFromConfig, useBundleDiscountRules } from "@/lib/bundle-discount";
 import {
   applyPriceAdjustment,
   setProductPriceAdjustmentsFromConfig,
@@ -58,9 +58,11 @@ import {
   type CartSummary,
   addCartItem,
   calcCartOversizeSurcharge,
+  calcMoskitieryCombinedSavings,
   findEquivalentCartItem,
   formatPln,
   readCartItems,
+  roundMoney,
   summarizeCartItems,
 } from "@/lib/cart";
 import InfoModal from "./components/info-modal";
@@ -2106,12 +2108,22 @@ export default function Home({
       window.clearInterval(timer);
     };
   }, []);
-  const headerCartDiscountPercent =
-    (topPromoActive && topPromoPreview?.type === "percent" ? topPromoPreview.value : 0) + activeRescuePercent;
-  const cartTotalWithPromo =
-    headerCartDiscountPercent > 0
-      ? Math.max(0, cartSummary.total * (1 - headerCartDiscountPercent / 100))
-      : cartSummary.total;
+  const headerBundleRules = useBundleDiscountRules();
+  const headerCombinedSavings = calcMoskitieryCombinedSavings(cartItems);
+  const headerProductsTotal = summarizeCartItems(cartItems).total;
+  const headerCode = topPromoActive && topPromoPreview ? topPromoPreview : null;
+  const headerBundle = bundleOrCode(
+    calcBundleDiscount(cartItems, headerBundleRules, headerCombinedSavings),
+    headerCode ? { code: headerCode.code, type: headerCode.type, value: headerCode.value } : null,
+    headerProductsTotal - headerCombinedSavings,
+  );
+  const headerDiscountable = Math.max(0, headerProductsTotal - headerCombinedSavings - headerBundle.discountedBase);
+  const headerCodeAmount = headerCode
+    ? Math.min(headerDiscountable, headerCode.type === "percent" ? roundMoney(headerDiscountable * headerCode.value / 100) : headerCode.value)
+    : 0;
+  const cartTotalWithPromo = Math.max(0, roundMoney(
+    cartSummary.total - headerCombinedSavings - headerBundle.savings - headerCodeAmount - roundMoney(headerDiscountable * activeRescuePercent / 100),
+  ));
   useEffect(() => {
     // First-time visitor auto-activation happens HERE, before the first
     // client render of the banner - otherwise the banner painted its
@@ -3774,17 +3786,13 @@ export default function Home({
                         {item.widthMm && item.heightMm ? ` ${item.widthMm}×${item.heightMm} mm` : ""}
                         {item.qty > 1 ? ` × ${item.qty}` : ""}
                       </span>
-                      <strong>
-                        {headerCartDiscountPercent > 0
-                          ? formatPln(Math.max(0, item.total * (1 - headerCartDiscountPercent / 100)))
-                          : formatPln(item.total)}
-                      </strong>
+                      <strong>{formatPln(item.total)}</strong>
                     </li>
                   ))}
                   {cartItems.length > 4 ? <li className="header-cart-tooltip-more">i {cartItems.length - 4} więcej…</li> : null}
                 </ul>
                 <div className="header-cart-tooltip-total">
-                  <span>Razem</span>
+                  <span>{cartTotalWithPromo < cartSummary.total ? "Razem po rabacie" : "Razem"}</span>
                   <strong>{formatPln(cartTotalWithPromo)}</strong>
                 </div>
                 <a href="/koszyk" className="header-cart-tooltip-cta">
