@@ -25,6 +25,7 @@ import {
   CART_ADDED_EVENT,
   ESCAPE_RETURN_BAR,
   applyToConfigurator,
+  isAssistantTest,
   isScreenWindowOpen,
   resolveAssistantArm,
   setAssistantSpeaking,
@@ -246,6 +247,12 @@ export default function AssistantNudges({ productSlug, active }: { productSlug: 
       writeSession({ ...session, shown: [...session.shown, candidate.id], lastAt: Date.now() });
       if (armRef.current === "B") {
         trackShopStep("assistant_nudge", candidate.id, { arm: "B", action: "ghost", product: productSlug });
+        return;
+      }
+      // Właściciel 6.11: klienci nie widzą dymków (wybór koloru 10,7 % vs 19,9 % w grupie B). Link
+      // testowy dalej je pokazuje. silent, nie ghost: nudges.php liczy ghost jako grupę B.
+      if (!isAssistantTest()) {
+        trackShopStep("assistant_nudge", candidate.id, { arm: "A", action: "silent", product: productSlug });
         return;
       }
       trackShopStep("assistant_nudge", candidate.id, { arm: "A", action: "shown", product: productSlug });
