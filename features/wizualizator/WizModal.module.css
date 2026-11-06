@@ -738,6 +738,10 @@
 .zachetaWym b { display: block; font-size: 0.95rem; color: #0f766e; }
 .zachetaWym small { display: block; margin-top: 2px; font-size: 0.8rem; color: #475569; }
 .zachetaWym:hover { background: #ccfbf1; }
+.poleWym { display: grid; gap: 4px; }
+.poleWym .zachetaWym { margin: 0; }
+.poleWymStopka { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 0; font-size: 0.8rem; line-height: 1.35; color: #475569; }
+.poleWymStopka a { color: #0f766e; font-weight: 600; text-decoration: underline; }
 @keyframes zachetaIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .qrAlt, .zachetaWym { animation: none; } }
 .demoLink { display: block; width: 100%; margin-top: 10px; border: 1px dashed #94a3b8; border-radius: 12px; background: #fff; padding: 10px 12px; font-size: 0.9rem; color: #334155; cursor: pointer; text-align: center; }

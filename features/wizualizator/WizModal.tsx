@@ -1669,12 +1669,18 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                 {blad ? <p className={s.error}>{blad}</p> : null}
                 {info && edycja ? <p className={s.info}>{info}</p> : null}
                 {prog ? <p className={s.bundle}>{prog}</p> : null}
-                {zachetaWym && !demo ? (
-                  <button type="button" className={s.zachetaWym}
-                    onClick={() => { setZachetaWym(false); setZakladka("wycena"); setEdycja(false); setWEtap("kreator"); wizEvent("wiz_produkt", token, { widok: "zacheta_wymiary" }); }}>
-                    <span aria-hidden="true">📏</span>
-                    <span><b>Masz miarkę? Wpisz wymiary okna</b><small>Teraz cena jest z wymiarów odczytanych ze zdjęcia. Po pomiarze zobaczysz cenę dokładnie dla Twojego okna – 2 minuty.</small></span>
-                  </button>
+                {szacunkowa && !demo && !zakladka && !edycja ? (
+                  <div className={s.poleWym}>
+                    <button type="button" className={s.zachetaWym}
+                      onClick={() => { setZachetaWym(false); setZakladka("wycena"); setEdycja(false); setWEtap("kreator"); wizEvent("wiz_produkt", token, { widok: zachetaWym ? "zacheta_wymiary" : "pole_wymiary" }); }}>
+                      <span aria-hidden="true">📏</span>
+                      <span><b>Wpisz wymiary okna, a pokażemy dokładną cenę.</b></span>
+                    </button>
+                    <p className={s.poleWymStopka}>
+                      <a href="/plisy/jak-mierzyc" target="_blank" rel="noopener" onClick={() => wizEvent("wiz_jak_mierzyc", token, {})}>Jak mierzyć?</a>
+                      {zachetaWym ? <span>Masz miarkę? Po pomiarze zobaczysz cenę dokładnie dla Twojego okna – 2 minuty.</span> : null}
+                    </p>
+                  </div>
                 ) : null}
                 <div className={s.resLinks}>
                   <label><input type="checkbox" checked={wszystkie} onChange={(e) => (e.target.checked ? naWszystkie() : setWszystkie(false))} /> Ta sama plisa na wszystkich szybach</label>
