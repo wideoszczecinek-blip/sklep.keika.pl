@@ -31,6 +31,7 @@ import Link from "next/link";
 import { Component, useCallback, useEffect, useRef, useState, type Dispatch, type FocusEvent, type ReactNode, type SetStateAction } from "react";
 import { formatPln, type CartLineItem } from "@/lib/cart";
 import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
+import CartWizThumb from "@/app/components/cart-wiz-thumb";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPreview";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
@@ -213,6 +214,15 @@ function Field({
 }
 
 function ItemVisual({ item, className }: { item: CartLineItem; className: string }) {
+  if (item.wizToken) {
+    return (
+      <div className={className}>
+        <CartWizThumb token={item.wizToken} label={`${item.productLabel} na zdjęciu Twojego okna`}>
+          <CartWindowThumb item={item} label={`${item.productLabel} na oknie, w wybranych kolorach`} />
+        </CartWizThumb>
+      </div>
+    );
+  }
   if (resolveCartWindowThumb(item)) {
     return (
       <div className={className}>

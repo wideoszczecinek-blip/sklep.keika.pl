@@ -682,6 +682,8 @@
   .guide { grid-template-columns: 1fr; }
   .leadRow { grid-template-columns: 1fr; }
   .paneRow { grid-template-columns: 26px 1fr; }
+  /* 7.11: przycisk był wciśnięty w kolumnę 26 px, a biały napis ginął na kremowym tle */
+  .paneRow .pigulka, .paneRow .pigulkaJasna { grid-column: 1 / -1; width: 100%; text-align: center; }
   .panePrice { grid-column: 2; text-align: left; justify-items: start; }
 }
 
@@ -1109,3 +1111,13 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
 @keyframes wiz-benefit-enter { from { opacity: .4; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 @keyframes wiz-benefit-icon { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .benefitCard, .benefitCard > svg { animation: none; } }
+
+/* 7.11: na telefonie .ctaBig jest przypięty do dołu ekranu - przyciski w karcie i w okienkach zostają na swoim miejscu */
+.karta .ctaBig, .lupa .ctaBig { position: static; min-width: 0; }
+.miarkaLink { grid-column: 1 / -1; justify-self: center; border: 0; background: none; padding: 4px; font-size: 13.5px; font-weight: 700; color: #92400e; text-decoration: underline; cursor: pointer; }
+.krokKopiuj { display: flex; align-items: center; justify-content: center; width: 100%; border: 1.5px dashed #0f9f8f; border-radius: 10px; background: #f0fdfa; padding: 9px 10px; font-size: 14px; font-weight: 700; color: #0f766e; cursor: pointer; }
+.krokSkrot { display: grid; gap: 6px; }
+.krokSkrot small { font-size: 12px; color: #64748b; text-align: center; }
+.przypKiedy { display: grid; gap: 8px; width: 100%; }
+.przypKiedy button { border: 1.5px solid #cbd5e1; border-radius: 12px; background: #fff; padding: 11px 12px; font-size: 15px; font-weight: 700; color: #12212b; cursor: pointer; }
+.przypKiedy button.on { border-color: #0f9f8f; background: #f0fdfa; color: #0f766e; }

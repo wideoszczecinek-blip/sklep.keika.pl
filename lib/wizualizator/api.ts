@@ -171,6 +171,13 @@ export async function wizLead(token: string, dane: { email?: string; telefon?: s
   return ((await r.json().catch(() => null)) as { ok: boolean; error?: string }) || { ok: false };
 }
 
+/** „Nie mam teraz miarki”: mail z pomiarem w wybranym czasie. Zwraca czytelny termin („dziś wieczorem”). */
+export async function wizPrzypomnij(token: string, kiedy: string): Promise<{ ok: boolean; error?: string; kiedy?: string }> {
+  const r = await fetch(`${WIZ_API}/przypomnij.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, kiedy }) }).catch(() => null);
+  if (!r) return { ok: false, error: "Brak połączenia" };
+  return ((await r.json().catch(() => null)) as { ok: boolean; error?: string; kiedy?: string }) || { ok: false };
+}
+
 export async function wizStatus(token: string): Promise<WizStatus> {
   const r = await fetch(`${WIZ_API}/status.php?t=${encodeURIComponent(token)}`, { cache: "no-store" });
   const j = (await r.json().catch(() => null)) as WizStatus | null;

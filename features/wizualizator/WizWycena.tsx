@@ -9,7 +9,7 @@ import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
  *    celowo PUSTE (szacunek tylko jako podpowiedź) i potwierdzenie pomiaru - bez tego dalej się nie da,
  *  - podsumowanie: wymiary klienta, ceny z cennika konfiguratora (features/plisy/shared.ts), rabat, koszyk.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PLISY_BRACKET_COLORS, applyPriceDeltas, calcPlisyPrice, fetchPlisyProfile, isPlisyMountNonInvasive, joinPlisyMountLabel,
   plisyMountLabel, plisyOversizeSurcharge, plisySagWarningWidthMm, type PlisyProfile,
@@ -213,8 +213,7 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
   useEffect(() => () => onHover(null), [onHover]);
 
   // stan rodzica aktualizowany obok (nie w środku setRows - React nie pozwala zmieniać innego komponentu w trakcie renderu)
-  const update = (id: string, patch: Partial<Row>) => {
-    const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
+  const zapisz = (next: Row[]) => {
     setRows(next);
     onChange(next.map(({ szer, wys, ...rest }) => ({
       ...rest,
@@ -222,6 +221,7 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
       wysMm: inputToMm(wys, unit) || null,
     })));
   };
+  const update = (id: string, patch: Partial<Row>) => zapisz(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   // przełącznik NIE przelicza wpisanych liczb - jak w konfiguratorze (kto wpisał 55, myśląc o cm, ma mieć 55 cm)
   const zmienJednostke = (u: DimensionUnit) => {
     if (u === unit) return;
@@ -241,6 +241,9 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
     onEvent("wiz_kreator_start", { szyb: aktywne.length });
   };
 
+  // 7.11 (analiza: 1 szyba 27 % do koszyka, 3 szyby 0 z 15): klient SAM decyduje, że pozostałe szyby są takie same
+  // albo że zamawia tylko tę jedną - niczego nie zakładamy. Tryb czeka też na odpowiedź „Na pewno zmierzyłeś/aś?”.
+  const trybRef = useRef<"" | "kopiuj" | "tylko">("");
   const dalej = (potwierdzone = false) => {
     if (!biezaca) return;
     if (!biezaca.pomin) {
@@ -253,6 +256,22 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
       const takieSame = Math.abs(wMmOf(biezaca) - (biezaca.szacSzerCm || 0) * 10) <= 10 && Math.abs(hMmOf(biezaca) - (biezaca.szacWysCm || 0) * 10) <= 10;
       if (takieSame && !potwierdzone) {
         setCzyZmierzone(true);
+        return;
+      }
+      const tryb = trybRef.current;
+      trybRef.current = "";
+      if (tryb) {
+        const reszta = rows.filter((r) => r.id !== biezaca.id && !r.pomin && !gotowa(r));
+        zapisz(rows.map((r) => {
+          if (r.id === biezaca.id) return { ...r, zmierzone: true };
+          if (tryb === "tylko") return { ...r, pomin: true };
+          return reszta.includes(r) ? { ...r, szer: biezaca.szer, wys: biezaca.wys, zmierzone: true } : r;
+        }));
+        onEvent("wiz_produkt", { widok: tryb === "kopiuj" ? "kopiuj_wymiar" : "tylko_ta_szyba", szyb: reszta.length });
+        onEvent("wiz_wymiary", { szyba: biezaca.id, szer_mm: wMmOf(biezaca), wys_mm: hMmOf(biezaca), szac_szer: biezaca.szacSzerCm, szac_wys: biezaca.szacWysCm, unit });
+        setBlad("");
+        setCzyZmierzone(false);
+        onEtap("podsumowanie");
         return;
       }
       update(biezaca.id, { zmierzone: true });
@@ -316,6 +335,8 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
   if (etap === "kreator" && biezaca) {
     const nrAkt = aktywne.findIndex((r) => r.id === biezaca.id) + 1;
     const cWl = wpisane(biezaca) ? cena(biezaca, true) : null;
+    const wzor = [...rows].reverse().find((r) => r.id !== biezaca.id && !r.pomin && gotowa(r)) || null;
+    const zostalo = rows.filter((r) => r.id !== biezaca.id && !r.pomin && !gotowa(r)).length;
     return (
       <div className={s.kreator}>
         <div className={s.krokTop}>
@@ -374,9 +395,23 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
           }
           return null;
         })()}
+        {wzor && !wpisane(biezaca) ? (
+          <button type="button" className={s.krokKopiuj} onClick={() => { update(biezaca.id, { szer: wzor.szer, wys: wzor.wys, zmierzone: false }); onEvent("wiz_produkt", { widok: "ten_sam_wymiar" }); }}>
+            Ten sam wymiar co szyba {wzor.nr}: {wJedn(wMmOf(wzor))} × {wJedn(hMmOf(wzor))} {jedn}
+          </button>
+        ) : null}
+        {cWl && zostalo > 0 ? (
+          <div className={s.krokSkrot}>
+            <button type="button" className={s.krokKopiuj} onClick={() => { trybRef.current = "kopiuj"; dalej(); }}>
+              {zostalo === 1 ? "Druga szyba ma taki sam wymiar" : `Pozostałe szyby (${zostalo}) mają taki sam wymiar`}
+            </button>
+            <button type="button" className={s.krokKopiuj} onClick={() => { trybRef.current = "tylko"; dalej(); }}>Zamawiam tylko tę szybę</button>
+            <small>Wymiar skopiuj tylko wtedy, gdy szyby są równe – plisy produkujemy dokładnie na wpisany wymiar.</small>
+          </div>
+        ) : null}
         <p className={s.krokSzac}>Na oko ok. {wJedn((biezaca.szacSzerCm || 0) * 10)} × {wJedn((biezaca.szacWysCm || 0) * 10)} {jedn} – nie zamawiaj po tym. Zmierz miarką, to 2 minuty.</p>
         <p className={s.krokPomoc}>
-          <button type="button" className={s.link} onClick={onBezMiarki}>Nie masz teraz miarki? Wyślij sobie tę wizualizację na e-mail i dokończ później</button>
+          <button type="button" className={s.link} onClick={onBezMiarki}>Nie masz teraz miarki? Przypomnimy Ci, kiedy zechcesz</button>
           <button type="button" className={s.link} onClick={() => { onEvent("wiz_czat", { krok: "wymiary" }); openLiveChat("Mam pytanie o pomiar plisy (wizualizacja)"); }}>Masz pytanie o pomiar? Napisz na czacie</button>
         </p>
         {cWl ? <p className={s.krokCena}>Ta plisa: <b>{zl(cWl.total)}</b>{cWl.split ? " (2 plisy – szerokie okno)" : ""}</p> : null}
@@ -395,7 +430,7 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
               <b>Na pewno zmierzyłeś/aś szybę miarką?</b>
               <small>Wpisane wymiary są takie same jak nasz szacunek ze zdjęcia (≈ {wJedn((biezaca.szacSzerCm || 0) * 10)} × {wJedn((biezaca.szacWysCm || 0) * 10)} {jedn}). Plisę produkujemy dokładnie na ten wymiar.</small>
               <div className={s.krokPytanieAkcje}>
-                <button type="button" className={s.secondary} onClick={() => setCzyZmierzone(false)}>Poprawię wymiary</button>
+                <button type="button" className={s.secondary} onClick={() => { trybRef.current = ""; setCzyZmierzone(false); }}>Poprawię wymiary</button>
                 <button type="button" className={s.primary} onClick={() => dalej(true)}>Tak, zmierzyłem/am</button>
               </div>
             </div>
@@ -417,6 +452,7 @@ export default function WizWycena({ szyby, etap, montaz, pokoj, wizToken, onEtap
           <span aria-hidden="true">📏</span>
           <p><b>Ceny orientacyjne – wymiary odczytane ze zdjęcia.</b> Przed zamówieniem zmierz okno: 2 minuty, przeprowadzimy Cię szyba po szybie.</p>
           <button type="button" className={s.ctaBig} onClick={start}>📏 Wpisz dokładne wymiary</button>
+          <button type="button" className={s.miarkaLink} onClick={onBezMiarki}>Nie mam teraz miarki – przypomnij mi później</button>
         </div>
       ) : (
         <p className={s.hint}><b>✓ Wymiary potwierdzone</b> – plisy wyprodukujemy dokładnie na te wymiary.</p>

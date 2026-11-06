@@ -90,6 +90,7 @@ import { buildPaymentTiles, resolveProvider, type PaymentRouting, type PaymentPr
 import { PaynowGdprNotice } from "@/app/components/paynow-gdpr";
 import InstallmentTileHint from "@/app/components/installment-tile-hint";
 import CartWindowThumb, { resolveCartWindowThumb } from "@/app/components/cart-window-thumb";
+import CartWizThumb from "@/app/components/cart-wiz-thumb";
 import ExpressWalletCheckout, { type WalletContact } from "@/app/components/express-wallet-checkout";
 import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
@@ -3700,7 +3701,14 @@ export default function CartPage() {
               <ul className="cart-page-items">
                 {items.map((item) => (
                   <li key={item.id} className="cart-page-item">
-                    {resolveCartWindowThumb(item) ? (
+                    {item.wizToken ? (
+                      // Pozycja z wizualizatora: zdjęcie okna klienta (7.11).
+                      <div className="cart-page-item-thumb cart-page-item-thumb--window">
+                        <CartWizThumb token={item.wizToken} label={`${item.productLabel} na zdjęciu Twojego okna`}>
+                          <CartWindowThumb item={item} label={`${item.productLabel} na oknie, w wybranych kolorach`} />
+                        </CartWizThumb>
+                      </div>
+                    ) : resolveCartWindowThumb(item) ? (
                       // Okno z prawdziwym widokiem i produktem w wybranych
                       // kolorach (app/components/cart-window-thumb.tsx);
                       // gałęzie niżej zostają dla pozycji bez znanych kolorów.

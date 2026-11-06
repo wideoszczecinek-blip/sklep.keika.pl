@@ -17,7 +17,7 @@ import qrcode from "qrcode-generator";
 import { type Pt, invert3, apply, paneToImage, isConvexQuad } from "@/lib/wizualizator/homografia";
 import { WizRenderer, hexToRgb, panePixelSize, RAIL_MM, type PaneRender } from "@/lib/wizualizator/renderer";
 import {
-  fetchKatalog, wizAnaliza, wizEvent, wizLead, wizPodglad, wizQrCreate, wizQrPoll, wizQrSkan, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
+  fetchKatalog, wizAnaliza, wizEvent, wizLead, wizPrzypomnij, wizPodglad, wizQrCreate, wizQrPoll, wizQrSkan, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
   type WizKatalog, type WizStatus, type WizUklad, type WizWynik, type WizSzyba,
 } from "@/lib/wizualizator/api";
 import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
@@ -181,6 +181,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const zdjUrlRef = useRef<string | null>(null);
   // e-mail: jedno pytanie, gdy wizualizacja jest gotowa (właściciel 1.11); „nie chcę” zapamiętane w sesji
   const [emailOkno, setEmailOkno] = useState(false);
+  // „Nie mam teraz miarki” (7.11): klient wybiera, kiedy wrócić do pomiaru; bez e-maila najpierw go podaje
+  const [przyp, setPrzyp] = useState<{ kiedy: string; trwa: boolean; gotowe: string } | null>(null);
   const [emailZgoda, setEmailZgoda] = useState(false);
   const [lead, setLead] = useState({ email: "", wyslane: false, blad: "" });
   // zdjęcie AI (E3) dla bieżącego układu: podgląd WebGL na żywo, po chwili spokoju fotorealistyczne zdjęcie z CRM
@@ -359,6 +361,32 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     if (!token) return;
     const r = await wizLead(token, { email: lead.email.trim(), zgoda_kontakt: true, zgoda_marketing: true, moment }); // właściciel 1.11: oferty i promocje ujęte w regulaminie wizualizatora
     setLead((l) => ({ ...l, wyslane: r.ok, blad: r.ok ? "" : r.error || "Nie udało się zapisać." }));
+  };
+
+  const zapiszPrzypomnienie = async () => {
+    if (!token || !przyp?.kiedy) return;
+    if (!lead.wyslane && !emailZgoda) {
+      setLead((l) => ({ ...l, blad: "Zaznacz akceptację regulaminu wizualizatora." }));
+      return;
+    }
+    setPrzyp((p) => (p ? { ...p, trwa: true } : p));
+    if (!lead.wyslane) {
+      const r = await wizLead(token, { email: lead.email.trim(), zgoda_kontakt: true, zgoda_marketing: true, moment: "bez_miarki" });
+      if (!r.ok) {
+        setLead((l) => ({ ...l, blad: r.error || "Nie udało się zapisać." }));
+        setPrzyp((p) => (p ? { ...p, trwa: false } : p));
+        return;
+      }
+      setLead((l) => ({ ...l, wyslane: true, blad: "" }));
+      try { window.sessionStorage.setItem("keika_wiz_email", "1"); } catch { /* sesja */ }
+    }
+    const r = await wizPrzypomnij(token, przyp.kiedy);
+    if (!r.ok) {
+      setLead((l) => ({ ...l, blad: r.error || "Nie udało się zapisać." }));
+      setPrzyp((p) => (p ? { ...p, trwa: false } : p));
+      return;
+    }
+    setPrzyp((p) => (p ? { ...p, trwa: false, gotowe: r.kiedy || "" } : p));
   };
 
   // ------------------------------------------------------------ postęp analizy (pasek z % i szacowanym czasem)
@@ -1582,7 +1610,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                           montaz={montaz}
                           pokoj={pokojTeraz}
                           wizToken={token || ""}
-                          onBezMiarki={() => { setEmailOkno(true); wizEvent("wiz_produkt", token, { widok: "bez_miarki" }); }}
+                          onBezMiarki={() => { setPrzyp({ kiedy: "", trwa: false, gotowe: "" }); wizEvent("wiz_produkt", token, { widok: "bez_miarki" }); }}
                           onDodano={(d) => {
                             writeSesja(readSesja().map((z) => (z.token === token ? { ...z, wKoszyku: true } : z)));
                             setZdjecia(readSesja());
@@ -1701,6 +1729,44 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     wizEvent("wiz_email_pomin", token, {});
                   }}>Nie chcę podawać e-maila</button>
                 </form>
+              </div>
+            ) : null}
+
+            {przyp ? (
+              <div className={s.lupa} role="dialog" aria-label="Przypomnienie o pomiarze" onClick={() => setPrzyp(null)}>
+                <div className={s.pokojBox} onClick={(e) => e.stopPropagation()}>
+                  {przyp.gotowe ? (
+                    <>
+                      <span className={s.dodanoIco} aria-hidden="true">✓</span>
+                      <b>Przypomnimy Ci {przyp.gotowe}</b>
+                      <small>Dostaniesz e-mail ze zdjęciem Twojego okna i krótką instrukcją pomiaru. Twoje ustawienia są zapisane.</small>
+                      <button type="button" className={s.ctaBig} onClick={() => setPrzyp(null)}>Dobrze</button>
+                    </>
+                  ) : (
+                    <>
+                      <b>Kiedy przypomnieć o pomiarze?</b>
+                      <small>Wyślemy link do tej wizualizacji ze zdjęciem Twojego okna i instrukcją pomiaru. Tkaniny i ustawienia zostają zapisane.</small>
+                      <div className={s.przypKiedy}>
+                        {[...(new Date().getHours() < 18 ? [["dzis_wieczor", "Dziś wieczorem"]] : []), ["jutro_rano", "Jutro rano"], ["jutro_wieczor", "Jutro wieczorem"]].map(([k, t]) => (
+                          <button key={k} type="button" className={przyp.kiedy === k ? s.on : ""} onClick={() => setPrzyp((p) => (p ? { ...p, kiedy: k } : p))}>{t}</button>
+                        ))}
+                      </div>
+                      {!lead.wyslane ? (
+                        <>
+                          <input type="email" inputMode="email" autoComplete="email" placeholder="Twój adres e-mail" value={lead.email}
+                            onChange={(e) => setLead((l) => ({ ...l, email: e.target.value, blad: "" }))} />
+                          <label className={s.emailZgoda}>
+                            <input type="checkbox" checked={emailZgoda} onChange={(e) => { setEmailZgoda(e.target.checked); setLead((l) => ({ ...l, blad: "" })); }} />
+                            <span>Akceptuję <a href="/wizualizator/regulamin" target="_blank" rel="noopener">regulamin wizualizatora</a> – link do wizualizacji z wyceną oraz najlepsze oferty i promocje KEIKA e-mailem. Wypiszesz się jednym kliknięciem.</span>
+                          </label>
+                        </>
+                      ) : null}
+                      {lead.blad ? <p className={s.error}>{lead.blad}</p> : null}
+                      <button type="button" className={s.ctaBig} disabled={!przyp.kiedy || przyp.trwa || (!lead.wyslane && !lead.email.trim())} onClick={() => void zapiszPrzypomnienie()}>Przypomnij mi</button>
+                      <button type="button" className={s.emailPomin} onClick={() => setPrzyp(null)}>Wróć do wyceny</button>
+                    </>
+                  )}
+                </div>
               </div>
             ) : null}
 
