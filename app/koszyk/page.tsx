@@ -1557,6 +1557,32 @@ export default function CartPage() {
   // of that footgun and gives the customer control over the timing.
   const shippingAddressSectionRef = useRef<HTMLElement | null>(null);
   const paymentSectionRef = useRef<HTMLElement | null>(null);
+  // Koszyk i kasa to jedna strona, więc bez tego wejście do kasy widać dopiero
+  // po dotknięciu pola (AGN-1594). Każda sekcja raz na wejście na stronę;
+  // ścieżka nie ma znaczenia, liczy się to, że sekcja weszła w kadr.
+  const checkoutSectionsSeenRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!hydrated || cartDesign === null || items.length === 0) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const sections = new Map<Element, string>();
+    if (shippingAddressSectionRef.current) sections.set(shippingAddressSectionRef.current, "dane");
+    if (paymentSectionRef.current) sections.set(paymentSectionRef.current, "platnosc");
+    if (sections.size === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const label = sections.get(entry.target);
+          if (!entry.isIntersecting || !label || checkoutSectionsSeenRef.current.has(label)) continue;
+          checkoutSectionsSeenRef.current.add(label);
+          trackCheckoutIssue("checkout_section_view", label);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0, rootMargin: "0px 0px -10% 0px" },
+    );
+    sections.forEach((_, node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [hydrated, cartDesign, items.length]);
 
   function scrollToSection(ref: React.RefObject<HTMLElement | null>) {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
