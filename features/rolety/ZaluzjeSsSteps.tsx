@@ -162,7 +162,12 @@ export default function ZaluzjeSsSteps({
   const f22 = ssField(model, "22");
   const f56 = ssField(model, "56");
   if (f22) {
-    const recommended = mountId === "na-sciane" ? /uniwersaln|ścienn/i : /uniwersaln|sufitow/i;
+    // Uchwyty pod sposób montażu (7.11.2026): żaden z 3 montaży nie mocuje do
+    // sufitu, więc klamr sufitowych nie pokazujemy; na skrzydło polecamy
+    // uniwersalne, na ścianę - ścienne. Bez wiercenia tylko na skrzydle.
+    const onWall = mountId === "na-sciane";
+    const recommended = onWall ? /ścienn/i : /uniwersaln/i;
+    const bracketAllowed = (label: string) => !/sufitow/i.test(label);
     const bracketNonInvasive = f22.options.find((option) => /bezinwazyjn/i.test(option.label)) || null;
     const none56 = ssNoneOption(f56);
     const options56 = f56 ? ssVisibleOptions(f56, selection["56"]).filter((option) => option.v !== none56?.v) : [];
@@ -173,7 +178,7 @@ export default function ZaluzjeSsSteps({
       "Uchwyty montażowe",
       f22,
       <>
-        {f56 ? (
+        {f56 && !onWall ? (
           <label className="zl-exact-toggle zs-nodrill">
             <input
               type="checkbox"
@@ -200,10 +205,10 @@ export default function ZaluzjeSsSteps({
           <p className="hero-product-config-hint">Uchwyty: {ssCleanLabel(bracketNonInvasive.label)} - wymagane przy montażu bez wiercenia.</p>
         ) : (
           <>
-            {noDrill && f56 ? <p className="zs-subtitle">Klamry, które dostawca dołącza do żaluzji:</p> : null}
+            {noDrill && f56 ? <p className="zs-subtitle">Klamry dołączone do żaluzji:</p> : null}
             <div className="zs-grid">
               {ssVisibleOptions(f22, selection["22"])
-                .filter((option) => option.v !== bracketNonInvasive?.v)
+                .filter((option) => option.v !== bracketNonInvasive?.v && (bracketAllowed(option.label) || option.v === selection["22"]))
                 .map((option) =>
                   optionCard(f22, option, {
                     badge: recommended.test(option.label) ? <span className="zs-opt-flag is-good">polecane</span> : null,

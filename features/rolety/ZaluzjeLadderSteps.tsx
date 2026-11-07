@@ -153,7 +153,7 @@ export default function ZaluzjeLadderSteps({
           {isCord ? (
             <div className="zs-standard-card is-active is-info">
               <strong>STANDARD - dobrany do koloru lameli</strong>
-              <span>Sznurek w kolorze dobranym do lameli {colorLabel ? `(${colorLabel})` : ""}. Innych kolorów sznurka dostawca nie oferuje.</span>
+              <span>Sznurek w kolorze dobranym do lameli {colorLabel ? `(${colorLabel})` : ""}. Innych kolorów sznurka nie ma w ofercie.</span>
             </div>
           ) : (
             <>

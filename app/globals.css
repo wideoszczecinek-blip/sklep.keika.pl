@@ -24884,3 +24884,185 @@ html body button.pl-quick-tk.is-active { border-color: #d94d00; background: #fff
 
 /* koszyk i kasa: zdjęcie okna klienta przy pozycji z wizualizatora (7.11) */
 .cart-wiz-thumb { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+
+/* Żaluzje 7.11.2026: /zaluzje = wybór rodzaju lameli (4 produkty),
+   /zaluzje/<rodzaj> = strona rodzaju z grubościami lameli jako wariantami. */
+.zl-hub {
+  margin: 0.4rem 0 1.4rem;
+  scroll-margin-top: 6rem;
+}
+.zl-hub-title {
+  margin: 0 0 0.3rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+.zl-hub-lead {
+  margin: 0 0 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  opacity: 0.85;
+}
+.zl-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 0.8rem;
+}
+.zl-hub-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  border-radius: 1.1rem;
+  border: 2px solid rgba(19, 40, 67, 0.14);
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.zl-hub-card:hover,
+.zl-hub-card:focus-visible {
+  border-color: #f59e0b;
+  box-shadow: 0 10px 26px rgba(19, 40, 67, 0.12);
+  transform: translateY(-2px);
+}
+.zl-hub-photo {
+  display: block;
+  aspect-ratio: 16 / 10;
+  background-color: #f3f6f9;
+  background-size: cover;
+  background-position: center;
+}
+.zl-hub-body {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  padding: 0.8rem 0.9rem 0.95rem;
+}
+.zl-hub-body strong {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.zl-hub-desc {
+  font-size: 0.84rem;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+.zl-hub-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.zl-hub-rooms {
+  font-size: 0.76rem;
+  opacity: 0.7;
+}
+.zl-hub-go {
+  margin-top: 0.2rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #d97706;
+}
+.zl-hub-compare {
+  margin-top: 1.1rem;
+  overflow-x: auto;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(19, 40, 67, 0.14);
+  font-size: 0.78rem;
+}
+.zl-hub-compare-row {
+  display: grid;
+  grid-template-columns: 8.5rem repeat(4, minmax(5.6rem, 1fr));
+  min-width: 31rem;
+}
+.zl-hub-compare-row > span {
+  padding: 0.5rem 0.55rem;
+  border-top: 1px solid rgba(19, 40, 67, 0.08);
+  line-height: 1.3;
+}
+.zl-hub-compare-row.is-head > span {
+  border-top: 0;
+  font-weight: 800;
+  background: rgba(19, 40, 67, 0.04);
+}
+.zl-hub-compare-row > span[role="rowheader"] {
+  font-weight: 700;
+}
+.zl-rodzaj-widths {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 0.5rem;
+  margin: 0.3rem 0 0.6rem;
+}
+.zl-rodzaj-width {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(19, 40, 67, 0.14);
+  background: #fff;
+}
+.zl-rodzaj-width strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.zl-rodzaj-width span {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+.zl-rodzaj-width small {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+.zl-rodzaj-hint,
+.zl-rodzaj-rooms {
+  font-size: 0.84rem;
+  line-height: 1.45;
+  opacity: 0.85;
+}
+.zl-rodzaj-rooms span {
+  font-weight: 800;
+}
+.zl-rodzaj-others {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.zl-rodzaj-others .zl-chip {
+  text-decoration: none;
+}
+.zl-rodzaj-others .zl-chip strong {
+  font-size: 0.86rem;
+}
+.zl-width-chips .zl-chip {
+  min-width: 4.2rem;
+}
+.zl-variant-card {
+  position: relative;
+}
+html[data-theme="dark"] .zl-hub-card,
+html[data-theme="dark"] .zl-rodzaj-width {
+  background: rgba(240, 248, 255, 0.05);
+  border-color: rgba(194, 228, 255, 0.25);
+}
+.zl-hub,
+.zl-hub-grid,
+.zl-hub-compare {
+  min-width: 0;
+  max-width: 100%;
+}
+.pl-landing:has(> .zl-hub) {
+  min-width: 0;
+  max-width: 100%;
+}
+.hero-inner.is-catalog .hero-product-panel,
+.hero-inner.is-catalog .hero-product-content {
+  min-width: 0;
+  max-width: 100%;
+}
+.zl-hub-compare {
+  width: 100%;
+  contain: inline-size;
+}

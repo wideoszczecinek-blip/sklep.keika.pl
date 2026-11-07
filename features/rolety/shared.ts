@@ -24,6 +24,7 @@ export type { FabricGroup, FabricSwatch, HardwareOption, MountOption, PriceTable
 import type { SsExtraLine, SsSupplierOrder } from "./ss-options";
 import ZALUZJE_SPECS_JSON from "./ss-options/_specs.json";
 import { fetchConfiguratorJson } from "@/lib/configurator-fetch";
+import { zaluzjeColorNamePl } from "./zaluzje-kolory";
 
 export const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 
@@ -160,10 +161,10 @@ export const ROLETY_COPY: Record<RoletySlug, RoletyProductCopy> = {
     slug: "zaluzje",
     path: "/zaluzje",
     shortName: "żaluzję",
-    h1: "Żaluzje poziome na wymiar",
-    seoTitle: "Żaluzje poziome na wymiar - drewniane, bambusowe, aluminiowe | KEIKA",
+    h1: "Żaluzje na wymiar",
+    seoTitle: "Żaluzje na wymiar - aluminiowe, drewniane, bambusowe, PCV | KEIKA",
     seoDescription:
-      "Żaluzje poziome na wymiar w 38 modelach: drewniane basswood i abachi, bambusowe, prime wood, drewnopodobne PCV i aluminiowe, lamele 16-65 mm, kilkaset kolorów. Sterowanie sznurkiem z przekładnią po wybranej stronie, klamry w cenie. Wycena online, realizacja do 15 dni roboczych, 5 lat gwarancji, 30 dni na zwrot.",
+      "Żaluzje poziome na wymiar w 4 rodzajach: aluminiowe, drewniane, bambusowe i PCV drewnopodobne, lamele 16-65 mm, kilkaset kolorów. Montaż w świetle szyby, na skrzydło lub na ścianę, sterowanie po wybranej stronie. Wycena online, realizacja do 15 dni roboczych.",
     startingPriceFallback: 177.9,
     sku: "zaluzja-pozioma-na-wymiar",
     category: "Żaluzje poziome",
@@ -191,11 +192,11 @@ export const ROLETY_COPY: Record<RoletySlug, RoletyProductCopy> = {
     instructionSteps: [
       {
         title: "Pomiar",
-        body: "Montaż we wnęce: zmierz szerokość wnęki i odejmij 2 cm, zmierz wysokość wnęki i odejmij 1 cm. Montaż na ścianie nad oknem: szerokość okna plus 10 cm, wysokość według potrzeby. Wpisz wynik w konfiguratorze.",
+        body: "W świetle szyby: zmierz szybę od połowy uszczelki do połowy uszczelki. Na skrzydło: szerokość od kreseczki do kreseczki (szyba z listwami), wysokość całego skrzydła - przy nawiewniku od jego dołu. Na ścianę: zmierz wnękę - doliczymy po 5 cm z każdej strony i miejsce na pakiet lameli nad wnęką. Wpisujesz to, co zmierzysz, co do milimetra.",
       },
       {
         title: "Montaż",
-        body: "Klamry przykręcasz do sufitu wnęki albo do ściany nad oknem, potem wpinasz w nie górną belkę żaluzji. Klamry i wkręty są w komplecie.",
+        body: "Klamry przykręcasz do ramy skrzydła albo do ściany nad oknem i wpinasz w nie górną belkę żaluzji. Przy montażu na skrzydło możesz wybrać mocowania bezinwazyjne - bez wiercenia. Klamry i wkręty są w komplecie.",
       },
       {
         title: "Sterowanie",
@@ -328,8 +329,9 @@ function cleanSwatchText(slug: RoletySlug, label: string, code: string): { label
     if (!nextCode || /^ss-\d/.test(nextCode)) nextCode = bracket[1].trim();
     text = text.replace(bracket[0], " ");
   }
-  text = text.replace(/\s*\*\*\s*/g, " (").replace(/\(([^)]*)$/, "($1)");
-  return { label: text.replace(/\s+/g, " ").trim(), code: /^ss-\d/.test(nextCode) ? "" : nextCode };
+  // Polska nazwa koloru (zaluzje-kolory.ts); dopiski „** dostępność …” tłumaczy ta sama funkcja.
+  text = zaluzjeColorNamePl(text.replace(/\s*\*\*\s*/g, " ").replace(/\s+/g, " ").trim());
+  return { label: text, code: /^ss-\d/.test(nextCode) ? "" : nextCode };
 }
 
 export function roletyProfileFromCatalogJson(raw: unknown, slug: RoletySlug): RoletyProfile | null {
@@ -800,14 +802,18 @@ const ZALUZJE_CATEGORY_ADJ: Record<string, string> = {
   "drewniane-abachi": "drewniane abachi",
   bambusowe: "bambusowe",
   "prime-wood": "Prime wood",
-  "drewnopodobne-pcv": "drewnopodobne PCV",
+  "drewnopodobne-pcv": "PCV drewnopodobne",
   aluminiowe: "aluminiowe",
-  drewnopodobne: "drewnopodobne",
+  drewnopodobne: "aluminiowe drewnopodobne",
 };
+/** Nazwy sprzed 7.11.2026 - stare adresy /zaluzje/<model> przekierowujemy na rodzaj. */
+const ZALUZJE_CATEGORY_ADJ_LEGACY: Record<string, string> = { "drewnopodobne-pcv": "drewnopodobne PCV", drewnopodobne: "drewnopodobne" };
 
 export type ZaluzjeModel = {
   id: string;
   slug: string;
+  /** Adres modelu sprzed 7.11.2026 (inne nazwy PCV / drewnopodobnych). */
+  legacySlug: string;
   /** "Żaluzje bambusowe 50 mm RETRO" - nazwa produktu (H1, koszyk). */
   name: string;
   /** "50 mm RETRO" - do okruszka i kart w katalogu. */
@@ -853,10 +859,13 @@ export function zaluzjeModels(profile: RoletyProfile, extraAdjustPercent = 0): Z
     let slug = slugifyPl([adj, shortName].filter(Boolean).join(" ")) || slugifyPl(group.id);
     if (used.has(slug)) slug = `${slug}-${slugifyPl(group.id)}`;
     used.add(slug);
+    const legacyAdj = ZALUZJE_CATEGORY_ADJ_LEGACY[categorySlug] || adj;
+    const legacySlug = slugifyPl([legacyAdj, shortName].filter(Boolean).join(" ")) || slug;
     const size = String(group.note || "").match(/Szeroko\S*\s+do\s+(\d+)\s*cm,\s*wysoko\S*\s+do\s+(\d+)\s*cm/i);
     return {
       id: group.id,
       slug,
+      legacySlug,
       name: `Żaluzje ${adj}${shortName ? ` ${shortName}` : ""}`,
       shortName: shortName || group.label,
       category,
@@ -878,7 +887,12 @@ export function findZaluzjeModel(profile: RoletyProfile, slugOrId: string, extra
   const wanted = String(slugOrId || "").trim().toLowerCase();
   if (!wanted) return null;
   const models = zaluzjeModels(profile, extraAdjustPercent);
-  return models.find((model) => model.slug === wanted) || models.find((model) => model.id.toLowerCase() === wanted) || null;
+  return (
+    models.find((model) => model.slug === wanted) ||
+    models.find((model) => model.legacySlug === wanted) ||
+    models.find((model) => model.id.toLowerCase() === wanted) ||
+    null
+  );
 }
 
 /** Model dla grupy (nazwa produktu w koszyku po wyborze w konfiguratorze). */

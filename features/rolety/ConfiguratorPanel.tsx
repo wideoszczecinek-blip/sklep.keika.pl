@@ -41,6 +41,7 @@ import ZaluzjaPreview, { ZaluzjaHead, ZaluzjaSpecTable, type ZaluzjaPreviewData,
 import { zaluzjeTapeColor, type ZaluzjaDrawingData } from "./zaluzja-drawing-data";
 import ZaluzjeSsSteps from "./ZaluzjeSsSteps";
 import ZaluzjeLadderSteps from "./ZaluzjeLadderSteps";
+import { ZALUZJE_RODZAJE, zaluzjeRodzajOfGroup, zaluzjeRodzajWidths, zaluzjeVersionName, type ZaluzjeRodzajSlug } from "./zaluzje-rodzaje";
 import {
   loadSsOptions,
   ssApplyNoDrill,
@@ -184,6 +185,7 @@ export default function RoletyConfiguratorPanel({
   onZoom,
   modelSlug,
   lockModel = false,
+  rodzaj,
 }: {
   slug: RoletySlug;
   initialValues?: ConfiguratorInitialValues;
@@ -194,6 +196,8 @@ export default function RoletyConfiguratorPanel({
   modelSlug?: string;
   /** Żaluzje: model z pozycji koszyka (etykieta) na sztywno - edycja w koszyku. */
   lockModel?: boolean;
+  /** Żaluzje: strona rodzaju (/zaluzje/<rodzaj>) - krok 0 = grubość lameli i wersja w ramach rodzaju. */
+  rodzaj?: ZaluzjeRodzajSlug;
 }) {
   const copy = ROLETY_COPY[slug];
   // Żaluzje: model wybrany wcześniej, kolor jako krok 1, wymiary 2, klamry 3,
@@ -316,6 +320,26 @@ export default function RoletyConfiguratorPanel({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelFirst, selectedFabricGroupId]);
+  // Uchwyty a sposób montażu (7.11.2026): na ścianę nie ma montażu bez wiercenia,
+  // a klamry sufitowe nie pasują do żadnego z 3 montaży - wracamy do domyślnych.
+  useEffect(() => {
+    if (!modelFirst || !ssModel) return;
+    if (selectedMountId === "na-sciane" && noDrill) {
+      setNoDrill(false);
+      setSsSelection((prev) => ssApplyNoDrill(ssModel, prev, false));
+      return;
+    }
+    const f22 = ssField(ssModel, "22");
+    const current = f22 ? ssOption(f22, ssSelection["22"]) : null;
+    if (f22 && current && /sufitow/i.test(current.label)) {
+      const fallback =
+        f22.options.find((option) => option.v === f22.default && !/sufitow/i.test(option.label)) ||
+        f22.options.find((option) => /uniwersaln/i.test(option.label) && !option.disabled) ||
+        null;
+      if (fallback) setSsSelection((prev) => ({ ...prev, "22": fallback.v }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelFirst, ssModel, selectedMountId, ssSelection["22"]]);
   const [quantity, setQuantity] = useState(initialValues?.qty ? String(initialValues.qty) : "1");
   const [stepDimsCollapsed, setStepDimsCollapsed] = useState(Boolean(isCartEdit && initialValues?.widthMm && initialValues?.heightMm));
   const lastTrackedDimsRef = useRef("");
@@ -455,6 +479,32 @@ export default function RoletyConfiguratorPanel({
     setStepGroupCollapsed(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelFromSlug]);
+
+  // Żaluzje na stronie rodzaju: grubości lameli (warianty) i wersje przy grubości.
+  const rodzajWidths = useMemo(() => (profile && rodzaj ? zaluzjeRodzajWidths(profile, rodzaj) : []), [profile, rodzaj]);
+  const [slatWidthMm, setSlatWidthMm] = useState(0);
+  // Model z adresu (?model=ss-NN, także po przekierowaniu ze starej strony modelu)
+  // albo z edycji / „Wyceń podobną” - grubość ustawiamy z wybranego modelu.
+  useEffect(() => {
+    if (!profile || !rodzaj) return;
+    let wanted = selectedFabricGroupId;
+    if (!wanted) {
+      try {
+        wanted = (new URL(window.location.href).searchParams.get("model") || "").trim();
+      } catch {
+        wanted = "";
+      }
+    }
+    const group = wanted ? profile.fabricGroups.find((entry) => entry.id.toLowerCase() === wanted.toLowerCase()) : null;
+    if (group && zaluzjeRodzajOfGroup(group) === rodzaj) {
+      setSlatWidthMm(zaluzjeSlatWidthMm(group.label));
+      if (group.id !== selectedFabricGroupId) setSelectedFabricGroupId(group.id);
+      setStepGroupCollapsed(true);
+    } else if (selectedFabricGroupId) {
+      setSelectedFabricGroupId("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, rodzaj]);
 
   const selectedModelInfoPid = modelFirst && profile && selectedFabricGroupId ? zaluzjeModelForGroup(profile, selectedFabricGroupId)?.id.replace(/^ss-/, "") || "" : "";
 
@@ -868,7 +918,24 @@ export default function RoletyConfiguratorPanel({
       setSelectedFabricId("");
       setStepFabricCollapsed(false);
     }
-    window.setTimeout(() => scrollStepIntoView(stepFabricRef.current), 380);
+    window.setTimeout(() => scrollStepIntoView(rodzaj && !selectedMountId ? stepMountRef.current : stepFabricRef.current), 380);
+  }
+
+  function pickSlatWidth(widthMm: number) {
+    const entry = rodzajWidths.find((item) => item.widthMm === widthMm);
+    if (!entry) return;
+    trackShopStep("zaluzje_slat_width", `${widthMm} mm`, { product: slug, rodzaj: rodzaj || "" });
+    setSlatWidthMm(widthMm);
+    if (entry.groups.length === 1) {
+      pickFabricGroup(entry.groups[0].id);
+      return;
+    }
+    // Kilka wersji przy tej grubości - klient wybiera wersję; model z innej grubości odpada.
+    if (!entry.groups.some((group) => group.id === selectedFabricGroupId)) {
+      setSelectedFabricGroupId("");
+      setSelectedFabricId("");
+    }
+    setStepGroupCollapsed(false);
   }
 
   function pickFabric(id: string, source?: string) {
@@ -1192,7 +1259,7 @@ export default function RoletyConfiguratorPanel({
           <div className="plisy-position-form" ref={stepDimsRef}>
             {blockedByMount ? (
               <>
-                <p className="hero-product-config-hint">Najpierw wybierz sposób montażu (krok 1) - od niego zależy, co mierzysz.</p>
+                <p className="hero-product-config-hint">Najpierw wybierz sposób montażu (krok {rodzaj ? 2 : 1}) - od niego zależy, co mierzysz.</p>
                 <label className="zl-exact-toggle">
                   <input type="checkbox" checked={exactBlindSize} onChange={(event) => setExactBlindSize(event.target.checked)} />
                   Znam dokładny wymiar żaluzji
@@ -1506,7 +1573,7 @@ export default function RoletyConfiguratorPanel({
                   ))}
                 </span>
               ) : null}
-              <span className="plisy-price-card-perks">W cenie: 5 lat gwarancji i 30 dni na zwrot</span>
+              <span className="plisy-price-card-perks">{modelFirst ? "W cenie: klamry montażowe i wkręty, gwarancja producenta" : "W cenie: 5 lat gwarancji i 30 dni na zwrot"}</span>
             </>
           );
         })()}
@@ -1613,6 +1680,84 @@ export default function RoletyConfiguratorPanel({
           </button>
         ) : null}
       </div>
+    );
+  }
+
+  function renderRodzajSection() {
+    const widthEntry = rodzajWidths.find((item) => item.widthMm === slatWidthMm) || null;
+    const versionName = selectedFabricGroup ? zaluzjeVersionName(selectedFabricGroup).name : "";
+    const summary = slatWidthMm ? (
+      <strong>
+        {slatWidthMm} mm{selectedFabricGroup && widthEntry && widthEntry.groups.length > 1 ? ` · ${versionName}` : ""}
+      </strong>
+    ) : null;
+    return (
+      <section className={`hero-product-step-accordion ${stepGroupCollapsed ? "is-collapsed" : ""}`}>
+        {stepHead(
+          "fabric_group",
+          1,
+          "Grubość lameli",
+          Boolean(selectedFabricGroup),
+          stepGroupCollapsed,
+          () => setStepGroupCollapsed((prev) => !prev),
+          summary,
+          stepGroupRef,
+        )}
+        <div className="hero-product-step-body" style={stepGroupCollapsed ? undefined : { maxHeight: "none", overflow: "visible" }}>
+          <div className="zl-chip-row zl-width-chips">
+            {rodzajWidths.map((item) => (
+              <button
+                key={item.widthMm}
+                type="button"
+                className={`zl-chip ${item.widthMm === slatWidthMm ? "is-active" : ""}`}
+                aria-pressed={item.widthMm === slatWidthMm}
+                onClick={() => pickSlatWidth(item.widthMm)}
+              >
+                <strong>{item.widthMm} mm</strong>
+                <small>{colorCountLabel(item.colorCount)}</small>
+              </button>
+            ))}
+          </div>
+          {!slatWidthMm ? (
+            <p className="hero-product-config-hint">
+              Węższa lamela mniej odstaje od szyby (dobra na skrzydło), szersza daje mniej szczelin i więcej światła po otwarciu.
+            </p>
+          ) : null}
+          {widthEntry && widthEntry.groups.length > 1 ? (
+            <>
+              <h4 className="rolety-group-section-title">Wersja lameli {widthEntry.widthMm} mm</h4>
+              <div className="zl-variant-grid">
+                {widthEntry.groups.map((group) => {
+                  const version = zaluzjeVersionName(group);
+                  const active = group.id === selectedFabricGroupId;
+                  return (
+                    <button
+                      key={group.id}
+                      type="button"
+                      className={`zl-variant-card ${active ? "is-active" : ""}`}
+                      aria-pressed={active}
+                      onClick={() => {
+                        trackShopStep("select_model", group.label, { option_id: group.id, product: slug, rodzaj: rodzaj || "" });
+                        pickFabricGroup(group.id);
+                      }}
+                    >
+                      {group.imageUrl ? (
+                        <span className="zl-variant-photo" aria-hidden="true" style={{ backgroundImage: `url(${optimizeImageUrl(group.imageUrl, 256)})` }} />
+                      ) : null}
+                      <span className="zl-variant-body">
+                        <strong>{version.name}</strong>
+                        <span className="zl-variant-note">{version.note}</span>
+                        <small>{colorCountLabel(group.swatches.length)}</small>
+                      </span>
+                      {active ? <span className="hardware-selected-badge" aria-hidden="true">✓</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
+        </div>
+      </section>
     );
   }
 
@@ -1911,7 +2056,7 @@ export default function RoletyConfiguratorPanel({
                 window.setTimeout(() => scrollStepIntoView(stepDimsRef.current), 80);
               }}
             >
-              Wpisz wymiary (krok 2)
+              Wpisz wymiary (krok {modelFirst && rodzaj ? 3 : 2})
             </button>
           </div>
         ) : null}
@@ -2008,15 +2153,17 @@ export default function RoletyConfiguratorPanel({
     return (
       <>
         <header>
-          <strong>{modelLocked && selectedModelInfo ? `Wyceń: ${selectedModelInfo.name}` : headerTitle}</strong>
+          <strong>
+            {rodzaj ? `Wyceń: ${ZALUZJE_RODZAJE[rodzaj].name}` : modelLocked && selectedModelInfo ? `Wyceń: ${selectedModelInfo.name}` : headerTitle}
+          </strong>
         </header>
-        {showGroupStep ? renderGroupSection(0) : null}
+        {rodzaj ? renderRodzajSection() : showGroupStep ? renderGroupSection(0) : null}
         {collectionInfoModal}
         {selectedFabricGroup ? (
           <>
-            {renderMountSection(1)}
-            {renderDimsSection(2)}
-            {renderColorSection(3)}
+            {renderMountSection(rodzaj ? 2 : 1)}
+            {renderDimsSection(rodzaj ? 3 : 2)}
+            {renderColorSection(rodzaj ? 4 : 3)}
             {selectedFabric && ssModel ? (
               <div ref={ssStepsRef}>
                 <ZaluzjeLadderSteps
@@ -2026,7 +2173,7 @@ export default function RoletyConfiguratorPanel({
                   colorV={ssColorV}
                   colorLabel={selectedFabric.label}
                   basePrice={baseUnitPrice}
-                  firstStepNo={4}
+                  firstStepNo={rodzaj ? 5 : 4}
                 />
               </div>
             ) : null}
@@ -2048,7 +2195,7 @@ export default function RoletyConfiguratorPanel({
                     widthMm={widthNum}
                     mountId={selectedMountId}
                     colorV={ssColorV}
-                    firstStepNo={4 + (ssLadderInfo(ssModel, ssColorV).cordOption && ssLadderInfo(ssModel, ssColorV).tapeOptions.length ? 1 : 0) + (ssLadderInfo(ssModel, ssColorV).hasField ? 1 : 0)}
+                    firstStepNo={(rodzaj ? 5 : 4) + (ssLadderInfo(ssModel, ssColorV).cordOption && ssLadderInfo(ssModel, ssColorV).tapeOptions.length ? 1 : 0) + (ssLadderInfo(ssModel, ssColorV).hasField ? 1 : 0)}
                   />
                 </div>
                 ) : (
@@ -2063,7 +2210,13 @@ export default function RoletyConfiguratorPanel({
             {renderSummary()}
           </>
         ) : (
-          <p className="hero-product-config-hint">Wybierz model, aby przejść do koloru lameli.</p>
+          <p className="hero-product-config-hint">
+            {rodzaj
+              ? slatWidthMm
+                ? "Wybierz wersję lameli - potem sposób montażu, pomiar i kolor."
+                : "Wybierz grubość lameli - potem sposób montażu, pomiar i kolor."
+              : "Wybierz model, aby przejść do koloru lameli."}
+          </p>
         )}
         {measureGuideOpen ? (
           <ZaluzjeMeasureModal

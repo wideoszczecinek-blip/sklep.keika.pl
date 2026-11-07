@@ -139,12 +139,12 @@ import {
   type RoletySlug,
 } from "@/features/rolety/shared";
 import RoletyLanding from "@/features/rolety/Landing";
-import ZaluzjeCatalog, { ZALUZJE_CATALOG_ID } from "@/features/rolety/ZaluzjeCatalog";
-import ZaluzjeModelLanding from "@/features/rolety/ZaluzjeModelLanding";
+import ZaluzjeHub, { ZALUZJE_CATALOG_ID } from "@/features/rolety/ZaluzjeHub";
+import ZaluzjeRodzajLanding from "@/features/rolety/ZaluzjeRodzajLanding";
+import { ZALUZJE_HUB_FAQ, ZALUZJE_RODZAJ_SLUGS, ZALUZJE_RODZAJE, zaluzjeRodzajGallery, type ZaluzjeRodzajSlug } from "@/features/rolety/zaluzje-rodzaje";
 import ZaluzjaPreview, { ZaluzjaHead, ZaluzjaSpecTable, type ZaluzjaPreviewData } from "@/features/rolety/ZaluzjaPreview";
 import type { ZaluzjaDetailGroup } from "@/features/rolety/zaluzja-drawing-data";
 import { ssStoredOptions } from "@/features/rolety/ss-options";
-import { findZaluzjeModel } from "@/features/rolety/shared";
 import { crmGetJson } from "@/lib/crm-get";
 import { useBackToClose } from "@/lib/use-back-to-close";
 import PdHeroPhotos from "@/features/plisy-dachowe/PdHeroPhotos";
@@ -1408,14 +1408,14 @@ function ConfiguratorPanelSkeleton() {
 
 export default function Home({
   initialProductSlug = "",
-  zaluzjeModel = null,
+  zaluzjeRodzaj = null,
   plisyCenaStart = null,
 }: {
   initialProductSlug?: string;
   /** /plisy (3.11): cena plisy 50 × 110 cm policzona na serwerze - pierwszy ekran nie miga „Ładuję cennik”. */
   plisyCenaStart?: number | null;
-  /** Strona jednego modelu żaluzji (/zaluzje/<slug>): slug i nazwa z serwera. */
-  zaluzjeModel?: { slug: string; name: string } | null;
+  /** Strona rodzaju żaluzji (/zaluzje/<rodzaj>, 7.11.2026): aluminiowe / drewniane / bambusowe / pcv. */
+  zaluzjeRodzaj?: ZaluzjeRodzajSlug | null;
 }) {
   // Direct product entry (/moskitiery-ramkowe) starts with the product view
   // already resolved from the build-time snapshot - server-rendered HTML
@@ -1850,8 +1850,8 @@ export default function Home({
   const [shippingBannerPending, setShippingBannerPending] = useState(true);
   const displayedProductSlugForPlisy = productSlugFromSelected(displayedProduct);
   // Żaluzje: /zaluzje = katalog (bez panelu konfiguratora), /zaluzje/<slug> = model.
-  const zaluzjeCatalogMode = displayedProductSlugForPlisy === "zaluzje" && !zaluzjeModel;
-  const zaluzjeModelMode = displayedProductSlugForPlisy === "zaluzje" && Boolean(zaluzjeModel);
+  const zaluzjeCatalogMode = displayedProductSlugForPlisy === "zaluzje" && !zaluzjeRodzaj;
+  const zaluzjeRodzajMode = displayedProductSlugForPlisy === "zaluzje" && Boolean(zaluzjeRodzaj);
   useEffect(() => {
     if ((displayedProductSlugForPlisy !== "plisy" && displayedProductSlugForPlisy !== "plisy-dachowe") || plisyProfile) return;
     let cancelled = false;
@@ -3212,8 +3212,8 @@ export default function Home({
       window.location.assign(subItem.linkUrl);
       return;
     }
-    // Ze strony modelu żaluzji pozycja "Żaluzje" w menu prowadzi do katalogu.
-    if (options?.updateUrl !== false && zaluzjeModel && shareSlug === "zaluzje") {
+    // Ze strony rodzaju żaluzji pozycja "Żaluzje" w menu prowadzi do wyboru rodzaju.
+    if (options?.updateUrl !== false && zaluzjeRodzaj && shareSlug === "zaluzje") {
       window.location.assign("/zaluzje");
       return;
     }
@@ -3953,8 +3953,8 @@ export default function Home({
                             ? productLanding?.title && productLanding.title.toLowerCase() !== "plisy do okien dachowych"
                               ? productLanding.title
                               : PD_H1
-                            : zaluzjeModelMode && zaluzjeModel
-                              ? (roletyProfiles.zaluzje ? findZaluzjeModel(roletyProfiles.zaluzje, zaluzjeModel.slug)?.name : "") || zaluzjeModel.name || ROLETY_COPY.zaluzje.h1
+                            : zaluzjeRodzajMode && zaluzjeRodzaj
+                              ? ZALUZJE_RODZAJE[zaluzjeRodzaj].h1
                               : isRoletySlug(productSlugFromSelected(displayedProduct))
                                 ? ROLETY_COPY[productSlugFromSelected(displayedProduct) as RoletySlug].h1
                                 : displayedProduct.label}
@@ -4692,14 +4692,25 @@ export default function Home({
                               </button>
                             </div>
                           </div>
-                        ) : zaluzjeModelMode && zaluzjeModel ? (
-                          <ZaluzjeModelLanding
+                        ) : zaluzjeRodzajMode && zaluzjeRodzaj ? (
+                          <ZaluzjeRodzajLanding
+                            rodzaj={zaluzjeRodzaj}
                             profile={roletyProfiles.zaluzje || null}
-                            modelSlug={zaluzjeModel.slug}
-                            fallbackName={zaluzjeModel.name}
                             onConfigure={scrollToConfigPanel}
                             onZoom={(preview) => setZoomPreview(preview)}
                           />
+                        ) : zaluzjeCatalogMode ? (
+                          <div className="pl-landing rl-landing">
+                            <div className="pl-trust-row">
+                              <span className="pl-chip">Na wymiar co do milimetra</span>
+                              <span className="pl-chip">Realizacja {ROLETY_COPY.zaluzje.leadTimeLabel}</span>
+                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
+                            </div>
+                            <p className="pl-subtitle">
+                              Żaluzje poziome produkowane pod Twoje okno: aluminiowe, drewniane, bambusowe i PCV drewnopodobne. Montaż w świetle szyby, na skrzydło albo na ścianę nad oknem.
+                            </p>
+                            <ZaluzjeHub profile={roletyProfiles.zaluzje || null} />
+                          </div>
                         ) : isRoletySlug(productSlugFromSelected(displayedProduct)) ? (
                           <RoletyLanding
                             slug={productSlugFromSelected(displayedProduct) as RoletySlug}
@@ -4709,8 +4720,6 @@ export default function Home({
                             productLabel={displayedProduct.label}
                             onConfigure={scrollToConfigPanel}
                             onZoom={(preview) => setZoomPreview(preview)}
-                            catalogSlot={zaluzjeCatalogMode ? <ZaluzjeCatalog profile={roletyProfiles.zaluzje || null} /> : undefined}
-                            ctaLabel={zaluzjeCatalogMode ? "Zobacz modele żaluzji" : undefined}
                           />
                         ) : productLanding && productLanding.sections.length > 0 ? (
                           <div className="pl-landing">
@@ -4800,6 +4809,10 @@ export default function Home({
                         const builtinGallery =
                           productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe"
                             ? MOSKITIERY_RAMKOWE_GALLERY_PHOTOS
+                            : zaluzjeRodzajMode && zaluzjeRodzaj
+                              ? zaluzjeRodzajGallery(zaluzjeRodzaj)
+                            : zaluzjeCatalogMode
+                              ? ZALUZJE_RODZAJ_SLUGS.flatMap((slug) => zaluzjeRodzajGallery(slug).slice(0, 3))
                             : isRoletySlug(productSlugFromSelected(displayedProduct))
                               // Rolety mini: galeria wyłącznie z CRM (gallery_urls).
                               ? productLanding?.gallery?.length
@@ -4809,7 +4822,9 @@ export default function Home({
                                 ? plisyCategories.flatMap((category) => category.photos)
                                 : displayedProduct.gallery;
                         const usingCrmGallery = Boolean(
-                          productLanding?.gallery?.length && productLanding.gallery.length >= builtinGallery.length,
+                          !(displayedProductSlugForPlisy === "zaluzje") &&
+                            productLanding?.gallery?.length &&
+                            productLanding.gallery.length >= builtinGallery.length,
                         );
                         const allPhotos = usingCrmGallery ? productLanding!.gallery : builtinGallery;
                         // Categories only exist for the built-in set. A CRM-
@@ -5235,15 +5250,23 @@ export default function Home({
                       </section>
                       <section id="product-section-faq" ref={faqSectionRef} className="hero-product-section">
                         <h2 className="hero-product-section-title">FAQ - Pytania i Odpowiedzi</h2>
-                        {(productLanding?.faq?.length
-                          ? productLanding.faq
-                          : builtinFaqForSlug(productSlugFromSelected(displayedProduct))
+                        {(zaluzjeRodzajMode && zaluzjeRodzaj
+                          ? ZALUZJE_RODZAJE[zaluzjeRodzaj].faq
+                          : zaluzjeCatalogMode
+                            ? ZALUZJE_HUB_FAQ
+                          : productLanding?.faq?.length
+                            ? productLanding.faq
+                            : builtinFaqForSlug(productSlugFromSelected(displayedProduct))
                         ).length ? (
                           <div className="hero-product-faq">
                             {(() => {
-                              const faqWszystkie = productLanding?.faq?.length
-                                ? productLanding.faq
-                                : builtinFaqForSlug(productSlugFromSelected(displayedProduct));
+                              const faqWszystkie = zaluzjeRodzajMode && zaluzjeRodzaj
+                                ? ZALUZJE_RODZAJE[zaluzjeRodzaj].faq
+                                : zaluzjeCatalogMode
+                                  ? ZALUZJE_HUB_FAQ
+                                : productLanding?.faq?.length
+                                  ? productLanding.faq
+                                  : builtinFaqForSlug(productSlugFromSelected(displayedProduct));
                               // lejek plis: najpierw pytania, które zatrzymują zakup
                               const slugFaq = productSlugFromSelected(displayedProduct);
                               const faqEntries = plisyV2
@@ -5895,11 +5918,6 @@ export default function Home({
                               onClick={() => {
                                 setAddToCartToast(null);
                                 setRoletyLastResult(null);
-                                // Żaluzje: nowa = inny model, czyli katalog.
-                                if (zaluzjeModelMode) {
-                                  window.location.assign("/zaluzje");
-                                  return;
-                                }
                                 setRoletyConfigKey((key) => key + 1);
                               }}
                             >
@@ -5915,9 +5933,9 @@ export default function Home({
                     </MobileOverlayPortal>
                   ) : (
                     <RoletyConfiguratorPanel
-                      key={`${productSlugFromSelected(displayedProduct)}-${zaluzjeModel?.slug || ""}-${roletyConfigKey}`}
+                      key={`${productSlugFromSelected(displayedProduct)}-${zaluzjeRodzaj || ""}-${roletyConfigKey}`}
                       slug={productSlugFromSelected(displayedProduct) as RoletySlug}
-                      modelSlug={zaluzjeModelMode ? zaluzjeModel?.slug : undefined}
+                      rodzaj={zaluzjeRodzajMode && zaluzjeRodzaj ? zaluzjeRodzaj : undefined}
                       initialValues={
                         roletyLastResult
                           ? {
@@ -6561,7 +6579,7 @@ export default function Home({
                 className="hero-product-bottom-tabs-configure"
                 onClick={scrollToConfigPanel}
               >
-                {zaluzjeCatalogMode ? "Modele" : "Konfiguruj"}
+                {zaluzjeCatalogMode ? "Rodzaje" : "Konfiguruj"}
               </button>
               <div className="hero-product-bottom-tabs-scroll">
                 <button
