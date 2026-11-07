@@ -18,7 +18,7 @@ import { type Pt, invert3, apply, paneToImage, isConvexQuad } from "@/lib/wizual
 import { WizRenderer, hexToRgb, panePixelSize, RAIL_MM, type PaneRender } from "@/lib/wizualizator/renderer";
 import {
   fetchKatalog, wizAnaliza, wizEvent, wizLead, wizPrzypomnij, wizPodglad, wizQrCreate, wizQrPoll, wizQrSkan, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
-  type WizKatalog, type WizStatus, type WizUklad, type WizWynik, type WizSzyba,
+  type WizKatalog, type WizStatus, type WizUklad, type WizWynik, type WizSzyba, type WizProdukt,
 } from "@/lib/wizualizator/api";
 import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
@@ -48,6 +48,20 @@ const KORZYSCI = [
   { theme: "durability", title: "Plisa na lata", first: "Stalowe trzpienie prowadzące sznurki", second: "Chronią sznurki przed przecieraniem", path: "M13 11v42m38-42v42 M13 17h38m-38 30h38 M24 17v12q0 7 8 7t8 7v4 M40 17v12q0 7-8 7t-8 7v4" },
   { theme: "producer", title: "Polski producent", first: "Wieloletnie doświadczenie", second: "Produkujemy w Polsce od 2015 roku", path: "M14 56V10m0 2c13-10 23 10 38 0v28c-15 10-25-10-38 0m0-14c13-10 23 10 38 0" },
 ] as const;
+/** Okna dachowe (właściciel 7.11, wersja testowa): osłony w prowadnicach, dobór do modelu okna. */
+const KORZYSCI_DACH = [
+  { theme: "materials", title: "Dobór do modelu okna", first: "VELUX, FAKRO, ROTO, OKPOL i inne", second: "Ponad 420 modeli okien dachowych", path: "M7 13h50v12H7z M12 32l10 8 10-8 10 8 10-8 M12 43l10 8 10-8 10 8 10-8" },
+  { theme: "durability", title: "Aluminiowe prowadnice boczne", first: "Osłona trzyma się w każdym położeniu", second: "Montaż w kilka minut, bez wiercenia w ramie", path: "M13 11v42m38-42v42 M13 17h38m-38 30h38 M24 17v12q0 7 8 7t8 7v4" },
+  { theme: "producer", title: "Tkaniny do poddasza", first: "Zaciemniające – ciemno nawet w letni poranek", second: "Przepuszczające – miękkie światło bez oślepiania", path: "M14 56V10m0 2c13-10 23 10 38 0v28c-15 10-25-10-38 0m0-14c13-10 23 10 38 0" },
+  { theme: "warranty", title: "Jakość gwarantowana", first: "5 lat gwarancji", second: "30 dni na zwrot", path: "M32 7l20 8v15c0 13-9 21-20 27C21 51 12 43 12 30V15z M22 31l7 7 14-15" },
+] as const;
+type Korzysc = { theme: string; title: string; first: string; second: string; path: string };
+/** Nazwa osłony w tekstach okna według produktu. */
+const NAZWA_OSLONY: Record<WizProdukt, { mian: string; bier: string; dop: string }> = {
+  plisy: { mian: "plisa", bier: "plisę", dop: "plisy" },
+  "plisa-dachowa": { mian: "plisa dachowa", bier: "plisę dachową", dop: "plisy dachowej" },
+  "roleta-dachowa": { mian: "roleta dachowa", bier: "roletę dachową", dop: "rolety dachowej" },
+};
 
 const POMIESZCZENIE: Record<string, string> = {
   salon: "salon", sypialnia: "sypialnię", kuchnia: "kuchnię", lazienka: "łazienkę", pokoj_dzieciecy: "pokój dziecięcy", biuro: "gabinet",
@@ -121,6 +135,19 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   }
 }
 
+/** Ekran startowy okien dachowych (test 7.11): prawdziwe zdjęcie okien dachowych przed → po (przenikanie), bez animacji plisy okiennej. */
+function DachDemo({ roleta }: { roleta: boolean }) {
+  return (
+    <div className={s.demoDach} aria-label={`Przykład: ${roleta ? "roleta" : "plisa"} dachowa na zdjęciu okien dachowych`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/wizualizator-dach-przed.jpg" alt="" aria-hidden="true" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className={s.demoDachPo} src={roleta ? "/wizualizator-dach-roleta.jpg" : "/wizualizator-dach-plisa.jpg"} alt="" aria-hidden="true" />
+      <span className={s.demoBadge}>Wizualizacja poglądowa</span>
+    </div>
+  );
+}
+
 function QrKod({ url }: { url: string }) {
   const svg = useMemo(() => {
     const q = qrcode(0, "M");
@@ -131,8 +158,10 @@ function QrKod({ url }: { url: string }) {
   return <div className={s.qr} dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
-export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, qrKod, startToken }: {
+export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, qrKod, startToken, produkt = "plisy" }: {
   zrodlo: string;
+  /** plisy (domyślnie) albo osłona do okien dachowych - skąd klient wszedł; silnik może zmienić po rozpoznaniu okna (7.11) */
+  produkt?: WizProdukt;
   onClose: () => void;
   startTkanina?: string;
   startListwa?: string;
@@ -153,6 +182,16 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [sel, setSel] = useState(0);
   const [wszystkie, setWszystkie] = useState(true);
   const [montaz, setMontaz] = useState<"standard" | "bezinwazyjny">("standard");
+  // okna dachowe (7.11): produkt z wizualizacji (po rozpoznaniu okna przez silnik) ma pierwszeństwo przed stroną wejścia
+  const [produktZ, setProduktZ] = useState<WizProdukt | null>(null);
+  const prod: WizProdukt = produktZ || produkt;
+  const dach = prod !== "plisy";
+  const roleta = prod === "roleta-dachowa";
+  const nazwa = NAZWA_OSLONY[prod];
+  const prodRef = useRef(prod);
+  prodRef.current = prod;
+  // komunikat o zmianie produktu („to zwykłe okno, pokazujemy plisę okienną”)
+  const [zmianaInfo, setZmianaInfo] = useState("");
   // karta otwarta przyciskiem pod zdjęciem (null = duże zdjęcie bez karty) i etap wyceny (lista → kreator wymiarów → podsumowanie)
   const [zakladka, setZakladka] = useState<Zakladka>(null);
   const [wEtap, setWEtap] = useState<WycenaEtap>("wycena");
@@ -222,11 +261,21 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const zTelefonuRef = useRef(false);
   const demoRef = useRef(false);
 
+  // katalog produktu (plisy / plisa dachowa / roleta dachowa); zmiana produktu po rozpoznaniu okna wczytuje nowy
+  useEffect(() => {
+    let stop = false;
+    void fetchKatalog(prod).then((k) => {
+      if (!stop) setKatalog(k);
+    });
+    return () => {
+      stop = true;
+    };
+  }, [prod]);
+
   // ------------------------------------------------------------ start
   useEffect(() => {
-    void fetchKatalog().then(setKatalog);
     setZdjecia(readSesja());
-    wizEvent("wiz_otwarte", null, { zrodlo, qr: Boolean(qrKod) });
+    wizEvent("wiz_otwarte", null, { zrodlo, qr: Boolean(qrKod), produkt: prodRef.current });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -308,11 +357,17 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     setFaza("wysylanie");
     wizEvent("wiz_zdjecie_wybrane", null, { zrodlo, kb: Math.round(file.size / 1024), qr: Boolean(qrKod) });
     try {
-      const r = await wizStart(file, { zrodlo, qr: qrKod });
+      const r = await wizStart(file, { zrodlo, qr: qrKod, produkt: prodRef.current });
       setToken(r.token);
       // szybka kontrola (2–4 s): złe zdjęcie → konkretna prośba o poprawkę, zanim zapłacimy za pełną analizę
       setFaza("sprawdzanie");
       const k = await wizSprawdz(r.token);
+      // okno dachowe ↔ zwykłe: silnik mógł zmienić produkt (strona wejścia to tylko sygnał; właściciel 7.11)
+      if (k.produkt && k.produkt !== prodRef.current) setProduktZ(k.produkt);
+      if (k.produkt_zmiana) {
+        setZmianaInfo(k.produkt_zmiana.komunikat);
+        wizEvent("wiz_produkt", r.token, { widok: "zmiana_produktu", z: k.produkt_zmiana.z, na: k.produkt_zmiana.na });
+      }
       if (k.decyzja === "odrzuc") {
         setBlad(k.komunikat || "Tego zdjęcia nie możemy użyć.");
         setFaza("odrzucona");
@@ -424,6 +479,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         const st = await wizStatus(token);
         if (stop) return;
         setStatus(st);
+        if (st.produkt && st.produkt !== prodRef.current) setProduktZ(st.produkt);
         if (st.kontakt) setLead((l) => ({ ...l, wyslane: true }));
         // powrót do zdjęcia, które zostało przy kontroli (np. link) - analiza jeszcze nie ruszyła
         if (st.status === "nowa" && n === 3 && !zTelefonuRef.current) wizAnaliza(token);
@@ -610,11 +666,19 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
           rail, railId: p.listwa, bracket: ["bialy", "anoda"].includes(p.listwa) ? [0.95, 0.95, 0.94] : rail, mount: montaz,
           widthMm: p.szerMm, heightMm: p.wysMm, back, front: Math.max(0.45, Math.min(1.1, 0.35 + 0.75 * wokol)),
           pitch: p.swiatlo?.widok?.pitch ?? 0, selected: i === sel,
+          kind: prod === "plisy" ? "plisa" : prod,
         };
       });
-      r.render(list, { tint: sw?.tint || [1, 1, 1], split: przedPo ?? 1e9, outline: edycja });
+      // okna dachowe (właściciel 7.11): im niżej zaciągnięta osłona i im mniej światła przepuszcza tkanina
+      // (Termo, blackout), tym ciemniejszy pokój - efekt zaciemnienia, nigdy do 100 %; Deko/klasyczne prawie nie ciemnią
+      let darken = 0;
+      if (dach && list.length) {
+        darken = list.reduce((a, p) => a + Math.max(0, p.bottom - (roleta ? 0 : p.top)) * (1 - Math.min(1, p.fabric.transmission / 0.3)), 0) / list.length;
+        darken = Math.min(0.55, darken * 0.6);
+      }
+      r.render(list, { tint: sw?.tint || [1, 1, 1], split: przedPo ?? 1e9, outline: edycja, darken });
     });
-  }, [panes, katalog, wynik, montaz, sel, przedPo, edycja]);
+  }, [panes, katalog, wynik, montaz, sel, przedPo, edycja, prod, dach, roleta]);
 
   useEffect(() => {
     if (gotowyObraz) draw();
@@ -804,7 +868,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       const tol = Math.max(railH * 1.2, (22 * screenScale()) / ph);
       const dTop = Math.abs(v - (p.gora + railH / 2));
       const dBot = Math.abs(v - (p.dol - railH / 2));
-      if (dTop < tol && (!hit || dTop < hit.d)) hit = { kind: "gora", pane: i, off: v - p.gora, d: dTop };
+      // roleta dachowa: kaseta na stałe u góry szyby - rusza tylko dolna belka
+      if (!roleta && dTop < tol && (!hit || dTop < hit.d)) hit = { kind: "gora", pane: i, off: v - p.gora, d: dTop };
       if (dBot < tol && (!hit || dBot < hit.d)) hit = { kind: "dol", pane: i, off: v - p.dol, d: dBot };
     });
     if (hit) {
@@ -932,6 +997,19 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   };
 
   const zamow = () => {
+    const p0 = panes[sel] || panes[0];
+    if (dach) {
+      // okna dachowe (test 7.11): cena zależy od modelu okna (tabliczka na skrzydle) - wycena w konfiguratorze na stronie produktu
+      wizEvent("wiz_do_konfiguratora", token, { tkanina: p0?.tkanina || "", listwa: p0?.listwa || "", produkt: prod });
+      const strona = roleta ? "/rolety-dachowe" : "/plisy-dachowe";
+      if (window.location.pathname.startsWith(strona) && document.getElementById("dach-wycena")) {
+        onClose();
+        window.setTimeout(() => document.getElementById("dach-wycena")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+      } else {
+        window.location.href = `${strona}?wiz=dach#dach-wycena`;
+      }
+      return;
+    }
     if (!katalog) return;
     const previousRooms = zdjecia.filter((room) => room.token !== token && !room.wKoszyku);
     const rooms = [
@@ -1055,7 +1133,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     id: p.id, nr: i + 1, tkanina: p.tkanina, listwa: p.listwa, szacSzerCm: Math.round(p.szerMm / 10), szacWysCm: Math.round(p.wysMm / 10),
     pewnosc: p.pewnoscWym ?? null, odniesienia: p.odniesienia || [], szerMm: p.wpisSzerMm, wysMm: p.wpisWysMm, zmierzone: p.zmierzone, pomin: p.pomin,
   })), [panes]);
-  const cenaZestawu = useCenaZestawu(wycenaSzyby, montaz);
+  const cenaPlisy = useCenaZestawu(wycenaSzyby, montaz);
+  // okna dachowe: cena zależy od modelu okna - liczy ją konfigurator na stronie, nie to okno
+  const cenaZestawu = dach ? null : cenaPlisy;
   const szacunkowa = Boolean(cenaZestawu?.szacunkowa);
   // zachęta do wymiarów: wynik z ceną szacunkową, bez otwartych okienek i podpowiedzi, po 12 s - raz na wizualizację
   useEffect(() => {
@@ -1107,11 +1187,15 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     const tier = [...r.tiers].sort((a, b) => b.fromQty - a.fromQty).find((t) => szybWDomu >= t.fromQty);
     const next = [...r.tiers].sort((a, b) => a.fromQty - b.fromQty).find((t) => t.fromQty > szybWDomu);
     const pokoi = zdjecia.length;
-    const ile = `${szybWDomu} ${szybWDomu === 1 ? "szyba" : szybWDomu % 10 >= 2 && szybWDomu % 10 <= 4 && (szybWDomu < 12 || szybWDomu > 14) ? "szyby" : "szyb"}${pokoi > 1 ? ` w ${pokoi} pokojach` : ""}`;
-    if (tier) return `${ile} = ${szybWDomu} ${szybWDomu === 1 ? "plisa" : szybWDomu % 10 >= 2 && szybWDomu % 10 <= 4 && (szybWDomu < 12 || szybWDomu > 14) ? "plisy" : "plis"}: −${tier.percent} % na całe zamówienie (${(r.label || "rabat ilościowy").split(":")[0].trim()}).`;
-    if (next) return `Przy ${next.fromQty} plisach w koszyku −${next.percent} % na całe zamówienie.`;
+    const kilka = szybWDomu % 10 >= 2 && szybWDomu % 10 <= 4 && (szybWDomu < 12 || szybWDomu > 14);
+    // okna dachowe: liczymy okna i rolety / plisy dachowe, nie szyby
+    const [j1, j2, j5] = dach ? ["okno", "okna", "okien"] : ["szyba", "szyby", "szyb"];
+    const [p1, p2, p5, pLoc] = roleta ? ["roleta", "rolety", "rolet", "roletach"] : ["plisa", "plisy", "plis", "plisach"];
+    const ile = `${szybWDomu} ${szybWDomu === 1 ? j1 : kilka ? j2 : j5}${pokoi > 1 ? ` w ${pokoi} pokojach` : ""}`;
+    if (tier) return `${ile} = ${szybWDomu} ${szybWDomu === 1 ? p1 : kilka ? p2 : p5}: −${tier.percent} % na całe zamówienie (${(r.label || "rabat ilościowy").split(":")[0].trim()}).`;
+    if (next) return `Przy ${next.fromQty} ${pLoc} w koszyku −${next.percent} % na całe zamówienie.`;
     return "";
-  }, [bundle, szybWDomu]);
+  }, [bundle, szybWDomu, dach, roleta]);
 
   // promocja sklepu na dole ekranu oczekiwania (reguły rabatu ilościowego z CRM, właściwe dla danego sklepu)
   const promo = useMemo(() => {
@@ -1191,19 +1275,40 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
         {!qrKod && (faza === "start" || faza === "wysylanie") ? (
           <div className={s.startGrid}>
-            <WizDemo />
+            {dach ? <DachDemo roleta={roleta} /> : <WizDemo />}
             <div className={s.startBox}>
               <div className={s.produkt}>
                 <span className={s.newPill}>Nowość · AI</span>
-                <span className={s.chipOnSm}>Plisy</span>
-                <span className={s.chipOff} title="Wkrótce">Rolety dachowe – wkrótce</span>
+                {dach ? (
+                  <>
+                    <span className={s.chipOnSm}>{roleta ? "Rolety dachowe" : "Plisy dachowe"}</span>
+                    <span className={s.chipOff} title="Wersja testowa wizualizatora okien dachowych">wersja testowa</span>
+                  </>
+                ) : (
+                  <>
+                    <span className={s.chipOnSm}>Plisy</span>
+                    <span className={s.chipOff} title="Wkrótce">Rolety dachowe – wkrótce</span>
+                  </>
+                )}
               </div>
-              <h2 className={s.titleBig}>Zobacz plisę w swoim oknie – zanim kupisz</h2>
-              <p className={s.lead}>Wyślij zdjęcie okna. W minutę pokażemy plisę na Twojej szybie, dobierzemy kolor do wnętrza i policzymy cenę.</p>
+              <h2 className={s.titleBig}>{dach ? `Zobacz ${roleta ? "roletę" : "plisę"} w swoim oknie dachowym – zanim kupisz` : "Zobacz plisę w swoim oknie – zanim kupisz"}</h2>
+              <p className={s.lead}>{dach
+                ? `Wyślij zdjęcie okna dachowego. W minutę pokażemy ${roleta ? "roletę" : "plisę"} w prowadnicach na Twojej szybie – z efektem zaciemnienia pokoju – i dobierzemy tkaninę do wnętrza.`
+                : "Wyślij zdjęcie okna. W minutę pokażemy plisę na Twojej szybie, dobierzemy kolor do wnętrza i policzymy cenę."}</p>
               <ol className={s.steps3}>
-                <li><span aria-hidden="true">📷</span><b>Zrób zdjęcie okna</b><small>na wprost, całe okno w kadrze, w dzień</small></li>
-                <li><span aria-hidden="true">✨</span><b>AI dopasuje plisę</b><small>szyby, perspektywa i światło</small></li>
-                <li><span aria-hidden="true">🎨</span><b>Wybierz kolor i zamów</b><small>150 tkanin, wycena od razu</small></li>
+                {dach ? (
+                  <>
+                    <li><span aria-hidden="true">📷</span><b>Zrób zdjęcie okna dachowego</b><small>od dołu, całe okno ze skosem w kadrze, w dzień</small></li>
+                    <li><span aria-hidden="true">✨</span><b>AI rozpozna okno w skosie</b><small>szyba, prowadnice i światło</small></li>
+                    <li><span aria-hidden="true">🎨</span><b>Wybierz tkaninę i osprzęt</b><small>cena po wyborze modelu okna</small></li>
+                  </>
+                ) : (
+                  <>
+                    <li><span aria-hidden="true">📷</span><b>Zrób zdjęcie okna</b><small>na wprost, całe okno w kadrze, w dzień</small></li>
+                    <li><span aria-hidden="true">✨</span><b>AI dopasuje plisę</b><small>szyby, perspektywa i światło</small></li>
+                    <li><span aria-hidden="true">🎨</span><b>Wybierz kolor i zamów</b><small>150 tkanin, wycena od razu</small></li>
+                  </>
+                )}
               </ol>
               {blad ? <p className={s.error}>{blad}</p> : null}
               {faza === "wysylanie" ? (
@@ -1324,8 +1429,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
               ) : <div className={s.scanEmpty}>Wysyłamy zdjęcie…</div>}
             {(() => {
                 const hasPromo = promo && (podglad?.szyb || 0) >= 2;
-                const index = korzysc % (KORZYSCI.length + (hasPromo ? 1 : 0));
-                const card = KORZYSCI[index];
+                const listaKorzysci: readonly Korzysc[] = dach ? KORZYSCI_DACH : KORZYSCI;
+                const index = korzysc % (listaKorzysci.length + (hasPromo ? 1 : 0));
+                const card = listaKorzysci[index];
                 return (
                   <aside className={s.benefitCard} data-theme={card?.theme || "promo"} key={index} aria-label="Zalety plis KEIKA">
                     <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1594,15 +1700,30 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                             </button>
                           ))}
                         </div>
+                        {!dach ? (
+                        <>
                         <p className={s.label}>Montaż</p>
                         <div className={s.chips}>
                           <button type="button" className={montaz === "standard" ? s.chipOn : s.chip} onClick={() => setMontaz("standard")}>Przykręcany (standard)</button>
                           <button type="button" className={montaz === "bezinwazyjny" ? s.chipOn : s.chip} onClick={() => setMontaz("bezinwazyjny")}>Bez wiercenia</button>
                         </div>
+                        </>
+                        ) : (
+                          <p className={s.small}>Osłona do okna dachowego jest w aluminiowych prowadnicach bocznych w kolorze osprzętu – bez wiercenia w ramie okna.</p>
+                        )}
                       </>
                     ) : null}
 
-                    {zakladka === "wycena" ? (
+                    {zakladka === "wycena" && dach ? (
+                      // okna dachowe (test 7.11): cena zależy od modelu okna, nie od wymiarów ze zdjęcia
+                      <div className={s.dachWycena}>
+                        <b>Cena {nazwa.dop} zależy od modelu okna</b>
+                        <small>Otwórz skrzydło okna dachowego – na jego górnej lub bocznej krawędzi jest tabliczka z producentem i symbolem modelu (np. VELUX MK06, FAKRO 78×118). W konfiguratorze wybierzesz model, a wybraną tkaninę i osprzęt ustawisz tak jak tutaj.</small>
+                        <button type="button" className={s.primary} onClick={zamow}>Wyceń do modelu okna →</button>
+                      </div>
+                    ) : null}
+
+                    {zakladka === "wycena" && !dach ? (
                       <>
                         <WizWycena
                           szyby={wycenaSzyby}
@@ -1655,11 +1776,17 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     <small>Kolor tkaniny</small><b><i style={{ backgroundImage: tkAkt ? `url(${mini(tkAkt.miniatura || tkAkt.tekstura, 64)})` : undefined, backgroundColor: tkAkt?.kolor }} />{tkAkt?.kod || "Wybierz"}</b>
                   </button>
                   <button type="button" className={`${s.tool} ${zakladka === "listwy" ? s.toolOn : ""}`} onClick={() => otworzKarte("listwy")}>
-                    <small>Listwy i montaż</small><b><i style={{ backgroundColor: liAkt?.kolor }} />{liAkt?.nazwa || "Wybierz"}</b>
+                    <small>{dach ? "Osprzęt" : "Listwy i montaż"}</small><b><i style={{ backgroundColor: liAkt?.kolor }} />{liAkt?.nazwa || "Wybierz"}</b>
                   </button>
+                  {dach ? (
+                    <button type="button" className={s.tool} onClick={zamow}>
+                      <small>Wycena</small><b>wg modelu okna →</b>
+                    </button>
+                  ) : (
                   <button type="button" className={`${s.tool} ${zakladka === "wycena" ? s.toolOn : ""}`} onClick={() => { otworzKarte("wycena"); setWEtap("wycena"); }}>
                     <small>Wycena ({panes.filter((p) => !p.pomin).length} {panes.length === 1 ? "szyba" : "szyb"})</small><b>{cenaZestawu ? `${cenaZestawu.szacunkowa ? "ok. " : ""}${Math.round(cenaZestawu.poRabacie).toLocaleString("pl-PL")} zł` : "…"}</b>
                   </button>
+                  )}
                 </>
               ) : null}
             </div>
@@ -1667,6 +1794,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
             <div className={s.resCta}>
               <div className={s.resCtaInfo}>
                 {blad ? <p className={s.error}>{blad}</p> : null}
+                {zmianaInfo ? <p className={s.info}>{zmianaInfo}</p> : null}
                 {info && edycja ? <p className={s.info}>{info}</p> : null}
                 {prog ? <p className={s.bundle}>{prog}</p> : null}
                 {szacunkowa && !demo && !zakladka && !edycja ? (
@@ -1683,7 +1811,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   </div>
                 ) : null}
                 <div className={s.resLinks}>
-                  <label><input type="checkbox" checked={wszystkie} onChange={(e) => (e.target.checked ? naWszystkie() : setWszystkie(false))} /> Ta sama plisa na wszystkich szybach</label>
+                  <label><input type="checkbox" checked={wszystkie} onChange={(e) => (e.target.checked ? naWszystkie() : setWszystkie(false))} /> {dach ? "Ta sama tkanina na wszystkich oknach" : "Ta sama plisa na wszystkich szybach"}</label>
                   <button type="button" className={s.link} onClick={() => setPrzedPo((v) => (v === null ? (canvasRef.current?.width || 0) / 2 : null))}>{przedPo === null ? "Przed / po" : "Zamknij porównanie"}</button>
                   <button type="button" className={s.link} onClick={() => { otworzKarte("szyby"); setEdycja(true); }}>Popraw obrys</button>
                   <button type="button" className={s.link} onClick={pobierz}>Zapisz zdjęcie</button>
@@ -1694,6 +1822,11 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                 <button type="button" className={s.ctaBig} onClick={noweZdjecie}>
                   📷 Teraz zrób zdjęcie swojego okna
                   <small>za minutę zobaczysz plisę na swojej szybie i jej cenę</small>
+                </button>
+              ) : dach ? (
+                <button type="button" className={s.ctaBig} disabled={!panes.length} onClick={zamow}>
+                  Wyceń do modelu okna →
+                  <small>cena zależy od modelu okna dachowego (tabliczka na skrzydle) · tkanina i osprzęt jak tutaj</small>
                 </button>
               ) : (
               <button type="button" className={s.ctaBig} disabled={!panes.length}

@@ -50,6 +50,11 @@ export type SceneRender = {
   tint: Rgb; // barwa światła w pokoju
   split: number; // „przed/po”: po prawej od tej kolumny (px) zdjęcie bez plisy
   outline: boolean; // tryb edycji: obrys szyb
+  /**
+   * Okna dachowe (właściciel 7.11): zaciemnienie pokoju 0–0,55 - im niżej zaciągnięta osłona i im mniej światła
+   * przepuszcza tkanina (Termo / blackout), tym ciemniejsze zdjęcie; nigdy do 100 %. Niezasłonięte szkło nie ciemnieje.
+   */
+  darken?: number;
 };
 
 /** Stałe produktu (mm). */
@@ -79,10 +84,14 @@ uniform sampler2D uPhoto;
 uniform sampler2D uMask;
 uniform vec2 uRes;
 uniform float uMaskOnly;
+uniform float uDark;   // zaciemnienie pokoju przez osłony okien dachowych (0 = brak)
+uniform float uSplit;  // „przed/po”: na prawo od tej kolumny zdjęcie bez osłon i bez zaciemnienia
 varying vec2 vPix;
 void main() {
   vec2 tc = vPix / uRes;
   vec3 c = texture2D(uPhoto, tc).rgb;
+  // mniej światła w pokoju: ciemniej i odrobinę chłodniej (światło dzienne zza tkaniny), ale nigdy czarno
+  if (vPix.x <= uSplit) c *= (1.0 - uDark) * vec3(1.0 - 0.02 * uDark, 1.0, 1.0 + 0.03 * uDark);
   if (uMaskOnly > 0.5) {
     float m = texture2D(uMask, tc).r;
     if (m < 0.01) discard;
@@ -129,6 +138,7 @@ uniform vec3 uRailMean;
 uniform float uRailRep;
 uniform vec2 uMm;           // szerokość i wysokość szyby w mm (rozmiary uchwytów w mm, nie w % szyby)
 uniform float uKind;        // 0 plisa okienna, 1 plisa dachowa, 2 roleta dachowa
+uniform float uDark;        // zaciemnienie pokoju (okna dachowe): niezasłonięte szkło wraca do jasności oryginału
 uniform float uTopH;        // wysokość górnej belki / kasety (część wysokości szyby)
 uniform float uGuide;       // szerokość prowadnicy bocznej (część szerokości szyby), 0 = bez prowadnic
 varying vec2 vPix;
@@ -390,6 +400,11 @@ void main() {
   }
 
   col.a *= inX;
+  // zaciemnienie pokoju (okna dachowe): przez niezasłonięte szkło nadal widać jasne niebo - tu wracamy do oryginału
+  if (uDark > 0.001 && u > 0.0 && u < 1.0 && v > 0.0 && v < 1.0 && uOutline < 0.5) {
+    vec3 ph = texture2D(uPhoto, tc).rgb;
+    col = vec4(mix(ph, col.rgb, col.a), 1.0);
+  }
   if (col.a < 0.003) discard;
   gl_FragColor = vec4(col.rgb * col.a, col.a);
 }`;
@@ -465,11 +480,11 @@ export class WizRenderer {
       canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
     if (!gl) throw new Error("Twoja przeglądarka nie obsługuje WebGL.");
     this.gl = gl;
-    this.photoProg = program(gl, FS_PHOTO, ["uPhoto", "uMask", "uRes", "uMaskOnly", "uVp"]);
+    this.photoProg = program(gl, FS_PHOTO, ["uPhoto", "uMask", "uRes", "uMaskOnly", "uVp", "uDark", "uSplit"]);
     this.paneProg = program(gl, FS_PANE, [
       "uPhoto", "uTex", "uRes", "uInv", "uPx", "uTop", "uBot", "uRailH", "uPleats", "uRep", "uHasTex", "uTexMean", "uFabric", "uTrans", "uBack",
       "uFront", "uTint", "uRail", "uBracket", "uMount", "uHoney", "uPitch", "uSplit", "uSel", "uOutline", "uVp",
-      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uMm", "uKind", "uTopH", "uGuide",
+      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uMm", "uKind", "uTopH", "uGuide", "uDark",
     ]);
     const b = gl.createBuffer();
     if (!b) throw new Error("buffer");
@@ -626,6 +641,9 @@ export class WizRenderer {
     gl.uniform2f(pp.u.uRes, this.w, this.h);
     gl.uniform2f(pp.u.uVp, this.w, this.h);
     gl.uniform1f(pp.u.uMaskOnly, 0);
+    const dark = Math.max(0, Math.min(0.55, scene.darken || 0));
+    gl.uniform1f(pp.u.uDark, dark);
+    gl.uniform1f(pp.u.uSplit, scene.split);
     this.drawPoly(pp, full);
 
     // 2) plisy
@@ -638,6 +656,7 @@ export class WizRenderer {
     gl.uniform3f(q.u.uTint, scene.tint[0], scene.tint[1], scene.tint[2]);
     gl.uniform1f(q.u.uSplit, scene.split);
     gl.uniform1f(q.u.uOutline, scene.outline ? 1 : 0);
+    gl.uniform1f(q.u.uDark, dark);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.photoTex);
     gl.uniform1i(q.u.uPhoto, 0);
@@ -672,7 +691,8 @@ export class WizRenderer {
       gl.uniform3f(q.u.uFabric, p.fabric.color[0], p.fabric.color[1], p.fabric.color[2]);
       gl.uniform1f(q.u.uTrans, p.fabric.transmission);
       gl.uniform1f(q.u.uBack, p.back);
-      gl.uniform1f(q.u.uFront, p.front);
+      // ciemniejszy pokój słabiej oświetla przód osłony (prześwit zza szyby zostaje)
+      gl.uniform1f(q.u.uFront, p.front * (1 - 0.45 * dark));
       gl.uniform3f(q.u.uRail, p.rail[0], p.rail[1], p.rail[2]);
       const rt = this.railTex.get(p.railId);
       gl.activeTexture(gl.TEXTURE2);

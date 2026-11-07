@@ -4514,6 +4514,9 @@ export default function Home({
                               przyklad={pdTypoweCena.find((o) => /MK06/.test(o.okno)) || null}
                               onWycen={() => scrollToDachWycena()}
                             />
+                            {/* wizualizator okien dachowych, wersja testowa (właściciel 7.11): widoczny po ?wiz=dach albo przy udziale z CRM */}
+                            <WizButton zrodlo="plisa-dachowa-oferta" produkt="plisa-dachowa" onKonfiguruj={scrollToDachWycena} />
+                            <WizHost />
                             <LejekDowod onOpinie={() => scrollToProductSection("opinie")} />
                             <DachBezRyzyka produkt="plisy-dachowe" liczbaModeli={rdLibrary.length} onPomiar={openMeasurementInstructions} />
 
@@ -4638,6 +4641,9 @@ export default function Home({
                               przyklad={rdTypoweCena.find((o) => /MK06/.test(o.okno)) || null}
                               onWycen={() => scrollToDachWycena()}
                             />
+                            {/* wizualizator okien dachowych, wersja testowa (właściciel 7.11): widoczny po ?wiz=dach albo przy udziale z CRM */}
+                            <WizButton zrodlo="roleta-dachowa-oferta" produkt="roleta-dachowa" onKonfiguruj={scrollToDachWycena} />
+                            <WizHost />
                             <LejekDowod onOpinie={() => scrollToProductSection("opinie")} />
                             <DachBezRyzyka produkt="rolety-dachowe" liczbaModeli={rdLibrary.length} onPomiar={openMeasurementInstructions} />
 

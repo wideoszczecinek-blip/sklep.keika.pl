@@ -10,6 +10,9 @@ import type { Pt } from "./homografia";
 
 export const WIZ_API = "https://crm-keika.groovemedia.pl/biuro/api/shop-public/wizualizator";
 
+/** Produkt wizualizacji: plisa okienna albo osłony do okien dachowych (plisa / roleta w prowadnicach; właściciel 7.11, wersja testowa). */
+export type WizProdukt = "plisy" | "plisa-dachowa" | "roleta-dachowa";
+
 export type WizTkanina = {
   id: string;
   kod: string;
@@ -34,6 +37,10 @@ export type WizKatalog = {
   zastrzezenie: string;
   /** przykładowe okno (gotowa wizualizacja „demo” w CRM) - „Nie masz teraz zdjęcia?” (2.11) */
   demo?: string;
+  /** okna dachowe (7.11, test): udział osób widzących przycisk na stronach dachowych (0 = tylko ?wiz=dach) */
+  udzial_dachowe?: number;
+  /** zdjęcie okna dachowego wysłane ze strony plis przełącza produkt zamiast odmowy z linkiem */
+  dachowe_wlaczone?: boolean;
 };
 
 export type WizSzyba = {
@@ -64,6 +71,8 @@ export type WizWynik = {
     uwagi_dla_klienta?: string;
   };
   szyby?: WizSzyba[];
+  /** produkt po rozpoznaniu okna (silnik może go zmienić: ze strony dachowych a zwykłe okno → plisy) */
+  produkt?: WizProdukt;
   rekomendacje?: {
     zestawy: { rodzaj: string; tkanina: string; nazwa: string; uzasadnienie: string }[];
     listwa: { id: string; nazwa: string; uzasadnienie: string } | null;
@@ -88,20 +97,24 @@ export type WizStatus = {
   uklad?: WizUklad | null;
   podglad?: { pomieszczenie: string; styl: string; opis: string; okien: number; ramy: string[]; paleta: { hex: string; nazwa: string }[]; pora: string; za_oknem: string; szyb?: number; oczyszczone?: boolean; rogi?: number[][][]; uporzadkowane?: boolean; usuniete?: string[]; wym?: number[][] } | null;
   kontakt?: boolean;
+  produkt?: WizProdukt;
 };
 
 export type WizUkladSzyba = { tkanina: string; listwa: string; gora: number; dol: number; rogi?: Pt[]; szer_mm?: number | null; wys_mm?: number | null; zmierzone?: boolean; pomin?: boolean };
 export type WizUklad = { szyby: Record<string, WizUkladSzyba>; montaz?: string; wszystkie?: boolean; dodane?: { id: string; rogi: Pt[] }[] };
 
-let katalogPromise: Promise<WizKatalog | null> | null = null;
+const katalogPromise = new Map<WizProdukt, Promise<WizKatalog | null>>();
 
-export function fetchKatalog(): Promise<WizKatalog | null> {
-  if (!katalogPromise) {
-    katalogPromise = fetch(`${WIZ_API}/katalog.php`)
+/** Katalog produktu (tkaniny, listwy/osprzęt, ustawienia wejścia). Okna dachowe mają własne katalogi (7.11). */
+export function fetchKatalog(produkt: WizProdukt = "plisy"): Promise<WizKatalog | null> {
+  let p = katalogPromise.get(produkt);
+  if (!p) {
+    p = fetch(`${WIZ_API}/katalog.php${produkt === "plisy" ? "" : `?produkt=${produkt}`}`)
       .then((r) => (r.ok ? (r.json() as Promise<WizKatalog>) : null))
       .catch(() => null);
+    katalogPromise.set(produkt, p);
   }
-  return katalogPromise;
+  return p;
 }
 
 async function toJpeg(file: File, maxSide = 2600): Promise<Blob> {
@@ -131,13 +144,14 @@ async function toJpeg(file: File, maxSide = 2600): Promise<Blob> {
   );
 }
 
-export async function wizStart(file: File, opts: { zrodlo: string; qr?: string; grupa?: string }): Promise<{ token: string }> {
+export async function wizStart(file: File, opts: { zrodlo: string; qr?: string; grupa?: string; produkt?: WizProdukt }): Promise<{ token: string }> {
   const blob = await toJpeg(file);
   const fd = new FormData();
   fd.append("zdjecie", blob, "okno.jpg");
   fd.append("zgoda", "1");
   fd.append("sklep", "keika");
   fd.append("zrodlo", opts.zrodlo);
+  if (opts.produkt && opts.produkt !== "plisy") fd.append("produkt", opts.produkt);
   fd.append("session_token", getSessionToken());
   fd.append("visitor_id", getVisitorId());
   if (opts.grupa) fd.append("grupa_ab", opts.grupa);
@@ -149,11 +163,16 @@ export async function wizStart(file: File, opts: { zrodlo: string; qr?: string; 
 }
 
 /** Szybka kontrola zdjęcia (etap Q, 2–4 s) - przed pełną analizą. */
-export async function wizSprawdz(token: string): Promise<{ decyzja: "ok" | "popraw" | "odrzuc"; komunikat: string; problemy: string[]; oslony: boolean; osoby?: boolean; balagan?: boolean }> {
+export type WizProduktZmiana = { z: WizProdukt; na: WizProdukt; komunikat: string };
+export async function wizSprawdz(token: string): Promise<{
+  decyzja: "ok" | "popraw" | "odrzuc"; komunikat: string; problemy: string[]; oslony: boolean; osoby?: boolean; balagan?: boolean;
+  /** produkt po kontroli zdjęcia i ewentualna zmiana (okno dachowe ↔ zwykłe; 7.11) */
+  produkt?: WizProdukt; produkt_zmiana?: WizProduktZmiana | null;
+}> {
   try {
     const r = await fetch(`${WIZ_API}/sprawdz.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token }) });
     const j = await r.json();
-    if (j && j.ok) return { decyzja: j.decyzja || "ok", komunikat: j.komunikat || "", problemy: j.problemy || [], oslony: Boolean(j.oslony), osoby: Boolean(j.osoby), balagan: Boolean(j.balagan) };
+    if (j && j.ok) return { decyzja: j.decyzja || "ok", komunikat: j.komunikat || "", problemy: j.problemy || [], oslony: Boolean(j.oslony), osoby: Boolean(j.osoby), balagan: Boolean(j.balagan), produkt: j.produkt || undefined, produkt_zmiana: j.produkt_zmiana || null };
   } catch {
     // kontrola nie blokuje - pełna analiza i tak sprawdzi zdjęcie
   }

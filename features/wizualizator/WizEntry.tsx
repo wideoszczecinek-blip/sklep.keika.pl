@@ -7,8 +7,8 @@
  */
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { fetchKatalog, wizEvent } from "@/lib/wizualizator/api";
-import { WIZ_OPEN_EVENT, openWizualizator, wizArm, wizForced, wizFromAd, type WizOpenDetail } from "@/lib/wizualizator/flag";
+import { fetchKatalog, wizEvent, type WizProdukt } from "@/lib/wizualizator/api";
+import { WIZ_OPEN_EVENT, openWizualizator, wizArm, wizBucket, wizDachTest, wizForced, wizFromAd, type WizOpenDetail } from "@/lib/wizualizator/flag";
 import { trackShopStep } from "@/lib/track-step";
 
 const WizModal = dynamic(() => import("./WizModal"), { ssr: false });
@@ -16,10 +16,28 @@ const WizModal = dynamic(() => import("./WizModal"), { ssr: false });
 const AB_LOGGED_KEY = "keika_wiz_ab_logged";
 
 /** Czy pokazać przycisk tej osobie (null = jeszcze nie wiadomo). */
-export function useWizVisible(): boolean | null {
+export function useWizVisible(produkt: WizProdukt = "plisy"): boolean | null {
   const [visible, setVisible] = useState<boolean | null>(null);
   useEffect(() => {
     let cancelled = false;
+    if (produkt !== "plisy") {
+      // okna dachowe, wersja testowa (właściciel 7.11): ?wiz=dach na urządzeniu albo udział dachowych z CRM (domyślnie 0)
+      const t = window.setTimeout(() => {
+        if (wizDachTest()) {
+          setVisible(true);
+          return;
+        }
+        void fetchKatalog().then((k) => {
+          if (cancelled) return;
+          const u = k?.wlaczony ? Number(k.udzial_dachowe || 0) : 0;
+          setVisible(u > 0 && wizBucket() < u);
+        });
+      }, 0);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(t);
+      };
+    }
     if (wizForced()) {
       setVisible(true);
       return;
@@ -35,7 +53,7 @@ export function useWizVisible(): boolean | null {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [produkt]);
   return visible;
 }
 
@@ -123,21 +141,53 @@ function BanerAnimacja({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfiguruj }: {
+export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfiguruj, produkt = "plisy" }: {
   zrodlo: string; variant?: "karta" | "link" | "cena"; tkanina?: string; listwa?: string;
   /** karta w hero: drugi przycisk „Mam wymiary – konfiguruję” (przewija do konfiguratora) */
   onKonfiguruj?: () => void;
+  /** okna dachowe (test 7.11): plisa-dachowa / roleta-dachowa - źródło musi zawierać nazwę produktu (kod QR dziedziczy produkt ze źródła) */
+  produkt?: WizProdukt;
 }) {
-  const visible = useWizVisible();
+  const visible = useWizVisible(produkt);
   const [own, setOwn] = useState(false);
+  const dach = produkt !== "plisy";
+  const roleta = produkt === "roleta-dachowa";
   useEffect(() => {
-    if (visible) wizEvent("wiz_przycisk", null, { zrodlo });
-  }, [visible, zrodlo]);
+    if (visible) wizEvent("wiz_przycisk", null, { zrodlo, produkt });
+  }, [visible, zrodlo, produkt]);
   if (!visible) return null;
   // Bez hosta na stronie (np. stary landing) przycisk trzyma okno sam.
-  const open = () => (hostCount > 0 ? openWizualizator({ zrodlo, tkanina, listwa }) : setOwn(true));
+  const open = () => (hostCount > 0 ? openWizualizator({ zrodlo, tkanina, listwa, produkt }) : setOwn(true));
   if (own) {
-    return <WizModal zrodlo={zrodlo} startTkanina={tkanina} startListwa={listwa} onClose={() => setOwn(false)} />;
+    return <WizModal zrodlo={zrodlo} produkt={produkt} startTkanina={tkanina} startListwa={listwa} onClose={() => setOwn(false)} />;
+  }
+  if (dach) {
+    // baner dachowy: prawdziwe zdjęcie okien dachowych przed i po (przenikanie), bez filmu
+    const karta = (
+      <div className="wiz-baner">
+        <button type="button" className="wiz-baner-foto wiz-baner-dach" onClick={open} aria-label={`Zobacz ${roleta ? "roletę" : "plisę"} na zdjęciu swojego okna dachowego – wrzuć zdjęcie`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="wiz-baner-wideo" src="/wizualizator-dach-przed.jpg" alt="" aria-hidden="true" loading="lazy" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="wiz-baner-wideo wiz-baner-po" src={roleta ? "/wizualizator-dach-roleta.jpg" : "/wizualizator-dach-plisa.jpg"} alt="" aria-hidden="true" loading="lazy" />
+          <span className="wiz-baner-chip">📸 Twoje zdjęcie → {roleta ? "roleta" : "plisa"} w 1 minutę</span>
+          <span className="wiz-baner-test">wersja testowa</span>
+          <span className="wiz-baner-pg">Wizualizacja poglądowa</span>
+        </button>
+        <div className="wiz-baner-tresc">
+          <b>Zobacz {roleta ? "roletę" : "plisę"} na zdjęciu swojego okna dachowego</b>
+          <small>Wrzuć zdjęcie okna dachowego – pokażemy {roleta ? "roletę" : "plisę"} w prowadnicach, z efektem zaciemnienia pokoju. Zmieniasz tkaninę i kolor osprzętu. Za darmo, bez rejestracji.</small>
+        </div>
+        <button type="button" className="wiz-baner-cta" onClick={open}>📸 Wrzuć zdjęcie okna dachowego</button>
+      </div>
+    );
+    if (!onKonfiguruj) return karta;
+    return (
+      <div className="wiz-entry-hero">
+        {karta}
+        <button type="button" className="wiz-entry-konf" onClick={onKonfiguruj}>Znam model okna – wyceniam →</button>
+      </div>
+    );
   }
   if (variant === "link") {
     return (
@@ -275,5 +325,5 @@ export function WizHost() {
     };
   }, []);
   if (!open) return null;
-  return <WizModal zrodlo={open.zrodlo} startTkanina={open.tkanina} startListwa={open.listwa} startToken={open.token} onClose={() => setOpen(null)} />;
+  return <WizModal zrodlo={open.zrodlo} produkt={open.produkt} startTkanina={open.tkanina} startListwa={open.listwa} startToken={open.token} onClose={() => setOpen(null)} />;
 }

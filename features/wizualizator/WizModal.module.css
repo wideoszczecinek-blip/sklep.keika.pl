@@ -1125,3 +1125,15 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
 .przypKiedy { display: grid; gap: 8px; width: 100%; }
 .przypKiedy button { border: 1.5px solid #cbd5e1; border-radius: 12px; background: #fff; padding: 11px 12px; font-size: 15px; font-weight: 700; color: #12212b; cursor: pointer; }
 .przypKiedy button.on { border-color: #0f9f8f; background: #f0fdfa; color: #0f766e; }
+/* okna dachowe (test 7.11): karta „Wycena” - cena zależy od modelu okna, wycena w konfiguratorze na stronie */
+.dachWycena { display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: #f0fdfa; border: 1px solid #99f6e4; }
+.dachWycena b { font-size: 1.02rem; color: #0f3d37; }
+.dachWycena small { font-size: 0.86rem; line-height: 1.4; color: #334155; }
+.dachWycena button { justify-self: start; }
+
+/* ekran startowy okien dachowych (test 7.11): zdjęcie przed → po w pętli */
+.demoDach { position: relative; aspect-ratio: 16 / 10; background: #0b1218; overflow: hidden; }
+.demoDach img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.demoDachPo { animation: demoDachPo 6s ease-in-out infinite; }
+@keyframes demoDachPo { 0%, 18% { opacity: 0; } 38%, 82% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .demoDachPo { animation: none; opacity: 1; } }
