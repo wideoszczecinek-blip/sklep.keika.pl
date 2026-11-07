@@ -525,9 +525,9 @@ export function LejekDostawa({ paypo }: { paypo: boolean }) {
   );
 }
 
-/** FAQ w lejku: najpierw pytania, które zatrzymują zakup (zwrot, pomyłka, dopasowanie, wiercenie, czas, kolor, światło). */
+/** FAQ w lejku: najpierw pytania, które zatrzymują zakup (zwrot, płatność, pomyłka, dopasowanie, wiercenie, czas, kolor, światło). */
 export function faqWgObiekcji<T extends { question: string }>(lista: T[]): T[] {
-  const kolejnosc = [/zwróc|gwarancj/i, /źle zmierz/i, /do jakich okien|otwieraniu/i, /wiercić/i, /długo czekam/i, /próbki|kolor/i, /światła/i];
+  const kolejnosc = [/zwróc|gwarancj/i, /zapłacić później/i, /źle zmierz/i, /do jakich okien|otwieraniu/i, /wiercić/i, /długo czekam/i, /próbki|kolor/i, /światła/i];
   const waga = (q: string) => {
     const i = kolejnosc.findIndex((r) => r.test(q));
     return i < 0 ? 100 : i;

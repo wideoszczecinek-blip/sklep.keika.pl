@@ -344,4 +344,9 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
     answer:
       "5 lat gwarancji na plisę, tak jak na wszystkie produkty KEIKA — profile są aluminiowe, mechanizm nie ma elementów, które się wycierają. Do tego 30 dni na zwrot bez podania przyczyny: jeśli plisa nie spełni oczekiwań, odsyłasz ją, a my oddajemy pieniądze.",
   },
+  {
+    question: "Czy mogę zapłacić później albo w ratach?",
+    answer:
+      "W kasie, w kroku Płatność, są dostępne metody płatności odroczonej (PayPo, Przelewy24 Raty), a także BLIK i karta. Dostępność zależy od wartości zamówienia i decyzji operatora płatności.",
+  },
 ];
