@@ -210,10 +210,17 @@ const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/Configurat
 const RoletyConfiguratorPanel = dynamic(() => import("@/features/rolety/ConfiguratorPanel"), { ssr: false });
 // Rolety tradycyjne w 4 systemach (7.11.2026): własny panel z pomiarem systemu, kolejność „materiał przed ceną”.
 const RoletySystemyPanel = dynamic(() => import("@/features/rolety/SystemyPanel"), { ssr: false });
-function RoletyPanelImpl(props: React.ComponentProps<typeof RoletyConfiguratorPanel>) {
+function RoletyPanelImpl({ onAddVariant, ...props }: React.ComponentProps<typeof RoletyConfiguratorPanel> & { onAddVariant?: (result: RoletyConfiguratorResult) => void }) {
   if (isRoletySystemSlug(props.slug)) {
     return (
-      <RoletySystemyPanel slug={props.slug} initialValues={props.initialValues} submitLabel={props.submitLabel} onSubmit={props.onSubmit} onZoom={props.onZoom} />
+      <RoletySystemyPanel
+        slug={props.slug}
+        initialValues={props.initialValues}
+        submitLabel={props.submitLabel}
+        onSubmit={props.onSubmit}
+        onAddVariant={onAddVariant}
+        onZoom={props.onZoom}
+      />
     );
   }
   return <RoletyConfiguratorPanel {...props} />;
@@ -6003,6 +6010,7 @@ export default function Home({
                         roletyLastResult
                           ? {
                               mountId: roletyLastResult.mountId,
+                              mountLabel: roletyLastResult.mountLabel,
                               hardwareId: roletyLastResult.hardwareId,
                               fabricGroupId: roletyLastResult.fabricGroupId,
                               fabricId: roletyLastResult.fabricId,
@@ -6013,6 +6021,35 @@ export default function Home({
                       }
                       submitLabel="Dodaj do koszyka"
                       onZoom={(preview) => setZoomPreview(preview)}
+                      onAddVariant={(result) => {
+                        // Rolety tradycyjne (SystemyPanel): każde okno zestawu
+                        // poza ostatnim - po cichu, bez ekranu „Dodano do
+                        // koszyka!”; ostatnie idzie przez onSubmit niżej.
+                        const item: CartLineItem = {
+                          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                          productSlug: productSlugFromSelected(displayedProduct),
+                          productLabel: result.productLabel || displayedProduct.label,
+                          hardwareLabel: result.hardwareLabel,
+                          meshLabel: `${result.fabricGroupLabel} — ${result.fabricLabel}`,
+                          mountLabel: result.mountLabel,
+                          measuredWidthMm: result.measuredWidthMm || undefined,
+                          measuredHeightMm: result.measuredHeightMm || undefined,
+                          measureNote: result.measureNote || undefined,
+                          hasVent: result.hasVent || undefined,
+                          fabricColor: result.fabricColor || undefined,
+                          hardwareColor: result.hardwareColor || undefined,
+                          imageUrl: result.fabricThumbnailUrl || undefined,
+                          widthMm: result.widthMm,
+                          heightMm: result.heightMm,
+                          qty: result.qty,
+                          price: result.unitPrice,
+                          total: result.totalPrice,
+                          createdAt: new Date().toISOString(),
+                        };
+                        const items = addCartItem(item);
+                        setCartItems(items);
+                        setCartSummary(cartSummaryWithSurcharge(items));
+                      }}
                       onSubmit={(result) => {
                         setRoletyLastResult(result);
                         const item: CartLineItem = {

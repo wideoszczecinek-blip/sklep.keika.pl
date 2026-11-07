@@ -247,3 +247,78 @@ export const ROLETY_HUB_INSTRUCTIONS: Array<{ title: string; body: string }> = [
   { title: "Pomiar", body: "Każdy system ma własny pomiar - konfigurator pokazuje go na rysunku i sam liczy wymiar rolety. Mierzysz co do milimetra." },
   { title: "Montaż", body: "Rolety na skrzydło montujesz na oknie i otwierasz razem z nim; wolnowiszącą przykręcasz do ściany lub sufitu. Elementy montażowe są w komplecie." },
 ];
+
+// ---------------------------------------------------------------------------
+// Listwa przyszybowa (właściciel 7.11.2026): „do określenia jest jeszcze rodzaj
+// listwy przyszybowej - prosta albo półokrągła [...] ma znaczenie tylko przy
+// rolecie w kasecie z prowadnicą płaską; wolnowiszące, standard (MINI)
+// i przestrzenne - tu listwa nie ma znaczenia”. Płaska prowadnica leży na
+// licu listwy, więc mocowanie dobieramy do jej kształtu.
+// ---------------------------------------------------------------------------
+
+export type ListwaType = "prosta" | "polokragla";
+
+export const LISTWA_OPTIONS: Array<{ id: ListwaType; label: string; short: string; note: string }> = [
+  {
+    id: "prosta",
+    label: "Prosta",
+    short: "prosta",
+    note: "Lico listwy jest płaskie - linijka przyłożona w poprzek leży na całej szerokości.",
+  },
+  {
+    id: "polokragla",
+    label: "Półokrągła",
+    short: "półokrągła",
+    note: "Lico listwy jest zaokrąglone - linijka dotyka listwy w jednym miejscu i się kołysze.",
+  },
+];
+
+export function systemAsksListwa(slug: RoletySystemSlug): boolean {
+  return slug === "rolety-kaseta-plaska";
+}
+
+const LISTWA_SUFFIX = /\s·\slistwa przyszybowa:\s(prosta|półokrągła)\s*$/i;
+
+/** "W kasecie" + "półokrągła" -> "W kasecie · listwa przyszybowa: półokrągła" (koszyk, CRM, produkcja). */
+export function withListwaLabel(mountLabel: string, listwa: ListwaType | ""): string {
+  const option = LISTWA_OPTIONS.find((entry) => entry.id === listwa);
+  return option ? `${mountLabel} · listwa przyszybowa: ${option.short}` : mountLabel;
+}
+
+export function splitListwaLabel(label: string): { mountLabel: string; listwa: ListwaType | "" } {
+  const match = String(label || "").match(LISTWA_SUFFIX);
+  if (!match) return { mountLabel: String(label || ""), listwa: "" };
+  return { mountLabel: label.replace(LISTWA_SUFFIX, ""), listwa: match[1].toLowerCase() === "prosta" ? "prosta" : "polokragla" };
+}
+
+// ---------------------------------------------------------------------------
+// Rodzaj tkaniny - karty wyboru (właściciel 7.11: „deko i termo zrób jakoś
+// lepsze te swatche”). Fakty zgodne z opisami grup w CRM.
+// ---------------------------------------------------------------------------
+
+export type FabricTypeCopy = {
+  name: string;
+  kind: string;
+  /** Jasno / ciemno w pokoju - plakietka na scenie. */
+  badge: string;
+  facts: string[];
+  /** Scena: tkanina prześwituje (Deko) albo zaciemnia (Termo). */
+  mode: "light" | "dark";
+};
+
+export const FABRIC_TYPE_COPY: Record<string, FabricTypeCopy> = {
+  deko: {
+    name: "Deko",
+    kind: "półprzepuszczalna",
+    badge: "☀ W pokoju jasno",
+    facts: ["Przepuszcza rozproszone światło - nie oślepia", "Zasłania widok z zewnątrz", "Do salonu, kuchni i gabinetu"],
+    mode: "light",
+  },
+  termo: {
+    name: "Termo",
+    kind: "zaciemniająca",
+    badge: "☾ W pokoju ciemno",
+    facts: ["Nie przepuszcza światła", "Perłowa powłoka od strony okna odbija ciepło latem", "Do sypialni i pokoju dziecka"],
+    mode: "dark",
+  },
+};

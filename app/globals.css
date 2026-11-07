@@ -25618,3 +25618,96 @@ html[data-theme="dark"] .rs-price {
 .zl-guide .zl-guide-when { font-size: 0.88rem !important; line-height: 1.45 !important; }
 .zlf-section .zlf-legal { font-size: 0.78rem !important; line-height: 1.5 !important; }
 
+
+/* ---- Rolety tradycyjne - konfigurator 7.11 wieczór (features/rolety/RoletyWybor.tsx, SystemyPanel.tsx):
+   kolor osprzętu jako kaseta, Deko/Termo jako scena okna, listwa przyszybowa, kilka okien ---- */
+.rs-hw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.6rem, 1fr)); gap: 0.5rem; }
+.rs-hw { display: grid; justify-items: center; gap: 0.25rem; padding: 0.45rem 0.35rem 0.5rem; border-radius: 0.85rem; border: 2px solid rgba(19, 40, 67, 0.12); background: #fff; color: inherit; font: inherit; font-size: 0.8rem; font-weight: 700; line-height: 1.2; text-align: center; cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease; }
+.rs-hw:hover { transform: translateY(-1px); }
+.rs-hw.is-active { border-color: #f59e0b; box-shadow: 0 0 0 1px #d97706; }
+.rs-hw-mini { width: 100%; max-width: 4.6rem; height: auto; display: block; }
+
+.rs-ft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: 0.75rem; }
+.rs-ft-card { display: grid; grid-template-rows: auto 1fr; padding: 0; overflow: hidden; border-radius: 1rem; border: 2px solid rgba(19, 40, 67, 0.12); background: #fff; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+.rs-ft-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(19, 40, 67, 0.12); }
+.rs-ft-card.is-active { border-color: #f59e0b; box-shadow: 0 0 0 1px #d97706, 0 10px 24px rgba(217, 119, 6, 0.16); }
+.rs-ft-visual { position: relative; display: block; line-height: 0; }
+.rs-ft-scene { display: block; width: 100%; height: auto; aspect-ratio: 320 / 190; }
+.rs-ft-badge { position: absolute; left: 0.6rem; top: 0.6rem; padding: 0.22rem 0.6rem; border-radius: 999px; font-size: 0.74rem; font-weight: 800; line-height: 1.3; background: rgba(255, 255, 255, 0.92); color: #7a5200; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
+.rs-ft-card.is-dark .rs-ft-badge { background: rgba(20, 26, 38, 0.82); color: #e8edf5; }
+.rs-ft-check { position: absolute; right: 0.6rem; top: 0.6rem; width: 1.7rem; height: 1.7rem; border-radius: 50%; display: grid; place-items: center; background: #f59e0b; color: #fff; font-size: 0.9rem; font-weight: 900; line-height: 1; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
+.rs-ft-body { display: grid; align-content: start; gap: 0.45rem; padding: 0.75rem 0.85rem 0.85rem; }
+.rs-ft-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.45rem; }
+.rs-ft-name strong { font-size: 1.15rem; font-weight: 900; line-height: 1.15; }
+.rs-ft-name em { font-style: normal; font-size: 0.82rem; font-weight: 700; color: #64748b; }
+.rs-ft-facts { display: grid; gap: 0.2rem; }
+.rs-ft-facts span { position: relative; padding-left: 1.15rem; font-size: 0.8rem; line-height: 1.38; color: #334155; }
+.rs-ft-facts span::before { content: "✓"; position: absolute; left: 0; top: 0; color: #147a52; font-weight: 900; }
+.rs-ft-colors { display: flex; align-items: center; gap: 0.55rem; margin-top: 0.1rem; }
+.rs-ft-chips { display: flex; }
+.rs-ft-chips span { width: 1.45rem; height: 1.45rem; margin-left: -0.38rem; border-radius: 50%; border: 2px solid #fff; background-size: cover; background-position: center; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
+.rs-ft-chips span:first-child { margin-left: 0; }
+.rs-ft-colors b { font-size: 0.78rem; font-weight: 800; color: #132843; white-space: nowrap; }
+
+.rs-swatch-grid { grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr)); }
+.rs-swatch-img { aspect-ratio: 4 / 3; border-radius: 0.55rem; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(19, 40, 67, 0.12); }
+.rs-swatch.is-active .rs-swatch-img { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85), 0 2px 6px rgba(217, 119, 6, 0.3); }
+.rs-swatch.is-active .rs-swatch-pick small { font-weight: 800; }
+
+.rs-listwa-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; margin-top: 0.4rem; }
+.rs-listwa { display: grid; gap: 0.3rem; align-content: start; padding: 0.6rem; border-radius: 0.9rem; border: 2px solid rgba(19, 40, 67, 0.12); background: #fff; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.rs-listwa.is-active { border-color: #f59e0b; box-shadow: 0 0 0 1px #d97706; }
+.rs-listwa strong { font-size: 0.98rem; font-weight: 900; }
+.rs-listwa small { font-size: 0.76rem; line-height: 1.35; color: #475569; }
+.rs-listwa-svg { display: block; width: 100%; height: auto; border-radius: 0.6rem; background: #f7f9fb; }
+.rs-listwa-guide { margin-top: 0.7rem; border-radius: 0.9rem; border: 1px solid #e2e8f0; background: #fbfcfd; padding: 0.15rem 0.85rem; }
+.rs-listwa-guide summary { padding: 0.6rem 0; font-size: 0.88rem; font-weight: 800; color: #b45309; cursor: pointer; }
+.rs-listwa-guide ol { margin: 0 0 0.7rem; padding-left: 1.15rem; display: grid; gap: 0.35rem; font-size: 0.82rem; line-height: 1.45; color: #334155; }
+.rs-listwa-examples { display: grid; gap: 0.4rem; margin-bottom: 0.8rem; font-size: 0.8rem; }
+.rs-listwa-examples > strong { font-size: 0.86rem; }
+.rs-listwa-examples table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 0.6rem; overflow: hidden; }
+.rs-listwa-examples th, .rs-listwa-examples td { padding: 0.38rem 0.55rem; border-top: 1px solid #edf1f5; text-align: left; vertical-align: top; line-height: 1.35; }
+.rs-listwa-examples th { border-top: 0; background: #f1f5f9; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
+.rs-listwa-examples small { color: #64748b; font-size: 0.74rem; line-height: 1.4; }
+
+.rs-set { display: grid; gap: 0.1rem; margin: 0.7rem 0 0.6rem; padding: 0.6rem 0.8rem; border-radius: 0.9rem; border: 1px solid #d5ebe0; background: #f4fbf7; animation: moskToastIn 0.22s ease; }
+.rs-set h4 { margin: 0 0 0.2rem; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #147a52; }
+.rs-set-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-top: 1px solid rgba(20, 122, 82, 0.14); }
+.rs-set-row:first-of-type { border-top: 0; }
+.rs-set-label { flex: 1; min-width: 0; font-size: 0.82rem; line-height: 1.35; }
+.rs-set-label b { margin-right: 0.3rem; }
+.rs-set-price { font-size: 0.86rem; font-weight: 800; white-space: nowrap; }
+.rs-set-edit { border: 0; background: transparent; color: #b45309; font: inherit; font-size: 0.78rem; font-weight: 800; text-decoration: underline; cursor: pointer; padding: 0.1rem 0.2rem; }
+.rs-set .plisy-positions-row-remove { color: #94a3b8; }
+
+.rs-window { margin-top: 0.6rem; padding: 0.8rem; border-radius: 1rem; border: 2px solid rgba(19, 40, 67, 0.12); background: #fff; }
+.rs-window-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.rs-window-head strong { font-size: 1rem; font-weight: 900; }
+.rs-window-head .rs-unit { margin: 0; }
+.rs-window .rs-measure { margin-top: 0.6rem; }
+.rs-window-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.6rem 1rem; margin-top: 0.8rem; padding-top: 0.75rem; border-top: 1px dashed rgba(19, 40, 67, 0.15); }
+.rs-side { display: grid; gap: 0.35rem; }
+.rs-side small { font-size: 0.74rem; opacity: 0.75; }
+.rs-window-row .rs-field--qty { margin-top: 0; max-width: 7.5rem; }
+.rs-window-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; margin-top: 0.8rem; }
+.rs-window-price { font-size: 0.86rem; color: #475569; }
+.rs-window-price strong { font-size: 1.05rem; color: #0f5f40; }
+.rs-window .plisy-position-add { background: #fff; color: #b45309; border: 2px solid #f59e0b; }
+.rs-window .plisy-position-add:not(:disabled):hover { background: #fff7e8; }
+.rs-price-lines { list-style: none; margin: 0.45rem 0 0; padding: 0; display: grid; gap: 0.15rem; font-size: 0.8rem; color: #334155; }
+.rs-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+html[data-theme="dark"] .rs-hw,
+html[data-theme="dark"] .rs-ft-card,
+html[data-theme="dark"] .rs-listwa,
+html[data-theme="dark"] .rs-window { background: rgba(240, 248, 255, 0.05); border-color: rgba(194, 228, 255, 0.25); }
+html[data-theme="dark"] .rs-ft-facts span,
+html[data-theme="dark"] .rs-listwa small,
+html[data-theme="dark"] .rs-price-lines,
+html[data-theme="dark"] .rs-ft-colors b { color: inherit; }
+@media (max-width: 420px) {
+  .rs-listwa-grid { gap: 0.4rem; }
+  .rs-listwa { padding: 0.45rem; }
+  .rs-window { padding: 0.65rem; }
+}
+

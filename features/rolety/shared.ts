@@ -19,6 +19,7 @@ import {
   type PriceDeltaType,
   type PriceTable,
 } from "@/features/plisy/shared";
+import { LISTWA_JAK_SPRAWDZIC } from "./listwa";
 
 export type { FabricGroup, FabricSwatch, HardwareOption, MountOption, PriceTable };
 import type { SsExtraLine, SsSupplierOrder } from "./ss-options";
@@ -148,6 +149,7 @@ function systemCopy(slug: RoletySystemSlug, extra: Pick<RoletyProductCopy, "h1" 
     groupStepTitle: "Wybierz tkaninę",
     instructionSteps: [
       { title: "Pomiar", body: system.steps("").join(" ") },
+      ...(slug === "rolety-kaseta-plaska" ? [{ title: "Listwa przyszybowa", body: LISTWA_JAK_SPRAWDZIC.join(" ") }] : []),
       {
         title: "Montaż",
         body:
