@@ -145,6 +145,10 @@ export const ROLETY_DRAFT_KEYS: Record<RoletySlug, string> = {
   "rolety-dzien-noc": "keika_rolety_dn_draft_v1",
   "rolety-tradycyjne": "keika_rolety_trad_draft_v1",
   zaluzje: "keika_zaluzje_draft_v1",
+  "rolety-mini": "keika_rolety_mini_draft_v1",
+  "rolety-kaseta-plaska": "keika_rolety_kp_draft_v1",
+  "rolety-kaseta-przestrzenna": "keika_rolety_kpr_draft_v1",
+  "rolety-wolnowiszace": "keika_rolety_wol_draft_v1",
 };
 type RoletyDraft = {
   mountId?: string;

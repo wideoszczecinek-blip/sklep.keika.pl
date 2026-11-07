@@ -9,6 +9,9 @@ import type { ReactNode } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { ROLETY_COPY, roletyStartingPrice, type RoletyProfile, type RoletySlug } from "./shared";
+import RoletySystemDrawing from "./RoletySystemDrawing";
+import { RoletySystemCards } from "./RoletySystemyHub";
+import { isRoletySystemSlug, ROLETY_SYSTEMS } from "./systemy";
 
 export type RoletyLandingContent = {
   subtitle: string;
@@ -53,15 +56,27 @@ export default function RoletyLanding({
   const startingPrice = roletyStartingPrice(profile, slug, adjustPercent);
   const photos = (landing?.gallery?.length ? landing.gallery : fallbackGallery).filter(Boolean).slice(0, 4);
   const description = String(landing?.description || "").trim();
+  // Rolety tradycyjne w systemach (7.11.2026): bez ceny „od” (materiał przed ceną),
+  // rysunek systemu z pomiarem, na końcu inne systemy (przejście tylko przed pomiarem).
+  const system = isRoletySystemSlug(slug) ? ROLETY_SYSTEMS[slug] : null;
   const paragraphs = description && !/<[a-z][\s\S]*>/i.test(description) ? description.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean) : [];
 
   return (
     <div className="pl-landing rl-landing">
+      {system ? (
+        <nav className="zl-model-crumb" aria-label="Ścieżka">
+          <a href="/rolety-tradycyjne">Rolety tradycyjne</a>
+          <span>{system.short}</span>
+        </nav>
+      ) : null}
       <div className="pl-trust-row">
-        <span className="pl-price">
-          od {formatPrice(startingPrice)} zł
-          <span className="pl-price-unit"> / szt.</span>
-        </span>
+        {system ? null : (
+          <span className="pl-price">
+            od {formatPrice(startingPrice)} zł
+            <span className="pl-price-unit"> / szt.</span>
+          </span>
+        )}
+        {system?.recommended ? <span className="pl-chip pl-chip-promise">★ Polecana</span> : null}
         <span className="pl-chip">Realizacja {copy.leadTimeLabel}</span>
         {/* Nasza produkcja: 5 lat gwarancji i 30 dni na zwrot wyróżnione jak w plisach (właściciel 25.10:
             „to trzeba komunikować”). Żaluzje to dystrybucja - gwarancja producenta, do decyzji właściciela. */}
@@ -90,9 +105,19 @@ export default function RoletyLanding({
         </div>
       ) : null}
 
+      {system ? (
+        <div className="rs-landing-drawing">
+          <RoletySystemDrawing system={system.slug} />
+          <div>
+            <strong>Co mierzysz</strong>
+            <p>{system.measureShort}. Rysunek w konfiguratorze podświetla każdy pomiar, a wymiar rolety liczymy sami - co do milimetra.</p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="pl-cta-row">
         <button type="button" className="pl-cta-button" onClick={onConfigure}>
-          {cta}
+          {system ? "Wybierz tkaninę i zmierz okno" : cta}
         </button>
       </div>
 
@@ -146,6 +171,14 @@ export default function RoletyLanding({
             </div>
           ))}
         </div>
+      ) : null}
+
+      {system ? (
+        <>
+          <h3 className="zl-model-subtitle">Inne systemy rolet</h3>
+          <p className="zl-rodzaj-hint">Każdy system mierzy się inaczej - jeśli zmieniasz system, zmierz okno według jego instrukcji.</p>
+          <RoletySystemCards current={system.slug} compact />
+        </>
       ) : null}
 
       {landing?.callout ? (

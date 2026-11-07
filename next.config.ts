@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
       { source: "/produkt/rolety-tradycyjne", destination: "/rolety-tradycyjne", permanent: false },
       { source: "/kategoria/rolety-tradycyjne", destination: "/rolety-tradycyjne", permanent: false },
       { source: "/produkt/zaluzje", destination: "/zaluzje", permanent: false },
+      // Rolety tradycyjne w 4 systemach (7.11.2026) - własne strony.
+      { source: "/produkt/rolety-mini", destination: "/rolety-mini", permanent: false },
+      { source: "/produkt/rolety-kaseta-plaska", destination: "/rolety-kaseta-plaska", permanent: false },
+      { source: "/produkt/rolety-kaseta-przestrzenna", destination: "/rolety-kaseta-przestrzenna", permanent: false },
+      { source: "/produkt/rolety-wolnowiszace", destination: "/rolety-wolnowiszace", permanent: false },
       { source: "/kategoria/zaluzje", destination: "/zaluzje", permanent: false },
       // Formularz opinii żyje na stronie firmowej. Ten wpis został z czasu,
       // gdy keika.pl stało jeszcze na starym serwerze i odsyłało tu SMS-y po

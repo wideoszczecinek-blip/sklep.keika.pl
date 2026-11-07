@@ -25066,3 +25066,488 @@ html[data-theme="dark"] .zl-rodzaj-width {
   width: 100%;
   contain: inline-size;
 }
+
+/* Rolety tradycyjne w 4 systemach (7.11.2026): strona zbiorcza, rysunki,
+   konfigurator SystemyPanel (materiał -> kolor -> osprzęt -> pomiar -> cena). */
+.rs-drawing {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.rs-hub {
+  margin: 0.4rem 0 1.4rem;
+  scroll-margin-top: 6rem;
+  min-width: 0;
+}
+.rs-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 0.9rem;
+  margin-top: 0.4rem;
+}
+.rs-hub-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.75rem;
+  border-radius: 1.1rem;
+  border: 2px solid rgba(19, 40, 67, 0.14);
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.rs-hub-card:hover,
+.rs-hub-card:focus-visible {
+  border-color: #f59e0b;
+  box-shadow: 0 10px 26px rgba(19, 40, 67, 0.12);
+}
+.rs-hub-card.is-recommended {
+  border-color: #147a52;
+  box-shadow: 0 0 0 1px #147a52;
+}
+.rs-hub-badge {
+  position: absolute;
+  top: -0.7rem;
+  left: 0.9rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #147a52;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.rs-hub-drawing {
+  display: block;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  border: 1px solid rgba(19, 40, 67, 0.08);
+}
+.rs-hub-body {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.rs-hub-body strong {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.rs-hub-lead,
+.rs-hub-measure {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+.rs-hub-measure {
+  opacity: 0.7;
+}
+.rs-hub-pros {
+  display: grid;
+  gap: 0.1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #147a52;
+}
+.rs-hub-go {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #d97706;
+}
+.rs-hub-grid.is-compact .rs-hub-card {
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+}
+.rs-compare-row {
+  grid-template-columns: 8.5rem repeat(4, minmax(6.4rem, 1fr));
+  min-width: 34rem;
+}
+.rs-landing-drawing {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  margin: 0.8rem 0;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  background: rgba(19, 40, 67, 0.04);
+}
+.rs-landing-drawing strong {
+  font-weight: 800;
+}
+.rs-landing-drawing p {
+  margin: 0.3rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.rs-panel {
+  display: grid;
+  gap: 0.2rem;
+}
+.rs-step {
+  padding: 0.85rem 0;
+  border-top: 1px solid rgba(19, 40, 67, 0.1);
+  scroll-margin-top: 5.5rem;
+}
+.rs-step-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.rs-step-title em {
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.84rem;
+  color: #147a52;
+}
+.rs-step-no {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: #132843;
+  color: #fff;
+  font-size: 0.82rem;
+}
+.rs-step-no.is-done {
+  background: #147a52;
+}
+.rs-fabric-grid,
+.rs-option-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 0.6rem;
+}
+.rs-fabric-card,
+.rs-option {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.7rem;
+  border-radius: 0.9rem;
+  border: 2px solid rgba(19, 40, 67, 0.14);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rs-fabric-card.is-active,
+.rs-option.is-active,
+.rs-chip.is-active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #d97706;
+}
+.rs-fabric-card strong,
+.rs-option strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.rs-fabric-card small,
+.rs-option small {
+  font-size: 0.76rem;
+  line-height: 1.35;
+  opacity: 0.8;
+}
+.rs-fabric-tiles {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+  height: 2.2rem;
+}
+.rs-fabric-tiles span {
+  border-radius: 4px;
+  background-size: cover;
+  background-position: center;
+}
+.rs-fabric-count {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+.rs-option-delta {
+  font-weight: 800;
+  color: #147a52;
+  font-size: 0.86rem;
+}
+.rs-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr));
+  gap: 0.5rem;
+}
+.rs-swatch {
+  position: relative;
+}
+.rs-swatch-pick {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.2rem;
+  border-radius: 0.7rem;
+  border: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.rs-swatch.is-active .rs-swatch-pick {
+  border-color: #f59e0b;
+}
+.rs-swatch-img {
+  display: block;
+  aspect-ratio: 1 / 1;
+  border-radius: 0.5rem;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(19, 40, 67, 0.12);
+}
+.rs-swatch-pick small {
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-align: center;
+}
+.rs-swatch-zoom {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.rs-more {
+  margin-top: 0.6rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.rs-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.rs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  border: 2px solid rgba(19, 40, 67, 0.16);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rs-chip-dot {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid rgba(19, 40, 67, 0.25);
+}
+.rs-measure {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+.rs-measure-drawing {
+  border-radius: 0.8rem;
+  overflow: hidden;
+  border: 1px solid rgba(19, 40, 67, 0.1);
+}
+.rs-measure-steps {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.rs-unit {
+  display: inline-flex;
+  margin: 0.8rem 0 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(19, 40, 67, 0.2);
+  overflow: hidden;
+}
+.rs-unit button {
+  padding: 0.3rem 0.9rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.rs-unit button.is-active {
+  background: #132843;
+  color: #fff;
+}
+.rs-fields {
+  display: grid;
+  gap: 0.6rem;
+}
+.rs-field {
+  display: grid;
+  gap: 0.25rem;
+}
+.rs-field-label {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+.rs-field-label b {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  margin-right: 0.2rem;
+  border-radius: 0.35rem;
+  background: #1f3a5c;
+  color: #fff;
+  font-size: 0.74rem;
+}
+.rs-field.is-active .rs-field-label b {
+  background: #e07b00;
+}
+.rs-field input {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.7rem;
+  border: 2px solid rgba(19, 40, 67, 0.2);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  background: #fff;
+  color: inherit;
+}
+.rs-field input:focus {
+  outline: none;
+  border-color: #e07b00;
+}
+.rs-field small {
+  font-size: 0.74rem;
+  opacity: 0.75;
+}
+.rs-field--qty {
+  max-width: 9rem;
+  margin-top: 0.6rem;
+}
+.rs-vent {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+.rs-issue {
+  margin: 0.6rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  background: #fff4e5;
+  color: #8a4b00;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.rs-size {
+  margin: 0.6rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  background: #e8f6ef;
+  color: #0f5f40;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.rs-price {
+  margin-top: 0.6rem;
+  padding: 0.9rem;
+  border-radius: 1rem;
+  border: 2px solid #147a52;
+  background: #f4fbf7;
+}
+.rs-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.rs-price-row strong {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #0f5f40;
+}
+.rs-price-spec {
+  margin: 0.5rem 0;
+  padding-left: 1rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.rs-price-perks {
+  margin: 0 0 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #147a52;
+}
+.rs-submit {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(135deg, #f59e0b, #e07b00);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+@media (max-width: 420px) {
+  .rs-measure {
+    grid-template-columns: 7.2rem minmax(0, 1fr);
+  }
+  .rs-landing-drawing {
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+  }
+}
+html[data-theme="dark"] .rs-hub-card,
+html[data-theme="dark"] .rs-fabric-card,
+html[data-theme="dark"] .rs-option,
+html[data-theme="dark"] .rs-chip,
+html[data-theme="dark"] .rs-field input {
+  background: rgba(240, 248, 255, 0.05);
+  border-color: rgba(194, 228, 255, 0.25);
+}
+html[data-theme="dark"] .rs-price {
+  background: rgba(20, 122, 82, 0.12);
+}
+.rs-chip-delta {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #147a52;
+}
+.rs-measure {
+  margin-top: 0.7rem;
+}
+.rs-measure-drawing {
+  position: sticky;
+  top: 5.5rem;
+}
+.rs-measure-inputs {
+  min-width: 0;
+}
+.rs-measure-inputs .rs-unit {
+  margin-top: 0;
+}

@@ -141,6 +141,8 @@ import {
 import RoletyLanding from "@/features/rolety/Landing";
 import ZaluzjeHub, { ZALUZJE_CATALOG_ID } from "@/features/rolety/ZaluzjeHub";
 import ZaluzjeRodzajLanding from "@/features/rolety/ZaluzjeRodzajLanding";
+import RoletySystemyHub, { ROLETY_SYSTEMY_ID } from "@/features/rolety/RoletySystemyHub";
+import { isRoletySystemSlug, ROLETY_HUB_FAQ, ROLETY_HUB_INSTRUCTIONS } from "@/features/rolety/systemy";
 import { ZALUZJE_HUB_FAQ, ZALUZJE_RODZAJ_SLUGS, ZALUZJE_RODZAJE, zaluzjeRodzajGallery, type ZaluzjeRodzajSlug } from "@/features/rolety/zaluzje-rodzaje";
 import ZaluzjaPreview, { ZaluzjaHead, ZaluzjaSpecTable, type ZaluzjaPreviewData } from "@/features/rolety/ZaluzjaPreview";
 import type { ZaluzjaDetailGroup } from "@/features/rolety/zaluzja-drawing-data";
@@ -204,6 +206,16 @@ const PlisyConfiguratorPanel = dynamic(() => import("@/features/plisy/Configurat
 // Żaluzje (2026-10-17): /zaluzje to katalog modeli bez konfiguratora, każdy
 // model ma własną stronę /zaluzje/<slug> z tym panelem (model na sztywno).
 const RoletyConfiguratorPanel = dynamic(() => import("@/features/rolety/ConfiguratorPanel"), { ssr: false });
+// Rolety tradycyjne w 4 systemach (7.11.2026): własny panel z pomiarem systemu, kolejność „materiał przed ceną”.
+const RoletySystemyPanel = dynamic(() => import("@/features/rolety/SystemyPanel"), { ssr: false });
+function RoletyPanelImpl(props: React.ComponentProps<typeof RoletyConfiguratorPanel>) {
+  if (isRoletySystemSlug(props.slug)) {
+    return (
+      <RoletySystemyPanel slug={props.slug} initialValues={props.initialValues} submitLabel={props.submitLabel} onSubmit={props.onSubmit} onZoom={props.onZoom} />
+    );
+  }
+  return <RoletyConfiguratorPanel {...props} />;
+}
 const PlisyDachoweConfiguratorPanel = dynamic(() => import("@/features/plisy-dachowe/ConfiguratorPanel"), { ssr: false });
 // Statycznie, nie przez dynamic(): to jest hero, więc ma się pojawić od razu
 // razem z resztą sekcji, a nie doładować po hydratacji (LCP).
@@ -1339,6 +1351,12 @@ function buildProductView(
  * wins, because the menu loop runs first. */
 const VIRTUAL_PRODUCT_ITEMS: Record<string, { groupSlug: string; label: string; linkUrl: string }> = {
   "plisy-dachowe": { groupSlug: "oslony-wewnetrzne", label: "Plisy do okien dachowych", linkUrl: "/produkt/plisy-dachowe" },
+  // Rolety tradycyjne w 4 systemach (7.11.2026): w menu jest jedna pozycja „Rolety tradycyjne”
+  // (strona wyboru systemu), systemy to osobne produkty bez własnej pozycji w menu.
+  "rolety-mini": { groupSlug: "oslony-wewnetrzne", label: "Rolety MINI", linkUrl: "/produkt/rolety-mini" },
+  "rolety-kaseta-plaska": { groupSlug: "oslony-wewnetrzne", label: "Rolety w kasecie z prowadnicą płaską", linkUrl: "/produkt/rolety-kaseta-plaska" },
+  "rolety-kaseta-przestrzenna": { groupSlug: "oslony-wewnetrzne", label: "Rolety w kasecie z prowadnicą przestrzenną", linkUrl: "/produkt/rolety-kaseta-przestrzenna" },
+  "rolety-wolnowiszace": { groupSlug: "oslony-wewnetrzne", label: "Rolety wolnowiszące", linkUrl: "/produkt/rolety-wolnowiszace" },
 };
 
 function resolveVirtualProductItem(slug: string, groups: HeroMenuGroup[]): { group: HeroMenuGroup; groupIndex: number; item: HeroMenuItem } | null {
@@ -1851,6 +1869,9 @@ export default function Home({
   const displayedProductSlugForPlisy = productSlugFromSelected(displayedProduct);
   // Żaluzje: /zaluzje = katalog (bez panelu konfiguratora), /zaluzje/<slug> = model.
   const zaluzjeCatalogMode = displayedProductSlugForPlisy === "zaluzje" && !zaluzjeRodzaj;
+  // /rolety-tradycyjne (7.11.2026) = wybór systemu, bez konfiguratora - jak strona zbiorcza żaluzji.
+  const roletyHubMode = displayedProductSlugForPlisy === "rolety-tradycyjne";
+  const catalogMode = zaluzjeCatalogMode || roletyHubMode;
   const zaluzjeRodzajMode = displayedProductSlugForPlisy === "zaluzje" && Boolean(zaluzjeRodzaj);
   useEffect(() => {
     if ((displayedProductSlugForPlisy !== "plisy" && displayedProductSlugForPlisy !== "plisy-dachowe") || plisyProfile) return;
@@ -2262,7 +2283,9 @@ export default function Home({
   // so a plain scrollIntoView on the target isn't reliable).
   function scrollToConfigPanel() {
     // Katalog żaluzji nie ma panelu - przyciski "Konfiguruj" prowadzą do modeli.
-    const target = document.querySelector<HTMLElement>(zaluzjeCatalogMode ? `#${ZALUZJE_CATALOG_ID}` : ".hero-product-config-panel");
+    const target = document.querySelector<HTMLElement>(
+      zaluzjeCatalogMode ? `#${ZALUZJE_CATALOG_ID}` : roletyHubMode ? `#${ROLETY_SYSTEMY_ID}` : ".hero-product-config-panel",
+    );
     const container = target?.closest<HTMLElement>(".hero-full");
     if (target && container && container.scrollHeight > container.clientHeight) {
       const containerRect = container.getBoundingClientRect();
@@ -2397,6 +2420,9 @@ export default function Home({
       return productLanding.instructionSteps;
     }
     if (!displayedProduct) return [];
+    const instructionSlug = productSlugFromSelected(displayedProduct);
+    if (instructionSlug === "rolety-tradycyjne") return ROLETY_HUB_INSTRUCTIONS;
+    if (isRoletySystemSlug(instructionSlug)) return ROLETY_COPY[instructionSlug].instructionSteps;
     return productInstructionSteps(displayedProduct.label);
   }, [productLanding, displayedProduct]);
 
@@ -3857,7 +3883,7 @@ export default function Home({
               flip back if it doesn't work out). Pure CSS, no state. */}
           <div className="hero-product-gradient-bg" aria-hidden="true" />
 
-          <div className={`hero-inner ${displayedProduct ? "product-mode" : ""} ${zaluzjeCatalogMode ? "is-catalog" : ""}`}>
+          <div className={`hero-inner ${displayedProduct ? "product-mode" : ""} ${catalogMode ? "is-catalog" : ""}`}>
             <div className="hero-copy">
               <div className="hero-copy-content">
                 <section className={`hero-home-content ${isProductView ? "is-hidden" : ""}`} aria-hidden={isProductView ? "true" : "false"}>
@@ -4711,6 +4737,19 @@ export default function Home({
                             </p>
                             <ZaluzjeHub profile={roletyProfiles.zaluzje || null} />
                           </div>
+                        ) : roletyHubMode ? (
+                          <div className="pl-landing rl-landing">
+                            <div className="pl-trust-row">
+                              <span className="pl-chip pl-chip-promise">🛡 5 lat gwarancji</span>
+                              <span className="pl-chip pl-chip-promise">↩ 30 dni na zwrot</span>
+                              <span className="pl-chip">Na wymiar co do milimetra</span>
+                              <span className="pl-chip">Realizacja {ROLETY_COPY["rolety-tradycyjne"].leadTimeLabel}</span>
+                            </div>
+                            <p className="pl-subtitle">
+                              Klasyczne rolety materiałowe produkowane pod Twoje okno - z tkaniną Deko, która przepuszcza rozproszone światło, albo zaciemniającą Termo.
+                            </p>
+                            <RoletySystemyHub />
+                          </div>
                         ) : isRoletySlug(productSlugFromSelected(displayedProduct)) ? (
                           <RoletyLanding
                             slug={productSlugFromSelected(displayedProduct) as RoletySlug}
@@ -4813,6 +4852,13 @@ export default function Home({
                               ? zaluzjeRodzajGallery(zaluzjeRodzaj)
                             : zaluzjeCatalogMode
                               ? ZALUZJE_RODZAJ_SLUGS.flatMap((slug) => zaluzjeRodzajGallery(slug).slice(0, 3))
+                            : roletyHubMode
+                              ? [
+                                  "https://crm-keika.groovemedia.pl/storage/shop/media/rolety_trad_okno_balkonowe_1200.jpg",
+                                  "https://crm-keika.groovemedia.pl/storage/shop/media/rolety_trad_uchwyt_mini_1200.jpg",
+                                  "https://crm-keika.groovemedia.pl/storage/shop/media/rolety_trad_mechanizm_mini_1200.jpg",
+                                  "https://crm-keika.groovemedia.pl/storage/shop/media/bamar_sys_b29_1200.jpg",
+                                ]
                             : isRoletySlug(productSlugFromSelected(displayedProduct))
                               // Rolety mini: galeria wyłącznie z CRM (gallery_urls).
                               ? productLanding?.gallery?.length
@@ -4822,7 +4868,7 @@ export default function Home({
                                 ? plisyCategories.flatMap((category) => category.photos)
                                 : displayedProduct.gallery;
                         const usingCrmGallery = Boolean(
-                          !(displayedProductSlugForPlisy === "zaluzje") &&
+                          !(displayedProductSlugForPlisy === "zaluzje" || roletyHubMode) &&
                             productLanding?.gallery?.length &&
                             productLanding.gallery.length >= builtinGallery.length,
                         );
@@ -5254,6 +5300,8 @@ export default function Home({
                           ? ZALUZJE_RODZAJE[zaluzjeRodzaj].faq
                           : zaluzjeCatalogMode
                             ? ZALUZJE_HUB_FAQ
+                          : roletyHubMode
+                            ? ROLETY_HUB_FAQ
                           : productLanding?.faq?.length
                             ? productLanding.faq
                             : builtinFaqForSlug(productSlugFromSelected(displayedProduct))
@@ -5264,6 +5312,8 @@ export default function Home({
                                 ? ZALUZJE_RODZAJE[zaluzjeRodzaj].faq
                                 : zaluzjeCatalogMode
                                   ? ZALUZJE_HUB_FAQ
+                                : roletyHubMode
+                                  ? ROLETY_HUB_FAQ
                                 : productLanding?.faq?.length
                                   ? productLanding.faq
                                   : builtinFaqForSlug(productSlugFromSelected(displayedProduct));
@@ -5503,7 +5553,7 @@ export default function Home({
                 </article>
               ))}
             </aside>
-            {displayedProduct && !zaluzjeCatalogMode ? (
+            {displayedProduct && !catalogMode ? (
               <aside
                 ref={configPanelRef}
                 className={`hero-product-config-panel ${isProductView ? "is-visible" : ""} ${
@@ -5932,7 +5982,7 @@ export default function Home({
                     </div>
                     </MobileOverlayPortal>
                   ) : (
-                    <RoletyConfiguratorPanel
+                    <RoletyPanelImpl
                       key={`${productSlugFromSelected(displayedProduct)}-${zaluzjeRodzaj || ""}-${roletyConfigKey}`}
                       slug={productSlugFromSelected(displayedProduct) as RoletySlug}
                       rodzaj={zaluzjeRodzajMode && zaluzjeRodzaj ? zaluzjeRodzaj : undefined}
@@ -6579,7 +6629,7 @@ export default function Home({
                 className="hero-product-bottom-tabs-configure"
                 onClick={scrollToConfigPanel}
               >
-                {zaluzjeCatalogMode ? "Rodzaje" : "Konfiguruj"}
+                {zaluzjeCatalogMode ? "Rodzaje" : roletyHubMode ? "Systemy" : "Konfiguruj"}
               </button>
               <div className="hero-product-bottom-tabs-scroll">
                 <button

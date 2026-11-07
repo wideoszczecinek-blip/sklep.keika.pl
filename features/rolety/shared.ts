@@ -25,15 +25,16 @@ import type { SsExtraLine, SsSupplierOrder } from "./ss-options";
 import ZALUZJE_SPECS_JSON from "./ss-options/_specs.json";
 import { fetchConfiguratorJson } from "@/lib/configurator-fetch";
 import { zaluzjeColorNamePl } from "./zaluzje-kolory";
+import { isRoletySystemSlug, ROLETY_SYSTEM_SLUGS, ROLETY_SYSTEMS, type RoletySystemSlug } from "./systemy";
 
 export const CONFIGURATOR_PUBLIC_URL = "https://crm-keika.groovemedia.pl/biuro/api/shop/configurator_public.php";
 
-export type RoletySlug = "rolety-dzien-noc" | "rolety-tradycyjne" | "zaluzje";
+export type RoletySlug = "rolety-dzien-noc" | "rolety-tradycyjne" | "zaluzje" | RoletySystemSlug;
 
-export const ROLETY_SLUGS: RoletySlug[] = ["rolety-dzien-noc", "rolety-tradycyjne", "zaluzje"];
+export const ROLETY_SLUGS: RoletySlug[] = ["rolety-dzien-noc", "rolety-tradycyjne", "zaluzje", ...ROLETY_SYSTEM_SLUGS];
 
 export function isRoletySlug(slug: string | null | undefined): slug is RoletySlug {
-  return slug === "rolety-dzien-noc" || slug === "rolety-tradycyjne" || slug === "zaluzje";
+  return slug === "rolety-dzien-noc" || slug === "rolety-tradycyjne" || slug === "zaluzje" || isRoletySystemSlug(slug);
 }
 
 export const ROLETY_QTY_MAX = 50;
@@ -128,7 +129,76 @@ const ROLETY_BASE = {
   instructionSteps: [ROLETY_MEASURE_STEP, ...ROLETY_MOUNT_STEPS],
 };
 
+/** Rolety tradycyjne w 4 systemach (7.11.2026): wspólne ustawienia, różnice w systemy.ts. */
+function systemCopy(slug: RoletySystemSlug, extra: Pick<RoletyProductCopy, "h1" | "seoTitle" | "seoDescription" | "startingPriceFallback" | "sku" | "seoImage">): RoletyProductCopy {
+  const system = ROLETY_SYSTEMS[slug];
+  return {
+    ...ROLETY_BASE,
+    slug,
+    path: `/${slug}`,
+    shortName: "roletę",
+    category: "Rolety tradycyjne",
+    widthMinMm: system.widthMinMm,
+    widthMaxMm: system.widthMaxMm,
+    heightMinMm: system.heightMinMm,
+    heightMaxMm: system.heightMaxMm,
+    widthDefaultMm: 600,
+    heightDefaultMm: 1400,
+    colorStepTitle: "Wybierz kolor tkaniny",
+    groupStepTitle: "Wybierz tkaninę",
+    instructionSteps: [
+      { title: "Pomiar", body: system.steps("").join(" ") },
+      {
+        title: "Montaż",
+        body:
+          slug === "rolety-wolnowiszace"
+            ? "Uchwyty przykręcasz do ściany 10 cm nad wnęką albo do sufitu i wpinasz w nie roletę. Wkręty są w komplecie."
+            : "Roletę montujesz na skrzydle okna - okno otwierasz i uchylasz razem z nią. Elementy montażowe są w komplecie.",
+      },
+    ],
+    ...extra,
+  };
+}
+
+const MEDIA_SHOP = "https://crm-keika.groovemedia.pl/storage/shop/media/";
+
 export const ROLETY_COPY: Record<RoletySlug, RoletyProductCopy> = {
+  "rolety-kaseta-plaska": systemCopy("rolety-kaseta-plaska", {
+    h1: "Roleta w kasecie z prowadnicą płaską",
+    seoTitle: "Rolety w kasecie z prowadnicą płaską na wymiar - Deko i Termo | KEIKA",
+    seoDescription:
+      "Roleta w kasecie z płaską prowadnicą na wymiar: tkanina pracuje przy szybie, pełne zaciemnienie bez szczelin. Tkanina Deko lub zaciemniająca Termo, kaseta w 6 kolorach. Realizacja do 10 dni roboczych, 5 lat gwarancji, 30 dni na zwrot.",
+    startingPriceFallback: 123.9,
+    sku: "roleta-kaseta-prowadnica-plaska",
+    seoImage: MEDIA_SHOP + "rolety_trad_okno_balkonowe_1200.jpg",
+  }),
+  "rolety-mini": systemCopy("rolety-mini", {
+    h1: "Roleta MINI na skrzydło",
+    seoTitle: "Rolety MINI na wymiar - na skrzydło okna, Deko i Termo | KEIKA",
+    seoDescription:
+      "Roleta MINI na wymiar: na skrzydło okna, bez kasety i prowadnic, opcjonalnie z prowadzeniem żyłkowym. Tkanina Deko lub zaciemniająca Termo, osprzęt biały lub brązowy. Realizacja do 10 dni roboczych, 5 lat gwarancji, 30 dni na zwrot.",
+    startingPriceFallback: 61.9,
+    sku: "roleta-mini-na-skrzydlo",
+    seoImage: MEDIA_SHOP + "rolety_trad_okno_balkonowe_1200.jpg",
+  }),
+  "rolety-kaseta-przestrzenna": systemCopy("rolety-kaseta-przestrzenna", {
+    h1: "Roleta w kasecie z prowadnicą przestrzenną",
+    seoTitle: "Rolety w kasecie z prowadnicą przestrzenną na wymiar | KEIKA",
+    seoDescription:
+      "Roleta w kasecie z prowadnicą przestrzenną (korytko) na wymiar - dla okien z zaokrąglonymi lub wysokimi listwami. Tkanina Deko lub Termo, kaseta w 6 kolorach. Realizacja do 10 dni roboczych, 5 lat gwarancji, 30 dni na zwrot.",
+    startingPriceFallback: 126.9,
+    sku: "roleta-kaseta-prowadnica-przestrzenna",
+    seoImage: MEDIA_SHOP + "rolety_trad_okno_balkonowe_1200.jpg",
+  }),
+  "rolety-wolnowiszace": systemCopy("rolety-wolnowiszace", {
+    h1: "Roleta wolnowisząca na ścianę",
+    seoTitle: "Rolety wolnowiszące na ścianę na wymiar - Deko i Termo | KEIKA",
+    seoDescription:
+      "Duża roleta wolnowisząca na wymiar - na ścianę nad wnęką albo do sufitu, do 200 cm szerokości. Tkanina Deko lub zaciemniająca Termo. Realizacja do 10 dni roboczych, 5 lat gwarancji, 30 dni na zwrot.",
+    startingPriceFallback: 108.9,
+    sku: "roleta-wolnowiszaca-na-sciane",
+    seoImage: MEDIA_SHOP + "rolety_trad_okno_balkonowe_1200.jpg",
+  }),
   "rolety-dzien-noc": {
     ...ROLETY_BASE,
     slug: "rolety-dzien-noc",
@@ -148,10 +218,10 @@ export const ROLETY_COPY: Record<RoletySlug, RoletyProductCopy> = {
     slug: "rolety-tradycyjne",
     path: "/rolety-tradycyjne",
     shortName: "roletę",
-    h1: "Rolety mini na wymiar - Deko i Termo",
-    seoTitle: "Rolety mini na wymiar - tkaniny Deko i Termo | KEIKA",
+    h1: "Rolety tradycyjne na wymiar",
+    seoTitle: "Rolety tradycyjne na wymiar - MINI, w kasecie, wolnowiszące | KEIKA",
     seoDescription:
-      "Roleta mini na wymiar z tkaniną Deko (półprzepuszczalna, 54 kolory) lub Termo (zaciemniająca, 19 kolorów). Montaż na skrzydle bez wiercenia, wkręcany lub w kasecie z prowadnicami, 5 kolorów mechanizmu. Wycena online, realizacja do 10 dni roboczych, 5 lat gwarancji, 30 dni na zwrot.",
+      "Rolety materiałowe na wymiar w 4 systemach: w kasecie z prowadnicą płaską, MINI na skrzydło, w kasecie z prowadnicą przestrzenną i wolnowiszące na ścianę. Tkanina Deko lub zaciemniająca Termo. Realizacja do 10 dni roboczych, 5 lat gwarancji, 30 dni na zwrot.",
     startingPriceFallback: 72.9,
     sku: "roleta-mini-na-wymiar",
     category: "Rolety tradycyjne",
@@ -573,6 +643,9 @@ export function isRoletyCassetteMount(mountIdOrLabel: string | null | undefined)
 const ZALUZJE_HINT_RECESS = "Montaż we wnęce: zmierz szerokość wnęki i odejmij 2 cm, zmierz wysokość wnęki i odejmij 1 cm.";
 const ZALUZJE_HINT_WALL = "Montaż na ścianie nad oknem: podaj szerokość okna plus 10 cm i wysokość, jaką ma mieć żaluzja.";
 export function roletyMeasureHint(slug: RoletySlug, mount: { id?: string; label?: string } | null | undefined): string {
+  if (isRoletySystemSlug(slug)) {
+    return "Podajesz wymiar gotowej rolety (już przeliczony z pomiaru). Jeśli chcesz zmierzyć okno od nowa, wejdź na stronę produktu - konfigurator przeprowadzi Cię przez pomiar.";
+  }
   if (slug === "zaluzje") {
     const key = `${mount?.id || ""} ${mount?.label || ""}`;
     if (/sufit/i.test(key) && !/uniwersaln/i.test(key)) return ZALUZJE_HINT_RECESS;

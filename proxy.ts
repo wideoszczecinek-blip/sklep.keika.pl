@@ -14,14 +14,20 @@ const STATIC_PRODUCT_ROUTES: Record<string, string> = {
   "rolety-dzien-noc": "/rolety-dzien-noc",
   "rolety-tradycyjne": "/rolety-tradycyjne",
   zaluzje: "/zaluzje",
+  "rolety-mini": "/rolety-mini",
+  "rolety-kaseta-plaska": "/rolety-kaseta-plaska",
+  "rolety-kaseta-przestrzenna": "/rolety-kaseta-przestrzenna",
+  "rolety-wolnowiszace": "/rolety-wolnowiszace",
 };
 
 // Podgląd tylko dla właściciela (2026-10-17): nowe produkty do czasu
 // akceptacji widzi wyłącznie ruch z dozwolonych adresów IP albo z ciasteczkiem
 // podglądu (ustawianym adresem ...?podglad=<token>). Reszta trafia na stronę
 // główną. Zdjęcie bramki = usunięcie slugu z PREVIEW_ONLY_ROUTES.
-const PREVIEW_ONLY_ROUTES = new Set(["/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje"]);
-const PREVIEW_ONLY_SLUGS = new Set(["rolety-dzien-noc", "rolety-tradycyjne", "zaluzje"]);
+// 7.11.2026: rolety tradycyjne w 4 systemach - też do akceptacji cen przez właściciela.
+const ROLETY_SYSTEM_ROUTES = ["rolety-mini", "rolety-kaseta-plaska", "rolety-kaseta-przestrzenna", "rolety-wolnowiszace"];
+const PREVIEW_ONLY_ROUTES = new Set(["/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", ...ROLETY_SYSTEM_ROUTES.map((slug) => `/${slug}`)]);
+const PREVIEW_ONLY_SLUGS = new Set(["rolety-dzien-noc", "rolety-tradycyjne", "zaluzje", ...ROLETY_SYSTEM_ROUTES]);
 const PREVIEW_ALLOWED_IPS = new Set(
   (process.env.PREVIEW_ALLOWED_IPS || "164.127.253.116").split(",").map((ip) => ip.trim()).filter(Boolean),
 );
@@ -114,5 +120,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/(.*\\.mp4)", "/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/zaluzje/:path*", "/produkt/:slug", "/kategoria/:slug"],
+  matcher: ["/(.*\\.mp4)", "/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/zaluzje/:path*", "/rolety-mini", "/rolety-kaseta-plaska", "/rolety-kaseta-przestrzenna", "/rolety-wolnowiszace", "/produkt/:slug", "/kategoria/:slug"],
 };
