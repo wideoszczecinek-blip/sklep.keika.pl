@@ -54,7 +54,8 @@ export default function RoletyLanding({
   const cta = ctaLabel || copy.ctaLabel;
   const adjustPercent = useProductPriceAdjustment(slug);
   const startingPrice = roletyStartingPrice(profile, slug, adjustPercent);
-  const photos = (landing?.gallery?.length ? landing.gallery : fallbackGallery).filter(Boolean).slice(0, 4);
+  // Systemy rolet (7.11.2026): zdjęcia tylko z CRM - bez migania zdjęciem strony głównej przed wczytaniem treści.
+  const photos = (landing?.gallery?.length ? landing.gallery : isRoletySystemSlug(slug) ? [] : fallbackGallery).filter(Boolean).slice(0, 4);
   const description = String(landing?.description || "").trim();
   // Rolety tradycyjne w systemach (7.11.2026): bez ceny „od” (materiał przed ceną),
   // rysunek systemu z pomiarem, na końcu inne systemy (przejście tylko przed pomiarem).
