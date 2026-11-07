@@ -1305,7 +1305,7 @@ export default function ConfiguratorPanel({
     return (
       <>
         <header>
-          <strong>Konfigurator plisy PREMIUM</strong>
+          <strong>Konfigurator plisy</strong>
         </header>
         <p className="hero-product-config-hint">Wczytuję konfigurator…</p>
       </>
@@ -1316,7 +1316,7 @@ export default function ConfiguratorPanel({
     return (
       <>
         <header>
-          <strong>Konfigurator plisy PREMIUM</strong>
+          <strong>Konfigurator plisy</strong>
         </header>
         <p className="hero-product-config-hint">
           Nie udało się wczytać konfiguratora. Odśwież stronę lub spróbuj ponownie za chwilę.
@@ -1352,7 +1352,7 @@ export default function ConfiguratorPanel({
   return (
     <>
       <header className="plisy-premium-heading">
-        <strong>Konfigurator plisy PREMIUM</strong>
+        <strong>Konfigurator plisy</strong>
       </header>
 
       {/* KROK 1: sposób montażu */}
