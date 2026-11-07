@@ -1,5 +1,6 @@
 "use client";
 import OrderOffers from "@/app/components/order-offers";
+import OrderSurvey from "@/app/components/order-survey";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -843,6 +844,8 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
         </section>
 
         {!isExample && (isPaid || isCod || isTransferPending) && order.status !== "cancelled" ? <OrderOffers orderCode={orderCode} accessToken={accessToken} verifier={verifier} /> : null}
+        {/* Ankieta po zakupie (właściciel 7.11): 2-3 pytania z CRM pod potwierdzeniem i listą pozycji - nic nie zasłania, można pominąć. */}
+        {!isExample && (isPaid || isCod || isTransferPending) && order.status !== "cancelled" ? <OrderSurvey orderCode={orderCode} /> : null}
         <div className={canPayNow || waiting ? "cart-checkout-layout" : "order-status-layout"}>
           <div className="cart-checkout-left">
             {order.transfer && isTransferPending ? (

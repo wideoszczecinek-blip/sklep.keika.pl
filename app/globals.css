@@ -20558,6 +20558,113 @@ html[data-theme="dark"] .cart-pay-tile-count {
   .order-contact-actions { flex-direction: column; }
   .order-contact-btn { width: 100%; }
 }
+
+/* Ankieta po zakupie (7.11): pytania z CRM, odpowiedzi jako pigułki. */
+.order-survey {
+  display: grid;
+  gap: 0.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(19, 40, 67, 0.1);
+  background: #fff;
+  padding: 1rem 1.1rem;
+  color: #132843;
+}
+.order-survey.is-sent {
+  border-color: rgba(22, 150, 90, 0.35);
+  background: #f0faf4;
+}
+.order-survey.is-sent p { margin: 0; font-size: 0.92rem; line-height: 1.5; }
+.order-survey-head h2 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.order-survey-head p {
+  margin: 0.3rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #4e6480;
+}
+.order-survey-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.95rem;
+}
+.order-survey-q {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.order-survey-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.order-survey-pill {
+  min-height: 2.6rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 127, 123, 0.4);
+  background: #fff;
+  color: #134a47;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+.order-survey-pill:hover { background: #e3f5f4; border-color: #007f7b; }
+.order-survey-pill.is-selected {
+  background: #007f7b;
+  border-color: #007f7b;
+  color: #fff;
+}
+.order-survey-pill.is-selected::before { content: "✓ "; }
+.order-survey-pill:focus-visible,
+.order-survey-skip:focus-visible {
+  outline: 3px solid rgba(243, 181, 70, 0.9);
+  outline-offset: 2px;
+}
+.order-survey-pill:disabled { cursor: default; opacity: 0.7; }
+.order-survey-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b4530f;
+}
+.order-survey-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.order-survey-actions .order-contact-btn { min-width: 8rem; }
+.order-survey-actions .order-contact-btn:disabled {
+  background: #b9cfd0;
+  border-color: #b9cfd0;
+  cursor: default;
+}
+.order-survey-skip {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.6rem;
+  border: 0;
+  background: none;
+  color: #4e6480;
+  font: inherit;
+  font-size: 0.88rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+@media (max-width: 560px) {
+  .order-survey-actions .order-contact-btn { flex: 1 1 auto; width: auto; }
+}
 @media (prefers-reduced-motion: reduce) {
   .order-contact-btn { transition: none; }
 }
