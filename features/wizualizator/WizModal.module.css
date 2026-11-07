@@ -1137,3 +1137,11 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
 .demoDachPo { animation: demoDachPo 6s ease-in-out infinite; }
 @keyframes demoDachPo { 0%, 18% { opacity: 0; } 38%, 82% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .demoDachPo { animation: none; opacity: 1; } }
+
+/* kontrola zdjęcia (właściciel 7.11): konkretne kroki i przykład dobrego zdjęcia zamiast samego „popraw” */
+.kroki { display: grid; gap: 8px; margin: 0 0 14px; padding: 0; list-style: none; }
+.kroki li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: #fff7ed; border: 1px solid #fed7aa; font-size: 14.5px; line-height: 1.35; color: #431407; }
+.kroki li b { flex: 0 0 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: #ea580c; color: #fff; font-size: 13px; }
+.wzorzec { display: grid; grid-template-columns: 112px 1fr; gap: 10px; align-items: center; margin: 0 0 14px; padding: 8px; border-radius: 12px; background: #f0fdfa; border: 1px solid #99f6e4; }
+.wzorzec img { width: 112px; height: 76px; object-fit: cover; border-radius: 8px; display: block; }
+.wzorzec small { font-size: 13px; line-height: 1.35; color: #134e4a; }

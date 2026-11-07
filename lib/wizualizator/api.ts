@@ -168,11 +168,13 @@ export async function wizSprawdz(token: string): Promise<{
   decyzja: "ok" | "popraw" | "odrzuc"; komunikat: string; problemy: string[]; oslony: boolean; osoby?: boolean; balagan?: boolean;
   /** produkt po kontroli zdjęcia i ewentualna zmiana (okno dachowe ↔ zwykłe; 7.11) */
   produkt?: WizProdukt; produkt_zmiana?: WizProduktZmiana | null;
+  /** co dokładnie zrobić, żebyśmy znaleźli szyby (właściciel 7.11), i ile szyb widać na zdjęciu (0 = nie znajdziemy) */
+  kroki?: string[]; szyby_widoczne?: number | null;
 }> {
   try {
     const r = await fetch(`${WIZ_API}/sprawdz.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token }) });
     const j = await r.json();
-    if (j && j.ok) return { decyzja: j.decyzja || "ok", komunikat: j.komunikat || "", problemy: j.problemy || [], oslony: Boolean(j.oslony), osoby: Boolean(j.osoby), balagan: Boolean(j.balagan), produkt: j.produkt || undefined, produkt_zmiana: j.produkt_zmiana || null };
+    if (j && j.ok) return { decyzja: j.decyzja || "ok", komunikat: j.komunikat || "", problemy: j.problemy || [], oslony: Boolean(j.oslony), osoby: Boolean(j.osoby), balagan: Boolean(j.balagan), produkt: j.produkt || undefined, produkt_zmiana: j.produkt_zmiana || null, kroki: Array.isArray(j.kroki) ? j.kroki : [], szyby_widoczne: typeof j.szyby_widoczne === "number" ? j.szyby_widoczne : null };
   } catch {
     // kontrola nie blokuje - pełna analiza i tak sprawdzi zdjęcie
   }

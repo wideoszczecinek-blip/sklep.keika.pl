@@ -211,7 +211,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const [zdjecia, setZdjecia] = useState<Zdjecie[]>([]);
   const [info, setInfo] = useState("");
   const [gotowyObraz, setGotowyObraz] = useState(false);
-  const [kontrola, setKontrola] = useState<{ komunikat: string; problemy: string[] } | null>(null);
+  // właściciel 7.11: kontrola mówi, czy znajdziemy szyby (szyby = 0 → nie), i daje konkretne kroki (odsłoń firankę, cofnij się…)
+  const [kontrola, setKontrola] = useState<{ komunikat: string; problemy: string[]; kroki?: string[]; szyby?: number | null } | null>(null);
   const [min, setMin] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
   const [korzysc, setKorzysc] = useState(0);
@@ -374,7 +375,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         return;
       }
       if (k.decyzja === "popraw") {
-        setKontrola({ komunikat: k.komunikat, problemy: k.problemy });
+        setKontrola({ komunikat: k.komunikat, problemy: k.problemy, kroki: k.kroki || [], szyby: k.szyby_widoczne ?? null });
         setFaza("popraw");
         return;
       }
@@ -1361,13 +1362,27 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
         {faza === "popraw" && kontrola ? (
           <div className={s.startBox}>
-            <h2 className={s.title}>Prawie! Lepsze zdjęcie da lepszy efekt</h2>
-            <p className={s.lead}>{kontrola.komunikat || "To zdjęcie może dać słabszy wynik."}</p>
-            {kontrola.problemy.length ? <ul className={s.problems}>{kontrola.problemy.map((p) => <li key={p}>{p}</li>)}</ul> : null}
-            <div className={s.actions}>
-              <button type="button" className={s.primary} onClick={noweZdjecie}>Zrób nowe zdjęcie</button>
-              <button type="button" className={s.secondary} onClick={mimoTo}>Spróbuj z tym zdjęciem</button>
+            <h2 className={s.title}>{kontrola.szyby === 0 ? "Na tym zdjęciu nie znajdziemy szyby" : "Prawie! Lepsze zdjęcie da lepszy efekt"}</h2>
+            <p className={s.lead}>{(() => {
+              // nagłówek z komunikatu silnika jest już w tytule - w treści zostaje samo „dlaczego”
+              const t = (kontrola.komunikat || "To zdjęcie może dać słabszy wynik.").replace(/^(Na tym zdjęciu nie znajdziemy szyby|To zdjęcie da słabszy wynik)\s*[–-]\s*/u, "");
+              return t.charAt(0).toUpperCase() + t.slice(1);
+            })()}</p>
+            {kontrola.kroki?.length ? (
+              <ol className={s.kroki} aria-label="Co zrobić">
+                {kontrola.kroki.map((k, i) => <li key={k}><b>{i + 1}</b><span>{k}</span></li>)}
+              </ol>
+            ) : kontrola.problemy.length ? <ul className={s.problems}>{kontrola.problemy.map((p) => <li key={p}>{p}</li>)}</ul> : null}
+            <div className={s.wzorzec}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={dach ? "/wizualizator-dach-przed.jpg" : "/wizualizator-demo.jpg"} alt="Przykład dobrego zdjęcia okna" loading="lazy" />
+              <small><b>Tak wygląda dobre zdjęcie:</b> {dach ? "całe okno dachowe ze skosem, od dołu, w dzień – widać szkło i ramę." : "całe okno z ramą i kawałkiem ściany, na wprost, w dzień – widać szkło, bez firanki na szybie."}</small>
             </div>
+            <div className={s.actions}>
+              <button type="button" className={s.primary} onClick={noweZdjecie}>📷 Zrób nowe zdjęcie</button>
+              {kontrola.szyby === 0 ? null : <button type="button" className={s.secondary} onClick={mimoTo}>Spróbuj z tym zdjęciem</button>}
+            </div>
+            {kontrola.szyby === 0 ? <button type="button" className={s.link} onClick={mimoTo}>Mimo to spróbuj z tym zdjęciem</button> : null}
           </div>
         ) : null}
 
