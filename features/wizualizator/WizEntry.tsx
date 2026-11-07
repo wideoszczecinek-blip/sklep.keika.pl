@@ -21,7 +21,7 @@ export function useWizVisible(produkt: WizProdukt = "plisy"): boolean | null {
   useEffect(() => {
     let cancelled = false;
     if (produkt !== "plisy") {
-      // okna dachowe, wersja testowa (właściciel 7.11): ?wiz=dach na urządzeniu albo udział dachowych z CRM (domyślnie 0)
+      // okna dachowe (właściciel 7.11: „puść na żywo”): udział dachowych z CRM; ?wiz=dach wymusza na urządzeniu
       const t = window.setTimeout(() => {
         if (wizDachTest()) {
           setVisible(true);
@@ -171,7 +171,6 @@ export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfig
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="wiz-baner-wideo wiz-baner-po" src={roleta ? "/wizualizator-dach-roleta.jpg" : "/wizualizator-dach-plisa.jpg"} alt="" aria-hidden="true" loading="lazy" />
           <span className="wiz-baner-chip">📸 Twoje zdjęcie → {roleta ? "roleta" : "plisa"} w 1 minutę</span>
-          <span className="wiz-baner-test">wersja testowa</span>
           <span className="wiz-baner-pg">Wizualizacja poglądowa</span>
         </button>
         <div className="wiz-baner-tresc">

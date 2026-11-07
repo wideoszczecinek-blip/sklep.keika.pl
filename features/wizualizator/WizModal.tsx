@@ -17,7 +17,7 @@ import qrcode from "qrcode-generator";
 import { type Pt, invert3, apply, paneToImage, isConvexQuad } from "@/lib/wizualizator/homografia";
 import { WizRenderer, hexToRgb, panePixelSize, RAIL_MM, type PaneRender } from "@/lib/wizualizator/renderer";
 import {
-  fetchKatalog, wizAnaliza, wizEvent, wizLead, wizPrzypomnij, wizPodglad, wizQrCreate, wizQrPoll, wizQrSkan, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
+  fetchKatalog, wizZmienProdukt, wizAnaliza, wizEvent, wizLead, wizPrzypomnij, wizPodglad, wizQrCreate, wizQrPoll, wizQrSkan, wizRender, wizRestart, wizSaveLayout, wizSprawdz, wizStart, wizStatus,
   type WizKatalog, type WizStatus, type WizUklad, type WizWynik, type WizSzyba, type WizProdukt,
 } from "@/lib/wizualizator/api";
 import { WIZ_PICK_EVENT, type WizPickDetail } from "@/lib/wizualizator/flag";
@@ -48,7 +48,30 @@ const KORZYSCI = [
   { theme: "durability", title: "Plisa na lata", first: "Stalowe trzpienie prowadzące sznurki", second: "Chronią sznurki przed przecieraniem", path: "M13 11v42m38-42v42 M13 17h38m-38 30h38 M24 17v12q0 7 8 7t8 7v4 M40 17v12q0 7-8 7t-8 7v4" },
   { theme: "producer", title: "Polski producent", first: "Wieloletnie doświadczenie", second: "Produkujemy w Polsce od 2015 roku", path: "M14 56V10m0 2c13-10 23 10 38 0v28c-15 10-25-10-38 0m0-14c13-10 23 10 38 0" },
 ] as const;
-/** Okna dachowe (właściciel 7.11, wersja testowa): osłony w prowadnicach, dobór do modelu okna. */
+/** Osłony do wyboru (właściciel 7.11: „rozpoznawanie, czego klient szuka, i możliwość zmiany”). */
+const OSLONY: { id: WizProdukt; nazwa: string }[] = [
+  { id: "plisy", nazwa: "Plisa okienna" },
+  { id: "plisa-dachowa", nazwa: "Plisa dachowa" },
+  { id: "roleta-dachowa", nazwa: "Roleta dachowa" },
+];
+
+/** Najbliższy kolor z listy (przeniesienie tkaniny/osprzętu przy zmianie osłony). */
+function najblizszy<T extends { id: string; kolor: string }>(lista: T[], kolor: string): T | undefined {
+  const [r, g, b] = hexToRgb(kolor || "#EEEEEE");
+  let best: T | undefined;
+  let d = Infinity;
+  for (const x of lista) {
+    const [r2, g2, b2] = hexToRgb(x.kolor || "#EEEEEE");
+    const dd = (r - r2) ** 2 * 0.3 + (g - g2) ** 2 * 0.59 + (b - b2) ** 2 * 0.11;
+    if (dd < d) {
+      d = dd;
+      best = x;
+    }
+  }
+  return best;
+}
+
+/** Okna dachowe (właściciel 7.11): osłony w prowadnicach, dobór do modelu okna. */
 const KORZYSCI_DACH = [
   { theme: "materials", title: "Dobór do modelu okna", first: "VELUX, FAKRO, ROTO, OKPOL i inne", second: "Ponad 420 modeli okien dachowych", path: "M7 13h50v12H7z M12 32l10 8 10-8 10 8 10-8 M12 43l10 8 10-8 10 8 10-8" },
   { theme: "durability", title: "Aluminiowe prowadnice boczne", first: "Osłona trzyma się w każdym położeniu", second: "Montaż w kilka minut, bez wiercenia w ramie", path: "M13 11v42m38-42v42 M13 17h38m-38 30h38 M24 17v12q0 7 8 7t8 7v4" },
@@ -262,11 +285,27 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const zTelefonuRef = useRef(false);
   const demoRef = useRef(false);
 
-  // katalog produktu (plisy / plisa dachowa / roleta dachowa); zmiana produktu po rozpoznaniu okna wczytuje nowy
+  // katalog produktu (plisy / plisa dachowa / roleta dachowa); zmiana produktu (silnik albo klient) wczytuje nowy,
+  // a tkanina i osprzęt każdej szyby przechodzą na najbliższy kolor z nowego katalogu
+  const katalogRef = useRef<WizKatalog | null>(null);
   useEffect(() => {
     let stop = false;
     void fetchKatalog(prod).then((k) => {
-      if (!stop) setKatalog(k);
+      if (stop) return;
+      const stary = katalogRef.current;
+      katalogRef.current = k;
+      setKatalog(k);
+      if (!k || !stary || stary === k) return;
+      setPanes((prev) => prev.map((p) => {
+        // zaciemniająca zostaje zaciemniającą (Termo → blackout / DUO blackout), przepuszczająca - przepuszczającą
+        const st = stary.tkaniny.find((t) => t.id === p.tkanina);
+        const ciemna = Boolean(stary.kolekcje.find((c) => c.id === st?.kolekcja)?.zaciemnia);
+        const tej = k.tkaniny.filter((t) => Boolean(k.kolekcje.find((c) => c.id === t.kolekcja)?.zaciemnia) === ciemna);
+        const tk = k.tkaniny.some((t) => t.id === p.tkanina) ? p.tkanina : najblizszy(tej.length ? tej : k.tkaniny, st?.kolor || "")?.id || p.tkanina;
+        const li = k.listwy.some((l) => l.id === p.listwa) ? p.listwa : najblizszy(k.listwy, stary.listwy.find((l) => l.id === p.listwa)?.kolor || "")?.id || p.listwa;
+        return { ...p, tkanina: tk, listwa: li };
+      }));
+      setKolekcja("");
     });
     return () => {
       stop = true;
@@ -964,6 +1003,14 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   };
 
   // ------------------------------------------------------------ akcje
+  const zmienOslone = (id: WizProdukt) => {
+    if (id === prod) return;
+    wizEvent("wiz_produkt", token, { widok: "zmiana_oslony", z: prod, na: id });
+    setProduktZ(id);
+    setZmianaInfo("");
+    setZakladka(null);
+    if (token && !demo) wizZmienProdukt(token, id);
+  };
   const ustawTkanine = (id: string) => {
     setPanes((prev) => prev.map((p, i) => (wszystkie || i === sel ? { ...p, tkanina: id } : p)));
     wizEvent("wiz_zmiana_tkaniny", token, { tkanina: id, wszystkie });
@@ -1281,17 +1328,13 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
             <div className={s.startBox}>
               <div className={s.produkt}>
                 <span className={s.newPill}>Nowość · AI</span>
-                {dach ? (
-                  <>
-                    <span className={s.chipOnSm}>{roleta ? "Rolety dachowe" : "Plisy dachowe"}</span>
-                    <span className={s.chipOff} title="Wersja testowa wizualizatora okien dachowych">wersja testowa</span>
-                  </>
-                ) : (
-                  <>
-                    <span className={s.chipOnSm}>Plisy</span>
-                    <span className={s.chipOff} title="Wkrótce">Rolety dachowe – wkrótce</span>
-                  </>
-                )}
+                {/* właściciel 7.11: klient wybiera osłonę; silnik i tak sprawdzi okno na zdjęciu (zwykłe / dachowe) */}
+                {OSLONY.map((o) => (
+                  <button key={o.id} type="button" className={prod === o.id ? s.chipOnSm : s.chipWybor} aria-pressed={prod === o.id}
+                    onClick={() => { if (o.id !== prod) { setProduktZ(o.id); wizEvent("wiz_produkt", null, { widok: "wybor_oslony_start", na: o.id }); } }}>
+                    {o.nazwa}
+                  </button>
+                ))}
               </div>
               <h2 className={s.titleBig}>{dach ? `Zobacz ${roleta ? "roletę" : "plisę"} w swoim oknie dachowym – zanim kupisz` : "Zobacz plisę w swoim oknie – zanim kupisz"}</h2>
               <p className={s.lead}>{dach
@@ -1670,10 +1713,10 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
                     {zakladka === "tkanina" && katalog ? (
                       <>
-                        {wynik.rekomendacje?.zestawy?.length ? (
+                        {wynik.rekomendacje?.zestawy?.some((z) => katalog.tkaniny.some((t) => t.id === z.tkanina)) ? (
                           <div className={s.reco}>
                             <p className={s.label}>Dobrane do Twojego wnętrza</p>
-                            {wynik.rekomendacje.zestawy.map((z) => {
+                            {wynik.rekomendacje!.zestawy.filter((z) => katalog.tkaniny.some((t) => t.id === z.tkanina)).map((z) => {
                               const t = katalog.tkaniny.find((x) => x.id === z.tkanina);
                               return (
                                 <button key={z.tkanina} type="button" className={`${s.recoItem} ${aktywna?.tkanina === z.tkanina ? s.on : ""}`}
@@ -1807,6 +1850,22 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
               <div className={s.resCtaInfo}>
                 {blad ? <p className={s.error}>{blad}</p> : null}
                 {zmianaInfo ? <p className={s.info}>{zmianaInfo}</p> : null}
+                {!qrKod ? (() => {
+                  // właściciel 7.11: klient może zmienić osłonę; podpowiadamy, co pasuje do rozpoznanego okna
+                  const typOkna = wynik.scena?.okna?.[0]?.typ || "";
+                  const oknoDach = typOkna === "dachowe" || (wynik.szyby || []).some((p) => p.typ === "dachowe");
+                  const uwaga = prod === "plisy" && oknoDach ? "To okno wygląda na dachowe – plisa okienna do niego nie pasuje. Wybierz plisę albo roletę dachową."
+                    : prod !== "plisy" && !oknoDach && typOkna && typOkna !== "dachowe" ? "To okno wygląda na zwykłe, pionowe – osłony dachowe pasują tylko do okien w skosie dachu." : "";
+                  return (
+                    <div className={s.oslony}>
+                      <span>Osłona:</span>
+                      {OSLONY.map((o) => (
+                        <button key={o.id} type="button" className={prod === o.id ? s.chipOn : s.chip} aria-pressed={prod === o.id} onClick={() => zmienOslone(o.id)}>{o.nazwa}</button>
+                      ))}
+                      {uwaga ? <small>{uwaga}</small> : null}
+                    </div>
+                  );
+                })() : null}
                 {info && edycja ? <p className={s.info}>{info}</p> : null}
                 {prog ? <p className={s.bundle}>{prog}</p> : null}
                 {szacunkowa && !demo && !zakladka && !edycja ? (

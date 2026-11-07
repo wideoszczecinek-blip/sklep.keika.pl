@@ -220,6 +220,16 @@ export function wizSaveLayout(token: string, uklad: WizUklad, korekta = false): 
   }).catch(() => {});
 }
 
+/** Klient zmienia osłonę na wyniku (plisa okienna / plisa dachowa / roleta dachowa) - CRM zapisuje produkt wizualizacji (7.11). */
+export function wizZmienProdukt(token: string, produkt: WizProdukt): void {
+  void fetch(`${WIZ_API}/uklad.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ t: token, produkt }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 /** Ostatni widok klienta (mały JPEG z renderera) - do karty wizualizacji w CRM („co zobaczył klient”, 2.11). */
 export function wizPodglad(token: string, obraz: string): void {
   void fetch(`${WIZ_API}/podglad.php`, {

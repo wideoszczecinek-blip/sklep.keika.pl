@@ -1125,6 +1125,13 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
 .przypKiedy { display: grid; gap: 8px; width: 100%; }
 .przypKiedy button { border: 1.5px solid #cbd5e1; border-radius: 12px; background: #fff; padding: 11px 12px; font-size: 15px; font-weight: 700; color: #12212b; cursor: pointer; }
 .przypKiedy button.on { border-color: #0f9f8f; background: #f0fdfa; color: #0f766e; }
+/* wybór osłony (właściciel 7.11): na starcie i na wyniku */
+.chipWybor { border: 1.5px solid #cbd5e1; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 600; background: #fff; color: #12212b; cursor: pointer; }
+.chipWybor:hover { border-color: #0f9f8f; }
+.oslony { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 8px; }
+.oslony > span { font-size: 13px; font-weight: 700; color: #334155; }
+.oslony small { flex-basis: 100%; font-size: 12.5px; color: #92400e; }
+
 /* okna dachowe (test 7.11): karta „Wycena” - cena zależy od modelu okna, wycena w konfiguratorze na stronie */
 .dachWycena { display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: #f0fdfa; border: 1px solid #99f6e4; }
 .dachWycena b { font-size: 1.02rem; color: #0f3d37; }
