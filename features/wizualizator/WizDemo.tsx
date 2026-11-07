@@ -24,7 +24,7 @@ const CAPTIONS = [
   "Zrób zdjęcie. Wizualizator znajdzie szyby i nałoży na nie plisy.",
   "Dobierz tkaninę i kolor belek do wnętrza.",
   "Wygeneruj bardziej naturalny podgląd w swoim pokoju.",
-  "Ze zdjęcia oszacujemy wymiary i pokażemy wstępną cenę.",
+  "Wpiszesz wymiary szyb i od razu zobaczysz cenę.",
 ];
 const LOOP = 13000;
 

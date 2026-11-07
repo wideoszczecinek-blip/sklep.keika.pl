@@ -1137,7 +1137,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   const cenaPlisy = useCenaZestawu(wycenaSzyby, montaz);
   // okna dachowe: cena zależy od modelu okna - liczy ją konfigurator na stronie, nie to okno
   const cenaZestawu = dach ? null : cenaPlisy;
-  const szacunkowa = Boolean(cenaZestawu?.szacunkowa);
+  // bez wymiarów klienta nie ma ceny (właściciel 7.11) - zachęta do wpisania wymiarów, dopóki ich brak
+  const szacunkowa = !dach && panes.some((p) => !p.pomin) && !cenaZestawu;
   // zachęta do wymiarów: wynik z ceną szacunkową, bez otwartych okienek i podpowiedzi, po 12 s - raz na wizualizację
   useEffect(() => {
     if (faza !== "gotowa" || !gotowyObraz || demo || !token || !szacunkowa || zakladka || emailOkno || pokojDialog || lupa || podp || edycja || przedPo !== null) return;
@@ -1409,8 +1410,6 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     return (
                       <svg className={s.scanSvg} viewBox={`0 0 ${W} ${status.obraz!.wys}`} preserveAspectRatio="none" aria-hidden="true">
                         {podglad.rogi!.map((q, i) => {
-                          const g = pkt(q, 0.5, 0);
-                          const wym = podglad.wym?.[i];
                           return (
                             <g key={i} style={{ animationDelay: `${i * 0.25}s` }} className={s.scanSzyba}>
                               <polygon points={q.map((p) => p.join(",")).join(" ")} pathLength={100} />
@@ -1424,9 +1423,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                                 );
                               }) : null}
                               <text x={q.reduce((a, p) => a + p[0], 0) / 4} y={q.reduce((a, p) => a + p[1], 0) / 4}>{i + 1}</text>
-                              {wym && wym[0] > 0 ? (
-                                <text x={g[0]} y={g[1] - W * 0.012} className={s.scanWym} style={{ fontSize: Math.max(14, W * 0.022) }}>≈ {wym[0]} × {wym[1]} cm</text>
-                              ) : null}
+                              {/* właściciel 7.11: bez szacunku wymiarów ze zdjęcia - na ekranie analizy tylko obrys i numer szyby */}
                             </g>
                           );
                         })}
@@ -1799,7 +1796,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     </button>
                   ) : (
                   <button type="button" className={`${s.tool} ${zakladka === "wycena" ? s.toolOn : ""}`} onClick={() => { otworzKarte("wycena"); setWEtap("wycena"); }}>
-                    <small>Wycena ({panes.filter((p) => !p.pomin).length} {panes.length === 1 ? "szyba" : "szyb"})</small><b>{cenaZestawu ? `${cenaZestawu.szacunkowa ? "ok. " : ""}${Math.round(cenaZestawu.poRabacie).toLocaleString("pl-PL")} zł` : "…"}</b>
+                    <small>Wycena ({panes.filter((p) => !p.pomin).length} {panes.length === 1 ? "szyba" : "szyb"})</small><b>{cenaZestawu ? `${Math.round(cenaZestawu.poRabacie).toLocaleString("pl-PL")} zł` : "wpisz wymiary"}</b>
                   </button>
                   )}
                 </>
@@ -1817,7 +1814,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                     <button type="button" className={s.zachetaWym}
                       onClick={() => { setZachetaWym(false); setZakladka("wycena"); setEdycja(false); setWEtap("kreator"); wizEvent("wiz_produkt", token, { widok: zachetaWym ? "zacheta_wymiary" : "pole_wymiary" }); }}>
                       <span aria-hidden="true">📏</span>
-                      <span><b>Wpisz wymiary okna, a pokażemy dokładną cenę.</b></span>
+                      <span><b>Wpisz wymiary szyb – od razu pokażemy cenę.</b></span>
                     </button>
                     <p className={s.poleWymStopka}>
                       <a href="/plisy/jak-mierzyc" target="_blank" rel="noopener" onClick={() => wizEvent("wiz_jak_mierzyc", token, {})}>Jak mierzyć?</a>
@@ -1846,8 +1843,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
               ) : (
               <button type="button" className={s.ctaBig} disabled={!panes.length}
                 onClick={() => { setZakladka("wycena"); setEdycja(false); setWEtap(cenaZestawu && !cenaZestawu.szacunkowa ? "podsumowanie" : "kreator"); wizEvent("wiz_produkt", token, { widok: "zestaw_cta" }); }}>
-                Dodaj do koszyka{cenaZestawu ? ` · ${cenaZestawu.szacunkowa ? "ok. " : ""}${Math.round(cenaZestawu.poRabacie).toLocaleString("pl-PL")} zł` : ""}
-                <small>{cenaZestawu && !cenaZestawu.szacunkowa ? "wymiary potwierdzone ✓" : "najpierw potwierdzisz wymiary – 2 min"}{cenaZestawu && cenaZestawu.poRabacie < cenaZestawu.suma ? ` · zamiast ${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł` : ""}</small>
+                {cenaZestawu ? `Dodaj do koszyka · ${Math.round(cenaZestawu.poRabacie).toLocaleString("pl-PL")} zł` : "📏 Wpisz wymiary i zobacz cenę"}
+                <small>{cenaZestawu ? "wymiary potwierdzone ✓" : "zmierz szyby miarką – 2 min, cena od razu"}{cenaZestawu && cenaZestawu.poRabacie < cenaZestawu.suma ? ` · zamiast ${Math.round(cenaZestawu.suma).toLocaleString("pl-PL")} zł` : ""}</small>
               </button>
               )}
             </div>
