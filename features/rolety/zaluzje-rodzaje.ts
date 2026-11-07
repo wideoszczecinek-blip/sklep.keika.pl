@@ -61,7 +61,7 @@ const SIDE_FAQ = {
 const NODRILL_FAQ = {
   question: "Czy da się zamontować żaluzję bez wiercenia?",
   answer:
-    "Tak, przy montażu na skrzydło okna (w świetle szyby lub na skrzydło) można wybrać mocowania bezinwazyjne - zakładane na skrzydło, bez wkrętów. Przy montażu na ścianę żaluzję przykręcamy klamrami.",
+    "Tak, przy montażu na skrzydło okna (w świetle szyby lub na skrzydło) można wybrać mocowania bezinwazyjne - zakładane na skrzydło, bez wkrętów. Przy montażu na ścianę klamry przykręca się do muru - wkręty i kołki dobierz do podłoża, nie ma ich w komplecie.",
 };
 const WARRANTY_FAQ = {
   question: "Jaka jest gwarancja?",

@@ -1577,7 +1577,7 @@ export default function RoletyConfiguratorPanel({
                   ))}
                 </span>
               ) : null}
-              <span className="plisy-price-card-perks">{modelFirst ? "W cenie: klamry montażowe i wkręty, gwarancja producenta" : "W cenie: 5 lat gwarancji i 30 dni na zwrot"}</span>
+              <span className="plisy-price-card-perks">{modelFirst ? "W cenie: klamry montażowe, gwarancja producenta" : "W cenie: 5 lat gwarancji i 30 dni na zwrot"}</span>
             </>
           );
         })()}

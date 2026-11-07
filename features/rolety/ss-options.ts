@@ -175,6 +175,8 @@ export function ssDefaultSelection(model: SsModelOptions): SsSelection {
 export function ssSelectionFromStored(model: SsModelOptions, stored: Record<string, string> | undefined): SsSelection {
   const out = ssDefaultSelection(model);
   for (const field of model.fields) {
+    // "48" Zestaw montażowy (wkręty) nie jest w ofercie - nie dodajemy wkrętów (7.11).
+    if (field.attr === "48") continue;
     const value = stored?.[field.attr];
     if (value && field.options.some((option) => option.v === value)) out[field.attr] = value;
   }

@@ -266,7 +266,7 @@ export const ROLETY_COPY: Record<RoletySlug, RoletyProductCopy> = {
       },
       {
         title: "Montaż",
-        body: "Klamry przykręcasz do ramy skrzydła albo do ściany nad oknem i wpinasz w nie górną belkę żaluzji. Przy montażu na skrzydło możesz wybrać mocowania bezinwazyjne - bez wiercenia. Klamry i wkręty są w komplecie.",
+        body: "Klamry przykręcasz do ramy skrzydła albo do ściany nad oknem i wpinasz w nie górną belkę żaluzji. Przy montażu na skrzydło możesz wybrać mocowania bezinwazyjne - bez wiercenia. Klamry są w komplecie, wkręty dobierz do podłoża (rama, mur, drewno).",
       },
       {
         title: "Sterowanie",

@@ -39,7 +39,8 @@ function OptionImage({ src, alt }: { src: string; alt: string }) {
 }
 
 const REQUIRED_EXTRA_ATTRS = ["26", "18", "50", "19", "25", "23"];
-const ADDON_ORDER = ["30", "60", "58", "57", "29", "47", "48", "34", "51"];
+// "48" Zestaw montażowy (wkręty) - ukryty: nie dodajemy wkrętów (właściciel 7.11).
+const ADDON_ORDER = ["30", "60", "58", "57", "29", "47", "34", "51"];
 
 export default function ZaluzjeSsSteps({
   model,
