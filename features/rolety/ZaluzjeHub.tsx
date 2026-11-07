@@ -12,6 +12,7 @@ import { trackShopStep } from "@/lib/track-step";
 import { colorCountLabel } from "./ZaluzjeCategoryGrid";
 import type { RoletyProfile } from "./shared";
 import { ZALUZJE_RODZAJE, zaluzjeRodzajOfGroup, zaluzjeRodzajSummaries, type ZaluzjeRodzajSlug } from "./zaluzje-rodzaje";
+import { ZaluzjeBezpiecznie, ZaluzjeOpinie, ZaluzjePomiar } from "./ZaluzjeLejek";
 
 export const ZALUZJE_CATALOG_ID = "zaluzje-katalog";
 
@@ -30,7 +31,25 @@ const COMPARE: Array<{ label: string; values: Record<ZaluzjeRodzajSlug, string> 
   { label: "Wilgoć (kuchnia, łazienka)", values: { aluminiowe: "tak", pcv: "tak", drewniane: "nie polecamy", bambusowe: "nie polecamy" } },
   { label: "Wygląd", values: { aluminiowe: "lekki, nowoczesny", pcv: "jak drewno", drewniane: "naturalne drewno", bambusowe: "naturalny bambus" } },
   { label: "Lamele", values: { aluminiowe: "16-50 mm", pcv: "35-65 mm", drewniane: "25-65 mm", bambusowe: "25-65 mm" } },
+  { label: "Nagrzewanie w słońcu", values: { aluminiowe: "największe", pcv: "małe", drewniane: "najmniejsze (abachi)", bambusowe: "małe" } },
+  { label: "Waga", values: { aluminiowe: "najlżejsze", pcv: "najcięższe", drewniane: "średnia", bambusowe: "średnia" } },
+  { label: "Mycie", values: { aluminiowe: "na mokro", pcv: "na mokro", drewniane: "na sucho", bambusowe: "na sucho" } },
 ];
+
+/** Jak wybrać w 3 krokach - pytania, które klient i tak sobie zadaje. */
+const HOWTO: Array<{ title: string; text: string }> = [
+  { title: "Gdzie jest okno?", text: "Kuchnia, łazienka, pralnia - aluminium albo PCV drewnopodobne, bo nie chłoną wody. Salon, sypialnia, gabinet - każdy rodzaj, a drewno i bambus dodadzą wnętrzu ciepła." },
+  { title: "Jaki masz styl?", text: "Nowocześnie i minimalistycznie - aluminium. Klasycznie i przytulnie - drewno, także z ozdobną taśmą. Boho, japandi, skandynawsko - bambus. Wygląd drewna bez obaw o wilgoć - PCV." },
+  { title: "Gdzie zawiśnie?", text: "Na skrzydle okna wybierz cieńszą lamelę (16-35 mm) - mniej odstaje od szyby i nie zahacza o klamkę. Na ścianę nad wnęką i na duże okna - lamele 50-65 mm." },
+];
+
+function scrollToCards() {
+  try {
+    document.getElementById(ZALUZJE_CATALOG_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch {
+    /* ignore */
+  }
+}
 
 export default function ZaluzjeHub({ profile }: { profile: RoletyProfile | null }) {
   const summaries = useMemo(() => zaluzjeRodzajSummaries(profile), [profile]);
@@ -102,6 +121,29 @@ export default function ZaluzjeHub({ profile }: { profile: RoletyProfile | null 
           </div>
         ))}
       </div>
+
+      <section className="zlf-section" aria-labelledby="zlf-howto">
+        <p className="zlf-eyebrow">Jak wybrać</p>
+        <h2 id="zlf-howto" className="zlf-title">
+          Trzy pytania i wiesz, którą żaluzję wybrać
+        </h2>
+        <ol className="zlf-howto">
+          {HOWTO.map((step) => (
+            <li key={step.title}>
+              <strong>{step.title}</strong>
+              {step.text}
+            </li>
+          ))}
+        </ol>
+        <p className="zlf-lead zlf-why">
+          Dlaczego żaluzja, a nie roleta? Lamele obracasz o dowolny kąt: wpuszczasz rozproszone światło i nadal nikt nie zajrzy do środka. Żaluzja jest
+          też trwalsza i łatwiej ją utrzymać w czystości.
+        </p>
+      </section>
+
+      <ZaluzjeOpinie />
+      <ZaluzjeBezpiecznie />
+      <ZaluzjePomiar onConfigure={scrollToCards} ctaLabel="Wybierz rodzaj lameli" />
     </div>
   );
 }

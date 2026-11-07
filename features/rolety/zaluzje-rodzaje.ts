@@ -63,6 +63,31 @@ const NODRILL_FAQ = {
   answer:
     "Tak, przy montażu na skrzydło okna (w świetle szyby lub na skrzydło) można wybrać mocowania bezinwazyjne - zakładane na skrzydło, bez wkrętów. Przy montażu na ścianę klamry przykręca się do muru - wkręty i kołki dobierz do podłoża, nie ma ich w komplecie.",
 };
+const MISTAKE_FAQ = {
+  question: "Co, jeśli źle zmierzę?",
+  answer:
+    "Konfigurator prowadzi przez pomiar krok po kroku (z animacją) i sam wylicza wymiar żaluzji - wpisujesz tylko to, co zmierzysz. Jeśli zauważysz pomyłkę, napisz do nas od razu po zamówieniu: zanim przekażemy zamówienie do realizacji, wymiar można jeszcze poprawić. Żaluzja wykonana na wymiar nie podlega zwrotowi, dlatego przy wątpliwościach zadzwoń przed zamówieniem - doradzimy na podstawie zdjęcia okna.",
+};
+const STACK_FAQ = {
+  question: "Ile miejsca zajmie podniesiona żaluzja?",
+  answer:
+    "Zależy od lameli: aluminiowa 16-25 mm zajmuje ok. 6 cm na każdy metr wysokości żaluzji, drewniana i bambusowa 50 mm ok. 15-18 cm. Dokładną wysokość pakietu konfigurator pokazuje po wpisaniu wymiarów. Przy montażu na ścianę pakiet chowa się nad wnęką.",
+};
+const CHILD_FAQ = {
+  question: "Czy żaluzja jest bezpieczna dla dzieci?",
+  answer:
+    "W komplecie jest uchwyt, na który zwijasz sznurek. Zamontuj go tak, żeby sznurek był poza zasięgiem dziecka - tak każą normy bezpieczeństwa osłon okiennych.",
+};
+const WHERE_FAQ = {
+  question: "Gdzie nie montować żaluzji?",
+  answer:
+    "Żaluzje są do wnętrz. Nie montuj ich na zewnątrz, w ogrodzie zimowym, na werandzie ani w zabudowanym tarasie - duże wahania temperatury i wilgotności skracają ich życie.",
+};
+const TAPE_FAQ = {
+  question: "Sznurek czy ozdobna taśma?",
+  answer:
+    "Sznurek jest w cenie i prawie go nie widać. Taśma to dodatek dekoracyjny: zasłania otworki w lamelach i daje klasyczny wygląd. Producent zastrzega, że przy niektórych zestawieniach kolorów barwnik taśmy może z czasem lekko przebarwić jasną lamelę - najbezpieczniej wybrać taśmę dobraną do koloru lameli.",
+};
 const WARRANTY_FAQ = {
   question: "Jaka jest gwarancja?",
   answer:
@@ -93,6 +118,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
     rooms: ["Kuchnia", "Łazienka", "Biuro", "Sypialnia"],
     faq: [
       MEASURE_FAQ,
+      TAPE_FAQ,
       {
         question: "Czym różnią się lamele perforowane?",
         answer:
@@ -104,9 +130,13 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
           "Na skrzydło okna najlepiej 16 lub 25 mm - lamele odstają od szyby najmniej. 35 mm to uniwersalny wybór, a 50 mm wygląda najlepiej na dużych oknach i przy montażu na ścianę.",
       },
       NODRILL_FAQ,
+      MISTAKE_FAQ,
+      STACK_FAQ,
       SIDE_FAQ,
+      CHILD_FAQ,
       LEAD_FAQ,
       WARRANTY_FAQ,
+      WHERE_FAQ,
     ],
     gallery: [
       [58, 0], [59, 3], [12, 8], [11, 3], [50, 2], [58, 5], [59, 4], [12, 3], [50, 0], [98, 0], [65, 0], [60, 3], [11, 1], [138, 0],
@@ -145,9 +175,13 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
         answer: "To lamele PCV z wyczuwalną strukturą słojów drewna - wyglądają bardziej naturalnie niż gładkie.",
       },
       NODRILL_FAQ,
+      MISTAKE_FAQ,
+      STACK_FAQ,
       SIDE_FAQ,
+      CHILD_FAQ,
       LEAD_FAQ,
       WARRANTY_FAQ,
+      WHERE_FAQ,
     ],
     gallery: [
       [57, 0], [87, 0], [89, 0], [88, 0], [90, 0], [57, 4], [87, 4], [89, 6], [57, 8], [88, 1], [95, 0], [90, 3], [87, 6], [89, 8],
@@ -163,7 +197,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       "Żaluzje drewniane na wymiar: lipa basswood, abachi i prime wood, lamele 25, 35, 50 i 65 mm, wersje z ozdobną taśmą. Ciepły, naturalny wygląd do salonu i sypialni. Realizacja do 15 dni roboczych.",
     lead: "Prawdziwe drewno: ciepłe w dotyku, z naturalnym rysunkiem słojów. Żaluzja, która wygląda jak mebel, a nie jak osłona.",
     description: [
-      "Żaluzje drewniane robią z okna element wystroju. Lamele z lipy basswood są lekkie i mają równy rysunek, abachi ma wyraźniejszą strukturę i jest jeszcze lżejsze, a prime wood to selekcjonowane drewno w nowoczesnych, przygaszonych kolorach.",
+      "Żaluzje drewniane robią z okna element wystroju. Lamele z lipy basswood są lekkie i mają równy rysunek, abachi ma wyraźniejszą strukturę i jest jeszcze lżejsze, a prime wood ma szczotkowane lamele z wyczuwalną fakturą i rustykalnym charakterem.",
       "Grubość lameli dobierasz do okna: 25 mm na skrzydło, 35 mm uniwersalnie, 50 i 65 mm na duże okna i montaż na ścianę. W wersji RETRO lamele trzyma ozdobna taśma zamiast sznurka - to najbardziej klasyczny, „hotelowy” wygląd.",
       "Drewno nie lubi stałej wilgoci, dlatego do łazienki i nad zlew polecamy żaluzje PCV drewnopodobne albo aluminiowe. Każdą żaluzję wykonujemy na Twój wymiar co do milimetra.",
     ],
@@ -184,16 +218,21 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       {
         question: "Czym różni się basswood, abachi i prime wood?",
         answer:
-          "Basswood (lipa) to klasyka - lekka, z równym rysunkiem słojów i największym wyborem kolorów. Abachi jest jeszcze lżejsze i ma wyraźniejszą strukturę. Prime wood to selekcjonowane drewno w nowoczesnych, przygaszonych odcieniach.",
+          "Basswood (lipa) to klasyka - z równym rysunkiem słojów i największym wyborem kolorów. Abachi to drewno z Afryki: lżejsze od lipy i słabiej przewodzi ciepło, więc dobrze sprawdza się na nasłonecznionych oknach. Prime wood ma szczotkowane lamele z wyczuwalną fakturą - do wnętrz rustykalnych.",
       },
+      TAPE_FAQ,
       {
         question: "Co to jest wersja RETRO?",
         answer:
           "W wersji RETRO lamele trzyma szeroka, ozdobna taśma zamiast cienkiego sznurka. Taśma zasłania otworki w lamelach, więc przy zamkniętej żaluzji jest ciemniej, a całość wygląda bardziej klasycznie.",
       },
+      MISTAKE_FAQ,
+      STACK_FAQ,
       SIDE_FAQ,
+      CHILD_FAQ,
       LEAD_FAQ,
       WARRANTY_FAQ,
+      WHERE_FAQ,
     ],
     gallery: [
       [39, 0], [38, 0], [66, 0], [114, 0], [81, 0], [118, 0], [82, 0], [126, 0], [39, 3], [38, 4], [109, 0], [125, 0], [114, 4], [81, 4],
@@ -227,13 +266,18 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
         answer:
           "Bambus lepiej znosi wilgoć niż zwykłe drewno, ale stała para mu nie służy. Do łazienki i nad zlew polecamy żaluzje PCV drewnopodobne albo aluminiowe.",
       },
+      TAPE_FAQ,
       {
         question: "Co to jest wersja RETRO?",
         answer: "W wersji RETRO lamele trzyma szeroka, ozdobna taśma zamiast sznurka - żaluzja wygląda klasycznie, a przy zamkniętych lamelach jest ciemniej.",
       },
+      MISTAKE_FAQ,
+      STACK_FAQ,
       SIDE_FAQ,
+      CHILD_FAQ,
       LEAD_FAQ,
       WARRANTY_FAQ,
+      WHERE_FAQ,
     ],
     gallery: [
       [76, 0], [84, 0], [85, 0], [86, 0], [117, 0], [76, 3], [84, 3], [85, 3], [117, 8], [86, 1], [76, 6], [84, 7], [134, 0], [136, 0],
@@ -288,14 +332,14 @@ export function zaluzjeVersionName(group: FabricGroup): { name: string; note: st
   if (/drewnopodobne/.test(category)) return { name: "Z nadrukiem drewna", note: "Lamele aluminiowe w kolorach drewna - klon, sosna, buk." };
   if (/bambus/.test(category)) {
     if (retro) return { name: "RETRO z taśmą", note: "Lamele na ozdobnej taśmie zamiast sznurka." };
-    if (/LUX/.test(label)) return { name: "LUX", note: "Lamele bambusowe wyższej klasy, wyselekcjonowane." };
+    if (/LUX/.test(label)) return { name: "LUX", note: "Lamele bambusowe 25 mm wyższej klasy." };
     return { name: "Klasyczne", note: "Lamele bambusowe na sznurku." };
   }
   // drewniane
-  if (/abachi/.test(category)) return { name: "Abachi", note: "Drewno abachi - lżejsze, z wyraźniejszą strukturą." };
-  if (/prime wood/.test(category)) return { name: "Prime wood", note: "Selekcjonowane drewno w przygaszonych, nowoczesnych kolorach." };
+  if (/abachi/.test(category)) return { name: "Abachi", note: "Drewno z Afryki - lżejsze od lipy, słabiej się nagrzewa." };
+  if (/prime wood/.test(category)) return { name: "Prime wood", note: "Lamele szczotkowane, wyczuwalna faktura, rustykalny charakter." };
   if (retro) return { name: "Basswood RETRO z taśmą", note: "Lipa basswood na ozdobnej taśmie zamiast sznurka." };
-  if (/SELECT/.test(label)) return { name: "Basswood SELECT", note: "Szlachetne kolory drewna: orzech amerykański, palisander, dąb antyczny." };
+  if (/SELECT/.test(label)) return { name: "Basswood SELECT", note: "Lipa z wyraźnym rysunkiem słojów: orzech amerykański, palisander, dąb antyczny." };
   if (/LUX/.test(label)) return { name: "Basswood LUX", note: "Lipa basswood wyższej klasy, do szerokości 240 cm." };
   if (/GLOSS/.test(label)) return { name: "Basswood GLOSS", note: "Lamele z połyskiem." };
   return { name: "Basswood", note: "Lipa basswood - klasyka, największy wybór kolorów." };
@@ -360,7 +404,7 @@ export function zaluzjeRodzajSummaries(profile: RoletyProfile | null): ZaluzjeRo
 export const ZALUZJE_HUB_FAQ: Array<{ question: string; answer: string }> = [
   {
     question: "Które żaluzje do łazienki i kuchni?",
-    answer: "Aluminiowe albo PCV drewnopodobne - nie chłoną wilgoci i można je myć na mokro. Drewniane i bambusowe polecamy do salonu, sypialni i gabinetu.",
+    answer: "Aluminiowe albo PCV drewnopodobne - nie chłoną wody i można je myć na mokro; w łazience zadbaj o wentylację. Drewniane i bambusowe polecamy do salonu, sypialni i gabinetu.",
   },
   MEASURE_FAQ,
   {
@@ -368,7 +412,11 @@ export const ZALUZJE_HUB_FAQ: Array<{ question: string; answer: string }> = [
     answer: "Na skrzydło okna najlepiej 16-25 mm - lamele najmniej odstają od szyby. 35 mm to wybór uniwersalny, a 50-65 mm wygląda najlepiej na dużych oknach i przy montażu na ścianę.",
   },
   NODRILL_FAQ,
+  MISTAKE_FAQ,
+  STACK_FAQ,
   SIDE_FAQ,
+  CHILD_FAQ,
   LEAD_FAQ,
   WARRANTY_FAQ,
+  WHERE_FAQ,
 ];

@@ -141,6 +141,8 @@ import {
 import RoletyLanding from "@/features/rolety/Landing";
 import ZaluzjeHub, { ZALUZJE_CATALOG_ID } from "@/features/rolety/ZaluzjeHub";
 import ZaluzjeRodzajLanding from "@/features/rolety/ZaluzjeRodzajLanding";
+import { ZaluzjeMeasureGuide } from "@/features/rolety/ZaluzjeMeasure";
+import { ZaluzjeProofLine } from "@/features/rolety/ZaluzjeLejek";
 import RoletySystemyHub, { ROLETY_SYSTEMY_ID } from "@/features/rolety/RoletySystemyHub";
 import { isRoletySystemSlug, ROLETY_HUB_FAQ, ROLETY_HUB_INSTRUCTIONS } from "@/features/rolety/systemy";
 import { ZALUZJE_HUB_FAQ, ZALUZJE_RODZAJ_SLUGS, ZALUZJE_RODZAJE, zaluzjeRodzajGallery, type ZaluzjeRodzajSlug } from "@/features/rolety/zaluzje-rodzaje";
@@ -367,7 +369,7 @@ type ProductInstructionStep = {
    * rolety-dachowe installation film. */
   embedUrl?: string;
   /** A React-rendered guide instead of a media file (features/plisy/MeasureGuide). */
-  customMedia?: "plisy-measure";
+  customMedia?: "plisy-measure" | "zaluzje-measure";
 };
 
 type AllegroOfferRating = {
@@ -2423,6 +2425,12 @@ export default function Home({
     const instructionSlug = productSlugFromSelected(displayedProduct);
     if (instructionSlug === "rolety-tradycyjne") return ROLETY_HUB_INSTRUCTIONS;
     if (isRoletySystemSlug(instructionSlug)) return ROLETY_COPY[instructionSlug].instructionSteps;
+    // Żaluzje: krok „Pomiar” z animowaną instrukcją trzech montaży (właściciel 7.11).
+    if (instructionSlug === "zaluzje") {
+      return ROLETY_COPY.zaluzje.instructionSteps.map((step) =>
+        /pomiar/i.test(step.title) ? { ...step, customMedia: "zaluzje-measure" as const } : step,
+      );
+    }
     return productInstructionSteps(displayedProduct.label);
   }, [productLanding, displayedProduct]);
 
@@ -4733,8 +4741,9 @@ export default function Home({
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
                             <p className="pl-subtitle">
-                              Żaluzje poziome produkowane pod Twoje okno: aluminiowe, drewniane, bambusowe i PCV drewnopodobne. Montaż w świetle szyby, na skrzydło albo na ścianę nad oknem.
+                              Żaluzje poziome wykonane pod Twoje okno co do milimetra: aluminiowe, drewniane, bambusowe i PCV drewnopodobne. Obracasz lamele i sam decydujesz, ile światła wpuścić - bez rezygnowania z prywatności.
                             </p>
+                            <ZaluzjeProofLine source="hub" />
                             <ZaluzjeHub profile={roletyProfiles.zaluzje || null} />
                           </div>
                         ) : roletyHubMode ? (
@@ -5389,6 +5398,10 @@ export default function Home({
                               {step.customMedia === "plisy-measure" ? (
                                 <div className="hero-product-instruction-media hero-product-instruction-media--guide">
                                   <PlisyMeasureGuide />
+                                </div>
+                              ) : step.customMedia === "zaluzje-measure" ? (
+                                <div className="hero-product-instruction-media hero-product-instruction-media--guide">
+                                  <ZaluzjeMeasureGuide source="instrukcje" />
                                 </div>
                               ) : step.embedUrl ? (
                                 <div className="hero-product-instruction-media hero-product-instruction-media--embed">
@@ -6890,6 +6903,10 @@ export default function Home({
                 {/* To samo, co w modalu konfiguratora: wyślij instrukcję
                     tam, gdzie stoi okno (właściciel, 2026-09-26). */}
                 <PlisyMeasureShare source="landing" />
+              </div>
+            ) : activeInstructionSteps[instructionModalIndex].customMedia === "zaluzje-measure" ? (
+              <div className="hero-product-instruction-media hero-product-instruction-media--guide">
+                <ZaluzjeMeasureGuide source="instrukcje-modal" />
               </div>
             ) : activeInstructionSteps[instructionModalIndex].mediaUrl ? (
               <div className="instruction-modal-media">

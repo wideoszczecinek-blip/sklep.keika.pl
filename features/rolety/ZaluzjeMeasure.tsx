@@ -255,10 +255,13 @@ export function ZaluzjeMeasureAnimation({
   pid,
   withTape = false,
   customerStackMm = 0,
+  onCycle,
 }: {
   mountId: ZaluzjeMountId;
   hasVent?: boolean;
   compact?: boolean;
+  /** Wywoływane po każdym pełnym cyklu animacji (instrukcja na stronie przełącza wtedy montaż). */
+  onCycle?: () => void;
   /** Model S&S (pid) - wysokość pakietu z _specs.json; brak = basswood 50 mm. */
   pid?: number | string;
   withTape?: boolean;
@@ -275,6 +278,10 @@ export function ZaluzjeMeasureAnimation({
   const m = spec(mountId, hasVent);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [narrow, setNarrow] = useState(false);
+  const onCycleRef = useRef(onCycle);
+  useEffect(() => {
+    onCycleRef.current = onCycle;
+  }, [onCycle]);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -288,8 +295,14 @@ export function ZaluzjeMeasureAnimation({
     if (reduced) return;
     let frame = 0;
     const start = performance.now() + (run > 0 ? 200 : 600);
+    let cycles = 0;
     const tick = (now: number) => {
       const elapsed = now - start;
+      const done = elapsed > 0 ? Math.floor(elapsed / (TOTAL + LOOP_PAUSE)) : 0;
+      if (done > cycles) {
+        cycles = done;
+        onCycleRef.current?.();
+      }
       // Pętla bez końca (właściciel, 17.10.2026); między cyklami ~1 s pauzy
       // na stanie końcowym z opuszczoną żaluzją.
       if (elapsed < 0) setProgress(0);
@@ -510,6 +523,79 @@ export function ZaluzjeMeasureAnimation({
 }
 
 export const ZALUZJE_MOUNT_ORDER: ZaluzjeMountId[] = ["w-swietle-szyby", "na-skrzydlo", "na-sciane"];
+
+const noopSubscribe = () => () => {};
+
+const MOUNT_TAB_LABEL: Record<ZaluzjeMountId, string> = {
+  "w-swietle-szyby": "W świetle szyby",
+  "na-skrzydlo": "Na skrzydło",
+  "na-sciane": "Na ścianę",
+};
+
+const MOUNT_WHEN: Record<ZaluzjeMountId, string> = {
+  "w-swietle-szyby": "Żaluzja na samej szybie, między listwami. Okno otwierasz i uchylasz razem z nią.",
+  "na-skrzydlo": "Żaluzja przykrywa szybę razem z listwami. Mniej szczelin światła, okno nadal się otwiera.",
+  "na-sciane": "Żaluzja nad wnęką zasłania całe okno. Najciemniej w pokoju, okno zostaje nietknięte.",
+};
+
+/** Instrukcja pomiaru na stronie (właściciel 7.11: „animowana, na wzór tej
+ * z plis”): gra od razu i w pętli przechodzi przez trzy montaże; kliknięcie
+ * zakładki zatrzymuje przełączanie na wybranym montażu. */
+export function ZaluzjeMeasureGuide({ pid, source = "landing" }: { pid?: number | string; source?: string }) {
+  const [active, setActive] = useState<ZaluzjeMountId>("w-swietle-szyby");
+  const [pinned, setPinned] = useState(false);
+  const [vent, setVent] = useState(false);
+  // Tylko po stronie przeglądarki: identyfikatory SVG (useId) i animacja nie
+  // zgadzały się z HTML-em z serwera (ostrzeżenie hydratacji).
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const rule = ZALUZJE_MOUNT_RULES[active];
+  const next = () => {
+    if (pinned) return;
+    setActive((prev) => ZALUZJE_MOUNT_ORDER[(ZALUZJE_MOUNT_ORDER.indexOf(prev) + 1) % ZALUZJE_MOUNT_ORDER.length]);
+  };
+  return (
+    <div className="zl-guide">
+      <div className="zl-measure-tabs" role="tablist" aria-label="Sposób montażu">
+        {ZALUZJE_MOUNT_ORDER.map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={id === active}
+            className={id === active ? "is-active" : ""}
+            onClick={() => {
+              setActive(id);
+              setPinned(true);
+              trackShopStep("measure_guide_tab", id, { product: "zaluzje", source });
+            }}
+          >
+            {MOUNT_TAB_LABEL[id]}
+          </button>
+        ))}
+      </div>
+      <p className="zl-guide-when">{MOUNT_WHEN[active]}</p>
+      {active === "na-skrzydlo" ? (
+        <label className="zl-exact-toggle zl-vent-toggle">
+          <input
+            type="checkbox"
+            checked={vent}
+            onChange={(event) => {
+              setVent(event.target.checked);
+              setPinned(true);
+            }}
+          />
+          Okno ma nawiewnik (kratkę wentylacyjną na górze skrzydła)
+        </label>
+      ) : null}
+      {mounted ? (
+        <ZaluzjeMeasureAnimation key={`${active}-${vent}`} mountId={active} hasVent={active === "na-skrzydlo" && vent} pid={pid} onCycle={next} />
+      ) : (
+        <div className="zl-guide-placeholder" aria-hidden="true" />
+      )}
+      <p className="zl-measure-rule">{rule.ruleText}</p>
+    </div>
+  );
+}
 
 /** Modal "Jak zmierzyć?" z zakładkami trzech sposobów montażu. */
 export function ZaluzjeMeasureModal({
