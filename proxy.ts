@@ -26,8 +26,9 @@ const STATIC_PRODUCT_ROUTES: Record<string, string> = {
 // główną. Zdjęcie bramki = usunięcie slugu z PREVIEW_ONLY_ROUTES.
 // 7.11.2026: rolety tradycyjne w 4 systemach - też do akceptacji cen przez właściciela.
 const ROLETY_SYSTEM_ROUTES = ["rolety-mini", "rolety-kaseta-plaska", "rolety-kaseta-przestrzenna", "rolety-wolnowiszace"];
-const PREVIEW_ONLY_ROUTES = new Set(["/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", ...ROLETY_SYSTEM_ROUTES.map((slug) => `/${slug}`)]);
-const PREVIEW_ONLY_SLUGS = new Set(["rolety-dzien-noc", "rolety-tradycyjne", "zaluzje", ...ROLETY_SYSTEM_ROUTES]);
+// 8.11.2026: żaluzje publicznie (właściciel: „żaluzje możesz uruchomić publicznie - rolety dalej ukryte”).
+const PREVIEW_ONLY_ROUTES = new Set(["/rolety-dzien-noc", "/rolety-tradycyjne", ...ROLETY_SYSTEM_ROUTES.map((slug) => `/${slug}`)]);
+const PREVIEW_ONLY_SLUGS = new Set(["rolety-dzien-noc", "rolety-tradycyjne", ...ROLETY_SYSTEM_ROUTES]);
 const PREVIEW_ALLOWED_IPS = new Set(
   (process.env.PREVIEW_ALLOWED_IPS || "164.127.253.116").split(",").map((ip) => ip.trim()).filter(Boolean),
 );
@@ -47,8 +48,6 @@ function previewAllowed(request: NextRequest): boolean {
 
 function previewRoutePath(url: URL): string | null {
   if (PREVIEW_ONLY_ROUTES.has(url.pathname)) return url.pathname;
-  // Strony modeli żaluzji (/zaluzje/<model>) - ta sama bramka co katalog.
-  if (url.pathname.startsWith("/zaluzje/")) return url.pathname;
   const match = url.pathname.match(/^\/(?:produkt|kategoria)\/([a-z0-9-]+)\/?$/);
   if (match && PREVIEW_ONLY_SLUGS.has(match[1])) return `/${match[1]}`;
   if (url.pathname === "/" && PREVIEW_ONLY_SLUGS.has((url.searchParams.get("produkt") || "").trim().toLowerCase())) {
@@ -120,5 +119,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/(.*\\.mp4)", "/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/zaluzje", "/zaluzje/:path*", "/rolety-mini", "/rolety-kaseta-plaska", "/rolety-kaseta-przestrzenna", "/rolety-wolnowiszace", "/produkt/:slug", "/kategoria/:slug"],
+  matcher: ["/(.*\\.mp4)", "/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/rolety-mini", "/rolety-kaseta-plaska", "/rolety-kaseta-przestrzenna", "/rolety-wolnowiszace", "/produkt/:slug", "/kategoria/:slug"],
 };
