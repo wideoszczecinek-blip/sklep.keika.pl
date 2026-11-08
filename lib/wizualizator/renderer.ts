@@ -34,6 +34,8 @@ export type PaneRender = {
   fabric: FabricRender;
   rail: Rgb;
   railId: string; // listwa z katalogu (tekstura zdjęcia profilu, gdy wczytana)
+  /** okleina drewnopodobna (sosna, dąb, orzech…) - słoje rysowane w shaderze zamiast płaskiej plamy albo skośnego zdjęcia */
+  railWood?: boolean;
   bracket: Rgb;
   mount: "standard" | "bezinwazyjny";
   widthMm: number;
@@ -136,6 +138,8 @@ uniform sampler2D uRailTex; // zdjęcie listwy z katalogu (lico profilu, słoje 
 uniform float uHasRailTex;
 uniform vec3 uRailMean;
 uniform float uRailRep;
+uniform float uWood;        // 1 = okleina drewnopodobna bez zdjęcia: słoje proceduralne
+uniform float uWoodRings;   // ile słojów w poprzek profilu (mniej, gdy profil ma mało pikseli - bez migotania)
 uniform vec2 uMm;           // szerokość i wysokość szyby w mm (rozmiary uchwytów w mm, nie w % szyby)
 uniform float uKind;        // 0 plisa okienna, 1 plisa dachowa, 2 roleta dachowa
 uniform float uDark;        // zaciemnienie pokoju (okna dachowe): niezasłonięte szkło wraca do jasności oryginału
@@ -146,8 +150,41 @@ varying vec2 vPix;
 float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
+float vnoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+vec3 woodBase() {
+  // lakierowana sosna: miodowa baza, mniej cytrynowej żółci niż kolor z katalogu (#E5BD72 wyglądał jak musztarda)
+  vec3 b = uRail * vec3(0.99, 0.92, 0.80);
+  return mix(vec3(lum(b)), b, 0.85);
+}
+
+// kolor jednolitych elementów w barwie osprzętu (zaślepki, uchwyty) - przy drewnie ten sam ton co listwy
+vec3 railPlain() { return uWood > 0.5 ? woodBase() : uRail; }
+
+vec3 woodGrain(float r, float along) {
+  // okleina drewnopodobna (właściciel 8.11: „jasna sosna wychodzi niezachęcająco” - była płaską musztardową plamą):
+  // lakierowana sosna - miodowa baza, falujące ciemniejsze słoje
+  // późnego drewna wzdłuż profilu, drobne włókna i powolna zmiana tonu na długości listwy. along w mm.
+  vec3 base = woodBase();
+  float warp = 0.9 * vnoise(vec2(along * 0.006, r * 1.3)) + 0.3 * sin(along * 0.011 + r * 2.7);
+  float ring = fract(r * uWoodRings + warp);
+  float late = smoothstep(0.5, 0.72, ring) * (1.0 - smoothstep(0.82, 1.0, ring));
+  float fib = vnoise(vec2(along * 0.045, r * uWoodRings * 9.0));
+  float blot = vnoise(vec2(along * 0.0022, 3.7));
+  vec3 c = mix(base, base * vec3(0.78, 0.64, 0.48), late * 0.5);
+  return clamp(c * (0.95 + 0.08 * fib + 0.08 * (blot - 0.5)), 0.0, 1.0);
+}
+
 vec3 railBase(float r, float u) {
-  // kolor listwy z katalogu; okleiny drewnopodobne mają słoje ze zdjęcia profilu (względem jego średniej)
+  // okleiny drewnopodobne: słoje proceduralne (u: wzdłuż profilu, w szerokościach szyby) - zdjęcia katalogu pokazują
+  // profil skośnie, więc wycinek dawał ukośne pasy z białym tłem („złoty lambrekin”, właściciel 8.11);
+  // pozostałe kolory: zdjęcie profilu względem jego średniej
+  if (uWood > 0.5) return woodGrain(r, u * uMm.x);
   if (uHasRailTex > 0.5) {
     vec3 t = texture2D(uRailTex, vec2(u * uRailRep, clamp(r, 0.03, 0.97))).rgb;
     return clamp(uRail * t / max(uRailMean, vec3(0.03)), 0.0, 1.0);
@@ -170,7 +207,7 @@ vec3 railShade(float r, float u, float pxr) {
   float cw = 12.0 / max(uMm.x, 200.0);
   float cap = 1.0 - smoothstep(cw, cw + 0.003, u) * smoothstep(cw, cw + 0.003, 1.0 - u);
   float capShade = 0.8 + 0.16 * sin(clamp(r, 0.0, 1.0) * 3.1416);
-  c = mix(c, uRail * capShade, cap);
+  c = mix(c, railPlain() * capShade, cap);
   // szczelina między zaślepką a profilem
   float seam = (1.0 - smoothstep(0.0, 0.0025, abs(u - cw - 0.0015))) + (1.0 - smoothstep(0.0, 0.0025, abs(1.0 - u - cw - 0.0015)));
   c *= 1.0 - 0.25 * clamp(seam, 0.0, 1.0);
@@ -335,7 +372,7 @@ void main() {
     if (tab > 0.0) {
       float lr = 1.0 - 0.18 * smoothstep(tabW * 0.55, tabW, hu); // boki wypustki w cieniu
       float rr = tA > tB ? (v - (tTop - tabH)) / tabH : (v - bBot) / tabH;
-      vec3 tcol = uRail * lr * (tA > tB ? mix(1.1, 0.96, rr) : mix(0.98, 0.74, rr)) * uFront * mix(vec3(1.0), uTint, 0.5);
+      vec3 tcol = railPlain() * lr * (tA > tB ? mix(1.1, 0.96, rr) : mix(0.98, 0.74, rr)) * uFront * mix(vec3(1.0), uTint, 0.5);
       col = vec4(mix(col.rgb, tcol, tab), max(col.a, tab));
     }
   }
@@ -381,7 +418,7 @@ void main() {
     if (gq >= 0.0 && v > -0.012 && v < 1.012) {
       float sh = 0.8 + 0.26 * sin(gq * 3.1416);
       sh *= 1.0 - 0.3 * (1.0 - smoothstep(0.0, 0.12, abs(gq - 0.85)));
-      vec3 gc = railBase(gq, v * 3.0) * sh * uFront * mix(vec3(1.0), uTint, 0.5) * 1.02;
+      vec3 gc = railBase(gq, v * uMm.y / max(uMm.x, 1.0)) * sh * uFront * mix(vec3(1.0), uTint, 0.5) * 1.02;
       float ga = smoothstep(0.0, 1.5 * px.x / uGuide, gq) * smoothstep(0.0, 1.5 * px.x / uGuide, 1.0 - gq);
       ga *= smoothstep(-0.012, -0.012 + px.y, v) * (1.0 - smoothstep(1.012 - px.y, 1.012, v));
       col = vec4(mix(col.rgb, gc, ga), max(col.a, ga));
@@ -484,7 +521,7 @@ export class WizRenderer {
     this.paneProg = program(gl, FS_PANE, [
       "uPhoto", "uTex", "uRes", "uInv", "uPx", "uTop", "uBot", "uRailH", "uPleats", "uRep", "uHasTex", "uTexMean", "uFabric", "uTrans", "uBack",
       "uFront", "uTint", "uRail", "uBracket", "uMount", "uHoney", "uPitch", "uSplit", "uSel", "uOutline", "uVp",
-      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uMm", "uKind", "uTopH", "uGuide", "uDark",
+      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uWood", "uWoodRings", "uMm", "uKind", "uTopH", "uGuide", "uDark",
     ]);
     const b = gl.createBuffer();
     if (!b) throw new Error("buffer");
@@ -698,10 +735,13 @@ export class WizRenderer {
       gl.activeTexture(gl.TEXTURE2);
       gl.bindTexture(gl.TEXTURE_2D, rt || this.emptyTex);
       gl.uniform1i(q.u.uRailTex, 2);
-      gl.uniform1f(q.u.uHasRailTex, rt ? 1 : 0);
+      gl.uniform1f(q.u.uHasRailTex, rt && !p.railWood ? 1 : 0);
       const rm = this.railMean.get(p.railId) || [0.8, 0.8, 0.8];
       gl.uniform3f(q.u.uRailMean, rm[0], rm[1], rm[2]);
       gl.uniform1f(q.u.uRailRep, wMm / 260); // zdjęcie profilu pokazuje ok. 26 cm listwy
+      gl.uniform1f(q.u.uWood, p.railWood ? 1 : 0);
+      // ok. 5 px na słój w poprzek profilu (belka 22 mm), od 1,2 do 4 słojów - małe okno na telefonie nie migocze
+      gl.uniform1f(q.u.uWoodRings, Math.max(1.2, Math.min(4, (RAIL_MM / hMm) * ph / 5)));
       gl.uniform2f(q.u.uMm, wMm, hMm);
       gl.uniform3f(q.u.uBracket, p.bracket[0], p.bracket[1], p.bracket[2]);
       gl.uniform1f(q.u.uMount, p.mount === "bezinwazyjny" ? 1 : 0);

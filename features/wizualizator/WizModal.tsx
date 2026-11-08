@@ -673,9 +673,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     }
     for (const id of new Set(panes.map((p) => p.listwa))) {
       const l = katalog.listwy.find((x) => x.id === id);
-      if (!l?.zdjecie || rendRef.current?.hasRail(id)) continue;
+      if (!l?.zdjecie || rendRef.current?.hasRail(l.zdjecie)) continue; // klucz = adres zdjęcia: ta sama nazwa listwy w innej osłonie to inny profil
       void loadImage(l.zdjecie).then((img) => {
-        rendRef.current?.addRail(id, img);
+        rendRef.current?.addRail(l.zdjecie, img);
         draw();
       }).catch(() => {});
     }
@@ -703,7 +703,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
         return {
           id: p.id, corners: p.rogi, top: p.gora, bottom: podpAnimRef.current?.pane === i ? podpAnimRef.current.dol : p.dol,
           fabric: { id: p.tkanina, color: hexToRgb(t?.kolor || "#EEEEEE"), transmission: t?.transmisja ?? 0.25, texture: null, honeycomb: Boolean(kol?.plaster_miodu) },
-          rail, railId: p.listwa, bracket: ["bialy", "anoda"].includes(p.listwa) ? [0.95, 0.95, 0.94] : rail, mount: montaz,
+          rail, railId: l?.zdjecie || "", railWood: /sosn|d[aą]b|orzech|winchester|buk|olch|wi[sś]ni|mahon|teak|drewn/i.test(`${p.listwa} ${l?.nazwa || ""}`), bracket: ["bialy", "anoda"].includes(p.listwa) ? [0.95, 0.95, 0.94] : rail, mount: montaz,
           widthMm: p.szerMm, heightMm: p.wysMm, back, front: Math.max(0.45, Math.min(1.1, 0.35 + 0.75 * wokol)),
           pitch: p.swiatlo?.widok?.pitch ?? 0, selected: i === sel,
           kind: prod === "plisy" ? "plisa" : prod,
@@ -819,7 +819,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     // tekstury tkanin i zdjęcia listw muszą być na płótnie (AI ma się wzorować na prawdziwym kolorze)
     for (let i = 0; i < 40; i++) {
       const r = rendRef.current;
-      if (r && panes.every((p) => r.hasFabric(p.tkanina) && (!katalog.listwy.find((l) => l.id === p.listwa)?.zdjecie || r.hasRail(p.listwa)))) break;
+      if (r && panes.every((p) => r.hasFabric(p.tkanina) && (!katalog.listwy.find((l) => l.id === p.listwa)?.zdjecie || r.hasRail(katalog.listwy.find((l) => l.id === p.listwa)?.zdjecie || "")))) break;
       await new Promise((res) => window.setTimeout(res, 100));
     }
     draw();
