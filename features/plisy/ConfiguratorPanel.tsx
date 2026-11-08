@@ -2353,6 +2353,8 @@ export default function ConfiguratorPanel({
                         hardwareColor={selectedHardware?.color || ""}
                         fabricLabel={selectedFabric?.label}
                         hardwareLabel={selectedHardware?.label}
+                        honeycomb={/duo|plaster/i.test(`${selectedFabricGroup?.id || ""} ${selectedFabricGroup?.label || ""}`)}
+                        widthMm={pieceWidthMm || undefined}
                       />
                     </div>
                     <dl>

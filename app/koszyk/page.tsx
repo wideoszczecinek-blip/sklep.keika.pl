@@ -3761,7 +3761,7 @@ export default function CartPage() {
                       // shrunk to thumbnail size - real fabric/hardware
                       // colours, not a generic icon.
                       <div className="cart-page-item-thumb cart-page-item-thumb--plisa">
-                        <PlisaPreview fabricColor={item.fabricColor} hardwareColor={item.hardwareColor || ""} />
+                        <PlisaPreview fabricColor={item.fabricColor} hardwareColor={item.hardwareColor || ""} fabricLabel={item.meshLabel} widthMm={item.widthMm} />
                       </div>
                     ) : item.productSlug === "plisy-dachowe" && item.fabricColor ? (
                       <div className="cart-page-item-thumb cart-page-item-thumb--plisa">

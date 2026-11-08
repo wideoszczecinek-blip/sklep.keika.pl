@@ -243,7 +243,7 @@ function ItemVisual({ item, className }: { item: CartLineItem; className: string
   if (item.productSlug === "plisy" && item.fabricColor) {
     return (
       <div className={`${className} is-plisa`}>
-        <PlisaPreview fabricColor={item.fabricColor} hardwareColor={item.hardwareColor || ""} />
+        <PlisaPreview fabricColor={item.fabricColor} hardwareColor={item.hardwareColor || ""} fabricLabel={item.meshLabel} widthMm={item.widthMm} />
       </div>
     );
   }
