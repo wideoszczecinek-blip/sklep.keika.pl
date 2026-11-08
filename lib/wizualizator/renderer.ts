@@ -362,7 +362,8 @@ void main() {
   // ---- uchwyty na belkach: języczek ~24×8 mm na środku, na zewnątrz (górna belka - w górę, dolna - w dół)
   float tabW = max(12.0 / max(uMm.x, 200.0), 3.0 * px.x);
   float tabH = max(8.0 / max(uMm.y, 300.0), 2.5 * px.y);
-  float hu = abs(u - 0.5);
+  // plisa do 100 cm: jeden uchwyt na środku listwy, szersza: dwa (właściciel 8.11, jak w produkcji)
+  float hu = uKind < 0.5 && uMm.x > 1000.0 ? min(abs(u - 0.28), abs(u - 0.72)) : abs(u - 0.5);
   if (hu < tabW + px.x) {
     float inU = 1.0 - smoothstep(tabW - px.x, tabW + px.x, hu);
     // górna belka: nad nią; dolna: pod nią

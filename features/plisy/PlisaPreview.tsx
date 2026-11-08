@@ -80,6 +80,8 @@ export default function PlisaPreview({
   // linki przez tkaninę: ~6 % od brzegów, przy szerokich co ok. 60 cm
   const cols: number[] = [X0 + W * 0.065, X1 - W * 0.065];
   const szer = widthMm && widthMm > 0 ? widthMm : 800;
+  // uchwyty do przesuwania (właściciel 8.11): do 100 cm jeden na środku każdej listwy, szersze dwa na listwę (FAQ „Ile uchwytów…”)
+  const uchwyty = szer > 1000 ? [X0 + W * 0.28, X1 - W * 0.28] : [X0 + W / 2];
   const srodek = Math.max(0, Math.round(szer / 600) - 1);
   for (let i = 1; i <= srodek; i++) cols.push(X0 + W * 0.065 + ((W * 0.87) / (srodek + 1)) * i);
 
@@ -89,6 +91,28 @@ export default function PlisaPreview({
     const yBot = yTop + pitch;
     return { i, yTop, yCrest, yBot };
   });
+
+  // uchwyt: tworzywo w kolorze osprzętu nasunięte na lico listwy, z języczkiem na zewnątrz (górna listwa - w górę,
+  // dolna - w dół), z rowkami pod palce i cieniem na szybie
+  const uchwyt = (cx: number, y: number, dol: boolean) => {
+    const w = 34;
+    const lip = 11; // ile wystaje poza listwę
+    const h = RAIL * 0.65 + lip;
+    const yy = dol ? y + RAIL * 0.35 : y - lip; // górna krawędź bryły
+    const d = dol
+      ? `M${cx - w / 2},${yy} h${w} v${h - 6} q0,6 -6,6 h${-(w - 12)} q-6,0 -6,-6 z`
+      : `M${cx - w / 2},${yy + 6} q0,-6 6,-6 h${w - 12} q6,0 6,6 v${h - 6} h${-w} z`;
+    const zew = dol ? yy + h : yy; // krawędź języczka
+    return (
+      <>
+        {dol ? <ellipse cx={cx} cy={zew + 3} rx={w * 0.55} ry={3} fill="#0B1A2A" opacity={0.16} /> : null}
+        <path d={d} fill={`url(#${id(dol ? "gripB" : "gripT")})`} stroke={capDark} strokeWidth={0.7} />
+        {[-6, 0, 6].map((o) => (
+          <line key={o} x1={cx + o} x2={cx + o} y1={dol ? zew - lip + 2 : zew + 2} y2={dol ? zew - 2 : zew + lip - 2} stroke={capDark} strokeWidth={1} opacity={0.45} strokeLinecap="round" />
+        ))}
+      </>
+    );
+  };
 
   const rail = (y: number, flip: boolean) => {
     const gid = flip ? id("railB") : id("railT");
@@ -135,6 +159,13 @@ export default function PlisaPreview({
             <stop offset="72%" stopColor={hw} />
             <stop offset="90%" stopColor={hwShade} />
             <stop offset="100%" stopColor={hwDark} />
+          </linearGradient>
+        ))}
+        {[["gripT", 0, 1], ["gripB", 1, 0]].map(([n, y1, y2]) => (
+          <linearGradient key={n as string} id={id(n as string)} x1="0" y1={y1 as number} x2="0" y2={y2 as number}>
+            <stop offset="0%" stopColor={plShiftHex(cap, 22)} />
+            <stop offset="45%" stopColor={cap} />
+            <stop offset="100%" stopColor={capDark} />
           </linearGradient>
         ))}
         <linearGradient id={id("cap")} x1="0" y1="0" x2="1" y2="0">
@@ -254,6 +285,12 @@ export default function PlisaPreview({
       {/* belki */}
       {rail(TOP, false)}
       {rail(BOT, true)}
+      {uchwyty.map((x) => (
+        <g key={`t${x}`}>{uchwyt(x, TOP, false)}</g>
+      ))}
+      {uchwyty.map((x) => (
+        <g key={`b${x}`}>{uchwyt(x, BOT, true)}</g>
+      ))}
     </svg>
   );
 }
