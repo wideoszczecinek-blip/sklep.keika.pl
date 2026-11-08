@@ -97,7 +97,8 @@ import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import CartV2, { CartV2Boundary } from "./cart-v2";
-import CartTrust, { CartFinance, BundleBanner } from "./cart-trust";
+import CartTrust, { CartFinance, CartFinanceTop, BundleBanner } from "./cart-trust";
+import BlikWaitPanel from "./blik-wait";
 import OrderOffers from "@/app/components/order-offers";
 
 // Checkout is the single highest-value place to know "co ich zniechęca" -
@@ -1083,6 +1084,9 @@ export default function CartPage() {
   const rescueSnapshotKey = rescueGrant ? `${rescueGrant.quoteCode}:${rescueGrant.percent}` : "";
   const [discountChecking, setDiscountChecking] = useState(false);
   const [discountError, setDiscountError] = useState("");
+  // Spokojna informacja (nie błąd), gdy klient wpisze nazwę promocji CAŁY DOM
+  // jako kod (właściciel 8.11.2026: „musi dostać informację, że rabat jest już uwzględniony”).
+  const [discountNotice, setDiscountNotice] = useState("");
 
   // "Zapisz/udostępnij wycenę" banners (below the item list, below the
   // financial summary) - real feedback 2026-09-09: the cart is exactly the
@@ -1183,6 +1187,7 @@ export default function CartPage() {
   // AGN-671 (1.11.2026): po odrzuconym BLIK-u pod komunikatem przycisk „Wybierz inną metodę płatności”.
   const [paynowBlikFailed, setPaynowBlikFailed] = useState(false);
   const [paynowPolling, setPaynowPolling] = useState(false);
+  const [paynowPollStartedAt, setPaynowPollStartedAt] = useState(0);
   const [paynowPollTimeout, setPaynowPollTimeout] = useState(false);
   // Domyślnie WŁĄCZONE (do czasu odpowiedzi CRM): gdyby pobranie ustawień
   // z CRM nie doszło do skutku, klient i tak widzi przelew tradycyjny /
@@ -1862,9 +1867,36 @@ export default function CartPage() {
     return `Kod SEZON20 już nie obowiązuje. Zamiast niego działa promocja ${QTY_PROMO.name}: ${parts.join(", ")} na całe zamówienie. Rabat liczy się automatycznie w koszyku, nie trzeba wpisywać kodu.`;
   }
 
+  /** „CAŁY DOM” (w dowolnej pisowni) wpisane jako kod: to promocja ilościowa
+   * liczona sama w koszyku, nie kod. Audyt 8.11: 3 takie wpisy w 2 tygodnie,
+   * każdy kończył się komunikatem „Nieprawidłowy kod”. */
+  function qtyPromoTypedAsCodeMessage(code: string): string {
+    const norm = code.toUpperCase().replace(/Ł/g, "L").replace(/[^A-Z0-9]/g, "");
+    if (!/^CALYDOM/.test(norm)) return "";
+    const name = QTY_PROMO.name;
+    if (bundle.savings > 0) {
+      return `Promocja ${name} jest już uwzględniona w Twoim koszyku: -${formatPln(bundle.savings)}. Rabat nalicza się sam, nie trzeba wpisywać kodu.`;
+    }
+    const hint = bundle.hint;
+    if (hint) {
+      const missing = Math.max(1, hint.missing);
+      return `${name} to nie kod, tylko promocja ilościowa: rabat -${hint.percent.toLocaleString("pl-PL")} % naliczy się sam od ${hint.fromQty} sztuk. Brakuje jeszcze ${missing} ${missing === 1 ? "sztuki" : "sztuk"}.`;
+    }
+    return `${name} to promocja ilościowa naliczana automatycznie w koszyku, nie kod rabatowy.`;
+  }
+
   async function checkDiscountCode(codeOverride?: string) {
     const code = (codeOverride ?? discountCodeInput).trim();
     if (!code) return;
+    setDiscountNotice("");
+    const qtyPromoTyped = qtyPromoTypedAsCodeMessage(code);
+    if (qtyPromoTyped) {
+      setAppliedDiscount(null);
+      setDiscountError("");
+      setDiscountNotice(qtyPromoTyped);
+      trackCheckoutIssue("discount_code_qty_promo_typed", code, { bundle_savings: bundle.savings });
+      return;
+    }
     setDiscountChecking(true);
     setDiscountError("");
     try {
@@ -1986,6 +2018,7 @@ export default function CartPage() {
     setAppliedDiscount(null);
     setDiscountCodeInput("");
     setDiscountError("");
+    setDiscountNotice("");
   }
 
   /** Same three surcharge positions submitOrder() below builds, just read
@@ -2433,11 +2466,30 @@ export default function CartPage() {
         });
         setPaynowPolling(true);
         setPaynowPollTimeout(false);
-        const PAYNOW_POLL_ATTEMPTS = 24;
+        setPaynowPollStartedAt(Date.now());
+        // Kod BLIK jest ważny 2 minuty - pytamy tyle samo (wcześniej 72 s, czyli
+        // komunikat „nie otrzymaliśmy potwierdzenia” pojawiał się, gdy klient
+        // jeszcze mógł zatwierdzać). Powrót na kartę (z aplikacji banku) od razu
+        // budzi sprawdzenie, zamiast czekać na kolejny odstęp.
+        const PAYNOW_POLL_DEADLINE_MS = 125000;
         const PAYNOW_POLL_INTERVAL_MS = 3000;
+        const pollStart = Date.now();
+        let wakePoll: (() => void) | null = null;
+        const onVisible = () => {
+          if (document.visibilityState === "visible") wakePoll?.();
+        };
+        document.addEventListener("visibilitychange", onVisible);
         void (async () => {
-          for (let attempt = 1; attempt <= PAYNOW_POLL_ATTEMPTS; attempt += 1) {
-            await new Promise((resolve) => window.setTimeout(resolve, PAYNOW_POLL_INTERVAL_MS));
+          try {
+          for (let attempt = 1; Date.now() - pollStart < PAYNOW_POLL_DEADLINE_MS; attempt += 1) {
+            await new Promise<void>((resolve) => {
+              const id = window.setTimeout(resolve, PAYNOW_POLL_INTERVAL_MS);
+              wakePoll = () => {
+                window.clearTimeout(id);
+                resolve();
+              };
+            });
+            wakePoll = null;
             try {
               const checkRes = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/paynow-check`, {
                 method: "POST",
@@ -2486,6 +2538,9 @@ export default function CartPage() {
           setPaynowPolling(false);
           setPaynowPollTimeout(true);
           trackCheckoutIssue("checkout_paynow_blik", "timeout", { order_code: orderCode });
+          } finally {
+            document.removeEventListener("visibilitychange", onVisible);
+          }
         })();
         return null;
       }
@@ -2678,12 +2733,7 @@ export default function CartPage() {
     if (kind === "blik" && selectedOnlineProvider === "paynow") {
       const digits = paynowBlikCode.replace(/\D+/g, "").slice(0, 6);
       if (paynowPolling) {
-        return (
-          <div className="cart-payment-waiting">
-            <span className="cart-invoice-nip-spinner" aria-hidden="true" />
-            Czekamy na potwierdzenie w aplikacji Twojego banku…
-          </div>
-        );
+        return <BlikWaitPanel amount={orderState?.amountTotal ? Number(orderState.amountTotal) : null} startedAt={paynowPollStartedAt || Date.now()} />;
       }
       return (
         <>
@@ -3393,7 +3443,11 @@ export default function CartPage() {
     setDiscountCodeInput,
     discountChecking,
     discountError,
-    clearDiscountError: () => setDiscountError(""),
+    clearDiscountError: () => {
+      setDiscountError("");
+      setDiscountNotice("");
+    },
+    discountNotice,
     checkDiscountCode: () => void checkDiscountCode(),
     removeDiscountCode,
     deliveryMethods: availableDeliveryMethods,
@@ -3729,6 +3783,8 @@ export default function CartPage() {
                     </span>
                   </span>
                 </button>
+                {/* Duży koszyk: rata i PayPo od razu na górze (właściciel 8.11). */}
+                <CartFinanceTop amount={payableTotal} />
                 {itemsOpen ? (
               <ul className="cart-page-items">
                 {items.map((item) => (
@@ -3894,6 +3950,7 @@ export default function CartPage() {
                           onChange={(event) => {
                             setDiscountCodeInput(event.target.value);
                             if (discountError) setDiscountError("");
+                            if (discountNotice) setDiscountNotice("");
                           }}
                           placeholder="np. LATO2026"
                           disabled={discountChecking}
@@ -3914,6 +3971,7 @@ export default function CartPage() {
                       </div>
                     )}
                     {discountError ? <p className="cart-discount-code-error">{discountError}</p> : null}
+                    {discountNotice ? <p className="cart-discount-code-notice">{discountNotice}</p> : null}
                   </div>
 
                   <div className="cart-page-summary-row is-muted">
@@ -4003,6 +4061,31 @@ export default function CartPage() {
                   {/* Oferta ratalna przy każdej kwocie - raty są włączone
                       na koncie P24 (właściciel, 2026-09-24). */}
                   <CartFinance amount={payableTotal} />
+                  {/* „Zamawiam” pod podsumowaniem (właściciel 8.11.2026, audyt koszyka:
+                      82 ze 121 zainteresowanych nie dotknęło wyboru dostawy - na telefonie
+                      formularz jest schowany do wyboru dostawy, a przycisk płatności pojawia
+                      się dopiero po danych). Przewija do sekcji dostawy i nie wybiera metody
+                      za klienta; gdy dostawa już wybrana, prowadzi do pierwszego brakującego pola. */}
+                  {!dataLocked && !deliveryDataReady ? (
+                    <button
+                      type="button"
+                      className="cart-page-checkout-cta cart-zamawiam-cta"
+                      onClick={() => {
+                        trackCheckoutIssue("checkout_zamawiam_click", deliveryMethod ? "dane" : "dostawa", {
+                          cart_positions: items.length,
+                          cart_total: payableTotal,
+                        });
+                        if (!deliveryMethod) {
+                          scrollToSection(shippingAddressSectionRef);
+                          return;
+                        }
+                        jumpToFirstProblem();
+                      }}
+                    >
+                      Zamawiam
+                      <small>{deliveryMethod ? "uzupełnij dane odbiorcy" : "wybierz sposób dostawy i podaj dane"}</small>
+                    </button>
+                  ) : null}
                 <section className="cart-delivery-card cart-delivery-card--accordion" ref={shippingAddressSectionRef}>
                   <h2>Dostawa i dane odbiorcy</h2>
                   <div className="checkout-delivery-fold">

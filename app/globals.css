@@ -26166,3 +26166,71 @@ html[data-theme="dark"] .rs-ft-colors b { color: inherit; }
 .checkout-bundle-choice a i {
   font-style: normal;
 }
+
+/* Koszyk 8.11.2026 (audyt wykruszania): „Zamawiam” pod podsumowaniem, rata na górze przy
+   dużym koszyku, informacja o CAŁY DOM wpisanym jako kod, ekran oczekiwania BLIK. */
+.cart-zamawiam-cta {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.15rem;
+  justify-items: center;
+  padding: 0.95rem 1rem;
+  font-size: 1.12rem;
+  color: #fff;
+  background: linear-gradient(120deg, #ff7a1a, #ff5a00);
+  box-shadow: 0 12px 26px rgba(255, 90, 0, 0.32);
+}
+.cart-zamawiam-cta small {
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0.92;
+}
+.checkout-finance-top {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.6rem 0 0.2rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: #edf6f3;
+  color: #173f35;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+.checkout-finance-top-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #24564a;
+  color: #fff;
+  font-weight: 800;
+}
+.checkout-finance-top small {
+  color: #49605b;
+}
+.cart-discount-code-notice,
+.cv2-code-notice {
+  margin: 0.4rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  background: rgba(255, 160, 40, 0.16);
+  border: 1px solid rgba(255, 160, 40, 0.4);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.cart-blik-wait-steps {
+  margin: 0.2rem 0;
+  padding-left: 1.2rem;
+  text-align: left;
+  font-size: 0.9rem;
+  display: grid;
+  gap: 0.3rem;
+}
+.cart-blik-wait .cart-blik-wait-timer {
+  font-size: 0.95rem;
+}
+.cart-blik-wait-timer b {
+  font-variant-numeric: tabular-nums;
+}

@@ -8,7 +8,7 @@ import Link from "next/link";
 import type { LinkProduktu } from "@/lib/cart-product-links";
 import { crmGetJson } from "@/lib/crm-get";
 import InstallmentOffer from "@/app/components/installment-offer";
-import { installmentsAvailable } from "@/lib/installments";
+import { installmentsAvailable, monthlyInstallment, pickFriendlyInstallmentCount } from "@/lib/installments";
 import { PremiumPerks } from "@/features/plisy/Premium";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 
@@ -60,6 +60,49 @@ export function CartFinance({ amount }: { amount: number }) {
         <button type="button" aria-pressed={active === "paypo"} onClick={() => setChoice("paypo")}>PayPo</button>
       </div> : null}
     </section>
+  );
+}
+
+/** Próg, od którego rata pojawia się na samej górze koszyka (właściciel 8.11.2026,
+ * audyt: koszyki ≥ 1000 zł to 41 % utkniętych w koszyku i tylko 21 % kupujących). */
+export const FINANCE_TOP_THRESHOLD = 1000;
+
+function ratyWord(count: number): string {
+  const last = count % 10;
+  const lastTwo = count % 100;
+  return last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? "raty" : "rat";
+}
+
+/** Krótka linia „od X zł/mies.” nad listą pozycji przy dużym koszyku - raty i PayPo
+ * są dalej w karcie podsumowania, ale tam klient z dużą sumą często nie dochodzi. */
+export function CartFinanceTop({ amount }: { amount: number }) {
+  const options = useRatyPaypo();
+  if (!Number.isFinite(amount) || amount < FINANCE_TOP_THRESHOLD) return null;
+  const raty = options.raty && installmentsAvailable(amount);
+  const paypo = options.paypo;
+  if (!raty && !paypo) return null;
+  const count = raty ? pickFriendlyInstallmentCount(amount, undefined, 40, 120) : 0;
+  const monthly = raty ? monthlyInstallment(amount, count) : 0;
+  return (
+    <aside className="checkout-finance-top" aria-label="Płatność w ratach">
+      <span className="checkout-finance-top-mark" aria-hidden="true">
+        %
+      </span>
+      <span className="checkout-finance-top-copy">
+        {raty ? (
+          <>
+            Rozłóż na raty: <strong>od {monthly.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł/mies.</strong>{" "}
+            <small>({count} {ratyWord(count)}, Przelewy24)</small>
+          </>
+        ) : null}
+        {raty && paypo ? " · " : null}
+        {paypo ? (
+          <>
+            <strong>PayPo:</strong> zamów dziś, zapłać do 30 dni
+          </>
+        ) : null}
+      </span>
+    </aside>
   );
 }
 

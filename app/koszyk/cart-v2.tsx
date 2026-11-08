@@ -36,7 +36,7 @@ import PlisaPreview from "@/features/plisy/PlisaPreview";
 import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPreview";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
-import CartTrust, { CartFinance, BundleBanner } from "./cart-trust";
+import CartTrust, { CartFinance, CartFinanceTop, BundleBanner } from "./cart-trust";
 import type { LinkProduktu } from "@/lib/cart-product-links";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
@@ -95,6 +95,8 @@ export type CartV2Props = {
   setDiscountCodeInput: (value: string) => void;
   discountChecking: boolean;
   discountError: string;
+  /** Informacja (nie błąd): np. „CAŁY DOM” wpisane jako kod - rabat już jest w koszyku. */
+  discountNotice: string;
   clearDiscountError: () => void;
   checkDiscountCode: () => void;
   removeDiscountCode: () => void;
@@ -647,6 +649,7 @@ export default function CartV2(props: CartV2Props) {
   // ===== Ekran 0: zamówienie =====
   const screenOrder = () => (
     <>
+      <CartFinanceTop amount={p.payableTotal} />
       <section className="cv2-hero">
         <div className={`cv2-hero-visuals${p.items.length > 1 ? " is-multi" : ""}`}>
           {p.items.slice(0, 3).map((item) => (
@@ -768,6 +771,7 @@ export default function CartV2(props: CartV2Props) {
             </div>
           )}
           {p.discountError ? <p className="cv2-code-error">{p.discountError}</p> : null}
+          {p.discountNotice ? <p className="cv2-code-notice">{p.discountNotice}</p> : null}
         </div>
         <CartFinance amount={p.payableTotal} />
         {screenDelivery}
