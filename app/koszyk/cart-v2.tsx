@@ -37,6 +37,7 @@ import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPrevi
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
 import CartTrust, { CartFinance, BundleBanner } from "./cart-trust";
+import type { LinkProduktu } from "@/lib/cart-product-links";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "@/app/moskitiery-ramkowe-reviews-data";
@@ -77,6 +78,8 @@ export type CartV2Props = {
   rescueRow: { label: string; amount: number } | null;
   bundleRow: { label: string; amount: number } | null;
   bundleHint: string;
+  bundleProdukty: LinkProduktu[];
+  powrotDoProduktu: { href: string; label: string };
   shippingFee: number;
   expressFee: number;
   orderSurcharge: number;
@@ -461,7 +464,7 @@ export default function CartV2(props: CartV2Props) {
         </div>
       ) : null}
       {p.bundleHint ? (
-        <BundleBanner text={p.bundleHint} />
+        <BundleBanner text={p.bundleHint} produkty={p.bundleProdukty} />
       ) : null}
       {p.appliedDiscount ? (
         <div className="cv2-row">
@@ -1020,6 +1023,11 @@ export default function CartV2(props: CartV2Props) {
         </Link>
         <span className="cv2-top-secure">{ICON.lock} bezpieczne zamówienie</span>
       </header>
+      {step === 0 ? (
+        <Link href={p.powrotDoProduktu.href} className="cart-back-product is-v2">
+          <span aria-hidden="true">←</span> {p.powrotDoProduktu.label}
+        </Link>
+      ) : null}
       <ol className="cv2-progress" aria-label="Kroki zamówienia">
         {STEP_LABELS.map((label, index) => (
           <li key={label} className={index < step ? "is-done" : index === step ? "is-now" : ""} aria-current={index === step ? "step" : undefined}>

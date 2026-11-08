@@ -34,6 +34,7 @@ import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
 import { bundleDiscountHintText, bundleDiscountSummary, bundleLostToCodeText, bundleOrCode, calcBundleDiscount, setBundleDiscountsFromConfig, useBundleDiscountRules } from "@/lib/bundle-discount";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
+import { powrot, produktyWKoszyku } from "@/lib/cart-product-links";
 import PromoSaveModal from "../components/promo-save-modal";
 import { useCartEmailNudge } from "@/lib/cart-email-nudge";
 import { captureCheckoutEmail, getCartEmailArm, getCartKeepArm, getTrackedPromoQuoteCode, type CartEmailArm, type CartKeepArm } from "@/lib/promo-save";
@@ -3365,6 +3366,8 @@ export default function CartPage() {
     combinedSavings,
     bundleRow: bundle.savings > 0 ? { label: bundle.lines.map((line) => line.label).join(", "), amount: bundle.savings } : null,
     bundleHint: bundleLostToCodeText(bundle) || bundleDiscountHintText(bundle),
+    bundleProdukty: produktyWKoszyku(items, backHref),
+    powrotDoProduktu: powrot(backHref, items),
     appliedDiscount,
     rescueRow:
       rescueGrant && rescueAmount > 0
@@ -3561,6 +3564,9 @@ export default function CartPage() {
       <header className="cart-page-header">
         <Link href="/" className="cart-page-brand">
           keika
+        </Link>
+        <Link href={powrot(backHref, items).href} className="cart-back-product">
+          <span aria-hidden="true">←</span> {powrot(backHref, items).label}
         </Link>
         <h1>Koszyk</h1>
       </header>
@@ -3929,7 +3935,7 @@ export default function CartPage() {
                     </div>
                   ) : null}
                   {bundle.hint ? (
-                    <BundleBanner text={bundleDiscountHintText(bundle)} />
+                    <BundleBanner text={bundleDiscountHintText(bundle)} produkty={produktyWKoszyku(items, backHref)} />
                   ) : null}
                   {bundle.lostToCode ? (
                     <div className="cart-page-summary-row is-muted">

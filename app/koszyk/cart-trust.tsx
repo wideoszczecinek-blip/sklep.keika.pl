@@ -4,6 +4,8 @@
 // Agencja 2.11: od wyłączenia SEZON20 z koszyka do kasy przechodzi 12 % zamiast 31 % - cenę trzeba uzasadnić
 // jakością: 5 lat gwarancji · 30 dni na zwrot · dostawa 0 zł · produkcja na wymiar, raty i PayPo, krótko dlaczego warto.
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import type { LinkProduktu } from "@/lib/cart-product-links";
 import { crmGetJson } from "@/lib/crm-get";
 import InstallmentOffer from "@/app/components/installment-offer";
 import { installmentsAvailable } from "@/lib/installments";
@@ -61,17 +63,57 @@ export function CartFinance({ amount }: { amount: number }) {
   );
 }
 
-export function BundleBanner({ text }: { text: string }) {
+// Baner CAŁY DOM (właściciel 8.11): „Dodaj jeszcze 1 sztukę” prowadzi do produktu z koszyka; gdy w koszyku są różne
+// produkty, po kliknięciu pytamy, który klient chce skonfigurować.
+export function BundleBanner({ text, produkty = [] }: { text: string; produkty?: LinkProduktu[] }) {
+  const [wybor, setWybor] = useState(false);
   const discount = /-(\d+(?:[,.]\d+)?)\s*%/.exec(text)?.[1];
-  return (
-    <aside className="checkout-bundle-banner" aria-label="Promocja Cały Dom">
+  const dodaj = /^Dodaj jeszcze/i.test(text) && produkty.length > 0;
+  const tresc = (
+    <>
       <div className="checkout-bundle-art" aria-hidden="true">
         {discount ? <b>−{discount}%</b> : <svg viewBox="0 0 32 32" width="35" height="35" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 15 16 4l13 11M7 13v14h18V13M13 27v-8h6v8" /></svg>}
       </div>
       <div className="checkout-bundle-copy">
         <strong>CAŁY DOM</strong>
         <span>{text}</span>
+        {dodaj ? (
+          <em className="checkout-bundle-go">
+            {produkty.length === 1 ? `Dodaj: ${produkty[0].label.toLowerCase()}` : "Wybierz produkt"} <i aria-hidden="true">→</i>
+          </em>
+        ) : null}
       </div>
-    </aside>
+    </>
+  );
+  if (!dodaj) {
+    return (
+      <aside className="checkout-bundle-banner" aria-label="Promocja Cały Dom">
+        {tresc}
+      </aside>
+    );
+  }
+  if (produkty.length === 1) {
+    return (
+      <Link href={produkty[0].href} className="checkout-bundle-banner is-link">
+        {tresc}
+      </Link>
+    );
+  }
+  return (
+    <div className="checkout-bundle-wrap">
+      <button type="button" className="checkout-bundle-banner is-link" aria-expanded={wybor} onClick={() => setWybor((v) => !v)}>
+        {tresc}
+      </button>
+      {wybor ? (
+        <div className="checkout-bundle-choice" role="group" aria-label="Który produkt chcesz skonfigurować?">
+          <p>Który produkt chcesz skonfigurować?</p>
+          {produkty.map((p) => (
+            <Link key={p.slug} href={p.href}>
+              {p.label} <i aria-hidden="true">→</i>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
