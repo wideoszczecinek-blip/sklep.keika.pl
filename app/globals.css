@@ -26271,3 +26271,125 @@ html[data-theme="dark"] .rs-ft-colors b { color: inherit; }
     overflow: visible;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Rolety dachowe – powitanie (9.11.2026): miniatura produktu na starcie, po
+   chwili dokuje; animacja B25 jako pierwszy kafel po prawej, klik powiększa
+   ją płynnie na całe pole (features/rolety-dachowe/RoofHeroPhotos.tsx).
+--------------------------------------------------------------------------- */
+.rd-hero-photos,
+.rd-hero-photos .rd-hero-stage {
+  background: #fff;
+}
+.rd-hero-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 50%;
+  padding: 2% 4%;
+  box-sizing: border-box;
+  transition: transform 1.1s cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+.rd-hero-photos.is-docked .rd-hero-thumb {
+  padding: 3%;
+}
+.rd-hero-photos.is-docked .rd-hero-stage {
+  box-shadow: 0 6px 16px rgba(8, 20, 35, 0.16), inset 0 0 0 1px rgba(8, 20, 35, 0.08);
+}
+.rd-hero-photos .plisy-hero-tile.rd-hero-anim-tile {
+  cursor: zoom-in;
+  background: #e4e7ea;
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s cubic-bezier(0.2, 0.75, 0.2, 1),
+    left 0.85s cubic-bezier(0.2, 0.75, 0.2, 1),
+    border-radius 0.85s ease,
+    box-shadow 0.6s ease;
+}
+.rd-hero-photos.is-anim-open .plisy-hero-tile.rd-hero-anim-tile {
+  left: 0;
+  z-index: 6;
+  cursor: zoom-out;
+  border-radius: 0.9rem;
+  box-shadow: 0 10px 28px rgba(8, 20, 35, 0.28);
+}
+.rd-hero-photos.is-instant .plisy-hero-tile.rd-hero-anim-tile {
+  transition: none;
+}
+.rd-hero-anim-label {
+  position: absolute;
+  left: 0.55rem;
+  bottom: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(12, 26, 44, 0.72);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+.rd-hero-anim-play {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: #f28c28;
+  font-size: 0.6rem;
+  padding-left: 0.1rem;
+  animation: rdPlayPulse 2.2s ease-in-out infinite;
+}
+@keyframes rdPlayPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 140, 40, 0.55); }
+  50% { box-shadow: 0 0 0 7px rgba(242, 140, 40, 0); }
+}
+.rd-hero-anim-close {
+  position: absolute;
+  right: 0.6rem;
+  top: 0.6rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(12, 26, 44, 0.72);
+  color: #fff;
+  font-size: 0.95rem;
+  line-height: 2rem;
+  text-align: center;
+  pointer-events: none;
+}
+/* telefon: animacja nakłada się na miniaturę */
+.rd-hero-stage-anim {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.rd-hero-photos.is-anim-open .rd-hero-stage-anim {
+  opacity: 1;
+}
+.rd-hero-strip .rd-hero-anim-tile {
+  overflow: hidden;
+}
+.rd-hero-strip .rd-hero-anim-tile.is-on {
+  box-shadow: 0 0 0 2px #f28c28;
+}
+.rd-hero-strip .rd-hero-anim-label {
+  left: 0.3rem;
+  bottom: 0.3rem;
+  font-size: 0.66rem;
+  padding: 0.2rem 0.45rem 0.2rem 0.25rem;
+}
+.rd-hero-strip .rd-hero-anim-play {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-hero-anim-play { animation: none; }
+}

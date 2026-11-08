@@ -1,63 +1,73 @@
 "use client";
 
-// Hero animation for rolety dachowe (v2, 2026-09-18 - the owner on v1: "w
-// ogóle nie przypomina rolety"). Instead of drawing the blind by hand, the
-// scene is built from photoreal frames of the SAME attic window rendered
-// with gemini-2.5-flash-image from one reference plate:
-//   /rolety-dachowe/hero/attic-window.jpg  - blind rolled up: white cassette
-//                                             at the top, side guides, clear
-//                                             glass (the base <img>)
-//   /rolety-dachowe/hero/fabric-*.jpg      - blind fully closed in four real
-//                                             fabrics (DEKO beige, TERMO
-//                                             graphite, TERMO navy, DEKO
-//                                             sage), cropped to the pane
-// The frames are pixel-aligned (mean difference outside the pane ≈ 2/255),
-// so unrolling is a wipe: the closed frame is clipped to the fabric area
-// between the cassette and the current bottom-bar position, drawn over the
-// open plate, with a shaded aluminium bottom bar (handle, brush seal) and
-// its shadow on the glass at the wipe edge. Fabric colours cross-fade while
-// the blind rests - the MULTISTOP brake holds it at any height, which is the
-// one thing this product is about. Everything is drawn in the base plate's
-// pixel space (1344x768) at device pixel ratio, so it stays sharp at any
-// size; a gentle 3D turn of the whole plate reads as a showroom presentation.
+// Animacja rolety dachowej (v3, 9.11.2026 – właściciel: „animacja nie oddająca produktu to dno… przyjrzyj się
+// systemowi B25 szeroki – inaczej w sieci Dekolux – postaraj się, aby ta animacja oddawała produkt jak najbardziej”).
+//
+// v2 (18.09) rysowała tylko tkaninę na zdjęciu okna z wygenerowaną cienką białą kasetą i wąskimi prowadnicami –
+// tak nie wygląda nasz produkt. Teraz cały system B25 szeroki jest rysowany w kodzie na zdjęciu samego okna
+// (/rolety-dachowe/hero/attic-window.jpg, z jego cienkiej kasety i prowadnic nic nie zostaje – rysunek je zakrywa),
+// wg rysunku złożeniowego i zdjęć producenta systemu:
+//   • kaseta z aluminiową maskownicą: wypukłe lico, przetłoczenie i dolna warga, spod której wychodzi tkanina;
+//   • szerokie (ok. 5 cm) płaskie prowadnice aluminiowe na skrzydle, połączone z kasetą ukośnymi narożnikami
+//     jak rama obrazu, z zaokrągloną krawędzią wewnętrzną i plastikowymi zaślepkami na dole;
+//   • belka dolna: profil aluminiowy ze szczotką uszczelniającą i dwoma uchwytami, końce chowają się w prowadnicach
+//     (hamulec MULTISTOP – roleta staje na dowolnej wysokości);
+//   • tkaniny DEKO (przepuszczają światło – na tkaninie widać poświatę okna) i TERMO (blackout), splot tkaniny.
+// Kolor osprzętu: anoda (srebrny), jak na miniaturze produktu. Elementy stałe (kaseta, prowadnice, cienie) rysują
+// się raz do bufora w 2× rozdzielczości zdjęcia; co klatkę rysuje się tylko tkanina i belka. Współrzędne w pikselach
+// zdjęcia bazowego (1344×768), okno widziane od dołu – prowadnice zbiegają się ku dołowi.
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 export const RD_HERO_BASE_SRC = "/rolety-dachowe/hero/attic-window.jpg";
 const IMG_W = 1344;
 const IMG_H = 768;
+const FS = 2; // rozdzielczość bufora elementów stałych
 
-// The closed-fabric crops cover this rectangle of the base plate.
-const CROP = { x: 440, y: 60, w: 500, h: 600 };
-const FABRIC_FRAMES = [
-  { id: "deko-beige", src: "/rolety-dachowe/hero/fabric-beige.jpg" },
-  { id: "termo-graphite", src: "/rolety-dachowe/hero/fabric-graphite.jpg" },
-  { id: "termo-navy", src: "/rolety-dachowe/hero/fabric-navy.jpg" },
-  { id: "deko-sage", src: "/rolety-dachowe/hero/fabric-sage.jpg" },
-];
-
-// Fabric area between the side guides, measured on the frames (base-plate
-// pixels): top edge right under the cassette, bottom edge where the closed
-// blind's bottom bar rests on the sash. The window is seen from below, so
-// the quad narrows towards the bottom.
-const FABRIC = { top: 131, bottom: 622, xlTop: 489, xrTop: 884, xlBottom: 525, xrBottom: 833 };
-const BAR_H = 14;
+// Skrzydło okna na zdjęciu (zmierzone): wewnętrzna krawędź drewna skrzydła po lewej i prawej, od górnej listwy
+// skrzydła (y 92) do dolnej (y 640).
+const SASH = { y0: 92, y1: 640, l0: 472, l1: 510, r0: 902, r1: 846 };
+const CAS_TOP = 89; // górna krawędź kasety
+const CAS_BOT = 137; // dolna warga kasety – stąd wychodzi tkanina
+const GUIDE_BOT = 645; // koniec prowadnic (z zaślepką)
+const BAR_H = 15;
+const BAR_TOP_MIN = CAS_BOT - 1; // roleta zwinięta – belka tuż pod wargą kasety
+const BAR_TOP_MAX = 609; // roleta zamknięta – belka na dolnej listwie skrzydła
 const LOOP_MS = 26000;
 
-// [time ms, bottom bar position: 0 = tucked under the cassette, 1 = fully closed]
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const ty = (y: number) => (y - SASH.y0) / (SASH.y1 - SASH.y0);
+/** Zewnętrzna krawędź lewej / prawej prowadnicy na wysokości y. */
+const lo = (y: number) => lerp(SASH.l0, SASH.l1, ty(y));
+const ro = (y: number) => lerp(SASH.r0, SASH.r1, ty(y));
+/** Szerokość prowadnicy (ok. 5 cm) na wysokości y – perspektywa. */
+const gw = (y: number) => lerp(31, 25.5, ty(y));
+/** Wewnętrzna krawędź prowadnic – granica tkaniny. */
+const li = (y: number) => lo(y) + gw(y);
+const ri = (y: number) => ro(y) - gw(y);
+
+type Fabric = { id: string; color: string; kind: "deko" | "termo" };
+const FABRICS: Fabric[] = [
+  { id: "deko-bez", color: "#d6cab2", kind: "deko" },
+  { id: "termo-grafit", color: "#4a4e54", kind: "termo" },
+  { id: "deko-szalwia", color: "#a5af97", kind: "deko" },
+  { id: "termo-granat", color: "#2d394e", kind: "termo" },
+];
+
+// [czas ms, położenie belki: 0 = schowana pod kasetą, 1 = roleta zamknięta]
 type Key = [number, number];
 const KEYS: Key[] = [
-  [0, 0.03],
-  [2200, 0.03],
+  [0, 0],
+  [2200, 0],
   [6600, 0.56],
   [8600, 0.56],
   [12600, 1.0],
   [14800, 1.0],
   [18600, 0.32],
   [20200, 0.32],
-  [23600, 0.03],
-  [26000, 0.03],
+  [23600, 0],
+  [26000, 0],
 ];
-// Fabric changes happen while the blind rests (or is rolled up, invisibly).
+// Zmiana tkaniny, gdy roleta stoi (albo jest zwinięta).
 const FABRIC_TIMES = [7300, 13400, 19100, 24600];
 const FADE_MS = 1300;
 
@@ -78,7 +88,6 @@ function barAt(t: number): number {
   return a[1] + (b[1] - a[1]) * p;
 }
 
-/** Which fabric frame shows at time t, and the next one blended in (0..1). */
 function fabricAt(t: number): { from: number; to: number; blend: number } {
   let idx = 0;
   let blend = 0;
@@ -89,39 +98,19 @@ function fabricAt(t: number): { from: number; to: number; blend: number } {
       blend = into < FADE_MS ? easeInOut(into / FADE_MS) : 1;
     }
   }
-  const n = FABRIC_FRAMES.length;
+  const n = FABRICS.length;
   return { from: (idx - 1 + n) % n, to: idx % n, blend: idx === 0 ? 1 : blend };
 }
 
-/** Left/right edge of the fabric at a given vertical position (0 top .. 1 bottom). */
-function edgesAt(v: number): { y: number; xl: number; xr: number } {
-  return {
-    y: FABRIC.top + (FABRIC.bottom - FABRIC.top) * v,
-    xl: FABRIC.xlTop + (FABRIC.xlBottom - FABRIC.xlTop) * v,
-    xr: FABRIC.xrTop + (FABRIC.xrBottom - FABRIC.xrTop) * v,
+// Powtarzalny pseudolosowy szum (ten sam rysunek przy każdym wejściu).
+function rng(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
   };
 }
 
-function fabricClip(ctx: CanvasRenderingContext2D, v: number) {
-  const bot = edgesAt(v);
-  ctx.beginPath();
-  ctx.moveTo(FABRIC.xlTop, FABRIC.top - 2);
-  ctx.lineTo(FABRIC.xrTop, FABRIC.top - 2);
-  ctx.lineTo(bot.xr, bot.y);
-  ctx.lineTo(bot.xl, bot.y);
-  ctx.closePath();
-}
-
-function paneClip(ctx: CanvasRenderingContext2D) {
-  ctx.beginPath();
-  ctx.moveTo(FABRIC.xlTop - 4, FABRIC.top - 2);
-  ctx.lineTo(FABRIC.xrTop + 4, FABRIC.top - 2);
-  ctx.lineTo(FABRIC.xrBottom + 4, FABRIC.bottom + 12);
-  ctx.lineTo(FABRIC.xlBottom - 4, FABRIC.bottom + 12);
-  ctx.closePath();
-}
-
-// Older WebKit has no roundRect - hand-built path.
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rr = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath();
@@ -137,91 +126,473 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.closePath();
 }
 
-function drawScene(ctx: CanvasRenderingContext2D, t: number, frames: Array<HTMLImageElement | null>) {
-  const v = barAt(t);
-  const fab = fabricAt(t);
-  const edge = edgesAt(v);
-  const from = frames[fab.from];
-  const to = frames[fab.to];
+// ------------------------------------------------------------------ splot tkaniny i włosie szczotki
 
-  // --- fabric: the closed frame(s) wiped down to the bar -------------------
-  if (v > 0.005 && (from || to)) {
-    ctx.save();
-    fabricClip(ctx, v);
-    ctx.clip();
-    const draw = (img: HTMLImageElement, alpha: number) => {
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(img, 0, 0, CROP.w, CROP.h, CROP.x, CROP.y, CROP.w, CROP.h);
-    };
-    if (from && (fab.blend < 1 || !to)) draw(from, 1);
-    if (to && fab.blend > 0) draw(to, from && fab.blend < 1 ? fab.blend : 1);
-    ctx.globalAlpha = 1;
-    // the fabric curls slightly under the bar - a soft dark band at the edge
-    const g = ctx.createLinearGradient(0, edge.y - 10, 0, edge.y);
-    g.addColorStop(0, "rgba(0,0,0,0)");
-    g.addColorStop(1, "rgba(0,0,0,0.22)");
-    ctx.fillStyle = g;
-    ctx.fillRect(edge.xl - 2, edge.y - 10, edge.xr - edge.xl + 4, 10);
-    ctx.restore();
+function makeWeave(): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 96;
+  c.height = 96;
+  const g = c.getContext("2d");
+  if (!g) return c;
+  const r = rng(7);
+  const rows = Array.from({ length: 96 }, () => r() - 0.5);
+  const cols = Array.from({ length: 96 }, () => r() - 0.5);
+  const img = g.createImageData(96, 96);
+  for (let y = 0; y < 96; y++) {
+    for (let x = 0; x < 96; x++) {
+      // nitki wątku i osnowy + drobne ziarno
+      const v = rows[y] * 0.3 + cols[x] * 0.25 + (r() - 0.5) * 0.45 + ((x + y) % 2 === 0 ? 0.04 : -0.04);
+      const i = (y * 96 + x) * 4;
+      const light = v > 0;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = light ? 255 : 0;
+      img.data[i + 3] = Math.min(255, Math.round(Math.abs(v) * 70));
+    }
   }
-
-  // --- bar shadow on the glass below the bar ---------------------------------
-  if (v < 0.995) {
-    ctx.save();
-    paneClip(ctx);
-    ctx.clip();
-    const g = ctx.createLinearGradient(0, edge.y + BAR_H - 1, 0, edge.y + BAR_H + 16);
-    g.addColorStop(0, "rgba(20, 28, 40, 0.30)");
-    g.addColorStop(1, "rgba(20, 28, 40, 0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(edge.xl - 2, edge.y + BAR_H - 1, edge.xr - edge.xl + 4, 18);
-    ctx.restore();
-  }
-
-  // --- aluminium bottom bar with handle and brush seal ---------------------------
-  const barW = edge.xr - edge.xl + 6;
-  const barX = edge.xl - 3;
-  const barY = edge.y - 1;
-  ctx.save();
-  ctx.shadowColor = "rgba(15, 20, 30, 0.35)";
-  ctx.shadowBlur = 5;
-  ctx.shadowOffsetY = 2;
-  const metal = ctx.createLinearGradient(0, barY, 0, barY + BAR_H);
-  metal.addColorStop(0, "#ffffff");
-  metal.addColorStop(0.35, "#f4f6f8");
-  metal.addColorStop(0.8, "#dde2e7");
-  metal.addColorStop(1, "#c4cad1");
-  ctx.fillStyle = metal;
-  roundRectPath(ctx, barX, barY, barW, BAR_H, 2.5);
-  ctx.fill();
-  ctx.restore();
-  // brush seal under the bar
-  ctx.fillStyle = "rgba(70, 72, 76, 0.55)";
-  ctx.fillRect(barX + 3, barY + BAR_H, barW - 6, 1.8);
-  // handle: a small centred grip, slightly recessed
-  const cx = barX + barW / 2;
-  const hg = ctx.createLinearGradient(0, barY + 3, 0, barY + BAR_H - 3);
-  hg.addColorStop(0, "#d3d8dd");
-  hg.addColorStop(1, "#b7bec6");
-  ctx.fillStyle = hg;
-  roundRectPath(ctx, cx - 17, barY + 3, 34, BAR_H - 6, 2);
-  ctx.fill();
-  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
-  ctx.fillRect(cx - 12, barY + BAR_H / 2 - 0.6, 24, 1.2);
+  g.putImageData(img, 0, 0);
+  return c;
 }
 
-function loadFrames(onReady: () => void): Array<HTMLImageElement | null> {
-  const list: Array<HTMLImageElement | null> = FABRIC_FRAMES.map(() => null);
-  FABRIC_FRAMES.forEach((frame, index) => {
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = () => {
-      list[index] = img;
-      onReady();
-    };
-    img.src = frame.src;
-  });
-  return list;
+function makeBrush(): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 64;
+  c.height = 8;
+  const g = c.getContext("2d");
+  if (!g) return c;
+  const r = rng(11);
+  g.fillStyle = "rgb(92, 95, 100)";
+  g.fillRect(0, 0, 64, 8);
+  for (let x = 0; x < 64; x += 0.5) {
+    const len = 4 + r() * 4;
+    g.strokeStyle = r() > 0.5 ? `rgba(170, 172, 176, ${0.35 + r() * 0.4})` : `rgba(40, 42, 46, ${0.3 + r() * 0.4})`;
+    g.lineWidth = 0.5;
+    g.beginPath();
+    g.moveTo(x, 0);
+    g.lineTo(x + (r() - 0.5) * 1.2, len);
+    g.stroke();
+  }
+  return c;
+}
+
+// ------------------------------------------------------------------ elementy stałe: kaseta, prowadnice, cienie
+
+function guidePath(ctx: CanvasRenderingContext2D, side: "l" | "r") {
+  const top = CAS_TOP + 10;
+  ctx.beginPath();
+  if (side === "l") {
+    ctx.moveTo(lo(top), top);
+    ctx.lineTo(li(top), top);
+    ctx.lineTo(li(GUIDE_BOT), GUIDE_BOT);
+    ctx.lineTo(lo(GUIDE_BOT), GUIDE_BOT);
+  } else {
+    ctx.moveTo(ri(top), top);
+    ctx.lineTo(ro(top), top);
+    ctx.lineTo(ro(GUIDE_BOT), GUIDE_BOT);
+    ctx.lineTo(ri(GUIDE_BOT), GUIDE_BOT);
+  }
+  ctx.closePath();
+}
+
+function drawGuide(ctx: CanvasRenderingContext2D, side: "l" | "r") {
+  // cień prowadnicy na drewnie skrzydła
+  ctx.save();
+  ctx.shadowColor = "rgba(40, 30, 20, 0.35)";
+  ctx.shadowBlur = 7 * FS;
+  ctx.shadowOffsetX = (side === "l" ? -1 : 1) * FS;
+  ctx.shadowOffsetY = 1.5 * FS;
+  guidePath(ctx, side);
+  ctx.fillStyle = "#c9ced3";
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  guidePath(ctx, side);
+  ctx.clip();
+  // Profil lica w poprzek prowadnicy: krawędź zewnętrzna, szerokie płaskie lico z odblaskiem, zaokrąglona krawędź
+  // wewnętrzna, przy której tkanina wchodzi w kanał. Rysowane plasterkami, bo prowadnica jest skośna.
+  const stops: [number, string][] =
+    side === "l"
+      ? [
+          [0, "#9ba2a9"],
+          [0.07, "#cfd3d7"],
+          [0.3, "#e6e9ec"],
+          [0.55, "#d9dde1"],
+          [0.8, "#c3c8cd"],
+          [0.9, "#aeb5bb"],
+          [0.96, "#7f868d"],
+          [1, "#5d646b"],
+        ]
+      : [
+          [0, "#5d646b"],
+          [0.04, "#7f868d"],
+          [0.1, "#a9b0b6"],
+          [0.22, "#c8cdd1"],
+          [0.5, "#d3d7db"],
+          [0.74, "#dfe2e5"],
+          [0.93, "#c7ccd0"],
+          [1, "#949ba2"],
+        ];
+  for (let y = CAS_TOP; y < GUIDE_BOT + 2; y += 2) {
+    const x0 = side === "l" ? lo(y) : ri(y);
+    const x1 = side === "l" ? li(y) : ro(y);
+    const g = ctx.createLinearGradient(x0, 0, x1, 0);
+    for (const [o, c] of stops) g.addColorStop(o, c);
+    ctx.fillStyle = g;
+    ctx.fillRect(x0 - 2, y, x1 - x0 + 4, 2.6);
+  }
+  // szczotkowane aluminium – drobne rysy wzdłuż profilu
+  const r = rng(side === "l" ? 3 : 5);
+  ctx.lineWidth = 0.35;
+  for (let k = 0; k < 70; k++) {
+    const f = r();
+    const top = CAS_TOP + 10 + r() * 40;
+    const bot = GUIDE_BOT - r() * 40;
+    const xa = side === "l" ? lerp(lo(top), li(top), f) : lerp(ri(top), ro(top), f);
+    const xb = side === "l" ? lerp(lo(bot), li(bot), f) : lerp(ri(bot), ro(bot), f);
+    ctx.strokeStyle = r() > 0.5 ? `rgba(255,255,255,${0.06 + r() * 0.1})` : `rgba(0,0,0,${0.03 + r() * 0.04})`;
+    ctx.beginPath();
+    ctx.moveTo(xa, top);
+    ctx.lineTo(xb, bot);
+    ctx.stroke();
+  }
+  // lekkie zaciemnienie prawej prowadnicy (patrzymy na nią bardziej z boku)
+  if (side === "r") {
+    ctx.fillStyle = "rgba(30, 40, 52, 0.06)";
+    ctx.fillRect(ri(GUIDE_BOT) - 4, CAS_TOP, ro(CAS_TOP) - ri(GUIDE_BOT) + 8, GUIDE_BOT - CAS_TOP);
+  }
+  // Zaślepka na dole prowadnicy (plastik)
+  const capTop = GUIDE_BOT - 9;
+  const cx0 = side === "l" ? lo(capTop) : ri(capTop);
+  const cx1 = side === "l" ? li(capTop) : ro(capTop);
+  const cg = ctx.createLinearGradient(0, capTop, 0, GUIDE_BOT);
+  cg.addColorStop(0, "#9aa1a8");
+  cg.addColorStop(0.25, "#c5cad0");
+  cg.addColorStop(1, "#7a8188");
+  ctx.fillStyle = cg;
+  ctx.fillRect(cx0 - 3, capTop, cx1 - cx0 + 6, GUIDE_BOT - capTop + 2);
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fillRect(cx0 - 3, capTop, cx1 - cx0 + 6, 0.8);
+  ctx.restore();
+
+  // wyraźna krawędź wewnętrzna (wejście tkaniny do kanału) i jasna krawędź zewnętrzna
+  ctx.save();
+  ctx.lineWidth = 0.9;
+  ctx.strokeStyle = "rgba(40, 46, 54, 0.55)";
+  ctx.beginPath();
+  if (side === "l") {
+    ctx.moveTo(li(CAS_BOT), CAS_BOT);
+    ctx.lineTo(li(GUIDE_BOT), GUIDE_BOT);
+  } else {
+    ctx.moveTo(ri(CAS_BOT), CAS_BOT);
+    ctx.lineTo(ri(GUIDE_BOT), GUIDE_BOT);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  if (side === "l") {
+    ctx.moveTo(lo(CAS_BOT) + 1.2, CAS_BOT);
+    ctx.lineTo(lo(GUIDE_BOT) + 1.2, GUIDE_BOT - 10);
+  } else {
+    ctx.moveTo(ro(CAS_BOT) - 1.2, CAS_BOT);
+    ctx.lineTo(ro(GUIDE_BOT) - 1.2, GUIDE_BOT - 10);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function cassettePath(ctx: CanvasRenderingContext2D) {
+  const mitreY = CAS_TOP + 12;
+  ctx.beginPath();
+  ctx.moveTo(lo(CAS_TOP) - 4, CAS_TOP);
+  ctx.lineTo(ro(CAS_TOP) + 4, CAS_TOP);
+  ctx.lineTo(ro(mitreY) + 3, mitreY);
+  ctx.lineTo(ri(CAS_BOT), CAS_BOT);
+  ctx.lineTo(li(CAS_BOT), CAS_BOT);
+  ctx.lineTo(lo(mitreY) - 3, mitreY);
+  ctx.closePath();
+}
+
+function drawCassette(ctx: CanvasRenderingContext2D) {
+  ctx.save();
+  ctx.shadowColor = "rgba(40, 30, 20, 0.4)";
+  ctx.shadowBlur = 8 * FS;
+  ctx.shadowOffsetY = 2.5 * FS;
+  cassettePath(ctx);
+  ctx.fillStyle = "#d3d7db";
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  cassettePath(ctx);
+  ctx.clip();
+  // Maskownica kasety widziana od dołu: krawędź przy skrzydle, wypukłe lico z odblaskiem, przetłoczenie, dolna warga.
+  const g = ctx.createLinearGradient(0, CAS_TOP, 0, CAS_BOT);
+  g.addColorStop(0, "#7d848b");
+  g.addColorStop(0.05, "#b9bec4");
+  g.addColorStop(0.17, "#f4f6f7");
+  g.addColorStop(0.32, "#eceef0");
+  g.addColorStop(0.55, "#d9dde0");
+  g.addColorStop(0.68, "#c6cbd0");
+  g.addColorStop(0.715, "#959ca3");
+  g.addColorStop(0.735, "#f1f3f4");
+  g.addColorStop(0.85, "#dfe2e5");
+  g.addColorStop(0.95, "#bfc5ca");
+  g.addColorStop(1, "#80878e");
+  ctx.fillStyle = g;
+  ctx.fillRect(lo(CAS_TOP) - 6, CAS_TOP - 1, ro(CAS_TOP) - lo(CAS_TOP) + 12, CAS_BOT - CAS_TOP + 2);
+  // poprzeczne światło: lico jaśniejsze przy środku okna
+  const side = ctx.createLinearGradient(lo(CAS_TOP), 0, ro(CAS_TOP), 0);
+  side.addColorStop(0, "rgba(0,0,0,0.07)");
+  side.addColorStop(0.45, "rgba(255,255,255,0.06)");
+  side.addColorStop(1, "rgba(0,0,0,0.1)");
+  ctx.fillStyle = side;
+  ctx.fillRect(lo(CAS_TOP) - 6, CAS_TOP - 1, ro(CAS_TOP) - lo(CAS_TOP) + 12, CAS_BOT - CAS_TOP + 2);
+  // szczotkowane aluminium – poziome rysy
+  const r = rng(9);
+  ctx.lineWidth = 0.35;
+  for (let k = 0; k < 120; k++) {
+    const y = CAS_TOP + 2 + r() * (CAS_BOT - CAS_TOP - 3);
+    const x = lo(CAS_TOP) + r() * (ro(CAS_TOP) - lo(CAS_TOP));
+    const len = 30 + r() * 160;
+    ctx.strokeStyle = r() > 0.45 ? `rgba(255,255,255,${0.1 + r() * 0.2})` : `rgba(0,0,0,${0.03 + r() * 0.05})`;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + len, y);
+    ctx.stroke();
+  }
+  // narożniki (zaślepki kasety): ukośne połączenie z prowadnicą jak w ramie obrazu
+  const mitreY = CAS_TOP + 12;
+  for (const s of ["l", "r"] as const) {
+    const outer = s === "l" ? lo(mitreY) - 3 : ro(mitreY) + 3;
+    const inner = s === "l" ? li(CAS_BOT) : ri(CAS_BOT);
+    const edge = s === "l" ? lo(CAS_TOP) - 4 : ro(CAS_TOP) + 4;
+    ctx.beginPath();
+    ctx.moveTo(edge, CAS_TOP);
+    ctx.lineTo(edge + (s === "l" ? 14 : -14), CAS_TOP);
+    ctx.quadraticCurveTo(inner + (s === "l" ? 4 : -4), CAS_TOP + 26, inner, CAS_BOT);
+    ctx.lineTo(outer, mitreY);
+    ctx.closePath();
+    const cg = ctx.createLinearGradient(edge, CAS_TOP, inner, CAS_BOT);
+    cg.addColorStop(0, "rgba(255,255,255,0.18)");
+    cg.addColorStop(0.6, "rgba(0,0,0,0.04)");
+    cg.addColorStop(1, "rgba(0,0,0,0.12)");
+    ctx.fillStyle = cg;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(60, 66, 74, 0.35)";
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(edge + (s === "l" ? 14 : -14), CAS_TOP);
+    ctx.quadraticCurveTo(inner + (s === "l" ? 4 : -4), CAS_TOP + 26, inner, CAS_BOT);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // szczelina pod dolną wargą, z której wychodzi tkanina
+  ctx.fillStyle = "rgba(25, 28, 33, 0.55)";
+  ctx.beginPath();
+  ctx.moveTo(li(CAS_BOT), CAS_BOT - 0.6);
+  ctx.lineTo(ri(CAS_BOT), CAS_BOT - 0.6);
+  ctx.lineTo(ri(CAS_BOT + 1.4), CAS_BOT + 1.4);
+  ctx.lineTo(li(CAS_BOT + 1.4), CAS_BOT + 1.4);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** Cienie rzucane przez kasetę i prowadnice na tkaninę i szybę. */
+function drawInnerShadows(ctx: CanvasRenderingContext2D) {
+  const sh = ctx.createLinearGradient(0, CAS_BOT, 0, CAS_BOT + 12);
+  sh.addColorStop(0, "rgba(15, 22, 32, 0.32)");
+  sh.addColorStop(1, "rgba(15, 22, 32, 0)");
+  ctx.fillStyle = sh;
+  ctx.fillRect(li(CAS_BOT), CAS_BOT, ri(CAS_BOT) - li(CAS_BOT), 12);
+  // Cień wzdłuż skośnej krawędzi prowadnicy: pochylony układ współrzędnych, w którym krawędź jest pionowa –
+  // jeden gradient na całą długość, bez prążków.
+  const h = GUIDE_BOT - CAS_BOT;
+  const sl = (li(GUIDE_BOT) - li(CAS_BOT)) / h;
+  ctx.save();
+  ctx.transform(1, 0, sl, 1, -sl * CAS_BOT, 0);
+  const gl = ctx.createLinearGradient(li(CAS_BOT), 0, li(CAS_BOT) + 9, 0);
+  gl.addColorStop(0, "rgba(15, 22, 32, 0.3)");
+  gl.addColorStop(1, "rgba(15, 22, 32, 0)");
+  ctx.fillStyle = gl;
+  ctx.fillRect(li(CAS_BOT), CAS_BOT, 9, h);
+  ctx.restore();
+  const sr = (ri(GUIDE_BOT) - ri(CAS_BOT)) / h;
+  ctx.save();
+  ctx.transform(1, 0, sr, 1, -sr * CAS_BOT, 0);
+  const gr = ctx.createLinearGradient(ri(CAS_BOT), 0, ri(CAS_BOT) - 7, 0);
+  gr.addColorStop(0, "rgba(15, 22, 32, 0.22)");
+  gr.addColorStop(1, "rgba(15, 22, 32, 0)");
+  ctx.fillStyle = gr;
+  ctx.fillRect(ri(CAS_BOT) - 7, CAS_BOT, 7, h);
+  ctx.restore();
+}
+
+function renderStatic(): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = IMG_W * FS;
+  c.height = IMG_H * FS;
+  const ctx = c.getContext("2d");
+  if (!ctx) return c;
+  ctx.scale(FS, FS);
+  drawInnerShadows(ctx);
+  drawGuide(ctx, "l");
+  drawGuide(ctx, "r");
+  drawCassette(ctx);
+  return c;
+}
+
+// ------------------------------------------------------------------ co klatkę: tkanina i belka
+
+type Assets = { frame: HTMLCanvasElement; weave: CanvasPattern | null; brush: CanvasPattern | null };
+
+function fabricClip(ctx: CanvasRenderingContext2D, bottom: number) {
+  const top = CAS_BOT - 2;
+  ctx.beginPath();
+  ctx.moveTo(li(top) - 2, top);
+  ctx.lineTo(ri(top) + 2, top);
+  ctx.lineTo(ri(bottom) + 2, bottom);
+  ctx.lineTo(li(bottom) - 2, bottom);
+  ctx.closePath();
+}
+
+function drawFabric(ctx: CanvasRenderingContext2D, f: Fabric, alpha: number, bottom: number, a: Assets) {
+  const x0 = li(CAS_BOT) - 4;
+  const x1 = ri(CAS_BOT) + 4;
+  const w = x1 - x0;
+  const h = bottom - CAS_BOT + 4;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = f.color;
+  ctx.fillRect(x0, CAS_BOT - 4, w, h);
+  if (a.weave) {
+    ctx.globalAlpha = alpha * (f.kind === "deko" ? 0.32 : 0.24);
+    ctx.fillStyle = a.weave;
+    ctx.fillRect(x0, CAS_BOT - 4, w, h);
+  }
+  if (f.kind === "deko") {
+    // DEKO przepuszcza światło: poświata okna przez tkaninę, najjaśniej na środku szyby
+    ctx.globalAlpha = alpha;
+    const cx = (x0 + x1) / 2;
+    const glow = ctx.createRadialGradient(cx + 10, 300, 20, cx, 330, 330);
+    glow.addColorStop(0, "rgba(255, 252, 240, 0.30)");
+    glow.addColorStop(0.6, "rgba(255, 250, 235, 0.12)");
+    glow.addColorStop(1, "rgba(255, 250, 235, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(x0, CAS_BOT - 4, w, h);
+  } else {
+    // TERMO nie przepuszcza światła: tylko delikatny połysk splotu i ciemniejsze brzegi
+    ctx.globalAlpha = alpha;
+    const sheen = ctx.createLinearGradient(x0, CAS_BOT, x1, bottom);
+    sheen.addColorStop(0, "rgba(255,255,255,0.03)");
+    sheen.addColorStop(0.45, "rgba(255,255,255,0.08)");
+    sheen.addColorStop(1, "rgba(0,0,0,0.12)");
+    ctx.fillStyle = sheen;
+    ctx.fillRect(x0, CAS_BOT - 4, w, h);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawBar(ctx: CanvasRenderingContext2D, top: number, a: Assets) {
+  const yb = top + BAR_H;
+  const xl = li(top) - 6;
+  const xr = ri(top) + 6;
+  // cień belki na szybie pod nią
+  if (top < BAR_TOP_MAX - 0.5) {
+    const sg = ctx.createLinearGradient(0, yb + 3, 0, yb + 22);
+    sg.addColorStop(0, "rgba(20, 28, 40, 0.28)");
+    sg.addColorStop(1, "rgba(20, 28, 40, 0)");
+    ctx.fillStyle = sg;
+    ctx.fillRect(li(yb), yb + 3, ri(yb) - li(yb), 19);
+  }
+  // szczotka uszczelniająca pod belką
+  if (a.brush) {
+    ctx.save();
+    ctx.translate(0, yb - 0.5);
+    ctx.fillStyle = a.brush;
+    ctx.fillRect(xl + 4, 0, xr - xl - 8, 3.6);
+    ctx.restore();
+  }
+  // profil belki: górna krawędź z odblaskiem, lico, spód
+  ctx.save();
+  ctx.shadowColor = "rgba(15, 20, 30, 0.35)";
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 1.5;
+  const g = ctx.createLinearGradient(0, top, 0, yb);
+  g.addColorStop(0, "#9da4ab");
+  g.addColorStop(0.08, "#f7f8f9");
+  g.addColorStop(0.3, "#e8ebee");
+  g.addColorStop(0.62, "#d0d5da");
+  g.addColorStop(0.82, "#b3bac1");
+  g.addColorStop(0.9, "#8b9299");
+  g.addColorStop(1, "#6f767d");
+  ctx.fillStyle = g;
+  roundRectPath(ctx, xl, top, xr - xl, BAR_H, 2);
+  ctx.fill();
+  ctx.restore();
+  // rowek na lico belki
+  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  ctx.fillRect(xl + 2, top + BAR_H * 0.66, xr - xl - 4, 0.7);
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.fillRect(xl + 2, top + BAR_H * 0.66 + 0.7, xr - xl - 4, 0.5);
+  // dwa uchwyty (szare tworzywo) – za nie ściąga się roletę
+  for (const f of [0.3, 0.7]) {
+    const cx = lerp(li(top), ri(top), f);
+    const hw = 17;
+    const hy = top + 3;
+    const hh = BAR_H + 4;
+    ctx.save();
+    ctx.shadowColor = "rgba(15, 20, 30, 0.4)";
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetY = 1.5;
+    const hg = ctx.createLinearGradient(0, hy, 0, hy + hh);
+    hg.addColorStop(0, "#d9dde1");
+    hg.addColorStop(0.45, "#c0c6cc");
+    hg.addColorStop(1, "#8e959c");
+    ctx.fillStyle = hg;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw, hy);
+    ctx.lineTo(cx + hw, hy);
+    ctx.lineTo(cx + hw - 3, hy + hh);
+    ctx.lineTo(cx - hw + 3, hy + hh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.fillRect(cx - hw + 1, hy + 0.5, hw * 2 - 2, 0.8);
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.fillRect(cx - hw + 5, hy + hh - 5, hw * 2 - 10, 0.9);
+    // wkręt
+    ctx.fillStyle = "rgba(80, 86, 92, 0.7)";
+    ctx.beginPath();
+    ctx.arc(cx + hw - 6, hy + hh * 0.42, 1.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawScene(ctx: CanvasRenderingContext2D, t: number, a: Assets) {
+  const v = barAt(t);
+  const fab = fabricAt(t);
+  const top = lerp(BAR_TOP_MIN, BAR_TOP_MAX, v);
+  const fabricBottom = top + 4;
+
+  if (fabricBottom > CAS_BOT) {
+    ctx.save();
+    fabricClip(ctx, fabricBottom);
+    ctx.clip();
+    const from = FABRICS[fab.from];
+    const to = FABRICS[fab.to];
+    if (fab.blend < 1) drawFabric(ctx, from, 1, fabricBottom, a);
+    if (fab.blend > 0) drawFabric(ctx, to, fab.blend < 1 ? fab.blend : 1, fabricBottom, a);
+    // tkanina wchodzi w zacisk belki – cień tuż nad belką
+    const eg = ctx.createLinearGradient(0, top - 8, 0, top + 1);
+    eg.addColorStop(0, "rgba(0,0,0,0)");
+    eg.addColorStop(1, "rgba(0,0,0,0.2)");
+    ctx.fillStyle = eg;
+    ctx.fillRect(li(top) - 2, top - 8, ri(top) - li(top) + 4, 9);
+    ctx.restore();
+  }
+  drawBar(ctx, top, a);
+  ctx.drawImage(a.frame, 0, 0, IMG_W, IMG_H);
 }
 
 export default function RoofHeroScene({ active = true }: { active?: boolean }) {
@@ -245,12 +616,24 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const weaveCanvas = makeWeave();
+    const brushCanvas = makeBrush();
+    const weave = ctx.createPattern(weaveCanvas, "repeat");
+    const brush = ctx.createPattern(brushCanvas, "repeat");
+    // splot drobniejszy niż piksel zdjęcia – tkanina z bliska, nie gruba mata
+    try {
+      weave?.setTransform(new DOMMatrix().scale(0.45));
+      brush?.setTransform(new DOMMatrix().scale(0.5));
+    } catch {
+      /* starsze przeglądarki bez setTransform – splot zostaje w skali 1:1 */
+    }
+    const assets: Assets = { frame: renderStatic(), weave, brush };
+
     let raf: number | null = null;
     let start: number | null = null;
     let width = 0;
     let height = 0;
     let dpr = 1;
-    let disposed = false;
 
     const fit = () => {
       dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -265,12 +648,13 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
     const render = (t: number) => {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // base-plate pixels -> canvas (the plate is object-fit: cover)
+      // piksele zdjęcia -> płótno (zdjęcie ma object-fit: cover)
       const s = Math.max(width / IMG_W, height / IMG_H) * dpr;
       const ox = (width * dpr - IMG_W * s) / 2;
       const oy = (height * dpr - IMG_H * s) / 2;
       ctx.setTransform(s, 0, 0, s, ox, oy);
-      drawScene(ctx, t, frames);
+      ctx.imageSmoothingQuality = "high";
+      drawScene(ctx, t, assets);
       const phase = (t / LOOP_MS) * Math.PI * 2;
       const turn = reduced ? 0 : 4.5 * Math.sin(phase);
       const tilt = reduced ? 0 : 1.1 * Math.sin(phase * 2 + 1);
@@ -286,13 +670,9 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
       plate.style.transform = `scale(1.06) rotateY(${turn.toFixed(2)}deg) rotateX(${tilt.toFixed(2)}deg)`;
     };
 
-    // Static frame (reduced motion / paused): blind half down in beige.
+    // Klatka stała (ograniczony ruch / pauza): roleta do połowy, beż DEKO.
     const staticT = 7000;
     const currentT = () => (start === null ? staticT : (performance.now() - start) % LOOP_MS);
-
-    const frames = loadFrames(() => {
-      if (!disposed && (reduced || !active)) render(staticT);
-    });
 
     const tick = (now: number) => {
       if (start === null) start = now;
@@ -301,14 +681,14 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
     };
 
     fit();
-    const ro =
+    const ro2 =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
             fit();
             render(currentT());
           })
         : null;
-    ro?.observe(plate);
+    ro2?.observe(plate);
 
     if (reduced || !active) {
       render(staticT);
@@ -316,9 +696,8 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
       raf = requestAnimationFrame(tick);
     }
     return () => {
-      disposed = true;
       if (raf !== null) cancelAnimationFrame(raf);
-      ro?.disconnect();
+      ro2?.disconnect();
     };
   }, [reduced, active]);
 
@@ -326,10 +705,10 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
     <div
       className="plisy-hero-scene rd-hero-scene"
       role="img"
-      aria-label="Animacja: roleta dachowa KEIKA w aluminiowej kasecie z prowadnicami rozwija się i zatrzymuje w dowolnym miejscu; tkaniny DEKO i TERMO"
+      aria-label="Animacja: roleta dachowa KEIKA w systemie z szerokimi aluminiowymi prowadnicami i kasetą rozwija się i zatrzymuje w dowolnym miejscu; tkaniny DEKO i TERMO"
     >
       <div className="plisy-hero-scene-plate" ref={plateRef}>
-        <img className="plisy-hero-scene-base" src={RD_HERO_BASE_SRC} alt="" aria-hidden="true" fetchPriority="high" decoding="async" />
+        <img className="plisy-hero-scene-base" src={RD_HERO_BASE_SRC} alt="" aria-hidden="true" decoding="async" />
         <canvas className="plisy-hero-scene-canvas" ref={canvasRef} aria-hidden="true" />
       </div>
     </div>
