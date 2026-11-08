@@ -3,7 +3,7 @@
 // Pasek zaufania przy podsumowaniu i płatności (od 2.11 dla wszystkich - test „premium” zakończony).
 // Agencja 2.11: od wyłączenia SEZON20 z koszyka do kasy przechodzi 12 % zamiast 31 % - cenę trzeba uzasadnić
 // jakością: 5 lat gwarancji · 30 dni na zwrot · dostawa 0 zł · produkcja na wymiar, raty i PayPo, krótko dlaczego warto.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { LinkProduktu } from "@/lib/cart-product-links";
 import { crmGetJson } from "@/lib/crm-get";
@@ -35,6 +35,25 @@ function useRatyPaypo(): { raty: boolean; paypo: boolean } {
   return v;
 }
 
+/** Płynne rozsunięcie elementu, który pojawia się dopiero po dociągnięciu danych
+ * (raty i PayPo z /site, reguły CAŁY DOM z konfiguracji sklepu, komunikaty przy
+ * kodzie). Zamiast skoku treści: wysokość rozwija się od zera, reszta koszyka
+ * zjeżdża płynnie (właściciel 9.11.2026). Po animacji zdejmujemy overflow, żeby
+ * nie przycinać cieni i podpowiedzi. */
+export function Reveal({ children, className = "" }: { children: ReactNode; className?: string }) {
+  const [settled, setSettled] = useState(false);
+  return (
+    <div
+      className={`cart-reveal${settled ? " is-settled" : ""}${className ? ` ${className}` : ""}`}
+      onAnimationEnd={(e) => {
+        if (e.target === e.currentTarget) setSettled(true);
+      }}
+    >
+      <div className="cart-reveal-inner">{children}</div>
+    </div>
+  );
+}
+
 export default function CartTrust({ shippingFree }: { shippingFree: boolean }) {
   return <div className="pm-cart-trust"><PremiumPerks shippingFree={shippingFree} /></div>;
 }
@@ -47,6 +66,7 @@ export function CartFinance({ amount }: { amount: number }) {
   if (!raty && !paypo) return null;
   const active = raty && paypo ? choice : raty ? "raty" : "paypo";
   return (
+    <Reveal>
     <section className="checkout-finance" aria-label="Elastyczne płatności">
       <div className="checkout-finance-card" key={active}>
         <img className="checkout-finance-logo" src={active === "raty" ? "/checkout/przelewy24.svg" : "/paypo/paypo-logo.svg"} alt={active === "raty" ? "Przelewy24" : "PayPo"} width={106} height={30} />
@@ -60,6 +80,7 @@ export function CartFinance({ amount }: { amount: number }) {
         <button type="button" aria-pressed={active === "paypo"} onClick={() => setChoice("paypo")}>PayPo</button>
       </div> : null}
     </section>
+    </Reveal>
   );
 }
 
@@ -84,6 +105,7 @@ export function CartFinanceTop({ amount }: { amount: number }) {
   const count = raty ? pickFriendlyInstallmentCount(amount, undefined, 40, 120) : 0;
   const monthly = raty ? monthlyInstallment(amount, count) : 0;
   return (
+    <Reveal>
     <aside className="checkout-finance-top" aria-label="Płatność w ratach">
       <span className="checkout-finance-top-mark" aria-hidden="true">
         %
@@ -103,6 +125,7 @@ export function CartFinanceTop({ amount }: { amount: number }) {
         ) : null}
       </span>
     </aside>
+    </Reveal>
   );
 }
 
@@ -130,19 +153,24 @@ export function BundleBanner({ text, produkty = [] }: { text: string; produkty?:
   );
   if (!dodaj) {
     return (
-      <aside className="checkout-bundle-banner" aria-label="Promocja Cały Dom">
-        {tresc}
-      </aside>
+      <Reveal>
+        <aside className="checkout-bundle-banner" aria-label="Promocja Cały Dom">
+          {tresc}
+        </aside>
+      </Reveal>
     );
   }
   if (produkty.length === 1) {
     return (
-      <Link href={produkty[0].href} className="checkout-bundle-banner is-link">
-        {tresc}
-      </Link>
+      <Reveal>
+        <Link href={produkty[0].href} className="checkout-bundle-banner is-link">
+          {tresc}
+        </Link>
+      </Reveal>
     );
   }
   return (
+    <Reveal>
     <div className="checkout-bundle-wrap">
       <button type="button" className="checkout-bundle-banner is-link" aria-expanded={wybor} onClick={() => setWybor((v) => !v)}>
         {tresc}
@@ -158,5 +186,6 @@ export function BundleBanner({ text, produkty = [] }: { text: string; produkty?:
         </div>
       ) : null}
     </div>
+    </Reveal>
   );
 }

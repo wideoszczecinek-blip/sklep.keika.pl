@@ -26234,3 +26234,40 @@ html[data-theme="dark"] .rs-ft-colors b { color: inherit; }
 .cart-blik-wait-timer b {
   font-variant-numeric: tabular-nums;
 }
+/* Płynne rozsuwanie elementów koszyka, które pojawiają się po dociągnięciu danych
+   (raty, CAŁY DOM, komunikat przy kodzie) - zamiast skoku treści. */
+.cart-reveal {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: cart-reveal 0.55s cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+.cart-reveal > .cart-reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.cart-reveal.is-settled > .cart-reveal-inner {
+  overflow: visible;
+}
+@keyframes cart-reveal {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  55% {
+    opacity: 0.25;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cart-reveal {
+    animation: none;
+  }
+  .cart-reveal > .cart-reveal-inner {
+    overflow: visible;
+  }
+}

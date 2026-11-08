@@ -97,7 +97,7 @@ import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import CartV2, { CartV2Boundary } from "./cart-v2";
-import CartTrust, { CartFinance, CartFinanceTop, BundleBanner } from "./cart-trust";
+import CartTrust, { CartFinance, CartFinanceTop, BundleBanner, Reveal } from "./cart-trust";
 import BlikWaitPanel from "./blik-wait";
 import OrderOffers from "@/app/components/order-offers";
 
@@ -3971,7 +3971,7 @@ export default function CartPage() {
                       </div>
                     )}
                     {discountError ? <p className="cart-discount-code-error">{discountError}</p> : null}
-                    {discountNotice ? <p className="cart-discount-code-notice">{discountNotice}</p> : null}
+                    {discountNotice ? <Reveal><p className="cart-discount-code-notice">{discountNotice}</p></Reveal> : null}
                   </div>
 
                   <div className="cart-page-summary-row is-muted">
@@ -3987,10 +3987,12 @@ export default function CartPage() {
                     </div>
                   ) : null}
                   {bundle.savings > 0 ? (
-                    <div className="cart-page-summary-row is-muted">
-                      <span>Rabat pakietowy: {bundle.lines.map((line) => line.label).join(", ")}</span>
-                      <span>-{formatPln(bundle.savings)}</span>
-                    </div>
+                    <Reveal>
+                      <div className="cart-page-summary-row is-muted">
+                        <span>Rabat pakietowy: {bundle.lines.map((line) => line.label).join(", ")}</span>
+                        <span>-{formatPln(bundle.savings)}</span>
+                      </div>
+                    </Reveal>
                   ) : null}
                   {bundle.hint ? (
                     <BundleBanner text={bundleDiscountHintText(bundle)} produkty={produktyWKoszyku(items, backHref)} />

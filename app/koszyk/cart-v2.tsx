@@ -36,7 +36,7 @@ import PlisaPreview from "@/features/plisy/PlisaPreview";
 import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPreview";
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
-import CartTrust, { CartFinance, CartFinanceTop, BundleBanner } from "./cart-trust";
+import CartTrust, { CartFinance, CartFinanceTop, BundleBanner, Reveal } from "./cart-trust";
 import type { LinkProduktu } from "@/lib/cart-product-links";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
@@ -771,7 +771,7 @@ export default function CartV2(props: CartV2Props) {
             </div>
           )}
           {p.discountError ? <p className="cv2-code-error">{p.discountError}</p> : null}
-          {p.discountNotice ? <p className="cv2-code-notice">{p.discountNotice}</p> : null}
+          {p.discountNotice ? <Reveal><p className="cv2-code-notice">{p.discountNotice}</p></Reveal> : null}
         </div>
         <CartFinance amount={p.payableTotal} />
         {screenDelivery}
