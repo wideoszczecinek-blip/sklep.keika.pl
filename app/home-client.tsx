@@ -116,6 +116,7 @@ import {
   type RoofBlindProfile,
 } from "@/features/rolety-dachowe/shared";
 import RoofHeroPhotos from "@/features/rolety-dachowe/RoofHeroPhotos";
+import { RdBezRyzyka, RdCenySlajdy, RdOpis, RdSzukajOkna, RdTkaniny } from "@/features/rolety-dachowe/RoofLejek";
 import RoofQuickPrice from "@/features/rolety-dachowe/RoofQuickPrice";
 import { RoofFabricsGuide, RoofHardwareStrip, RoofHowItWorks, RoofLibraryTeaser } from "@/features/rolety-dachowe/RoofLandingBlocks";
 import RoofReviews from "@/features/rolety-dachowe/Reviews";
@@ -1532,7 +1533,7 @@ export default function Home({
   const [rdLibrary, setRdLibrary] = useState<RoofWindowLibraryItem[]>([]);
   const [rdQuickMaterial, setRdQuickMaterial] = useState("");
   const [rdQuickDims, setRdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
-  const [rdPrefill, setRdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; materialTypeId?: string } | null>(null);
+  const [rdPrefill, setRdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; materialTypeId?: string; fabricId?: string; hardwareId?: string } | null>(null);
   // Plisy dachowe (2026-09-19): fabrics/prices come off the plisy profile
   // (plisyProfile below), the window library is rdLibrary; pdPrefill hands
   // the window / collection chosen up top into the configurator.
@@ -2291,6 +2292,42 @@ export default function Home({
   // banner's "Oblicz cenę" CTA - same manual scroll-container computation
   // as scrollToProductSection above (mobile: .hero-full scrolls internally,
   // so a plain scrollIntoView on the target isn't reliable).
+  /** Kierowanie do konfiguratora (właściciel 9.11): na komputerze konfigurator stoi obok landingu – zamiast przewijać,
+   * podświetlamy go i pokazujemy strzałką; na telefonie (albo gdy panelu nie widać) przewijamy (fallback albo do panelu).
+   * cicho = tylko delikatne podświetlenie, bez strzałki (np. gdy klient dojedzie do cen). */
+  function nudgeConfigurator(fallback?: () => void, cicho = false) {
+    const panel = document.querySelector<HTMLElement>(".hero-product-config-panel");
+    const r = panel?.getBoundingClientRect();
+    const obok = Boolean(panel && r && r.width > 0 && r.left > window.innerWidth * 0.5 && r.top < window.innerHeight - 120 && r.bottom > 120);
+    if (!panel || !r || !obok) {
+      (fallback || scrollToConfigPanel)();
+      return;
+    }
+    const klasa = cicho ? "is-nudged-soft" : "is-nudged";
+    panel.classList.remove("is-nudged", "is-nudged-soft");
+    void panel.offsetWidth;
+    panel.classList.add(klasa);
+    window.setTimeout(() => panel.classList.remove(klasa), 2200);
+    if (cicho) return;
+    const strzalka = document.createElement("div");
+    strzalka.className = "cfg-nudge-arrow";
+    strzalka.setAttribute("aria-hidden", "true");
+    strzalka.innerHTML = "<span>Tu policzysz cenę</span><b>→</b>";
+    const top = Math.max(r.top + 24, Math.min(window.innerHeight * 0.42, r.bottom - 60));
+    strzalka.style.top = `${top}px`;
+    strzalka.style.left = `${r.left - 210}px`;
+    document.body.appendChild(strzalka);
+    window.setTimeout(() => strzalka.remove(), 2300);
+  }
+
+  /** Okno wybrane na landingu rolet dachowych (slajd z ceną albo „Wyszukaj swoje okno”) trafia do konfiguratora. */
+  function rdKonfigurujOkno(item: RoofWindowLibraryItem) {
+    setRdLastResult(null);
+    setRdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: item.id, windowQuery: buildRoofWindowDisplayLabel(item) }));
+    setRdConfigKey((key) => key + 1);
+    nudgeConfigurator();
+  }
+
   function scrollToConfigPanel() {
     // Katalog żaluzji nie ma panelu - przyciski "Konfiguruj" prowadzą do modeli.
     const target = document.querySelector<HTMLElement>(
@@ -4644,109 +4681,40 @@ export default function Home({
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
 
-                            <DachOpis
-                              produkt="rolety-dachowe"
+                            {/* Lejek v2 (właściciel 9.11, kolejność od właściciela): opis zwarty i konkretny → wizualizator (test) → dowód → bez ryzyka
+                                (animowane kafle) → przykładowe ceny DEKO/TERMO (slajdy) → wyszukaj swoje okno → przymierzalnia tkanin; dalej opinie, galeria,
+                                FAQ i instrukcje. Przyciski: telefon – przewijają do wyceny/konfiguratora, komputer – podświetlają konfigurator obok. */}
+                            <RdOpis
                               liczbaModeli={rdLibrary.length}
                               przyklad={rdTypoweCena.find((o) => /MK06/.test(o.okno)) || null}
-                              onWycen={() => scrollToDachWycena()}
+                              onWycen={() => nudgeConfigurator(scrollToDachWycena)}
                             />
                             {/* wizualizator okien dachowych, wersja testowa (właściciel 7.11): widoczny po ?wiz=dach albo przy udziale z CRM */}
-                            <WizButton zrodlo="roleta-dachowa-oferta" produkt="roleta-dachowa" onKonfiguruj={scrollToDachWycena} />
+                            <WizButton zrodlo="roleta-dachowa-oferta" produkt="roleta-dachowa" onKonfiguruj={() => nudgeConfigurator()} />
                             <WizHost />
                             <LejekDowod onOpinie={() => scrollToProductSection("opinie")} />
-                            <DachBezRyzyka produkt="rolety-dachowe" liczbaModeli={rdLibrary.length} onPomiar={openMeasurementInstructions} />
-
-                            <RoofHowItWorks />
-
-                            <DachCeny
-                              produkt="rolety-dachowe"
-                              okna={rdTypoweCena}
-                              onOkno={(item) => {
-                                setRdPreselect({ item });
-                                scrollToDachWycena();
+                            <RdBezRyzyka onPomiar={openMeasurementInstructions} />
+                            <RdCenySlajdy profile={rdProfile} library={rdLibrary} adj={roletyPriceAdjustmentPercent} onOkno={rdKonfigurujOkno} onPierwszyWidok={() => nudgeConfigurator(() => {}, true)} />
+                            <RdSzukajOkna
+                              profile={rdProfile}
+                              library={rdLibrary}
+                              adj={roletyPriceAdjustmentPercent}
+                              onOkno={rdKonfigurujOkno}
+                              onSpozaListy={() => {
+                                trackShopStep("lejek_okno_spoza_listy", "rolety-dachowe", {});
+                                nudgeConfigurator();
                               }}
                             />
-
-                            <div id="dach-wycena" className="dach-wycena">
-                            <RoofQuickPrice
-                                profile={rdProfile}
-                                library={rdLibrary}
-                                preselect={rdPreselect}
-                                promo={topPromoActive ? topPromoPreview : null}
-                                materialTypeId={rdQuickMaterial}
-                                onMaterialChange={setRdQuickMaterial}
-                                onSelectionChange={(selection) =>
-                                  setRdQuickDims({
-                                    widthMm: selection.widthMm,
-                                    heightMm: selection.heightMm,
-                                    label: selection.widthMm
-                                      ? selection.item
-                                        ? buildRoofWindowDisplayLabel(selection.item)
-                                        : `${selection.widthMm} × ${selection.heightMm} mm`
-                                      : "",
-                                  })
-                                }
-                                onConfigure={(selection) => {
-                                  setRdQuickDims({
-                                    widthMm: selection.widthMm,
-                                    heightMm: selection.heightMm,
-                                    label: selection.item ? buildRoofWindowDisplayLabel(selection.item) : `${selection.widthMm} × ${selection.heightMm} mm`,
-                                  });
-                                  setRdLastResult(null);
-                                  setRdPrefill({
-                                    windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
-                                    windowQuery: selection.item ? buildRoofWindowDisplayLabel(selection.item) : undefined,
-                                    materialTypeId: selection.materialTypeId || undefined,
-                                  });
-                                  setRdConfigKey((key) => key + 1);
-                                  scrollToConfigPanel();
-                                }}
-                              />
-                            </div>
-
-                            <RoofFabricsGuide
+                            <RdTkaniny
                               profile={rdProfile}
-                              promo={topPromoActive ? topPromoPreview : null}
-                              widthMm={rdQuickDims.widthMm}
-                              heightMm={rdQuickDims.heightMm}
-                              sizeLabel={rdQuickDims.label}
-                              activeMaterialTypeId={rdQuickMaterial}
-                              onPick={(materialTypeId) => {
+                              onWybierz={({ materialTypeId, fabricId, hardwareId }) => {
                                 setRdQuickMaterial(materialTypeId);
                                 setRdLastResult(null);
-                                setRdPrefill((prev) => ({ ...(prev || {}), materialTypeId }));
+                                setRdPrefill((prev) => ({ ...(prev || {}), materialTypeId, fabricId, hardwareId }));
                                 setRdConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
-                              }}
-                              onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
-                            />
-
-                            <RoofHardwareStrip profile={rdProfile} onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
-
-                            <RoofLibraryTeaser
-                              library={rdLibrary}
-                              onSearch={(query) => {
-                                setRdLastResult(null);
-                                setRdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query }));
-                                setRdConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
+                                nudgeConfigurator();
                               }}
                             />
-
-                            <DachPomiar
-                              produkt="rolety-dachowe"
-                              onInstrukcja={openMeasurementInstructions}
-                              onCzat={() => openCrispChat("Zdjęcie mojego okna dachowego – pomożecie dobrać roletę?")}
-                            />
-                            <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
-
-                            <div className="pl-callout">
-                              <strong>{productLanding?.callout?.title || RD_CALLOUT.title}</strong>
-                              <p>{productLanding?.callout?.body || RD_CALLOUT.body}</p>
-                              <button type="button" className="pl-inline-cta-button pl-callout-cta" onClick={scrollToConfigPanel}>
-                                {RD_PRIMARY_CTA}
-                              </button>
-                            </div>
                           </div>
                         ) : zaluzjeRodzajMode && zaluzjeRodzaj ? (
                           <ZaluzjeRodzajLanding
@@ -5810,6 +5778,9 @@ export default function Home({
                                     ...(rdPrefill.materialTypeId && !rdLastResult ? { materialTypeId: rdPrefill.materialTypeId } : {}),
                                     ...(rdPrefill.windowLibraryId ? { windowLibraryId: rdPrefill.windowLibraryId } : {}),
                                     ...(rdPrefill.windowQuery ? { windowQuery: rdPrefill.windowQuery } : {}),
+                                    // przymierzalnia tkanin na landingu (9.11): tkanina i kolor osprzętu od razu w konfiguratorze
+                                    ...(rdPrefill.fabricId && !rdLastResult ? { fabricId: rdPrefill.fabricId } : {}),
+                                    ...(rdPrefill.hardwareId && !rdLastResult ? { hardwareId: rdPrefill.hardwareId } : {}),
                                   }
                                 : {}),
                             }

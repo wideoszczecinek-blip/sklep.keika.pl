@@ -45,7 +45,7 @@ const gw = (y: number) => lerp(31, 25.5, ty(y));
 const li = (y: number) => lo(y) + gw(y);
 const ri = (y: number) => ro(y) - gw(y);
 
-type Fabric = { id: string; color: string; kind: "deko" | "termo" };
+type Fabric = { id: string; color: string; kind: "deko" | "termo"; pattern?: CanvasPattern | null };
 const FABRICS: Fabric[] = [
   { id: "deko-bez", color: "#d6cab2", kind: "deko" },
   { id: "termo-grafit", color: "#4a4e54", kind: "termo" },
@@ -428,23 +428,57 @@ function drawInnerShadows(ctx: CanvasRenderingContext2D) {
   ctx.restore();
 }
 
-function renderStatic(): HTMLCanvasElement {
+/** Kolor osprzętu (id z konfiguratora): srebrny = anoda, bialy, sosna (jasna sosna). */
+export type RoofHardwareTone = "srebrny" | "bialy" | "sosna";
+
+function blankLayer(): [HTMLCanvasElement, CanvasRenderingContext2D | null] {
   const c = document.createElement("canvas");
   c.width = IMG_W * FS;
   c.height = IMG_H * FS;
-  const ctx = c.getContext("2d");
-  if (!ctx) return c;
-  ctx.scale(FS, FS);
-  drawInnerShadows(ctx);
-  drawGuide(ctx, "l");
-  drawGuide(ctx, "r");
-  drawCassette(ctx);
-  return c;
+  return [c, c.getContext("2d")];
+}
+
+/** Kaseta i prowadnice w danym kolorze osprzętu: rysunek anody przebarwiony (biały – rozjaśnienie, sosna –
+ * ciepły odcień), cienie na tkaninie i szybie zostają bez zmian. */
+function renderStatic(tone: RoofHardwareTone = "srebrny"): HTMLCanvasElement {
+  const [frame, f] = blankLayer();
+  if (f) {
+    f.scale(FS, FS);
+    drawGuide(f, "l");
+    drawGuide(f, "r");
+    drawCassette(f);
+    if (tone !== "srebrny") {
+      const [tinted, t] = blankLayer();
+      if (t) {
+        t.drawImage(frame, 0, 0);
+        t.globalCompositeOperation = tone === "bialy" ? "screen" : "multiply";
+        t.fillStyle = tone === "bialy" ? "#8f9499" : "#e6bf7d";
+        t.fillRect(0, 0, tinted.width, tinted.height);
+        t.globalCompositeOperation = "destination-in";
+        t.drawImage(frame, 0, 0);
+        f.setTransform(1, 0, 0, 1, 0, 0);
+        f.clearRect(0, 0, frame.width, frame.height);
+        f.drawImage(tinted, 0, 0);
+      }
+    }
+  }
+  const [out, o] = blankLayer();
+  if (o) {
+    o.save();
+    o.scale(FS, FS);
+    drawInnerShadows(o);
+    o.restore();
+    o.drawImage(frame, 0, 0);
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------ co klatkę: tkanina i belka
 
 type Assets = { frame: HTMLCanvasElement; weave: CanvasPattern | null; brush: CanvasPattern | null };
+
+/** Tkanina do przymierzalni (RoofFabricRoom): kolor z CRM i zdjęcie próbki jako faktura. */
+export type SceneFabric = { color: string; kind: "deko" | "termo"; imageUrl?: string };
 
 function fabricClip(ctx: CanvasRenderingContext2D, bottom: number) {
   const top = CAS_BOT - 2;
@@ -464,7 +498,11 @@ function drawFabric(ctx: CanvasRenderingContext2D, f: Fabric, alpha: number, bot
   ctx.globalAlpha = alpha;
   ctx.fillStyle = f.color;
   ctx.fillRect(x0, CAS_BOT - 4, w, h);
-  if (a.weave) {
+  if (f.pattern) {
+    // prawdziwe zdjęcie próbki tkaniny z konfiguratora
+    ctx.fillStyle = f.pattern;
+    ctx.fillRect(x0, CAS_BOT - 4, w, h);
+  } else if (a.weave) {
     ctx.globalAlpha = alpha * (f.kind === "deko" ? 0.32 : 0.24);
     ctx.fillStyle = a.weave;
     ctx.fillRect(x0, CAS_BOT - 4, w, h);
@@ -569,9 +607,7 @@ function drawBar(ctx: CanvasRenderingContext2D, top: number, a: Assets) {
   }
 }
 
-function drawScene(ctx: CanvasRenderingContext2D, t: number, a: Assets) {
-  const v = barAt(t);
-  const fab = fabricAt(t);
+function drawScene(ctx: CanvasRenderingContext2D, v: number, from: Fabric, to: Fabric, blend: number, a: Assets) {
   const top = lerp(BAR_TOP_MIN, BAR_TOP_MAX, v);
   const fabricBottom = top + 4;
 
@@ -579,10 +615,8 @@ function drawScene(ctx: CanvasRenderingContext2D, t: number, a: Assets) {
     ctx.save();
     fabricClip(ctx, fabricBottom);
     ctx.clip();
-    const from = FABRICS[fab.from];
-    const to = FABRICS[fab.to];
-    if (fab.blend < 1) drawFabric(ctx, from, 1, fabricBottom, a);
-    if (fab.blend > 0) drawFabric(ctx, to, fab.blend < 1 ? fab.blend : 1, fabricBottom, a);
+    if (blend < 1) drawFabric(ctx, from, 1, fabricBottom, a);
+    if (blend > 0) drawFabric(ctx, to, blend < 1 ? blend : 1, fabricBottom, a);
     // tkanina wchodzi w zacisk belki – cień tuż nad belką
     const eg = ctx.createLinearGradient(0, top - 8, 0, top + 1);
     eg.addColorStop(0, "rgba(0,0,0,0)");
@@ -595,9 +629,40 @@ function drawScene(ctx: CanvasRenderingContext2D, t: number, a: Assets) {
   ctx.drawImage(a.frame, 0, 0, IMG_W, IMG_H);
 }
 
-export default function RoofHeroScene({ active = true }: { active?: boolean }) {
+// Przymierzalnia: roleta zjeżdża przy wejściu i po każdej zmianie tkaniny (krótko podjeżdża i wraca).
+const SHOW_DOWN = 0.86;
+const SHOW_INTRO_MS = 1800;
+const SHOW_SWAP_MS = 1100;
+
+/**
+ * Render systemu B25 szeroki.
+ * mode "loop" – pętla na górze strony (roleta jeździ, tkaniny się zmieniają);
+ * mode "show" – przymierzalnia tkanin: pokazuje wybraną tkaninę (fabric) i kolor osprzętu (hardware).
+ */
+export default function RoofHeroScene({
+  active = true,
+  mode = "loop",
+  fabric,
+  hardware = "srebrny",
+}: {
+  active?: boolean;
+  mode?: "loop" | "show";
+  fabric?: SceneFabric | null;
+  hardware?: RoofHardwareTone;
+}) {
   const plateRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Stan przymierzalni czytany w pętli rysowania (bez przebudowy płótna przy każdej zmianie).
+  const showRef = useRef<{ cur: Fabric; prev: Fabric; swapAt: number; hw: RoofHardwareTone; dirty: boolean }>({
+    cur: FABRICS[0],
+    prev: FABRICS[0],
+    swapAt: -1e9,
+    hw: hardware,
+    dirty: true,
+  });
+  const patternsRef = useRef<Map<string, CanvasPattern | null>>(new Map());
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const firstFabricRef = useRef(true);
 
   const reduced = useSyncExternalStore(
     (onChange) => {
@@ -609,12 +674,60 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
     () => false,
   );
 
+  // zmiana tkaniny w przymierzalni
+  const fabricKey = fabric ? `${fabric.imageUrl || ""}|${fabric.color}|${fabric.kind}` : "";
+  useEffect(() => {
+    if (mode !== "show" || !fabric) return;
+    const s = showRef.current;
+    const url = fabric.imageUrl || "";
+    const next: Fabric = { id: fabricKey, color: fabric.color, kind: fabric.kind, pattern: url ? patternsRef.current.get(url) || null : null };
+    if (s.cur.id === next.id) return;
+    if (firstFabricRef.current) {
+      // pierwsza tkanina: bez podjazdu, roleta po prostu zjeżdża w niej
+      firstFabricRef.current = false;
+      s.prev = next;
+      s.cur = next;
+    } else {
+      s.prev = s.cur;
+      s.cur = next;
+      s.swapAt = performance.now();
+    }
+    s.dirty = true;
+    if (url && !patternsRef.current.has(url)) {
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => {
+        const ctx = ctxRef.current;
+        const p = ctx ? ctx.createPattern(img, "repeat") : null;
+        try {
+          // próbka 300×200 px to kilkanaście cm tkaniny – na oknie drobniej
+          p?.setTransform(new DOMMatrix().scale(0.42));
+        } catch {
+          /* bez skalowania */
+        }
+        patternsRef.current.set(url, p);
+        const st = showRef.current;
+        if (st.cur.id === next.id) st.cur = { ...st.cur, pattern: p };
+        if (st.prev.id === next.id) st.prev = { ...st.prev, pattern: p };
+        st.dirty = true;
+      };
+      img.src = url;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fabricKey, mode]);
+
+  useEffect(() => {
+    showRef.current.hw = hardware;
+    showRef.current.dirty = true;
+  }, [hardware]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const plate = plateRef.current;
     if (!canvas || !plate) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    ctxRef.current = ctx;
 
     const weaveCanvas = makeWeave();
     const brushCanvas = makeBrush();
@@ -627,13 +740,23 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
     } catch {
       /* starsze przeglądarki bez setTransform – splot zostaje w skali 1:1 */
     }
-    const assets: Assets = { frame: renderStatic(), weave, brush };
+    const frames = new Map<RoofHardwareTone, HTMLCanvasElement>();
+    const frameFor = (tone: RoofHardwareTone) => {
+      let fr = frames.get(tone);
+      if (!fr) {
+        fr = renderStatic(tone);
+        frames.set(tone, fr);
+      }
+      return fr;
+    };
+    const assets: Assets = { frame: frameFor(mode === "show" ? showRef.current.hw : "srebrny"), weave, brush };
 
     let raf: number | null = null;
     let start: number | null = null;
     let width = 0;
     let height = 0;
     let dpr = 1;
+    let visible = true;
 
     const fit = () => {
       dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -645,7 +768,7 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
       canvas.style.height = `${height}px`;
     };
 
-    const render = (t: number) => {
+    const paint = (v: number, from: Fabric, to: Fabric, blend: number, phase: number) => {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       // piksele zdjęcia -> płótno (zdjęcie ma object-fit: cover)
@@ -654,8 +777,7 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
       const oy = (height * dpr - IMG_H * s) / 2;
       ctx.setTransform(s, 0, 0, s, ox, oy);
       ctx.imageSmoothingQuality = "high";
-      drawScene(ctx, t, assets);
-      const phase = (t / LOOP_MS) * Math.PI * 2;
+      drawScene(ctx, v, from, to, blend, assets);
       const turn = reduced ? 0 : 4.5 * Math.sin(phase);
       const tilt = reduced ? 0 : 1.1 * Math.sin(phase * 2 + 1);
       if (!reduced) {
@@ -670,14 +792,44 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
       plate.style.transform = `scale(1.06) rotateY(${turn.toFixed(2)}deg) rotateX(${tilt.toFixed(2)}deg)`;
     };
 
+    const renderLoop = (t: number) => {
+      const fab = fabricAt(t);
+      paint(barAt(t), FABRICS[fab.from], FABRICS[fab.to], fab.blend, (t / LOOP_MS) * Math.PI * 2);
+    };
+
+    const renderShow = (now: number) => {
+      const st = showRef.current;
+      assets.frame = frameFor(st.hw);
+      const since = start === null ? 1e9 : now - start;
+      let v = reduced ? SHOW_DOWN : SHOW_DOWN * easeInOut(Math.min(1, since / SHOW_INTRO_MS));
+      const sw = now - st.swapAt;
+      let blend = 1;
+      if (sw >= 0 && sw < SHOW_SWAP_MS && !reduced) {
+        // podjazd w górę i powrót, tkanina zmienia się w połowie drogi
+        const p = sw / SHOW_SWAP_MS;
+        v = Math.min(v, SHOW_DOWN - 0.32 * Math.sin(Math.PI * p));
+        blend = easeInOut(Math.min(1, Math.max(0, (p - 0.2) / 0.5)));
+      }
+      paint(v, st.prev, st.cur, blend, (now / (LOOP_MS * 1.6)) * Math.PI * 2);
+      st.dirty = false;
+    };
+
     // Klatka stała (ograniczony ruch / pauza): roleta do połowy, beż DEKO.
     const staticT = 7000;
     const currentT = () => (start === null ? staticT : (performance.now() - start) % LOOP_MS);
 
     const tick = (now: number) => {
       if (start === null) start = now;
-      render((now - start) % LOOP_MS);
-      raf = requestAnimationFrame(tick);
+      if (mode === "show") renderShow(now);
+      else renderLoop((now - start) % LOOP_MS);
+      raf = visible ? requestAnimationFrame(tick) : null;
+    };
+    const run = () => {
+      if (raf === null && visible && active && !reduced) raf = requestAnimationFrame(tick);
+    };
+    const still = () => {
+      if (mode === "show") renderShow(performance.now());
+      else renderLoop(currentT());
     };
 
     fit();
@@ -685,27 +837,47 @@ export default function RoofHeroScene({ active = true }: { active?: boolean }) {
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
             fit();
-            render(currentT());
+            still();
           })
         : null;
     ro2?.observe(plate);
+    // poza ekranem nie rysujemy (dwie sceny na stronie: góra i przymierzalnia)
+    const io =
+      typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver((entries) => {
+            visible = entries.some((e) => e.isIntersecting);
+            if (visible) run();
+          })
+        : null;
+    io?.observe(plate);
+    // przymierzalnia bez animacji: przerysuj po zmianie tkaniny / osprzętu
+    const poll =
+      mode === "show" && (reduced || !active)
+        ? window.setInterval(() => {
+            if (showRef.current.dirty) still();
+          }, 200)
+        : null;
 
-    if (reduced || !active) {
-      render(staticT);
-    } else {
-      raf = requestAnimationFrame(tick);
-    }
+    if (reduced || !active) still();
+    else run();
     return () => {
       if (raf !== null) cancelAnimationFrame(raf);
+      raf = null;
+      if (poll !== null) window.clearInterval(poll);
       ro2?.disconnect();
+      io?.disconnect();
     };
-  }, [reduced, active]);
+  }, [reduced, active, mode]);
 
   return (
     <div
       className="plisy-hero-scene rd-hero-scene"
       role="img"
-      aria-label="Animacja: roleta dachowa KEIKA w systemie z szerokimi aluminiowymi prowadnicami i kasetą rozwija się i zatrzymuje w dowolnym miejscu; tkaniny DEKO i TERMO"
+      aria-label={
+        mode === "show"
+          ? "Podgląd: roleta dachowa KEIKA w wybranej tkaninie i kolorze osprzętu"
+          : "Animacja: roleta dachowa KEIKA w systemie z szerokimi aluminiowymi prowadnicami i kasetą rozwija się i zatrzymuje w dowolnym miejscu; tkaniny DEKO i TERMO"
+      }
     >
       <div className="plisy-hero-scene-plate" ref={plateRef}>
         <img className="plisy-hero-scene-base" src={RD_HERO_BASE_SRC} alt="" aria-hidden="true" decoding="async" />

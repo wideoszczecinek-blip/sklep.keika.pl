@@ -153,7 +153,7 @@ export default function ConfiguratorPanel({
   }, []);
 
   const isCartEdit = Boolean(
-    initialValues && Object.keys(initialValues).some((key) => !["widthMm", "heightMm", "qty", "windowQuery", "windowLibraryId", "materialTypeId"].includes(key)),
+    initialValues && Object.keys(initialValues).some((key) => !["widthMm", "heightMm", "qty", "windowQuery", "windowLibraryId", "materialTypeId", "fabricId", "hardwareId"].includes(key)),
   );
   const [draftSeed] = useState<RdDraft | null>(() => (isCartEdit ? null : readDraft()));
   const seed = { ...(draftSeed ?? {}), ...(initialValues ?? {}) };

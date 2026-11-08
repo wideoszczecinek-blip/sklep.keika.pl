@@ -26393,3 +26393,208 @@ html[data-theme="dark"] .rs-ft-colors b { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .rd-hero-anim-play { animation: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Rolety dachowe – lejek v2 (9.11.2026, features/rolety-dachowe/RoofLejek.tsx)
+--------------------------------------------------------------------------- */
+.rdl-opis { display: grid; gap: 0.55rem; margin: 0.7rem 0 0.4rem; }
+.rdl-lead { margin: 0; font-size: clamp(1.45rem, 2.6vw, 1.95rem); line-height: 1.15; font-weight: 900; color: #12233a; letter-spacing: -0.01em; }
+.rdl-sub { margin: 0; font-size: 1.04rem; line-height: 1.5; color: #334155; max-width: 46rem; }
+.rdl-sub b { color: #12233a; }
+.rdl-zestaw-t { margin: 0.35rem 0 0; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #b8741a; }
+.rdl-zestaw { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.5rem; }
+.rdl-zestaw li { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.6rem 0.7rem; border-radius: 0.8rem; background: #f6f8fb; border: 1px solid #e3e8ef; animation: rdlWjazd 0.6s cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+.rdl-zestaw li > span:last-child { display: grid; gap: 0.1rem; }
+.rdl-zestaw b { font-size: 0.93rem; color: #12233a; }
+.rdl-zestaw small { font-size: 0.83rem; color: #475569; line-height: 1.35; }
+.rdl-zestaw-ik { flex: 0 0 auto; display: inline-grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 0.6rem; background: #fff1e0; color: #d4700f; }
+@keyframes rdlWjazd { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rdl-osprzet { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; font-size: 0.86rem; color: #475569; }
+.rdl-dot { display: inline-block; width: 0.85rem; height: 0.85rem; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(15, 30, 50, 0.25); margin-left: 0.35rem; vertical-align: -0.12rem; }
+.rdl-sep { margin: 0 0.15rem; color: #94a3b8; }
+.rdl-opis-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; margin-top: 0.25rem; }
+.rdl-cena { margin: 0; font-size: 0.95rem; color: #16314e; }
+.rdl-cena s { color: #64748b; margin: 0 0.15rem; }
+.rdl-cena b { font-size: 1.2rem; color: #0d7a4f; }
+.rdl-cena span { color: #64748b; font-size: 0.85rem; }
+.rdl-btn { display: inline-flex; align-items: center; gap: 0.45rem; }
+.rdl-btn span { transition: transform 0.25s ease; }
+.rdl-btn:hover span { transform: translateX(4px); }
+
+/* bez ryzyka – animowane kafle, pełna szerokość */
+.rdl-ryzyko { margin: 1.1rem 0 0.4rem; padding: 1.1rem; border-radius: 1.1rem; background: radial-gradient(120% 140% at 0% 0%, #174a44 0%, #0f2e2b 55%, #0b2321 100%); color: #e7f3f1; }
+.rdl-ryzyko h2 { margin: 0 0 0.8rem; font-size: 1.35rem; color: #fff; }
+.rdl-ryzyko-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; }
+@media (max-width: 900px) { .rdl-ryzyko-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.rdl-r { display: grid; justify-items: start; gap: 0.25rem; padding: 0.85rem; border-radius: 0.9rem; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); color: #cfe5e1; font: inherit; text-align: left; opacity: 0; transform: translateY(12px); transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.75, 0.2, 1), background 0.2s ease; }
+button.rdl-r { cursor: pointer; }
+button.rdl-r:hover { background: rgba(255, 255, 255, 0.1); }
+.rdl-ryzyko.is-in .rdl-r { opacity: 1; transform: none; }
+.rdl-ryzyko.is-in .rdl-r:nth-child(2) { transition-delay: 0.12s; }
+.rdl-ryzyko.is-in .rdl-r:nth-child(3) { transition-delay: 0.24s; }
+.rdl-ryzyko.is-in .rdl-r:nth-child(4) { transition-delay: 0.36s; }
+.rdl-r b { font-size: 1.02rem; color: #fff; line-height: 1.25; }
+.rdl-r > span:last-child { font-size: 0.86rem; line-height: 1.4; }
+.rdl-anim svg { display: block; fill: none; stroke: #f1dca3; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.rdl-anim text { fill: #f1dca3; stroke: none; font-weight: 900; font-family: inherit; }
+.rdl-piec { font-size: 17px; }
+.rdl-trzydziesci { font-size: 11px; }
+.rdl-tarcza { stroke-dasharray: 120; stroke-dashoffset: 120; }
+.rdl-ryzyko.is-in .rdl-tarcza { animation: rdlRysuj 1.1s 0.2s ease forwards; }
+.rdl-ryzyko.is-in .rdl-piec { animation: rdlStempel 0.5s 1s cubic-bezier(0.3, 1.6, 0.5, 1) both; transform-origin: 24px 25px; }
+@keyframes rdlRysuj { to { stroke-dashoffset: 0; } }
+@keyframes rdlStempel { from { opacity: 0; transform: scale(2.2); } to { opacity: 1; transform: scale(1); } }
+.rdl-kolo { transform-origin: 24px 24px; }
+.rdl-ryzyko.is-in .rdl-kolo { animation: rdlObrot 1.2s 0.35s cubic-bezier(0.5, 0, 0.2, 1) both; }
+@keyframes rdlObrot { from { transform: rotate(-300deg); opacity: 0.2; } to { transform: rotate(0); opacity: 1; } }
+.rdl-tabl-t { stroke-width: 1.8; opacity: 0.85; }
+.rdl-skan { stroke: #f28c28; stroke-width: 2; opacity: 0; }
+.rdl-ryzyko.is-in .rdl-skan { animation: rdlSkan 2.4s 0.5s ease-in-out infinite; }
+@keyframes rdlSkan { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 70% { opacity: 1; transform: translateY(20px); } 100% { opacity: 0; transform: translateY(20px); } }
+.rdl-droga { stroke-dasharray: 4 5; opacity: 0.5; }
+.rdl-ryzyko.is-in .rdl-droga { animation: rdlDroga 0.6s linear infinite; }
+.rdl-ryzyko.is-in .rdl-auto { animation: rdlAuto 1.4s 0.5s cubic-bezier(0.2, 0.75, 0.2, 1) both, rdlTrzes 0.35s 1.9s ease-in-out infinite; }
+@keyframes rdlDroga { to { stroke-dashoffset: -9; } }
+@keyframes rdlAuto { from { transform: translateX(-46px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rdlTrzes { 50% { transform: translateY(-0.8px); } }
+.rdl-firma { margin: 0.75rem 0 0; font-size: 0.78rem; color: #9cc2bb; line-height: 1.5; }
+.rdl-firma a { color: #f1dca3; text-decoration: none; font-weight: 700; }
+
+/* przykładowe ceny – slajdy */
+.rdl-ceny-lead { margin: 0 0 0.6rem; font-size: 0.95rem; color: #475569; }
+.rdl-ceny-lead b { color: #12233a; }
+/* contain: taśma slajdów nie może rozpychać kolumny opisu pod konfigurator obok */
+.rdl-slajdy { position: relative; contain: inline-size; }
+.rd-landing .lj-dowod { max-width: none; }
+.rdl-tasma { display: grid; grid-auto-flow: column; grid-auto-columns: max(260px, calc(50% - 6px)); gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 0.2rem 0.1rem 0.4rem; }
+.rdl-tasma::-webkit-scrollbar { display: none; }
+@media (max-width: 760px) { .rdl-tasma { grid-auto-columns: 84%; } }
+.rdl-slajd { scroll-snap-align: start; display: grid; gap: 0.5rem; align-content: start; padding: 0.95rem; border-radius: 1rem; background: linear-gradient(180deg, #fff 0%, #fbf7ef 100%); border: 1px solid #ecdfc4; box-shadow: 0 6px 18px rgba(18, 35, 58, 0.07); }
+.rdl-slajd h3 { margin: 0; font-size: 1rem; color: #12233a; }
+.rdl-slajd-cena { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.55rem 0.65rem; border-radius: 0.7rem; background: #fff; border: 1px solid #eef1f5; }
+.rdl-slajd-cena--termo { background: #f3f5f8; }
+.rdl-mat { display: grid; line-height: 1.2; }
+.rdl-mat b { font-size: 0.95rem; color: #12233a; }
+.rdl-mat small, .rdl-wybrane-ceny small { font-size: 0.74rem; color: #64748b; }
+.rdl-kwoty { display: grid; justify-items: end; line-height: 1.1; white-space: nowrap; }
+.rdl-kwoty s { font-size: 0.92rem; color: #475569; text-decoration-thickness: 1.5px; }
+.rdl-kwoty strong { font-size: 1.45rem; font-weight: 900; color: #0d7a4f; letter-spacing: -0.01em; }
+.rdl-slajd-btn { justify-self: start; border: 0; background: none; padding: 0.2rem 0; font: inherit; font-weight: 800; color: #d4700f; cursor: pointer; }
+.rdl-slajd-btn span { display: inline-block; transition: transform 0.25s ease; }
+.rdl-slajd-btn:hover span { transform: translateX(4px); }
+.rdl-strzalka { position: absolute; top: 42%; z-index: 2; width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 1px solid #e3e8ef; background: #fff; box-shadow: 0 4px 12px rgba(18, 35, 58, 0.15); font-size: 1.3rem; line-height: 1; color: #12233a; cursor: pointer; }
+.rdl-strzalka:disabled { opacity: 0; pointer-events: none; }
+.rdl-strzalka--l { left: -0.6rem; }
+.rdl-strzalka--p { right: -0.6rem; }
+@media (max-width: 760px) { .rdl-strzalka { display: none; } }
+.rdl-kropki { display: flex; justify-content: center; gap: 0.35rem; margin: 0.35rem 0 0; }
+.rdl-kropki span { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: #d6dbe3; transition: background 0.2s ease, width 0.2s ease; }
+.rdl-kropki span.is-on { width: 1.2rem; border-radius: 999px; background: #f28c28; }
+.rdl-warunek { margin: 0.6rem 0 0; font-size: 0.82rem; line-height: 1.45; color: #475569; }
+
+/* wyszukaj swoje okno */
+.rdl-szukaj { scroll-margin-top: 110px; }
+.rdl-szukaj-lead { margin: 0 0 0.6rem; font-size: 0.95rem; color: #475569; }
+.rdl-szukaj-pole { position: relative; display: flex; gap: 0.5rem; }
+.rdl-input { flex: 1 1 auto; min-width: 0; height: 3.2rem; padding: 0 1rem; border-radius: 0.85rem; border: 2px solid #12233a; font: inherit; font-size: 1.02rem; color: #12233a; background: #fff; }
+.rdl-input:focus { outline: none; border-color: #f28c28; box-shadow: 0 0 0 4px rgba(242, 140, 40, 0.18); }
+.rdl-lista-btn { flex: 0 0 auto; height: 3.2rem; padding: 0 1rem; border-radius: 0.85rem; border: 1px solid #d6dbe3; background: #f6f8fb; font: inherit; font-weight: 800; color: #12233a; cursor: pointer; }
+.rdl-lista-btn.is-on { background: #12233a; color: #fff; }
+@media (max-width: 520px) { .rdl-szukaj-pole { flex-wrap: wrap; } .rdl-lista-btn { width: 100%; height: 2.7rem; } }
+.rdl-wyniki { position: absolute; left: 0; right: 0; top: calc(3.2rem + 0.3rem); z-index: 5; list-style: none; margin: 0; padding: 0.3rem; border-radius: 0.85rem; background: #fff; border: 1px solid #e3e8ef; box-shadow: 0 14px 30px rgba(18, 35, 58, 0.16); }
+.rdl-wyniki button { display: flex; justify-content: space-between; gap: 0.6rem; width: 100%; padding: 0.6rem 0.7rem; border: 0; border-radius: 0.6rem; background: none; font: inherit; text-align: left; color: #12233a; cursor: pointer; }
+.rdl-wyniki button:hover { background: #f6f8fb; }
+.rdl-wyniki small { color: #64748b; }
+.rdl-lista { margin-top: 0.6rem; padding: 0.7rem; border-radius: 0.9rem; background: #f6f8fb; border: 1px solid #e3e8ef; animation: rdlWjazd 0.35s ease both; }
+.rdl-producenci { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.rdl-producenci button { padding: 0.45rem 0.75rem; border-radius: 999px; border: 1px solid #d6dbe3; background: #fff; font: inherit; font-weight: 800; font-size: 0.85rem; color: #12233a; cursor: pointer; }
+.rdl-producenci button small { color: #94a3b8; font-weight: 600; }
+.rdl-producenci button.is-on { background: #12233a; border-color: #12233a; color: #fff; }
+.rdl-modele { margin-top: 0.6rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0.35rem; max-height: 260px; overflow-y: auto; }
+.rdl-modele button { padding: 0.5rem 0.6rem; border-radius: 0.55rem; border: 1px solid #e3e8ef; background: #fff; font: inherit; font-size: 0.85rem; text-align: left; color: #12233a; cursor: pointer; }
+.rdl-modele button:hover { border-color: #f28c28; }
+.rdl-lista-pusto { margin: 0.5rem 0 0; font-size: 0.86rem; color: #64748b; }
+.rdl-wybrane { margin-top: 0.7rem; display: grid; gap: 0.5rem; padding: 0.85rem; border-radius: 0.95rem; background: #f0faf5; border: 1px solid #bfe5d1; animation: rdlWjazd 0.4s ease both; }
+.rdl-wybrane-t { margin: 0; color: #12233a; }
+.rdl-wybrane-ceny { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+.rdl-wybrane-ceny > div { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.5rem 0.65rem; border-radius: 0.7rem; background: #fff; }
+@media (max-width: 520px) { .rdl-wybrane-ceny { grid-template-columns: 1fr; } }
+.rdl-szukaj-dol { margin: 0.7rem 0 0; font-size: 0.88rem; color: #475569; }
+.rdl-uwaga { margin: 0.45rem 0 0; font-size: 0.78rem; color: #64748b; line-height: 1.45; }
+
+/* tkaniny – przymierzalnia */
+.rdl-tk-lead { margin: 0 0 0.7rem; font-size: 0.95rem; color: #475569; }
+.rdl-tk { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 760px) { .rdl-tk { grid-template-columns: 1fr; } }
+.rdl-tk-scena { position: relative; aspect-ratio: 4 / 3; border-radius: 1rem; overflow: hidden; background: #e4e7ea; box-shadow: 0 10px 26px rgba(18, 35, 58, 0.16); }
+@media (min-width: 761px) { .rdl-tk-scena { position: sticky; top: 110px; } }
+.rdl-tk-etykieta { position: absolute; left: 0.6rem; bottom: 0.6rem; padding: 0.3rem 0.7rem; border-radius: 999px; background: rgba(12, 26, 44, 0.75); color: #fff; font-size: 0.8rem; font-weight: 800; backdrop-filter: blur(4px); }
+.rdl-tk-panel { display: grid; gap: 0.6rem; }
+.rdl-tk-zakladki { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.rdl-tk-zakladki button { display: grid; gap: 0.1rem; padding: 0.6rem 0.75rem; border-radius: 0.8rem; border: 1px solid #d6dbe3; background: #fff; font: inherit; text-align: left; cursor: pointer; transition: background 0.2s ease, border-color 0.2s ease; }
+.rdl-tk-zakladki b { font-size: 1rem; color: #12233a; }
+.rdl-tk-zakladki small { font-size: 0.76rem; color: #64748b; }
+.rdl-tk-zakladki button.is-on { background: #12233a; border-color: #12233a; }
+.rdl-tk-zakladki button.is-on b { color: #fff; }
+.rdl-tk-zakladki button.is-on small { color: #b9c6d6; }
+.rdl-tk-co { margin: 0; font-size: 0.86rem; line-height: 1.45; color: #475569; }
+.rdl-tk-probki { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 0.35rem; max-height: 236px; overflow-y: auto; padding: 0.15rem; }
+.rdl-tk-probki button { aspect-ratio: 1; border-radius: 0.55rem; border: 0; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(15, 30, 50, 0.15); cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.rdl-tk-probki button:hover { transform: scale(1.08); }
+.rdl-tk-probki button.is-on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #f28c28; transform: scale(1.06); }
+.rdl-tk-osprzet-t { margin: 0.2rem 0 0; font-size: 0.8rem; font-weight: 800; color: #12233a; }
+.rdl-tk-osprzet { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.rdl-tk-osprzet button { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.45rem 0.75rem 0.45rem 0.4rem; border-radius: 999px; border: 1px solid #d6dbe3; background: #fff; font: inherit; font-size: 0.86rem; font-weight: 700; color: #12233a; cursor: pointer; }
+.rdl-tk-osprzet button .rdl-dot { margin-left: 0; }
+.rdl-tk-osprzet button.is-on { border-color: #f28c28; box-shadow: 0 0 0 2px rgba(242, 140, 40, 0.25); }
+.rdl-tk-panel .rdl-btn { justify-self: start; }
+
+/* kierowanie do konfiguratora obok (komputer) */
+.hero-product-config-panel.is-nudged { animation: cfgNudge 2.1s ease; }
+.hero-product-config-panel.is-nudged-soft { animation: cfgNudgeSoft 2.1s ease; }
+@keyframes cfgNudge {
+  0% { box-shadow: 0 0 0 0 rgba(242, 140, 40, 0); }
+  15% { box-shadow: 0 0 0 4px rgba(242, 140, 40, 0.9), 0 0 36px rgba(242, 140, 40, 0.45); transform: translateX(-6px); }
+  30% { transform: translateX(0); }
+  45% { transform: translateX(-4px); }
+  60% { box-shadow: 0 0 0 3px rgba(242, 140, 40, 0.6), 0 0 24px rgba(242, 140, 40, 0.3); transform: none; }
+  100% { box-shadow: 0 0 0 0 rgba(242, 140, 40, 0); }
+}
+@keyframes cfgNudgeSoft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 140, 40, 0); }
+  40% { box-shadow: 0 0 0 3px rgba(242, 140, 40, 0.55), 0 0 22px rgba(242, 140, 40, 0.25); }
+}
+.cfg-nudge-arrow { position: fixed; z-index: 9000; display: flex; align-items: center; gap: 0.5rem; width: 200px; justify-content: flex-end; pointer-events: none; animation: cfgArrow 2.2s cubic-bezier(0.2, 0.75, 0.2, 1) forwards; }
+.cfg-nudge-arrow span { padding: 0.35rem 0.7rem; border-radius: 999px; background: #12233a; color: #fff; font-size: 0.85rem; font-weight: 800; white-space: nowrap; box-shadow: 0 6px 16px rgba(18, 35, 58, 0.3); }
+.cfg-nudge-arrow b { display: inline-grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 50%; background: #f28c28; color: #fff; font-size: 1.3rem; box-shadow: 0 6px 16px rgba(242, 140, 40, 0.45); }
+@keyframes cfgArrow {
+  0% { opacity: 0; transform: translateX(-60px); }
+  18% { opacity: 1; transform: translateX(0); }
+  30% { transform: translateX(-10px); }
+  42% { transform: translateX(0); }
+  54% { transform: translateX(-8px); }
+  66% { transform: translateX(0); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(14px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rdl-zestaw li, .rdl-r, .rdl-tarcza, .rdl-piec, .rdl-kolo, .rdl-skan, .rdl-auto, .rdl-droga, .cfg-nudge-arrow, .hero-product-config-panel.is-nudged { animation: none !important; transition: none !important; opacity: 1; transform: none; stroke-dashoffset: 0; }
+}
+
+/* lejek rolet dachowych: akapity poza ogólną regułą .hero-product-content p (duża jasna czcionka) */
+.hero-product-content p.rdl-sub { font-size: 1.04rem; line-height: 1.5; color: #334155; }
+.hero-product-content p.rdl-zestaw-t { font-size: 0.78rem; line-height: 1.3; color: #b8741a; }
+.hero-product-content p.rdl-osprzet { font-size: 0.86rem; line-height: 1.5; color: #475569; }
+.hero-product-content p.rdl-cena { font-size: 0.95rem; line-height: 1.4; color: #16314e; }
+.hero-product-content p.rdl-firma { font-size: 0.78rem; line-height: 1.5; color: #9cc2bb; }
+.hero-product-content p.rdl-ceny-lead { font-size: 0.95rem; line-height: 1.5; color: #475569; }
+.hero-product-content p.rdl-warunek { font-size: 0.82rem; line-height: 1.45; color: #475569; }
+.hero-product-content p.rdl-szukaj-lead { font-size: 0.95rem; line-height: 1.5; color: #475569; }
+.hero-product-content p.rdl-lista-pusto { font-size: 0.86rem; line-height: 1.45; color: #64748b; }
+.hero-product-content p.rdl-wybrane-t { font-size: 0.98rem; line-height: 1.4; color: #12233a; }
+.hero-product-content p.rdl-szukaj-dol { font-size: 0.88rem; line-height: 1.5; color: #475569; }
+.hero-product-content p.rdl-uwaga { font-size: 0.78rem; line-height: 1.45; color: #64748b; }
+.hero-product-content p.rdl-tk-lead { font-size: 0.95rem; line-height: 1.5; color: #475569; }
+.hero-product-content p.rdl-tk-co { font-size: 0.86rem; line-height: 1.45; color: #475569; }
+.hero-product-content p.rdl-tk-osprzet-t { font-size: 0.8rem; line-height: 1.3; color: #12233a; }
+html .hero-product-content .rdl-ryzyko p.rdl-firma { color: #9cc2bb; }
