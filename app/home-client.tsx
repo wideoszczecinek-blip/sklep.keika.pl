@@ -4006,6 +4006,16 @@ export default function Home({
                       {/* Strona plis 3.11 (plan Agencji, jedna wersja): pierwszy ekran z wyceną → wizualizator → opinie →
                           galeria → Dlaczego KEIKA; niżej tkanina, pomiar, bezpieczny zakup, FAQ, końcowy przycisk. */}
                       <PlisyPierwszyEkran />
+                      {/* właściciel 8.11: po opisie „Jak działa plisa” → wizualizator → szybka wycena; reszta bez zmian */}
+                      <section className="pm-section plisy-viz-section" aria-labelledby="plisy-jak-dziala">
+                        <h2 id="plisy-jak-dziala" className="pm-title">Jak działa plisa</h2>
+                        <p className="plisy-viz-lead">
+                          Przeciągnij górną i dolną listwę — plisa zasłoni dowolny fragment okna, resztę zostawi odsłoniętą.
+                        </p>
+                        <PlisyVisualizer />
+                      </section>
+                      <WizPowrot />
+                      <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToConfigPanel} />
                       <section className="pm-section" aria-labelledby="plisy-szybka-wycena">
                         <h2 id="plisy-szybka-wycena" className="pm-title">Sprawdź szybką wycenę</h2>
                         <p className="pm-lead">Wpisz przybliżone wymiary i porównaj orientacyjne ceny różnych tkanin.</p>
@@ -4033,8 +4043,6 @@ export default function Home({
                         )}
                       </PromoCountdownBanner>
                       <LejekOcena onOpinie={() => scrollToProductSection("opinie")} />
-                      <WizPowrot />
-                      <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToConfigPanel} />
                       <section className="pm-section plisy-guide" aria-labelledby="plisy-guide-title">
                         <h2 id="plisy-guide-title" className="pm-title">Pomiar i montaż plisy</h2>
                         <PlisyFilmLoop {...PLISY_FILM.caly} label="Prezentacja plisy w 3D" />
