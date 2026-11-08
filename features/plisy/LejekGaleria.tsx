@@ -82,8 +82,9 @@ export function LejekGaleria({ onZoom }: { onZoom: (title: string, urls: string[
   return (
     <section className="pm-section lj-galeria" aria-labelledby="lj-gal-t">
       <p className="pm-eyebrow">Galeria</p>
-      <h2 id="lj-gal-t" className="pm-title">Prawdziwe plisy KEIKA w prawdziwych oknach</h2>
-      <p className="lj-galeria-lead">Zdjęcia z montaży w domach i biurach oraz nasz produkt z bliska – bez grafiki komputerowej i bez AI.</p>
+      {/* właściciel 9.11: „ten tytuł jest tragiczny. Zobacz zdjęcia podesłane przez naszych klientów po montażu” */}
+      <h2 id="lj-gal-t" className="pm-title">Zobacz zdjęcia od naszych klientów – prosto po montażu</h2>
+      <p className="lj-galeria-lead">Tak wyglądają nasze plisy w domach i biurach klientów. Do tego produkt z bliska. Bez grafik i bez AI.</p>
       <div className="lj-galeria-grupy" role="tablist" aria-label="Rodzaj zdjęć">
         {GRUPY.map((g) => (
           <button
