@@ -3253,8 +3253,8 @@ export default function Home({
       window.location.assign(subItem.linkUrl);
       return;
     }
-    // Ze strony rodzaju żaluzji pozycja "Żaluzje" w menu prowadzi do wyboru rodzaju.
-    if (options?.updateUrl !== false && zaluzjeRodzaj && shareSlug === "zaluzje") {
+    // Pozycja "Żaluzje" w menu prowadzi na stronę wyboru rodzaju /zaluzje (pełne przejście, także ze strony rodzaju).
+    if (options?.updateUrl !== false && shareSlug === "zaluzje" && (zaluzjeRodzaj || window.location.pathname !== "/zaluzje")) {
       window.location.assign("/zaluzje");
       return;
     }

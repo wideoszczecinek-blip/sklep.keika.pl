@@ -22,6 +22,8 @@ export const LIVE_PRODUCT_SLUGS = new Set<string>([
   "plisy",
   "rolety-dachowe",
   "plisy-dachowe",
+  // 8.11.2026 (właściciel: „żaluzje możesz uruchomić publicznie - rolety dalej ukryte”)
+  "zaluzje",
   // "rolety-dzien-noc" i "rolety-tradycyjne" - podgląd tylko dla właściciela (proxy.ts), do akceptacji poza LIVE
 ]);
 
