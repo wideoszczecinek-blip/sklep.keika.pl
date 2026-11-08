@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import SiteFooter from "@/app/components/site-footer";
+import AddedToCartMessage from "@/app/components/added-to-cart-message";
 import PayPoBadge from "@/app/components/paypo-badge";
 import { COMPANY_LEGAL } from "@/lib/company-legal";
 import { createPortal } from "react-dom";
@@ -5629,10 +5630,7 @@ export default function Home({
                     <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
                       <div className="hero-product-mini-summary-body">
                         <div className="hero-product-added-toast">
-                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
-                          <p>
-                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
-                          </p>
+                          <AddedToCartMessage productSlug={addToCartToast.productSlug} productLabel={addToCartToast.productLabel} item={cartItems[cartItems.length - 1]} />
                           {addToCartToast.leftover ? (
                             <p className="hero-product-added-toast-leftover">
                               <span aria-hidden="true">🧵</span> Zostało Ci jeszcze{" "}
@@ -5765,10 +5763,7 @@ export default function Home({
                     <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
                       <div className="hero-product-mini-summary-body">
                         <div className="hero-product-added-toast">
-                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
-                          <p>
-                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
-                          </p>
+                          <AddedToCartMessage productSlug={addToCartToast.productSlug} productLabel={addToCartToast.productLabel} item={cartItems[cartItems.length - 1]} />
                           <div className="hero-product-added-toast-actions">
                             <button
                               type="button"
@@ -5865,10 +5860,7 @@ export default function Home({
                     <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
                       <div className="hero-product-mini-summary-body">
                         <div className="hero-product-added-toast">
-                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
-                          <p>
-                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
-                          </p>
+                          <AddedToCartMessage productSlug={addToCartToast.productSlug} productLabel={addToCartToast.productLabel} item={cartItems[cartItems.length - 1]} />
                           <div className="hero-product-added-toast-actions">
                             <button
                               type="button"
@@ -5965,10 +5957,7 @@ export default function Home({
                     <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
                       <div className="hero-product-mini-summary-body">
                         <div className="hero-product-added-toast">
-                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
-                          <p>
-                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
-                          </p>
+                          <AddedToCartMessage productSlug={addToCartToast.productSlug} productLabel={addToCartToast.productLabel} item={cartItems[cartItems.length - 1]} />
                           {addToCartToast.preview && addToCartToast.detailGroups ? (
                             <div className="zl-toast-compact">
                               <ZaluzjaHead
@@ -6135,10 +6124,7 @@ export default function Home({
                     <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">
                       <div className="hero-product-mini-summary-body">
                         <div className="hero-product-added-toast">
-                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
-                          <p>
-                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
-                          </p>
+                          <AddedToCartMessage productSlug={addToCartToast.productSlug} productLabel={addToCartToast.productLabel} item={cartItems[cartItems.length - 1]} />
                           <div className="hero-product-added-toast-actions">
                             <button
                               type="button"
@@ -6562,10 +6548,7 @@ export default function Home({
                       </div>
                       {addToCartToast ? (
                         <div className="hero-product-added-toast">
-                          <span className="hero-product-added-toast-icon" aria-hidden="true">✓</span>
-                          <p>
-                            <strong>Dodano do koszyka!</strong> {addToCartToast.productLabel}
-                          </p>
+                          <AddedToCartMessage productSlug={addToCartToast.productSlug} productLabel={addToCartToast.productLabel} item={cartItems[cartItems.length - 1]} />
                           <div className="hero-product-added-toast-actions">
                             <button
                               type="button"
