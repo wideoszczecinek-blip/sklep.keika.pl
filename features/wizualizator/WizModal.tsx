@@ -846,6 +846,39 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
     setAiInfo((t) => (aiOffRef.current ? t : ""));
   }, [klucz]);
 
+  // zrzut tego, co klient widzi (plisy w tkaninie i ułożeniu belek) - CRM pokazuje go w karcie wizualizacji, sklep
+  // w koszyku i w okienku „produkt w koszyku”. Tylko czysty widok: w trybie „Popraw obrys” płótno ma obwódki szyb,
+  // a suwak przed/po pokazuje pół zdjęcia bez plis (właściciel 8.11: „dziwna ramka wokół szyby”) - wtedy zrzut czeka.
+  const czystyWidok = !edycja && przedPo === null;
+  const czystyRef = useRef(czystyWidok);
+  czystyRef.current = czystyWidok;
+  const podgladZaleglyRef = useRef(false);
+  const zapiszPodglad = useCallback(() => {
+    const c = canvasRef.current;
+    if (!token || !c || !c.width) return;
+    if (!czystyRef.current) {
+      podgladZaleglyRef.current = true;
+      return;
+    }
+    podgladZaleglyRef.current = false;
+    try {
+      const sk = Math.min(1, 900 / Math.max(c.width, c.height));
+      const o = document.createElement("canvas");
+      o.width = Math.round(c.width * sk);
+      o.height = Math.round(c.height * sk);
+      o.getContext("2d")?.drawImage(c, 0, 0, o.width, o.height);
+      wizPodglad(token, o.toDataURL("image/jpeg", 0.72));
+    } catch {
+      // płótno bez dostępu (CORS) - CRM odtworzy podgląd z układu
+    }
+  }, [token]);
+  // po wyjściu z poprawiania obrysu / suwaka: zaległy zrzut, gdy płótno jest już przerysowane bez obwódek
+  useEffect(() => {
+    if (!czystyWidok || !podgladZaleglyRef.current || demo || faza !== "gotowa") return;
+    const t = window.setTimeout(zapiszPodglad, 700);
+    return () => window.clearTimeout(t);
+  }, [czystyWidok, zapiszPodglad, demo, faza]);
+
   // zapis układu (z opóźnieniem)
   useEffect(() => {
     if (!token || faza !== "gotowa" || !panes.length || demo) return;
@@ -857,22 +890,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
           szer_mm: p.wpisSzerMm ?? null, wys_mm: p.wpisWysMm ?? null, zmierzone: Boolean(p.zmierzone), pomin: Boolean(p.pomin) };
       }
       wizSaveLayout(token, uklad, korektaRef.current);
-      // zrzut tego, co klient widzi (plisy w tkaninie i ułożeniu belek) - CRM pokazuje go w karcie wizualizacji
-      const c = canvasRef.current;
-      if (c && c.width) {
-        try {
-          const sk = Math.min(1, 900 / Math.max(c.width, c.height));
-          const o = document.createElement("canvas");
-          o.width = Math.round(c.width * sk);
-          o.height = Math.round(c.height * sk);
-          o.getContext("2d")?.drawImage(c, 0, 0, o.width, o.height);
-          wizPodglad(token, o.toDataURL("image/jpeg", 0.72));
-        } catch {
-          // płótno bez dostępu (CORS) - CRM odtworzy podgląd z układu
-        }
-      }
+      zapiszPodglad();
     }, 1200);
-  }, [panes, montaz, wszystkie, token, faza, demo]);
+  }, [panes, montaz, wszystkie, token, faza, demo, zapiszPodglad]);
 
   // ------------------------------------------------------------ wskaźnik na zdjęciu
   const toImg = (e: { clientX: number; clientY: number }): Pt | null => {
