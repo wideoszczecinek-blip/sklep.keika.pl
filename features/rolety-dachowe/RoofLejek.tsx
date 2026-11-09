@@ -430,11 +430,6 @@ export function RdSzukajOkna({
               <li key={r.item.id}>
                 <button type="button" onClick={() => wybierz(r.item, "wpisz")}>
                   <b>{buildRoofWindowDisplayLabel(r.item)}</b>
-                  {r.item.window_width && r.item.window_height ? (
-                    <small>
-                      {r.item.window_width} × {r.item.window_height} cm
-                    </small>
-                  ) : null}
                 </button>
               </li>
             ))}
