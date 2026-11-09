@@ -418,13 +418,14 @@ export default function PlisyQuickPrice({
                     onGroupChange?.(c.groupId); onWpisane?.();
                   }}>
                     <span className="pl-quick-comparison-name">{names[c.groupId] || c.name}</span>
-                    <span className="pl-quick-comparison-price">{amount === null ? (!pricesReady ? "Ładujemy ceny…" : "Wycena w konfiguratorze") : <>{tier ? <><strong>{zl(Math.round(amount * (100 - tier.percent)) / 100)}</strong><small>przy {tier.fromQty}+ szt.</small><s>{zl(amount)}</s></> : <strong>{zl(amount)}</strong>}</>}</span>
+                    {/* właściciel 9.11: „za bardzo ukrywamy cenę bez promocji – pokazać niską cenę bez promocji i bardzo niską w promocji” – obie ceny czytelne, bez przekreślenia */}
+                    <span className="pl-quick-comparison-price">{amount === null ? (!pricesReady ? "Ładujemy ceny…" : "Wycena w konfiguratorze") : <>{tier ? <><span className="pl-qc-zwykla"><b>{zl(amount)}</b><small>1 szt.</small></span><span className="pl-qc-promo"><strong>{zl(Math.round(amount * (100 - tier.percent)) / 100)}</strong><small>od {tier.fromQty} szt. −{tier.percent} %</small></span></> : <span className="pl-qc-promo"><strong>{zl(amount)}</strong></span>}</>}</span>
                   </button>
                   <details className="pl-quick-comparison-info"><summary aria-label={`Informacje: ${names[c.groupId] || c.name}`}>i</summary><p>{c.what}</p></details>
                 </div>;
               })}
             </div>
-            {bundleRule?.wholeOrder && bundleRule.tiers.length ? <p className="pl-quick-comparison-note">Cena promocyjna przy {bundleRule.tiers[bundleRule.tiers.length - 1].fromQty} lub więcej produktach objętych promocją CAŁY DOM. Cena przekreślona dotyczy zakupu bez rabatu. Ostateczna cena zależy od konfiguracji i zawartości koszyka.</p> : <p className="pl-quick-comparison-note">Cena orientacyjna dla montażu przykręcanego. Ostateczna cena zależy od konfiguracji.</p>}
+            {bundleRule?.wholeOrder && bundleRule.tiers.length ? <p className="pl-quick-comparison-note">Pierwsza cena – zakup 1 sztuki. Zielona – w promocji CAŁY DOM przy {bundleRule.tiers[bundleRule.tiers.length - 1].fromQty} lub więcej produktach (mogą być różne). Ostateczna cena zależy od konfiguracji i zawartości koszyka.</p> : <p className="pl-quick-comparison-note">Cena orientacyjna dla montażu przykręcanego. Ostateczna cena zależy od konfiguracji.</p>}
             {split ? <p className="pl-quick-comparison-note">Szerokie okno wyceniamy jako dwie plisy — podana cena obejmuje obie.</p> : null}
             <button type="button" className="pl-quick-cta pl-quick-cta--v2" disabled={!inRange} onClick={configure}>Wybierz szczegóły i skonfiguruj →</button>
             {onMeasureGuide ? <button type="button" className="pl-quick-measure" onClick={onMeasureGuide}>Jak zmierzyć okno? →</button> : null}

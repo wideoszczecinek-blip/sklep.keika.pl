@@ -24934,7 +24934,7 @@ html body button.pl-quick-tk.is-active { border-color: #d94d00; background: #fff
 .checkout-delivery-fold > summary { cursor: pointer; padding: .85rem 1rem; margin: .55rem 0; border: 1px solid #c4ded3; border-radius: 12px; background: #f0f8f4; color: #173f35; font-weight: 750; }
 .checkout-delivery-fold[open] > summary { background: #e5f4ed; }
 
-.checkout-finance { position: relative; isolation: isolate; border: 1px solid #e7dbcd; background: linear-gradient(90deg,#fbf3e8 20%,#fbf3e8db 48%,#fbf3e800 82%), url("/checkout/elastyczne-platnosci.jpg") center right / cover; color: #25322a; }
+.checkout-finance { position: relative; isolation: isolate; border: 1px solid #e7dbcd; background: linear-gradient(90deg,#fbf3e8 20%,#fbf3e8db 48%,#fbf3e800 82%), url("/checkout/raty-tlo-osoba.jpg") center right / cover; color: #25322a; }
 .checkout-finance-card { display: grid; justify-items: start; gap: .65rem; padding: 1rem clamp(1rem,4vw,1.55rem); min-height: 135px; }
 .checkout-finance-logo { display: block; width: 106px; height: 32px; object-fit: contain; object-position: left center; padding: 5px 9px; border-radius: 7px; background: #fff; }
 .checkout-finance-copy { max-width: min(76%, 360px); }
@@ -26598,3 +26598,29 @@ button.rdl-r:hover { background: rgba(255, 255, 255, 0.1); }
 .hero-product-content p.rdl-tk-co { font-size: 0.86rem; line-height: 1.45; color: #475569; }
 .hero-product-content p.rdl-tk-osprzet-t { font-size: 0.8rem; line-height: 1.3; color: #12233a; }
 html .hero-product-content .rdl-ryzyko p.rdl-firma { color: #9cc2bb; }
+
+/* Koszyk: baner terminu dostawy (właściciel 9.11.2026, app/koszyk/cart-trust.tsx CartDostawaBaner).
+   Tło: zdjęcie wygenerowane w ChatGPT (radość z dostawy), tekst po lewej na jasnym przejściu. */
+.cart-dostawa-baner { position: relative; isolation: isolate; overflow: hidden; margin: .85rem 0; border-radius: 16px; border: 1px solid #d9e7dc; background: linear-gradient(90deg, #f0f3ea 26%, rgba(240, 243, 234, .85) 42%, rgba(240, 243, 234, 0) 62%), url("/checkout/dostawa-baner.jpg") right 24% / cover, #f0f3ea; color: #1f3a2c; }
+.cart-dostawa-copy { display: grid; gap: .3rem; padding: 1rem clamp(1rem, 4vw, 1.55rem); min-height: 150px; align-content: center; max-width: 52%; }
+.cart-dostawa-copy p { margin: 0; }
+.cart-dostawa-1 { font-size: .9rem; line-height: 1.4; color: #35503f; }
+.cart-dostawa-1 b { color: #1f3a2c; }
+.cart-dostawa-2 { font-size: 1.12rem; line-height: 1.3; font-weight: 700; color: #1f3a2c; }
+.cart-dostawa-2 strong { font-weight: 900; text-transform: uppercase; letter-spacing: .01em; color: #0d7a4f; }
+.cart-dostawa-data { display: inline-block; margin-left: .2rem; padding: .08rem .5rem; border-radius: 999px; background: #0d7a4f; color: #fff; font-weight: 900; font-size: 1rem; animation: cartDostawaPuls 2.6s ease-in-out 1s 2; }
+@keyframes cartDostawaPuls { 50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(13, 122, 79, .15); } }
+.cart-dostawa-3 { font-size: .76rem; color: #5b7364; }
+@media (max-width: 560px) {
+  .cart-dostawa-baner { background: linear-gradient(180deg, rgba(243, 249, 242, .2) 0%, #f3f9f2 46%), url("/checkout/dostawa-baner.jpg") 70% 0 / auto 60% no-repeat, #f3f9f2; }
+  .cart-dostawa-copy { max-width: none; padding-top: 5.4rem; }
+}
+@media (prefers-reduced-motion: reduce) { .cart-dostawa-data { animation: none; } }
+
+/* Plisy – porównanie tkanin: cena za 1 szt. i cena w CAŁY DOM, obie czytelne (właściciel 9.11.2026) */
+.pl-quick-comparison-price { align-items: center; gap: .7rem; flex-wrap: nowrap; }
+.pl-qc-zwykla, .pl-qc-promo { display: grid; justify-items: end; line-height: 1.1; }
+.pl-qc-zwykla b { font-size: .95rem; font-weight: 800; color: #1f2f3a; white-space: nowrap; }
+.pl-qc-promo strong { font-size: 1.12rem !important; font-weight: 900; color: #087e6e; white-space: nowrap; }
+.pl-qc-zwykla small, .pl-qc-promo small { font-size: .66rem; color: #5d6f7b; white-space: nowrap; }
+.pl-qc-promo small { color: #087e6e; font-weight: 700; }
