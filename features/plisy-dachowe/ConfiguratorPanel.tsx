@@ -679,7 +679,7 @@ export default function ConfiguratorPanel({
           },
           hasWindowInfo,
           "1",
-          "Dopasuj plisę do modelu okna",
+          "Model okna",
           false,
           windowChoice ? (
             <strong>
@@ -801,7 +801,7 @@ export default function ConfiguratorPanel({
               },
               fabricGroupChosen,
               "2",
-              "Wybierz kolekcję tkaniny",
+              "Rodzaj tkaniny",
               true,
               selectedFabricGroup ? <strong>{selectedFabricGroup.label}</strong> : null,
             )}
@@ -865,7 +865,7 @@ export default function ConfiguratorPanel({
                   },
                   fabricChosen,
                   "3",
-                  "Wybierz kolor tkaniny",
+                  "Kolor tkaniny",
                   true,
                   <>
                     {selectedFabric && stepThreeCollapsed ? (
@@ -959,7 +959,7 @@ export default function ConfiguratorPanel({
                     },
                     Boolean(selectedHardware),
                     "4",
-                    "Wybierz kolor osprzętu",
+                    "Kolor osprzętu",
                     true,
                     <>
                       {selectedHardware && stepOneCollapsed ? (
@@ -1024,7 +1024,7 @@ export default function ConfiguratorPanel({
                       <dd>{selectedHardware?.label || "--"}</dd>
                     </div>
                     <div>
-                      <dt>Kolekcja tkaniny</dt>
+                      <dt>Rodzaj tkaniny</dt>
                       <dd>{selectedFabricGroup?.label || "--"}</dd>
                     </div>
                     <div>

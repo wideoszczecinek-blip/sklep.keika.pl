@@ -6231,7 +6231,7 @@ export default function Home({
                   >
                     <span className="hero-product-config-step-title">
                       <span className="hero-product-step-check" aria-hidden="true">✓</span>
-                      Wybierz kolor profili
+                      Kolor profilu
                     </span>
                     <span className="hero-product-step-head-meta">
                       {selectedHardwareOption && stepOneCollapsed ? (
@@ -6317,7 +6317,7 @@ export default function Home({
                           <span className={`hero-product-step-check ${meshChosen ? "" : "is-muted"}`} aria-hidden="true">
                             {meshChosen ? "✓" : "2"}
                           </span>
-                          Dobierz kolor siatki
+                          Kolor siatki
                         </span>
                         <span className="hero-product-step-head-meta">
                           {selectedMesh && stepTwoCollapsed ? (
@@ -6381,7 +6381,7 @@ export default function Home({
                           <span className={`hero-product-step-check ${hasValidDimensions ? "" : "is-muted"}`} aria-hidden="true">
                             {hasValidDimensions ? "✓" : "3"}
                           </span>
-                          Podaj wymiary
+                          Wymiary i ilość
                         </p>
                         <div className="hero-product-dimensions-grid">
                           <label>

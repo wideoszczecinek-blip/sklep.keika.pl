@@ -559,7 +559,7 @@ function sanitizeStepOrder(stepOrder: ConfigStepId[] | undefined): ConfigStepId[
 
 function getStepTitle(stepId: ConfigStepId): string {
   if (stepId === "hardware") return "Kolor osprzętu";
-  if (stepId === "fabric") return "Tkanina";
+  if (stepId === "fabric") return "Rodzaj i kolor tkaniny";
   return "Wymiary i sterowanie";
 }
 
@@ -1509,7 +1509,7 @@ export default function ConfiguratorPage({ params }: { params?: { slug?: string 
 
                 {activeStepId === "fabric" ? (
                   <article className="catalog-card">
-                    <h2>Krok {currentStep + 1} z {steps.length}: Rodzaj i kolor materiału</h2>
+                    <h2>Krok {currentStep + 1} z {steps.length}: Rodzaj i kolor tkaniny</h2>
                     {linkedFabricLibraries.length > 0 ? (
                       <p className="configurator-assets-note">
                         Aktywne kolekcje: <strong>{linkedFabricLibraries.map((library) => library.label || library.id).join(", ")}</strong>

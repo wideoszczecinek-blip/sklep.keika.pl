@@ -92,7 +92,7 @@ export const ROLETY_DACHOWE_MATERIAL_TYPES: MaterialTypeOption[] = [
   },
 ];
 
-// Tkanina (fabric) colors - real CRM data, "Wybierz kolor materiału" step.
+// Tkanina (fabric) colors - real CRM data; w CRM krok „Wybierz kolor materiału”, w sklepie „Kolor tkaniny” (właściciel 9.11).
 // 54 "Deko" options (materialTypeId "polprzepuszczalny") + 19 "Termo"
 // options (materialTypeId "termo"), 73 total. Three Termo entries (67/68/69)
 // never had a real accent_color set in the CRM (still the placeholder

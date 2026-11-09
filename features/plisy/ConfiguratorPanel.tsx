@@ -1355,7 +1355,11 @@ export default function ConfiguratorPanel({
         <strong>Konfigurator plisy</strong>
       </header>
 
-      {/* KROK 1: sposób montażu */}
+      {/* KROK 1: sposób montażu.
+          Tytuły kroków we wszystkich konfiguratorach (właściciel 9.11): krótki
+          rzeczownik, bez „Wybierz/Dobierz/Podaj”; ten sam termin dla tej samej
+          rzeczy („Rodzaj tkaniny”, „Kolor tkaniny”, „Sposób montażu”) i te same
+          nazwy w podsumowaniu i w koszyku (cartItemDisplayLabels w koszyku). */}
       {profile.mountOptions.length > 0 ? (
         <section className={`hero-product-step-accordion hero-product-step-accordion--mount ${stepMountCollapsed ? "is-collapsed" : ""}`}>
           <button
@@ -1371,7 +1375,7 @@ export default function ConfiguratorPanel({
               <span className={`hero-product-step-check ${selectedMount ? "" : "is-muted"}`} aria-hidden="true">
                 {selectedMount ? "✓" : "1"}
               </span>
-              Wybierz sposób montażu
+              Sposób montażu
             </span>
             <span className="hero-product-step-head-meta">
               {selectedMount ? <strong>{plisyMountNazwa(selectedMount)}</strong> : null}
@@ -1595,7 +1599,7 @@ export default function ConfiguratorPanel({
               <span className={`hero-product-step-check ${selectedBracket ? "" : "is-muted"}`} aria-hidden="true">
                 {selectedBracket ? "✓" : "2"}
               </span>
-              Wybierz kolor uchwytów bezinwazyjnych
+              Kolor uchwytów
             </span>
             <span className="hero-product-step-head-meta">
               {selectedBracket && stepBracketCollapsed ? (
@@ -1662,7 +1666,7 @@ export default function ConfiguratorPanel({
                 <span className={`hero-product-step-check ${fabricGroupChosen ? "" : "is-muted"}`} aria-hidden="true">
                   {fabricGroupChosen ? "✓" : "3"}
                 </span>
-                Wybierz typ tkaniny
+                Rodzaj tkaniny
               </span>
               <span className="hero-product-step-head-meta">
                 {selectedFabricGroup ? <strong>{selectedFabricGroup.label}</strong> : null}
@@ -1823,7 +1827,7 @@ export default function ConfiguratorPanel({
                     <span className={`hero-product-step-check ${fabricChosen ? "" : "is-muted"}`} aria-hidden="true">
                       {fabricChosen ? "✓" : "4"}
                     </span>
-                    Wybierz kolor tkaniny
+                    Kolor tkaniny
                   </span>
                   <span className="hero-product-step-head-meta">
                     {selectedFabric && stepThreeCollapsed ? (
@@ -2360,7 +2364,7 @@ export default function ConfiguratorPanel({
                     <dl>
                       {selectedMount ? (
                         <div>
-                          <dt>Rodzaj montażu</dt>
+                          <dt>Sposób montażu</dt>
                           <dd>{plisyMountNazwa(selectedMount)}</dd>
                         </div>
                       ) : null}
@@ -2371,11 +2375,11 @@ export default function ConfiguratorPanel({
                         </div>
                       ) : null}
                       <div>
-                        <dt>Kolor mechanizmu</dt>
+                        <dt>Kolor listew</dt>
                         <dd>{selectedHardware?.label || "--"}</dd>
                       </div>
                       <div>
-                        <dt>Kolekcja tkaniny</dt>
+                        <dt>Rodzaj tkaniny</dt>
                         <dd>{selectedFabricGroup?.label || "--"}</dd>
                       </div>
                       <div>

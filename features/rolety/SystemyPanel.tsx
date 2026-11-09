@@ -393,7 +393,7 @@ export default function SystemyPanel({
       <section className="rs-step">
         <h3 className="rs-step-title">
           <span className={`rs-step-no ${hardware ? "is-done" : ""}`}>{hardware ? "✓" : NO.hw}</span>
-          {hardware ? `Kolor ${hwTitle}` : `Wybierz kolor ${hwTitle}`}
+          {`Kolor ${hwTitle}`}
           {hardware ? <em>{hardware.label}</em> : null}
         </h3>
         <HardwareTiles
@@ -416,7 +416,7 @@ export default function SystemyPanel({
         <section className="rs-step" ref={fabricRef}>
           <h3 className="rs-step-title">
             <span className={`rs-step-no ${group ? "is-done" : ""}`}>{group ? "✓" : NO.fabric}</span>
-            {group ? "Rodzaj tkaniny" : "Wybierz rodzaj tkaniny"}
+            Rodzaj tkaniny
             {group ? <em>{group.label}</em> : null}
           </h3>
           <FabricTypeCards
@@ -443,7 +443,7 @@ export default function SystemyPanel({
         <section className="rs-step" ref={colorRef}>
           <h3 className="rs-step-title">
             <span className={`rs-step-no ${fabric ? "is-done" : ""}`}>{fabric ? "✓" : NO.color}</span>
-            {fabric ? "Kolor tkaniny" : "Wybierz kolor tkaniny"}
+            Kolor tkaniny
             {fabric ? <em>{fabric.label}</em> : null}
           </h3>
           <div className="rs-swatch-grid">
@@ -495,7 +495,7 @@ export default function SystemyPanel({
         <section className="rs-step" ref={optionRef}>
           <h3 className="rs-step-title">
             <span className={`rs-step-no ${mount ? "is-done" : ""}`}>{mount ? "✓" : NO.mount}</span>
-            {slug === "rolety-wolnowiszace" ? "Gdzie montujesz?" : "Prowadzenie tkaniny"}
+            {slug === "rolety-wolnowiszace" ? "Sposób montażu" : "Prowadzenie tkaniny"}
             {mount ? <em>{mount.label}</em> : null}
           </h3>
           <div className="rs-option-grid">
@@ -533,7 +533,7 @@ export default function SystemyPanel({
         <section className="rs-step" ref={listwaRef}>
           <h3 className="rs-step-title">
             <span className={`rs-step-no ${listwa ? "is-done" : ""}`}>{listwa ? "✓" : NO.listwa}</span>
-            {listwa ? "Listwa przyszybowa" : "Jaką masz listwę przyszybową?"}
+            Listwa przyszybowa
             {listwa ? <em>{LISTWA_OPTIONS.find((o) => o.id === listwa)?.label}</em> : null}
           </h3>
           <p className="hero-product-config-hint">Płaska prowadnica leży na listwie przyszybowej, dlatego mocowanie dobieramy do jej kształtu.</p>

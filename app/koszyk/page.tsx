@@ -426,6 +426,26 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
   return { hardware: "Kolor profilu", mesh: "Kolor siatki" };
 }
 
+/** Etykiety parametrów pozycji WIDOCZNE w koszyku (oba widoki koszyka).
+ * Właściciel 9.11: te same nazwy co tytuły kroków w konfiguratorach -
+ * krótki rzeczownik („Kolor listew”, „Rodzaj tkaniny”, „Kolor tkaniny”),
+ * zawsze „tkanina” (nie „materiał”) i „rodzaj” (nie „typ”/„kolekcja”).
+ * cartItemFieldLabels() zostaje bez zmian, bo jej nazwy idą do CRM jako
+ * summary_rows i CRM po nich czyta (karta produkcji plis i rolet dachowych,
+ * akceptacja zamówienia). */
+const CART_MOUNT_LABEL = "Sposób montażu";
+const CART_SIZE_LABEL = "Wymiary";
+function cartItemDisplayLabels(productSlug: string): { hardware: string; mesh: string } {
+  if (productSlug === "rolety-dachowe") return { hardware: "Kolor kasety i prowadnic", mesh: "Kolor tkaniny" };
+  if (productSlug === "plisy") return { hardware: "Kolor listew", mesh: "Rodzaj i kolor tkaniny" };
+  if (productSlug === "plisy-dachowe") return { hardware: "Kolor osprzętu", mesh: "Rodzaj i kolor tkaniny" };
+  if (productSlug === "zaluzje") return { hardware: "Kolor mechanizmu", mesh: "Model żaluzji i kolor lameli" };
+  if (productSlug === "rolety-kaseta-plaska" || productSlug === "rolety-kaseta-przestrzenna") return { hardware: "Kolor kasety i prowadnic", mesh: "Rodzaj i kolor tkaniny" };
+  if (productSlug === "rolety-mini" || productSlug === "rolety-wolnowiszace") return { hardware: "Kolor osprzętu", mesh: "Rodzaj i kolor tkaniny" };
+  if (isRoletySlug(productSlug)) return { hardware: "Kolor mechanizmu", mesh: "Rodzaj i kolor tkaniny" };
+  return { hardware: "Kolor profilu", mesh: "Kolor siatki" };
+}
+
 /** Parametry pozycji jako osobne pola "etykieta / wartość" zamiast jednego
  * ciągu rozdzielonego kropkami (właściciel, 2026-10-03: "każda pozycja ma
  * swatche ciągiem wymienione - można to zrobić ładniej i czytelniej").
@@ -448,18 +468,18 @@ function CartItemSpecs({ item }: { item: CartLineItem }) {
       </>
     );
   }
-  const labels = cartItemFieldLabels(item.productSlug);
+  const labels = cartItemDisplayLabels(item.productSlug);
   const colors = resolveCartWindowThumb(item);
   const rows: { label: string; value: string; dot?: string }[] = [];
   if (item.widthMm && item.heightMm) {
     rows.push({
-      label: "Wymiar",
+      label: CART_SIZE_LABEL,
       value: item.splitFromWidthMm
         ? `okno ${item.splitFromWidthMm} × ${item.heightMm} mm → 2 plisy po ${item.widthMm} mm`
         : `${item.widthMm} × ${item.heightMm} mm`,
     });
   }
-  if (item.mountLabel) rows.push({ label: "Rodzaj montażu", value: item.mountLabel });
+  if (item.mountLabel) rows.push({ label: CART_MOUNT_LABEL, value: item.mountLabel });
   if (item.hardwareLabel) rows.push({ label: labels.hardware, value: item.hardwareLabel, dot: colors?.hardware });
   if (item.meshLabel) rows.push({ label: labels.mesh, value: item.meshLabel, dot: colors?.fabric });
   if (item.modelLabel) rows.push({ label: "Model okna", value: item.modelLabel });
@@ -472,7 +492,7 @@ function CartItemSpecs({ item }: { item: CartLineItem }) {
   return (
     <dl className="cart-item-specs">
       {rows.map((row) => (
-        <div key={row.label} className={row.label === "Wymiar" ? "is-size" : undefined}>
+        <div key={row.label} className={row.label === CART_SIZE_LABEL ? "is-size" : undefined}>
           <dt>{row.label}</dt>
           <dd>
             {row.dot ? <i className="cart-item-spec-dot" style={{ background: row.dot }} aria-hidden="true" /> : null}
@@ -3402,7 +3422,7 @@ export default function CartPage() {
     backHref,
     dataLocked,
     track: trackCheckoutIssue,
-    itemFieldLabels: cartItemFieldLabels,
+    itemFieldLabels: cartItemDisplayLabels,
     combinedDiscountPercent,
     onQty: handleQtyChange,
     onRemove: handleRemove,

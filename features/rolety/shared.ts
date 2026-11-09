@@ -76,7 +76,7 @@ export type RoletyProductCopy = {
   leadTimeLabel: string;
   /** null = paczkomat niedostępny (tylko kurier). */
   paczkomatMaxWidthMm: number | null;
-  /** Krok 4: "Wybierz kolekcję tkaniny" / "Wybierz model żaluzji". */
+  /** Krok 4: "Rodzaj tkaniny" / "Model żaluzji" - tytuł kroku to rzeczownik, bez "Wybierz" (właściciel 9.11). */
   groupStepTitle: string;
   colorStepTitle: string;
   groupUnit: "kolekcja" | "model";
@@ -116,8 +116,8 @@ const ROLETY_BASE = {
   leadTimeDays: 10,
   leadTimeLabel: "do 10 dni roboczych",
   paczkomatMaxWidthMm: 600,
-  groupStepTitle: "Wybierz kolekcję tkaniny",
-  colorStepTitle: "Wybierz kolor tkaniny",
+  groupStepTitle: "Rodzaj tkaniny",
+  colorStepTitle: "Kolor tkaniny",
   groupUnit: "kolekcja" as const,
   groupCardPhoto: false,
   controlStepTitle: "Strona łańcuszka",
@@ -145,8 +145,8 @@ function systemCopy(slug: RoletySystemSlug, extra: Pick<RoletyProductCopy, "h1" 
     heightMaxMm: system.heightMaxMm,
     widthDefaultMm: 600,
     heightDefaultMm: 1400,
-    colorStepTitle: "Wybierz kolor tkaniny",
-    groupStepTitle: "Wybierz tkaninę",
+    colorStepTitle: "Kolor tkaniny",
+    groupStepTitle: "Rodzaj tkaniny",
     instructionSteps: [
       { title: "Pomiar", body: system.steps("").join(" ") },
       ...(slug === "rolety-kaseta-plaska" ? [{ title: "Listwa przyszybowa", body: LISTWA_JAK_SPRAWDZIC.join(" ") }] : []),
@@ -253,8 +253,8 @@ export const ROLETY_COPY: Record<RoletySlug, RoletyProductCopy> = {
     leadTimeDays: 15,
     leadTimeLabel: "do 15 dni roboczych",
     paczkomatMaxWidthMm: null,
-    groupStepTitle: "Wybierz model żaluzji",
-    colorStepTitle: "Wybierz kolor lameli",
+    groupStepTitle: "Model żaluzji",
+    colorStepTitle: "Kolor lameli",
     groupUnit: "model",
     groupCardPhoto: true,
     controlStepTitle: "Strona sterowania",

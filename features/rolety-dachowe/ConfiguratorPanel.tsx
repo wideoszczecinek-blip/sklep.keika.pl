@@ -701,7 +701,7 @@ export default function ConfiguratorPanel({
           },
           hasWindowInfo,
           "1",
-          "Dopasuj roletę do modelu okna",
+          "Model okna",
           false,
           windowChoice ? (
             <strong>
@@ -824,7 +824,7 @@ export default function ConfiguratorPanel({
               },
               materialChosen,
               "2",
-              "Wybierz rodzaj materiału",
+              "Rodzaj tkaniny",
               true,
               selectedMaterialType ? <strong>{selectedMaterialType.label}</strong> : null,
             )}
@@ -868,7 +868,7 @@ export default function ConfiguratorPanel({
                   },
                   fabricChosen,
                   "3",
-                  "Wybierz kolor materiału",
+                  "Kolor tkaniny",
                   true,
                   <>
                     {selectedFabric && stepThreeCollapsed ? (
@@ -941,7 +941,7 @@ export default function ConfiguratorPanel({
                     },
                     Boolean(selectedHardware),
                     "4",
-                    "Wybierz kolor kasety i prowadnic",
+                    "Kolor kasety i prowadnic",
                     true,
                     <>
                       {selectedHardware && stepOneCollapsed ? (
@@ -1041,15 +1041,15 @@ export default function ConfiguratorPanel({
                     <RoofBlindPreview hardware={selectedHardware} fabric={selectedFabric} className="mosk-preview-stage rd-preview-stage" />
                     <dl>
                       <div>
-                        <dt>Kolor kasety</dt>
+                        <dt>Kolor kasety i prowadnic</dt>
                         <dd>{selectedHardware?.label || "--"}</dd>
                       </div>
                       <div>
-                        <dt>Rodzaj materiału</dt>
+                        <dt>Rodzaj tkaniny</dt>
                         <dd>{selectedMaterialType?.label || "--"}</dd>
                       </div>
                       <div>
-                        <dt>Kolor materiału</dt>
+                        <dt>Kolor tkaniny</dt>
                         <dd>{selectedFabric?.label || "--"}</dd>
                       </div>
                       <div>

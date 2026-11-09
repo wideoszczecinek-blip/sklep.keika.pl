@@ -1148,7 +1148,7 @@ export default function RoletyConfiguratorPanel({
         {stepHead(
           "mount_type",
           stepNo,
-          "Wybierz sposób montażu",
+          "Sposób montażu",
           Boolean(selectedMount),
           stepMountCollapsed,
           () => setStepMountCollapsed((prev) => !prev),
@@ -1591,7 +1591,7 @@ export default function RoletyConfiguratorPanel({
         {stepHead(
           "hardware_color",
           stepNo,
-          "Wybierz kolor mechanizmu",
+          "Kolor mechanizmu",
           Boolean(selectedHardware),
           stepHardwareCollapsed,
           () => setStepHardwareCollapsed((prev) => !prev),
@@ -1989,7 +1989,7 @@ export default function RoletyConfiguratorPanel({
           )}
           <dl>
             <div>
-              <dt>Montaż</dt>
+              <dt>Sposób montażu</dt>
               <dd>{selectedMount?.label || "--"}</dd>
             </div>
             {hasHardwareStep ? (
@@ -1999,13 +1999,13 @@ export default function RoletyConfiguratorPanel({
               </div>
             ) : null}
             <div>
-              <dt>{copy.groupUnit === "model" ? "Model i kolor" : "Tkanina"}</dt>
+              <dt>{copy.groupUnit === "model" ? "Model żaluzji i kolor lameli" : "Rodzaj i kolor tkaniny"}</dt>
               <dd>
                 {selectedFabricGroup.label} — {selectedFabric.label}
               </dd>
             </div>
             <div>
-              <dt>{copy.groupUnit === "model" ? "Sterowanie" : "Łańcuszek"}</dt>
+              <dt>{copy.controlStepTitle}</dt>
               <dd>{tilterOption ? ssTilterLabel(tilterOption.label) : chainLabel || "--"}</dd>
             </div>
             {modelFirst && ssModel ? (

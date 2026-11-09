@@ -563,9 +563,10 @@ export default function CartV2(props: CartV2Props) {
               <ZaluzjaSpecTable rows={item.detailGroups[0]?.rows || []} priceRows={item.detailGroups[1]?.rows || []} className="zl-table--cart cv2-item-specs-groups" />
             ) : open ? (
               <dl className="cv2-item-specs">
+                {/* Nazwy jak tytuły kroków konfiguratora (właściciel 9.11) - patrz cartItemDisplayLabels() w page.tsx. */}
                 {item.widthMm && item.heightMm ? (
                   <div>
-                    <dt>Wymiar</dt>
+                    <dt>Wymiary</dt>
                     <dd>
                       {item.splitFromWidthMm
                         ? `okno ${item.splitFromWidthMm} × ${item.heightMm} mm → 2 plisy po ${item.widthMm} mm`
@@ -575,7 +576,7 @@ export default function CartV2(props: CartV2Props) {
                 ) : null}
                 {item.mountLabel ? (
                   <div>
-                    <dt>Rodzaj montażu</dt>
+                    <dt>Sposób montażu</dt>
                     <dd>{item.mountLabel}</dd>
                   </div>
                 ) : null}
