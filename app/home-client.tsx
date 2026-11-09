@@ -183,7 +183,7 @@ import {
   PLISY_SUBTITLE,
 } from "@/features/plisy/landing-content";
 import { isProductSlugLive, PRODUCT_LOCKED_MESSAGE } from "@/lib/product-availability";
-import { INFO_LANDINGS_ENABLED, isInfoLandingHref, resolveInfoLandingMenuLink } from "@/lib/info-landings";
+import { INFO_LANDINGS_PUBLIC, isInfoLandingHref, resolveInfoLandingMenuLink } from "@/lib/info-landings";
 import { ALLEGRO_RATING_SNAPSHOTS, HOMEPAGE_CONFIG_SNAPSHOT } from "@/lib/landing-snapshot";
 
 // The three product configurators are the heaviest part of this page's
@@ -1278,7 +1278,7 @@ function buildHeroMenuGroups(config: HomepageConfig | null, endpointOrigin: stri
     // "Żaluzje", gdy landingi informacyjne są włączone (właściciel 17.10.2026:
     // "brakuje produktu verticale w menu"). Pozycja z CRM o tej etykiecie
     // wygra, bo pętla menu idzie pierwsza.
-    if (INFO_LANDINGS_ENABLED && !group.items.some((item) => slugOf(item) === "verticale" || slugOf(item) === "zaluzje-pionowe")) {
+    if (INFO_LANDINGS_PUBLIC && !group.items.some((item) => slugOf(item) === "verticale" || slugOf(item) === "zaluzje-pionowe")) {
       const zaluzjeIndex = group.items.findIndex((item) => slugOf(item) === "zaluzje");
       const verticale: HeroMenuItem = { label: "Verticale", iconUrl: (zaluzjeIndex >= 0 ? group.items[zaluzjeIndex].iconUrl : "") || group.iconUrl, linkUrl: "/zaluzje-pionowe" };
       const at = zaluzjeIndex >= 0 ? zaluzjeIndex + 1 : group.items.length;

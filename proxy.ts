@@ -27,10 +27,19 @@ const STATIC_PRODUCT_ROUTES: Record<string, string> = {
 // 7.11.2026: rolety tradycyjne w 4 systemach - też do akceptacji cen przez właściciela.
 const ROLETY_SYSTEM_ROUTES = ["rolety-mini", "rolety-kaseta-plaska", "rolety-kaseta-przestrzenna", "rolety-wolnowiszace"];
 // 8.11.2026: żaluzje publicznie (właściciel: „żaluzje możesz uruchomić publicznie - rolety dalej ukryte”).
-const PREVIEW_ONLY_ROUTES = new Set(["/rolety-dzien-noc", "/rolety-tradycyjne", ...ROLETY_SYSTEM_ROUTES.map((slug) => `/${slug}`)]);
+// 10.11.2026 wieczór (właściciel: „ukryj widok tych produktów na zewnątrz - zostaw je tylko
+// mi na test na tym kompie i moim telefonie”): informacyjne strony produktów
+// (features/oferta) też tylko w podglądzie.
+const INFO_LANDING_PREVIEW_ROUTES = [
+  "/rolety-rzymskie", "/zaluzje-pionowe", "/rolety-zewnetrzne", "/zaluzje-fasadowe", "/screeny", "/markizy",
+  "/zadaszenia", "/shuttersy", "/moskitiery-do-okien-dachowych", "/moskitiery-drzwiowe", "/moskitiery-przesuwne",
+  "/moskitiery-plisowane", "/oferta",
+];
+const PREVIEW_ONLY_ROUTES = new Set(["/rolety-dzien-noc", "/rolety-tradycyjne", ...ROLETY_SYSTEM_ROUTES.map((slug) => `/${slug}`), ...INFO_LANDING_PREVIEW_ROUTES]);
 const PREVIEW_ONLY_SLUGS = new Set(["rolety-dzien-noc", "rolety-tradycyjne", ...ROLETY_SYSTEM_ROUTES]);
+// 164.127.247.120 - komputer w biurze, z którego właściciel testuje (10.11.2026).
 const PREVIEW_ALLOWED_IPS = new Set(
-  (process.env.PREVIEW_ALLOWED_IPS || "164.127.253.116").split(",").map((ip) => ip.trim()).filter(Boolean),
+  (process.env.PREVIEW_ALLOWED_IPS || "164.127.253.116,164.127.247.120").split(",").map((ip) => ip.trim()).filter(Boolean),
 );
 const PREVIEW_TOKEN = process.env.PREVIEW_TOKEN || "keika-podglad-rolety-2026";
 const PREVIEW_COOKIE = "keika_podglad";
@@ -48,6 +57,7 @@ function previewAllowed(request: NextRequest): boolean {
 
 function previewRoutePath(url: URL): string | null {
   if (PREVIEW_ONLY_ROUTES.has(url.pathname)) return url.pathname;
+  if (url.pathname.startsWith("/oferta/")) return url.pathname;
   const match = url.pathname.match(/^\/(?:produkt|kategoria)\/([a-z0-9-]+)\/?$/);
   if (match && PREVIEW_ONLY_SLUGS.has(match[1])) return `/${match[1]}`;
   if (url.pathname === "/" && PREVIEW_ONLY_SLUGS.has((url.searchParams.get("produkt") || "").trim().toLowerCase())) {
@@ -98,24 +108,20 @@ export function proxy(request: NextRequest) {
       response.cookies.set(PREVIEW_COOKIE, PREVIEW_TOKEN, { maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax", httpOnly: true, secure: true });
       return response;
     }
-    // 10.11.2026 (właściciel: „wszystkie produkty na stronie głównej muszą być
-    // dostępne … konfigurator w budowie, zapraszamy do formularza wyceny”):
-    // klient zamiast strony głównej dostaje stronę informacyjną z formularzem
-    // wyceny (features/oferta, app/oferta/[slug]). Systemy rolet (MINI, kasety,
-    // wolnowiszące) prowadzą na wspólną stronę rolet tradycyjnych.
-    // ?widok=klient pokazuje widok klienta także w podglądzie właściciela.
+    // Poza podglądem - strona główna. ?widok=klient symuluje klienta także
+    // w podglądzie właściciela (do sprawdzenia, że bramka działa).
     if (!previewAllowed(request) || url.searchParams.get("widok") === "klient") {
-      const slug = previewPath.replace(/^\//, "");
-      const infoSlug = ROLETY_SYSTEM_ROUTES.includes(slug) ? "rolety-tradycyjne" : slug;
-      if (url.pathname !== `/${infoSlug}`) {
-        const target = url.clone();
-        target.pathname = `/${infoSlug}`;
-        target.searchParams.delete("produkt");
-        return NextResponse.redirect(target, 307);
-      }
-      const rewrite = url.clone();
-      rewrite.pathname = `/oferta/${infoSlug}`;
-      return NextResponse.rewrite(rewrite);
+      const home = url.clone();
+      home.pathname = "/";
+      home.search = "";
+      const response = NextResponse.redirect(home, 307);
+      response.headers.set("x-robots-tag", "noindex");
+      return response;
+    }
+    if (INFO_LANDING_PREVIEW_ROUTES.includes(previewPath) || previewPath.startsWith("/oferta/")) {
+      const response = NextResponse.next();
+      response.headers.set("x-robots-tag", "noindex");
+      return response;
     }
   }
 
@@ -130,5 +136,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/(.*\\.mp4)", "/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/rolety-mini", "/rolety-kaseta-plaska", "/rolety-kaseta-przestrzenna", "/rolety-wolnowiszace", "/produkt/:slug", "/kategoria/:slug"],
+  matcher: ["/(.*\\.mp4)", "/", "/rolety-dzien-noc", "/rolety-tradycyjne", "/rolety-mini", "/rolety-kaseta-plaska", "/rolety-kaseta-przestrzenna", "/rolety-wolnowiszace", "/produkt/:slug", "/kategoria/:slug",
+    "/rolety-rzymskie", "/zaluzje-pionowe", "/rolety-zewnetrzne", "/zaluzje-fasadowe", "/screeny", "/markizy", "/zadaszenia",
+    "/shuttersy", "/moskitiery-do-okien-dachowych", "/moskitiery-drzwiowe", "/moskitiery-przesuwne", "/moskitiery-plisowane",
+    "/oferta", "/oferta/:slug"],
 };

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { INFO_LANDINGS_ENABLED } from "@/lib/info-landings";
+import { INFO_LANDINGS_ENABLED, INFO_LANDINGS_PUBLIC } from "@/lib/info-landings";
 import InfoLanding from "./InfoLanding";
 import { OFERTA_BY_SLUG } from "./registry";
 
@@ -13,6 +13,8 @@ export function buildOfertaMetadata(slug: string): Metadata {
   const url = SITE + content.path;
   const image = SITE + content.hero.src;
   return {
+    // 10.11.2026: strony tylko w podglądzie właściciela - bez indeksowania do czasu publikacji.
+    robots: INFO_LANDINGS_PUBLIC ? undefined : { index: false, follow: false },
     title: content.seoTitle,
     description: content.seoDescription,
     alternates: { canonical: url },

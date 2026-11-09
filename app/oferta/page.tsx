@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { INFO_LANDINGS_ENABLED } from "@/lib/info-landings";
+import { INFO_LANDINGS_ENABLED, INFO_LANDINGS_PUBLIC } from "@/lib/info-landings";
 import { OFERTA_GROUP_LABELS, OFERTA_LANDINGS } from "@/features/oferta/registry";
 import { HOMEPAGE_CONFIG_SNAPSHOT } from "@/lib/landing-snapshot";
 import { OfertaHeader } from "@/features/oferta/LandingCtas";
@@ -12,7 +12,7 @@ import styles from "@/features/oferta/oferta.module.css";
 export const metadata: Metadata = {
   title: "Oferta na wymiar - rolety, żaluzje, markizy, moskitiery | KEIKA",
   description: "Produkty na wymiar z wyceną na zapytanie: rolety tradycyjne, dzień-noc i rzymskie, żaluzje pionowe i fasadowe, rolety zewnętrzne, markizy, moskitiery drzwiowe, przesuwne i plisowane.",
-  robots: INFO_LANDINGS_ENABLED ? undefined : { index: false, follow: false },
+  robots: INFO_LANDINGS_PUBLIC ? undefined : { index: false, follow: false },
 };
 
 export default function OfertaIndexPage() {

@@ -27,27 +27,6 @@ const nextConfig: NextConfig = {
       { source: "/produkt/rolety-kaseta-przestrzenna", destination: "/rolety-kaseta-przestrzenna", permanent: false },
       { source: "/produkt/rolety-wolnowiszace", destination: "/rolety-wolnowiszace", permanent: false },
       { source: "/kategoria/zaluzje", destination: "/zaluzje", permanent: false },
-      // 10.11.2026: produkty bez konfiguratora mają strony informacyjne z
-      // formularzem wyceny (features/oferta) - stare adresy katalogowe tam prowadzą.
-      ...[
-        ["rolety-rzymskie", "/rolety-rzymskie"],
-        ["verticale", "/zaluzje-pionowe"],
-        ["zaluzje-pionowe", "/zaluzje-pionowe"],
-        ["rolety-zewnetrzne", "/rolety-zewnetrzne"],
-        ["zaluzje-fasadowe", "/zaluzje-fasadowe"],
-        ["screeny", "/screeny"],
-        ["screen-system", "/screeny"],
-        ["markizy", "/markizy"],
-        ["zadaszenia", "/zadaszenia"],
-        ["shuttersy", "/shuttersy"],
-        ["moskitiery-do-okien-dachowych", "/moskitiery-do-okien-dachowych"],
-        ["moskitiery-drzwiowe", "/moskitiery-drzwiowe"],
-        ["moskitiery-przesuwne", "/moskitiery-przesuwne"],
-        ["moskitiery-plisowane", "/moskitiery-plisowane"],
-      ].flatMap(([slug, destination]) => [
-        { source: `/produkt/${slug}`, destination, permanent: false },
-        { source: `/kategoria/${slug}`, destination, permanent: false },
-      ]),
       // Formularz opinii żyje na stronie firmowej. Ten wpis został z czasu,
       // gdy keika.pl stało jeszcze na starym serwerze i odsyłało tu SMS-y po
       // montażu - zostawiamy go, żeby stare linki nie kończyły się pustą

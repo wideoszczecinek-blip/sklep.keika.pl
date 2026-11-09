@@ -9,6 +9,14 @@
 // zapraszamy do formularza wyceny”). NEXT_PUBLIC_INFO_LANDINGS=0 wyłącza awaryjnie.
 export const INFO_LANDINGS_ENABLED = process.env.NEXT_PUBLIC_INFO_LANDINGS !== "0";
 
+// 10.11.2026 wieczór (właściciel: „ukryj widok tych produktów na zewnątrz -
+// zostaw je tylko mi na test na tym kompie i moim telefonie”): strony się
+// renderują, ale tylko za bramką podglądu (proxy.ts: IP biura albo ciasteczko
+// z ?podglad=<token>). Menu, liczniki „Dostępne”, kategorie i mapa strony
+// zachowują się jak przed zmianą. Publikacja = NEXT_PUBLIC_INFO_LANDINGS_PUBLIC=1
+// (albo zmiana tej stałej) + zdjęcie tras z bramki w proxy.ts.
+export const INFO_LANDINGS_PUBLIC = process.env.NEXT_PUBLIC_INFO_LANDINGS_PUBLIC === "1";
+
 /** slug (z linku w menu albo z etykiety) -> ścieżka landingu */
 // Rolety tradycyjne i dzień-noc mają konfiguratory (features/rolety/) za bramką
 // podglądu - od 10.11.2026 klienci widzą pod tymi adresami stronę informacyjną
@@ -49,7 +57,7 @@ function normalizeLabel(raw: string): string {
  * landingi są wyłączone albo etykieta nie ma swojego landingu. Używane w
  * resolveMenuFallbackLink() (app/home-client.tsx) PRZED starymi regułami. */
 export function resolveInfoLandingMenuLink(groupSlugRaw: string, labelRaw: string): string | null {
-  if (!INFO_LANDINGS_ENABLED) return null;
+  if (!INFO_LANDINGS_PUBLIC) return null;
   const group = String(groupSlugRaw || "").trim().toLowerCase();
   const label = normalizeLabel(labelRaw);
   if (group === "oslony-wewnetrzne") {
@@ -79,13 +87,13 @@ export function resolveInfoLandingMenuLink(groupSlugRaw: string, labelRaw: strin
 
 /** Ścieżka landingu dla sluga produktu, albo null gdy wyłączone / brak. */
 export function infoLandingHref(slug: string): string | null {
-  if (!INFO_LANDINGS_ENABLED) return null;
+  if (!INFO_LANDINGS_PUBLIC) return null;
   return INFO_LANDING_ROUTES[String(slug || "").trim().toLowerCase()] || null;
 }
 
 /** Czy ten link z menu prowadzi do włączonego landingu informacyjnego. */
 export function isInfoLandingHref(href: string): boolean {
-  if (!INFO_LANDINGS_ENABLED) return false;
+  if (!INFO_LANDINGS_PUBLIC) return false;
   const path = String(href || "").trim().split(/[?#]/)[0];
   return ROUTE_SET.has(path);
 }
