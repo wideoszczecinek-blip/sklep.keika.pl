@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { QUOTE_ONLY_PRODUCTS, isQuoteOnlySlug } from "@/lib/quote-only";
 
 // Next 16 "proxy" (formerly middleware). Reklamowe adresy /?produkt=<slug>
 // przekierowują 308 na statycznie prerenderowane trasy produktowe (audyt
@@ -63,6 +64,9 @@ function previewRoutePath(url: URL): string | null {
   if (url.pathname === "/" && PREVIEW_ONLY_SLUGS.has((url.searchParams.get("produkt") || "").trim().toLowerCase())) {
     return STATIC_PRODUCT_ROUTES[(url.searchParams.get("produkt") || "").trim().toLowerCase()];
   }
+  // Produkty na wycenę (10.11.2026) - /?produkt=<slug> też tylko w podglądzie, prowadzi na ich stronę.
+  const produkt = (url.searchParams.get("produkt") || "").trim().toLowerCase();
+  if (url.pathname === "/" && isQuoteOnlySlug(produkt)) return QUOTE_ONLY_PRODUCTS[produkt].path;
   return null;
 }
 
