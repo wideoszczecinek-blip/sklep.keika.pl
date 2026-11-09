@@ -377,6 +377,51 @@ function markCartEmailSaved(): void {
   }
 }
 
+/** Quote row for the cart e-mail flows (9.11.2026). ensurePromoQuoteCode()
+ * only works while a seasonal promo is active - since SEZON20 ended (29.10)
+ * nobody has an activation stamp, so the silent checkout capture and the
+ * "Nie decydujesz dzisiaj?" modal silently found no quote and did nothing
+ * (0 captured e-mails from 30.10 08:52, 291 before). Without a promo this
+ * saves the same tracked row with the current cart, no promo fields. */
+let ensureCartQuoteCodeInFlight: Promise<PromoQuoteState | null> | null = null;
+
+export function ensureCartQuoteCode(productSlug?: string): Promise<PromoQuoteState | null> {
+  if (getPromoActivatedAt() !== null) return ensurePromoQuoteCode(productSlug);
+  if (ensureCartQuoteCodeInFlight) return ensureCartQuoteCodeInFlight;
+  ensureCartQuoteCodeInFlight = ensureCartQuoteCodeInner(productSlug).finally(() => {
+    ensureCartQuoteCodeInFlight = null;
+  });
+  return ensureCartQuoteCodeInFlight;
+}
+
+async function ensureCartQuoteCodeInner(productSlug?: string): Promise<PromoQuoteState | null> {
+  const tracked = getTracked();
+  const effectiveSlug = productSlug || tracked.productSlug;
+  const cartItems = readCartItems();
+  const positions = cartItems.length > 0 ? cartItems.map((item) => buildRescuePosition(item)) : null;
+  if (!tracked.quoteCode && !positions) return null; // nothing to remind about
+  try {
+    const response = await fetch(QUOTE_SAVE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quote_code: tracked.quoteCode,
+        resume_token: tracked.resumeToken,
+        session_token: getSessionToken(),
+        ...(effectiveSlug ? { product_slug: effectiveSlug } : {}),
+        ...(positions ? { positions } : {}),
+      }),
+    });
+    const json = (await response.json()) as { ok: boolean; quote?: { quote_code?: string; resume_token?: string } };
+    if (!json.ok || !json.quote?.quote_code) return null;
+    const quoteCode = String(json.quote.quote_code);
+    setTracked(quoteCode, String(json.quote.resume_token || ""), effectiveSlug);
+    return { quoteCode, deadlineAtMs: null };
+  } catch {
+    return null;
+  }
+}
+
 /** The modal's submit: freezes the price for 7 days and sends the cart to
  * the given e-mail (+ optional SMS). Ensures the quote exists first and
  * snapshots the current cart into it, so the e-mail lists exactly what the
@@ -389,7 +434,7 @@ export async function freezeCartToEmail(input: {
   remind?: boolean;
   productSlug?: string;
 }): Promise<{ ok: boolean; error?: string; frozenUntilMs: number | null }> {
-  const state = await ensurePromoQuoteCode(input.productSlug);
+  const state = await ensureCartQuoteCode(input.productSlug);
   const tracked = getTracked();
   const quoteCode = state?.quoteCode || tracked.quoteCode;
   if (!quoteCode) return { ok: false, error: "Nie udało się zapisać koszyka. Spróbuj ponownie.", frozenUntilMs: null };
@@ -440,7 +485,7 @@ export async function captureCheckoutEmail(email: string, productSlug?: string):
   } catch {
     // ignore
   }
-  const state = await ensurePromoQuoteCode(productSlug);
+  const state = await ensureCartQuoteCode(productSlug);
   const tracked = getTracked();
   const quoteCode = state?.quoteCode || tracked.quoteCode;
   if (!quoteCode) return;
