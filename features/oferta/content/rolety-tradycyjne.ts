@@ -10,7 +10,7 @@ export const ROLETY_TRADYCYJNE: OfertaContent = {
   menuLabel: "Rolety tradycyjne",
   seoTitle: "Rolety materiałowe na wymiar - w kasecie, z prowadnicami i wolnowiszące | KEIKA",
   seoDescription:
-    "Rolety tradycyjne na wymiar: w kasecie zwykłej (przyszybowe, bez wiercenia), w kasecie z prowadnicami przestrzennymi i wolnowiszące do dużych przeszkleń. Tkaniny gładkie, dekoracyjne i zaciemniające. Bezpłatna wycena.",
+    "Rolety tradycyjne na wymiar: w kasecie zwykłej (przyszybowe, bez wiercenia), w kasecie z prowadnicami przestrzennymi i wolnowiszące do dużych przeszkleń. Tkaniny gładkie, dekoracyjne i zaciemniające. Zapytaj o wycenę.",
   eyebrow: "Osłony wewnętrzne",
   title: "Rolety materiałowe na wymiar",
   lead:
@@ -60,9 +60,9 @@ export const ROLETY_TRADYCYJNE: OfertaContent = {
   },
   features: [
     { icon: "ruler", title: "Pod wymiar Twojego okna", body: "Mierzysz raz, resztę liczymy my - szerokość kasety, długość prowadnic i naddatki tkaniny dobieramy do skosu listew w Twoim oknie." },
-    { icon: "palette", title: "Tkanina do pomieszczenia", body: "Gładkie i strukturalne do salonu, zaciemniające do sypialni, zmywalne do kuchni i łazienki. Pokażemy próbki przy pomiarze albo wyślemy zdjęcia." },
+    { icon: "palette", title: "Tkanina do pomieszczenia", body: "Gładkie i strukturalne do salonu, zaciemniające do sypialni, zmywalne do kuchni i łazienki." },
     { icon: "tools", title: "Montaż bez śladów", body: "Rolety naokienne mocujemy na taśmie lub wieszakach - po demontażu rama wygląda jak nowa. Przy wynajmie to często jedyna opcja." },
-    { icon: "clock", title: "Lata cichej pracy", body: "Mechanizmy hamujące i łańcuszkowe są wymienne, a aluminiowe kasety nie żółkną. Serwisujemy to, co sprzedajemy." },
+    { icon: "clock", title: "Lata cichej pracy", body: "Mechanizmy hamujące i łańcuszkowe są wymienne, a aluminiowe kasety nie żółkną." },
   ],
   gallery: [
     { src: "/oferta/rolety-tradycyjne/g1.jpg", alt: "Zbliżenie na uchwyt rolety wolnowiszącej i tkaninę", caption: "Uchwyt rolety wolnowiszącej" },
@@ -82,15 +82,15 @@ export const ROLETY_TRADYCYJNE: OfertaContent = {
       { label: "Wolnowisząca BXL / RS / MGS", value: "tkanina 0,6–3,2 m, rura ø34 mm, łańcuszek lub silnik, montaż do ściany lub sufitu" },
       { label: "Duże otwory (LUISA, MAXI 32/38/47)", value: "kaseta z prowadnicami do ściany lub sufitu, napęd łańcuszkowy, sprężynowy lub elektryczny, możliwe pełne zaciemnienie" },
       { label: "Kolory profili", value: "biały, brąz, anoda, szary oraz okleiny: dąb, jasny dąb, złoty dąb, mahoń, wiśnia, orzech ciemny, dąb bagienny, winchester" },
-      { label: "Tkaniny", value: "gładkie, strukturalne, dekoracyjne, zaciemniające (blackout), zmywalne; próbki przy pomiarze" },
+      { label: "Tkaniny", value: "gładkie, strukturalne, dekoracyjne, zaciemniające (blackout), zmywalne" },
       { label: "Sterowanie", value: "łańcuszek (metal lub tworzywo), sprężyna, silnik 230 V lub akumulatorowy z pilotem" },
     ],
   },
   faq: [
     { q: "Czy roleta w kasecie zasłoni całą szybę?", a: "Tak - kaseta zwykła prowadzi tkaninę tuż przy szybie, a prowadnice zakrywają boczne prześwity. Pełną ciemność daje dopiero tkanina blackout w kasecie z prowadnicami przestrzennymi; w kasecie zwykłej zostaje delikatna poświata przy krawędziach." },
     { q: "Czy montaż na taśmie na pewno wytrzyma?", a: "Tak. Używamy taśm piankowych przeznaczonych do profili okiennych; wymagają tylko odtłuszczonej powierzchni. Alternatywą są wieszaki zaczepiane na skrzydle albo wkręty w listwę przyszybową." },
-    { q: "Mam okna z klamką blisko szyby - czy kaseta będzie przeszkadzać?", a: "Do takich okien polecamy kasetę FLAT (bardzo płaska, do listew powyżej 20 mm) albo SMALL. Przy pomiarze sprawdzamy kolizję z klamką i uchyłem." },
-    { q: "Jak podać wymiary do wyceny?", a: "Do wyceny wystarczy szerokość i wysokość szyby albo całego skrzydła z dokładnością do centymetra i typ montażu. Dokładny pomiar zrobimy my albo wyślemy prostą instrukcję." },
+    { q: "Mam okna z klamką blisko szyby - czy kaseta będzie przeszkadzać?", a: "Do takich okien polecamy kasetę FLAT (bardzo płaska, do listew powyżej 20 mm) albo SMALL." },
+    { q: "Jak podać wymiary do wyceny?", a: "Do wyceny wystarczy szerokość i wysokość szyby albo całego skrzydła z dokładnością do centymetra i typ montażu." },
     { q: "Czy możecie dopasować kolor kasety do okien drewnopodobnych?", a: "Tak - profile są dostępne w okleinach m.in. złoty dąb, orzech, winchester, mahoń. Dobieramy pod kolor Twojej stolarki." },
   ],
   related: ["rolety-dzien-noc", "rolety-rzymskie", "zaluzje-pionowe"],

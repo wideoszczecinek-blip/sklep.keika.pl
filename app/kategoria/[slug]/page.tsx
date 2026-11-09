@@ -8,6 +8,7 @@ import { useScrolledPast } from "@/lib/use-scrolled";
 import { trackStorefrontEvent } from "@/lib/shop-public";
 import CatalogHeader from "@/app/components/catalog-header";
 import { isProductSlugLive, PRODUCT_LOCKED_MESSAGE } from "@/lib/product-availability";
+import { infoLandingHref } from "@/lib/info-landings";
 
 type ProductItem = {
   name?: string;
@@ -662,7 +663,8 @@ export default function CategoryPage({ params }: { params?: { slug?: string } })
                       <h2>{product.name || "Produkt"}</h2>
                       <p>{product.subtitle || "Konfiguracja i szybka wycena."}</p>
                       <div className="catalog-product-row">
-                        <strong>{formatPrice(product.price_from || "")}</strong>
+                        {/* 10.11.2026: produkty z wyceną na zapytanie (strony informacyjne) bez ceny „od”. */}
+                        <strong>{productSlug && infoLandingHref(productSlug) ? "Wycena na zapytanie" : formatPrice(product.price_from || "")}</strong>
                         {productSlug && isProductSlugLive(productSlug) ? (
                           <Link href={`/produkt/${productSlug}`}>Szczegóły</Link>
                         ) : (

@@ -15,7 +15,7 @@ export const MOSKITIERY_DRZWIOWE: OfertaContent = {
   menuLabel: "Moskitiery drzwiowe",
   seoTitle: "Moskitiery drzwiowe na wymiar - na zawiasach, z magnesami | KEIKA",
   seoDescription:
-    "Moskitiera drzwiowa na wymiar na drzwi balkonowe i tarasowe: wzmocniona rama aluminiowa z poprzeczką i listwą kopnięciową, zawiasy, magnesy domykające, uchwyt. Jedno- lub dwuskrzydłowa, 7 kolorów profili, siatka szara lub czarna. Bezpłatna wycena.",
+    "Moskitiera drzwiowa na wymiar na drzwi balkonowe i tarasowe: wzmocniona rama aluminiowa z poprzeczką i listwą kopnięciową, zawiasy, magnesy domykające, uchwyt. Jedno- lub dwuskrzydłowa, 7 kolorów profili, siatka szara lub czarna. Zapytaj o wycenę.",
   eyebrow: "Moskitiery",
   title: "Moskitiery drzwiowe na wymiar",
   lead:
@@ -68,7 +68,7 @@ export const MOSKITIERY_DRZWIOWE: OfertaContent = {
   },
   features: [
     { icon: "shield", title: "Wzmocniona rama", body: "Poprzeczka i listwa kopnięciowa na dole - rama wytrzymuje dzieci, psy i codzienne wychodzenie na taras bez wykrzywiania." },
-    { icon: "tools", title: "Samodomykanie", body: "Magnesy na krawędzi skrzydła zamykają moskitierę za Tobą. Zawiasy i siłę domykania regulujemy przy montażu i w serwisie po sezonie." },
+    { icon: "tools", title: "Samodomykanie", body: "Magnesy na krawędzi skrzydła zamykają moskitierę za Tobą. Zawiasy i siłę domykania można wyregulować." },
     { icon: "wind", title: "Powietrze tak, owady nie", body: "Siatka z włókna szklanego, szara lub czarna, nie ogranicza przewiewu. Przy zwierzętach - wersja wzmocniona albo aluminiowa." },
     { icon: "palette", title: "W kolorze Twoich drzwi", body: "Biały, brąz, antracyt oraz okleiny złoty dąb, orzech, mahoń i winchester - jak w moskitierach okiennych." },
   ],
@@ -95,7 +95,7 @@ export const MOSKITIERY_DRZWIOWE: OfertaContent = {
     { q: "Czy pasuje do drzwi z roletą zewnętrzną?", a: "Zwykle tak - mocujemy ją do ramy drzwi lub futryny, a roleta pracuje w swoich prowadnicach. Liczy się odstęp między prowadnicą rolety a ramą; przy ciasnych ościeżach proponujemy moskitierę plisowaną albo przesuwną." },
     { q: "Czy skrzydło wytrzyma dzieci i psa?", a: "Tak - ramę wzmacniamy poprzeczką, a na dole montujemy listwę kopnięciową, która przejmuje uderzenia łapą i kopnięcia. Przy zwierzętach polecamy siatkę wzmocnioną." },
     { q: "Czy jest próg, o który można się potknąć?", a: "Nie - dolna krawędź skrzydła zostaje nad podłożem. Jeśli zależy Ci na całkowicie płaskim przejściu na bardzo szerokich drzwiach, rozważ moskitierę plisowaną." },
-    { q: "Jak zmierzyć drzwi?", a: "Szerokość i wysokość światła ościeżnicy od zewnątrz oraz miejsce na zawiasy. Do wyceny wystarczą wymiary orientacyjne, dokładny pomiar zrobimy przy montażu." },
+    { q: "Jak zmierzyć drzwi?", a: "Szerokość i wysokość światła ościeżnicy od zewnątrz oraz miejsce na zawiasy. Do wyceny wystarczą wymiary orientacyjne." },
     { q: "Czy da się ją zdjąć na zimę?", a: "Tak, skrzydło zdejmuje się z zawiasów. Nie jest to konieczne, ale wiele osób tak robi, żeby zimą nie zawadzało przy drzwiach." },
     { q: "Co wybrać do szerokich drzwi tarasowych?", a: "Przy drzwiach przesuwnych HST i PSK lepsza będzie moskitiera przesuwna albo plisowana - skrzydło na zawiasach przy dużych szerokościach staje się ciężkie i niewygodne." },
   ],

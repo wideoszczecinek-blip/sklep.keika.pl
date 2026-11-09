@@ -20,7 +20,8 @@ export default function OfertaIndexPage() {
   const raw = HOMEPAGE_CONFIG_SNAPSHOT as { branding?: { site_title?: string; contact_phone?: string; logo_url?: string }; top_links?: Array<{ label?: string; url?: string }> };
   const branding = raw.branding || {};
   const groups = Array.from(new Set(OFERTA_LANDINGS.map((entry) => entry.group)));
-  const previewNotes = OFERTA_LANDINGS.filter((entry) => entry.ownerNote);
+  // 10.11.2026: strona jest publiczna - notatki dla właściciela (ownerNote) już się tu nie pokazują.
+  const previewNotes: typeof OFERTA_LANDINGS = [];
 
   return (
     <div className={`catalog-root ${styles.root}`} style={{ backgroundImage: "none" }}>
@@ -31,7 +32,7 @@ export default function OfertaIndexPage() {
             <p className={styles.sectionLabel}>Oferta</p>
             <h1 className={styles.sectionTitle}>Produkty na wymiar z wyceną na zapytanie</h1>
             <p className={styles.sectionIntro}>
-              Dziesięć stron produktowych bez konfiguratora: opis, warianty, zdjęcia, parametry i formularz „Poproś o wycenę”, który tworzy zgłoszenie w CRM.
+              Konfigurator zamówień online dla tych produktów jest w budowie. Zapraszamy do wysłania formularza wyceny na stronie wybranego produktu - odpowiemy e-mailem albo telefonicznie, jak wolisz.
             </p>
           </div>
         </section>

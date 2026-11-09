@@ -4,17 +4,21 @@
 // zewnętrzne, żaluzje fasadowe, markizy, moskitiery drzwiowe / przesuwne /
 // plisowane. Zamiast ceny - prośba o wycenę (lead w CRM) albo rozmowa.
 //
-// Włącznik: NEXT_PUBLIC_INFO_LANDINGS=1 (lokalnie w .env.local; na Vercelu
-// NIEUSTAWIONY, więc strony odpowiadają 404, a menu sklepu nie zmienia się -
-// właściciel ogląda je u siebie przed publikacją, 2026-10-17). Publikacja =
-// ustawienie tej zmiennej w projekcie Vercel i redeploy; bez zmian w kodzie.
-export const INFO_LANDINGS_ENABLED = process.env.NEXT_PUBLIC_INFO_LANDINGS === "1";
+// Włącznik: od 10.11.2026 WŁĄCZONE domyślnie (właściciel: „wszystkie produkty
+// na stronie głównej muszą być dostępne, w nich opis … konfigurator w budowie,
+// zapraszamy do formularza wyceny”). NEXT_PUBLIC_INFO_LANDINGS=0 wyłącza awaryjnie.
+export const INFO_LANDINGS_ENABLED = process.env.NEXT_PUBLIC_INFO_LANDINGS !== "0";
 
 /** slug (z linku w menu albo z etykiety) -> ścieżka landingu */
-// Rolety tradycyjne i dzień-noc od 2026-10-17 są pełnymi produktami
-// (features/rolety/, trasy /rolety-tradycyjne i /rolety-dzien-noc) - nie są
-// już landingami informacyjnymi.
+// Rolety tradycyjne i dzień-noc mają konfiguratory (features/rolety/) za bramką
+// podglądu - od 10.11.2026 klienci widzą pod tymi adresami stronę informacyjną
+// (proxy.ts przepisuje na /oferta/<slug>), właściciel w podglądzie konfigurator.
 export const INFO_LANDING_ROUTES: Record<string, string> = {
+  "rolety-tradycyjne": "/rolety-tradycyjne",
+  "rolety-dzien-noc": "/rolety-dzien-noc",
+  zadaszenia: "/zadaszenia",
+  shuttersy: "/shuttersy",
+  "moskitiery-do-okien-dachowych": "/moskitiery-do-okien-dachowych",
   "rolety-rzymskie": "/rolety-rzymskie",
   "zaluzje-pionowe": "/zaluzje-pionowe",
   verticale: "/zaluzje-pionowe",
@@ -49,6 +53,8 @@ export function resolveInfoLandingMenuLink(groupSlugRaw: string, labelRaw: strin
   const group = String(groupSlugRaw || "").trim().toLowerCase();
   const label = normalizeLabel(labelRaw);
   if (group === "oslony-wewnetrzne") {
+    if (/^rolety tradycyjne$/.test(label)) return "/rolety-tradycyjne";
+    if (/^rolety dzien ?-? ?noc$/.test(label)) return "/rolety-dzien-noc";
     if (/^(zaluzje pionowe|verticale)$/.test(label)) return "/zaluzje-pionowe";
     if (/^rolety rzymskie$/.test(label)) return "/rolety-rzymskie";
   }
@@ -57,8 +63,13 @@ export function resolveInfoLandingMenuLink(groupSlugRaw: string, labelRaw: strin
     if (/^zaluzje fasadowe$/.test(label)) return "/zaluzje-fasadowe";
     if (/^(screeny|screen system|screen)$/.test(label)) return "/screeny";
   }
-  if (group === "taras" && /^markizy$/.test(label)) return "/markizy";
+  if (group === "taras") {
+    if (/^markizy$/.test(label)) return "/markizy";
+    if (/^zadaszenia$/.test(label)) return "/zadaszenia";
+    if (/^(shuttersy|shutters)$/.test(label)) return "/shuttersy";
+  }
   if (group === "moskitiery") {
+    if (/^moskitiery do okien dachowych$/.test(label)) return "/moskitiery-do-okien-dachowych";
     if (/^moskitiery drzwiowe$/.test(label)) return "/moskitiery-drzwiowe";
     if (/^(moskitiery )?przesuwne$/.test(label)) return "/moskitiery-przesuwne";
     if (/^(moskitiery )?plisowane$/.test(label)) return "/moskitiery-plisowane";

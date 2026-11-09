@@ -9,7 +9,7 @@ export const ZALUZJE_PIONOWE: OfertaContent = {
   menuLabel: "Verticale",
   seoTitle: "Żaluzje pionowe (verticale) na wymiar - biuro i dom | KEIKA",
   seoDescription:
-    "Żaluzje pionowe na wymiar: pasy 89 i 127 mm, tkaniny jednolite, dzień-noc i Bahama Vertical z efektem firany. Do dużych przeszkleń, biur, skosów. Montaż do sufitu lub ściany. Bezpłatna wycena.",
+    "Żaluzje pionowe na wymiar: pasy 89 i 127 mm, tkaniny jednolite, dzień-noc i Bahama Vertical z efektem firany. Do dużych przeszkleń, biur, skosów. Montaż do sufitu lub ściany. Zapytaj o wycenę.",
   eyebrow: "Osłony wewnętrzne",
   title: "Żaluzje pionowe (verticale) na wymiar",
   lead:
@@ -52,8 +52,6 @@ export const ZALUZJE_PIONOWE: OfertaContent = {
         name: "Bahama Vertical",
         tagline: "Efekt firany, funkcja żaluzji",
         body: "Pełne pasy tkaniny połączone delikatną siateczką tworzą jedną elegancką zasłonę, a mimo to pasy nadal obracają się i przesuwają. Kolekcja Dreamy ma w części przeziernej splot inspirowany bambusem.",
-        image: "/oferta/zaluzje-pionowe/bahama.jpg",
-        imageAlt: "Wzornik kolorów tkaniny Bahama Vertical Dreamy",
         bullets: ["Pas pełny 12 cm, przezierny 16 cm (Dreamy IX)", "Jasne neutralne odcienie, szarości, czerń", "Do salonów, hoteli, gabinetów"],
       },
     ],
@@ -62,7 +60,7 @@ export const ZALUZJE_PIONOWE: OfertaContent = {
     { icon: "ruler", title: "Każda szerokość", body: "Szyny łączymy na długość, a pasy dokładamy w dowolnej liczbie - zasłonisz całą ścianę przeszklenia jedną żaluzją." },
     { icon: "sun", title: "Płynna regulacja światła", body: "Obrót pasów w zakresie 180° pozwala ustawić je pod kątem do słońca, bez odsłaniania wnętrza." },
     { icon: "home", title: "Również na skosy", body: "Żaluzję pionową można wykonać ze skośną szyną - do poddaszy i okien trapezowych." },
-    { icon: "tools", title: "Serwis bez wymiany całości", body: "Pojedynczy pas, wieszak czy goniec wymieniamy osobno. Pasy można prać lub zastąpić nowymi po latach." },
+    { icon: "tools", title: "Wymiana pojedynczych elementów", body: "Pojedynczy pas, wieszak czy goniec da się wymienić osobno, bez wymiany całej żaluzji." },
   ],
   gallery: [
     { src: "/oferta/zaluzje-pionowe/g2.jpg", alt: "Zbliżenie na pasy żaluzji pionowej pod światło", caption: "Pasy pod kątem do słońca" },

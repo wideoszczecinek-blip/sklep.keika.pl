@@ -11,7 +11,7 @@ export const ZALUZJE: OfertaContent = {
   menuLabel: "Żaluzje",
   seoTitle: "Żaluzje drewniane, bambusowe i aluminiowe na wymiar | KEIKA",
   seoDescription:
-    "Żaluzje poziome na wymiar: drewniane basswood i abachi, bambusowe, aluminiowe 16–50 mm i faux-wood do kuchni i łazienki. Lamele 25, 35, 50 i 65 mm, ponad 100 kolorów, ozdobne tasiemki, prowadzenie boczne. Bezpłatna wycena.",
+    "Żaluzje poziome na wymiar: drewniane basswood i abachi, bambusowe, aluminiowe 16–50 mm i faux-wood do kuchni i łazienki. Lamele 25, 35, 50 i 65 mm, ponad 100 kolorów, ozdobne tasiemki, prowadzenie boczne. Zapytaj o wycenę.",
   eyebrow: "Osłony wewnętrzne",
   title: "Żaluzje poziome na wymiar",
   lead:

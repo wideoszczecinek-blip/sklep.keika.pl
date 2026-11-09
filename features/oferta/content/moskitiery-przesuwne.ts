@@ -10,7 +10,7 @@ export const MOSKITIERY_PRZESUWNE: OfertaContent = {
   menuLabel: "Przesuwne",
   seoTitle: "Moskitiery przesuwne na wymiar - na drzwi tarasowe HST i balkony | KEIKA",
   seoDescription:
-    "Moskitiera przesuwna na wymiar do drzwi tarasowych, przesuwnych i HST: skrzydło w prowadnicach na rolkach, jedno lub dwa skrzydła, niski próg. Aluminiowe profile w kolorze stolarki. Bezpłatna wycena.",
+    "Moskitiera przesuwna na wymiar do drzwi tarasowych, przesuwnych i HST: skrzydło w prowadnicach na rolkach, jedno lub dwa skrzydła, niski próg. Aluminiowe profile w kolorze stolarki. Zapytaj o wycenę.",
   eyebrow: "Moskitiery",
   title: "Moskitiery przesuwne na wymiar",
   lead:

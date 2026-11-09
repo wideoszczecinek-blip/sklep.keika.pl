@@ -98,13 +98,24 @@ export function proxy(request: NextRequest) {
       response.cookies.set(PREVIEW_COOKIE, PREVIEW_TOKEN, { maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax", httpOnly: true, secure: true });
       return response;
     }
-    if (!previewAllowed(request)) {
-      const home = url.clone();
-      home.pathname = "/";
-      home.search = "";
-      const response = NextResponse.redirect(home, 307);
-      response.headers.set("x-robots-tag", "noindex");
-      return response;
+    // 10.11.2026 (właściciel: „wszystkie produkty na stronie głównej muszą być
+    // dostępne … konfigurator w budowie, zapraszamy do formularza wyceny”):
+    // klient zamiast strony głównej dostaje stronę informacyjną z formularzem
+    // wyceny (features/oferta, app/oferta/[slug]). Systemy rolet (MINI, kasety,
+    // wolnowiszące) prowadzą na wspólną stronę rolet tradycyjnych.
+    // ?widok=klient pokazuje widok klienta także w podglądzie właściciela.
+    if (!previewAllowed(request) || url.searchParams.get("widok") === "klient") {
+      const slug = previewPath.replace(/^\//, "");
+      const infoSlug = ROLETY_SYSTEM_ROUTES.includes(slug) ? "rolety-tradycyjne" : slug;
+      if (url.pathname !== `/${infoSlug}`) {
+        const target = url.clone();
+        target.pathname = `/${infoSlug}`;
+        target.searchParams.delete("produkt");
+        return NextResponse.redirect(target, 307);
+      }
+      const rewrite = url.clone();
+      rewrite.pathname = `/oferta/${infoSlug}`;
+      return NextResponse.rewrite(rewrite);
     }
   }
 

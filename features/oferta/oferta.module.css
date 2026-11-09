@@ -900,3 +900,89 @@
     border-top: 0;
   }
 }
+
+/* 10.11.2026: komunikat „konfigurator w budowie” nad hero + wybór sposobu odpowiedzi w formularzu. */
+.buildNotice {
+  width: min(1240px, 100%);
+  margin: 0 auto 1.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem 1.2rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(243, 181, 70, 0.55);
+  background: rgba(243, 181, 70, 0.14);
+  color: #fff6e3;
+}
+
+.buildNotice p {
+  margin: 0;
+  flex: 1 1 22rem;
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.buildNotice strong {
+  color: #ffd37a;
+}
+
+.buildNotice .btnPrimary {
+  flex-shrink: 0;
+}
+
+.replyBy {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.replyBy legend {
+  padding: 0;
+  margin-bottom: 0.35rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.replyOptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.replyOption {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(26, 51, 82, 0.2);
+  background: #fbfcfe;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.replyOption input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+.replyOptionActive {
+  border-color: var(--accent);
+  background: rgba(0, 168, 163, 0.08);
+}
+
+@media (max-width: 760px) {
+  .hero .buildNotice {
+    margin-bottom: 1.2rem;
+  }
+  .buildNotice .btnPrimary {
+    width: 100%;
+  }
+}

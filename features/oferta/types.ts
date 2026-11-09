@@ -18,6 +18,20 @@ export type OfertaFaq = { q: string; a: string };
 export type OfertaStep = { title: string; body: string };
 export type OfertaGalleryItem = { src: string; alt: string; caption?: string };
 
+/** Pytanie wstępne w formularzu wyceny (10.11.2026: „zwykły formularz kontaktowy,
+ * ale będzie można go rozbudować o pytania wstępne pod wycenę”). Dopisanie
+ * pytania = dodanie wpisu w content/<slug>.ts (albo DEFAULT_QUOTE_QUESTIONS
+ * w QuoteForm.tsx) - CRM przyjmuje dowolną listę bez zmian. */
+export type QuoteQuestion = {
+  id: string;
+  label: string;
+  type: "select" | "text" | "number";
+  options?: string[];
+  hint?: string;
+  placeholder?: string;
+  required?: boolean;
+};
+
 export type OfertaContent = {
   slug: string;
   path: string;
@@ -34,6 +48,9 @@ export type OfertaContent = {
   productLabel: string;
   /** Lista do wyboru w formularzu wyceny. */
   quoteOptions: string[];
+  /** Pytania wstępne pod wycenę (opcjonalne) - formularz je renderuje, a
+   * odpowiedzi trafiają do leada w CRM jako „pytanie: odpowiedź”. */
+  quoteQuestions?: QuoteQuestion[];
   /** Skąd komponenty / system - pokazane dyskretnie w tabeli. */
   supplier?: { name: string; note: string };
   variants: { title: string; intro: string; items: OfertaVariant[] };

@@ -10,7 +10,7 @@ export const MOSKITIERY_PLISOWANE: OfertaContent = {
   menuLabel: "Plisowane",
   seoTitle: "Moskitiery plisowane na wymiar - na drzwi tarasowe, HST, duże przeszklenia | KEIKA",
   seoDescription:
-    "Moskitiera plisowana na wymiar: siatka składa się w harmonijkę, płaski próg bez sznurka, szerokości do 1,9 m na skrzydło i wysokości do 2,95 m. Wersja pojedyncza i podwójna, listwa do drzwi HST. Bezpłatna wycena.",
+    "Moskitiera plisowana na wymiar: siatka składa się w harmonijkę, płaski próg bez sznurka, szerokości do 1,9 m na skrzydło i wysokości do 2,95 m. Wersja pojedyncza i podwójna, listwa do drzwi HST. Zapytaj o wycenę.",
   eyebrow: "Moskitiery",
   title: "Moskitiery plisowane na wymiar",
   lead:
@@ -52,7 +52,7 @@ export const MOSKITIERY_PLISOWANE: OfertaContent = {
   features: [
     { icon: "home", title: "Próg, o który nikt się nie potknie", body: "Płaski próg bez sznurka - do przejść bezbarierowych; listwa typ 3 ze spadkiem ok. 6% do drzwi podnoszono-przesuwnych HST, próg aluminiowy na nierówne podłoże." },
     { icon: "wind", title: "Lekka i kompaktowa", body: "Złożona siatka ma kilka centymetrów i chowa się przy framudze. Składanie i rozkładanie jedną ręką, także dla dziecka." },
-    { icon: "shield", title: "Gwarancja producenta na duże gabaryty", body: "Szerokości do 1,9 m na skrzydło i wysokości do 2,95 m objęte gwarancją - to realne wymiary drzwi tarasowych i HST." },
+    { icon: "shield", title: "Także na duże gabaryty", body: "Producent przewiduje szerokości do 1,9 m na skrzydło i wysokości do 2,95 m - to realne wymiary drzwi tarasowych i HST." },
     { icon: "palette", title: "Profile lakierowane i drewnopodobne", body: "Grafit, biały, brązy, beż, czarny (połysk lub mat), okleiny złoty dąb, Woodec Turner Oak, winchester, orzech; na zamówienie dowolny RAL." },
   ],
   gallery: [
@@ -65,7 +65,7 @@ export const MOSKITIERY_PLISOWANE: OfertaContent = {
   specs: {
     title: "Najważniejsze parametry",
     items: [
-      { label: "Maks. szerokość objęta gwarancją (na skrzydło)", value: "1900 mm do wys. 2300 mm; 1800 mm przy wys. 2300–2500 mm; 1500 mm przy wys. 2500–2950 mm" },
+      { label: "Maks. szerokość wg producenta (na skrzydło)", value: "1900 mm do wys. 2300 mm; 1800 mm przy wys. 2300–2500 mm; 1500 mm przy wys. 2500–2950 mm" },
       { label: "Wersja", value: "pojedyncza, gdy wysokość ≥ szerokość + 10 cm; w pozostałych przypadkach podwójna (kurtyna), podział równy lub asymetryczny" },
       { label: "Listwy dolne", value: "typ 2 - równe podłoże, bez regulacji; typ 3 - do drzwi HST, spadek ok. 6%; próg aluminiowy - podłoże nierówne lub niestabilne" },
       { label: "Siatka", value: "plisowana, odporna na warunki atmosferyczne; kolor szary lub czarny" },
@@ -78,7 +78,7 @@ export const MOSKITIERY_PLISOWANE: OfertaContent = {
     { q: "Czy plisowana jest szczelna przy progu?", a: "Tak - siatka biegnie w dolnej prowadnicy, a profil chodzący ma uszczelki. Szczeliny nie ma, mimo że próg jest płaski." },
     { q: "Czy mogę zostawić ją rozłożoną cały czas?", a: "Możesz, ale producent zaleca codzienne złożenie i rozłożenie, żeby plisy zachowały kształt, i unikanie silnych przeciągów przy rozłożonej siatce." },
     { q: "Mam drzwi HST z niskim progiem - zadziała?", a: "Tak, do HST stosujemy listwę typ 3 z lekkim spadkiem, dopasowaną do progu drzwi. Potrzebujemy rzeczywistych wymiarów wnęki w trzech punktach." },
-    { q: "Jak mierzyć?", a: "Szerokość i wysokość w co najmniej trzech miejscach, do produkcji przyjmujemy najmniejszy wymiar. Warto sprawdzić pion poziomicą. Najprościej: zrób pomiar orientacyjny do wyceny, dokładny zrobimy przy montażu." },
+    { q: "Jak mierzyć?", a: "Szerokość i wysokość w co najmniej trzech miejscach, do produkcji przyjmujemy najmniejszy wymiar. Warto sprawdzić pion poziomicą. Do wyceny wystarczą wymiary orientacyjne." },
   ],
   related: ["moskitiery-przesuwne", "moskitiery-drzwiowe", "rolety-zewnetrzne"],
   ownerNote: "Zdjęcia i parametry z bwltrend.pl (karta „Moskitiery drzwiowe”). Hero to zdjęcie realizacji BWL Trend.",

@@ -7,12 +7,27 @@ import QuoteForm from "./QuoteForm";
 import { ChatCta, OfertaHeader, StickyBar, VariantPick } from "./LandingCtas";
 import styles from "./oferta.module.css";
 
+// 10.11.2026 (właściciel): bez obietnic - kroki opisują tylko drogę zapytania.
 const DEFAULT_STEPS: OfertaStep[] = [
-  { title: "Napisz, czego potrzebujesz", body: "Wypełnij krótki formularz albo zadzwoń. Wystarczą orientacyjne wymiary i zdjęcie okna lub tarasu." },
-  { title: "Dobieramy system i wyceniamy", body: "Oddzwaniamy, doradzamy wariant i tkaninę, podajemy cenę z montażem - bez zobowiązań." },
-  { title: "Pomiar u Ciebie", body: "W zasięgu dojazdu mierzymy sami. Dalej - wysyłamy prostą instrukcję pomiaru i wyceniamy z wysyłką." },
-  { title: "Produkcja i montaż", body: "Robimy na wymiar, montujemy lub wysyłamy. Termin podajemy przy wycenie i potwierdzamy po pomiarze." },
+  { title: "Opisz, czego potrzebujesz", body: "Wybierz rodzaj produktu i napisz kilka zdań: gdzie, ile sztuk, orientacyjne wymiary." },
+  { title: "Wybierz, jak odpowiedzieć", body: "E-mailem albo telefonicznie - decydujesz Ty." },
+  { title: "Dobieramy wariant", body: "Na podstawie zgłoszenia dobieramy system i przygotowujemy wycenę. Jeśli czegoś brakuje, dopytamy." },
+  { title: "Decydujesz", body: "Formularz nie jest zamówieniem - o zamówieniu decydujesz po otrzymaniu wyceny." },
 ];
+
+/** Komunikat właściciela (10.11.2026): konfigurator w budowie, zapraszamy do formularza wyceny. */
+function BuildNotice() {
+  return (
+    <div className={styles.buildNotice} role="note">
+      <p>
+        <strong>Konfigurator zamówień online jest w budowie.</strong> Zapraszamy do wysłania formularza wyceny - odpowiemy e-mailem albo telefonicznie, jak wolisz.
+      </p>
+      <a href="#wycena" className={styles.btnPrimary}>
+        Wyślij formularz wyceny
+      </a>
+    </div>
+  );
+}
 
 type Branding = { site_title?: string; contact_phone?: string; logo_url?: string };
 type TopLink = { label?: string; url?: string };
@@ -39,6 +54,7 @@ export default function InfoLanding({ content }: { content: OfertaContent }) {
 
       <main>
         <section className={styles.hero}>
+          <BuildNotice />
           <div className={styles.heroInner}>
             <div>
               <ol className={styles.crumbs} aria-label="Ścieżka">
@@ -69,11 +85,11 @@ export default function InfoLanding({ content }: { content: OfertaContent }) {
                   </a>
                 ) : null}
               </div>
-              <p className={styles.heroNote}>Wycena jest bezpłatna i niezobowiązująca. Odpowiadamy zwykle w ciągu jednego dnia roboczego.</p>
+              <p className={styles.heroNote}>Konfigurator zamówień online jest w budowie - wycenę przygotujemy na podstawie formularza.</p>
             </div>
             <figure className={`${styles.heroMedia} ${content.hero.fit === "contain" ? styles.heroMediaContain : ""}`}>
               <img src={content.hero.src} alt={content.hero.alt} fetchPriority="high" />
-              <figcaption className={styles.heroBadge}>Na wymiar · montaż lub wysyłka</figcaption>
+              <figcaption className={styles.heroBadge}>Na wymiar</figcaption>
             </figure>
           </div>
         </section>
@@ -162,7 +178,7 @@ export default function InfoLanding({ content }: { content: OfertaContent }) {
           <div className={styles.sectionHead}>
             <p className={styles.sectionLabel}>Jak to działa</p>
             <h2 id="jak" className={styles.sectionTitle}>
-              Od zapytania do montażu w czterech krokach
+              Od zapytania do wyceny w czterech krokach
             </h2>
           </div>
           <div className={styles.stepsGrid}>
@@ -195,7 +211,7 @@ export default function InfoLanding({ content }: { content: OfertaContent }) {
           </table>
           {content.supplier ? (
             <p className={styles.supplier}>
-              System i komponenty: <strong>{content.supplier.name}</strong> - {content.supplier.note}. Wykonanie na wymiar i montaż: KEIKA.
+              System i komponenty: <strong>{content.supplier.name}</strong> - {content.supplier.note}. Wykonanie na wymiar: KEIKA.
             </p>
           ) : null}
         </section>
@@ -220,14 +236,14 @@ export default function InfoLanding({ content }: { content: OfertaContent }) {
         <section id="wycena" className={styles.quote} aria-labelledby="wycena-tytul">
           <div className={styles.quoteCard}>
             <div className={styles.quoteCopy}>
-              <h2 id="wycena-tytul">Poproś o wycenę</h2>
+              <h2 id="wycena-tytul">Formularz wyceny</h2>
               <p>
-                Napisz, co chcesz zasłonić, a my dobierzemy system i podamy cenę. Bez konfiguratora, bez zobowiązań - jeden kontakt i wiesz, ile to kosztuje.
+                <strong>Konfigurator zamówień online jest w budowie.</strong> Zapraszamy do wysłania formularza - napisz, czego potrzebujesz, i wybierz, jak mamy odpowiedzieć.
               </p>
               <ul className={styles.quoteList}>
-                <li>Wycena bezpłatna, zwykle w ciągu jednego dnia roboczego</li>
-                <li>Pomiar u Ciebie w zasięgu dojazdu albo prosta instrukcja pomiaru</li>
-                <li>Produkt na wymiar, montaż lub wysyłka kurierem</li>
+                <li>Odpowiedź e-mailem albo telefonicznie - wybierasz Ty</li>
+                <li>Wystarczą orientacyjne wymiary i kilka słów o miejscu montażu</li>
+                <li>Formularz nie jest zamówieniem</li>
               </ul>
               <div className={styles.quoteAlt}>
                 <ChatCta productLabel={content.productLabel} slug={content.slug} className={styles.btnGhost}>
@@ -240,7 +256,7 @@ export default function InfoLanding({ content }: { content: OfertaContent }) {
                 ) : null}
               </div>
             </div>
-            <QuoteForm productLabel={content.productLabel} options={content.quoteOptions} slug={content.slug} />
+            <QuoteForm productLabel={content.productLabel} options={content.quoteOptions} slug={content.slug} questions={content.quoteQuestions} />
           </div>
         </section>
 

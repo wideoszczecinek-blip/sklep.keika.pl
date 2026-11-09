@@ -125,7 +125,7 @@ export const ROLETY_ZEWNETRZNE: OfertaContent = {
       { label: "Do zabudowy", value: "SDZ - do istniejących skrzynek i wnęk (wymiana starych rolet)" },
       { label: "Antywłamaniowe", value: "Safety Plus RC2 (PE 41, zapadka w listwie dolnej), Safety Premium RC3 (PE 55, EN 1627:2021)" },
       { label: "Pancerz", value: "aluminium z pianką PU: PA 37 / 39 / 40 / 43 / 45 / 52 / 55; ekstrudowane PE 41 / 55; PVC: PT 37 / 52" },
-      { label: "Kolory pancerza", value: "ponad 40: biały, srebrny, szary, antracyt, beże, brązy, zieleń, bordo, czarny, perłowe mat; okleiny złoty dąb / orzech / mahoń za dopłatą" },
+      { label: "Kolory pancerza", value: "ponad 40: biały, srebrny, szary, antracyt, beże, brązy, zieleń, bordo, czarny, perłowe mat; okleiny złoty dąb / orzech / mahoń" },
       { label: "Napęd", value: "ręczny (taśma, linka, korba) lub elektryczny 230 V; pilot, przełącznik, czujniki, sterowanie z telefonu" },
     ],
   },

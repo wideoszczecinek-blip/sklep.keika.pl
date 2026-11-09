@@ -130,7 +130,7 @@ export const MARKIZY: OfertaContent = {
     { icon: "clock", title: "Automatyka i LED", body: "Silnik z pilotem, czujnik słońca rozkładający markizę w upał, oświetlenie LED w Corsice i Madeirze." },
     { icon: "palette", title: "Konstrukcja w kolorze elewacji", body: "Standardowo RAL 9010, 1015, 9006, 8014 i FSM 71319 (antracyt strukturalny); pozostałe kolory RAL i struktury za dopłatą." },
     { icon: "home", title: "Montaż do ściany, sufitu lub krokwi", body: "Uchwyty ścienne, sufitowe i krokwiowe - dobierzemy do konstrukcji domu i miejsca nad drzwiami tarasowymi." },
-    { icon: "tools", title: "Pomiar i montaż u Ciebie", body: "Sprawdzamy wysokość montażu, kąt nachylenia i przeszkody (okap, lampy), żeby cień padał tam, gdzie stół." },
+    { icon: "tools", title: "Dobór do miejsca montażu", body: "Liczą się wysokość montażu, kąt nachylenia i przeszkody (okap, lampy) - opisz je w zapytaniu, a dobierzemy wysięg tak, żeby cień padał tam, gdzie stół." },
   ],
   gallery: [
     { src: "/oferta/markizy/g2.jpg", alt: "Markiza Palladio nad tarasem hotelu z widokiem na morze", caption: "Palladio w obiekcie hotelowym" },
@@ -162,7 +162,7 @@ export const MARKIZY: OfertaContent = {
     { q: "Jaki wysięg wybrać?", a: "Cień przesuwa się w ciągu dnia, więc wysięg powinien być o ok. 50 cm większy niż głębokość miejsca, które chcesz zacienić. Do typowego stołu z krzesłami wystarcza 2,5–3 m." },
     { q: "Czy markizę można zostawić rozłożoną na deszcz?", a: "Tkanina akrylowa jest impregnowana i przy nachyleniu min. 14° odprowadza lekki deszcz. Przy ulewie i wietrze markizę zwijamy - czujnik wiatru robi to sam." },
     { q: "Ręczna czy elektryczna?", a: "Do 4 m szerokości korba wystarcza. Przy większych markizach, codziennym używaniu i czujnikach polecamy silnik - jest cichy i ma awaryjne zwijanie korbą przy braku prądu." },
-    { q: "Czy markizę da się zamontować na ociepleniu?", a: "Tak, używamy kotew chemicznych i dystansów przenoszących obciążenie na ścianę nośną. Przy pomiarze sprawdzamy grubość ocieplenia i rodzaj ściany." },
+    { q: "Czy markizę da się zamontować na ociepleniu?", a: "Tak, stosuje się kotwy chemiczne i dystanse przenoszące obciążenie na ścianę nośną. Do wyceny przyda się informacja o grubości ocieplenia i rodzaju ściany." },
   ],
   related: ["screeny", "zaluzje-fasadowe", "rolety-zewnetrzne"],
   ownerNote: "Zdjęcia: aluprof.com (Madeira, Palladio, Corsica, Dakar, Jamaica, Italia poręczowa, Casablanca, rysunek Bora). Brak zdjęcia Australii w wysokiej rozdzielczości - użyto zdjęcia tarasu Palladio.",

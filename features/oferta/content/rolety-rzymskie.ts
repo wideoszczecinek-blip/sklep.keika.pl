@@ -12,7 +12,7 @@ export const ROLETY_RZYMSKIE: OfertaContent = {
   menuLabel: "Rolety rzymskie",
   seoTitle: "Rolety rzymskie na wymiar - klasyczne i dzień-noc | KEIKA",
   seoDescription:
-    "Rolety rzymskie produkowane na wymiar: klasyczne z tkanin dekoracyjnych i zaciemniających oraz rzymskie dzień-noc z pasami przeziernymi. Montaż do ściany, sufitu, we wnęce lub na ramie okna. Bezpłatna wycena.",
+    "Rolety rzymskie produkowane na wymiar: klasyczne z tkanin dekoracyjnych i zaciemniających oraz rzymskie dzień-noc z pasami przeziernymi. Montaż do ściany, sufitu, we wnęce lub na ramie okna. Zapytaj o wycenę.",
   eyebrow: "Osłony wewnętrzne",
   title: "Rolety rzymskie na wymiar",
   lead:
@@ -69,9 +69,6 @@ export const ROLETY_RZYMSKIE: OfertaContent = {
   gallery: [
     { src: "/oferta/rolety-rzymskie/g3.jpg", alt: "Zbliżenie na splot tkaniny rzymskiej dzień-noc w odcieniach beżu", caption: "Tkanina Bahama Bergamo" },
     { src: "/oferta/rolety-rzymskie/g4.jpg", alt: "Grafitowa roleta rzymska dzień-noc, widok z przodu", caption: "Rzymska dzień-noc w grafitowym odcieniu" },
-    { src: "/oferta/rolety-rzymskie/g5.jpg", alt: "Tkanina Milano z wzorem kół w odcieniu beżowym", caption: "Kolekcja Milano - wzór „bąbelki”" },
-    { src: "/oferta/rolety-rzymskie/g6.jpg", alt: "Tkanina Milano z wzorem kół w odcieniu szarym", caption: "Kolekcja Milano - szarość" },
-    { src: "/oferta/rolety-rzymskie/g7.jpg", alt: "Zbliżenie na tkaniny rzymskie w kilku kolorach", caption: "Próbki tkanin" },
     { src: "/oferta/rolety-rzymskie/g8.jpg", alt: "Roleta rzymska dzień-noc w jasnej tkaninie, widok produktu", caption: "Rzymska dzień-noc na listwie montażowej" },
   ],
   specs: {

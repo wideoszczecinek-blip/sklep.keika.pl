@@ -1241,7 +1241,9 @@ function buildHeroMenuGroups(config: HomepageConfig | null, endpointOrigin: stri
             return {
               label,
               iconUrl: absolutizeUrl(String(entry.icon_url || entry.icon || "").trim(), endpointOrigin) || fallbackItem.iconUrl || iconUrl,
-              linkUrl: rawLink && !rawLink.startsWith("#") ? rawLink : categoryLink,
+              // Strona informacyjna (lib/info-landings.ts) wygrywa z linkiem z CRM
+              // (10.11.2026: wszystkie produkty dostępne z menu).
+              linkUrl: resolveInfoLandingMenuLink(String(group?.slug || fallback.slug || "").trim(), label) || (rawLink && !rawLink.startsWith("#") ? rawLink : categoryLink),
             };
           })
           .filter((item): item is HeroMenuItem => Boolean(item))
