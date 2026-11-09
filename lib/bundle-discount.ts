@@ -104,7 +104,7 @@ export type BundleDiscount = {
   units: number;
   lines: BundleDiscountLine[];
   /** Podpowiedź „dodaj jeszcze N” dla produktu z regułą, którego jest za mało. */
-  hint: { slug: string; missing: number; percent: number; fromQty: number; wholeOrder: boolean } | null;
+  hint: { slug: string; missing: number; percent: number; fromQty: number; wholeOrder: boolean; zl: number } | null;
   /** Kod rabatowy, który dał więcej niż pakiet (bundleOrCode) - pakiet wtedy pusty. */
   lostToCode?: string;
 };
@@ -143,7 +143,14 @@ export function calcBundleDiscount(items: CartLineItem[], rulesMap: BundleRules 
     // (1 szt. -> „dodaj 1, -10 %"; 2 szt. -> „dodaj 1, -20 %").
     const nextTier = rule.tiers.find((t) => t.fromQty > n);
     if (n > 0 && nextTier && !out.hint) {
-      out.hint = { slug, missing: nextTier.fromQty - n, percent: nextTier.percent, fromQty: nextTier.fromQty, wholeOrder: rule.wholeOrder };
+      // Kwota zamiast samego procentu (właściciel 9.11): szacunek przy brakujących sztukach w średniej cenie z koszyka.
+      const missing = nextTier.fromQty - n;
+      const sum = prices.reduce((acc, price) => acc + price, 0);
+      const avg = sum / n;
+      const zl = rule.wholeOrder
+        ? ((Math.max(0, sum - (poolHasMosk[slug] ? perimeterSavings : 0)) + missing * avg) * nextTier.percent) / 100
+        : (missing * Math.min(avg, prices[0]) * nextTier.percent) / 100;
+      out.hint = { slug, missing, percent: nextTier.percent, fromQty: nextTier.fromQty, wholeOrder: rule.wholeOrder, zl: Math.round(zl) };
     }
     if (rule.wholeOrder) {
       let pct = 0;
@@ -220,11 +227,12 @@ export function bundleDiscountSummary(bundle: BundleDiscount): string {
 
 export function bundleDiscountHintText(bundle: BundleDiscount): string {
   if (!bundle.hint) return "";
-  const { missing, percent, fromQty, wholeOrder } = bundle.hint;
+  const { missing, percent, fromQty, wholeOrder, zl } = bundle.hint;
   const noun = missing === 1 ? "sztukę" : missing < 5 ? "sztuki" : "sztuk";
-  if (wholeOrder) return `Dodaj jeszcze ${missing} ${noun} - całe zamówienie będzie miało -${formatPercent(percent)} %.`;
+  const kwota = zl >= 1 ? ` - to ok. ${zl.toLocaleString("pl-PL")} zł mniej` : "";
+  if (wholeOrder) return `Dodaj jeszcze ${missing} ${noun}: całe zamówienie -${formatPercent(percent)} %${kwota}.`;
   const ordinal = fromQty === 2 ? "druga" : fromQty === 3 ? "trzecia" : `${fromQty}.`;
-  return `Dodaj jeszcze ${missing} ${noun} - ${ordinal} sztuka ma -${formatPercent(percent)} %.`;
+  return `Dodaj jeszcze ${missing} ${noun}: ${ordinal} sztuka -${formatPercent(percent)} %${kwota}.`;
 }
 
 /** Linia w podsumowaniu koszyka, gdy kod wygrał z pakietem (bundleOrCode). */

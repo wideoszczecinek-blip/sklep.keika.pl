@@ -96,6 +96,7 @@ import ExpressWalletCheckout, { type WalletContact } from "@/app/components/expr
 import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
+import { cartFormBucket, getCartFormArm, rememberCartFormShare, type CartFormArm } from "@/lib/cart-form-ab";
 import CartV2, { CartV2Boundary } from "./cart-v2";
 import CartTrust, { CartDostawaBaner, CartFinance, CartFinanceTop, BundleBanner, Reveal } from "./cart-trust";
 import BlikWaitPanel from "./blik-wait";
@@ -783,6 +784,26 @@ export default function CartPage() {
       product: items[0]?.productSlug || "",
     });
   }, [cartDesign, hydrated, items]);
+  // Test „dane od razu” (lib/cart-form-ab.ts, właściciel 9.11: „ok - ale test 50:50”):
+  // grupa „od_razu” ma kuriera zaznaczonego z góry, więc formularz danych widać od wejścia.
+  const [cartFormArm, setCartFormArm] = useState<CartFormArm | null>(null);
+  const cartFormForcedRef = useRef(false);
+  const cartFormTrackedRef = useRef(false);
+  const cartFormPreselectRef = useRef(false);
+  useEffect(() => {
+    const picked = getCartFormArm();
+    cartFormForcedRef.current = picked.forced;
+    setCartFormArm(picked.arm);
+  }, []);
+  useEffect(() => {
+    if (!cartFormArm || !hydrated || items.length === 0 || cartFormTrackedRef.current) return;
+    cartFormTrackedRef.current = true;
+    trackCheckoutIssue("cart_form_ab", cartFormArm, {
+      forced: cartFormForcedRef.current,
+      bucket: cartFormBucket(),
+      product: items[0]?.productSlug || "",
+    });
+  }, [cartFormArm, hydrated, items]);
   // Where the customer actually was right before opening the cart (product +
   // step + query string) - "/" until we know better, filled in on mount.
   const [backHref, setBackHref] = useState("/");
@@ -1305,6 +1326,14 @@ export default function CartPage() {
       setDeliveryMethod("");
     }
   }, [availableDeliveryMethods, deliveryMethod]);
+  // Grupa „od_razu”: raz na wejście kurier z góry (bez zdarzenia checkout_delivery - to nie wybór klienta).
+  // Metoda z zapisanego szkicu tej sesji zostaje; klient zmienia dostawę jak dotąd.
+  useEffect(() => {
+    if (cartFormArm !== "od_razu" || !hydrated || items.length === 0 || cartFormPreselectRef.current) return;
+    cartFormPreselectRef.current = true;
+    if (deliveryMethod) return;
+    if (availableDeliveryMethods.some((method) => method.id === COURIER_METHOD.id)) setDeliveryMethod(COURIER_METHOD.id);
+  }, [cartFormArm, hydrated, items.length, deliveryMethod, availableDeliveryMethods]);
   // Kod pocztowy: myślnik wstawia się sam po dwóch cyfrach, a po pełnym kodzie
   // miasto uzupełnia się z bazy kodów (api.zippopotam.us, bez klucza, CORS).
   // Miasta wpisanego ręcznie nigdy nie nadpisujemy (2026-09-28).
@@ -1695,6 +1724,11 @@ export default function CartPage() {
             // (podgląd nowego tylko z parametrem w adresie tego wejścia).
             const previewNow = new URLSearchParams(window.location.search).get("koszyk") === "nowy";
             if (share === 0 && !previewNow) setCartDesign((current) => (current === "v2" ? "classic" : current));
+          }
+          // Wyłącznik testu „dane od razu” (0 = wszyscy jak dotąd); działa przed zaznaczeniem kuriera.
+          if (typeof checkout.cart_form_open_share === "number") {
+            rememberCartFormShare(checkout.cart_form_open_share);
+            if (!cartFormForcedRef.current && !cartFormPreselectRef.current) setCartFormArm(getCartFormArm().arm);
           }
         }
       })
