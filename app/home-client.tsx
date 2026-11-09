@@ -4823,7 +4823,20 @@ export default function Home({
                         ) : (
                           <>
                             <h2 className="hero-product-section-title">Opis produktu</h2>
-                            <p>{displayedProduct.description}</p>
+                            {isQuoteOnlySlug(productSlugFromSelected(displayedProduct)) ? (
+                              <>
+                                {/* Produkt na wycenę (10.11.2026): opis z CRM, a do czasu jego uzupełnienia bez ogólników i obietnic. */}
+                                <p>{productLanding?.description || "Konfigurator zamówień online dla tego produktu jest w budowie."}</p>
+                                <p>Zapraszamy do wysłania formularza wyceny - odpowiemy e-mailem albo telefonicznie, jak wolisz.</p>
+                                <div className="pl-cta-row">
+                                  <button type="button" className="pl-cta-button" onClick={scrollToConfigPanel}>
+                                    Wyślij formularz wyceny
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <p>{displayedProduct.description}</p>
+                            )}
                             {resolveMainProductPhoto(displayedProduct, productLanding) ? (
                               <img
                                 className="pl-description-photo"
