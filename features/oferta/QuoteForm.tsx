@@ -65,7 +65,7 @@ export default function QuoteForm({ productLabel, options, slug, questions }: Pr
   const renderedAtRef = useRef(Date.now());
 
   // Przycisk "Wyceń ten wariant" na karcie wariantu ustawia wybór w
-  // formularzu i przewija do niego (LandingCtas.tsx wysyła to zdarzenie).
+  // formularzu i przewija do niego (zdarzenie VARIANT_EVENT).
   useEffect(() => {
     function onVariant(event: Event) {
       const detail = (event as CustomEvent<string>).detail;

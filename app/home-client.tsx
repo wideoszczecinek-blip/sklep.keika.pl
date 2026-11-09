@@ -184,6 +184,8 @@ import {
 } from "@/features/plisy/landing-content";
 import { isProductSlugLive, PRODUCT_LOCKED_MESSAGE } from "@/lib/product-availability";
 import { INFO_LANDINGS_PUBLIC, isInfoLandingHref, resolveInfoLandingMenuLink } from "@/lib/info-landings";
+import { QUOTE_ONLY_PRODUCTS, isQuoteOnlySlug, previewUiEnabled, quoteOnlyMenuLink } from "@/lib/quote-only";
+import QuotePanel from "@/features/oferta/QuotePanel";
 import { ALLEGRO_RATING_SNAPSHOTS, HOMEPAGE_CONFIG_SNAPSHOT } from "@/lib/landing-snapshot";
 
 // The three product configurators are the heaviest part of this page's
@@ -852,6 +854,7 @@ function productSectionCtaLabel(product: SelectedProductView | null): string {
   if (slug === "plisy-dachowe") return PD_PRIMARY_CTA;
   if (slug === "plisy") return PLISY_PRIMARY_CTA;
   if (isRoletySlug(slug)) return ROLETY_COPY[slug].ctaLabel;
+  if (isQuoteOnlySlug(slug)) return "Wyślij formularz wyceny";
   return "Skonfiguruj i zobacz cenę";
 }
 
@@ -1243,7 +1246,10 @@ function buildHeroMenuGroups(config: HomepageConfig | null, endpointOrigin: stri
               iconUrl: absolutizeUrl(String(entry.icon_url || entry.icon || "").trim(), endpointOrigin) || fallbackItem.iconUrl || iconUrl,
               // Strona informacyjna (lib/info-landings.ts) wygrywa z linkiem z CRM
               // (10.11.2026: wszystkie produkty dostępne z menu).
-              linkUrl: resolveInfoLandingMenuLink(String(group?.slug || fallback.slug || "").trim(), label) || (rawLink && !rawLink.startsWith("#") ? rawLink : categoryLink),
+              linkUrl:
+                resolveInfoLandingMenuLink(String(group?.slug || fallback.slug || "").trim(), label) ||
+                quoteOnlyMenuLink(String(group?.slug || fallback.slug || "").trim(), label) ||
+                (rawLink && !rawLink.startsWith("#") ? rawLink : categoryLink),
             };
           })
           .filter((item): item is HeroMenuItem => Boolean(item))
@@ -1370,6 +1376,8 @@ const VIRTUAL_PRODUCT_ITEMS: Record<string, { groupSlug: string; label: string; 
   "rolety-kaseta-plaska": { groupSlug: "oslony-wewnetrzne", label: "Rolety w kasecie z prowadnicą płaską", linkUrl: "/produkt/rolety-kaseta-plaska" },
   "rolety-kaseta-przestrzenna": { groupSlug: "oslony-wewnetrzne", label: "Rolety w kasecie z prowadnicą przestrzenną", linkUrl: "/produkt/rolety-kaseta-przestrzenna" },
   "rolety-wolnowiszace": { groupSlug: "oslony-wewnetrzne", label: "Rolety wolnowiszące", linkUrl: "/produkt/rolety-wolnowiszace" },
+  // Verticale (10.11.2026) - produkt na wycenę bez pozycji w menu CRM; strona /zaluzje-pionowe.
+  verticale: { groupSlug: "oslony-wewnetrzne", label: "Verticale", linkUrl: "/produkt/verticale" },
 };
 
 function resolveVirtualProductItem(slug: string, groups: HeroMenuGroup[]): { group: HeroMenuGroup; groupIndex: number; item: HeroMenuItem } | null {
@@ -3306,6 +3314,11 @@ export default function Home({
     // menu, in-page "Produkty" flyout) omits `options` entirely, so this is
     // a real user-initiated navigation attempt and gets the "w budowie"
     // notice instead of switching product.
+    // Produkty na wycenę (10.11.2026) - w podglądzie właściciela pełne przejście na ich stronę.
+    if (options?.updateUrl !== false && isQuoteOnlySlug(shareSlug) && previewUiEnabled()) {
+      window.location.assign(QUOTE_ONLY_PRODUCTS[shareSlug].path);
+      return;
+    }
     if (options?.updateUrl !== false && !isProductSlugLive(shareSlug)) {
       setProductLockedNotice(subItem.label);
       window.setTimeout(() => setProductLockedNotice(null), 3200);
@@ -4765,9 +4778,15 @@ export default function Home({
                           <div className="pl-landing">
                             <h2 className="hero-product-section-title">Opis produktu</h2>
                             <div className="pl-trust-row">
-                              {productLanding.priceFrom ? <span className="pl-price">{fillPricePlaceholders(productLanding.priceFrom)}</span> : null}
-                              <span className="pl-chip">5 lat gwarancji</span>
-                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
+                              {isQuoteOnlySlug(productSlugFromSelected(displayedProduct)) ? (
+                                <span className="pl-chip">Wycena na zapytanie · konfigurator online w budowie</span>
+                              ) : (
+                                <>
+                                  {productLanding.priceFrom ? <span className="pl-price">{fillPricePlaceholders(productLanding.priceFrom)}</span> : null}
+                                  <span className="pl-chip">5 lat gwarancji</span>
+                                  <span className="pl-chip">Darmowa dostawa od 79 zł</span>
+                                </>
+                              )}
                             </div>
                             {productLanding.subtitle ? <p className="pl-subtitle">{productLanding.subtitle}</p> : null}
                             {resolveMainProductPhoto(displayedProduct, productLanding) ? (
@@ -4790,9 +4809,15 @@ export default function Home({
                               ))}
                             </div>
                             <div className="pl-cta-row">
-                              <a href={displayedProduct.linkUrl} className="pl-cta-button">
-                                Skonfiguruj i zobacz cenę
-                              </a>
+                              {isQuoteOnlySlug(productSlugFromSelected(displayedProduct)) ? (
+                                <button type="button" className="pl-cta-button" onClick={scrollToConfigPanel}>
+                                  Wyślij formularz wyceny
+                                </button>
+                              ) : (
+                                <a href={displayedProduct.linkUrl} className="pl-cta-button">
+                                  Skonfiguruj i zobacz cenę
+                                </a>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -5594,7 +5619,9 @@ export default function Home({
                     </button>
                   )
                 ) : null}
-                {productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
+                {isQuoteOnlySlug(productSlugFromSelected(displayedProduct)) ? (
+                  <QuotePanel crmSlug={productSlugFromSelected(displayedProduct)} productLabel={displayedProduct.label} />
+                ) : productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (
                   addToCartToast ? (
                     <MobileOverlayPortal>
                     <div className="hero-product-mini-summary hero-product-added-toast-overlay is-revealed">

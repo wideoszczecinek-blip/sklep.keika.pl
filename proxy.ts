@@ -84,7 +84,23 @@ function videoBlocked(request: NextRequest): boolean {
   return false;
 }
 
+// Czytelne ciasteczko podglądu dla przeglądarki (10.11.2026): home-client po nim
+// wie, że kliknięcie produktu na wycenę w menu ma otworzyć jego stronę (lib/quote-only.ts).
+// Właściwa bramka zostaje na serwerze (IP / ciasteczko httpOnly) - to tylko wygoda w menu.
+const PREVIEW_UI_COOKIE = "keika_podglad_ui";
+
 export function proxy(request: NextRequest) {
+  const response = route(request);
+  if (request.nextUrl.pathname.toLowerCase().endsWith(".mp4")) return response;
+  if (request.nextUrl.searchParams.get("widok") === "klient") {
+    if (request.cookies.get(PREVIEW_UI_COOKIE)) response.cookies.delete(PREVIEW_UI_COOKIE);
+  } else if (previewAllowed(request) && request.cookies.get(PREVIEW_UI_COOKIE)?.value !== "1") {
+    response.cookies.set(PREVIEW_UI_COOKIE, "1", { maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax", secure: true });
+  }
+  return response;
+}
+
+function route(request: NextRequest): NextResponse {
   const url = request.nextUrl;
   if (url.pathname.toLowerCase().endsWith(".mp4")) {
     if (videoBlocked(request)) {

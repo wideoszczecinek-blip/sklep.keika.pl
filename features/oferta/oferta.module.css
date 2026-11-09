@@ -986,3 +986,22 @@
     width: 100%;
   }
 }
+
+/* 10.11.2026 wieczór: panel wyceny w widoku produktu (home-client, w miejscu konfiguratora). */
+.panelNotice {
+  margin: 0.2rem 0 0.9rem;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(214, 140, 20, 0.45);
+  background: #fff6e3;
+  color: #5a3b06;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.panelForm .form {
+  padding: 0;
+  background: transparent;
+}
