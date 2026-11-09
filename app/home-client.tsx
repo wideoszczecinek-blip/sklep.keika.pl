@@ -6653,7 +6653,8 @@ export default function Home({
                     miejsce dla wszystkich produktów (moskitiery mają własną
                     gałąź, reszta idzie przez ConfiguratorPanel). Komponent
                     sam się chowa, gdy PayPo nie jest aktywne na koncie P24. */}
-                <PayPoBadge />
+                {/* Produkty na wycenę (10.11.2026) nie mają koszyka - bez PayPo. */}
+                {isQuoteOnlySlug(productSlugFromSelected(displayedProduct)) ? null : <PayPoBadge />}
               </aside>
             ) : null}
           </div>
