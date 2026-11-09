@@ -26647,3 +26647,9 @@ a.cart-item-link::after { content: " ›"; color: #0f766e; font-weight: 800; }
 .cart-delivery-card .cart-dostawa-2 { font-size: 1.02rem; }
 .cart-delivery-card .cart-dostawa-2 strong { white-space: nowrap; }
 @media (max-width: 560px) { .cart-delivery-card .cart-dostawa-copy { max-width: none; } }
+
+/* Wjazd bloków przy przewijaniu (właściciel 9.11, app/components/animacje-na-ekranie.tsx).
+   Klasy nadaje tylko skrypt i tylko blokom poniżej pierwszego ekranu – bez JS treść jest zwyczajnie widoczna. */
+html.sr-on .sr-czeka { opacity: 0; transform: translate3d(0, 36px, 0) scale(.985); }
+html.sr-on .sr-wjazd { opacity: 1; transform: none; transition: opacity .65s ease, transform .8s cubic-bezier(.16, .84, .3, 1); }
+@media (prefers-reduced-motion: reduce) { html.sr-on .sr-czeka { opacity: 1; transform: none; } }

@@ -8,6 +8,7 @@ import ChatBubble from "./components/chat-bubble";
 import LiveChat from "./components/live-chat";
 import ConsentBar from "./components/consent-bar";
 import VideoGuard from "./components/video-guard";
+import AnimacjeNaEkranie from "./components/animacje-na-ekranie";
 import PersonalCodeCapture from "./components/personal-code-capture";
 import SiteFooter from "@/app/components/site-footer";
 
@@ -84,6 +85,7 @@ export default function RootLayout({
         <LiveChat />
         <ConsentBar />
         <VideoGuard />
+        <AnimacjeNaEkranie />
       </body>
     </html>
   );
