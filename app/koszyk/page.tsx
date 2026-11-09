@@ -34,7 +34,7 @@ import { setProductPriceAdjustmentsFromConfig } from "@/lib/price-adjustment";
 import { bundleDiscountHintText, bundleDiscountSummary, bundleLostToCodeText, bundleOrCode, calcBundleDiscount, setBundleDiscountsFromConfig, useBundleDiscountRules } from "@/lib/bundle-discount";
 import PlisaPreview from "@/features/plisy/PlisaPreview";
 import { readLastPage } from "../components/last-page-tracker";
-import { powrot, produktyWKoszyku } from "@/lib/cart-product-links";
+import { kartaProduktu, powrot, produktyWKoszyku } from "@/lib/cart-product-links";
 import PromoSaveModal from "../components/promo-save-modal";
 import { useCartEmailNudge } from "@/lib/cart-email-nudge";
 import { captureCheckoutEmail, getCartEmailArm, getCartKeepArm, getTrackedPromoQuoteCode, type CartEmailArm, type CartKeepArm } from "@/lib/promo-save";
@@ -3850,7 +3850,12 @@ export default function CartPage() {
                       />
                     )}
                     <div className="cart-page-item-info">
-                      <strong>{item.productLabel}</strong>
+                      {/* nazwa pozycji = link do karty produktu (właściciel 9.11) */}
+                      {kartaProduktu(item.productSlug) ? (
+                        <Link href={kartaProduktu(item.productSlug) as string} className="cart-item-link"><strong>{item.productLabel}</strong></Link>
+                      ) : (
+                        <strong>{item.productLabel}</strong>
+                      )}
                       <CartItemSpecs item={item} />
                       {item.productSlug === "plisy" && item.sagNoticeShown ? (
                         <span className="cart-page-item-sag" role="note">
@@ -4082,8 +4087,6 @@ export default function CartPage() {
                   <CartTrust shippingFree={shippingFee === 0 && deliveryMethod !== PICKUP_METHOD.id} />
                   {/* Oferta ratalna przy każdej kwocie - raty są włączone
                       na koncie P24 (właściciel, 2026-09-24). */}
-                  {/* termin dostawy na banerze (właściciel 9.11.2026) */}
-                  <CartDostawaBaner slugs={items.map((item) => item.productSlug)} />
                   <CartFinance amount={payableTotal} />
                   {/* „Zamawiam” pod podsumowaniem (właściciel 8.11.2026, audyt koszyka:
                       82 ze 121 zainteresowanych nie dotknęło wyboru dostawy - na telefonie
@@ -4174,6 +4177,9 @@ export default function CartPage() {
                     dostawa wraca do lewej kolumny układu, płatność stoi obok. „Zamawiam” pod podsumowaniem dalej przewija tutaj. */}
                 <section className="cart-delivery-card cart-delivery-card--accordion" ref={shippingAddressSectionRef}>
                   <h2>Dostawa i dane odbiorcy</h2>
+                  {/* termin dostawy na banerze (właściciel 9.11.2026); w sekcji dostawy nad danymi – węższy i nie stoi
+                      nad banerem rat (dwie grafiki z ludźmi jedna nad drugą wyglądały słabo) */}
+                  <CartDostawaBaner slugs={items.map((item) => item.productSlug)} />
                   <div className="checkout-delivery-fold">
                   <div className="cart-delivery-options">
                     {availableDeliveryMethods.map((method) => {

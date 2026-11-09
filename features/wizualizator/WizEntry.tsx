@@ -69,10 +69,24 @@ export type WizOstatnia = { token: string; miniatura: string; data: string; szyb
  *  - link: w kroku tkaniny konfiguratora („Nie wiesz, która? Zobacz w swoim oknie”),
  *  - cena: jedna linia pod ceną konfiguratora (największa strata w lejku: widzą cenę, nie dodają).
  */
-/** Etapy animacji banera (sekundy filmu 4,6 s): zdjęcie → plisy we wszystkich oknach → belki → kolory. */
-// 9.11.2026 właściciel: „tu można prędzej użyć filmiku jaki mamy do reklam … bardziej pokazujący o co chodzi” – film z kampanii
-// wizualizatora (REKLAMA/wizualizator-demo, drugi cykl 11 s, kadr okna bez paska z napisami): zdjęcie → AI znajduje szyby → plisa → belki → kolor.
-const ETAPY_BANERA: [number, string][] = [[0, "Twoje zdjęcie"], [0.9, "AI znajduje szyby"], [2.9, "Plisa na Twoim oknie"], [3.9, "Przesuwasz belki"], [7.4, "Zmieniasz kolor"]];
+/**
+ * Film banera zależnie od urządzenia (właściciel 9.11: „chodziło o tę reklamę, co babka robi zdjęcie i rzuca na konfigurator –
+ * mamy 2 wersje, na komputerze i na telefonie – w zależności od urządzenia wyświetl odpowiedni baner”).
+ * Sceny bez napisów z kampanii wizualizatora (REKLAMA/wizualizator-kampania/allegro/robocze):
+ *  - komputer: scena_allegro_16x9 (K8: zdjęcie telefonem → wizualizacja na laptopie), 9 s,
+ *  - telefon: scena_K9_4x5 (K9: zdjęcie → plisa i zmiana koloru na ekranie telefonu), 8,8 s.
+ * Etapy pod filmem: sekundy początku każdego etapu, dopasowane do klatek danej wersji.
+ */
+type WersjaBanera = "pc" | "tel";
+const FILM_BANERA: Record<WersjaBanera, { src: string; poster: string; etapy: [number, string][] }> = {
+  pc: { src: "/wizualizator-baner-pc.mp4", poster: "/wizualizator-baner-pc-poster.webp", etapy: [[0, "Robisz zdjęcie okna"], [2.2, "AI znajduje szyby"], [3.7, "Plisy na Twoim oknie"], [4.8, "Zmieniasz kolor"]] },
+  tel: { src: "/wizualizator-baner-tel.mp4", poster: "/wizualizator-baner-tel-poster.webp", etapy: [[0, "Robisz zdjęcie okna"], [1.9, "AI znajduje szyby"], [3.7, "Plisy na Twoim oknie"], [4.4, "Zmieniasz kolor"]] },
+};
+/** Telefon = wąski ekran (do 767 px). Baner renderuje się tylko w przeglądarce (useWizVisible), więc window jest dostępne. */
+function wersjaBanera(): WersjaBanera {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "pc";
+  return window.matchMedia("(max-width: 767px)").matches ? "tel" : "pc";
+}
 
 /**
  * Animacja banera (właściciel 2.11: „duży salon z otwartą kuchnią, okno tarasowe, okno przy stole, okno w kuchni –
@@ -84,6 +98,8 @@ function BanerAnimacja({ onClick }: { onClick: () => void }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const [etap, setEtap] = useState(0);
   const [blad, setBlad] = useState(false);
+  const [wersja, setWersja] = useState<WersjaBanera>(wersjaBanera);
+  const film = FILM_BANERA[wersja];
   useEffect(() => {
     const v = ref.current;
     if (!v || typeof IntersectionObserver === "undefined") return;
@@ -106,24 +122,32 @@ function BanerAnimacja({ onClick }: { onClick: () => void }) {
     }, { threshold: 0.3 });
     io.observe(v);
     return () => io.disconnect();
+  }, [wersja]);
+  // obrót tabletu / zmiana szerokości okna: przełącz wersję filmu
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const zmiana = () => { setWersja(mq.matches ? "tel" : "pc"); setEtap(0); };
+    mq.addEventListener("change", zmiana);
+    return () => mq.removeEventListener("change", zmiana);
   }, []);
   const czas = () => {
     const t = ref.current?.currentTime || 0;
     let e = 0;
-    ETAPY_BANERA.forEach(([od], i) => {
+    film.etapy.forEach(([od], i) => {
       if (t >= od) e = i;
     });
     setEtap(e);
   };
   return (
     <>
-      <button type="button" className="wiz-baner-foto" onClick={onClick} aria-label="Zobacz plisy na Twoich oknach – wygeneruj wizualizację">
+      <button type="button" className={`wiz-baner-foto wiz-baner-foto--${wersja}`} onClick={onClick} aria-label="Zobacz plisy na Twoich oknach – wygeneruj wizualizację">
         {/* tylko MP4 (H.264, yuv420p) – gra wszędzie; przy błędzie dekodowania zostaje plakat */}
         {blad ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="wiz-baner-wideo" src="/wizualizator-baner-demo-poster.webp" alt="" aria-hidden="true" />
+          <img className="wiz-baner-wideo" src={film.poster} alt="" aria-hidden="true" />
         ) : (
-          <video ref={ref} className="wiz-baner-wideo" src="/wizualizator-baner-demo.mp4" poster="/wizualizator-baner-demo-poster.webp" muted loop playsInline preload="none"
+          <video key={wersja} ref={ref} className="wiz-baner-wideo" src={film.src} poster={film.poster} muted loop playsInline preload="none"
             onTimeUpdate={czas} onError={() => { if (ref.current?.error && ref.current.error.code !== 1) setBlad(true); }} aria-hidden="true" />
         )}
         {/* właściciel 3.11: sekcja nazwana wprost już na animacji */}
@@ -134,7 +158,7 @@ function BanerAnimacja({ onClick }: { onClick: () => void }) {
         <span className="wiz-baner-pg">Wizualizacja poglądowa</span>
       </button>
       <ol className="wiz-baner-etapy" aria-label="Jak działa wizualizacja">
-        {ETAPY_BANERA.map(([, nazwa], i) => (
+        {film.etapy.map(([, nazwa], i) => (
           <li key={nazwa} className={i === etap ? "is-on" : i < etap ? "is-done" : ""}><b>{i + 1}</b>{nazwa}</li>
         ))}
       </ol>

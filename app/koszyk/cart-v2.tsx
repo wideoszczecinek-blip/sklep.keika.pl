@@ -37,7 +37,7 @@ import ZaluzjaPreview, { ZaluzjaSpecTable } from "@/features/rolety/ZaluzjaPrevi
 import PlisaDachowaPreview from "@/features/plisy-dachowe/PlisaDachowaPreview";
 import PaczkomatPicker from "@/app/components/paczkomat-picker";
 import CartTrust, { CartFinance, CartFinanceTop, BundleBanner, Reveal } from "./cart-trust";
-import type { LinkProduktu } from "@/lib/cart-product-links";
+import { kartaProduktu, type LinkProduktu } from "@/lib/cart-product-links";
 import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "@/app/moskitiery-ramkowe-reviews-data";
@@ -528,7 +528,12 @@ export default function CartV2(props: CartV2Props) {
             <ItemVisual item={item} className="cv2-item-thumb" />
             <div className="cv2-item-main">
               <strong>
-                {item.productLabel}
+                {/* nazwa pozycji = link do karty produktu (właściciel 9.11) */}
+                {kartaProduktu(item.productSlug) ? (
+                  <Link href={kartaProduktu(item.productSlug) as string} className="cart-item-link">{item.productLabel}</Link>
+                ) : (
+                  item.productLabel
+                )}
                 {size ? <em> {size}</em> : null}
               </strong>
               <span className="cv2-item-sub">{[item.hardwareLabel, item.meshLabel].filter(Boolean).join(" · ")}</span>

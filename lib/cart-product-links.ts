@@ -70,3 +70,8 @@ export function powrot(ostatnia: string, items: { productSlug: string }[]): { hr
   if (NAZWY[slug]) return { href: `/${slug}`, label: `Wróć do: ${NAZWY[slug]}` };
   return { href: ostatnia || "/", label: "Wróć do sklepu" };
 }
+
+/** Karta produktu dla pozycji koszyka (właściciel 9.11: „pozycje zamówienia muszą być linkami, które otwierają kartę produktu”). */
+export function kartaProduktu(slug: string): string | null {
+  return slug && NAZWY[slug] ? `/${slug}` : null;
+}

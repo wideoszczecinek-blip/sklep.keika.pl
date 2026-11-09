@@ -26624,3 +26624,26 @@ html .hero-product-content .rdl-ryzyko p.rdl-firma { color: #9cc2bb; }
 .pl-qc-promo strong { font-size: 1.12rem !important; font-weight: 900; color: #087e6e; white-space: nowrap; }
 .pl-qc-zwykla small, .pl-qc-promo small { font-size: .66rem; color: #5d6f7b; white-space: nowrap; }
 .pl-qc-promo small { color: #087e6e; font-weight: 700; }
+
+/* Baner wizualizatora: film zależnie od urządzenia (właściciel 9.11, WizEntry.tsx FILM_BANERA).
+   Telefon: pionowa scena 4:5 (telefon w dłoni), napis niżej i mniejszy, żeby nie zasłaniał próbek kolorów. */
+html body button.wiz-baner-foto--tel { aspect-ratio: 4 / 5; }
+.wiz-baner-foto--tel .wiz-baner-wideo { object-position: center 40%; }
+.wiz-baner-foto--tel .wiz-baner-napis { padding: 26px 12px 10px; gap: 6px; }
+.wiz-baner-foto--tel .wiz-baner-napis strong { font-size: 1rem; }
+/* duży przycisk „Wrzuć zdjęcie” jest tuż pod filmem – na telefonie bez drugiego na filmie, żeby było widać próbki */
+.wiz-baner-foto--tel .wiz-baner-napis-cta { display: none; }
+/* komputer: pełny kadr 16:9 sceny (przy 21:9 napis zasłaniał ekran laptopa) */
+html body button.wiz-baner-foto--pc { aspect-ratio: 16 / 9; }
+.wiz-baner-foto--pc .wiz-baner-wideo { object-position: center; }
+
+/* Koszyk: nazwa pozycji jest linkiem do karty produktu (właściciel 9.11, lib/cart-product-links.ts kartaProduktu) */
+a.cart-item-link { color: inherit; text-decoration: underline; text-decoration-color: rgba(15, 118, 110, .45); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+a.cart-item-link:hover, a.cart-item-link:focus-visible { color: #0f766e; text-decoration-color: currentColor; }
+a.cart-item-link::after { content: " ›"; color: #0f766e; font-weight: 800; }
+/* baner terminu w sekcji dostawy (węższy): więcej miejsca na tekst, data w jednej linii */
+.cart-delivery-card .cart-dostawa-baner { margin: .4rem 0 .9rem; }
+.cart-delivery-card .cart-dostawa-copy { max-width: 66%; min-height: 116px; }
+.cart-delivery-card .cart-dostawa-2 { font-size: 1.02rem; }
+.cart-delivery-card .cart-dostawa-2 strong { white-space: nowrap; }
+@media (max-width: 560px) { .cart-delivery-card .cart-dostawa-copy { max-width: none; } }
