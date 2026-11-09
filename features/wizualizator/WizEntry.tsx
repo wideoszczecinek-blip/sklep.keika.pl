@@ -70,7 +70,9 @@ export type WizOstatnia = { token: string; miniatura: string; data: string; szyb
  *  - cena: jedna linia pod ceną konfiguratora (największa strata w lejku: widzą cenę, nie dodają).
  */
 /** Etapy animacji banera (sekundy filmu 4,6 s): zdjęcie → plisy we wszystkich oknach → belki → kolory. */
-const ETAPY_BANERA: [number, string][] = [[0, "Twoje zdjęcie"], [0.7, "Plisy w każdym oknie"], [1.5, "Przesuwasz belki"], [2.7, "Zmieniasz kolor"]];
+// 9.11.2026 właściciel: „tu można prędzej użyć filmiku jaki mamy do reklam … bardziej pokazujący o co chodzi” – film z kampanii
+// wizualizatora (REKLAMA/wizualizator-demo, drugi cykl 11 s, kadr okna bez paska z napisami): zdjęcie → AI znajduje szyby → plisa → belki → kolor.
+const ETAPY_BANERA: [number, string][] = [[0, "Twoje zdjęcie"], [0.9, "AI znajduje szyby"], [2.9, "Plisa na Twoim oknie"], [3.9, "Przesuwasz belki"], [7.4, "Zmieniasz kolor"]];
 
 /**
  * Animacja banera (właściciel 2.11: „duży salon z otwartą kuchnią, okno tarasowe, okno przy stole, okno w kuchni –
@@ -111,7 +113,6 @@ function BanerAnimacja({ onClick }: { onClick: () => void }) {
     ETAPY_BANERA.forEach(([od], i) => {
       if (t >= od) e = i;
     });
-    if (t >= 4.1) e = 0; // plisy chowają się przed kolejnym obiegiem
     setEtap(e);
   };
   return (
@@ -120,9 +121,9 @@ function BanerAnimacja({ onClick }: { onClick: () => void }) {
         {/* tylko MP4 (H.264, yuv420p) – gra wszędzie; przy błędzie dekodowania zostaje plakat */}
         {blad ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="wiz-baner-wideo" src="/wizualizator-baner-poster.webp" alt="" aria-hidden="true" />
+          <img className="wiz-baner-wideo" src="/wizualizator-baner-demo-poster.webp" alt="" aria-hidden="true" />
         ) : (
-          <video ref={ref} className="wiz-baner-wideo" src="/wizualizator-baner.mp4?v=2" poster="/wizualizator-baner-poster.webp" muted loop playsInline preload="none"
+          <video ref={ref} className="wiz-baner-wideo" src="/wizualizator-baner-demo.mp4" poster="/wizualizator-baner-demo-poster.webp" muted loop playsInline preload="none"
             onTimeUpdate={czas} onError={() => { if (ref.current?.error && ref.current.error.code !== 1) setBlad(true); }} aria-hidden="true" />
         )}
         {/* właściciel 3.11: sekcja nazwana wprost już na animacji */}
