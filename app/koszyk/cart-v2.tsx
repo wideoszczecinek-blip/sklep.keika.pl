@@ -42,6 +42,7 @@ import type { PaczkomatPoint } from "../api/paczkomaty/route";
 import { ALLEGRO_RATING_SNAPSHOTS } from "@/lib/landing-snapshot";
 import { MOSKITIERY_RAMKOWE_ALLEGRO_REVIEWS } from "@/app/moskitiery-ramkowe-reviews-data";
 import { PROMO_CODE, formatPromoRemaining, getPromoRemainingMs } from "@/lib/promo";
+import CartContact from "./cart-contact";
 
 type FormState = {
   firstName: string;
@@ -1085,6 +1086,8 @@ export default function CartV2(props: CartV2Props) {
       <div className="cv2-screen" key={step} ref={screenRef}>
         {step === 0 ? screenOrder() : step === 1 ? screenDelivery : step === 2 ? screenData : screenPay}
       </div>
+
+      <CartContact phone={p.contactPhone} place="v2" />
 
       <p className="cv2-foot">
         {phoneHref ? (

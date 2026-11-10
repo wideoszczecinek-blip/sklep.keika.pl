@@ -99,6 +99,7 @@ import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Sh
 import { cartFormBucket, getCartFormArm, rememberCartFormShare, type CartFormArm } from "@/lib/cart-form-ab";
 import CartV2, { CartV2Boundary } from "./cart-v2";
 import CartTrust, { CartDostawaBaner, CartFinanceTop, Reveal } from "./cart-trust";
+import CartContact from "./cart-contact";
 import { BankMarquee, BankPicker, CartPromoCarousel, DeliveryLogo } from "./cart-extras";
 import BlikWaitPanel from "./blik-wait";
 import OrderOffers from "@/app/components/order-offers";
@@ -4134,6 +4135,7 @@ export default function CartPage() {
                     {discountNotice ? <Reveal><p className="cart-discount-code-notice">{discountNotice}</p></Reveal> : null}
                   </div>
                   <CartTrust shippingFree={shippingFee === 0 && deliveryMethod !== PICKUP_METHOD.id} />
+                  <CartContact phone={siteContact.phone} place="classic" />
                   <CartPromoCarousel
                     amount={payableTotal}
                     bundleText={bundle.hint ? bundleDiscountHintText(bundle) : ""}

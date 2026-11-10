@@ -1,0 +1,210 @@
+/* Kontakt w koszyku: karta „Zadzwoń / Napisz na czacie” + dymek czatu (cart-contact.tsx). */
+.cart-contact {
+  margin: 0.9rem 0 0;
+  padding: 0.95rem 1rem 1rem;
+  border: 1px solid #d5dee8;
+  border-radius: 14px;
+  background: #fff;
+  color: #16314e;
+  display: grid;
+  gap: 0.75rem;
+}
+.cart-contact-head {
+  display: grid;
+  gap: 0.15rem;
+}
+.cart-contact-head strong {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.cart-contact-head span {
+  font-size: 0.88rem;
+  color: #4e6480;
+  line-height: 1.35;
+}
+.cart-contact-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+.cart-contact-actions > :only-child {
+  grid-column: 1 / -1;
+}
+.cart-contact-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3.2rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1.5px solid #16314e;
+  background: #fff;
+  color: #16314e;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.cart-contact-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(22, 49, 78, 0.14);
+}
+.cart-contact-btn svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+}
+.cart-contact-btn-text {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+}
+.cart-contact-btn-text > span {
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.cart-contact-btn-text small {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cart-contact-btn.is-chat {
+  border-color: #00a8a3;
+  background: #00a8a3;
+  color: #fff;
+}
+.cart-contact-btn.is-chat small {
+  opacity: 1;
+}
+.cart-contact-online {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.15rem;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px #fff;
+  vertical-align: 0.05rem;
+}
+.cart-contact-btn.is-attention {
+  animation: cart-contact-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cart-contact-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 168, 163, 0.55); }
+  50% { box-shadow: 0 0 0 8px rgba(0, 168, 163, 0); }
+}
+
+/* Dymek: nad dolnymi paskami koszyka (wysokość liczona w komponencie). */
+.cart-chat-nudge {
+  position: fixed;
+  right: 12px;
+  bottom: 16px;
+  z-index: 95;
+  width: min(340px, calc(100vw - 24px));
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.95rem 2.2rem 0.95rem 0.95rem;
+  border-radius: 16px;
+  background: #fff;
+  color: #16314e;
+  border: 1px solid #d5dee8;
+  box-shadow: 0 18px 44px rgba(19, 40, 67, 0.26);
+  animation: cart-chat-nudge-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes cart-chat-nudge-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.cart-chat-nudge-avatar {
+  position: relative;
+  flex: 0 0 auto;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  background: #00a8a3;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+.cart-chat-nudge-avatar svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+.cart-chat-nudge-avatar .cart-contact-online {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  width: 0.65rem;
+  height: 0.65rem;
+}
+.cart-chat-nudge-body {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.cart-chat-nudge-body strong {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.cart-chat-nudge-body p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: #3d526c;
+}
+.cart-chat-nudge-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+.cart-chat-nudge-write,
+.cart-chat-nudge-call {
+  min-height: 2.4rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.cart-chat-nudge-write {
+  border: 0;
+  background: #00a8a3;
+  color: #fff;
+}
+.cart-chat-nudge-call {
+  border: 1.5px solid #16314e;
+  background: #fff;
+  color: #16314e;
+}
+.cart-chat-nudge-close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 0;
+  border-radius: 50%;
+  background: #eef2f6;
+  color: #4e6480;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cart-chat-nudge,
+  .cart-contact-btn.is-attention {
+    animation: none;
+  }
+}

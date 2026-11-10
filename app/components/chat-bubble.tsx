@@ -27,19 +27,22 @@ export default function ChatBubble() {
   // zasłaniały tam nagłówki kroków konfiguratora, a czat jest w nagłówku.
   const isProductPage = pathname === "/" || pathname === "/moskitiery-ramkowe" || pathname === "/plisy";
   const isCartPage = pathname === "/koszyk";
-  const [isMobile, setIsMobile] = useState(false);
   const [teaserVisible, setTeaserVisible] = useState(false);
   const [entered, setEntered] = useState(false);
 
+  // Strona z ikoną czatu w nagłówku (landingi dachowe, katalog) nie dostaje drugiego,
+  // pływającego przycisku: dymek „Masz pytania?” wchodził pod nagłówek (z-index 58 < 60)
+  // i jego tekst prześwitywał przy ikonach - „nieczytelny” (właściciel 10.11.2026).
+  // Koszyk ma od 10.11 własny blok kontaktu z dymkiem czatu (app/koszyk/cart-contact.tsx).
+  const [headerChat, setHeaderChat] = useState(false);
   useEffect(() => {
-    const mql = window.matchMedia("(max-width: 760px)");
-    const update = () => setIsMobile(mql.matches);
-    update();
-    mql.addEventListener("change", update);
-    return () => mql.removeEventListener("change", update);
-  }, []);
+    const check = () => setHeaderChat(Boolean(document.querySelector(".header-chat-button")));
+    check();
+    const timer = window.setTimeout(check, LAUNCHER_DELAY_MS - 300);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
 
-  const suppressed = isProductPage || (isCartPage && isMobile);
+  const suppressed = isProductPage || isCartPage || headerChat;
 
   useEffect(() => {
     if (suppressed) return;
