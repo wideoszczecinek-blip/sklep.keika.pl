@@ -3,9 +3,10 @@
  *
  * Warstwy (od spodu): zdjęcie klienta → na każdej szybie plisa: tkanina
  * (prawdziwa tekstura próbki z CRM, kafelkowana w skali szyby) z plisowaniem
- * liczonym w płaszczyźnie szyby (stała liczba fałd ~20 mm, które ściskają się
- * przy przesuwaniu belek), światło z pokoju + prześwit od strony okna
- * (transmisja tkaniny × jasność za szybą, ciemniejsze zagięcia przy podświetleniu),
+ * liczonym w płaszczyźnie szyby (stała liczba fałd - na rozłożonej plisie co ok. 28 mm -
+ * które ściskają się przy przesuwaniu belek; każda fałda to jasna ścianka górna, ścianka
+ * dolna w cieniu i ciemne zagięcie), światło z pokoju + prześwit od strony okna
+ * (transmisja tkaniny × jasność za szybą, wyrównana do średniej całej szyby),
  * belki górna i dolna (profil z odblaskiem, zaślepki, uchwyt, grubość profilu
  * widoczna pod kątem), linki po bokach i uchwyty narożne → przedmioty przed
  * szybą (maska z CRM) z powrotem NA WIERZCHU.
@@ -61,6 +62,12 @@ export type SceneRender = {
 
 /** Stałe produktu (mm). */
 export const PLEAT_MM = 20;
+/**
+ * Odstęp fałd widziany z pokoju na całkiem rozłożonej plisie (mm). Tkanina ma fałdę 20 mm, ale harmonijka nigdy nie
+ * rozkłada się na płasko - grzbiety wypadają co ok. 28 mm. Rysowane co 20 mm fałdy były za gęste: na telefonie zostawały
+ * z nich cienkie kreski i mora (właściciel 10.11: „totalna tandeta”).
+ */
+export const OKRES_FALDY_MM = 28;
 export const RAIL_MM = 22;
 export const TILE_MM = 42;
 /** Okna dachowe: prowadnica boczna plisy dachowej (mm). */
@@ -154,6 +161,7 @@ uniform float uKind;        // 0 plisa okienna, 1 plisa dachowa, 2 roleta dachow
 uniform float uDark;        // zaciemnienie pokoju (okna dachowe): niezasłonięte szkło wraca do jasności oryginału
 uniform float uTopH;        // wysokość górnej belki / kasety (część wysokości szyby)
 uniform float uGuide;       // szerokość prowadnicy bocznej (część szerokości szyby), 0 = bez prowadnic
+uniform vec4 uBackAvg;     // średni kolor zdjęcia w obrębie szyby (a = 1, gdy policzony) - równy prześwit plisy
 uniform vec2 uLap;          // roleta B25: ile rama zachodzi na szkło (część szerokości / wysokości szyby)
 varying vec2 vPix;
 
@@ -308,42 +316,49 @@ void main() {
     if (roleta) t = (v - tBot) / max(1.0 - tBot - uRailH, 0.001);
     float ph = roleta ? 0.25 : fract(t * uPleats);
     float pitchPx = span / uPleats * uPx.y;
-    // fałda: górna ścianka do światła, dolna w lekkim cieniu; przy rozłożonej plisie
-    // fałdy są płytkie (mały kontrast), przy ściśniętej - głębokie
-    // fałda „harmonijka” jak na filmie 3D: górna ścianka do światła (jaśniejsza u grzbietu),
-    // dolna w cieniu, ostry jasny grzbiet i ciemna dolina; kontrast rośnie przy ściśnięciu
-    float cw = clamp(1.0 / max(pitchPx, 0.5), 0.04, 0.3);
-    // tkanina matowa: rozłożona plisa ma płytkie, miękkie fałdy (mały kontrast), ściśnięta - głębsze
-    float upF = mix(0.995, 1.03 + 0.07 * comp, smoothstep(0.0, 0.5, ph));
-    float dnF = mix(0.985, 0.90 - 0.16 * comp, smoothstep(0.5, 1.0, ph));
-    float s = ph < 0.5 ? upF : dnF;
-    float prof = ph < 0.5 ? 1.0 : -1.0;
-    float ridge = 1.0 - smoothstep(0.0, cw * 1.2, abs(ph - 0.5));
-    s += (0.025 + 0.04 * comp) * ridge;
-    float crease = smoothstep(1.0 - cw, 1.0, ph) + (1.0 - smoothstep(0.0, cw * 0.5, ph));
-    s *= 1.0 - (0.07 + 0.18 * comp) * clamp(crease, 0.0, 1.0);
+    // Fałda „harmonijka” widziana z pokoju (właściciel 10.11: podgląd wyglądał jak płaska naklejka z cienkimi
+    // kreskami): każda fałda to DWA wyraźne pasy - szersza ścianka górna łapie światło i jaśnieje ku grzbietowi,
+    // za ostrym grzbietem węższa ścianka dolna leży w cieniu, a w zagięciu przy szybie jest ciemna, miękka linia.
+    // Tak plisę pokazują zdjęcia; cienkie jednopikselowe kreski dawały morę i wrażenie tapety w paski.
+    // cut: gdzie kończy się ścianka górna (rozłożona plisa: 60 % fałdy, ściśnięta: połowa)
+    float cut = mix(0.6, 0.5, comp);
+    float aw = clamp(0.8 / max(pitchPx, 1.0), 0.015, 0.2); // wygładzenie krawędzi: ok. 1,5 px
+    float upF = mix(0.965, 1.06, smoothstep(0.0, cut, ph));
+    float dnF = mix(0.815, 0.895, smoothstep(cut, 1.0, ph));
+    float isDn = smoothstep(cut - aw, cut + aw, ph);
+    float fold = mix(upF, dnF, isDn);
+    // zagięcie przy szybie: ciemna linia o miękkich brzegach (obie ścianki dochodzą do tej samej wartości - bez schodka)
+    float dv = min(ph, 1.0 - ph);
+    float vw = max(0.07, 1.6 / max(pitchPx, 1.0));
+    float crease = 1.0 - smoothstep(0.0, vw, dv);
+    fold = mix(fold, 0.76, crease);
+    // rozłożona plisa ma płytsze fałdy, ściśnięta - głębokie
+    fold = 1.0 + (fold - 1.0) * (0.85 + 0.75 * comp);
     if (roleta) {
-      // roleta: płaska, napięta tkanina - tylko bardzo łagodne podłużne pofalowanie i jaśniejszy środek
-      s = 1.0 + 0.012 * sin(u * 37.0 + 1.3) - 0.03 * pow(abs(u - 0.5) * 2.0, 3.0);
-      prof = 0.0;
+      fold = 1.0;
+      isDn = 0.0;
       crease = 0.0;
     }
-    // drobne fałdy (poniżej ~3 px) uśredniamy, żeby nie migotały
-    float aa = clamp((pitchPx - 1.5) / 3.0, 0.0, 1.0);
-    s = mix(0.97, s, aa);
+    // fałdy drobniejsze niż ~3 px uśredniamy, żeby nie migotały
+    float aa = clamp((pitchPx - 2.5) / 3.5, 0.0, 1.0);
+    fold = mix(roleta ? 1.0 : 0.95, fold, aa);
     crease *= aa;
+    // s: światło pokoju na licu tkaniny (bez fałd - te nakładamy na gotowy kolor, razem z prześwitem)
+    float s = 1.0;
+    // roleta: płaska, napięta tkanina - tylko bardzo łagodne podłużne pofalowanie i jaśniejszy środek
+    if (roleta) s = 1.0 + 0.012 * sin(u * 37.0 + 1.3) - 0.03 * pow(abs(u - 0.5) * 2.0, 3.0);
     vec3 alb = uFabric;
     if (uHasTex > 0.5) {
-      // tekstura niesie splot i wzór (względem swojej średniej, wzmocniony), średni kolor zawsze z katalogu
+      // tekstura niesie splot i wzór (względem swojej średniej), średni kolor zawsze z katalogu
       vec3 tx = texture2D(uTex, vec2(u * uRep.x, t * uRep.y)).rgb;
-      alb = clamp(uFabric * mix(vec3(1.0), tx / max(uTexMean, vec3(0.03)), 1.35), 0.0, 1.0);
+      alb = clamp(uFabric * tx / max(uTexMean, vec3(0.03)), 0.0, 1.0);
     }
-    // splot tkaniny w dwóch skalach (włókna ~0,7 mm i nierówności ~2,5 mm) - matowa faktura,
-    // bez niej plisa wygląda jak blacha falista; gaśnie, gdy piksel jest większy od ziarna
+    // splot tkaniny w dwóch skalach (włókna ~0,7 mm i nierówności ~2,5 mm) - delikatna matowa faktura;
+    // mocniejszy szum robił z plisy „tapetę z kaszą”; gaśnie, gdy piksel jest większy od ziarna
     vec2 gm = vec2(u, t) * uMm;
     float mmPx = uPx.x / max(uMm.x, 200.0);
-    float fine = (hash(floor(gm / 0.7)) - 0.5) * 0.14 * clamp((mmPx * 0.7 - 0.25) * 2.0, 0.0, 1.0);
-    float coarse = (hash(floor(gm / 2.5) + 7.0) - 0.5) * 0.06 * clamp((mmPx * 2.5 - 0.3) * 1.5, 0.0, 1.0);
+    float fine = (hash(floor(gm / 0.7)) - 0.5) * 0.05 * clamp((mmPx * 0.7 - 0.25) * 2.0, 0.0, 1.0);
+    float coarse = (hash(floor(gm / 2.5) + 7.0) - 0.5) * 0.03 * clamp((mmPx * 2.5 - 0.3) * 1.5, 0.0, 1.0);
     s *= 1.0 + fine + coarse;
     // krawędzie tkaniny odchodzą od światła, cień belki górnej na fałdach
     float edge = smoothstep(0.0, 0.035, u) * smoothstep(0.0, 0.035, 1.0 - u);
@@ -356,8 +371,9 @@ void main() {
     s *= 1.0 - 0.08 * exp(-dBot / 4.0);
     // barwa światła pokoju tylko w połowie - kolor próbki ma zostać rozpoznawalny
     vec3 front = alb * s * uFront * mix(vec3(1.0), uTint, 0.5);
-    // prześwit: światło zza szyby rozproszone w tkaninie - plisa nie pokazuje kształtów za oknem,
-    // tylko miękki blask (12 próbek w promieniu ~3 % zdjęcia)
+    // prześwit: światło zza szyby rozproszone w tkaninie - plisa nie pokazuje kształtów za oknem, tylko miękki
+    // blask: średnia jasność całej szyby (liczona raz w JS) z domieszką lokalnego rozmycia (12 próbek w ~3 % zdjęcia),
+    // które zostawia łagodne przejście nieba w ziemię; samo lokalne rozmycie rysowało na tkaninie plamy dachów i drzew
     vec2 r1 = vec2(0.03) * vec2(1.0, uRes.x / uRes.y);
     vec3 back = vec3(0.0);
     for (int k = 0; k < 8; k++) {
@@ -369,22 +385,28 @@ void main() {
       back += texture2D(uPhoto, clamp(tc + 0.5 * r1 * vec2(cos(ang), sin(ang)), 0.0, 1.0)).rgb;
     }
     back /= 12.0;
-    float dbl = roleta ? 1.0 : 1.0 - 0.3 * crease - 0.15 * comp + 0.06 * prof;
-    vec3 diffused = mix(vec3(lum(alb)), alb, 0.8);
+    if (!roleta) back = mix(back, uBackAvg.rgb, 0.65 * uBackAvg.a);
+    // ściśnięta plisa to więcej warstw tkaniny na drodze światła
+    float dbl = roleta ? 1.0 : 1.0 - 0.15 * comp;
+    // światło po przejściu przez tkaninę bierze jej barwę (kremowa plisa pod słońce świeci ciepło, nie szaro)
+    vec3 diffused = roleta ? mix(vec3(lum(alb)), alb, 0.8) : alb * mix(vec3(1.0), alb / max(lum(alb), 0.05), 0.2);
     // Realna jasność za szybą wpływa na ilość rozproszonego światła. Mocno
     // rozmyta próbka daje subtelny blask, bez ostrego widoku przez tkaninę.
     // Dla blackout (uTrans == 0) nie dodajemy żadnego prześwitu.
     float daylight = smoothstep(0.08, 0.8, lum(back));
     vec3 trans = clamp(uTrans * uBack * (0.65 + 1.15 * daylight) * diffused * dbl * mix(vec3(1.0), back / max(lum(back), 0.08), 0.12), 0.0, 0.92);
-    // linki przez otwory w tkaninie (nie w plastrze miodu)
+    // linki przez otwory w tkaninie (nie w plastrze miodu): widać je głównie w cieniu fałdy - jak przerywaną kreskę
     float cords = 0.0;
     if (uHoney < 0.5 && uKind < 0.5) {
       float cu = min(min(abs(u - 0.018), abs(u - 0.03)), min(abs(u - 0.97), abs(u - 0.982)));
-      cords = (1.0 - smoothstep(0.0, px.x * 1.1, cu)) * 0.18;
+      cords = (1.0 - smoothstep(0.0, px.x * 1.1, cu)) * 0.16 * mix(1.0, 0.35 + 0.65 * isDn, aa);
     }
     // światło z pokoju + prześwit (mieszanie „screen”: jasna tkanina pod słońce nie przepala się do bieli)
     vec3 lit3 = 1.0 - (1.0 - clamp(front, 0.0, 1.0)) * (1.0 - trans);
-    col = vec4(lit3 * (1.0 - cords), 1.0);
+    // fałdy na gotowym kolorze: widać je tak samo w ciemnym pokoju pod światło i wieczorem przy lampie
+    // (liczone tylko na świetle z pokoju ginęły w dzień pod prześwitem); cień fałdy lekko nasyca barwę tkaniny
+    lit3 *= fold * mix(vec3(1.0), alb / max(lum(alb), 0.05), clamp((1.0 - fold) * 0.6, 0.0, 0.2));
+    col = vec4(clamp(lit3, 0.0, 1.0) * (1.0 - cords), 1.0);
   }
   // ziarno jak w fotografii z telefonu (~1,5 % szumu na piksel) - bez niego render wygląda jak naklejka
   float grain = (hash(floor(vPix)) - 0.5) * 0.03;
@@ -642,6 +664,9 @@ export class WizRenderer {
   private railMean = new Map<string, Rgb>();
   private w = 1;
   private h = 1;
+  /** pomniejszona kopia zdjęcia - z niej liczymy średni kolor za każdą szybą (równy prześwit plisy) */
+  private photoSmall: { d: Uint8ClampedArray; w: number; h: number } | null = null;
+  private backAvg = new Map<string, Rgb | null>();
 
   static supported(): boolean {
     try {
@@ -662,7 +687,7 @@ export class WizRenderer {
     this.paneProg = program(gl, FS_PANE, [
       "uPhoto", "uTex", "uRes", "uInv", "uPx", "uTop", "uBot", "uRailH", "uPleats", "uRep", "uHasTex", "uTexMean", "uFabric", "uTrans", "uBack",
       "uFront", "uTint", "uRail", "uBracket", "uMount", "uHoney", "uPitch", "uSplit", "uSel", "uOutline", "uVp",
-      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uWood", "uWoodRings", "uMm", "uKind", "uTopH", "uGuide", "uLap", "uDark",
+      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uWood", "uWoodRings", "uMm", "uKind", "uTopH", "uGuide", "uLap", "uDark", "uBackAvg",
     ]);
     const b = gl.createBuffer();
     if (!b) throw new Error("buffer");
@@ -702,6 +727,51 @@ export class WizRenderer {
     this.canvas.height = this.h;
     if (this.photoTex) this.gl.deleteTexture(this.photoTex);
     this.photoTex = this.makeTexture(img, false);
+    this.backAvg.clear();
+    this.photoSmall = null;
+    try {
+      const k = 96 / Math.max(this.w, this.h, 1);
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(this.w * k));
+      c.height = Math.max(1, Math.round(this.h * k));
+      const ctx = c.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        this.photoSmall = { d: ctx.getImageData(0, 0, c.width, c.height).data, w: c.width, h: c.height };
+      }
+    } catch {
+      // bez kopii zostaje samo lokalne rozmycie w shaderze
+    }
+  }
+
+  /** Średni kolor zdjęcia w obrębie szyby (siatka 10×10 punktów, bez samych brzegów przy ramie). */
+  private paneBackAvg(H: Mat3, corners: Pt[]): Rgb | null {
+    const ps = this.photoSmall;
+    if (!ps) return null;
+    const key = corners.map((c) => Math.round(c[0]) + "," + Math.round(c[1])).join(";");
+    const hit = this.backAvg.get(key);
+    if (hit !== undefined) return hit;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let n = 0;
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
+        const [x, y] = apply(H, [0.08 + (0.84 * i) / 9, 0.08 + (0.84 * j) / 9]);
+        const px = Math.round((x / this.w) * (ps.w - 1));
+        const py = Math.round((y / this.h) * (ps.h - 1));
+        if (px < 0 || py < 0 || px >= ps.w || py >= ps.h) continue;
+        const o = (py * ps.w + px) * 4;
+        r += ps.d[o];
+        g += ps.d[o + 1];
+        b += ps.d[o + 2];
+        n++;
+      }
+    }
+    const avg: Rgb | null = n >= 20 ? [r / n / 255, g / n / 255, b / n / 255] : null;
+    if (this.backAvg.size > 64) this.backAvg.clear();
+    this.backAvg.set(key, avg);
+    return avg;
   }
 
   setMask(img: HTMLImageElement | null): void {
@@ -863,7 +933,9 @@ export class WizRenderer {
       gl.uniform1f(q.u.uTop, b25 ? lap[1] - kasH : p.top);
       gl.uniform1f(q.u.uBot, p.bottom);
       gl.uniform1f(q.u.uRailH, b25 ? Math.max(BELKA_B25_MM / hMm, 4 / Math.max(ph, 1)) : railH);
-      gl.uniform1f(q.u.uPleats, Math.max(8, Math.round(hMm / PLEAT_MM)));
+      gl.uniform1f(q.u.uPleats, Math.max(8, Math.round(hMm / OKRES_FALDY_MM)));
+      const avg = this.paneBackAvg(H, p.corners);
+      gl.uniform4f(q.u.uBackAvg, avg ? avg[0] : 0, avg ? avg[1] : 0, avg ? avg[2] : 0, avg ? 1 : 0);
       gl.uniform2f(q.u.uRep, wMm / TILE_MM, hMm / TILE_MM);
       const tex = this.fabricTex.get(p.fabric.id);
       gl.activeTexture(gl.TEXTURE1);
