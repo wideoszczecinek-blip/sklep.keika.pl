@@ -26977,3 +26977,8 @@ html body .cart-page .cart-keep-cta:hover { background: var(--kz-tint); transfor
   html body .cart-page .cart-pay-tile .cart-pay-logo--p24 { background-size: 44px auto; }
   html body .cart-page .cart-pay-tile .cart-pay-logo--paypo { background-size: 42px auto; }
 }
+/* Strzałka zwijania koszyka: rysowana, zamiast drobnego znaku tekstowego */
+html body .cart-page .cart-basket-toggle-meta { align-items: center; }
+html body .cart-page .cart-basket-toggle-chevron { position: relative; flex: 0 0 auto; width: 16px; height: 16px; font-size: 0; opacity: 1; }
+html body .cart-page .cart-basket-toggle-chevron::before { content: ""; position: absolute; left: 4px; top: 2px; width: 7px; height: 7px; border-right: 2px solid var(--kz-mute); border-bottom: 2px solid var(--kz-mute); transform: rotate(45deg); }
+html body .cart-page .cart-basket-toggle[aria-expanded="true"] .cart-basket-toggle-chevron::before { top: 6px; transform: rotate(-135deg); }
