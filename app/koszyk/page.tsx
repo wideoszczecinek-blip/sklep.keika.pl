@@ -1178,6 +1178,15 @@ export default function CartPage() {
   useBackToClose(codModalOpen, () => setCodModalOpen(false));
   useBackToClose(legalModalOpen, () => setLegalModalOpen(false));
   useBackToClose(Boolean(editingItemId), () => setEditingItemId(null));
+  // Okna pomocy i formularze konfiguratorów idą portalem do <body>, czyli poza
+  // okno edycji (z-index 99) - bez tej klasy otwierały się POD nim i klient
+  // klikał "Popraw" / "Skąd wziąć model okna" bez żadnej reakcji (2026-11-10).
+  useEffect(() => {
+    if (!editingItemId) return;
+    const root = document.documentElement;
+    root.classList.add("cart-item-editing");
+    return () => root.classList.remove("cart-item-editing");
+  }, [editingItemId]);
   const [legalContent, setLegalContent] = useState<{ title: string; bodyHtml: string } | null>(null);
   const [legalLoading, setLegalLoading] = useState(false);
   const [legalError, setLegalError] = useState("");
@@ -3257,6 +3266,22 @@ export default function CartPage() {
     const fold = document.querySelector<HTMLDetailsElement>("[data-checkout-delivery-fold]");
     if (fold) fold.open = true;
     setShowAllFieldErrors(true);
+    // Bez wybranej dostawy pól danych nie ma jeszcze na stronie (formularz
+    // otwiera dopiero wybór metody), więc nie było do czego przewinąć i
+    // "Uzupełnij dane ↓" nie robiło nic - klient stukał 8 razy bez reakcji
+    // (logi 4.11.2026). Prowadzimy wtedy do wyboru dostawy i go podświetlamy.
+    if (!deliveryMethod) {
+      const options = document.querySelector<HTMLElement>(".cart-delivery-options");
+      if (options) {
+        options.scrollIntoView({ behavior: "smooth", block: "center" });
+        options.classList.remove("is-pulse");
+        void options.offsetWidth;
+        options.classList.add("is-pulse");
+        window.setTimeout(() => options.classList.remove("is-pulse"), 2000);
+      }
+      trackCheckoutIssue("checkout_fix_field", "delivery");
+      return;
+    }
     if (checkoutProblems.length) jumpToField(checkoutProblems[0].key);
   };
   // "Dane gotowe, ale nie wybrał płatności" to w CRM osobny etap lejka
@@ -4762,7 +4787,7 @@ export default function CartPage() {
               className="cart-sticky-bar-cta is-secondary"
               onClick={() => (deliveryDataReady ? scrollToSection(paymentSectionRef) : jumpToFirstProblem())}
             >
-              {deliveryDataReady ? "Do płatności ↓" : "Uzupełnij dane ↓"}
+              {deliveryDataReady ? "Do płatności ↓" : deliveryMethod ? "Uzupełnij dane ↓" : "Wybierz dostawę ↓"}
             </button>
           )}
         </div>

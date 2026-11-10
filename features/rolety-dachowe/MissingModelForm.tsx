@@ -64,6 +64,12 @@ export default function MissingModelForm({
   const [customProducer, setCustomProducer] = useState(producerInList ? "" : initialProducer);
   const [model, setModel] = useState(initial?.model || "");
   const [unit, setUnit] = useState<Unit>("mm");
+  // Instrukcja pomiaru otwiera się na stronie produktu (app/home-client.tsx).
+  // W koszyku, w edycji pozycji, nie ma jej kto otworzyć - przycisk byłby
+  // martwy, więc go tam nie pokazujemy; wskazówka pomiaru zostaje nad polami.
+  const [measureGuideAvailable] = useState(
+    () => typeof document !== "undefined" && document.documentElement.dataset.rdMeasureGuide === "1",
+  );
   const [dimA, setDimA] = useState(initial?.dimensionAMm ? String(initial.dimensionAMm) : "");
   const [dimB, setDimB] = useState(initial?.dimensionBMm ? String(initial.dimensionBMm) : "");
   const [attachments, setAttachments] = useState<UploadedAttachment[]>(
@@ -240,9 +246,11 @@ export default function MissingModelForm({
             <strong>Wymiar A i B</strong>
             <p>Mierz na rancie ramy skrzydła, w miejscu montażu rolety — nie przy samej szybie.</p>
           </div>
-          <button type="button" className="rd-chip rd-chip--help" onClick={onOpenMeasureGuide}>
-            📐 Instrukcja pomiaru
-          </button>
+          {measureGuideAvailable ? (
+            <button type="button" className="rd-chip rd-chip--help" onClick={onOpenMeasureGuide}>
+              📐 Instrukcja pomiaru
+            </button>
+          ) : null}
         </div>
         <div className="rd-unit-toggle" role="radiogroup" aria-label="Jednostka">
           {(["mm", "cm"] as Unit[]).map((option) => (

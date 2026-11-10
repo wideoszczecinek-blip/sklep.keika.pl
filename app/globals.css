@@ -26982,3 +26982,43 @@ html body .cart-page .cart-basket-toggle-meta { align-items: center; }
 html body .cart-page .cart-basket-toggle-chevron { position: relative; flex: 0 0 auto; width: 16px; height: 16px; font-size: 0; opacity: 1; }
 html body .cart-page .cart-basket-toggle-chevron::before { content: ""; position: absolute; left: 4px; top: 2px; width: 7px; height: 7px; border-right: 2px solid var(--kz-mute); border-bottom: 2px solid var(--kz-mute); transform: rotate(45deg); }
 html body .cart-page .cart-basket-toggle[aria-expanded="true"] .cart-basket-toggle-chevron::before { top: 6px; transform: rotate(-135deg); }
+
+/* Koszyk, okno "Edytuj pozycję" (z-index 99): okna otwierane z konfiguratora
+   portalem do <body> (pomoc, instrukcje, galeria tkanin, formularz okna spoza
+   biblioteki) muszą leżeć NAD nim. Kolejność między nimi jak poza koszykiem. */
+html.cart-item-editing body > .config-mobile-preview-modal { z-index: 105; }
+html.cart-item-editing body > .config-option-preview-modal,
+html.cart-item-editing body > .instruction-modal:not(.plisy-mount-alert) { z-index: 106; }
+html.cart-item-editing body > .surcharge-modal { z-index: 108; }
+html.cart-item-editing body > .rd-modal:not(.plisy-mount-alert) { z-index: 102; }
+html.cart-item-editing body > .rd-modal--top:not(.plisy-mount-alert) { z-index: 104; }
+
+/* "Przejdź do koszyka" w oknie sukcesu: po kliknięciu od razu widać, że koszyk
+   się otwiera (app/components/go-to-cart-link.tsx). */
+.hero-product-added-toast-actions a.is-primary.is-busy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  animation: none !important;
+  opacity: 0.82;
+  cursor: progress;
+}
+.go-to-cart-spinner {
+  flex: 0 0 auto;
+  width: 1.05em;
+  height: 1.05em;
+  border-radius: 50%;
+  border: 2px solid rgba(34, 21, 10, 0.25);
+  border-top-color: #22150a;
+  animation: goToCartSpin 0.7s linear infinite;
+}
+@keyframes goToCartSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Koszyk: "Wybierz dostawę ↓" / zablokowana płatność bez wybranej dostawy -
+   metody dostawy pulsują tak samo jak brakujące pole (jumpToFirstProblem). */
+.cart-delivery-options.is-pulse .cart-delivery-option {
+  animation: cart-field-pulse 0.65s ease-out 3;
+}

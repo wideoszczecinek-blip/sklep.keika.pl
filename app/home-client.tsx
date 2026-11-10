@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import SiteFooter from "@/app/components/site-footer";
 import AddedToCartMessage from "@/app/components/added-to-cart-message";
+import GoToCartLink from "@/app/components/go-to-cart-link";
 import PayPoBadge from "@/app/components/paypo-badge";
 import { COMPANY_LEGAL } from "@/lib/company-legal";
 import { createPortal } from "react-dom";
@@ -2539,7 +2540,14 @@ export default function Home({
   useEffect(() => {
     const handler = () => openMeasurementInstructions();
     window.addEventListener("keika:rd-open-measure-guide", handler);
-    return () => window.removeEventListener("keika:rd-open-measure-guide", handler);
+    // Znak dla formularza okna spoza biblioteki, że instrukcja jest pod ręką.
+    // W koszyku (edycja pozycji) nikt tego zdarzenia nie słucha, więc tam
+    // przycisk "Instrukcja pomiaru" w ogóle się nie pokazuje (2026-11-10).
+    document.documentElement.dataset.rdMeasureGuide = "1";
+    return () => {
+      window.removeEventListener("keika:rd-open-measure-guide", handler);
+      delete document.documentElement.dataset.rdMeasureGuide;
+    };
   }, [openMeasurementInstructions]);
 
   const [dimensionWidth, setDimensionWidth] = useState("");
@@ -5682,9 +5690,7 @@ export default function Home({
                             >
                               Wyceń nową moskitierę
                             </button>
-                            <a href="/koszyk" className="is-primary">
-                              Przejdź do koszyka
-                            </a>
+                            <GoToCartLink />
                           </div>
                         </div>
                       </div>
@@ -5794,9 +5800,7 @@ export default function Home({
                             >
                               Wyceń nową roletę
                             </button>
-                            <a href="/koszyk" className="is-primary">
-                              Przejdź do koszyka
-                            </a>
+                            <GoToCartLink />
                           </div>
                         </div>
                       </div>
@@ -5894,9 +5898,7 @@ export default function Home({
                             >
                               Wyceń nową plisę
                             </button>
-                            <a href="/koszyk" className="is-primary">
-                              Przejdź do koszyka
-                            </a>
+                            <GoToCartLink />
                           </div>
                         </div>
                       </div>
@@ -6009,9 +6011,7 @@ export default function Home({
                             >
                               {ROLETY_COPY[productSlugFromSelected(displayedProduct) as RoletySlug].newLabel}
                             </button>
-                            <a href="/koszyk" className="is-primary">
-                              Przejdź do koszyka
-                            </a>
+                            <GoToCartLink />
                           </div>
                         </div>
                       </div>
@@ -6158,9 +6158,7 @@ export default function Home({
                             >
                               Wyceń nową plisę
                             </button>
-                            <a href="/koszyk" className="is-primary">
-                              Przejdź do koszyka
-                            </a>
+                            <GoToCartLink />
                           </div>
                         </div>
                       </div>
@@ -6590,9 +6588,7 @@ export default function Home({
                             >
                               Wyceń nową moskitierę
                             </button>
-                            <a href="/koszyk" className="is-primary">
-                              Przejdź do koszyka
-                            </a>
+                            <GoToCartLink />
                           </div>
                         </div>
                       ) : (
