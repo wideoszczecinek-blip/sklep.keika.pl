@@ -9,8 +9,8 @@ import type { LinkProduktu } from "@/lib/cart-product-links";
 import { crmGetJson } from "@/lib/crm-get";
 import InstallmentOffer from "@/app/components/installment-offer";
 import { installmentsAvailable, monthlyInstallment, pickFriendlyInstallmentCount } from "@/lib/installments";
-import { PremiumPerks, dzienWysylki } from "@/features/plisy/Premium";
-import { ROLETY_COPY, isRoletySlug } from "@/features/rolety/shared";
+import { PremiumPerks } from "@/features/plisy/Premium";
+import { przewidywanaDostawa, type DeliveryEta } from "@/lib/delivery-eta";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 
 export function useRatyPaypo(): { raty: boolean; paypo: boolean } {
@@ -197,35 +197,17 @@ export function BundleBanner({ text, produkty = [] }: { text: string; produkty?:
 // NAJPÓŹNIEJ w poniedziałek yy.yy – na ładnym banerze z graficznym tłem.” Termin = najdłuższa produkcja w koszyku
 // (dni robocze, bez świąt), wysyłka po produkcji, kurier 24 h.
 
-/** Dni robocze produkcji wg produktu (agent-catalog.ts, ROLETY_COPY). Moskitiery: termin z planu produkcji,
- * którego koszyk nie zna – przyjmujemy ostrożnie 7 dni. */
-function dniProdukcji(slug: string): number {
-  if (slug === "rolety-dachowe") return 5;
-  if (slug === "plisy" || slug === "plisy-dachowe") return 7;
-  if (isRoletySlug(slug)) return ROLETY_COPY[slug].leadTimeDays;
-  if (slug.startsWith("zaluzj")) return 15;
-  if (slug.startsWith("moskitier")) return 7;
-  return 10;
-}
-
-const DZIEN = ["w niedzielę", "w poniedziałek", "we wtorek", "w środę", "w czwartek", "w piątek", "w sobotę"];
-
+// Dni produkcji i liczenie daty: lib/delivery-eta.ts (to samo liczy strona zamówienia po zakupie).
+// Od 10.11.2026 baner widzi połowa ruchu (test lib/cart-eta-ab.ts) - decyduje app/koszyk/page.tsx.
 export function CartDostawaBaner({ slugs }: { slugs: string[] }) {
-  const [daty, setDaty] = useState<{ dni: number; dostawa: Date } | null>(null);
+  const [daty, setDaty] = useState<DeliveryEta | null>(null);
   const klucz = slugs.join("|");
   useEffect(() => {
-    if (!slugs.length) {
-      setDaty(null);
-      return;
-    }
-    const dni = Math.max(...slugs.map(dniProdukcji));
-    // wysyłka po ostatnim dniu produkcji, kurier doręcza następnego dnia roboczego
-    setDaty({ dni, dostawa: dzienWysylki(dzienWysylki(new Date(), dni), 1) });
+    setDaty(przewidywanaDostawa(slugs));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [klucz]);
   if (!daty) return null;
-  const d = daty.dostawa;
-  const data = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const data = daty.data;
   return (
     <Reveal>
       <section className="cart-dostawa-baner" aria-label="Termin dostawy">
@@ -234,7 +216,7 @@ export function CartDostawaBaner({ slugs }: { slugs: string[] }) {
             Twoje zamówienie wyprodukujemy w ciągu <b>maksymalnie {daty.dni} dni roboczych</b>.
           </p>
           <p className="cart-dostawa-2">
-            Będzie u Ciebie <strong>najpóźniej {DZIEN[d.getDay()]}</strong> <span className="cart-dostawa-data">{data}</span>
+            Będzie u Ciebie <strong>najpóźniej {daty.dzien}</strong> <span className="cart-dostawa-data">{data}</span>
           </p>
           <p className="cart-dostawa-3">Produkujemy na wymiar u nas w Polsce · po produkcji kurier w 24 h</p>
         </div>

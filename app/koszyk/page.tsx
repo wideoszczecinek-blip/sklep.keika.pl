@@ -97,6 +97,7 @@ import { formatPhoneInput, isValidPhone, phoneError } from "@/lib/phone";
 import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share";
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import { cartFormBucket, getCartFormArm, rememberCartFormShare, type CartFormArm } from "@/lib/cart-form-ab";
+import { cartEtaBucket, getCartEtaArm, rememberCartEtaShare, type CartEtaArm } from "@/lib/cart-eta-ab";
 import CartV2, { CartV2Boundary } from "./cart-v2";
 import CartTrust, { CartDostawaBaner, CartFinanceTop, Reveal } from "./cart-trust";
 import CartContact from "./cart-contact";
@@ -821,6 +822,25 @@ export default function CartPage() {
       product: items[0]?.productSlug || "",
     });
   }, [cartFormArm, hydrated, items]);
+  // Test banera terminu dostawy (lib/cart-eta-ab.ts, właściciel 10.11: „połowa ruchu ma go nie widzieć”):
+  // grupa „baner” widzi CartDostawaBaner w sekcji Dostawa, grupa „bez” - nie. Termin po zakupie widzą obie.
+  const [cartEtaArm, setCartEtaArm] = useState<CartEtaArm | null>(null);
+  const cartEtaForcedRef = useRef(false);
+  const cartEtaTrackedRef = useRef(false);
+  useEffect(() => {
+    const picked = getCartEtaArm();
+    cartEtaForcedRef.current = picked.forced;
+    setCartEtaArm(picked.arm);
+  }, []);
+  useEffect(() => {
+    if (!cartEtaArm || !hydrated || items.length === 0 || cartEtaTrackedRef.current) return;
+    cartEtaTrackedRef.current = true;
+    trackCheckoutIssue("cart_eta_ab", cartEtaArm, {
+      forced: cartEtaForcedRef.current,
+      bucket: cartEtaBucket(),
+      product: items[0]?.productSlug || "",
+    });
+  }, [cartEtaArm, hydrated, items]);
   // Where the customer actually was right before opening the cart (product +
   // step + query string) - "/" until we know better, filled in on mount.
   const [backHref, setBackHref] = useState("/");
@@ -1761,6 +1781,12 @@ export default function CartPage() {
           if (typeof checkout.cart_form_open_share === "number") {
             rememberCartFormShare(checkout.cart_form_open_share);
             if (!cartFormForcedRef.current && !cartFormPreselectRef.current) setCartFormArm(getCartFormArm().arm);
+          }
+          // Wyłącznik testu banera terminu dostawy (udział grupy „baner”, 100 = wszyscy widzą, 0 = nikt).
+          // Grupa nie zmienia się po zapisaniu zdarzenia, żeby klient nie przeskoczył między grupami.
+          if (typeof checkout.cart_eta_banner_share === "number") {
+            rememberCartEtaShare(checkout.cart_eta_banner_share);
+            if (!cartEtaForcedRef.current && !cartEtaTrackedRef.current) setCartEtaArm(getCartEtaArm().arm);
           }
         }
       })
@@ -4219,7 +4245,8 @@ export default function CartPage() {
                   </header>
                   {/* termin dostawy na banerze (właściciel 9.11.2026); w sekcji dostawy nad danymi – węższy i nie stoi
                       nad banerem rat (dwie grafiki z ludźmi jedna nad drugą wyglądały słabo) */}
-                  <CartDostawaBaner slugs={items.map((item) => item.productSlug)} />
+                  {/* test 50:50 od 10.11.2026 (lib/cart-eta-ab.ts): baner tylko w grupie „baner” */}
+                  {cartEtaArm === "baner" ? <CartDostawaBaner slugs={items.map((item) => item.productSlug)} /> : null}
                   <div className="checkout-delivery-fold">
                   <div className="cart-delivery-options">
                     {availableDeliveryMethods.map((method) => {

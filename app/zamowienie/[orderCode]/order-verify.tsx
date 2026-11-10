@@ -8,6 +8,7 @@ import InstallmentOffer from "@/app/components/installment-offer";
 import CartTrustBlock from "@/app/components/cart-trust-block";
 import { useSearchParams } from "next/navigation";
 import type { PublicOrder } from "@/lib/shop-public";
+import { dataZCrm, przewidywanaDostawa } from "@/lib/delivery-eta";
 import { clearCart, formatPln, NON_PRODUCT_POSITION_SLUGS, readCartItems } from "@/lib/cart";
 import { crmGetJson } from "@/lib/crm-get";
 import { trackShopStep } from "@/lib/track-step";
@@ -589,6 +590,19 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
           .replace(/przekazujemy zamówienie do produkcji/g, "wysyłamy próbki w ciągu 1-2 dni roboczych")
           .replace(/Zamówienie idzie do realizacji/g, "Próbki wyślemy w ciągu 1-2 dni roboczych")
       : heroTextRaw;
+    // Przewidywany termin dostawy (właściciel 10.11.2026: „po zakupie na stronie podziękowania musi mieć
+    // informację o przewidywanym czasie dostawy” - dla obu grup testu banera w koszyku). Ta sama miara co
+    // baner (lib/delivery-eta.ts), liczona od dnia wpłaty; pobranie od dnia zamówienia; nieopłacone - od dziś.
+    // Nie pokazujemy przy próbkach, anulowanym, po wysyłce i gdy termin już minął.
+    const etaFromToday = !isPaid && !isCod;
+    const etaStart = isPaid ? dataZCrm(order.paid_at) || new Date() : isCod ? dataZCrm(order.created_at) || new Date() : new Date();
+    const etaRaw =
+      order.product_slug === SAMPLES_SLUG || order.status === "cancelled" || order.shipments.length > 0
+        ? null
+        : przewidywanaDostawa(lines.products.map((p) => p.slug).filter((slug) => slug !== SAMPLES_SLUG), etaStart);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const eta = etaRaw && etaRaw.dostawa >= todayStart ? etaRaw : null;
     // Kroki "co dalej" - a gdy paczka już wyszła, nie opowiadamy o produkcji.
     const nextSteps = order.shipments.length > 0 ? [] : pageState.steps;
 
@@ -881,10 +895,24 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
               </section>
             ) : null}
 
-            {order.estimated_completion || order.shipments.length > 0 ? (
+            {order.estimated_completion || order.shipments.length > 0 || eta ? (
               <section className="cart-delivery-card">
                 <h2>Realizacja</h2>
                 <dl className="order-facts">
+                  {eta ? (
+                    <div className="order-eta">
+                      <dt>Przewidywana dostawa</dt>
+                      <dd>
+                        <strong>
+                          najpóźniej {eta.dzien} {eta.data}
+                        </strong>
+                        <small>
+                          Produkcja do {eta.dni} dni roboczych, potem kurier w 24 h.
+                          {etaFromToday ? " Liczymy od dziś - produkcję zaczynamy po zaksięgowaniu wpłaty." : ""}
+                        </small>
+                      </dd>
+                    </div>
+                  ) : null}
                   {order.estimated_completion ? (
                     <div>
                       <dt>Planowany termin</dt>
