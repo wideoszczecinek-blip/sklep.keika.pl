@@ -246,7 +246,9 @@ export function requestEscapeOffer(trigger: EscapeTrigger, items: CartLineItem[]
 export async function syncEscapeOfferWithServer(): Promise<void> {
   if (typeof window === "undefined") return;
   const state = readState();
-  if (!state || state.arm !== "offer" || state.status !== "active") return;
+  // "expired" też pytamy: biuro może przedłużyć termin w CRM (np. przeprosiny
+  // po błędzie koszyka 10.11.2026) - wtedy oferta wraca bez nowego losowania.
+  if (!state || state.arm !== "offer" || (state.status !== "active" && state.status !== "expired")) return;
   try {
     if (window.sessionStorage.getItem(SESSION_SYNCED_KEY)) return;
     window.sessionStorage.setItem(SESSION_SYNCED_KEY, "1");

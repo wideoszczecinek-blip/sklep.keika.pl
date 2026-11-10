@@ -728,8 +728,14 @@ function buildQuotePayloadFromCart(
   // real wspólne-rozliczenie-obwodu correction, not the higher
   // pre-correction subtotal" fix as the discount code above (real live bug
   // 2026-09-11).
+  // Właściciel 10.11.2026: dodatkowy rabat odejmuje się NA KOŃCU - od ceny po
+  // wszystkich promocjach (CAŁY DOM, kod), a nie tylko od sztuk spoza pakietu.
+  // Wcześniej przy koszyku w całości objętym CAŁY DOM wychodził 0 zł, choć
+  // koszyk obiecywał "Dodatkowe -5%". To samo liczy CRM (shop_discount_codes.php).
   const rescueAmount = rescueGrant
-    ? roundMoney(Math.max(0, (itemsSubtotal - combinedSavings - bundle.discountedBase) * (rescueGrant.percent / 100)))
+    ? roundMoney(
+        Math.max(0, (itemsSubtotal - combinedSavings - bundle.savings - (discount && discount.amount > 0 ? discount.amount : 0)) * (rescueGrant.percent / 100)),
+      )
     : 0;
   if (rescueGrant && rescueAmount > 0) {
     positions.push({
@@ -1313,8 +1319,14 @@ export default function CartPage() {
   const bundle = bundleOrCode(bundleRaw, appliedDiscount, summary.total - combinedSavings);
   // Do groszy, tak jak liczy CRM - inaczej "Razem" różniło się o grosz od
   // kwoty zamówienia (lib/cart.ts roundMoney).
+  // Dodatkowy rabat na końcu: od ceny po CAŁY DOM i kodzie (właściciel 10.11.2026).
   const rescueAmount = rescueGrant
-    ? roundMoney(Math.max(0, (summary.total - combinedSavings - bundle.discountedBase) * (rescueGrant.percent / 100)))
+    ? roundMoney(
+        Math.max(
+          0,
+          (summary.total - combinedSavings - bundle.savings - (appliedDiscount ? appliedDiscount.amount : 0)) * (rescueGrant.percent / 100),
+        ),
+      )
     : 0;
   const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
