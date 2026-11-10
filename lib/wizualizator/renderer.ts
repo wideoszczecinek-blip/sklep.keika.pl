@@ -66,12 +66,14 @@ export const TILE_MM = 42;
 /** Okna dachowe: prowadnica boczna plisy dachowej (mm). */
 export const PROWADNICA_MM = 16;
 /**
- * Roleta dachowa = system B25 szeroki (Dekolux): aluminiowa rama jak rama obrazu - kaseta z wypukłą maskownicą
- * u góry i szerokie, płaskie prowadnice po bokach, łączone na ukos; rama leży na skrzydle wokół szyby i tylko
- * trochę zachodzi na szkło (ZAKLAD: w poziomie i w pionie). Wymiary w mm.
+ * Roleta dachowa = system B25 szeroki (Dekolux): aluminiowa rama jak rama obrazu - kaseta u góry i prowadnice
+ * po bokach z tego samego wypukłego profilu 50 mm (właściciel 10.11: „kaseta i prowadnice mają ten sam wymiar”),
+ * łączone na ukos 45°; rama leży na skrzydle wokół szyby i tylko trochę zachodzi na szkło (ZAKLAD: w poziomie
+ * i w pionie). Belka dolna jest smukła (BELKA_B25_MM). Wymiary w mm.
  */
-export const KASETA_MM = 60;
+export const KASETA_MM = 50;
 export const PROWADNICA_B25_MM = 50;
+export const BELKA_B25_MM = 18;
 export const ZAKLAD_B25_MM: [number, number] = [8, 10];
 
 const VS = `
@@ -244,29 +246,15 @@ vec3 frameBase(float acrossMm, float alongMm, float pxMm) {
   return clamp(c * (0.96 + 0.07 * fib + 0.08 * (blot - 0.5)), 0.0, 1.0);
 }
 
-// maskownica kasety w poprzek (r: 0 = góra przy skrzydle, 1 = dolna warga): wypukłe lico z odblaskiem,
-// przetłoczenie i warga, spod której wychodzi tkanina
-float casProf(float r, float pxr) {
-  float s = mix(0.62, 0.9, smoothstep(0.0, max(0.05, pxr), r));
-  s = mix(s, 1.12, smoothstep(0.05, 0.18, r));
-  s = mix(s, 1.03, smoothstep(0.2, 0.36, r));
-  s = mix(s, 0.9, smoothstep(0.36, 0.68, r));
-  float lw = max(0.014, 0.7 * pxr);
-  s *= 1.0 - 0.3 * exp(-pow((r - 0.715) / lw, 2.0));
-  s += 0.12 * exp(-pow((r - 0.715 - 2.0 * lw) / lw, 2.0));
-  s = mix(s, 0.86, smoothstep(0.84, 0.95, r));
-  s = mix(s, 0.6, smoothstep(0.95, 1.0, r));
-  return s;
-}
-
-// prowadnica w poprzek (q: 0 = krawędź zewnętrzna, 1 = wewnętrzna przy tkaninie): szerokie płaskie lico
-// i zaokrąglona, ciemniejsza krawędź kanału, w który wchodzi tkanina
-float guideProf(float q, float pxq) {
-  float s = mix(0.74, 0.96, smoothstep(0.0, max(0.07, pxq), q));
-  s = mix(s, 1.06, smoothstep(0.07, 0.3, q));
-  s = mix(s, 1.0, smoothstep(0.3, 0.55, q));
-  s = mix(s, 0.9, smoothstep(0.55, 0.84, q));
-  s = mix(s, 0.56, smoothstep(1.0 - max(0.1, 1.5 * pxq), 1.0, q));
+// profil ramy B25 w poprzek - ten sam dla kasety i prowadnic (q: 0 = krawędź zewnętrzna, 1 = wewnętrzna przy
+// tkaninie): gładkie wypukłe lico - zaokrąglona krawędź zewnętrzna, odblask w 1/4 szerokości, łagodne ciemnienie
+// ku tkaninie i cień krawędzi, pod którą wchodzi tkanina; k: siła światłocienia (kaseta łapie światło z góry)
+float profB25(float q, float pxq, float k) {
+  float s = mix(0.7, 0.95, smoothstep(0.0, max(0.07, pxq), q));
+  s = mix(s, 1.0 + 0.09 * k, smoothstep(0.07, 0.28, q));
+  s = mix(s, 1.0, smoothstep(0.3, 0.54, q));
+  s = mix(s, 1.0 - 0.13 * k, smoothstep(0.54, 0.86, q));
+  s = mix(s, 0.56, smoothstep(1.0 - max(0.09, 1.5 * pxq), 1.0, q));
   return s;
 }
 
@@ -278,7 +266,7 @@ vec3 barB25(float r, float u, float pxr) {
   s *= 1.0 - 0.14 * exp(-pow((r - 0.66) / max(0.04, pxr), 2.0));
   s = mix(s, 0.74, smoothstep(0.7, 0.86, r));
   s = mix(s, 0.52, smoothstep(0.88, 1.0, r));
-  return frameBase(r * 22.0, u * uMm.x, uMm.y / max(uPx.y, 1.0)) * s * brushed(u * uMm.x, r * 22.0);
+  return frameBase(r * 18.0, u * uMm.x, uMm.y / max(uPx.y, 1.0)) * s * brushed(u * uMm.x, r * 18.0);
 }
 
 void main() {
@@ -512,9 +500,9 @@ void main() {
         vec3 bc = vec3(0.3, 0.31, 0.33) * (1.0 + 0.5 * fib) * lightC;
         col = vec4(mix(col.rgb, bc, sb), max(col.a, sb));
       }
-      // dwa uchwyty z tworzywa na belce (wąska roleta: jeden na środku) - za nie ściąga się roletę
-      float hw = max(22.0 / uMm.x, 3.0 * px.x);
-      float hu2 = uMm.x > 520.0 ? min(abs(u - 0.3), abs(u - 0.7)) : abs(u - 0.5);
+      // uchwyt z tworzywa na środku belki - za niego ściąga się roletę
+      float hw = max(28.0 / uMm.x, 3.0 * px.x);
+      float hu2 = abs(u - 0.5);
       float hy0 = bTop + 0.2 * uRailH;
       float hy1 = bBot + 0.3 * uRailH;
       float hr = clamp((v - hy0) / max(hy1 - hy0, 0.0001), 0.0, 1.0);
@@ -528,7 +516,8 @@ void main() {
       }
     }
     // rama w milimetrach: xm - od zewnętrznej krawędzi prowadnicy do środka (obie strony symetrycznie),
-    // ym - od górnej krawędzi kasety w dół; otwór na tkaninę ma zaokrąglone górne narożniki
+    // ym - od górnej krawędzi kasety w dół; otwór na tkaninę ma proste górne narożniki (cięcie na ukos dochodzi
+    // do samego rogu), zewnętrzne narożniki ramy są lekko ścięte
     vec2 mm = vec2(u, v) * uMm;
     vec2 pmm = uMm / max(uPx, vec2(1.0));
     float pm = max(pmm.x, pmm.y);
@@ -537,19 +526,20 @@ void main() {
     float xm = min(mm.x - (uLap.x * uMm.x - gW), (uMm.x - uLap.x * uMm.x + gW) - mm.x);
     float ym = mm.y - (uLap.y * uMm.y - cH);
     float yB = uMm.y + 14.0; // prowadnice kończą się tuż pod szybą, na dolnym ramiaku skrzydła
-    float R = 12.0;
+    float R = 2.0;
+    float sc = (xm + ym - 9.0) * 0.7071; // ścięcie zewnętrznego narożnika
     vec2 dc = vec2(gW + R - xm, cH + R - ym);
     float hole = (dc.x > 0.0 && dc.y > 0.0) ? R - length(dc) : min(xm - gW, ym - cH);
-    float fa = smoothstep(-pmm.x, pmm.x, xm) * smoothstep(-pmm.y, pmm.y, ym) * (1.0 - smoothstep(yB - pmm.y, yB + pmm.y, mm.y)) * (1.0 - smoothstep(-pm, pm, hole));
+    float fa = smoothstep(-pmm.x, pmm.x, xm) * smoothstep(-pmm.y, pmm.y, ym) * (1.0 - smoothstep(yB - pmm.y, yB + pmm.y, mm.y)) * (1.0 - smoothstep(-pm, pm, hole)) * smoothstep(-pm, pm, sc);
     if (fa > 0.0) {
       float diag = ym * gW - xm * cH; // < 0: kaseta, > 0: prowadnica (łączenie na ukos jak w ramie obrazu)
       vec3 c;
       if (diag < 0.0) {
-        c = frameBase(ym, mm.x, pmm.y) * casProf(clamp(ym / cH, 0.0, 1.0), pmm.y / cH) * brushed(mm.x, ym);
+        c = frameBase(ym + 7.0, mm.x, pmm.y) * profB25(clamp(ym / cH, 0.0, 1.0), pmm.y / cH, 1.0) * brushed(mm.x, ym);
         c *= 1.0 - 0.07 * abs(u - 0.45) * 2.0; // lico jaśniejsze przy środku okna
       } else {
         float qg = clamp(xm / gW, 0.0, 1.0);
-        c = frameBase(xm + 7.0, mm.y, pmm.x) * guideProf(qg, pmm.x / gW) * brushed(mm.y, xm);
+        c = frameBase(xm + 7.0, mm.y, pmm.x) * profB25(qg, pmm.x / gW, 0.7) * brushed(mm.y, xm);
         if (u > 0.5) c *= 0.96;
         // zaślepka z tworzywa na dole prowadnicy
         float capT = yB - 12.0;
@@ -558,6 +548,8 @@ void main() {
         c = mix(c, capC, cap);
         c *= 1.0 - 0.3 * (1.0 - smoothstep(0.0, max(0.8, 1.2 * pmm.y), abs(mm.y - capT)));
       }
+      // ścięty narożnik zewnętrzny: wąska, jaśniejsza faza
+      c *= 1.0 + 0.1 * (1.0 - smoothstep(0.0, 5.0, sc)) * step(max(xm, ym), 16.0);
       if (xm < gW + R && ym < cH + R) {
         // narożnik: jaśniejszy pasek łącznika i ciemna linia cięcia na ukos
         float dd = abs(diag) / length(vec2(gW, cH));
@@ -569,7 +561,7 @@ void main() {
       col = vec4(mix(col.rgb, c, fa), max(col.a, fa));
     }
     // miękki cień ramy: na skrzydle wokół niej i na odsłoniętej szybie przy prowadnicach i pod kasetą
-    float outD = max(max(-xm, -ym), xm < gW + 2.0 ? mm.y - yB : -1.0);
+    float outD = max(max(max(-xm, -ym), -sc), xm < gW + 2.0 ? mm.y - yB : -1.0);
     if (outD > 0.0 && col.a < 0.01) col = vec4(vec3(0.0), 0.26 * exp(-outD / 5.0));
     if (hole > 0.0 && inPane && v < 1.0 && col.a < 0.01) col = vec4(vec3(0.0), 0.2 * exp(-hole / 6.0) * uFront);
   }
@@ -870,7 +862,7 @@ export class WizRenderer {
       gl.uniform2f(q.u.uLap, lap[0], lap[1]);
       gl.uniform1f(q.u.uTop, b25 ? lap[1] - kasH : p.top);
       gl.uniform1f(q.u.uBot, p.bottom);
-      gl.uniform1f(q.u.uRailH, railH);
+      gl.uniform1f(q.u.uRailH, b25 ? Math.max(BELKA_B25_MM / hMm, 4 / Math.max(ph, 1)) : railH);
       gl.uniform1f(q.u.uPleats, Math.max(8, Math.round(hMm / PLEAT_MM)));
       gl.uniform2f(q.u.uRep, wMm / TILE_MM, hMm / TILE_MM);
       const tex = this.fabricTex.get(p.fabric.id);
