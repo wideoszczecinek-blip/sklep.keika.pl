@@ -63,9 +63,16 @@ export type SceneRender = {
 export const PLEAT_MM = 20;
 export const RAIL_MM = 22;
 export const TILE_MM = 42;
-/** Okna dachowe: kaseta rolety (wałek z tkaniną) i prowadnica boczna (mm). */
-export const KASETA_MM = 46;
+/** Okna dachowe: prowadnica boczna plisy dachowej (mm). */
 export const PROWADNICA_MM = 16;
+/**
+ * Roleta dachowa = system B25 szeroki (Dekolux): aluminiowa rama jak rama obrazu - kaseta z wypukłą maskownicą
+ * u góry i szerokie, płaskie prowadnice po bokach, łączone na ukos; rama leży na skrzydle wokół szyby i tylko
+ * trochę zachodzi na szkło (ZAKLAD: w poziomie i w pionie). Wymiary w mm.
+ */
+export const KASETA_MM = 60;
+export const PROWADNICA_B25_MM = 50;
+export const ZAKLAD_B25_MM: [number, number] = [8, 10];
 
 const VS = `
 attribute vec2 aPos;
@@ -145,6 +152,7 @@ uniform float uKind;        // 0 plisa okienna, 1 plisa dachowa, 2 roleta dachow
 uniform float uDark;        // zaciemnienie pokoju (okna dachowe): niezasłonięte szkło wraca do jasności oryginału
 uniform float uTopH;        // wysokość górnej belki / kasety (część wysokości szyby)
 uniform float uGuide;       // szerokość prowadnicy bocznej (część szerokości szyby), 0 = bez prowadnic
+uniform vec2 uLap;          // roleta B25: ile rama zachodzi na szkło (część szerokości / wysokości szyby)
 varying vec2 vPix;
 
 float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
@@ -214,6 +222,65 @@ vec3 railShade(float r, float u, float pxr) {
   return c;
 }
 
+// ---- roleta dachowa B25 szeroki (właściciel 10.11: render ma wyglądać jak prawdziwa roleta, a nie cienkie listewki)
+// szczotkowane aluminium / lakier: drobne rysy wzdłuż profilu (mm wzdłuż i w poprzek); okleina ma własne słoje
+float brushed(float alongMm, float acrossMm) {
+  if (uWood > 0.5) return 1.0;
+  return 1.0 + 0.04 * (vnoise(vec2(alongMm * 0.035, acrossMm * 2.2)) - 0.5) + 0.03 * (vnoise(vec2(alongMm * 0.008, acrossMm * 0.6 + 9.0)) - 0.5);
+}
+
+// kolor ramy i belki B25: lakier / anoda gładko, okleina sosnowa - szerokie, falujące słoje co ok. 15 mm
+// (słoje listwy plisy są gęstsze - na ramie 50 mm wyglądały jak sztruks); pxMm: ile mm przypada na piksel
+vec3 frameBase(float acrossMm, float alongMm, float pxMm) {
+  if (uWood < 0.5) return uRail;
+  vec3 base = woodBase();
+  float warp = 1.1 * vnoise(vec2(alongMm * 0.004, acrossMm * 0.05)) + 0.35 * sin(alongMm * 0.007 + acrossMm * 0.11);
+  float ring = fract(acrossMm / 15.0 + warp);
+  float late = smoothstep(0.45, 0.75, ring) * (1.0 - smoothstep(0.8, 1.0, ring));
+  late *= clamp((15.0 / max(pxMm, 0.01) - 2.0) / 3.0, 0.0, 1.0); // słoje cieńsze niż ~3 px uśredniamy
+  float fib = vnoise(vec2(alongMm * 0.04, acrossMm * 1.6));
+  float blot = vnoise(vec2(alongMm * 0.002, acrossMm * 0.02 + 3.7));
+  vec3 c = mix(base, base * vec3(0.8, 0.67, 0.52), late * 0.34);
+  return clamp(c * (0.96 + 0.07 * fib + 0.08 * (blot - 0.5)), 0.0, 1.0);
+}
+
+// maskownica kasety w poprzek (r: 0 = góra przy skrzydle, 1 = dolna warga): wypukłe lico z odblaskiem,
+// przetłoczenie i warga, spod której wychodzi tkanina
+float casProf(float r, float pxr) {
+  float s = mix(0.62, 0.9, smoothstep(0.0, max(0.05, pxr), r));
+  s = mix(s, 1.12, smoothstep(0.05, 0.18, r));
+  s = mix(s, 1.03, smoothstep(0.2, 0.36, r));
+  s = mix(s, 0.9, smoothstep(0.36, 0.68, r));
+  float lw = max(0.014, 0.7 * pxr);
+  s *= 1.0 - 0.3 * exp(-pow((r - 0.715) / lw, 2.0));
+  s += 0.12 * exp(-pow((r - 0.715 - 2.0 * lw) / lw, 2.0));
+  s = mix(s, 0.86, smoothstep(0.84, 0.95, r));
+  s = mix(s, 0.6, smoothstep(0.95, 1.0, r));
+  return s;
+}
+
+// prowadnica w poprzek (q: 0 = krawędź zewnętrzna, 1 = wewnętrzna przy tkaninie): szerokie płaskie lico
+// i zaokrąglona, ciemniejsza krawędź kanału, w który wchodzi tkanina
+float guideProf(float q, float pxq) {
+  float s = mix(0.74, 0.96, smoothstep(0.0, max(0.07, pxq), q));
+  s = mix(s, 1.06, smoothstep(0.07, 0.3, q));
+  s = mix(s, 1.0, smoothstep(0.3, 0.55, q));
+  s = mix(s, 0.9, smoothstep(0.55, 0.84, q));
+  s = mix(s, 0.56, smoothstep(1.0 - max(0.1, 1.5 * pxq), 1.0, q));
+  return s;
+}
+
+// belka dolna rolety: smukły profil aluminiowy bez zaślepek (końce chowają się w prowadnicach)
+vec3 barB25(float r, float u, float pxr) {
+  float s = mix(0.66, 1.12, smoothstep(0.0, max(0.09, 1.5 * pxr), r));
+  s = mix(s, 1.0, smoothstep(0.1, 0.32, r));
+  s = mix(s, 0.9, smoothstep(0.32, 0.62, r));
+  s *= 1.0 - 0.14 * exp(-pow((r - 0.66) / max(0.04, pxr), 2.0));
+  s = mix(s, 0.74, smoothstep(0.7, 0.86, r));
+  s = mix(s, 0.52, smoothstep(0.88, 1.0, r));
+  return frameBase(r * 22.0, u * uMm.x, uMm.y / max(uPx.y, 1.0)) * s * brushed(u * uMm.x, r * 22.0);
+}
+
 void main() {
   if (vPix.x > uSplit) discard;
   vec3 hp = uInv * vec3(vPix, 1.0);
@@ -223,8 +290,17 @@ void main() {
   vec2 px = 1.0 / max(uPx, vec2(1.0));
   vec2 tc = vPix / uRes;
 
-  float x0 = uKind > 0.5 ? -0.75 * uGuide - 0.004 : -0.008;
-  float x1 = uKind > 0.5 ? 1.0 + 0.75 * uGuide + 0.004 : 1.008;
+  bool b25 = uKind > 1.5;
+  bool inPane = u > 0.0 && u < 1.0;
+  // roleta B25: rama leży na skrzydle - rysujemy też poza szybą (prowadnica + miękki cień na ramie okna)
+  float x0 = b25 ? uLap.x - uGuide - 16.0 / uMm.x : uKind > 0.5 ? -0.75 * uGuide - 0.004 : -0.008;
+  float x1 = 1.0 - x0;
+  float brushH = b25 ? max(5.0 / uMm.y, 1.6 * px.y) : 0.0;
+  // tkanina rolety wchodzi 2 px pod wargę kasety i pod belkę - bez tego na styku prześwituje ciemna szyba
+  float fx = b25 ? 2.0 * px.y : 0.0;
+  // rama i belka B25 leżą na skrzydle, w świetle pokoju: przy zaciemnieniu ciemnieją prawie jak ściany
+  // (bez tego biała rama świeciła w ciemnym pokoju jak listwa LED)
+  float frameK = b25 ? (1.0 - 0.7 * uDark) / (1.0 - 0.45 * uDark) : 1.0;
   float inX = smoothstep(x0 - px.x, x0 + px.x, u) * (1.0 - smoothstep(x1 - px.x, x1 + px.x, u));
 
   float tTop = uTop;
@@ -238,7 +314,7 @@ void main() {
   vec4 col = vec4(0.0);
 
   // ---- tkanina
-  if (v >= tBot && v <= bTop && span > 0.0) {
+  if (v >= tBot - fx && v <= bTop + fx && span > 0.0 && (!b25 || inPane)) {
     float t = (v - tBot) / span;
     bool roleta = uKind > 1.5;
     if (roleta) t = (v - tBot) / max(1.0 - tBot - uRailH, 0.001);
@@ -283,7 +359,9 @@ void main() {
     s *= 1.0 + fine + coarse;
     // krawędzie tkaniny odchodzą od światła, cień belki górnej na fałdach
     float edge = smoothstep(0.0, 0.035, u) * smoothstep(0.0, 0.035, 1.0 - u);
-    s *= mix(0.9, 1.0, edge);
+    // roleta B25: szeroka prowadnica rzuca na brzeg tkaniny wyraźniejszy cień
+    if (roleta) edge = smoothstep(0.0, 16.0 / uMm.x, min(u, 1.0 - u) - uLap.x);
+    s *= mix(roleta ? 0.84 : 0.9, 1.0, edge);
     float dTop = (v - tBot) * uPx.y;
     s *= 1.0 - 0.22 * exp(-dTop / 5.0);
     float dBot = (bTop - v) * uPx.y;
@@ -324,8 +402,9 @@ void main() {
   float grain = (hash(floor(vPix)) - 0.5) * 0.03;
 
   // ---- belki (z grubością profilu widoczną pod kątem)
-  float k = uRailH * min(0.9, abs(uPitch) * 3.5);
+  float k = b25 ? 0.0 : uRailH * min(0.9, abs(uPitch) * 3.5);
   for (int i = 0; i < 2; i++) {
+    if (b25 && (i == 0 || !inPane)) continue;
     float a = i == 0 ? tTop : bTop;
     float b = i == 0 ? tBot : bBot;
     float fa = a - (uPitch < 0.0 ? k : 0.0);
@@ -338,23 +417,20 @@ void main() {
         c = railBase(0.1, u) * 1.08; // wierzch profilu (patrzymy z góry)
       } else if (v > b) {
         c = railBase(0.9, u) * 0.66; // spód profilu (patrzymy z dołu)
-      } else if (i == 0 && uKind > 1.5) {
-        // kaseta rolety: zaokrąglona obudowa wałka - odblask u góry, cień ku dołowi, szczelina wylotu tkaniny
-        float r = (v - a) / max(b - a, 0.0001);
-        c = railBase(r, u) * (0.78 + 0.32 * sin(r * 3.1416 * 0.9 + 0.25));
-        c *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, max(0.05, 2.0 * px.y / max(b - a, 0.0001)), 1.0 - r));
+      } else if (b25) {
+        c = barB25((v - a) / max(b - a, 0.0001), u, px.y / max(b - a, 0.0001));
       } else {
         c = railShade((v - a) / max(b - a, 0.0001), u, px.y / max(b - a, 0.0001));
       }
-      c *= uFront * mix(vec3(1.0), uTint, 0.5) * 1.02;
+      c *= uFront * frameK * mix(vec3(1.0), uTint, 0.5) * 1.02;
       float al = edgeA * edgeB;
       col = vec4(mix(col.rgb, c, al), max(col.a, al));
     }
   }
 
   // cień belki dolnej na szybie tuż pod nią (miękki)
-  if (v > bBot && v < bBot + 0.03 && col.a < 0.01) {
-    float d = (v - bBot) * uPx.y;
+  if (v > bBot + brushH && v < bBot + brushH + 0.03 && col.a < 0.01 && (!b25 || inPane)) {
+    float d = (v - bBot - brushH) * uPx.y;
     float a = 0.18 * exp(-d / 3.0) * uFront;
     col = vec4(vec3(0.0), a);
   }
@@ -364,7 +440,7 @@ void main() {
   float tabH = max(8.0 / max(uMm.y, 300.0), 2.5 * px.y);
   // plisa do 100 cm: jeden uchwyt na środku listwy, szersza: dwa (właściciel 8.11, jak w produkcji)
   float hu = uKind < 0.5 && uMm.x > 1000.0 ? min(abs(u - 0.28), abs(u - 0.72)) : abs(u - 0.5);
-  if (hu < tabW + px.x) {
+  if (!b25 && hu < tabW + px.x) {
     float inU = 1.0 - smoothstep(tabW - px.x, tabW + px.x, hu);
     // górna belka: nad nią; dolna: pod nią
     float tA = uKind > 1.5 ? 0.0 : smoothstep(tTop - tabH - px.y, tTop - tabH + px.y, v) * (1.0 - smoothstep(tTop - px.y, tTop + px.y, v));
@@ -411,7 +487,7 @@ void main() {
   }
   // ---- prowadnice boczne (okna dachowe): profil aluminiowy na całej wysokości szyby, w kolorze osprzętu,
   // zachodzi ok. 1/4 szerokości na szkło; zaokrąglony: jaśniejszy środek, ciemniejsze krawędzie i rowek po wewnętrznej stronie
-  if (uKind > 0.5 && uGuide > 0.0) {
+  if (uKind > 0.5 && !b25 && uGuide > 0.0) {
     float gIn = 0.25 * uGuide;
     float gL = (u > gIn - uGuide && u < gIn) ? (u - (gIn - uGuide)) / uGuide : -1.0;
     float gR = (u > 1.0 - gIn && u < 1.0 - gIn + uGuide) ? 1.0 - (u - (1.0 - gIn)) / uGuide : -1.0;
@@ -424,6 +500,78 @@ void main() {
       ga *= smoothstep(-0.012, -0.012 + px.y, v) * (1.0 - smoothstep(1.012 - px.y, 1.012, v));
       col = vec4(mix(col.rgb, gc, ga), max(col.a, ga));
     }
+  }
+  // ---- roleta dachowa B25 szeroki: szczotka pod belką, uchwyty, rama (kaseta + szerokie prowadnice łączone na ukos)
+  if (b25) {
+    vec3 lightC = uFront * frameK * mix(vec3(1.0), uTint, 0.5);
+    if (inPane) {
+      // szczotka uszczelniająca pod belką (ciemnoszare włosie)
+      float sb = smoothstep(bBot - px.y, bBot + px.y, v) * (1.0 - smoothstep(bBot + brushH - px.y, bBot + brushH + px.y, v));
+      if (sb > 0.0) {
+        float fib = (hash(vec2(floor(u * uMm.x / 1.6), 3.0)) - 0.5) * clamp(uPx.x / uMm.x * 1.6, 0.0, 1.0);
+        vec3 bc = vec3(0.3, 0.31, 0.33) * (1.0 + 0.5 * fib) * lightC;
+        col = vec4(mix(col.rgb, bc, sb), max(col.a, sb));
+      }
+      // dwa uchwyty z tworzywa na belce (wąska roleta: jeden na środku) - za nie ściąga się roletę
+      float hw = max(22.0 / uMm.x, 3.0 * px.x);
+      float hu2 = uMm.x > 520.0 ? min(abs(u - 0.3), abs(u - 0.7)) : abs(u - 0.5);
+      float hy0 = bTop + 0.2 * uRailH;
+      float hy1 = bBot + 0.3 * uRailH;
+      float hr = clamp((v - hy0) / max(hy1 - hy0, 0.0001), 0.0, 1.0);
+      float hwv = hw * (1.0 - 0.16 * hr);
+      float hTab = (1.0 - smoothstep(hwv - px.x, hwv + px.x, hu2)) * smoothstep(hy0 - px.y, hy0 + px.y, v) * (1.0 - smoothstep(hy1 - px.y, hy1 + px.y, v));
+      if (hTab > 0.0) {
+        float hs = mix(1.0, 0.66, smoothstep(0.1, 1.0, hr)) * (1.0 - 0.3 * smoothstep(hwv * 0.55, hwv, hu2));
+        hs += 0.12 * (1.0 - smoothstep(0.0, 0.16, hr));
+        vec3 hc = mix(railPlain(), vec3(0.74, 0.76, 0.78), 0.45) * hs * lightC;
+        col = vec4(mix(col.rgb, hc, hTab), max(col.a, hTab));
+      }
+    }
+    // rama w milimetrach: xm - od zewnętrznej krawędzi prowadnicy do środka (obie strony symetrycznie),
+    // ym - od górnej krawędzi kasety w dół; otwór na tkaninę ma zaokrąglone górne narożniki
+    vec2 mm = vec2(u, v) * uMm;
+    vec2 pmm = uMm / max(uPx, vec2(1.0));
+    float pm = max(pmm.x, pmm.y);
+    float gW = uGuide * uMm.x;
+    float cH = uTopH * uMm.y;
+    float xm = min(mm.x - (uLap.x * uMm.x - gW), (uMm.x - uLap.x * uMm.x + gW) - mm.x);
+    float ym = mm.y - (uLap.y * uMm.y - cH);
+    float yB = uMm.y + 14.0; // prowadnice kończą się tuż pod szybą, na dolnym ramiaku skrzydła
+    float R = 12.0;
+    vec2 dc = vec2(gW + R - xm, cH + R - ym);
+    float hole = (dc.x > 0.0 && dc.y > 0.0) ? R - length(dc) : min(xm - gW, ym - cH);
+    float fa = smoothstep(-pmm.x, pmm.x, xm) * smoothstep(-pmm.y, pmm.y, ym) * (1.0 - smoothstep(yB - pmm.y, yB + pmm.y, mm.y)) * (1.0 - smoothstep(-pm, pm, hole));
+    if (fa > 0.0) {
+      float diag = ym * gW - xm * cH; // < 0: kaseta, > 0: prowadnica (łączenie na ukos jak w ramie obrazu)
+      vec3 c;
+      if (diag < 0.0) {
+        c = frameBase(ym, mm.x, pmm.y) * casProf(clamp(ym / cH, 0.0, 1.0), pmm.y / cH) * brushed(mm.x, ym);
+        c *= 1.0 - 0.07 * abs(u - 0.45) * 2.0; // lico jaśniejsze przy środku okna
+      } else {
+        float qg = clamp(xm / gW, 0.0, 1.0);
+        c = frameBase(xm + 7.0, mm.y, pmm.x) * guideProf(qg, pmm.x / gW) * brushed(mm.y, xm);
+        if (u > 0.5) c *= 0.96;
+        // zaślepka z tworzywa na dole prowadnicy
+        float capT = yB - 12.0;
+        float cap = smoothstep(capT - pmm.y, capT + pmm.y, mm.y);
+        vec3 capC = railPlain() * (0.74 + 0.24 * sin(qg * 3.1416)) * mix(1.04, 0.8, clamp((mm.y - capT) / 12.0, 0.0, 1.0));
+        c = mix(c, capC, cap);
+        c *= 1.0 - 0.3 * (1.0 - smoothstep(0.0, max(0.8, 1.2 * pmm.y), abs(mm.y - capT)));
+      }
+      if (xm < gW + R && ym < cH + R) {
+        // narożnik: jaśniejszy pasek łącznika i ciemna linia cięcia na ukos
+        float dd = abs(diag) / length(vec2(gW, cH));
+        float sw = max(0.9, 1.1 * pm);
+        c *= 1.0 + 0.06 * (1.0 - smoothstep(sw, 4.0 * sw, dd));
+        c *= 1.0 - 0.34 * (1.0 - smoothstep(0.0, sw, dd));
+      }
+      c = clamp(c * lightC * 1.02, 0.0, 1.0);
+      col = vec4(mix(col.rgb, c, fa), max(col.a, fa));
+    }
+    // miękki cień ramy: na skrzydle wokół niej i na odsłoniętej szybie przy prowadnicach i pod kasetą
+    float outD = max(max(-xm, -ym), xm < gW + 2.0 ? mm.y - yB : -1.0);
+    if (outD > 0.0 && col.a < 0.01) col = vec4(vec3(0.0), 0.26 * exp(-outD / 5.0));
+    if (hole > 0.0 && inPane && v < 1.0 && col.a < 0.01) col = vec4(vec3(0.0), 0.2 * exp(-hole / 6.0) * uFront);
   }
   // ziarno zdjęcia na wszystkim, co narysowaliśmy
   col.rgb = clamp(col.rgb + grain * 0.7 * col.a, 0.0, 1.0);
@@ -522,7 +670,7 @@ export class WizRenderer {
     this.paneProg = program(gl, FS_PANE, [
       "uPhoto", "uTex", "uRes", "uInv", "uPx", "uTop", "uBot", "uRailH", "uPleats", "uRep", "uHasTex", "uTexMean", "uFabric", "uTrans", "uBack",
       "uFront", "uTint", "uRail", "uBracket", "uMount", "uHoney", "uPitch", "uSplit", "uSel", "uOutline", "uVp",
-      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uWood", "uWoodRings", "uMm", "uKind", "uTopH", "uGuide", "uDark",
+      "uRailTex", "uHasRailTex", "uRailMean", "uRailRep", "uWood", "uWoodRings", "uMm", "uKind", "uTopH", "uGuide", "uLap", "uDark",
     ]);
     const b = gl.createBuffer();
     if (!b) throw new Error("buffer");
@@ -711,10 +859,16 @@ export class WizRenderer {
       const railH = Math.max(RAIL_MM / hMm, 4 / Math.max(ph, 1));
       const kind = p.kind === "roleta-dachowa" ? 2 : p.kind === "plisa-dachowa" ? 1 : 0;
       gl.uniform1f(q.u.uKind, kind);
-      // roleta: kaseta z wałkiem na górze szyby (stała), plisa: górna belka jak dolna
-      gl.uniform1f(q.u.uTopH, kind === 2 ? Math.max(KASETA_MM / hMm, 6 / Math.max(ph, 1)) : railH);
-      gl.uniform1f(q.u.uGuide, kind > 0 ? Math.max(PROWADNICA_MM / wMm, 3 / Math.max(pw, 1)) : 0);
-      gl.uniform1f(q.u.uTop, kind === 2 ? 0 : p.top);
+      // roleta B25: kaseta na stałe nad szybą (dolna warga zachodzi na szkło), szerokie prowadnice na skrzydle;
+      // plisa dachowa: górna belka jak dolna, wąskie prowadnice na krawędzi szyby
+      const b25 = kind === 2;
+      const kasH = Math.max(KASETA_MM / hMm, 8 / Math.max(ph, 1));
+      const lap: [number, number] = b25 ? [ZAKLAD_B25_MM[0] / wMm, ZAKLAD_B25_MM[1] / hMm] : [0, 0];
+      const guide = b25 ? Math.max(PROWADNICA_B25_MM / wMm, 6 / Math.max(pw, 1)) : kind > 0 ? Math.max(PROWADNICA_MM / wMm, 3 / Math.max(pw, 1)) : 0;
+      gl.uniform1f(q.u.uTopH, b25 ? kasH : railH);
+      gl.uniform1f(q.u.uGuide, guide);
+      gl.uniform2f(q.u.uLap, lap[0], lap[1]);
+      gl.uniform1f(q.u.uTop, b25 ? lap[1] - kasH : p.top);
       gl.uniform1f(q.u.uBot, p.bottom);
       gl.uniform1f(q.u.uRailH, railH);
       gl.uniform1f(q.u.uPleats, Math.max(8, Math.round(hMm / PLEAT_MM)));
@@ -736,7 +890,7 @@ export class WizRenderer {
       gl.activeTexture(gl.TEXTURE2);
       gl.bindTexture(gl.TEXTURE_2D, rt || this.emptyTex);
       gl.uniform1i(q.u.uRailTex, 2);
-      gl.uniform1f(q.u.uHasRailTex, rt && !p.railWood ? 1 : 0);
+      gl.uniform1f(q.u.uHasRailTex, rt && !p.railWood && !b25 ? 1 : 0);
       const rm = this.railMean.get(p.railId) || [0.8, 0.8, 0.8];
       gl.uniform3f(q.u.uRailMean, rm[0], rm[1], rm[2]);
       gl.uniform1f(q.u.uRailRep, wMm / 260); // zdjęcie profilu pokazuje ok. 26 cm listwy
@@ -750,8 +904,10 @@ export class WizRenderer {
       gl.uniform1f(q.u.uPitch, p.pitch);
       gl.uniform1f(q.u.uSel, p.selected ? 1 : 0);
       // obszar rysowania: szyba z marginesem na uchwyty, linki i grubość belek
-      const mx = kind > 0 ? 0.03 + PROWADNICA_MM / wMm : 0.03;
-      const m: Pt[] = [[-mx, -0.06], [1 + mx, -0.06], [1 + mx, 1.06], [-mx, 1.06]].map((x) => apply(H as Mat3, x as Pt));
+      const mx = b25 ? guide - lap[0] + 24 / wMm : kind > 0 ? 0.03 + PROWADNICA_MM / wMm : 0.03;
+      const myT = b25 ? Math.max(0.06, kasH - lap[1] + 24 / hMm) : 0.06;
+      const myB = b25 ? Math.max(0.06, 40 / hMm) : 0.06;
+      const m: Pt[] = [[-mx, -myT], [1 + mx, -myT], [1 + mx, 1 + myB], [-mx, 1 + myB]].map((x) => apply(H as Mat3, x as Pt));
       this.drawPoly(q, [m[0][0], m[0][1], m[1][0], m[1][1], m[2][0], m[2][1], m[0][0], m[0][1], m[2][0], m[2][1], m[3][0], m[3][1]]);
     }
 
