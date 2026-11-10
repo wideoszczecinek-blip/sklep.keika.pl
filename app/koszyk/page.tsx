@@ -437,6 +437,15 @@ function cartItemFieldLabels(productSlug: string): { hardware: string; mesh: str
  * akceptacja zamówienia). */
 const CART_MOUNT_LABEL = "Sposób montażu";
 const CART_SIZE_LABEL = "Wymiary";
+/** Od tylu znaków wartość parametru dostaje w koszyku cały wiersz (siatka 2 kolumn na telefonie). */
+const CART_SPEC_WIDE_FROM = 22;
+/** „1 produkt”, „2 produkty”, „5 produktów”. */
+function produktWord(count: number): string {
+  const last = count % 10;
+  const lastTwo = count % 100;
+  if (count === 1) return "produkt";
+  return last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? "produkty" : "produktów";
+}
 function cartItemDisplayLabels(productSlug: string): { hardware: string; mesh: string } {
   if (productSlug === "rolety-dachowe") return { hardware: "Kolor kasety i prowadnic", mesh: "Kolor tkaniny" };
   if (productSlug === "plisy") return { hardware: "Kolor listew", mesh: "Rodzaj i kolor tkaniny" };
@@ -494,7 +503,7 @@ function CartItemSpecs({ item }: { item: CartLineItem }) {
   return (
     <dl className="cart-item-specs">
       {rows.map((row) => (
-        <div key={row.label} className={row.label === CART_SIZE_LABEL ? "is-size" : undefined}>
+        <div key={row.label} className={row.label === CART_SIZE_LABEL ? "is-size" : row.value.length > CART_SPEC_WIDE_FROM ? "is-wide" : undefined}>
           <dt>{row.label}</dt>
           <dd>
             {row.dot ? <i className="cart-item-spec-dot" style={{ background: row.dot }} aria-hidden="true" /> : null}
@@ -3806,7 +3815,7 @@ export default function CartPage() {
                 {itemsOpen ? (
               <ul className="cart-page-items">
                 {items.map((item) => (
-                  <li key={item.id} className="cart-page-item">
+                  <li key={item.id} className={`cart-page-item${item.qty === 1 ? " is-single" : ""}`}>
                     {item.wizToken ? (
                       // Pozycja z wizualizatora: zdjęcie okna klienta (7.11).
                       <div className="cart-page-item-thumb cart-page-item-thumb--window">
@@ -3881,6 +3890,8 @@ export default function CartPage() {
                         </span>
                       ) : null}
                     </div>
+                    {/* stopka pozycji: na telefonie jeden rząd (ilość · edytuj · usuń · kwota), na komputerze display: contents */}
+                    <div className="cart-page-item-foot">
                     <div className="cart-page-item-qty">
                       <button
                         type="button"
@@ -3934,6 +3945,7 @@ export default function CartPage() {
                         Edytuj pozycję
                       </button>
                     ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -3947,7 +3959,7 @@ export default function CartPage() {
 
                   <div className="cart-page-summary-row is-muted">
                     <span>
-                      {summary.items} {summary.items === 1 ? "produkt" : "produktów"}
+                      {summary.items} {produktWord(summary.items)}
                     </span>
                     <span>{formatPln(summary.total)}</span>
                   </div>
@@ -4018,7 +4030,10 @@ export default function CartPage() {
                         <span className="total-block-savings">Oszczędzasz {formatPln(totalSavings)}</span>
                       ) : null}
                       {shippingFee === 0 && deliveryMethod !== PICKUP_METHOD.id ? (
-                        <span className="total-block-chip">🚚 dostawa gratis</span>
+                        <span className="total-block-chip">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7M7.5 19a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6zM17.5 19a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z" /></svg>
+                          dostawa gratis
+                        </span>
                       ) : null}
                     </span>
                     <span className="total-block-right">
@@ -4555,16 +4570,16 @@ export default function CartPage() {
                       <strong>{formatPln(payableTotal)}</strong>
                     </span>
                   </div>
-                  <p className="checkout-payment-safe">Bezpieczne płatności przez Przelewy24, PayNow i Stripe.</p>
+                  <p className="checkout-payment-safe">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                    Bezpieczne płatności przez Przelewy24, PayNow i Stripe.
+                  </p>
                   {paymentMethod === "cod" ? (
                     <p className={`cart-payment-method-badge ${deliveryDataReady ? "" : "is-muted"}`}>
                       Płatność za pobraniem
                     </p>
                   ) : (
-                    <>
-                      <p className="cart-payment-method-badge">Sposób płatności</p>
-                      {renderPaymentKindChooser()}
-                    </>
+                    renderPaymentKindChooser()
                   )}
 
                   {paymentMethod === "cod" ? (
