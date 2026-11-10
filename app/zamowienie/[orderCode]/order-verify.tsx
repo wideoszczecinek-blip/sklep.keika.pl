@@ -595,7 +595,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
     // baner (lib/delivery-eta.ts), liczona od dnia wpłaty; pobranie od dnia zamówienia; nieopłacone - od dziś.
     // Nie pokazujemy przy próbkach, anulowanym, po wysyłce i gdy termin już minął.
     const etaFromToday = !isPaid && !isCod;
-    const etaStart = isPaid ? dataZCrm(order.paid_at) || new Date() : isCod ? dataZCrm(order.created_at) || new Date() : new Date();
+    const etaStart = justPaid ? new Date() : isPaid ? dataZCrm(order.paid_at) || new Date() : isCod ? dataZCrm(order.created_at) || new Date() : new Date();
     const etaRaw =
       order.product_slug === SAMPLES_SLUG || order.status === "cancelled" || order.shipments.length > 0
         ? null
