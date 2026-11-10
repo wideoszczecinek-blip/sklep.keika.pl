@@ -98,7 +98,8 @@ import { saveQuoteForSharing, sendShareLink, type ShareLink } from "@/lib/share"
 import { cartDesignBucket, getCartDesignArm, markCartV2Crashed, rememberCartV2Share, type CartDesignArm } from "@/lib/cart-design";
 import { cartFormBucket, getCartFormArm, rememberCartFormShare, type CartFormArm } from "@/lib/cart-form-ab";
 import CartV2, { CartV2Boundary } from "./cart-v2";
-import CartTrust, { CartDostawaBaner, CartFinance, CartFinanceTop, BundleBanner, Reveal } from "./cart-trust";
+import CartTrust, { CartDostawaBaner, CartFinanceTop, Reveal } from "./cart-trust";
+import { BankMarquee, BankPicker, CartPromoCarousel, DeliveryLogo } from "./cart-extras";
 import BlikWaitPanel from "./blik-wait";
 import OrderOffers from "@/app/components/order-offers";
 
@@ -2767,7 +2768,13 @@ export default function CartPage() {
     transferEnabled: transferSettings.enabled,
     amount: payableTotal,
     routing: paymentRouting,
-  });
+  }).map((tile) =>
+    // Właściciel 10.11.2026: na zamkniętym kafelku „Przelew online” małe logotypy banków przesuwające się
+    // same - klient od razu widzi, że jest tam jego bank. Lista od operatora, który obsłuży przelew.
+    tile.kind === "p24_transfer"
+      ? { ...tile, hint: <BankMarquee banks={tile.provider === "paynow" ? paynowBanks : p24Banks} /> }
+      : tile,
+  );
   // Gdy kwota koszyka spadnie poniżej progu rat (klient usunął pozycję),
   // kafelek "Raty" znika - wybór trzeba wyczyścić, żeby nie zostać z
   // zaznaczoną metodą, której już nie widać (2026-09-28).
@@ -2987,35 +2994,16 @@ export default function CartPage() {
     if (kind === "p24_transfer" && selectedOnlineProvider === "paynow") {
       return (
         <>
-          <div className="cart-p24-banks" role="radiogroup" aria-label="Wybierz swój bank">
-            {paynowBanks.length === 0 ? (
-              <div className="cart-payment-waiting">
-                <span className="cart-invoice-nip-spinner" aria-hidden="true" />
-                Wczytujemy listę banków…
-              </div>
-            ) : (
-              paynowBanks.map((bank) => (
-                <label key={bank.id} className={`cart-p24-bank ${paynowBankId === bank.id ? "is-active" : ""}`} title={bank.name}>
-                  <input
-                    type="radio"
-                    name="paynow-bank"
-                    value={bank.id}
-                    checked={paynowBankId === bank.id}
-                    onChange={() => {
-                      setPaynowBankId(bank.id);
-                      trackCheckoutIssue("checkout_paynow_bank", bank.name, { bank_id: bank.id });
-                    }}
-                  />
-                  {bank.img ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={bank.img} alt={bank.name} loading="lazy" />
-                  ) : (
-                    <span className="cart-p24-bank-name">{bank.name}</span>
-                  )}
-                </label>
-              ))
-            )}
-          </div>
+          {/* najpopularniejsze banki na wierzchu, reszta pod przyciskiem z wyszukiwarką (właściciel 10.11.2026) */}
+          <BankPicker
+            banks={paynowBanks}
+            value={paynowBankId}
+            name="paynow-bank"
+            onChange={(bank) => {
+              setPaynowBankId(bank.id);
+              trackCheckoutIssue("checkout_paynow_bank", bank.name, { bank_id: bank.id });
+            }}
+          />
           {error ? <div className="cart-checkout-error">{error}</div> : null}
           {termsCheckbox}
           <button
@@ -3045,39 +3033,15 @@ export default function CartPage() {
       return (
         <>
           {thisKind === "p24_transfer" ? (
-            <div className="cart-p24-banks" role="radiogroup" aria-label="Wybierz swój bank">
-              {p24Banks.length === 0 ? (
-                <div className="cart-payment-waiting">
-                  <span className="cart-invoice-nip-spinner" aria-hidden="true" />
-                  Wczytujemy listę banków…
-                </div>
-              ) : (
-                p24Banks.map((bank) => (
-                  <label
-                    key={bank.id}
-                    className={`cart-p24-bank ${p24BankId === bank.id ? "is-active" : ""}`}
-                    title={bank.name}
-                  >
-                    <input
-                      type="radio"
-                      name="p24-bank"
-                      value={bank.id}
-                      checked={p24BankId === bank.id}
-                      onChange={() => {
-                        setP24BankId(bank.id);
-                        trackCheckoutIssue("checkout_p24_bank", bank.name, { bank_id: bank.id });
-                      }}
-                    />
-                    {bank.img ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={bank.img} alt={bank.name} loading="lazy" />
-                    ) : (
-                      <span className="cart-p24-bank-name">{bank.name}</span>
-                    )}
-                  </label>
-                ))
-              )}
-            </div>
+            <BankPicker
+              banks={p24Banks}
+              value={p24BankId}
+              name="p24-bank"
+              onChange={(bank) => {
+                setP24BankId(bank.id);
+                trackCheckoutIssue("checkout_p24_bank", bank.name, { bank_id: bank.id });
+              }}
+            />
           ) : null}
           {thisKind === "p24_installments" ? <InstallmentOffer amount={payableTotal} /> : null}
           {error ? <div className="cart-checkout-error">{error}</div> : null}
@@ -3980,58 +3944,6 @@ export default function CartPage() {
                   </Link>
                 ) : null}
                 <div className="cart-summary-card-body">
-                  <div className="cart-discount-code">
-                    {appliedDiscount || discountOpen || discountError ? (
-                      <span className="cart-discount-code-label">Kod rabatowy</span>
-                    ) : null}
-                    {appliedDiscount ? (
-                      <div className="cart-discount-code-applied">
-                        <span>
-                          <strong>{appliedDiscount.code}</strong>{" "}
-                          {appliedDiscount.type === "percent"
-                            ? `-${appliedDiscount.value.toLocaleString("pl-PL")}%`
-                            : `-${formatPln(appliedDiscount.value)}`}
-                        </span>
-                        <button type="button" onClick={removeDiscountCode}>
-                          Usuń
-                        </button>
-                      </div>
-                    ) : !discountOpen && !discountError ? (
-                      <button type="button" className="cart-discount-code-toggle" onClick={() => setDiscountOpen(true)}>
-                        Masz kod rabatowy?
-                      </button>
-                    ) : (
-                      <div className="cart-discount-code-row">
-                        <input
-                          type="text"
-                          autoFocus
-                          value={discountCodeInput}
-                          onChange={(event) => {
-                            setDiscountCodeInput(event.target.value);
-                            if (discountError) setDiscountError("");
-                            if (discountNotice) setDiscountNotice("");
-                          }}
-                          placeholder="np. LATO2026"
-                          disabled={discountChecking}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              checkDiscountCode();
-                            }
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => checkDiscountCode()}
-                          disabled={discountChecking || !discountCodeInput.trim()}
-                        >
-                          {discountChecking ? "Sprawdzam…" : "Sprawdź"}
-                        </button>
-                      </div>
-                    )}
-                    {discountError ? <p className="cart-discount-code-error">{discountError}</p> : null}
-                    {discountNotice ? <Reveal><p className="cart-discount-code-notice">{discountNotice}</p></Reveal> : null}
-                  </div>
 
                   <div className="cart-page-summary-row is-muted">
                     <span>
@@ -4052,9 +3964,6 @@ export default function CartPage() {
                         <span>-{formatPln(bundle.savings)}</span>
                       </div>
                     </Reveal>
-                  ) : null}
-                  {bundle.hint ? (
-                    <BundleBanner text={bundleDiscountHintText(bundle)} produkty={produktyWKoszyku(items, backHref)} />
                   ) : null}
                   {bundle.lostToCode ? (
                     <div className="cart-page-summary-row is-muted">
@@ -4118,35 +4027,71 @@ export default function CartPage() {
                     </span>
                   </div>
 
+                  {/* Kolejność (właściciel 10.11.2026): podsumowanie → kod rabatowy → korzyści → karuzela CAŁY DOM / raty /
+                      PayPo. „Zamawiam” nad danymi odbiorcy usunięty (właściciel 10.11). */}
+                  <div className="cart-discount-code">
+                    {appliedDiscount || discountOpen || discountError ? (
+                      <span className="cart-discount-code-label">Kod rabatowy</span>
+                    ) : null}
+                    {appliedDiscount ? (
+                      <div className="cart-discount-code-applied">
+                        <span>
+                          <strong>{appliedDiscount.code}</strong>{" "}
+                          {appliedDiscount.type === "percent"
+                            ? `-${appliedDiscount.value.toLocaleString("pl-PL")}%`
+                            : `-${formatPln(appliedDiscount.value)}`}
+                        </span>
+                        <button type="button" onClick={removeDiscountCode}>
+                          Usuń
+                        </button>
+                      </div>
+                    ) : !discountOpen && !discountError ? (
+                      <button type="button" className="cart-discount-code-toggle" onClick={() => setDiscountOpen(true)}>
+                        Masz kod rabatowy?
+                      </button>
+                    ) : (
+                      <div className="cart-discount-code-row">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={discountCodeInput}
+                          onChange={(event) => {
+                            setDiscountCodeInput(event.target.value);
+                            if (discountError) setDiscountError("");
+                            if (discountNotice) setDiscountNotice("");
+                          }}
+                          placeholder="np. LATO2026"
+                          disabled={discountChecking}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              checkDiscountCode();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => checkDiscountCode()}
+                          disabled={discountChecking || !discountCodeInput.trim()}
+                        >
+                          {discountChecking ? "Sprawdzam…" : "Sprawdź"}
+                        </button>
+                      </div>
+                    )}
+                    {discountError ? <p className="cart-discount-code-error">{discountError}</p> : null}
+                    {discountNotice ? <Reveal><p className="cart-discount-code-notice">{discountNotice}</p></Reveal> : null}
+                  </div>
                   <CartTrust shippingFree={shippingFee === 0 && deliveryMethod !== PICKUP_METHOD.id} />
-                  {/* Oferta ratalna przy każdej kwocie - raty są włączone
-                      na koncie P24 (właściciel, 2026-09-24). */}
-                  <CartFinance amount={payableTotal} />
-                  {/* „Zamawiam” pod podsumowaniem (właściciel 8.11.2026, audyt koszyka:
-                      82 ze 121 zainteresowanych nie dotknęło wyboru dostawy - na telefonie
-                      formularz jest schowany do wyboru dostawy, a przycisk płatności pojawia
-                      się dopiero po danych). Przewija do sekcji dostawy i nie wybiera metody
-                      za klienta; gdy dostawa już wybrana, prowadzi do pierwszego brakującego pola. */}
-                  {!dataLocked && !deliveryDataReady ? (
-                    <button
-                      type="button"
-                      className="cart-page-checkout-cta cart-zamawiam-cta"
-                      onClick={() => {
-                        trackCheckoutIssue("checkout_zamawiam_click", deliveryMethod ? "dane" : "dostawa", {
-                          cart_positions: items.length,
-                          cart_total: payableTotal,
-                        });
-                        if (!deliveryMethod) {
-                          scrollToSection(shippingAddressSectionRef);
-                          return;
-                        }
-                        jumpToFirstProblem();
-                      }}
-                    >
-                      Zamawiam
-                      <small>{deliveryMethod ? "uzupełnij dane odbiorcy" : "wybierz sposób dostawy i podaj dane"}</small>
-                    </button>
-                  ) : null}
+                  <CartPromoCarousel
+                    amount={payableTotal}
+                    bundleText={bundle.hint ? bundleDiscountHintText(bundle) : ""}
+                    produkty={produktyWKoszyku(items, backHref)}
+                    onPick={(kind) => {
+                      if (paymentTiles.some((tile) => tile.kind === kind)) selectPaymentKind(kind);
+                      trackCheckoutIssue("cart_carousel_pick", kind);
+                      scrollToSection(paymentSectionRef);
+                    }}
+                  />
 
                   {shippingFee > 0 && amountToFreeShipping > 0 ? (
                     <p className="cart-free-shipping-progress">
@@ -4210,7 +4155,14 @@ export default function CartPage() {
                 {/* 9.11.2026 (właściciel: „na desktopie koszyk możemy zrobić dane po lewej a płatności po prawej – pod sobą wyglądają źle”):
                     dostawa wraca do lewej kolumny układu, płatność stoi obok. „Zamawiam” pod podsumowaniem dalej przewija tutaj. */}
                 <section className="cart-delivery-card cart-delivery-card--accordion" ref={shippingAddressSectionRef}>
-                  <h2>Dostawa i dane odbiorcy</h2>
+                  {/* Wyraźny tytuł na delikatnym tle (właściciel 10.11.2026); metody jako zamknięte akordeony z logotypem. */}
+                  <header className="cart-section-head">
+                    <span className="cart-section-step" aria-hidden="true">1</span>
+                    <span>
+                      <h2>Dostawa</h2>
+                      <small>Sposób dostawy i dane odbiorcy</small>
+                    </span>
+                  </header>
                   {/* termin dostawy na banerze (właściciel 9.11.2026); w sekcji dostawy nad danymi – węższy i nie stoi
                       nad banerem rat (dwie grafiki z ludźmi jedna nad drugą wyglądały słabo) */}
                   <CartDostawaBaner slugs={items.map((item) => item.productSlug)} />
@@ -4235,6 +4187,7 @@ export default function CartPage() {
                               }}
                               disabled={dataLocked}
                             />
+                            <DeliveryLogo method={isPaczkomat ? "paczkomat" : isPickup ? "odbior-osobisty" : "kurier"} />
                             <span className="cart-delivery-option-copy">
                               <strong>{method.label}</strong>
                               <small>{method.description}</small>
@@ -4585,7 +4538,13 @@ export default function CartPage() {
               <aside className="cart-checkout-right">
                 <section className="cart-payment-card" ref={paymentSectionRef}>
                   <div className="cart-payment-card-head">
-                    <h2>Płatność</h2>
+                    <header className="cart-section-head">
+                      <span className="cart-section-step" aria-hidden="true">2</span>
+                      <span>
+                        <h2>Płatność</h2>
+                        <small>Wybierz wygodną metodę</small>
+                      </span>
+                    </header>
                     {/* Ta sama kwota, co w podsumowaniu i na pasku na dole -
                         tu bez przekreśleń i oszczędności, żeby przy wyborze
                         metody płatności była jedna liczba (właściciel,

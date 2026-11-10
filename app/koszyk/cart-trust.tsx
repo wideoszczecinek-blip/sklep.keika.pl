@@ -13,7 +13,7 @@ import { PremiumPerks, dzienWysylki } from "@/features/plisy/Premium";
 import { ROLETY_COPY, isRoletySlug } from "@/features/rolety/shared";
 import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 
-function useRatyPaypo(): { raty: boolean; paypo: boolean } {
+export function useRatyPaypo(): { raty: boolean; paypo: boolean } {
   const [v, setV] = useState({ raty: false, paypo: false });
   useEffect(() => {
     let alive = true;
