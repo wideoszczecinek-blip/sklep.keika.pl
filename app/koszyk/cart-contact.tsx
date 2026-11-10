@@ -38,7 +38,8 @@ function bottomAboveFixedBars(): number {
   document.querySelectorAll<HTMLElement>('[class*="sticky"], [class*="bar"], [class*="escape"], [class*="dock"], [class*="cookie"]').forEach((el) => {
     if (window.getComputedStyle(el).position !== "fixed" || el.closest(".cart-chat-nudge")) return;
     const r = el.getBoundingClientRect();
-    if (r.width < window.innerWidth * 0.6 || r.height <= 0 || r.bottom < window.innerHeight - 2) return;
+    // Paski przy dolnej krawędzi i wszystko, co stoi w dolnej połowie (np. baner cookies).
+    if (r.width < window.innerWidth * 0.6 || r.height <= 0 || r.top < window.innerHeight * 0.45 || r.top >= window.innerHeight) return;
     top = Math.min(top, r.top);
   });
   return Math.max(16, Math.round(window.innerHeight - top + 12));

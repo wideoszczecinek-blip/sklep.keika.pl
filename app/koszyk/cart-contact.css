@@ -208,3 +208,24 @@
     animation: none;
   }
 }
+
+/* Telefon: przyciski jeden pod drugim, z pełnym numerem i podpisem (bez ucinania). */
+@media (max-width: 520px) {
+  .cart-contact-actions {
+    grid-template-columns: 1fr;
+  }
+  .cart-contact-btn-text small {
+    white-space: normal;
+  }
+}
+/* Komputer: jeden rząd - pytanie po lewej, dwa przyciski po prawej. */
+@media (min-width: 900px) {
+  .cart-contact {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+  }
+  .cart-contact-actions {
+    grid-template-columns: repeat(2, minmax(13rem, auto));
+  }
+}
