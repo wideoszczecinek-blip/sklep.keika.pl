@@ -27,7 +27,7 @@ import { clearConfiguratorState, reportConfiguratorState } from "@/lib/configura
 import { ASSISTANT_APPLY_EVENT, takePendingAssistantApply, type AssistantApply } from "@/lib/assistant";
 import { usePlisyFavourites } from "@/lib/plisy-favourites";
 import { useBackToClose } from "@/lib/use-back-to-close";
-import { applyPromoToPrice, getPromoRemainingMs, PROMO_CODE, QTY_PROMO, type PromoPreview } from "@/lib/promo";
+import { applyPromoToPrice, getPromoRemainingMs, promoLabel, promoName, QTY_PROMO, type PromoPreview } from "@/lib/promo";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
 import { ensurePromoQuoteCode } from "@/lib/promo-save";
 import PromoSaveModal from "@/app/components/promo-save-modal";
@@ -825,7 +825,7 @@ export default function ConfiguratorPanel({
       <span className="plisy-price-promo">
         <s>{formatZl(amount)}</s>
         {formatZl(discounted)}
-        <small>z kodem {PROMO_CODE}</small>
+        <small>{promoLabel(promo)}</small>
       </span>
     );
   }
@@ -2315,7 +2315,7 @@ export default function ConfiguratorPanel({
                       <s>{formatZl(amount)}</s>
                     </span>
                     <span className="plisy-price-card-row is-promo">
-                      <em>W promocji ({PROMO_CODE})</em>
+                      <em>W promocji ({promoName(promo)})</em>
                       <strong>{formatZl(promoAmount)}</strong>
                     </span>
                   </span>

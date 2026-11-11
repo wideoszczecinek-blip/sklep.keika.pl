@@ -33,6 +33,7 @@ import {
   QTY_PROMO,
   activatePromoCode,
   applyPromoToPrice,
+  promoLabel,
   fetchPromoPreview,
   getPromoActivatedAt,
   isPromoActive,
@@ -245,6 +246,8 @@ import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
 import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
 import { PlisyHeroGallery, PlisyStickyBar } from "@/features/plisy/LandingV2";
+import { welcomePromoPreview } from "@/lib/welcome-offer";
+import { PERSONAL_CODE_EVENT } from "@/lib/personal-code";
 import { LejekGaleria } from "@/features/plisy/LejekGaleria";
 import { LejekBezpiecznie, LejekDlaczego, LejekKoniec, LejekOcena, PlisyPierwszyEkran } from "@/features/plisy/PierwszyEkran";
 import { DachBezRyzyka, DachCeny, DachOpis, DachPomiar, dachFaqWgObiekcji, typoweOkna } from "@/features/dachowe/LejekDachowy";
@@ -2089,6 +2092,21 @@ export default function Home({
   // in sync the instant either one is activated, not just after a remount.
   const [topPromoActive, setTopPromoActive] = useState(false);
   const [topPromoPreview, setTopPromoPreview] = useState<PromoPreview | null>(null);
+  // Oferta powitalna Black Weeks −25 % (11.11.2026, lib/welcome-offer.ts): odebrany
+  // kod BW25-… pokazuje przekreśloną cenę w konfiguratorach tym samym torem co
+  // dawny SEZON20 (prop promo), koszyk nalicza go jako kod osobisty.
+  const [welcomePromo, setWelcomePromo] = useState<PromoPreview | null>(null);
+  useEffect(() => {
+    const sync = () => setWelcomePromo(welcomePromoPreview());
+    sync();
+    window.addEventListener(PERSONAL_CODE_EVENT, sync);
+    const timer = window.setInterval(sync, 60000);
+    return () => {
+      window.removeEventListener(PERSONAL_CODE_EVENT, sync);
+      window.clearInterval(timer);
+    };
+  }, []);
+  const shownPromo = topPromoActive && topPromoPreview ? topPromoPreview : welcomePromo;
   const [promoRenewToast, setPromoRenewToast] = useState(false);
   // "Koszyk na e-mail, cena zamrożona na 7 dni" (2026-09-26): configurator
   // rule = cart has items, first item older than 5 min, 60 s idle. Return
@@ -2154,7 +2172,7 @@ export default function Home({
   const headerBundleRules = useBundleDiscountRules();
   const headerCombinedSavings = calcMoskitieryCombinedSavings(cartItems);
   const headerProductsTotal = summarizeCartItems(cartItems).total;
-  const headerCode = topPromoActive && topPromoPreview ? topPromoPreview : null;
+  const headerCode = shownPromo;
   const headerBundle = bundleOrCode(
     calcBundleDiscount(cartItems, headerBundleRules, headerCombinedSavings),
     headerCode ? { code: headerCode.code, type: headerCode.type, value: headerCode.value } : null,
@@ -2986,7 +3004,7 @@ export default function Home({
   const plisyQuickRegular = plisyProfile
     ? plisyQuickPrice(plisyProfile, plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyPriceAdjustmentPercent, plisyV2 ? plisyQuickMount : null, plisyV2 ? plisyQuickGroupId : "")
     : null;
-  const plisyQuickWithPromo = plisyQuickRegular !== null ? applyPromoToPrice(plisyQuickRegular, topPromoActive ? topPromoPreview : null) : null;
+  const plisyQuickWithPromo = plisyQuickRegular !== null ? applyPromoToPrice(plisyQuickRegular, shownPromo) : null;
   // Pierwszy ekran plis (3.11): „od … · plisa 50 × 110 cm” - z serwera, potem z cennika w przeglądarce (ta sama funkcja).
   const plisyOdCena = plisyProfile
     ? plisyQuickPrice(plisyProfile, 500, 1100, plisyPriceAdjustmentPercent, plisyProfile.mountOptions[0] || null)
@@ -4087,7 +4105,7 @@ export default function Home({
                           <PlisyQuickPrice
                             variant="v2"
                             profile={plisyProfile}
-                            promo={topPromoActive ? topPromoPreview : null}
+                            promo={shownPromo}
                             widthMm={plisyQuickDims.widthMm}
                             heightMm={plisyQuickDims.heightMm}
                             onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
@@ -4205,7 +4223,7 @@ export default function Home({
                                 2026-09-24). Liczy tym samym kodem co konfigurator. */}
                             <MoskitieryQuickPrice
                               pricePerMb={moskPricePerMbPromo}
-                              promo={topPromoActive ? topPromoPreview : null}
+                              promo={shownPromo}
                               widthMm={moskQuickDims.widthMm}
                               heightMm={moskQuickDims.heightMm}
                               onSizeChange={(widthMm, heightMm) => setMoskQuickDims({ widthMm, heightMm })}
@@ -4437,7 +4455,7 @@ export default function Home({
                                 collapsible
                                 defaultOpen
                                 profile={plisyProfile}
-                                promo={topPromoActive ? topPromoPreview : null}
+                                promo={shownPromo}
                                 widthMm={plisyQuickDims.widthMm}
                                 heightMm={plisyQuickDims.heightMm}
                                 onSizeChange={(widthMm, heightMm) => setPlisyQuickDims({ widthMm, heightMm })}
@@ -4605,7 +4623,7 @@ export default function Home({
                                 profile={plisyProfile}
                                 library={rdLibrary}
                                 preselect={pdPreselect}
-                                promo={topPromoActive ? topPromoPreview : null}
+                                promo={shownPromo}
                                 fabricGroupId={pdQuickGroup}
                                 onFabricGroupChange={setPdQuickGroup}
                                 onSelectionChange={(selection) =>
@@ -4639,7 +4657,7 @@ export default function Home({
 
                             <PlisyCollectionsPicker
                               profile={plisyProfile}
-                              promo={topPromoActive ? topPromoPreview : null}
+                              promo={shownPromo}
                               widthCm={pdQuickDims.widthMm ? pdQuickDims.widthMm / 10 : 78}
                               heightCm={pdQuickDims.heightMm ? pdQuickDims.heightMm / 10 : 118}
                               onSizeChange={(widthCm, heightCm) => setPdQuickDims({ widthMm: Math.round(widthCm * 10), heightMm: Math.round(heightCm * 10), label: `${Math.round(widthCm * 10)} × ${Math.round(heightCm * 10)} mm` })}
@@ -5832,7 +5850,7 @@ export default function Home({
                             }
                           : undefined
                       }
-                      promo={topPromoActive ? topPromoPreview : null}
+                      promo={shownPromo}
                       enableSaveShareBanner
                       enableRescueModal
                       submitLabel="Dodaj do koszyka"
@@ -5927,7 +5945,7 @@ export default function Home({
                             }
                           : undefined
                       }
-                      promo={topPromoActive ? topPromoPreview : null}
+                      promo={shownPromo}
                       enableSaveShareBanner
                       enableRescueModal
                       submitLabel="Dodaj do koszyka"
@@ -6188,7 +6206,7 @@ export default function Home({
                             }
                           : undefined
                       }
-                      promo={topPromoActive ? topPromoPreview : null}
+                      promo={shownPromo}
                       submitLabel="Dodaj do koszyka"
                       onZoom={(preview) => setZoomPreview(preview)}
                       onSubmit={(result) => {
@@ -6665,6 +6683,7 @@ export default function Home({
               heightCm={plisyQuickDims.heightMm / 10}
               price={plisyQuickWithPromo ?? plisyQuickRegular}
               promoApplied={plisyQuickWithPromo != null && plisyQuickRegular != null && plisyQuickWithPromo < plisyQuickRegular}
+              promoText={promoLabel(shownPromo)}
               bottomInset={inAppBrowserBottomInset}
               onClick={() => openPlisyConfiguratorFromQuote(plisyQuickDims.widthMm, plisyQuickDims.heightMm, plisyQuickMount?.id || "")}
               wpisane={plisyWpisane && Boolean(plisyQuickGroupId)}

@@ -12,7 +12,7 @@ import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 // od sztuki) - doliczona do ceny pozycji zawyżałaby koszyk z dwoma dużymi
 // moskitierami.
 import { type CSSProperties, useEffect, useRef, useState } from "react";
-import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
+import { applyPromoToPrice, PROMO_CODE, promoLabel, type PromoPreview } from "@/lib/promo";
 import { trackShopStep } from "@/lib/track-step";
 import {
   MOSKITIERY_RAMKOWE_MIN_DIMENSION_MM,
@@ -259,7 +259,7 @@ export default function MoskitieryQuickPrice({
               <span className="pl-quick-amounts">
                 <s>{zl(regular)}</s>
                 <strong>{zl(withPromo)}</strong>
-                <small>z kodem {PROMO_CODE}</small>
+                <small>{promoLabel(promo)}</small>
               </span>
             ) : (
               <span className="pl-quick-amounts">
@@ -275,7 +275,7 @@ export default function MoskitieryQuickPrice({
             )}
             {/* Właściciel 16.10 (#49): koniec sezonu moskitier to prawdziwa presja -
                 mówimy o nim przy cenie, bez wymyślonej daty. */}
-            {withPromo !== null && regular !== null && withPromo < regular && !bothOverTechnicalLimit ? (
+            {withPromo !== null && regular !== null && withPromo < regular && !bothOverTechnicalLimit && promo?.code === PROMO_CODE ? (
               <span className="pl-quick-season">
                 🍂 Koniec sezonu moskitier - ostatnie zamówienia z rabatem −20% ({PROMO_CODE}).
               </span>

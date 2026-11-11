@@ -9,7 +9,7 @@
 // configurator. Below the box: the size path for a window that is not in
 // the library ("nie znam modelu").
 import { useEffect, useMemo, useRef, useState } from "react";
-import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
+import { applyPromoToPrice, promoLabel, type PromoPreview } from "@/lib/promo";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import type { PlisyProfile } from "@/features/plisy/shared";
@@ -224,7 +224,7 @@ export default function PdQuickPrice({
             <span className="pl-quick-amounts">
               <s>{zl(regular)}</s>
               <strong>{zl(withPromo)}</strong>
-              <small>z kodem {PROMO_CODE}</small>
+              <small>{promoLabel(promo)}</small>
             </span>
           ) : (
             <span className="pl-quick-amounts">

@@ -270,6 +270,7 @@ export function PlisyStickyBar({
   heightCm,
   price,
   promoApplied = false,
+  promoText = `z kodem ${PROMO_CODE}`,
   bottomInset,
   onClick,
   wpisane = true,
@@ -285,6 +286,8 @@ export function PlisyStickyBar({
   /** Cena liczona z kodem rabatowym - tylko wtedy dopisek „z kodem …” (AGN-673:
    * po wyłączeniu SEZON20 pasek dalej go pokazywał). */
   promoApplied?: boolean;
+  /** Dopisek przy cenie z rabatem (lib/promo.ts promoLabel) - „z rabatem −25%” dla oferty powitalnej. */
+  promoText?: string;
   bottomInset: number;
   onClick: () => void;
 }) {
@@ -313,7 +316,7 @@ export function PlisyStickyBar({
         <b>{!wpisane ? "Ile za Twoje okno?" : price !== null ? zlPlain(price) : "Twoje okno"}</b>
         {wpisane ? (
           <small>
-            {String(widthCm).replace(".", ",")} × {String(heightCm).replace(".", ",")} cm{price !== null && promoApplied ? ` · z kodem ${PROMO_CODE}` : ""}
+            {String(widthCm).replace(".", ",")} × {String(heightCm).replace(".", ",")} cm{price !== null && promoApplied ? ` · ${promoText}` : ""}
           </small>
         ) : null}
         {promoLine && !promoApplied ? <small className="plv2-bar-promo">{promoLine}</small> : null}

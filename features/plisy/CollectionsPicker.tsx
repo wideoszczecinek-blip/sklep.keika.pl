@@ -20,7 +20,7 @@
 // Prices come off the live CRM matrix (calcPlisyPrice, the configurator's
 // own function) and SEZON20 through applyPromoToPrice - nothing hardcoded.
 import { useEffect, useMemo, useState } from "react";
-import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
+import { applyPromoToPrice, promoLabel, type PromoPreview } from "@/lib/promo";
 import { optimizeImageUrl } from "@/lib/image-optim";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { usePlisyFavourites } from "@/lib/plisy-favourites";
@@ -250,7 +250,7 @@ export default function PlisyCollectionsPicker({
             {promo ? (
               <>
                 {" "}
-                · z kodem <strong>{PROMO_CODE}</strong>
+                · <strong>{promoLabel(promo)}</strong>
               </>
             ) : null}
           </span>
@@ -300,7 +300,7 @@ export default function PlisyCollectionsPicker({
                       <s>{zl(row.regular)}</s>
                       <strong>{zl(row.withPromo)}</strong>
                     </span>
-                    <small>z kodem {PROMO_CODE}</small>
+                    <small>{promoLabel(promo)}</small>
                   </>
                 ) : (
                   <span className="pl-coll-card-amounts">

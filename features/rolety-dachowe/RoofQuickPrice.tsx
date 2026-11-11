@@ -10,7 +10,7 @@
 // for a window that is not in the library ("nie znam modelu"), priced from
 // two sliders like plisy.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
+import { applyPromoToPrice, promoLabel, type PromoPreview } from "@/lib/promo";
 import { useProductPriceAdjustment } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
 import {
@@ -236,7 +236,7 @@ export default function RoofQuickPrice({
             <span className="pl-quick-amounts">
               <s>{zl(regular)}</s>
               <strong>{zl(withPromo)}</strong>
-              <small>z kodem {PROMO_CODE}</small>
+              <small>{promoLabel(promo)}</small>
             </span>
           ) : (
             <span className="pl-quick-amounts">

@@ -382,3 +382,19 @@ export function applyPromoToPrice(price: number, preview: PromoPreview | null): 
   }
   return Math.max(0, price - preview.value);
 }
+
+/** Dopisek przy przekreślonej cenie: kod sezonowy po nazwie, rabat powitalny
+ * Black Weeks (BW25-…, lib/welcome-offer.ts) jako „z rabatem −25 %” - bez
+ * pokazywania osobistego kodu w każdym konfiguratorze. */
+export function promoLabel(preview: PromoPreview | null | undefined): string {
+  const code = String(preview?.code || PROMO_CODE);
+  if (code.toUpperCase().startsWith("BW25-")) return `z rabatem −${Math.round(Number(preview?.value) || 25)}%`;
+  return `z kodem ${code}`;
+}
+
+/** Nazwa promocji do wierszy „W promocji (…)”. */
+export function promoName(preview: PromoPreview | null | undefined): string {
+  const code = String(preview?.code || PROMO_CODE);
+  if (code.toUpperCase().startsWith("BW25-")) return `Black Weeks −${Math.round(Number(preview?.value) || 25)}%`;
+  return code;
+}

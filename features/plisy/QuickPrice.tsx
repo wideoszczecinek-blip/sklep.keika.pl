@@ -32,7 +32,7 @@ import { NumericDone, numericEntryKey } from "@/app/components/numeric-entry";
 // "Wybierz tkaninę i kolor" i "zapisz wycenę na później" dla 2/3 wejść bez
 // miarki pod ręką. Wersja v1 zostaje nietknięta (powrót jednym przełącznikiem).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { applyPromoToPrice, PROMO_CODE, type PromoPreview } from "@/lib/promo";
+import { applyPromoToPrice, promoLabel, type PromoPreview } from "@/lib/promo";
 import { useBundleDiscountRules } from "@/lib/bundle-discount";
 import { useProductPriceAdjustment, useProductPriceAdjustmentsReady } from "@/lib/price-adjustment";
 import { trackShopStep } from "@/lib/track-step";
@@ -419,13 +419,13 @@ export default function PlisyQuickPrice({
                   }}>
                     <span className="pl-quick-comparison-name">{names[c.groupId] || c.name}</span>
                     {/* właściciel 9.11: „za bardzo ukrywamy cenę bez promocji – pokazać niską cenę bez promocji i bardzo niską w promocji” – obie ceny czytelne, bez przekreślenia */}
-                    <span className="pl-quick-comparison-price">{amount === null ? (!pricesReady ? "Ładujemy ceny…" : "Wycena w konfiguratorze") : <>{tier ? <><span className="pl-qc-zwykla"><b>{zl(amount)}</b><small>1 szt.</small></span><span className="pl-qc-promo"><strong>{zl(Math.round(amount * (100 - tier.percent)) / 100)}</strong><small>od {tier.fromQty} szt. −{tier.percent} %</small></span></> : <span className="pl-qc-promo"><strong>{zl(amount)}</strong></span>}</>}</span>
+                    <span className="pl-quick-comparison-price">{amount === null ? (!pricesReady ? "Ładujemy ceny…" : "Wycena w konfiguratorze") : <>{promo && applyPromoToPrice(amount, promo) !== null ? <><span className="pl-qc-zwykla"><s>{zl(amount)}</s><small>cena regularna</small></span><span className="pl-qc-promo"><strong>{zl(Math.round((applyPromoToPrice(amount, promo) as number) * 100) / 100)}</strong><small>{promoLabel(promo)} · od 1 szt.</small></span></> : tier ? <><span className="pl-qc-zwykla"><b>{zl(amount)}</b><small>1 szt.</small></span><span className="pl-qc-promo"><strong>{zl(Math.round(amount * (100 - tier.percent)) / 100)}</strong><small>od {tier.fromQty} szt. −{tier.percent} %</small></span></> : <span className="pl-qc-promo"><strong>{zl(amount)}</strong></span>}</>}</span>
                   </button>
                   <details className="pl-quick-comparison-info"><summary aria-label={`Informacje: ${names[c.groupId] || c.name}`}>i</summary><p>{c.what}</p></details>
                 </div>;
               })}
             </div>
-            {bundleRule?.wholeOrder && bundleRule.tiers.length ? <p className="pl-quick-comparison-note">Pierwsza cena – zakup 1 sztuki. Zielona – w promocji CAŁY DOM przy {bundleRule.tiers[bundleRule.tiers.length - 1].fromQty} lub więcej produktach (mogą być różne). Ostateczna cena zależy od konfiguracji i zawartości koszyka.</p> : <p className="pl-quick-comparison-note">Cena orientacyjna dla montażu przykręcanego. Ostateczna cena zależy od konfiguracji.</p>}
+            {promo ? <p className="pl-quick-comparison-note">Zielona cena – z Twoim rabatem na całe zamówienie, już od 1 sztuki; naliczy się sam w koszyku. Ostateczna cena zależy od konfiguracji.</p> : bundleRule?.wholeOrder && bundleRule.tiers.length ? <p className="pl-quick-comparison-note">Pierwsza cena – zakup 1 sztuki. Zielona – w promocji CAŁY DOM przy {bundleRule.tiers[bundleRule.tiers.length - 1].fromQty} lub więcej produktach (mogą być różne). Ostateczna cena zależy od konfiguracji i zawartości koszyka.</p> : <p className="pl-quick-comparison-note">Cena orientacyjna dla montażu przykręcanego. Ostateczna cena zależy od konfiguracji.</p>}
             {split ? <p className="pl-quick-comparison-note">Szerokie okno wyceniamy jako dwie plisy — podana cena obejmuje obie.</p> : null}
             <button type="button" className="pl-quick-cta pl-quick-cta--v2" disabled={!inRange} onClick={configure}>Wybierz szczegóły i skonfiguruj →</button>
             {onMeasureGuide ? <button type="button" className="pl-quick-measure" onClick={onMeasureGuide}>Jak zmierzyć okno? →</button> : null}
@@ -443,7 +443,7 @@ export default function PlisyQuickPrice({
             <span className="pl-quick-amounts">
               <strong>{zl(withPromo)}</strong>
               <s>{zl(regular)}</s>
-              <small>z kodem {PROMO_CODE}</small>
+              <small>{promoLabel(promo)}</small>
             </span>
           ) : (
             <span className="pl-quick-amounts">
@@ -593,7 +593,7 @@ export default function PlisyQuickPrice({
             <span className="pl-quick-amounts">
               <s>{zl(regular)}</s>
               <strong>{zl(withPromo)}</strong>
-              <small>z kodem {PROMO_CODE}</small>
+              <small>{promoLabel(promo)}</small>
             </span>
           ) : (
             <span className="pl-quick-amounts">
