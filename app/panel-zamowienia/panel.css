@@ -14,6 +14,11 @@
   gap: 0.9rem;
   color: var(--op-ink);
 }
+/* elementy siatki nie mogą się rozpychać do szerokości przewijanego rzędu skrótów */
+.op > *,
+.op-grid > * {
+  min-width: 0;
+}
 .op-test-banner {
   padding: 0.7rem 1rem;
   border-radius: 12px;
