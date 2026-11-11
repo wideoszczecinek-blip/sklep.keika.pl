@@ -95,9 +95,11 @@ export default function WelcomeOffer() {
   }, []);
 
   const active = Boolean(code && expiresAtMs && expiresAtMs > now);
-  // Właściciel 11.11 wieczorem: „usuń test - cały ruch ma zobaczyć rabat”. Gość, któremu kod wygasł albo który już z niego
-  // kupił, dostaje przy kolejnej wizycie nowy rabat na 24 h (CRM wydaje nowy kod).
-  const available = Boolean(settings?.active) && !otherCode;
+  // Jeden rabat na gościa, 24 h (właściciel 11.11: „kod jest na 24 godziny - warunki się nie zmieniają”):
+  // uruchomiony wcześniej, a wygasły albo wykorzystany = panelu już nie ma.
+  const claimedBefore = Boolean(state.claimedCode);
+  const spent = claimedBefore && !active;
+  const available = Boolean(settings?.active) && !otherCode && !spent;
 
   useEffect(() => {
     if (!active && !open) return;
@@ -131,7 +133,7 @@ export default function WelcomeOffer() {
 
   // Pierwsze wejście: panel sam po 2,5 s (poza stronami płatności i koszykiem).
   useEffect(() => {
-    if (autoTriedRef.current || !available || hidden || quiet || active) return;
+    if (autoTriedRef.current || !available || hidden || quiet || active || claimedBefore) return;
     const dismissedAt = state.dismissedAt || 0;
     if (dismissedAt && Date.now() - dismissedAt < DISMISS_QUIET_MS) return;
     // Znacznik dopiero przy otwarciu: gdy w ciągu 2,5 s zmieni się adres albo stan (np. przejście na inną
@@ -146,7 +148,7 @@ export default function WelcomeOffer() {
       void claim();
     }, AUTO_OPEN_DELAY_MS);
     return () => window.clearTimeout(t);
-  }, [available, hidden, quiet, active, state.dismissedAt, pathname, claim]);
+  }, [available, hidden, quiet, active, claimedBefore, state.dismissedAt, pathname, claim]);
 
 
   const close = useCallback(() => {
