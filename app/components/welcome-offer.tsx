@@ -1,6 +1,6 @@
 "use client";
 
-// Oferta powitalna Black Weeks −25 % (właściciel 11.11.2026, test 7 dni) -
+// Oferta powitalna Black Weeks −25 % (właściciel 11.11.2026; od 11.11 wieczorem na stałe dla całego ruchu, bez testu) -
 // logika i pamięć urządzenia: lib/welcome-offer.ts, CRM: shop_welcome_offer.php.
 //
 // Właściciel 11.11 (druga wersja): „GRATULACJE – właśnie uruchomiliśmy Ci
@@ -29,12 +29,14 @@ import {
 import "./welcome-offer.css";
 
 /** Strony, na których panel sam się nie otwiera (płatność, status zamówienia, regulaminy, koszyk). */
-const QUIET_PATHS = [/^\/zamowienie/, /^\/wycena/, /^\/p\//, /^\/legal/, /^\/regulamin/, /^\/panel/, /^\/koszyk/];
+// Koszyk od 11.11 wieczorem już tak (właściciel: „cały ruch ma zobaczyć rabat”) - po uruchomieniu rabatu koszyk się odświeża.
+const QUIET_PATHS = [/^\/zamowienie/, /^\/wycena/, /^\/p\//, /^\/legal/, /^\/regulamin/, /^\/panel/];
 /** Strony, na których nie ma nawet plakietki. */
 const HIDDEN_PATHS = [/^\/zamowienie/, /^\/wycena/, /^\/p\//];
 /** Po zamknięciu bez rabatu panel nie wraca sam przez tyle czasu (plakietka zostaje). */
 const DISMISS_QUIET_MS = 12 * 60 * 60 * 1000;
-const AUTO_OPEN_DELAY_MS = 2500;
+/** 1 s (było 2,5 s): 11.11 ok. 50 z 290 gości wychodziło przed pokazaniem panelu. */
+const AUTO_OPEN_DELAY_MS = 1000;
 /** Zdjęcie w tle: salon, plisy zamontowane od środka (zasada kreacji 10.11). */
 const HERO_PHOTO = "/plisy/hero-salon-inspiracja.webp";
 
@@ -93,10 +95,9 @@ export default function WelcomeOffer() {
   }, []);
 
   const active = Boolean(code && expiresAtMs && expiresAtMs > now);
-  const claimedBefore = Boolean(state.claimedCode);
-  // Uruchomiony wcześniej, ale wygasły albo wykorzystany - rabatu już nie ma (jeden na gościa).
-  const spent = claimedBefore && !active;
-  const available = Boolean(settings?.active) && !otherCode && !spent;
+  // Właściciel 11.11 wieczorem: „usuń test - cały ruch ma zobaczyć rabat”. Gość, któremu kod wygasł albo który już z niego
+  // kupił, dostaje przy kolejnej wizycie nowy rabat na 24 h (CRM wydaje nowy kod).
+  const available = Boolean(settings?.active) && !otherCode;
 
   useEffect(() => {
     if (!active && !open) return;
@@ -130,7 +131,7 @@ export default function WelcomeOffer() {
 
   // Pierwsze wejście: panel sam po 2,5 s (poza stronami płatności i koszykiem).
   useEffect(() => {
-    if (autoTriedRef.current || !available || hidden || quiet || active || claimedBefore) return;
+    if (autoTriedRef.current || !available || hidden || quiet || active) return;
     const dismissedAt = state.dismissedAt || 0;
     if (dismissedAt && Date.now() - dismissedAt < DISMISS_QUIET_MS) return;
     // Znacznik dopiero przy otwarciu: gdy w ciągu 2,5 s zmieni się adres albo stan (np. przejście na inną
@@ -145,7 +146,7 @@ export default function WelcomeOffer() {
       void claim();
     }, AUTO_OPEN_DELAY_MS);
     return () => window.clearTimeout(t);
-  }, [available, hidden, quiet, active, claimedBefore, state.dismissedAt, pathname, claim]);
+  }, [available, hidden, quiet, active, state.dismissedAt, pathname, claim]);
 
 
   const close = useCallback(() => {

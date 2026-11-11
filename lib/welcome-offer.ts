@@ -1,8 +1,9 @@
 /**
- * Oferta powitalna Black Weeks −25 % (właściciel 11.11.2026, test 7 dni).
+ * Oferta powitalna Black Weeks −25 % (właściciel 11.11.2026; od 11.11 wieczorem
+ * na stałe dla całego ruchu, bez testu - po wygaśnięciu kodu gość dostaje nowy).
  *
  * Każdy gość sklep.keika.pl (nie Oknowo) widzi panel „−25 % na całe
- * zamówienie, od 1 sztuki, ważne 24 h”. Klik „Odbieram” prosi CRM o osobisty
+ * zamówienie, od 1 sztuki, ważne 24 h”. Pokazanie panelu prosi CRM o osobisty
  * kod BW25-XXXXXX (shop-public/welcome_offer.php, core/lib/shop_welcome_offer.php)
  * i zapisuje go jako kod osobisty (lib/personal-code.ts): koszyk nalicza go
  * sam, pasek u góry pokazuje odliczanie, konfiguratory - przekreśloną cenę.
