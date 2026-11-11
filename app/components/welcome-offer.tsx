@@ -3,10 +3,12 @@
 // Oferta powitalna Black Weeks −25 % (właściciel 11.11.2026, test 7 dni) -
 // logika i pamięć urządzenia: lib/welcome-offer.ts, CRM: shop_welcome_offer.php.
 //
-// Telefon to ~97 % ruchu, więc panel wysuwa się od dołu (nie pełny ekran) i
-// zamyka jednym ruchem. Po zamknięciu albo odebraniu zostaje mała plakietka
-// z lewej u dołu: przed odebraniem „−25 % czeka”, po odebraniu odliczanie.
-// E-mail jest nieobowiązkowy i pojawia się dopiero po odebraniu rabatu.
+// Właściciel 11.11 (druga wersja): „GRATULACJE – właśnie uruchomiliśmy Ci
+// specjalny rabat −25 % na całe zakupy, automatycznie w koszyku, 24 godziny”,
+// ze zdjęciem i z Black Weeks w typowej czarno-białej szacie. Rabat uruchamia
+// się sam w chwili pokazania panelu (bez klikania „Odbieram”); 24 h liczy się
+// od tej chwili. Telefon to ~97 % ruchu: panel od dołu, zamyka się jednym
+// ruchem, potem zostaje plakietka z odliczaniem z lewej u dołu.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PERSONAL_CODE_EVENT, getPersonalCode } from "@/lib/personal-code";
@@ -26,21 +28,20 @@ import {
 } from "@/lib/welcome-offer";
 import "./welcome-offer.css";
 
-/** Strony, na których panel sam się nie otwiera (płatność, status zamówienia, regulaminy). */
+/** Strony, na których panel sam się nie otwiera (płatność, status zamówienia, regulaminy, koszyk). */
 const QUIET_PATHS = [/^\/zamowienie/, /^\/wycena/, /^\/p\//, /^\/legal/, /^\/regulamin/, /^\/panel/, /^\/koszyk/];
 /** Strony, na których nie ma nawet plakietki. */
 const HIDDEN_PATHS = [/^\/zamowienie/, /^\/wycena/, /^\/p\//];
-/** Po zamknięciu panel nie wraca sam przez tyle czasu (plakietka zostaje). */
+/** Po zamknięciu bez rabatu panel nie wraca sam przez tyle czasu (plakietka zostaje). */
 const DISMISS_QUIET_MS = 12 * 60 * 60 * 1000;
 const AUTO_OPEN_DELAY_MS = 2500;
-
-type View = "offer" | "claimed";
+/** Zdjęcie w tle: salon, plisy zamontowane od środka (zasada kreacji 10.11). */
+const HERO_PHOTO = "/plisy/hero-salon-inspiracja.webp";
 
 export default function WelcomeOffer() {
   const pathname = usePathname() || "/";
   const [settings, setSettings] = useState<WelcomeSettings | null>(null);
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<View>("offer");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [code, setCode] = useState("");
@@ -74,7 +75,9 @@ export default function WelcomeOffer() {
       const active = getActiveWelcomeCode();
       const personal = getPersonalCode();
       setOtherCode(Boolean(personal && !isWelcomeCode(personal.code)));
-      setState(readWelcomeState());
+      const st = readWelcomeState();
+      setState(st);
+      if (st.emailGiven) setEmailState("sent");
       if (active) {
         setCode(active.code);
         setExpiresAtMs(active.expiresAtMs);
@@ -91,7 +94,7 @@ export default function WelcomeOffer() {
 
   const active = Boolean(code && expiresAtMs && expiresAtMs > now);
   const claimedBefore = Boolean(state.claimedCode);
-  // Odebrany wcześniej, ale wygasły albo wykorzystany - oferty już nie ma (jedna na gościa).
+  // Uruchomiony wcześniej, ale wygasły albo wykorzystany - rabatu już nie ma (jeden na gościa).
   const spent = claimedBefore && !active;
   const available = Boolean(settings?.active) && !otherCode && !spent;
 
@@ -101,6 +104,30 @@ export default function WelcomeOffer() {
     return () => window.clearInterval(t);
   }, [active, open]);
 
+  const claim = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    const res = await claimWelcome();
+    setBusy(false);
+    if (!res.ok || !res.code) {
+      setError(res.error || "Nie udało się uruchomić rabatu. Spróbuj ponownie.");
+      trackWelcome("welcome_claim_error", res.error || "", { page: pathname });
+      return;
+    }
+    if (res.expired || res.used) {
+      setError(res.used ? "Ten rabat został już wykorzystany w zamówieniu." : "Twój rabat już wygasł.");
+      return;
+    }
+    const exp = res.expiresAt ? Date.parse(res.expiresAt) : NaN;
+    setCode(res.code);
+    setExpiresAtMs(Number.isFinite(exp) ? exp : null);
+    if (res.email) setEmailState("sent");
+    trackWelcome("welcome_claim", res.code, { page: pathname, new: res.ok, auto: true });
+    // W koszyku kod osobisty nalicza się przy wejściu - odświeżamy, żeby od razu było widać cenę.
+    if (pathname.startsWith("/koszyk")) window.setTimeout(() => window.location.reload(), 1200);
+  }, [busy, pathname]);
+
   // Pierwsze wejście: panel sam po 2,5 s (poza stronami płatności i koszykiem).
   useEffect(() => {
     if (autoTriedRef.current || !available || hidden || quiet || active || claimedBefore) return;
@@ -108,21 +135,23 @@ export default function WelcomeOffer() {
     if (dismissedAt && Date.now() - dismissedAt < DISMISS_QUIET_MS) return;
     autoTriedRef.current = true;
     const t = window.setTimeout(() => {
-      setView("offer");
       setOpen(true);
       writeWelcomeState({ shownAt: Date.now() });
       trackWelcome("welcome_shown", "auto", { page: pathname });
+      // Rabat uruchamia się sam w chwili pokazania panelu (właściciel: „właśnie uruchomiliśmy Ci rabat”).
+      void claim();
     }, AUTO_OPEN_DELAY_MS);
     return () => window.clearTimeout(t);
-  }, [available, hidden, quiet, active, claimedBefore, state.dismissedAt, pathname]);
+  }, [available, hidden, quiet, active, claimedBefore, state.dismissedAt, pathname, claim]);
+
 
   const close = useCallback(() => {
     setOpen(false);
     if (!active) {
       writeWelcomeState({ dismissedAt: Date.now() });
-      trackWelcome("welcome_dismiss", view, { page: pathname });
+      trackWelcome("welcome_dismiss", error ? "error" : "pending", { page: pathname });
     }
-  }, [active, view, pathname]);
+  }, [active, error, pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -133,31 +162,6 @@ export default function WelcomeOffer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
-  const claim = useCallback(async () => {
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    const res = await claimWelcome();
-    setBusy(false);
-    if (!res.ok || !res.code) {
-      setError(res.error || "Nie udało się. Spróbuj ponownie.");
-      trackWelcome("welcome_claim_error", res.error || "", { page: pathname });
-      return;
-    }
-    if (res.expired || res.used) {
-      setError(res.used ? "Ten rabat został już wykorzystany w zamówieniu." : "Twój rabat powitalny już wygasł.");
-      return;
-    }
-    const exp = res.expiresAt ? Date.parse(res.expiresAt) : NaN;
-    setCode(res.code);
-    setExpiresAtMs(Number.isFinite(exp) ? exp : null);
-    setView("claimed");
-    setEmailState(res.email ? "sent" : "idle");
-    trackWelcome("welcome_claim", res.code, { page: pathname, new: res.ok });
-    // W koszyku kod osobisty nalicza się przy wejściu - odświeżamy, żeby od razu było widać cenę.
-    if (pathname.startsWith("/koszyk")) window.setTimeout(() => window.location.reload(), 900);
-  }, [busy, pathname]);
-
   const submitEmail = useCallback(async () => {
     if (emailState === "sending") return;
     setEmailError("");
@@ -166,7 +170,11 @@ export default function WelcomeOffer() {
       return;
     }
     if (!consent) {
-      setEmailError("Zaznacz zgodę - bez niej nie możemy wysłać kodu ani przypomnień.");
+      setEmailError("Zaznacz zgodę - bez niej nie możemy wysłać rabatu ani przypomnień.");
+      return;
+    }
+    if (!code) {
+      setEmailError("Chwileczkę, rabat jeszcze się uruchamia.");
       return;
     }
     setEmailState("sending");
@@ -181,16 +189,16 @@ export default function WelcomeOffer() {
   }, [emailState, email, consent, code, settings, pathname]);
 
   const openFromPill = () => {
-    setView(active ? "claimed" : "offer");
-    if (active && state.emailGiven) setEmailState("sent");
     setOpen(true);
     trackWelcome("welcome_shown", active ? "pill_active" : "pill", { page: pathname });
+    if (!active && !busy) void claim();
   };
 
   if (!settings || hidden) return null;
   if (!available && !active) return null;
 
   const pct = settings.percent || 25;
+  const hours = settings.hours || 24;
   const remaining = expiresAtMs ? Math.max(0, expiresAtMs - now) : 0;
   const deadline = expiresAtMs
     ? new Date(expiresAtMs).toLocaleString("pl-PL", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
@@ -200,7 +208,7 @@ export default function WelcomeOffer() {
     <>
       {/* W koszyku rabat widać w podsumowaniu (wiersz kodu), a plakietka zasłaniała pole kodu. */}
       {!open && !(active && pathname.startsWith("/koszyk")) ? (
-        <button type="button" className={`wo-pill${active ? " is-active" : ""}`} onClick={openFromPill} aria-label={active ? `Twój rabat −${pct}% - pozostały czas ${formatRemaining(remaining)}` : `Odbierz rabat −${pct}%`}>
+        <button type="button" className={`wo-pill${active ? " is-active" : ""}`} onClick={openFromPill} aria-label={active ? `Twój rabat −${pct}% - pozostały czas ${formatRemaining(remaining)}` : `Rabat −${pct}% czeka`}>
           <span className="wo-pill-badge">−{pct}%</span>
           <span className="wo-pill-text">{active ? <><span className="wo-pill-small">Twój rabat</span><strong className="wo-pill-clock">{formatRemaining(remaining)}</strong></> : <>czeka na Ciebie</>}</span>
         </button>
@@ -209,67 +217,58 @@ export default function WelcomeOffer() {
         <div className="wo-backdrop" role="presentation" onClick={close}>
           <div className="wo-sheet" role="dialog" aria-modal="true" aria-labelledby="wo-title" onClick={(e) => e.stopPropagation()}>
             <button type="button" className="wo-close" onClick={close} aria-label="Zamknij">×</button>
-            <div className="wo-hero">
-              <span className="wo-kicker">Black Weeks KEIKA</span>
-              {view === "offer" ? (
-                <>
-                  <h2 id="wo-title" className="wo-title">Mamy dla Ciebie dobrą wiadomość</h2>
-                  <div className="wo-big">−{pct}<span>%</span></div>
-                  <p className="wo-sub">na całe zamówienie, już od 1 sztuki</p>
-                </>
-              ) : (
-                <>
-                  <h2 id="wo-title" className="wo-title">Rabat −{pct}% jest Twój</h2>
-                  <div className="wo-clock" aria-live="off">{formatRemaining(remaining)}</div>
-                  <p className="wo-sub">ważny do {deadline}</p>
-                </>
-              )}
+            <div className="wo-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.30) 0%, rgba(0,0,0,.55) 45%, rgba(0,0,0,.88) 100%), url(${HERO_PHOTO})` }}>
+              <span className="wo-bw" aria-label="Black Weeks">BLACK <b>WEEKS</b></span>
+              <h2 id="wo-title" className="wo-title">
+                <span className="wo-congrats">🎉 GRATULACJE</span>
+                <span className="wo-lead">Właśnie uruchomiliśmy Ci specjalny rabat</span>
+              </h2>
+              <div className="wo-big">−{pct}<span>%</span></div>
+              <p className="wo-sub">na całe zakupy</p>
+              <div className={`wo-timer${active ? "" : " is-pending"}`} aria-live="off">
+                {active ? <>⏱ zostało <strong>{formatRemaining(remaining)}</strong></> : busy ? <>⏳ uruchamiamy rabat…</> : <>⏱ {hours} godziny na zakupy</>}
+              </div>
             </div>
-            {view === "offer" ? (
-              <div className="wo-body">
-                <ul className="wo-points">
-                  <li>Plisy, moskitiery i rolety produkujemy na Twój wymiar</li>
-                  <li>5 lat gwarancji · 30 dni na zwrot</li>
-                  <li>Rabat naliczy się sam w koszyku - bez wpisywania kodu</li>
-                </ul>
-                <button type="button" className="wo-cta" onClick={claim} disabled={busy}>
-                  {busy ? "Chwileczkę…" : `Odbieram −${pct}%`}
-                </button>
-                {error ? <p className="wo-error" role="alert">{error}</p> : null}
-                <p className="wo-fine">Masz {settings.hours} godziny od odebrania. Rabat jest jednorazowy, obejmuje całe zamówienie w sklep.keika.pl, zastępuje promocję CAŁY DOM i nie łączy się z innymi kodami.</p>
-              </div>
-            ) : (
-              <div className="wo-body">
-                <p className="wo-ok">✓ Gotowe - rabat naliczy się sam w koszyku na tym urządzeniu.</p>
-                {emailState === "sent" ? (
-                  <p className="wo-ok wo-ok--mail">✓ Kod jest w Twojej skrzynce. Przypomnimy o nim 10 godzin i godzinę przed końcem.</p>
-                ) : (
-                  <form
-                    className="wo-mail"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void submitEmail();
-                    }}
-                  >
-                    <label className="wo-mail-label" htmlFor="wo-email">Chcesz przypomnienie? <span>(nieobowiązkowo)</span></label>
-                    <p className="wo-mail-hint">Wyślemy kod na e-mail - zadziała też na innym urządzeniu - i przypomnimy 10 h i godzinę przed końcem.</p>
-                    <div className="wo-mail-row">
-                      <input id="wo-email" type="email" inputMode="email" autoComplete="email" placeholder="Twój e-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
-                      <button type="submit" disabled={emailState === "sending"}>{emailState === "sending" ? "…" : "Wyślij"}</button>
-                    </div>
-                    <label className="wo-consent">
-                      <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-                      <span>{settings.consentText || "Zgadzam się na e-maile z kodem, przypomnieniami i ofertami KEIKA. Zgodę mogę wycofać w każdej chwili."}</span>
-                    </label>
-                    {emailError ? <p className="wo-error" role="alert">{emailError}</p> : null}
-                  </form>
-                )}
-                <button type="button" className="wo-cta wo-cta--ghost" onClick={() => setOpen(false)}>
-                  Wybieram produkty →
-                </button>
-                <p className="wo-fine">Twój kod: <strong>{code}</strong> · jednorazowy · zastępuje promocję CAŁY DOM, nie łączy się z innymi kodami.</p>
-              </div>
-            )}
+            <div className="wo-body">
+              <p className="wo-text">
+                <strong>Rabat jest automatycznie przyznany w koszyku.</strong> Wykorzystaj go w ciągu {hours} godzin{deadline ? ` – do ${deadline}` : ""}.
+              </p>
+              {error ? (
+                <div className="wo-error-box" role="alert">
+                  <p className="wo-error">{error}</p>
+                  <button type="button" className="wo-retry" onClick={() => void claim()} disabled={busy}>{busy ? "Chwileczkę…" : "Spróbuj ponownie"}</button>
+                </div>
+              ) : null}
+              <button type="button" className="wo-cta" onClick={() => setOpen(false)} disabled={!active}>
+                {active ? `Kupuję z rabatem −${pct}% →` : busy ? "Uruchamiamy rabat…" : `Rabat −${pct}%`}
+              </button>
+              {emailState === "sent" ? (
+                <p className="wo-ok">✓ Rabat wysłany na e-mail. Dokończysz zakupy na dowolnym urządzeniu - przypomnimy 10 godzin i godzinę przed końcem.</p>
+              ) : (
+                <form
+                  className="wo-mail"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void submitEmail();
+                  }}
+                >
+                  <label className="wo-mail-label" htmlFor="wo-email">📩 Wyślij rabat na e-mail i dokończ na dowolnym urządzeniu</label>
+                  <div className="wo-mail-row">
+                    <input id="wo-email" type="email" inputMode="email" autoComplete="email" placeholder="Twój e-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <button type="submit" disabled={emailState === "sending"}>{emailState === "sending" ? "…" : "Wyślij"}</button>
+                  </div>
+                  <label className="wo-consent">
+                    <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+                    <span>{settings.consentText || "Zgadzam się na e-maile z rabatem, przypomnieniami i ofertami KEIKA. Zgodę mogę wycofać w każdej chwili."}</span>
+                  </label>
+                  {emailError ? <p className="wo-error" role="alert">{emailError}</p> : null}
+                </form>
+              )}
+              <p className="wo-fine">
+                Rabat przyznany jest na zakup dokonany w ciągu {hours} godzin, przypisywany jest do urządzenia i/lub adresu e-mail. Jednorazowy, obejmuje całe zamówienie w sklep.keika.pl, zastępuje promocję CAŁY DOM i nie łączy się z innymi kodami.
+                {code ? <> Twój kod: <strong>{code}</strong>.</> : null}
+              </p>
+            </div>
           </div>
         </div>
       ) : null}
