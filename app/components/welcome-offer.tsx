@@ -133,8 +133,11 @@ export default function WelcomeOffer() {
     if (autoTriedRef.current || !available || hidden || quiet || active || claimedBefore) return;
     const dismissedAt = state.dismissedAt || 0;
     if (dismissedAt && Date.now() - dismissedAt < DISMISS_QUIET_MS) return;
-    autoTriedRef.current = true;
+    // Znacznik dopiero przy otwarciu: gdy w ciągu 2,5 s zmieni się adres albo stan (np. przejście na inną
+    // stronę, wizualizator), stary licznik jest kasowany i musi wystartować od nowa. Wcześniej znacznik
+    // stawiany przed licznikiem blokował panel do końca wizyty (11.11: ok. 25 zaangażowanych gości bez panelu).
     const t = window.setTimeout(() => {
+      autoTriedRef.current = true;
       setOpen(true);
       writeWelcomeState({ shownAt: Date.now() });
       trackWelcome("welcome_shown", "auto", { page: pathname });
