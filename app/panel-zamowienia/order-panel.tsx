@@ -12,21 +12,30 @@ import "./panel.css";
 import Link from "next/link";
 import { useState } from "react";
 
-export type PanelItem = { name: string; qty: number; price: number; params: [string, string][] };
+/** price = null: zamówienie lokalne (z pomiaru / biura) - cena tylko za całość, pozycje ze zlecenia produkcyjnego. */
+export type PanelItem = { name: string; qty: number; price: number | null; params: [string, string][] };
 export type PanelOrder = {
   number: string;
+  /** numer tymczasowy ze sklepu; puste przy zamówieniach lokalnych */
   tempCode: string;
   placedAt: string;
   status: string;
-  /** 0 złożone, 1 weryfikacja, 2 produkcja, 3 wysyłka, 4 dostarczone */
+  /** indeks bieżącego kroku w `stages` (sklep: 0 złożone, 1 weryfikacja, 2 produkcja, 3 wysyłka, 4 dostarczone) */
   stage: number;
-  eta: { from: string; to: string; productionDays: number } | null;
+  /** kroki postępu - domyślnie sklepowe z wysyłką; odbiór osobisty / montaż mają swoje */
+  stages?: string[];
+  eta: { from: string; to: string; productionDays: number; label?: string; note?: string } | null;
+  /** skąd pozycje i cena, np. „Zamówienie z pomiaru …” - pokazywane nad pozycjami */
+  itemsNote?: string;
   items: PanelItem[];
-  subtotal: number;
+  /** null = brak rozbicia na pozycje (zamówienie lokalne) */
+  subtotal: number | null;
   discounts: [string, number][];
-  delivery: { method: string; name: string; address: string; phone: string; fee: number };
+  /** fee = null: bez wiersza dostawy w podsumowaniu (odbiór osobisty, montaż) */
+  delivery: { method: string; name: string; address: string; phone: string; fee: number | null };
   payment: { method: string; state: string };
   total: number;
+  totalLabel?: string;
   documents: { label: string; note: string }[];
   shipment: { carrier: string; number: string } | null;
   changesOpen: boolean;
@@ -173,6 +182,7 @@ function ClaimForm({ order }: { order: PanelOrder }) {
 
 export default function OrderPanel({ data, test }: { data: PanelData; test?: boolean }) {
   const { order } = data;
+  const stages = order.stages ?? STAGES;
   const [copied, setCopied] = useState("");
   const tel = `tel:${data.phone.replace(/[^\d+]/g, "")}`;
 
@@ -190,12 +200,13 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
           Zamówienie <span>{order.number}</span>
         </h1>
         <p className="op-hero-meta">
-          złożone {order.placedAt} · numer tymczasowy {order.tempCode}
+          złożone {order.placedAt}
+          {order.tempCode ? ` · numer tymczasowy ${order.tempCode}` : ""}
         </p>
         <span className="op-status">{order.status}</span>
 
-        <ol className="op-steps" aria-label="Postęp zamówienia">
-          {STAGES.map((label, i) => (
+        <ol className="op-steps" aria-label="Postęp zamówienia" style={{ gridTemplateColumns: `repeat(${stages.length}, 1fr)` }}>
+          {stages.map((label, i) => (
             <li key={label} className={i < order.stage ? "is-done" : i === order.stage ? "is-now" : ""}>
               <i aria-hidden="true">{i < order.stage ? "✓" : i + 1}</i>
               <span>{label}</span>
@@ -205,14 +216,13 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
 
         {order.eta ? (
           <div className="op-eta">
-            <div className="op-eta-label">Przewidywana dostawa</div>
+            <div className="op-eta-label">{order.eta.label || "Przewidywana dostawa"}</div>
             <div className="op-eta-range">
-              {order.eta.from} – {order.eta.to}
+              {order.eta.from === order.eta.to ? order.eta.from : `${order.eta.from} – ${order.eta.to}`}
             </div>
             <p>
-              To nasze przewidywanie na podstawie dzisiejszego planu produkcji (do {order.eta.productionDays} dni roboczych na wymiar + kurier), a
-              nie gwarantowany termin. Jeśli plan się zmieni, zobaczysz to tutaj. Pewną informację dostaniesz w dniu nadania paczki - z numerem
-              przesyłki.
+              {order.eta.note ||
+                `To nasze przewidywanie na podstawie dzisiejszego planu produkcji (do ${order.eta.productionDays} dni roboczych na wymiar + kurier), a nie gwarantowany termin. Jeśli plan się zmieni, zobaczysz to tutaj. Pewną informację dostaniesz w dniu nadania paczki - z numerem przesyłki.`}
             </p>
           </div>
         ) : null}
@@ -222,18 +232,19 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
           <a href="#zmiany">Zmiana</a>
           <a href="#reklamacja">Reklamacja</a>
           <a href="#moje-zamowienia">Moje zamówienia</a>
-          <a href="#rabaty">Rabaty</a>
+          {data.discounts.length ? <a href="#rabaty">Rabaty</a> : null}
         </nav>
       </div>
 
       <Section id="zamowienie" title="Co zamówiono" aside={<span className="op-count">{order.items.reduce((s, it) => s + it.qty, 0)} szt.</span>}>
+        {order.itemsNote ? <p className="op-muted">{order.itemsNote}</p> : null}
         <ul className="op-items">
           {order.items.map((it, i) => (
             <li key={i} className="op-item">
               <div className="op-item-top">
                 <strong>{it.name}</strong>
                 <span className="op-qty">{it.qty} szt.</span>
-                <b>{zl(it.price)}</b>
+                {it.price !== null ? <b>{zl(it.price)}</b> : null}
               </div>
               <dl>
                 {it.params.map(([l, v]) => (
@@ -247,22 +258,26 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
           ))}
         </ul>
         <dl className="op-sum">
-          <div>
-            <dt>Wartość produktów</dt>
-            <dd>{zl(order.subtotal)}</dd>
-          </div>
+          {order.subtotal !== null ? (
+            <div>
+              <dt>Wartość produktów</dt>
+              <dd>{zl(order.subtotal)}</dd>
+            </div>
+          ) : null}
           {order.discounts.map(([l, v]) => (
             <div key={l} className="is-saving">
               <dt>{l}</dt>
               <dd>-{zl(v)}</dd>
             </div>
           ))}
-          <div>
-            <dt>{order.delivery.method}</dt>
-            <dd>{order.delivery.fee > 0 ? zl(order.delivery.fee) : "gratis"}</dd>
-          </div>
+          {order.delivery.fee !== null ? (
+            <div>
+              <dt>{order.delivery.method}</dt>
+              <dd>{order.delivery.fee > 0 ? zl(order.delivery.fee) : "gratis"}</dd>
+            </div>
+          ) : null}
           <div className="is-total">
-            <dt>Razem</dt>
+            <dt>{order.totalLabel || "Razem"}</dt>
             <dd>{zl(order.total)}</dd>
           </div>
         </dl>
@@ -324,6 +339,9 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
               <em>{order.status}</em>
             </div>
           </li>
+          {!data.orders.length ? (
+            <li className="op-orders-empty">To Twoje pierwsze zamówienie u nas - kolejne pojawią się tutaj.</li>
+          ) : null}
           {data.orders.map((o) => (
             <li key={o.number} className={o.done ? "is-done" : ""}>
               <div>
@@ -339,6 +357,7 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
         </ul>
       </Section>
 
+      {data.discounts.length ? (
       <Section id="rabaty" title="Twoje rabaty">
         <ul className="op-discounts">
           {data.discounts.map((d) => (
@@ -372,6 +391,7 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
           Zamów kolejne osłony
         </Link>
       </Section>
+      ) : null}
 
       <section className="op-contact">
         <strong>Masz pytanie?</strong>
