@@ -26,7 +26,7 @@ export default function ChatBubble() {
   // /plisy też (audyt 2026-10-01): pływający przycisk i dymek "Masz pytania?"
   // zasłaniały tam nagłówki kroków konfiguratora, a czat jest w nagłówku.
   const isProductPage = pathname === "/" || pathname === "/moskitiery-ramkowe" || pathname === "/plisy";
-  const isCartPage = pathname === "/koszyk";
+  const isCartPage = pathname === "/koszyk" || pathname.startsWith("/panel-zamowienia");
   const [teaserVisible, setTeaserVisible] = useState(false);
   const [entered, setEntered] = useState(false);
 

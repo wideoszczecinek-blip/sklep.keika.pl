@@ -5,9 +5,9 @@
 // reklamację itp. Kolejne zamówienia też widziałby w tym panelu – poprzednie też – swoje rabaty. Tam też
 // żeby widział o PRZEWIDYWANYM terminie – ale żeby jednoznacznie nie brzmiał jak deklaracja.”
 //
-// WERSJA TESTOWA: dane przykładowe (app/panel-zamowienia/przyklad), formularze nic nie wysyłają.
-// Po akceptacji: dane z CRM po tokenie z maila (ten sam access_token co /zamowienie/[kod]),
-// zmiany -> notatka + zadanie dla biura do weryfikacji, reklamacje -> moduł order_claims.
+// LIVE od 12.11.2026: app/panel-zamowienia/[ref] - dane z CRM (shop-public/order_panel.php, core/lib/order_panel.php)
+// po indywidualnym tokenie z linku; zmiany -> powiadomienie biura + mail do weryfikacji, reklamacje -> moduł
+// order_claims. Strony przyklad / przyklad-lokalne: dane przykładowe, bez `submit` formularze nic nie wysyłają.
 import "./panel.css";
 import Link from "next/link";
 import { useState } from "react";
@@ -33,12 +33,18 @@ export type PanelOrder = {
   discounts: [string, number][];
   /** fee = null: bez wiersza dostawy w podsumowaniu (odbiór osobisty, montaż) */
   delivery: { method: string; name: string; address: string; phone: string; fee: number | null };
-  payment: { method: string; state: string };
+  payment: { method: string; state: string; payUrl?: string };
   total: number;
   totalLabel?: string;
+  /** dopłaty (ekspres, przesyłka dłużycowa, pobranie) - zwykłe wiersze podsumowania */
+  extras?: [string, number][];
   documents: { label: string; note: string }[];
-  shipment: { carrier: string; number: string } | null;
+  shipment: { carrier: string; number: string; link?: string } | null;
   changesOpen: boolean;
+  canClaim?: boolean;
+  cancelled?: boolean;
+  claims?: { number: string; status_label: string; date: string }[];
+  requests?: { kind: string; topic: string; item: string; message: string; date: string }[];
   /** odbiór osobisty - zamiast numeru przesyłki informacja o odbiorze */
   pickup?: boolean;
   /** tekst przy reklamacji (zamówienia lokalne: bez „30 dni na zwrot” ze sklepu) */
@@ -63,17 +69,63 @@ function Section({ id, title, children, aside }: { id: string; title: string; ch
   );
 }
 
-function TestNote({ text }: { text: string }) {
-  return <p className="op-test-sent">✓ {text} <span>(wersja testowa: nic nie zostało wysłane)</span></p>;
+export type PanelSubmit = (p: { kind: "change" | "claim"; topic: string; item: string; message: string }) => Promise<{ ok: boolean; message: string }>;
+
+function SentNote({ text, test }: { text: string; test?: boolean }) {
+  return (
+    <p className="op-test-sent">
+      ✓ {text} {test ? <span>(wersja testowa: nic nie zostało wysłane)</span> : null}
+    </p>
+  );
 }
 
-function ChangeForm({ order }: { order: PanelOrder }) {
+const itemLabel = (it: PanelItem) => `${it.name}${it.params[0]?.[1] ? ` - ${it.params[0][1]}` : ""}`;
+
+function RequestsList({ order, kind }: { order: PanelOrder; kind: "change" | "claim" }) {
+  const reqs = (order.requests || []).filter((r) => r.kind === kind);
+  const claims = kind === "claim" ? order.claims || [] : [];
+  if (!reqs.length && !claims.length) return null;
+  return (
+    <ul className="op-requests">
+      {claims.map((c) => (
+        <li key={c.number}>
+          <strong>Reklamacja {c.number}</strong> <em>{c.status_label}</em>
+          <small>{c.date}</small>
+        </li>
+      ))}
+      {kind === "change"
+        ? reqs.map((r, i) => (
+            <li key={i}>
+              <strong>{r.topic || "Zmiana"}</strong> <em>do sprawdzenia przez biuro</em>
+              <small>
+                {r.date}
+                {r.item ? ` · ${r.item}` : ""}
+              </small>
+              <span>{r.message}</span>
+            </li>
+          ))
+        : null}
+    </ul>
+  );
+}
+
+function ChangeForm({ order, submit, test }: { order: PanelOrder; submit?: PanelSubmit; test?: boolean }) {
   const [open, setOpen] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [topic, setTopic] = useState("Wymiar");
+  const [item, setItem] = useState(order.items[0] ? itemLabel(order.items[0]) : "Całe zamówienie");
+  const [message, setMessage] = useState("");
   if (!order.changesOpen) {
-    return <p className="op-muted">Zamówienie jest już w drodze, więc zmian nie da się wprowadzić. Zadzwoń, jeśli coś jest nie tak.</p>;
+    return (
+      <>
+        <p className="op-muted">Na tym etapie zmian nie wprowadzimy już przez panel. Zadzwoń, jeśli coś jest nie tak - pomożemy.</p>
+        <RequestsList order={order} kind="change" />
+      </>
+    );
   }
-  if (sent) return <TestNote text="Zgłoszenie zmiany przyjęte. Sprawdzimy je i potwierdzimy telefonicznie albo mailem." />;
+  if (sent) return <SentNote text={sent} test={test} />;
   return (
     <>
       <p className="op-muted">
@@ -87,40 +139,48 @@ function ChangeForm({ order }: { order: PanelOrder }) {
       ) : (
         <form
           className="op-form"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            setSent(true);
+            if (!submit) {
+              setSent("Zgłoszenie zmiany przyjęte. Sprawdzimy je i potwierdzimy telefonicznie albo mailem.");
+              return;
+            }
+            setBusy(true);
+            setError("");
+            const res = await submit({ kind: "change", topic, item, message }).catch(() => ({ ok: false, message: "Nie udało się wysłać - zadzwoń do nas." }));
+            setBusy(false);
+            if (res.ok) setSent(res.message);
+            else setError(res.message);
           }}
         >
           <label>
             Czego dotyczy zmiana
-            <select defaultValue="wymiar">
-              <option value="wymiar">Wymiar</option>
-              <option value="kolor">Kolor / tkanina / siatka</option>
-              <option value="ilosc">Ilość</option>
-              <option value="adres">Adres lub sposób dostawy</option>
-              <option value="faktura">Dane do faktury</option>
-              <option value="inne">Coś innego</option>
+            <select value={topic} onChange={(e) => setTopic(e.target.value)}>
+              <option>Wymiar</option>
+              <option>Kolor / tkanina / siatka</option>
+              <option>Ilość</option>
+              <option>Adres lub sposób dostawy</option>
+              <option>Dane do faktury</option>
+              <option>Coś innego</option>
             </select>
           </label>
           <label>
             Pozycja
-            <select defaultValue="0">
+            <select value={item} onChange={(e) => setItem(e.target.value)}>
               {order.items.map((it, i) => (
-                <option key={i} value={i}>
-                  {it.name} - {it.params[0]?.[1] || ""}
-                </option>
+                <option key={i}>{itemLabel(it)}</option>
               ))}
-              <option value="all">Całe zamówienie</option>
+              <option>Całe zamówienie</option>
             </select>
           </label>
           <label>
             Co zmienić
-            <textarea rows={3} placeholder="Np. szerokość 640 mm zamiast 620 mm" required />
+            <textarea rows={3} placeholder="Np. szerokość 640 mm zamiast 620 mm" required value={message} onChange={(e) => setMessage(e.target.value)} />
           </label>
+          {error ? <p className="op-error">{error}</p> : null}
           <div className="op-form-actions">
-            <button type="submit" className="op-btn">
-              Wyślij do sprawdzenia
+            <button type="submit" className="op-btn" disabled={busy}>
+              {busy ? "Wysyłam…" : "Wyślij do sprawdzenia"}
             </button>
             <button type="button" className="op-btn op-btn--ghost" onClick={() => setOpen(false)}>
               Anuluj
@@ -128,51 +188,78 @@ function ChangeForm({ order }: { order: PanelOrder }) {
           </div>
         </form>
       )}
+      <RequestsList order={order} kind="change" />
     </>
   );
 }
 
-function ClaimForm({ order }: { order: PanelOrder }) {
+function ClaimForm({ order, submit, test }: { order: PanelOrder; submit?: PanelSubmit; test?: boolean }) {
   const [open, setOpen] = useState(false);
-  const [sent, setSent] = useState(false);
-  if (sent) return <TestNote text="Reklamacja przyjęta. Dostaniesz maila z numerem zgłoszenia, a status zobaczysz tutaj." />;
+  const [sent, setSent] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [picked, setPicked] = useState<number[]>(order.items.length ? [0] : []);
+  const [message, setMessage] = useState("");
+  if (sent) return <SentNote text={sent} test={test} />;
+  const canClaim = order.canClaim !== false;
   return (
     <>
       <p className="op-muted">
         {order.claimNote ||
-          "Coś przyszło uszkodzone albo nie pasuje? Dodaj zdjęcia i krótki opis. Masz 5 lat gwarancji i 30 dni na zwrot. Uszkodzoną paczkę najlepiej sfotografować przed rozpakowaniem."}
+          "Coś przyszło uszkodzone albo nie pasuje? Opisz krótko, co się stało. Masz 5 lat gwarancji i 30 dni na zwrot. Uszkodzoną paczkę najlepiej sfotografować przed rozpakowaniem."}
       </p>
-      {!open ? (
+      {!canClaim ? (
+        <p className="op-muted">Zamówienie jest jeszcze w weryfikacji - reklamację przyjmiemy telefonicznie.</p>
+      ) : !open ? (
         <button type="button" className="op-btn op-btn--ghost" onClick={() => setOpen(true)}>
           Zgłoś reklamację
         </button>
       ) : (
         <form
           className="op-form"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            setSent(true);
+            if (!submit) {
+              setSent("Reklamacja przyjęta. Dostaniesz maila z numerem zgłoszenia, a status zobaczysz tutaj.");
+              return;
+            }
+            setBusy(true);
+            setError("");
+            const item = picked.map((i) => itemLabel(order.items[i])).join("; ");
+            const res = await submit({ kind: "claim", topic: "Reklamacja", item, message }).catch(() => ({ ok: false, message: "Nie udało się wysłać - zadzwoń do nas." }));
+            setBusy(false);
+            if (res.ok) setSent(res.message);
+            else setError(res.message);
           }}
         >
           <fieldset>
             <legend>Których pozycji dotyczy</legend>
             {order.items.map((it, i) => (
               <label key={i} className="op-check">
-                <input type="checkbox" defaultChecked={i === 0} /> {it.name}, {it.params[0]?.[1] || ""}
+                <input
+                  type="checkbox"
+                  checked={picked.includes(i)}
+                  onChange={(e) => setPicked((cur) => (e.target.checked ? [...cur, i] : cur.filter((x) => x !== i)))}
+                />{" "}
+                {itemLabel(it)}
               </label>
             ))}
           </fieldset>
           <label>
             Co się stało
-            <textarea rows={3} placeholder="Np. pęknięty narożnik ramy, siatka odchodzi od ramki" required />
+            <textarea
+              rows={3}
+              placeholder="Np. pęknięty narożnik ramy, siatka odchodzi od ramki"
+              required
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
           </label>
-          <label>
-            Zdjęcia (do 6)
-            <input type="file" accept="image/*" multiple />
-          </label>
+          <p className="op-muted op-small">Zdjęcia dołączysz, odpisując na maila z potwierdzeniem reklamacji.</p>
+          {error ? <p className="op-error">{error}</p> : null}
           <div className="op-form-actions">
-            <button type="submit" className="op-btn">
-              Wyślij reklamację
+            <button type="submit" className="op-btn" disabled={busy}>
+              {busy ? "Wysyłam…" : "Wyślij reklamację"}
             </button>
             <button type="button" className="op-btn op-btn--ghost" onClick={() => setOpen(false)}>
               Anuluj
@@ -180,11 +267,12 @@ function ClaimForm({ order }: { order: PanelOrder }) {
           </div>
         </form>
       )}
+      <RequestsList order={order} kind="claim" />
     </>
   );
 }
 
-export default function OrderPanel({ data, test }: { data: PanelData; test?: boolean }) {
+export default function OrderPanel({ data, test, submit }: { data: PanelData; test?: boolean; submit?: PanelSubmit }) {
   const { order } = data;
   const stages = order.stages ?? STAGES;
   const [copied, setCopied] = useState("");
@@ -274,6 +362,12 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
               <dd>-{zl(v)}</dd>
             </div>
           ))}
+          {(order.extras || []).map(([l, v]) => (
+            <div key={l}>
+              <dt>{l}</dt>
+              <dd>{zl(v)}</dd>
+            </div>
+          ))}
           {order.delivery.fee !== null ? (
             <div>
               <dt>{order.delivery.method}</dt>
@@ -301,6 +395,14 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
           {order.shipment ? (
             <p className="op-lines">
               Przesyłka {order.shipment.carrier}: <strong>{order.shipment.number}</strong>
+              {order.shipment.link ? (
+                <>
+                  <br />
+                  <a href={order.shipment.link} target="_blank" rel="noopener noreferrer">
+                    Śledź przesyłkę
+                  </a>
+                </>
+              ) : null}
             </p>
           ) : order.pickup ? (
             <p className="op-muted">Gdy zamówienie będzie gotowe do odbioru, zadzwonimy albo napiszemy SMS.</p>
@@ -314,6 +416,11 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
             <br />
             {order.payment.state}
           </p>
+          {order.payment.payUrl ? (
+            <a className="op-btn op-pay" href={order.payment.payUrl}>
+              Zapłać teraz
+            </a>
+          ) : null}
           <ul className="op-docs">
             {order.documents.map((d) => (
               <li key={d.label}>
@@ -325,11 +432,11 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
       </div>
 
       <Section id="zmiany" title="Chcesz coś zmienić?">
-        <ChangeForm order={order} />
+        <ChangeForm order={order} submit={submit} test={test} />
       </Section>
 
       <Section id="reklamacja" title="Reklamacja lub zwrot">
-        <ClaimForm order={order} />
+        <ClaimForm order={order} submit={submit} test={test} />
       </Section>
 
       <Section id="moje-zamowienia" title="Moje zamówienia">

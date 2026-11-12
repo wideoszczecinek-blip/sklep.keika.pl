@@ -32,7 +32,7 @@ import "./welcome-offer.css";
 // Koszyk od 11.11 wieczorem już tak (właściciel: „cały ruch ma zobaczyć rabat”) - po uruchomieniu rabatu koszyk się odświeża.
 const QUIET_PATHS = [/^\/zamowienie/, /^\/wycena/, /^\/p\//, /^\/legal/, /^\/regulamin/, /^\/panel/];
 /** Strony, na których nie ma nawet plakietki. */
-const HIDDEN_PATHS = [/^\/zamowienie/, /^\/wycena/, /^\/p\//];
+const HIDDEN_PATHS = [/^\/zamowienie/, /^\/wycena/, /^\/p\//, /^\/panel-zamowienia/];
 /** Po zamknięciu bez rabatu panel nie wraca sam przez tyle czasu (plakietka zostaje). */
 const DISMISS_QUIET_MS = 12 * 60 * 60 * 1000;
 /** 1 s (było 2,5 s): 11.11 ok. 50 z 290 gości wychodziło przed pokazaniem panelu. */

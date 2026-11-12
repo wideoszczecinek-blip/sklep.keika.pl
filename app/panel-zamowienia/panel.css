@@ -374,6 +374,52 @@
   border-radius: 12px;
   font-size: 0.9rem;
 }
+.op-error {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: #fdecec;
+  color: #b42318;
+  font-size: 0.9rem;
+}
+.op-small {
+  font-size: 0.82rem;
+  margin: 0;
+}
+.op-pay {
+  margin-bottom: 0.7rem;
+  background: var(--op-orange);
+  border-color: var(--op-orange);
+}
+.op-loading {
+  text-align: center;
+  color: var(--op-muted);
+}
+.op-requests {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.op-requests li {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: var(--op-soft);
+  font-size: 0.88rem;
+}
+.op-requests em {
+  font-style: normal;
+  color: #c2410c;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.op-requests small,
+.op-requests span {
+  color: var(--op-muted);
+}
 .op-orders li.op-orders-empty {
   justify-content: center;
   color: var(--op-muted);
