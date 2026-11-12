@@ -4747,7 +4747,10 @@ export default function CartPage() {
                 </span>
                 <span className="cart-keep-copy">
                   <strong>Nie decydujesz dzisiaj?</strong>
-                  {cartEmailArm === "show" ? (
+                  {/* Mrożenie ceny tylko przy promocji z kodem (SEZON20). W promocji
+                      z terminem (−25 % BW25, 24 h) nie obiecujemy go wcale -
+                      właściciel 12.11.2026; zostaje zwykły link do koszyka. */}
+                  {cartEmailArm === "show" && SEASONAL_PROMO_ENABLED ? (
                     <span>
                       Wyślemy Ci ten koszyk na e-mail i <strong>zamrozimy dzisiejszą cenę na 7 dni</strong>.
                     </span>
@@ -4775,7 +4778,7 @@ export default function CartPage() {
                     openCartShareModal();
                   }}
                 >
-                  {cartEmailArm === "show" ? "Wyślij mi koszyk na e-mail" : "Wyślij mi link do koszyka"}
+                  {cartEmailArm === "show" && SEASONAL_PROMO_ENABLED ? "Wyślij mi koszyk na e-mail" : "Wyślij mi link do koszyka"}
                 </button>
               </section>
             ) : null}

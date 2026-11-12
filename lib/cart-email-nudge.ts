@@ -94,6 +94,11 @@ export function useCartEmailNudge(options: {
    * the once-per-session / already-shown guards don't apply (only the arm
    * and "already saved" do). */
   const fireManual = useCallback(() => {
+    // Właściciel 12.11.2026: w promocji z terminem (−25 % BW25, 24 h na zakup)
+    // ceny nie mrozimy. Klik omijał wyłącznik z cartEmailOfferEligible() i
+    // otwierał „Wyślij koszyk i zamroź cenę” mimo braku promocji z kodem -
+    // teraz bez SEZON20 okna mrożenia nie ma; koszyk wysyła wtedy sam link.
+    if (!SEASONAL_PROMO_ENABLED) return false;
     if (getCartEmailArm() !== "show" || hasCartEmailSaved()) return false;
     firedRef.current = true;
     markShown();
