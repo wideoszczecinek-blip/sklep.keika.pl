@@ -39,6 +39,10 @@ export type PanelOrder = {
   documents: { label: string; note: string }[];
   shipment: { carrier: string; number: string } | null;
   changesOpen: boolean;
+  /** odbiór osobisty - zamiast numeru przesyłki informacja o odbiorze */
+  pickup?: boolean;
+  /** tekst przy reklamacji (zamówienia lokalne: bez „30 dni na zwrot” ze sklepu) */
+  claimNote?: string;
 };
 export type PanelPastOrder = { number: string; date: string; summary: string; total: number; status: string; done: boolean };
 export type PanelDiscount = { title: string; code: string; value: string; until: string; note: string };
@@ -135,8 +139,8 @@ function ClaimForm({ order }: { order: PanelOrder }) {
   return (
     <>
       <p className="op-muted">
-        Coś przyszło uszkodzone albo nie pasuje? Dodaj zdjęcia i krótki opis. Masz 5 lat gwarancji i 30 dni na zwrot. Uszkodzoną paczkę najlepiej
-        sfotografować przed rozpakowaniem.
+        {order.claimNote ||
+          "Coś przyszło uszkodzone albo nie pasuje? Dodaj zdjęcia i krótki opis. Masz 5 lat gwarancji i 30 dni na zwrot. Uszkodzoną paczkę najlepiej sfotografować przed rozpakowaniem."}
       </p>
       {!open ? (
         <button type="button" className="op-btn op-btn--ghost" onClick={() => setOpen(true)}>
@@ -298,6 +302,8 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
             <p className="op-lines">
               Przesyłka {order.shipment.carrier}: <strong>{order.shipment.number}</strong>
             </p>
+          ) : order.pickup ? (
+            <p className="op-muted">Gdy zamówienie będzie gotowe do odbioru, zadzwonimy albo napiszemy SMS.</p>
           ) : (
             <p className="op-muted">Numer przesyłki pojawi się tutaj i w mailu, gdy nadamy paczkę.</p>
           )}
@@ -332,7 +338,11 @@ export default function OrderPanel({ data, test }: { data: PanelData; test?: boo
           <li className="is-current">
             <div>
               <strong>{order.number}</strong> <small>{order.placedAt}</small>
-              <span>{order.items.map((it) => `${it.name} × ${it.qty}`).join(", ")}</span>
+              <span>
+                {Object.entries(order.items.reduce<Record<string, number>>((acc, it) => ({ ...acc, [it.name]: (acc[it.name] || 0) + it.qty }), {}))
+                  .map(([name, qty]) => `${name} × ${qty}`)
+                  .join(", ")}
+              </span>
             </div>
             <div className="op-orders-right">
               <b>{zl(order.total)}</b>

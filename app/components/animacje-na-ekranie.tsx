@@ -16,7 +16,7 @@ import { usePathname } from "next/navigation";
  * Przy „ogranicz ruch” w systemie nie robimy nic.
  */
 
-const BEZ_WJAZDU = /^\/(koszyk|zamowienie|moje-zamowienia|p\/|wizualizator|wizyta|regulamin|legal)/;
+const BEZ_WJAZDU = /^\/(koszyk|zamowienie|moje-zamowienia|panel-zamowienia|p\/|wizualizator|wizyta|regulamin|legal)/;
 // czego nie dzielimy ani nie animujemy przy wjeździe
 const POMIN = ".hero-product-config-panel, header, nav, footer, dialog, [role='dialog'], [aria-modal='true'], form";
 // bloki z elementami przypiętymi w środku (pływające przyciski, lightboxy) – przesunięcie zepsułoby ich położenie

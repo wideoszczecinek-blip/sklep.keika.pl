@@ -87,6 +87,8 @@ const PRZYKLAD: PanelData = {
     ],
     shipment: null,
     changesOpen: true,
+    pickup: true,
+    claimNote: "Coś jest nie tak po odbiorze albo po montażu? Dodaj zdjęcia i krótki opis - oddzwonimy i umówimy poprawkę. Na wszystko masz 5 lat gwarancji.",
   },
   orders: [],
   discounts: [],
