@@ -468,6 +468,11 @@
   margin-top: 0.4rem;
 }
 @media (max-width: 420px) {
+  /* 5 kroków na wąskim ekranie: „Weryfikacja” i „Produkcja” stykały się */
+  .op-steps li {
+    font-size: 0.66rem;
+    letter-spacing: -0.01em;
+  }
   .op-discounts li {
     flex-wrap: wrap;
   }
