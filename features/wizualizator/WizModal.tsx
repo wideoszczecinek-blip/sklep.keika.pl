@@ -245,7 +245,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
   // e-mail: jedno pytanie, gdy wizualizacja jest gotowa (właściciel 1.11); „nie chcę” zapamiętane w sesji
   const [emailOkno, setEmailOkno] = useState(false);
   // „Nie mam teraz miarki” (7.11): klient wybiera, kiedy wrócić do pomiaru; bez e-maila najpierw go podaje
-  const [przyp, setPrzyp] = useState<{ kiedy: string; trwa: boolean; gotowe: string } | null>(null);
+  // 20.11 (właściciel: „Przypomnij mi jutro o godzinie – krótko uświadomić klienta, który nie ma teraz jak zmierzyć – niech
+  // wybierze SMS lub e-mail”): kiedy = "dzis|19" / "jutro|18", kanał SMS (sam numer, bez e-maila) albo e-mail (jak dotąd).
+  const [przyp, setPrzyp] = useState<{ kiedy: string; kanal: "sms" | "email"; telefon: string; trwa: boolean; gotowe: string } | null>(null);
   const [emailZgoda, setEmailZgoda] = useState(false);
   const [lead, setLead] = useState({ email: "", wyslane: false, blad: "" });
   // zdjęcie AI (E3) dla bieżącego układu: podgląd WebGL na żywo, po chwili spokoju fotorealistyczne zdjęcie z CRM
@@ -460,12 +462,17 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
 
   const zapiszPrzypomnienie = async () => {
     if (!token || !przyp?.kiedy) return;
-    if (!lead.wyslane && !emailZgoda) {
+    const sms = przyp.kanal === "sms";
+    if (sms && przyp.telefon.replace(/\D/g, "").replace(/^(0048|48)(?=\d{9}$)/, "").length !== 9) {
+      setLead((l) => ({ ...l, blad: "Podaj numer komórki (9 cyfr)." }));
+      return;
+    }
+    if (!sms && !lead.wyslane && !emailZgoda) {
       setLead((l) => ({ ...l, blad: "Zaznacz akceptację regulaminu wizualizatora." }));
       return;
     }
     setPrzyp((p) => (p ? { ...p, trwa: true } : p));
-    if (!lead.wyslane) {
+    if (!sms && !lead.wyslane) {
       const r = await wizLead(token, { email: lead.email.trim(), zgoda_kontakt: true, zgoda_marketing: true, moment: "bez_miarki" });
       if (!r.ok) {
         setLead((l) => ({ ...l, blad: r.error || "Nie udało się zapisać." }));
@@ -475,7 +482,8 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
       setLead((l) => ({ ...l, wyslane: true, blad: "" }));
       try { window.sessionStorage.setItem("keika_wiz_email", "1"); } catch { /* sesja */ }
     }
-    const r = await wizPrzypomnij(token, przyp.kiedy);
+    const [dzien, godzina] = przyp.kiedy.split("|");
+    const r = await wizPrzypomnij(token, { kanal: przyp.kanal, dzien: dzien === "dzis" ? "dzis" : "jutro", godzina: Number(godzina), telefon: sms ? przyp.telefon : undefined });
     if (!r.ok) {
       setLead((l) => ({ ...l, blad: r.error || "Nie udało się zapisać." }));
       setPrzyp((p) => (p ? { ...p, trwa: false } : p));
@@ -1806,7 +1814,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                           montaz={montaz}
                           pokoj={pokojTeraz}
                           wizToken={token || ""}
-                          onBezMiarki={() => { setPrzyp({ kiedy: "", trwa: false, gotowe: "" }); wizEvent("wiz_produkt", token, { widok: "bez_miarki" }); }}
+                          onBezMiarki={() => { setPrzyp({ kiedy: "", kanal: lead.wyslane ? "email" : "sms", telefon: "", trwa: false, gotowe: "" }); wizEvent("wiz_produkt", token, { widok: "bez_miarki" }); }}
                           onDodano={(d) => {
                             writeSesja(readSesja().map((z) => (z.token === token ? { ...z, wKoszyku: true } : z)));
                             setZdjecia(readSesja());
@@ -1968,20 +1976,36 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   {przyp.gotowe ? (
                     <>
                       <span className={s.dodanoIco} aria-hidden="true">✓</span>
-                      <b>Przypomnimy Ci {przyp.gotowe}</b>
-                      <small>Dostaniesz e-mail ze zdjęciem Twojego okna i krótką instrukcją pomiaru. Twoje ustawienia są zapisane.</small>
+                      <b>Przypomnimy Ci {przyp.gotowe} {przyp.kanal === "sms" ? "SMS-em" : "e-mailem"}</b>
+                      <small>{przyp.kanal === "sms"
+                        ? "Dostaniesz SMS z linkiem do tej wizualizacji. Twoje ustawienia są zapisane – wpiszesz tylko wymiary."
+                        : "Dostaniesz e-mail ze zdjęciem Twojego okna i krótką instrukcją pomiaru. Twoje ustawienia są zapisane."}</small>
                       <button type="button" className={s.ctaBig} onClick={() => setPrzyp(null)}>Dobrze</button>
                     </>
                   ) : (
                     <>
-                      <b>Kiedy przypomnieć o pomiarze?</b>
-                      <small>Wyślemy link do tej wizualizacji ze zdjęciem Twojego okna i instrukcją pomiaru. Tkaniny i ustawienia zostają zapisane.</small>
-                      <div className={s.przypKiedy}>
-                        {[...(new Date().getHours() < 18 ? [["dzis_wieczor", "Dziś wieczorem"]] : []), ["jutro_rano", "Jutro rano"], ["jutro_wieczor", "Jutro wieczorem"]].map(([k, t]) => (
+                      <b>Nie masz teraz miarki? Przypomnimy Ci</b>
+                      <small>Pomiar zajmuje 2 minuty – wystarczy miarka. Wizualizacja i wybrane kolory zostają zapisane: po przypomnieniu wpiszesz tylko wymiary i od razu zobaczysz cenę.</small>
+                      <span className={s.przypEtykieta}>Kiedy?</span>
+                      <div className={`${s.przypKiedy} ${s.przypGodz}`}>
+                        {[...(new Date().getHours() < 18 || (new Date().getHours() === 18 && new Date().getMinutes() < 30) ? [["dzis|19", "Dziś 19:00"]] : []),
+                          ...[8, 10, 12, 16, 18, 20].map((h) => [`jutro|${h}`, `Jutro ${h}:00`])].map(([k, t]) => (
                           <button key={k} type="button" className={przyp.kiedy === k ? s.on : ""} onClick={() => setPrzyp((p) => (p ? { ...p, kiedy: k } : p))}>{t}</button>
                         ))}
                       </div>
-                      {!lead.wyslane ? (
+                      <span className={s.przypEtykieta}>Jak przypomnieć?</span>
+                      <div className={`${s.przypKiedy} ${s.przypKanal}`}>
+                        {([["sms", "SMS"], ["email", "E-mail"]] as const).map(([k, t]) => (
+                          <button key={k} type="button" className={przyp.kanal === k ? s.on : ""} onClick={() => { setPrzyp((p) => (p ? { ...p, kanal: k } : p)); setLead((l) => ({ ...l, blad: "" })); }}>{t}</button>
+                        ))}
+                      </div>
+                      {przyp.kanal === "sms" ? (
+                        <>
+                          <input type="tel" inputMode="tel" autoComplete="tel-national" placeholder="Numer komórki, np. 600 100 200" value={przyp.telefon}
+                            onChange={(e) => { const v = e.target.value; setPrzyp((p) => (p ? { ...p, telefon: v } : p)); setLead((l) => ({ ...l, blad: "" })); }} />
+                          <small className={s.przypNota}>Wyślemy jednego SMS-a z linkiem do tej wizualizacji. Numer służy tylko do tego przypomnienia.</small>
+                        </>
+                      ) : !lead.wyslane ? (
                         <>
                           <input type="email" inputMode="email" autoComplete="email" placeholder="Twój adres e-mail" value={lead.email}
                             onChange={(e) => setLead((l) => ({ ...l, email: e.target.value, blad: "" }))} />
@@ -1992,7 +2016,9 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                         </>
                       ) : null}
                       {lead.blad ? <p className={s.error}>{lead.blad}</p> : null}
-                      <button type="button" className={s.ctaBig} disabled={!przyp.kiedy || przyp.trwa || (!lead.wyslane && !lead.email.trim())} onClick={() => void zapiszPrzypomnienie()}>Przypomnij mi</button>
+                      <button type="button" className={s.ctaBig}
+                        disabled={!przyp.kiedy || przyp.trwa || (przyp.kanal === "sms" ? !przyp.telefon.trim() : !lead.wyslane && !lead.email.trim())}
+                        onClick={() => void zapiszPrzypomnienie()}>{przyp.trwa ? "Zapisuję…" : "Przypomnij mi"}</button>
                       <button type="button" className={s.emailPomin} onClick={() => setPrzyp(null)}>Wróć do wyceny</button>
                     </>
                   )}

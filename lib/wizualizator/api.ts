@@ -192,11 +192,12 @@ export async function wizLead(token: string, dane: { email?: string; telefon?: s
   return ((await r.json().catch(() => null)) as { ok: boolean; error?: string }) || { ok: false };
 }
 
-/** „Nie mam teraz miarki”: mail z pomiarem w wybranym czasie. Zwraca czytelny termin („dziś wieczorem”). */
-export async function wizPrzypomnij(token: string, kiedy: string): Promise<{ ok: boolean; error?: string; kiedy?: string }> {
-  const r = await fetch(`${WIZ_API}/przypomnij.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, kiedy }) }).catch(() => null);
+/** „Nie mam teraz miarki” (20.11: dziś/jutro o godzinie, SMS albo e-mail): przypomnienie z linkiem do wizualizacji.
+ * Zwraca czytelny termin („jutro o 18:00”). SMS: numer tylko do tego przypomnienia; e-mail: adres zapisany wcześniej (wizLead). */
+export async function wizPrzypomnij(token: string, dane: { kanal: "sms" | "email"; dzien: "dzis" | "jutro"; godzina: number; telefon?: string }): Promise<{ ok: boolean; error?: string; kiedy?: string; kanal?: string }> {
+  const r = await fetch(`${WIZ_API}/przypomnij.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, ...dane }) }).catch(() => null);
   if (!r) return { ok: false, error: "Brak połączenia" };
-  return ((await r.json().catch(() => null)) as { ok: boolean; error?: string; kiedy?: string }) || { ok: false };
+  return ((await r.json().catch(() => null)) as { ok: boolean; error?: string; kiedy?: string; kanal?: string }) || { ok: false };
 }
 
 export async function wizStatus(token: string): Promise<WizStatus> {

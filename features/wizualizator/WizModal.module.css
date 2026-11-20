@@ -1125,6 +1125,12 @@ small.pokojNazwa { color: #94a3b8; cursor: default; }
 .przypKiedy { display: grid; gap: 8px; width: 100%; }
 .przypKiedy button { border: 1.5px solid #cbd5e1; border-radius: 12px; background: #fff; padding: 11px 12px; font-size: 15px; font-weight: 700; color: #12212b; cursor: pointer; }
 .przypKiedy button.on { border-color: #0f9f8f; background: #f0fdfa; color: #0f766e; }
+/* 20.11: „dziś / jutro o godzinie” w 3 kolumnach, kanał SMS / e-mail w 2 */
+.przypGodz { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.przypGodz button { padding: 10px 6px; font-size: 14px; }
+.przypKanal { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.przypEtykieta { align-self: flex-start; font-size: 13px; font-weight: 700; color: #334155; margin-top: 2px; }
+.przypNota { font-size: 12.5px; color: #64748b; }
 /* wybór osłony (właściciel 7.11): na starcie i na wyniku */
 .chipWybor { border: 1.5px solid #cbd5e1; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 600; background: #fff; color: #12212b; cursor: pointer; }
 .chipWybor:hover { border-color: #0f9f8f; }
