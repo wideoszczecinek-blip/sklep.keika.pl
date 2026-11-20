@@ -24987,9 +24987,12 @@ html body button.pl-quick-tk.is-active { border-color: #d94d00; background: #fff
 .pl-quick-comparison-info summary::-webkit-details-marker { display:none; }
 .pl-quick-comparison-info p { position:absolute; z-index:5; right:0; top:1.5rem; width:min(270px,75vw); margin:0; padding:.75rem; background:#173b3b; color:#fff; border-radius:10px; box-shadow:0 8px 25px #102f3040; font-size:.8rem; }
 .pl-quick-comparison-note { margin:.6rem 0; color:#526474; font-size:.75rem; line-height:1.4; }
+/* 20.11.2026 (właściciel: „rekomendacje 1-6 wdróż”): od 3.11 pasek „Sprawdź cenę” znikał na telefonie, dopóki gość
+   nie kliknął w pasek ciasteczek - każdy nowy gość z reklamy nie miał przycisku ceny. Pasek ceny zostaje widoczny,
+   a pasek zgody stoi nad nim (jak nad zakładkami produktu i paskiem koszyka). */
 @media (max-width:760px) {
-  body:has(.consent-bar) .home-root.plisy-v2 .plv2-bar { visibility:hidden; pointer-events:none; }
   body:has(.home-root.plisy-v2) .consent-bar { bottom:calc(env(safe-area-inset-bottom, 0px) + .5rem); }
+  body:has(.home-root.plisy-v2 .plv2-bar.is-visible) .consent-bar { bottom:calc(env(safe-area-inset-bottom, 0px) + 4.6rem); }
 }
 .plv2-inspiration-note { position:absolute; z-index:2; right:.6rem; bottom:.5rem; padding:.2rem .45rem; border-radius:4px; color:#fff; background:#102c32b8; font-size:.62rem; }
 /* Pomiar i montaż są już w głównej sekcji nad opiniami; zachowaj instrukcję pielęgnacji. */

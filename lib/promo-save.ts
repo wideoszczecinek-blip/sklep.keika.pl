@@ -340,21 +340,13 @@ export function getCartEmailArm(): CartEmailArm {
  * końca i nie tknęli formularza, więc porównanie "widział / nie widział" jest
  * z góry nierówne. Dlatego połowa urządzeń (los, raz na urządzenie) banera
  * nie dostaje wcale, a koszyk zapisuje grupę zdarzeniem cart_keep_ab. */
-const CART_KEEP_ARM_KEY = "keika_cart_keep_arm";
-
 export type CartKeepArm = "banner" | "hidden";
 
+/* 20.11.2026 test zamknięty (właściciel: „rekomendacje 1-6 wdróż”): z banerem kupiło 33 ze 155 koszyków (21 %),
+ * bez banera 21 ze 148 (14 %) - audyt 8.11 i wieczory 10-20.11 razem. Baner dla wszystkich, w tym samym miejscu
+ * (na dole koszyka - nie wyżej, żeby zdecydowanym nie dawać furtki do wyjścia). Zapisana „hidden” nic już nie zmienia. */
 export function getCartKeepArm(): CartKeepArm {
-  if (typeof window === "undefined") return "banner";
-  try {
-    const stored = window.localStorage.getItem(CART_KEEP_ARM_KEY);
-    if (stored === "banner" || stored === "hidden") return stored;
-    const arm: CartKeepArm = Math.random() < 0.5 ? "banner" : "hidden";
-    window.localStorage.setItem(CART_KEEP_ARM_KEY, arm);
-    return arm;
-  } catch {
-    return "banner";
-  }
+  return "banner";
 }
 
 export function getTrackedPromoQuoteCode(): string {

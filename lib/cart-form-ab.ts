@@ -21,6 +21,8 @@ const ARM_KEY = "keika_cart_form_arm";
 const FORCED_KEY = "keika_cart_form_forced";
 const SHARE_KEY = "keika_cart_form_share";
 const DEFAULT_SHARE = 50;
+/** Test rozstrzygnięty 20.11.2026 - wszyscy po staremu, z wyborem dostawy (podgląd ?dane=od_razu dalej działa). */
+const TEST_CLOSED = true;
 
 function hashToPercent(text: string): number {
   let hash = 0x811c9dc5;
@@ -75,7 +77,9 @@ export function getCartFormArm(): { arm: CartFormArm; forced: boolean } {
     if (window.localStorage.getItem(FORCED_KEY) === "1" && (stored === "od_razu" || stored === "wybor")) {
       return { arm: stored, forced: true };
     }
-    return { arm: cartFormBucket() < readShare() ? "od_razu" : "wybor", forced: false };
+    // 20.11.2026 test zamknięty (właściciel: „rekomendacje 1-6 wdróż”): „dane od razu” 13 z 73 koszyków kupiło (17,8 %),
+    // stary układ 8 z 40 (20,0 %); dane zaczyna wpisywać tyle samo (36 % vs 35 %). Zostaje wybór dostawy przed danymi.
+    return { arm: TEST_CLOSED ? "wybor" : cartFormBucket() < readShare() ? "od_razu" : "wybor", forced: false };
   } catch {
     return { arm: "wybor", forced: false };
   }

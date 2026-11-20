@@ -23,6 +23,8 @@ const ARM_KEY = "keika_cart_eta_arm";
 const FORCED_KEY = "keika_cart_eta_forced";
 const SHARE_KEY = "keika_cart_eta_share";
 const DEFAULT_SHARE = 50;
+/** Test rozstrzygnięty 20.11.2026 - wszyscy bez banera (podgląd ?termin=baner dalej działa). */
+const TEST_CLOSED = true;
 
 function hashToPercent(text: string): number {
   let hash = 0x811c9dc5;
@@ -77,7 +79,9 @@ export function getCartEtaArm(): { arm: CartEtaArm; forced: boolean } {
     if (window.localStorage.getItem(FORCED_KEY) === "1" && (stored === "baner" || stored === "bez")) {
       return { arm: stored, forced: true };
     }
-    return { arm: cartEtaBucket() < readShare() ? "baner" : "bez", forced: false };
+    // 20.11.2026 test zamknięty (właściciel: „rekomendacje 1-6 wdróż”): z banerem kupiło 10 z 54 koszyków (18,5 %),
+    // bez banera 11 z 55 (20,0 %); 19.11: 25,4 % vs 36,1 %. Zostaje koszyk bez banera. Udział z CRM już nic nie losuje.
+    return { arm: TEST_CLOSED ? "bez" : cartEtaBucket() < readShare() ? "baner" : "bez", forced: false };
   } catch {
     return { arm: "bez", forced: false };
   }
