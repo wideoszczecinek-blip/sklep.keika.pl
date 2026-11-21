@@ -4,6 +4,7 @@ import { fetchPriceAdjustments, getPricedProduct } from "@/lib/agent-catalog";
 import { fetchPlisyProfileWith, plisyQuickPrice } from "@/features/plisy/shared";
 import { JsonLdScripts, productPageJsonLd } from "@/lib/structured-data";
 import { PLISY_LEAD_TIME_LABEL } from "@/features/plisy/landing-content";
+import type { OstatniaOpinia } from "@/features/plisy/OstatnieOpinie";
 
 // Statycznie prerenderowana strona plis (wydajność, punkt 6 audytu
 // landingu). Wejście z reklam - /?produkt=plisy - przekierowuje tu 308
@@ -53,12 +54,23 @@ async function cenaStartowa(): Promise<number | null> {
   }
 }
 
+/** Ostatnie zweryfikowane opinie kupujących plisy w sklepie (CRM, 21.11) - karuzela pod opisem, bez migania. Brak CRM = bez sekcji. */
+async function ostatnieOpinie(): Promise<OstatniaOpinia[] | null> {
+  try {
+    const r = await fetch("https://crm-keika.groovemedia.pl/biuro/api/shop-public/latest_reviews.php?produkt=plisy&limit=10", { next: { revalidate: 3600 } });
+    const j = (await r.json()) as { ok?: boolean; opinie?: OstatniaOpinia[] };
+    return j && j.ok && Array.isArray(j.opinie) ? j.opinie : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function PlisyPage() {
-  const [product, plisyCenaStart] = await Promise.all([getPricedProduct(SLUG), cenaStartowa()]);
+  const [product, plisyCenaStart, plisyOpinie] = await Promise.all([getPricedProduct(SLUG), cenaStartowa(), ostatnieOpinie()]);
   return (
     <>
       <JsonLdScripts data={productPageJsonLd(product)} />
-      <Home initialProductSlug={SLUG} plisyCenaStart={plisyCenaStart} />
+      <Home initialProductSlug={SLUG} plisyCenaStart={plisyCenaStart} plisyOpinie={plisyOpinie} />
     </>
   );
 }

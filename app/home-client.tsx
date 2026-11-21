@@ -250,6 +250,8 @@ import { welcomePromoPreview } from "@/lib/welcome-offer";
 import { PERSONAL_CODE_EVENT } from "@/lib/personal-code";
 import { LejekGaleria } from "@/features/plisy/LejekGaleria";
 import { LejekBezpiecznie, LejekDlaczego, LejekKoniec, LejekOcena, PlisyPierwszyEkran } from "@/features/plisy/PierwszyEkran";
+import type { OstatniaOpinia } from "@/features/plisy/OstatnieOpinie";
+import LiveConfiguring from "@/app/components/live-configuring";
 import { DachBezRyzyka, DachCeny, DachOpis, DachPomiar, dachFaqWgObiekcji, typoweOkna } from "@/features/dachowe/LejekDachowy";
 import {
   LejekDowod,
@@ -1453,10 +1455,13 @@ export default function Home({
   initialProductSlug = "",
   zaluzjeRodzaj = null,
   plisyCenaStart = null,
+  plisyOpinie = null,
 }: {
   initialProductSlug?: string;
   /** /plisy (3.11): cena plisy 50 × 110 cm policzona na serwerze - pierwszy ekran nie miga „Ładuję cennik”. */
   plisyCenaStart?: number | null;
+  /** /plisy (21.11): ostatnie zweryfikowane opinie kupujących ze sklepu (CRM latest_reviews), pobrane na serwerze. */
+  plisyOpinie?: OstatniaOpinia[] | null;
   /** Strona rodzaju żaluzji (/zaluzje/<rodzaj>, 7.11.2026): aluminiowe / drewniane / bambusowe / pcv. */
   zaluzjeRodzaj?: ZaluzjeRodzajSlug | null;
 }) {
@@ -4084,7 +4089,7 @@ export default function Home({
                     <>
                       {/* Strona plis 3.11 (plan Agencji, jedna wersja): pierwszy ekran z wyceną → wizualizator → opinie →
                           galeria → Dlaczego KEIKA; niżej tkanina, pomiar, bezpieczny zakup, FAQ, końcowy przycisk. */}
-                      <PlisyPierwszyEkran />
+                      <PlisyPierwszyEkran opinie={plisyOpinie} />
                       {/* właściciel 8.11: po opisie „Jak działa plisa” → wizualizator → szybka wycena; reszta bez zmian */}
                       <section className="pm-section plisy-viz-section" aria-labelledby="plisy-jak-dziala">
                         <h2 id="plisy-jak-dziala" className="pm-title">Jak działa plisa</h2>
@@ -5658,6 +5663,8 @@ export default function Home({
                     </button>
                   )
                 ) : null}
+                {/* właściciel 21.11: „X osób konfiguruje teraz swoje zamówienie” na każdym konfiguratorze */}
+                <LiveConfiguring />
                 {isQuoteOnlySlug(productSlugFromSelected(displayedProduct)) ? (
                   <QuotePanel crmSlug={productSlugFromSelected(displayedProduct)} productLabel={displayedProduct.label} />
                 ) : productSlugFromSelected(displayedProduct) === "moskitiery-ramkowe" ? (

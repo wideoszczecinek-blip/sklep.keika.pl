@@ -13,6 +13,7 @@ import { CRM_PUBLIC_BASE } from "@/app/components/payment-methods";
 import { useCompanyRating } from "./Reviews";
 import { opinieLabel } from "./LandingV2";
 import { dzienWysylki } from "./Premium";
+import { OstatnieOpinie, type OstatniaOpinia } from "./OstatnieOpinie";
 
 /** Liczba zamówień we wszystkich kanałach w 2026 r. (CRM: 7727 przy 2.11) - zaokrąglona w dół, jak w LejekDowod. */
 const ZAMOWIEN_2026 = "ponad 7 000";
@@ -20,7 +21,8 @@ const ZAMOWIEN_2026 = "ponad 7 000";
 /** Korzyść, jedno zdanie, cena „od” (z serwera, bez migania) i 4 znaczki - nad polami wymiarów. */
 // właściciel 3.11: „cena na końcu” - bez „od … zł” na pierwszym ekranie; pierwsza cena, jaką klient widzi,
 // to cena jego okna po wyborze materiału (wycena v2, QuickPrice).
-export function PlisyPierwszyEkran() {
+// właściciel 21.11: pod opisem „mały dowód społeczny” - ostatnie opinie kupujących ze sklepu (karuzela).
+export function PlisyPierwszyEkran({ opinie = null }: { opinie?: OstatniaOpinia[] | null }) {
   return (
     <div className="pe-gora">
       <p className="pe-naglowek">Prywatność, kiedy chcesz. Światło, kiedy potrzebujesz.</p>
@@ -29,6 +31,7 @@ export function PlisyPierwszyEkran() {
         <p>Wybierz tkaninę dekoracyjną lub podgumowaną i dopasuj plisę do swoich potrzeb.</p>
         <p><strong>Ponad 150 tkanin i 10 kolorów belek</strong> pozwoli Ci dopasować osłonę do okna i wnętrza.</p>
       </div>
+      <OstatnieOpinie opinie={opinie} />
 
     </div>
   );
