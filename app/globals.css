@@ -27086,3 +27086,5 @@ html.cart-item-editing body > .rd-modal--top:not(.plisy-mount-alert) { z-index: 
 .plisy-doba-film { position: relative; margin: 0 auto; max-width: 420px; border-radius: 1rem; overflow: hidden; background: #0f172a; }
 .plisy-doba-film video { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: #0f172a; }
 .plisy-doba-uwaga { margin: 0.45rem auto 0 !important; max-width: 420px; font-size: 0.78rem !important; color: #64748b !important; text-align: center; }
+/* 22.11: licznik „X osób konfiguruje teraz” pod opisem na górze strony plis */
+.pe-gora--v3 .live-konfig { margin: 0.1rem 0 0 !important; justify-self: start; }

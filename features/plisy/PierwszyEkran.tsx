@@ -14,6 +14,7 @@ import { useCompanyRating } from "./Reviews";
 import { opinieLabel } from "./LandingV2";
 import { dzienWysylki } from "./Premium";
 import { OstatnieOpinie, type OstatniaOpinia } from "./OstatnieOpinie";
+import LiveConfiguring from "@/app/components/live-configuring";
 
 /** Liczba zamówień we wszystkich kanałach w 2026 r. (CRM: 7727 przy 2.11) - zaokrąglona w dół, jak w LejekDowod. */
 const ZAMOWIEN_2026 = "ponad 7 000";
@@ -48,6 +49,9 @@ export function PlisyPierwszyEkran({
         Plisę przesuwasz góra–dół, a okno otwierasz jak zwykle. Ponad 150 tkanin do wyboru. Nowoczesna produkcja daje
         dobrą cenę bez oszczędzania na jakości.
       </p>
+      {/* właściciel 22.11: „zaraz pod opisem banerek, że X osób konfiguruje w tej chwili” - ten sam prawdziwy licznik
+          co nad konfiguratorem (CRM online_count, od 2 osób, odświeżany co minutę) */}
+      <LiveConfiguring />
       <LejekOcena onOpinie={onOpinie} />
       <div className="pe-cta">
         <button

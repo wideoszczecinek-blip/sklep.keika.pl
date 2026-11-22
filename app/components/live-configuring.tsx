@@ -37,9 +37,15 @@ export default function LiveConfiguring() {
     };
     load();
     const id = window.setInterval(load, ODSWIEZ_MS);
+    // strona otwarta w tle (np. link z aplikacji) - licznik od razu, gdy karta stanie się widoczna, nie po minucie
+    const onVisible = () => {
+      if (!document.hidden) load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       alive = false;
       window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 
