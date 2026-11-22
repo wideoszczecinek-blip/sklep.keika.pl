@@ -27071,3 +27071,8 @@ html.cart-item-editing body > .rd-modal--top:not(.plisy-mount-alert) { z-index: 
   .pe-cta { justify-items: start; grid-auto-flow: column; justify-content: start; align-items: center; gap: 1rem; }
   .pe-cta .pe-cta-btn { width: auto; padding: 0.95rem 2rem; }
 }
+/* 22.11 wieczór: pod przyciskiem „Dostawa 0 zł · Zobacz, jak działa”, telefon w faktach klikalny */
+.pe-cta-pod { display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin: 0 !important; font-size: 0.9rem !important; color: #334155 !important; }
+.pe-cta-pod > span:first-child { font-weight: 700; color: #15803d; }
+.pe-fakty-tel { color: inherit; text-decoration: underline; text-decoration-color: #94a3b8; text-underline-offset: 3px; }
+@media (min-width: 1101px) { .pe-cta-pod { justify-content: start; } }

@@ -37,17 +37,16 @@ export function PlisyPierwszyEkran({
   onJakDziala: () => void;
   onOpinie: () => void;
 }) {
-  const d = dzienWysylki();
-  const kiedy = ["nd.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."][d.getDay()];
-  const wysylka = `${kiedy} ${d.toLocaleDateString("pl-PL", { day: "numeric", month: "long" })}`;
   return (
     <div className="pe-gora pe-gora--v3">
+      {/* Teksty uzgodnione z GPT 22.11 wg uwag właściciela: korzyści klienta delikatnie, mniej o nas; jakość poparta
+          gwarancją, pomoc telefoniczna, dobra cena dzięki nowoczesnej produkcji bez oszczędzania na jakości. */}
       <p className="pe-lead">
-        Zasłaniasz tyle okna, ile chcesz: dół przed sąsiadami, górę przed słońcem albo całość na noc.
+        Zasłoń dół okna przed spojrzeniami sąsiadów, górę przed słońcem albo całą szybę na noc.
       </p>
       <p className="pe-wybor">
-        Plisę przesuwasz od góry i od dołu, a okno otwierasz jak zwykle. Ponad 150 tkanin, od jasnych po zaciemniające.
-        Każdą produkujemy na Twój wymiar, u siebie w Polsce.
+        Plisę przesuwasz góra–dół, a okno otwierasz jak zwykle. Ponad 150 tkanin do wyboru. Nowoczesna produkcja daje
+        dobrą cenę bez oszczędzania na jakości.
       </p>
       <LejekOcena onOpinie={onOpinie} />
       <div className="pe-cta">
@@ -61,21 +60,33 @@ export function PlisyPierwszyEkran({
         >
           Sprawdź cenę swojej plisy
         </button>
-        <button
-          type="button"
-          className="pe-cta-link"
-          onClick={() => {
-            trackShopStep("hero_cta", "plisy", { cel: "jak_dziala" });
-            onJakDziala();
-          }}
-        >
-          Zobacz, jak działa ↓
-        </button>
+        <p className="pe-cta-pod">
+          <span>Dostawa 0 zł</span>
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            className="pe-cta-link"
+            onClick={() => {
+              trackShopStep("hero_cta", "plisy", { cel: "jak_dziala" });
+              onJakDziala();
+            }}
+          >
+            Zobacz, jak działa ↓
+          </button>
+        </p>
       </div>
       <ul className="pe-fakty" aria-label="Bezpieczny zakup">
-        <li>30 dni na zwrot – także na wymiar</li>
-        <li>5 lat gwarancji</li>
-        <li>Dostawa 0 zł, wysyłka najpóźniej {wysylka}</li>
+        <li>Jakość poparta 5-letnią gwarancją</li>
+        <li>
+          <a
+            href={COMPANY_LEGAL.phoneHref}
+            className="pe-fakty-tel"
+            onClick={() => trackShopStep("call_click", "plisy", { source: "hero_fakt" })}
+          >
+            Pomoc telefoniczna 8–21, codziennie
+          </a>
+        </li>
+        <li>30 dni na zwrot, także na wymiar</li>
       </ul>
     </div>
   );
