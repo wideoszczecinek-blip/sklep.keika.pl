@@ -287,7 +287,77 @@ export default function PlisyVisualizer() {
     });
   };
 
+  // Przeciąganie palcem (właściciel 22.11: „złapię belkę, przesunę kawałek i się puszcza”): telefony nie respektują
+  // touch-action na elementach wewnątrz SVG, więc po chwili przeglądarka przejmowała ruch jako przewijanie strony
+  // i przerywała przeciąganie. Teraz dotyk obsługujemy zdarzeniami touch: palec w strefie tolerancji listwy
+  // (±32 px od jej środka, także trochę poza skrzydłem) blokuje przewijanie na czas przeciągania; gdzie indziej
+  // strona przewija się normalnie.
+  const posRef = useRef(pos);
+  posRef.current = pos;
+  const moveRailRef = useRef(moveRail);
+  moveRailRef.current = moveRail;
+  const touchDragRef = useRef(false);
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const TOL_PX = 32;
+    const grab = (cx: number, cy: number): { sash: Sash; rail: "t" | "b" } | null => {
+      const rect = svg.getBoundingClientRect();
+      if (!rect.height || !rect.width) return null;
+      const k = rect.height / VB_H;
+      const vbX = ((cx - rect.left) / rect.width) * VB_W;
+      let best: { sash: Sash; rail: "t" | "b"; d: number } | null = null;
+      for (const s of SASHES) {
+        if (vbX < s.x - 24 || vbX > s.x + s.w + 24) continue;
+        const p = posRef.current[s.id];
+        if (!p) continue;
+        for (const rail of ["t", "b"] as const) {
+          const railVb = rail === "t" ? s.y + p.t * s.h + RAIL_H / 2 : s.y + p.b * s.h - RAIL_H / 2;
+          const d = Math.abs(cy - (rect.top + railVb * k));
+          if (d <= TOL_PX && (!best || d < best.d)) best = { sash: s, rail, d };
+        }
+      }
+      return best ? { sash: best.sash, rail: best.rail } : null;
+    };
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const hit = grab(t.clientX, t.clientY);
+      if (!hit) return;
+      e.preventDefault();
+      dragRef.current = hit;
+      touchDragRef.current = true;
+      tapRef.current = null;
+      setTouched(true);
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!touchDragRef.current || !dragRef.current) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      if (!t) return;
+      const d = dragRef.current;
+      moveRailRef.current(d.sash, d.rail, yToFraction(t.clientY, d.sash));
+    };
+    const onEnd = () => {
+      if (!touchDragRef.current) return;
+      touchDragRef.current = false;
+      dragRef.current = null;
+    };
+    svg.addEventListener("touchstart", onStart, { passive: false });
+    svg.addEventListener("touchmove", onMove, { passive: false });
+    svg.addEventListener("touchend", onEnd);
+    svg.addEventListener("touchcancel", onEnd);
+    return () => {
+      svg.removeEventListener("touchstart", onStart);
+      svg.removeEventListener("touchmove", onMove);
+      svg.removeEventListener("touchend", onEnd);
+      svg.removeEventListener("touchcancel", onEnd);
+    };
+  }, [yToFraction]);
+
   const onPointerDown = (e: React.PointerEvent, sash: Sash, rail: "t" | "b") => {
+    // palec obsługują zdarzenia touch (wyżej); tu tylko mysz i rysik
+    if (e.pointerType === "touch") return;
     e.preventDefault();
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
     dragRef.current = { sash, rail };
@@ -296,11 +366,12 @@ export default function PlisyVisualizer() {
 
   const onPointerMove = (e: React.PointerEvent) => {
     const drag = dragRef.current;
-    if (!drag) return;
+    if (!drag || touchDragRef.current) return;
     moveRail(drag.sash, drag.rail, yToFraction(e.clientY, drag.sash));
   };
 
   const endDrag = () => {
+    if (touchDragRef.current) return; // przeciąganie palcem kończy touchend
     dragRef.current = null;
   };
 
