@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { DNI_PRODUKCJI, OPIS, SEKCJE_LEJKA, TYPOWE_OKNA, type ProduktDachowy } from "@/features/dachowe/lejek-tresci";
+import { DNI_PRODUKCJI, OPIS, SEKCJE_LEJKA, SEKCJE_LEJKA_PD, TYPOWE_OKNA, type ProduktDachowy } from "@/features/dachowe/lejek-tresci";
 import { PD_ALL_PHOTOS } from "@/features/plisy-dachowe/gallery";
 import { PD_DESCRIPTION_HTML, PD_FAQ } from "@/features/plisy-dachowe/landing-content";
 import { PLISY_ALL_PHOTOS } from "@/features/plisy/gallery";
@@ -28,9 +28,10 @@ function lejek(produkt: ProduktDachowy) {
   const o = OPIS[produkt];
   return {
     wypunktowania_wbudowane: o.cechy.map(([b, s]) => `${b} – ${s.replace("{modeli}", "ponad 420")}`),
-    sekcje_wbudowane: [...SEKCJE_LEJKA],
+    sekcje_wbudowane: produkt === "plisy-dachowe" ? [...SEKCJE_LEJKA_PD] : [...SEKCJE_LEJKA],
     opis_sprzedazowy: `${o.lead} ${o.tekst}`,
-    ceny_typowych_okien: {
+    // plisy dachowe od 22.11 bez tabeli cen popularnych okien (cena dopiero po wyborze tkaniny)
+    ceny_typowych_okien: produkt === "plisy-dachowe" ? null : {
       okna: TYPOWE_OKNA.map(([, okno]) => okno),
       zrodlo: "liczone na żywo w przeglądarce z cennika konfiguratora (najtańsza konfiguracja), sekcja ukryta, gdy wycenią się mniej niż 3 okna",
     },

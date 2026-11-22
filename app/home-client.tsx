@@ -120,7 +120,7 @@ import {
 import RoofHeroPhotos from "@/features/rolety-dachowe/RoofHeroPhotos";
 import { RdBezRyzyka, RdCenySlajdy, RdOpis, RdSzukajOkna, RdTkaniny } from "@/features/rolety-dachowe/RoofLejek";
 import RoofQuickPrice from "@/features/rolety-dachowe/RoofQuickPrice";
-import { RoofFabricsGuide, RoofHardwareStrip, RoofHowItWorks, RoofLibraryTeaser } from "@/features/rolety-dachowe/RoofLandingBlocks";
+import { RoofFabricsGuide, RoofHardwareStrip, RoofHowItWorks } from "@/features/rolety-dachowe/RoofLandingBlocks";
 import RoofReviews from "@/features/rolety-dachowe/Reviews";
 import { RD_ALL_PHOTOS, buildRdGalleryCategories } from "@/features/rolety-dachowe/gallery";
 import {
@@ -161,13 +161,12 @@ import { PdHardwareStrip, PdHowItWorks } from "@/features/plisy-dachowe/PdLandin
 import PdReviews from "@/features/plisy-dachowe/Reviews";
 import { PD_ALL_PHOTOS, buildPdGalleryCategories } from "@/features/plisy-dachowe/gallery";
 import {
-  PD_CALLOUT,
   PD_FAQ,
   PD_H1,
   PD_INSTRUCTION_STEPS,
   PD_PRIMARY_CTA,
 } from "@/features/plisy-dachowe/landing-content";
-import { PD_STARTING_PRICE_FALLBACK, pdCheapestPriceForSize, pdPriceMultiplier, pdStartingPrice, type ConfiguratorResult as PlisyDachoweConfiguratorResult } from "@/features/plisy-dachowe/shared";
+import { PD_STARTING_PRICE_FALLBACK, pdStartingPrice, type ConfiguratorResult as PlisyDachoweConfiguratorResult } from "@/features/plisy-dachowe/shared";
 import {
   isPlisyPlaceholderCopy,
   PLISY_H1,
@@ -252,12 +251,12 @@ import { LejekGaleria } from "@/features/plisy/LejekGaleria";
 import { LejekBezpiecznie, LejekDlaczego, LejekKoniec, LejekOstatnieOpinie, PlisyPierwszyEkran } from "@/features/plisy/PierwszyEkran";
 import type { OstatniaOpinia } from "@/features/plisy/OstatnieOpinie";
 import LiveConfiguring from "@/app/components/live-configuring";
-import { DachBezRyzyka, DachCeny, DachOpis, DachPomiar, dachFaqWgObiekcji, typoweOkna } from "@/features/dachowe/LejekDachowy";
+import { dachFaqWgObiekcji, typoweOkna } from "@/features/dachowe/LejekDachowy";
+import { PdBezpiecznie, PdKoniec, PdMontaz, PdPierwszyEkran } from "@/features/plisy-dachowe/PierwszyEkran";
 import {
   LejekDowod,
   LejekPomiarTresc,
   LejekTkaniny,
-  PremiumQuotes,
   faqWgObiekcji,
 } from "@/features/plisy/Premium";
 import { plisyQuickPrice } from "@/features/plisy/shared";
@@ -1559,7 +1558,6 @@ export default function Home({
   const [pdConfigKey, setPdConfigKey] = useState(0);
   const [pdLastResult, setPdLastResult] = useState<PlisyDachoweConfiguratorResult | null>(null);
   const [pdQuickGroup, setPdQuickGroup] = useState("");
-  const [pdQuickDims, setPdQuickDims] = useState<{ widthMm: number; heightMm: number; label: string }>({ widthMm: 0, heightMm: 0, label: "" });
   const [pdPrefill, setPdPrefill] = useState<{ windowLibraryId?: number; windowQuery?: string; fabricGroupId?: string } | null>(null);
   // Okno z adresu (wariant z katalogu Google) dla szybkich wycen dachowych.
   const [rdPreselect, setRdPreselect] = useState<{ item: RoofWindowLibraryItem } | null>(null);
@@ -1651,10 +1649,6 @@ export default function Home({
           : null,
       ),
     [rdLibrary, rdProfile, roletyPriceAdjustmentPercent],
-  );
-  const pdTypoweCena = useMemo(
-    () => typoweOkna(rdLibrary, (w, h) => pdCheapestPriceForSize(plisyProfile, w, h, pdPriceAdjustmentPercent)),
-    [rdLibrary, plisyProfile, pdPriceAdjustmentPercent],
   );
   const scrollToDachWycena = () => {
     document.getElementById("dach-wycena")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -3003,6 +2997,8 @@ export default function Home({
   // Landing plis v2 - wartości dla karty oferty, wyceny i dolnego paska
   // (jedna cena liczona jednym sposobem: plisyQuickPrice).
   const plisyV2 = Boolean(displayedProduct) && productSlugFromSelected(displayedProduct) === "plisy" && plisyLandingV2;
+  // Plisy dachowe, wersja definitywna 22.11 (właściciel: „na tej samej zasadzie opracuj z GPT landing plis dachowych”).
+  const pdV2 = Boolean(displayedProduct) && productSlugFromSelected(displayedProduct) === "plisy-dachowe";
   const plisyQuickMount = plisyProfile
     ? plisyProfile.mountOptions.find((option) => option.id === plisyQuickMountId) || plisyProfile.mountOptions[0] || null
     : null;
@@ -3049,6 +3045,13 @@ export default function Home({
     }
     window.setTimeout(() => {
       document.querySelector<HTMLInputElement>(".pl-quick--v2 input")?.focus({ preventScroll: true });
+    }, 500);
+  }
+  // Plisy dachowe 22.11: przycisk z pierwszego ekranu prowadzi do jednej wyceny (model okna → tkanina → cena).
+  function scrollToPdWycena() {
+    scrollToPlisyElement("#dach-wycena");
+    window.setTimeout(() => {
+      document.querySelector<HTMLInputElement>("#dach-wycena .rd-search-input")?.focus({ preventScroll: true });
     }, 500);
   }
   // Przewinięcie do sekcji strony plis (na telefonie przewija się .hero-full, nie okno) - 22.11, „Zobacz, jak działa”.
@@ -3657,7 +3660,7 @@ export default function Home({
 
   return (
     <div
-      className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${displayedProduct ? "product-focus-active" : ""} ${plisyV2 ? "plisy-v2" : ""}`}
+      className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${displayedProduct ? "product-focus-active" : ""} ${plisyV2 ? "plisy-v2" : ""} ${pdV2 ? "pd-v2" : ""}`}
     >
       <div className={`boot-overlay ${bootPhase === "ready" ? "is-hidden" : ""}`} aria-hidden={bootPhase === "ready" ? "true" : "false"}>
         <div className="boot-overlay-core">
@@ -4051,6 +4054,8 @@ export default function Home({
                       2026-09-24): dwuwierszowa ramka pod tytułem spychała na
                       mobile wszystko poniżej ekranu. */}
                   {plisyV2 ? <PlisyHeroGallery /> : null}
+                  {/* plisy dachowe 22.11: zdjęcie (animacja, o którą prosił właściciel 19.09) przed tytułem, jak na /plisy */}
+                  {pdV2 ? <PdHeroPhotos /> : null}
                   {/* Promocja ilościowa „CAŁY DOM" (29.10.2026, w miejsce
                       SEZON20): jedna linia bez aktywacji i odliczania - rabat
                       nalicza koszyk z reguł CRM (lib/bundle-discount.ts). Ta
@@ -4059,7 +4064,7 @@ export default function Home({
                       SEASONAL_PROMO_ENABLED (lib/promo.ts). */}
                   {displayedProduct &&
                   !plisyV2 &&
-                  ["plisy", "moskitiery-ramkowe", "rolety-dachowe", "plisy-dachowe"].includes(
+                  ["plisy", "moskitiery-ramkowe", "rolety-dachowe"].includes(
                     productSlugFromSelected(displayedProduct),
                   ) ? (
                     <div className="pl-sezon-line is-active">
@@ -4096,6 +4101,13 @@ export default function Home({
                                 ? ROLETY_COPY[productSlugFromSelected(displayedProduct) as RoletySlug].h1
                                 : displayedProduct.label}
                     </h1>
+                  ) : null}
+                  {pdV2 ? (
+                    <PdPierwszyEkran
+                      onCena={scrollToPdWycena}
+                      onJakDziala={() => scrollToPlisyElement("#pd-jak-dziala")}
+                      onOpinie={() => scrollToProductSection("opinie")}
+                    />
                   ) : null}
                   {plisyV2 ? (
                     <>
@@ -4612,68 +4624,26 @@ export default function Home({
                                 teaser, callout). */}
                             {/* Lejek (właściciel 2.11, wzorem /plisy): zdjęcia → co to jest → opinie → bez ryzyka (dobór po tabliczce) → jakość →
                                 ceny typowych okien z CAŁY DOM → wycena → tkaniny → pomiar → opinie. Bez wizualizatora (wersja dachowa niegotowa). */}
-                            <PdHeroPhotos />
-
-                            <div className="pl-trust-row">
-                              <span className="pl-price">
-                                od {formatStartingPrice(pdStartingPriceValue)} zł
-                                <span className="pl-price-unit"> / szt.</span>
-                              </span>
-                              <span className="pl-chip">{rdLibrary.length ? `${rdLibrary.length} modeli okien` : "420+ modeli okien"}</span>
-                              <span className="pl-chip">Polski producent</span>
-                              <span className="pl-chip">5 lat gwarancji</span>
-                              <span className="pl-chip">30 dni na zwrot</span>
-                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
-                            </div>
-
-                            <DachOpis
-                              produkt="plisy-dachowe"
-                              liczbaModeli={rdLibrary.length}
-                              przyklad={pdTypoweCena.find((o) => /MK06/.test(o.okno)) || null}
-                              onWycen={() => scrollToDachWycena()}
-                            />
-                            {/* wizualizator okien dachowych, wersja testowa (właściciel 7.11): widoczny po ?wiz=dach albo przy udziale z CRM */}
-                            <WizButton zrodlo="plisa-dachowa-oferta" produkt="plisa-dachowa" onKonfiguruj={scrollToDachWycena} />
-                            <WizHost />
-                            <LejekDowod onOpinie={() => scrollToProductSection("opinie")} />
-                            <DachBezRyzyka produkt="plisy-dachowe" liczbaModeli={rdLibrary.length} onPomiar={openMeasurementInstructions} />
-
+                            {/* 22.11 (właściciel: „na tej samej zasadzie opracuj z GPT landing plis dachowych”; czat GPT „Audyt plis
+                                dachowych” + dane 1.10–22.11): pierwszy ekran nad tym blokiem (PdPierwszyEkran), potem JEDNA ścieżka:
+                                jak działa → wycena (model okna → tkanina wg efektu → cena) → wizualizator → bez ryzyka → montaż →
+                                osprzęt → końcowy przycisk; dalej galeria, opinie, FAQ. Usunięte: pasek „od 96,25 zł”, opis techniczny,
+                                ceny popularnych okien + CAŁY DOM, 5 kart kolekcji z cenami (liczyły wymiar zewnętrzny 78×118), osobna
+                                biblioteka okien, cytaty o roletach. Cena dopiero po wyborze tkaniny (zasada właściciela 3.11). */}
                             <PdHowItWorks />
 
-                            <DachCeny
-                              produkt="plisy-dachowe"
-                              okna={pdTypoweCena}
-                              onOkno={(item) => {
-                                setPdPreselect({ item });
-                                scrollToDachWycena();
-                              }}
-                            />
-
-                            <div id="dach-wycena" className="dach-wycena">
-                            <PdQuickPrice
+                            <section id="dach-wycena" className="pm-section dach-wycena" aria-labelledby="pd-wycena-t">
+                              <p className="pm-eyebrow">Cena</p>
+                              <h2 id="pd-wycena-t" className="pm-title">Dobierz plisę do swojego okna i poznaj cenę</h2>
+                              <p className="pm-lead">Wybierz model okna i tkaninę – wymiar zwykle dobierzemy sami. Bez rejestracji i bez zobowiązań.</p>
+                              <PdQuickPrice
                                 profile={plisyProfile}
                                 library={rdLibrary}
                                 preselect={pdPreselect}
                                 promo={shownPromo}
                                 fabricGroupId={pdQuickGroup}
                                 onFabricGroupChange={setPdQuickGroup}
-                                onSelectionChange={(selection) =>
-                                  setPdQuickDims({
-                                    widthMm: selection.widthMm,
-                                    heightMm: selection.heightMm,
-                                    label: selection.widthMm
-                                      ? selection.item
-                                        ? buildRoofWindowDisplayLabel(selection.item)
-                                        : `${selection.widthMm} × ${selection.heightMm} mm`
-                                      : "",
-                                  })
-                                }
                                 onConfigure={(selection) => {
-                                  setPdQuickDims({
-                                    widthMm: selection.widthMm,
-                                    heightMm: selection.heightMm,
-                                    label: selection.item ? buildRoofWindowDisplayLabel(selection.item) : `${selection.widthMm} × ${selection.heightMm} mm`,
-                                  });
                                   setPdLastResult(null);
                                   setPdPrefill({
                                     windowLibraryId: selection.item && selection.item.id > 0 ? selection.item.id : undefined,
@@ -4684,52 +4654,16 @@ export default function Home({
                                   scrollToConfigPanel();
                                 }}
                               />
-                            </div>
+                            </section>
 
-                            <PlisyCollectionsPicker
-                              profile={plisyProfile}
-                              promo={shownPromo}
-                              widthCm={pdQuickDims.widthMm ? pdQuickDims.widthMm / 10 : 78}
-                              heightCm={pdQuickDims.heightMm ? pdQuickDims.heightMm / 10 : 118}
-                              onSizeChange={(widthCm, heightCm) => setPdQuickDims({ widthMm: Math.round(widthCm * 10), heightMm: Math.round(heightCm * 10), label: `${Math.round(widthCm * 10)} × ${Math.round(heightCm * 10)} mm` })}
-                              onQuote={scrollToConfigPanel}
-                              onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })}
-                              priceMultiplier={pdPriceMultiplier}
-                              adjustmentSlug="plisy-dachowe"
-                              title="Którą kolekcję tkanin wybrać?"
-                              lead={`Te same pięć kolekcji co w plisach okiennych. Ceny poglądowe dla plisy dachowej ${pdQuickDims.label ? `do okna ${pdQuickDims.label}` : "78 × 118 cm (typowe okno dachowe)"} z białym osprzętem — dokładną cenę z kolorem osprzętu i tkaniny policzy konfigurator.`}
-                              sizeLabelPrefix="Ceny dla plisy dachowej"
-                              mountSuffix=""
-                              ctaLabel={(name) => `Wyceń plisę dachową ${name} w konfiguratorze`}
-                            />
+                            {/* wizualizator jako pomoc po cenie (GPT 22.11: nie odciągać przed wyceną) */}
+                            <WizButton zrodlo="plisa-dachowa-oferta" produkt="plisa-dachowa" onKonfiguruj={scrollToPdWycena} />
+                            <WizHost />
 
+                            <PdBezpiecznie onPomiar={openMeasurementInstructions} />
+                            <PdMontaz onInstrukcja={openMeasurementInstructions} />
                             <PdHardwareStrip onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
-
-                            <RoofLibraryTeaser
-                              produktDopelniacz="plisy"
-                              library={rdLibrary}
-                              onSearch={(query) => {
-                                setPdLastResult(null);
-                                setPdPrefill((prev) => ({ ...(prev || {}), windowLibraryId: undefined, windowQuery: query }));
-                                setPdConfigKey((key) => key + 1);
-                                scrollToConfigPanel();
-                              }}
-                            />
-
-                            <DachPomiar
-                              produkt="plisy-dachowe"
-                              onInstrukcja={openMeasurementInstructions}
-                              onCzat={() => openCrispChat("Zdjęcie mojego okna dachowego – pomożecie dobrać plisę?")}
-                            />
-                            <PremiumQuotes onAll={() => scrollToProductSection("opinie")} />
-
-                            <div className="pl-callout">
-                              <strong>{productLanding?.callout?.title || PD_CALLOUT.title}</strong>
-                              <p>{productLanding?.callout?.body || PD_CALLOUT.body}</p>
-                              <button type="button" className="pl-inline-cta-button pl-callout-cta" onClick={scrollToConfigPanel}>
-                                {PD_PRIMARY_CTA}
-                              </button>
-                            </div>
+                            <PdKoniec onCena={scrollToPdWycena} />
                           </div>
                         ) : productSlugFromSelected(displayedProduct) === "rolety-dachowe" ? (
                           <div className="pl-landing rd-landing">

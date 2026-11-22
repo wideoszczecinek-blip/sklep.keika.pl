@@ -30,6 +30,26 @@ export function pdCollectionShortLabel(group: { id: string; label: string }): st
   return group.label;
 }
 
+/** Tkanina wg efektu (22.11, teksty uzgodnione z GPT): najpierw zaciemnienie – 90 % plis dachowych z Allegro to warianty
+ *  zaciemniające/termiczne. Bez ceny i bez domyślnej kolekcji, dopóki klient nie wybierze (zasada właściciela 3.11). */
+const PD_EFEKTY: { tytul: string; kolekcje: { krotka: string; nazwa: string; opis: string }[] }[] = [
+  {
+    tytul: "Chcę zaciemnić pokój",
+    kolekcje: [
+      { krotka: "DUO TERMO", nazwa: "DUO TERMO", opis: "Zaciemnia i najlepiej izoluje przed ciepłem." },
+      { krotka: "Blackout", nazwa: "Podgumowane", opis: "Zaciemnia dzięki podgumowanemu rdzeniowi." },
+    ],
+  },
+  {
+    tytul: "Chcę zachować światło dzienne",
+    kolekcje: [
+      { krotka: "Reflex", nazwa: "Reflex", opis: "Rozprasza światło i ogranicza nagrzewanie." },
+      { krotka: "DUO", nazwa: "DUO plaster miodu", opis: "Podwójna tkanina, miękko rozprasza światło." },
+      { krotka: "Klasyczne", nazwa: "Klasyczne", opis: "Przepuszcza i delikatnie rozprasza światło." },
+    ],
+  },
+];
+
 export type PdQuickSelection = { item: RoofWindowLibraryItem | null; widthMm: number; heightMm: number; fabricGroupId: string };
 
 export default function PdQuickPrice({
@@ -71,7 +91,7 @@ export default function PdQuickPrice({
 
   const results = useMemo(() => (query.trim() && !picked ? searchRoofWindowLibrary(library, query).slice(0, 6) : []), [library, query, picked]);
   const groups = profile?.fabricGroups || [];
-  const activeGroup = groups.find((group) => group.id === fabricGroupId) || groups[0] || null;
+  const activeGroup = groups.find((group) => group.id === fabricGroupId) || null;
 
   const dims = manual ? { widthMm, heightMm } : picked ? resolveRoofWindowDimensions(picked) : { widthMm: 0, heightMm: 0 };
   const inRange = dims.widthMm >= PD_MIN_DIMENSION_MM && dims.widthMm <= limits.maxWidthMm && dims.heightMm >= PD_MIN_DIMENSION_MM && dims.heightMm <= limits.maxHeightMm;
@@ -102,6 +122,13 @@ export default function PdQuickPrice({
   }, [dims.widthMm, dims.heightMm, picked, activeGroup?.id]);
 
   const hasAnswer = manual || Boolean(picked);
+  // Cena pokazana (okno + tkanina) - ten sam sygnał co quick_price_shown na /plisy.
+  const shownKey = hasAnswer && activeGroup && regular !== null ? `${dims.widthMm}x${dims.heightMm}:${activeGroup.id}` : "";
+  useEffect(() => {
+    if (!shownKey) return;
+    trackShopStep("quick_price_shown", PD_PRODUCT_SLUG, { window: picked && !manual ? buildRoofWindowDisplayLabel(picked) : "manual", collection: activeGroup?.id || "", price: regular ?? 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownKey]);
   useEffect(() => {
     if (!onSelectionChange) return;
     onSelectionChange({ item: manual ? null : picked, widthMm: hasAnswer ? dims.widthMm : 0, heightMm: hasAnswer ? dims.heightMm : 0, fabricGroupId: activeGroup?.id || "" });
@@ -111,7 +138,7 @@ export default function PdQuickPrice({
   return (
     <div className="pl-quick rd-quick pd-quick" role="group" aria-label="Szybka wycena plisy dachowej dla Twojego okna">
       <div className="pl-quick-head">
-        <span className="pl-quick-title">Ile za Twoje okno?</span>
+        <span className="pl-quick-title">1. Jakie masz okno?</span>
         {hasAnswer && dims.widthMm ? (
           <span className="pl-quick-size">
             {picked && !manual ? buildRoofWindowDisplayLabel(picked) : "wymiar własny"} · {dims.widthMm} × {dims.heightMm} mm
@@ -180,6 +207,9 @@ export default function PdQuickPrice({
           ) : query.trim() && !picked && library.length ? (
             <p className="rd-quick-empty">Nie znaleźliśmy takiego modelu — sprawdź pisownię albo podaj wymiar okna.</p>
           ) : null}
+          <p className="pd-quick-marki">
+            {library.length >= 420 ? `Ponad ${Math.floor(library.length / 10) * 10}` : "Ponad 420"} modeli: Roto, Okpol, Velux, Fakro, Dakstra, Optilight i inne. Model jest na tabliczce znamionowej na skrzydle okna.
+          </p>
           <button type="button" className="rd-link rd-quick-manual" onClick={() => setManual(true)}>
             Nie znam modelu — podam wymiar okna
           </button>
@@ -205,19 +235,44 @@ export default function PdQuickPrice({
       )}
 
       {groups.length > 1 ? (
-        <div className="rd-quick-materials pd-quick-collections" role="radiogroup" aria-label="Kolekcja tkaniny">
-          {groups.map((group) => (
-            <button key={group.id} type="button" role="radio" aria-checked={activeGroup?.id === group.id} className={`rd-unit ${activeGroup?.id === group.id ? "is-active" : ""}`} onClick={() => onFabricGroupChange(group.id)}>
-              {pdCollectionShortLabel(group)}
-            </button>
-          ))}
+        <div className="pd-efekt" role="radiogroup" aria-label="Rodzaj tkaniny">
+          <p className="pd-efekt-t">2. Jaki efekt chcesz uzyskać?</p>
+          {PD_EFEKTY.map((efekt) => {
+            const opcje = efekt.kolekcje
+              .map((k) => ({ k, group: groups.find((group) => pdCollectionShortLabel(group) === k.krotka) || null }))
+              .filter((x) => x.group);
+            if (!opcje.length) return null;
+            return (
+              <div key={efekt.tytul} className="pd-efekt-grupa">
+                <span className="pd-efekt-grupa-t">{efekt.tytul}</span>
+                {opcje.map(({ k, group }) => (
+                  <button
+                    key={group!.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={activeGroup?.id === group!.id}
+                    className={`pd-efekt-opcja ${activeGroup?.id === group!.id ? "is-active" : ""}`}
+                    onClick={() => {
+                      onFabricGroupChange(group!.id);
+                      trackShopStep("quick_price_collection", PD_PRODUCT_SLUG, { collection: group!.id, okno: hasAnswer });
+                    }}
+                  >
+                    <b>{k.nazwa}</b>
+                    <span>{k.opis}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
       <div className="pl-quick-row">
         <div className="pl-quick-result" aria-live="polite">
           {!hasAnswer ? (
-            <span className="pl-quick-na">Wybierz model okna, a pokażemy cenę</span>
+            <span className="pl-quick-na">Wybierz model okna i tkaninę, a pokażemy cenę</span>
+          ) : !activeGroup ? (
+            <span className="pl-quick-na">Wybierz tkaninę – pokażemy cenę</span>
           ) : regular === null ? (
             <span className="pl-quick-na">{profile ? "Ten wymiar wyceni konfigurator" : "Ładuję cennik…"}</span>
           ) : withPromo !== null ? (
@@ -232,7 +287,7 @@ export default function PdQuickPrice({
             </span>
           )}
           <span className="pl-quick-note">
-            {activeGroup ? `kolekcja ${activeGroup.label}, osprzęt biały` : "osprzęt biały"} · kolor tkaniny i osprzętu wybierzesz w konfiguratorze
+            {activeGroup ? `kolekcja ${activeGroup.label}, osprzęt biały · kolor tkaniny i osprzętu wybierzesz w konfiguratorze` : "kolor tkaniny i osprzętu wybierzesz w konfiguratorze"}
           </span>
         </div>
         <button

@@ -27088,3 +27088,25 @@ html.cart-item-editing body > .rd-modal--top:not(.plisy-mount-alert) { z-index: 
 .plisy-doba-uwaga { margin: 0.45rem auto 0 !important; max-width: 420px; font-size: 0.78rem !important; color: #64748b !important; text-align: center; }
 /* 22.11: licznik „X osób konfiguruje teraz” pod opisem na górze strony plis */
 .pe-gora--v3 .live-konfig { margin: 0.1rem 0 0 !important; justify-self: start; }
+/* Plisy dachowe 22.11 – szybka wycena: tkanina wg efektu (bez ceny i bez domyślnej kolekcji, dopóki klient nie wybierze) */
+.pd-quick-marki { margin: 0.35rem 0 0 !important; font-size: 0.82rem !important; line-height: 1.4 !important; color: #64748b !important; }
+.pd-efekt { display: grid; gap: 0.55rem; margin: 0.9rem 0 0.2rem; }
+.pd-efekt-t { margin: 0 !important; font-weight: 800; font-size: 0.98rem !important; color: #12233a !important; }
+.pd-efekt-grupa { display: grid; gap: 0.4rem; }
+.pd-efekt-grupa-t { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #64748b; }
+.pd-efekt-opcja { display: grid; gap: 0.1rem; width: 100%; text-align: left; padding: 0.6rem 0.8rem; border: 1.5px solid #dbe3ea; border-radius: 0.75rem; background: #fff; font: inherit; color: #334155; cursor: pointer; }
+.pd-efekt-opcja b { font-size: 0.95rem; color: #12233a; }
+.pd-efekt-opcja span { font-size: 0.84rem; line-height: 1.35; }
+.pd-efekt-opcja.is-active { border-color: #1f9d6e; background: #effaf5; box-shadow: 0 0 0 2px rgba(31, 157, 110, 0.15); }
+@media (min-width: 761px) { .pd-efekt-grupa { grid-template-columns: repeat(3, minmax(0, 1fr)); } .pd-efekt-grupa-t { grid-column: 1 / -1; } }
+/* Plisy dachowe 22.11 – pierwszy ekran jak /plisy: zdjęcie, H1, korzyść, przycisk ceny na 1. ekranie telefonu */
+.home-root.pd-v2 .hero-product-panel h1 { font-size: clamp(1.7rem, 6.6vw, 2.5rem) !important; font-weight: 800; line-height: 1.1; letter-spacing: -0.015em; color: #12233a; margin: 0.45rem 0 0.15rem !important; text-transform: none; }
+@media (max-width: 760px) {
+  .home-root.pd-v2 .hero-product-group { display: none !important; }
+  .home-root.pd-v2 .hero-product-panel > .pd-hero-photos { aspect-ratio: 2 / 1; }
+  .home-root.pd-v2 .pe-gora--v3 { gap: 0.35rem; }
+  .home-root.pd-v2 .pe-gora--v3 .pe-wybor { font-size: 0.9rem !important; line-height: 1.45 !important; }
+  .home-root.pd-v2 .pe-ocena { font-size: 0.8rem; }
+  .home-root.pd-v2 .hero-product-panel > .plisy-hero-strip { display: none; }
+}
+@media (min-width: 1101px) { .home-root.pd-v2 .hero-product-panel h1 { font-size: clamp(2.2rem, 2.6vw, 2.9rem) !important; } }

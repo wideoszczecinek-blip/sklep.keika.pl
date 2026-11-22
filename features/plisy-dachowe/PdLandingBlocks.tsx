@@ -54,11 +54,12 @@ function TileIcon({ id }: { id: PdHowItWorksTile["id"] }) {
 
 export function PdHowItWorks() {
   return (
-    <section className="rd-how pd-how" aria-label="Jak działa plisa dachowa">
-      <h2 className="hero-product-section-title">Jak działa nasza plisa dachowa</h2>
-      <p className="rd-how-lead">Plisa jak w oknie pionowym, ale prowadzona w bocznych prowadnicach — cztery elementy, które trzymają ją na skosie.</p>
+    <section id="pd-jak-dziala" className="rd-how pd-how" aria-label="Jak działa plisa dachowa">
+      <h2 className="hero-product-section-title">Zasłoń dokładnie tyle okna, ile chcesz</h2>
+      {/* 22.11 (GPT + dane): korzyść zamiast „czterech elementów” – kafle tylko belki i prowadnice; model okna i montaż mają własne sekcje */}
+      <p className="rd-how-lead">Przesuwasz obie belki niezależnie i zasłaniasz górę, dół, środek albo całą szybę. Aluminiowe prowadnice trzymają plisę przy oknie, nawet na skosie, a plisa otwiera się razem z oknem.</p>
       <div className="rd-how-grid">
-        {PD_HOW_IT_WORKS.map((tile) => (
+        {PD_HOW_IT_WORKS.filter((tile) => tile.id === "belki" || tile.id === "prowadnice").map((tile) => (
           <article key={tile.id} className="rd-how-tile">
             <span className="rd-how-icon">
               <TileIcon id={tile.id} />

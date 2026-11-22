@@ -8,9 +8,10 @@ export const DNI_PRODUKCJI: Record<ProduktDachowy, number> = { "plisy-dachowe": 
 
 export const OPIS: Record<ProduktDachowy, { lead: string; tekst: string; cechy: [string, string][] }> = {
   "plisy-dachowe": {
-    lead: "Plisa, która na skosie trzyma się szyby.",
+    // 22.11: pierwszy ekran strony (features/plisy-dachowe/PierwszyEkran.tsx) - te same zdania, tu dla /api/landing-facts
+    lead: "Zaciemnij sypialnię przed porannym słońcem, a latem ogranicz nagrzewanie poddasza.",
     tekst:
-      "Dwie aluminiowe belki pracują w bocznych prowadnicach, więc tkanina zostaje przy szybie przy każdym nachyleniu dachu i przy uchylonym oknie. Każdą belkę ustawiasz osobno – zasłonisz całe okno, samą górę, dół albo pas na środku. Robimy ją pod model Twojego okna dachowego: wystarczy symbol z tabliczki znamionowej.",
+      "Plisę przesuwasz od góry i od dołu, a boczne prowadnice trzymają ją przy szybie, nawet przy uchylonym oknie. Dobierzemy ją po modelu okna, zwykle bez mierzenia.",
     cechy: [
       ["Dobrana do modelu okna", "{modeli} modeli w bibliotece, model odczytamy też ze zdjęcia tabliczki"],
       ["Nie wybrzusza się na skosie", "aluminiowe prowadnice boczne, bez prześwitów po bokach"],
@@ -44,7 +45,21 @@ export const TYPOWE_OKNA: [string, string][] = [
   ["Velux FK06", "do okna VELUX FK06 (66 × 118 cm)"],
 ];
 
-/** Kolejność sekcji strony (home-client.tsx) - opis dla Agencji, zmieniaj razem z układem strony. */
+/** Kolejność sekcji strony plis dachowych od 22.11 (home-client.tsx, pdV2) - opis dla Agencji. */
+export const SEKCJE_LEJKA_PD = [
+  "zdjęcie / animacja plisy w oknie dachowym",
+  "H1 „Plisy do okien dachowych na wymiar”, korzyść (zaciemnienie sypialni, mniej nagrzewania), jak działa w jednym zdaniu, licznik osób konfigurujących, ocena i liczba opinii, przycisk „Dobierz plisę i sprawdź cenę”, Dostawa 0 zł, 3 fakty (5 lat gwarancji, pomoc telefoniczna 8–21 codziennie, 30 dni na zwrot)",
+  "jak działa: „Zasłoń dokładnie tyle okna, ile chcesz” (belki i prowadnice)",
+  "wycena: 1. model okna (biblioteka / bez modelu – wymiar) → 2. efekt tkaniny (zaciemnić: DUO TERMO, Podgumowane; światło: Reflex, DUO, Klasyczne) → cena dopiero po obu wyborach → konfigurator",
+  "wizualizator (zdjęcie okna klienta)",
+  "Kupujesz bez ryzyka (zwijane): dobór po modelu okna, pomyłka – poprawimy, 30 dni na zwrot, 5 lat gwarancji, firma i płatności, data wysyłki",
+  "montaż 10–15 minut",
+  "3 kolory osprzętu",
+  "końcowy przycisk do wyceny",
+  "galeria, opinie, FAQ ułożone od obiekcji, instrukcje",
+] as const;
+
+/** Kolejność sekcji strony rolet dachowych (home-client.tsx) - opis dla Agencji, zmieniaj razem z układem strony. */
 export const SEKCJE_LEJKA = [
   "zdjęcia produktu",
   "pasek: cena od, liczba modeli okien, Polski producent, 5 lat gwarancji, 30 dni na zwrot, darmowa dostawa od 79 zł",
