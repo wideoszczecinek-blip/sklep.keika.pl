@@ -462,6 +462,16 @@ export function LejekPomiar({ onAnimacja, onCzat }: { onAnimacja: () => void; on
     <section className="pm-section" aria-labelledby="lj-pom-t">
       <p className="pm-eyebrow">Pomiar</p>
       <h2 id="lj-pom-t" className="pm-title">Zmierzysz w 2 minuty. A jeśli się pomylisz – pomożemy.</h2>
+      <LejekPomiarTresc onAnimacja={onAnimacja} onCzat={onCzat} />
+    </section>
+  );
+}
+
+/** Sama instrukcja pomiaru, bez nagłówka - właściciel 22.11: stoi w sekcji „Pomiar i montaż plisy” wysoko na stronie,
+ *  a nie osobno nisko pod tkaninami. */
+export function LejekPomiarTresc({ onAnimacja, onCzat }: { onAnimacja: () => void; onCzat: () => void }) {
+  return (
+    <>
       <div className="lj-pomiar">
         <div>
           <b>Montaż przykręcany</b>
@@ -503,7 +513,7 @@ export function LejekPomiar({ onAnimacja, onCzat }: { onAnimacja: () => void; on
           Wyślij zdjęcie okna na czacie – podpowiemy wymiar →
         </button>
       </div>
-    </section>
+    </>
   );
 }
 

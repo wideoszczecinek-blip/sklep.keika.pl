@@ -255,7 +255,7 @@ import LiveConfiguring from "@/app/components/live-configuring";
 import { DachBezRyzyka, DachCeny, DachOpis, DachPomiar, dachFaqWgObiekcji, typoweOkna } from "@/features/dachowe/LejekDachowy";
 import {
   LejekDowod,
-  LejekPomiar,
+  LejekPomiarTresc,
   LejekTkaniny,
   PremiumQuotes,
   faqWgObiekcji,
@@ -4129,8 +4129,10 @@ export default function Home({
                       <LejekOcena onOpinie={() => scrollToProductSection("opinie")} />
                       <section className="pm-section plisy-guide" aria-labelledby="plisy-guide-title">
                         <h2 id="plisy-guide-title" className="pm-title">Pomiar i montaż plisy</h2>
+                        {/* właściciel 22.11: instrukcja pomiaru widoczna tutaj (była zwinięta, a pełna stała nisko pod tkaninami) */}
+                        <p className="pm-lead">Zmierzysz w 2 minuty. A jeśli się pomylisz – pomożemy.</p>
+                        <LejekPomiarTresc onAnimacja={openMeasurementInstructions} onCzat={() => openCrispChat("Zdjęcie mojego okna – pomożecie z wymiarem plisy?")} />
                         <PlisyFilmLoop {...PLISY_FILM.caly} label="Prezentacja plisy w 3D" />
-                        <details><summary>Instrukcja pomiaru</summary><PlisyMeasureGuide /></details>
                         <details><summary>Instrukcja montażu</summary><button type="button" className="pm-link" onClick={openMountFilm}>Zobacz film montażowy →</button></details>
                       </section>
                       <button type="button" className="pm-btn" onClick={scrollToConfigPanel}>Skonfiguruj swoją plisę</button>
@@ -4556,9 +4558,9 @@ export default function Home({
                               return (
                                 <>
                                   {(
-                                    // strona plis 3.11: tkanina do pokoju → pomiar → bezpieczny zakup (reszta na górze strony)
+                                    // strona plis 3.11: tkanina do pokoju → bezpieczny zakup (reszta na górze strony);
+                                    // pomiar od 22.11 w sekcji „Pomiar i montaż plisy” wyżej
                                     <>
-                                      <LejekPomiar onAnimacja={openMeasurementInstructions} onCzat={() => openCrispChat("Zdjęcie mojego okna – pomożecie z wymiarem plisy?")} />
                                       <LejekBezpiecznie onPomiar={openMeasurementInstructions} />
                                     </>
                                   )}
