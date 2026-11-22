@@ -244,7 +244,7 @@ import { PLISY_INSTRUCTION_STEPS } from "@/features/plisy/instructions";
 import { buildPlisyGalleryCategories } from "@/features/plisy/gallery";
 import PlisyCollectionsPicker from "@/features/plisy/CollectionsPicker";
 import PlisyQuickPrice from "@/features/plisy/QuickPrice";
-import { PLISY_FILM, PlisyFilmLoop } from "@/features/plisy/FilmClips";
+import { PLISY_FILM, PlisyFilmDoba, PlisyFilmLoop } from "@/features/plisy/FilmClips";
 import { PlisyHeroGallery, PlisyStickyBar } from "@/features/plisy/LandingV2";
 import { welcomePromoPreview } from "@/lib/welcome-offer";
 import { PERSONAL_CODE_EVENT } from "@/lib/personal-code";
@@ -4152,14 +4152,18 @@ export default function Home({
                         {/* właściciel 22.11: instrukcja pomiaru widoczna tutaj (była zwinięta, a pełna stała nisko pod tkaninami) */}
                         <p className="pm-lead">Zmierzysz w 2 minuty. A jeśli się pomylisz – pomożemy.</p>
                         <LejekPomiarTresc onAnimacja={openMeasurementInstructions} onCzat={() => openCrispChat("Zdjęcie mojego okna – pomożecie z wymiarem plisy?")} />
-                        <PlisyFilmLoop {...PLISY_FILM.caly} label="Prezentacja plisy w 3D" />
-                        <details><summary>Instrukcja montażu</summary><button type="button" className="pm-link" onClick={openMountFilm}>Zobacz film montażowy →</button></details>
+                        {/* 22.11 (właściciel: filmy zbijające obiekcje): montaż widoczny od razu, nie za przyciskiem w zwiniętej zakładce */}
+                        <h3 className="pe-pod-h">Montaż – zobacz, jak to wygląda</h3>
+                        <PlisyFilmLoop {...PLISY_FILM.montaz} label="Montaż plisy" className="plv2-film--montaz" />
+                        <button type="button" className="pm-link" onClick={openMountFilm}>Pełna instrukcja montażu →</button>
                       </section>
                       <button type="button" className="pm-btn" onClick={scrollToConfigPanel}>Skonfiguruj swoją plisę</button>
                       <WizHost />
                       <WizPlywajacy zrodlo="plisy-plywajacy" />
                       {/* 22.11: bez drugiego bloku cytatów - opinie kupujących stoją już pod wyceną */}
                       <LejekGaleria onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
+                      <PlisyFilmDoba />
+                      <button type="button" className="pm-btn" onClick={scrollToPlisyQuote}>Sprawdź cenę swojej plisy</button>
                       <LejekTkaniny onKolekcje={scrollToConfigPanel} />
                       <button type="button" className="pm-btn" onClick={scrollToConfigPanel}>Wybierz tkaninę w konfiguratorze</button>
                       <LejekDlaczego />

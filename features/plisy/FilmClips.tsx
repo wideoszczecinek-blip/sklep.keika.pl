@@ -99,3 +99,50 @@ export function PlisyFilmSlide({ active }: { active: boolean }) {
     </figure>
   );
 }
+
+/** „Doba z plisą” (właściciel 22.11: „więcej emocji – filmiki z produktem i emocjami”; ustalenie z GPT: emocje niżej
+ *  na stronie, po dotknięciu, nie w tle). Wersja reklamy bez planszy Black Weeks: rano, południe, wieczór, noc
+ *  + prawdziwy montaż u klienta, 20 s, z lektorką. Pliku nie ściąga, dopóki klient nie dotknie. */
+export function PlisyFilmDoba() {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const start = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.muted = false;
+    el.play()
+      .then(() => setPlaying(true))
+      .catch(() => {
+        el.muted = true;
+        el.play().then(() => setPlaying(true)).catch(() => {});
+      });
+    trackShopStep("film_play", "plisy", { film: "doba" });
+  };
+  return (
+    <section className="pm-section plisy-doba" aria-labelledby="plisy-doba-t">
+      <p className="pm-eyebrow">Na co dzień</p>
+      <h2 id="plisy-doba-t" className="pm-title">Jedna plisa przez całą dobę</h2>
+      <p className="pm-lead">
+        Rano wpuszczasz słońce, w dzień zasłaniasz tylko ekran, wieczorem nikt nie zagląda, a w nocy latarnia nie świeci Ci w oczy.
+      </p>
+      <figure className="plisy-doba-film">
+        <video
+          ref={ref}
+          src="/plisy/film/doba-z-plisa.mp4"
+          poster="/plisy/film/doba-z-plisa.jpg"
+          playsInline
+          preload="none"
+          controls={playing}
+          onEnded={() => setPlaying(false)}
+          aria-label="Film: jedna plisa przez całą dobę"
+        />
+        {!playing ? (
+          <button type="button" className="plv2-film-play" onClick={start}>
+            ▶ Obejrzyj (20 s)
+          </button>
+        ) : null}
+      </figure>
+      <p className="plisy-doba-uwaga">Sceny we wnętrzach to wizualizacja, ostatnie ujęcie to prawdziwy montaż u klienta.</p>
+    </section>
+  );
+}

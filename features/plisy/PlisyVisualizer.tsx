@@ -274,6 +274,9 @@ export default function PlisyVisualizer() {
   }, []);
 
   const dragRef = useRef<{ sash: Sash; rail: "t" | "b" } | null>(null);
+  // Telefon (właściciel 22.11: „nie da się przesunąć ekranu, bo przesuwamy belki”): palec na szybie przewija stronę,
+  // listwy ciągnie się tylko chwytając je; stuknięcie w szybę przestawia listwę dopiero po puszczeniu palca.
+  const tapRef = useRef<{ id: number; x: number; y: number; t: number } | null>(null);
 
   const moveRail = (sash: Sash, rail: "t" | "b", value: number) => {
     const gap = MIN_SPAN / sash.h;
@@ -301,24 +304,46 @@ export default function PlisyVisualizer() {
     dragRef.current = null;
   };
 
+  // Stuknięcie w szybę palcem: przestaw najbliższą listwę, ale tylko gdy palec się nie przesunął (to nie było przewijanie).
+  const onStagePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    const tap = tapRef.current;
+    tapRef.current = null;
+    if (tap && !dragRef.current && tap.id === e.pointerId) {
+      const moved = Math.hypot(e.clientX - tap.x, e.clientY - tap.y);
+      if (moved < 10 && Date.now() - tap.t < 600) jumpRailTo(e.clientX, e.clientY);
+    }
+    endDrag();
+  };
+
+  const jumpRailTo = (clientX: number, clientY: number): { sash: Sash; rail: "t" | "b" } | null => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return null;
+    const vbX = ((clientX - rect.left) / rect.width) * VB_W;
+    const sash = SASHES.find((entry) => vbX >= entry.x && vbX <= entry.x + entry.w);
+    if (!sash) return null;
+    const fraction = yToFraction(clientY, sash);
+    if (fraction < -0.05 || fraction > 1.05) return null;
+    const cur = pos[sash.id];
+    const rail: "t" | "b" = Math.abs(fraction - cur.t) <= Math.abs(fraction - cur.b) ? "t" : "b";
+    moveRail(sash, rail, fraction);
+    setTouched(true);
+    return { sash, rail };
+  };
+
   // Stuknięcie w okno (audyt 2026-10-01: 90 osób stukało w samą szybę i nic
   // się nie działo): najbliższa listwa tego skrzydła przeskakuje w to miejsce
   // i od razu da się ją ciągnąć. Uchwyty listew łapią zdarzenie pierwsze.
   const onStagePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (dragRef.current) return;
-    const rect = svgRef.current?.getBoundingClientRect();
-    if (!rect || rect.width === 0) return;
-    const vbX = ((e.clientX - rect.left) / rect.width) * VB_W;
-    const sash = SASHES.find((entry) => vbX >= entry.x && vbX <= entry.x + entry.w);
-    if (!sash) return;
-    const fraction = yToFraction(e.clientY, sash);
-    if (fraction < -0.05 || fraction > 1.05) return;
-    const cur = pos[sash.id];
-    const rail: "t" | "b" = Math.abs(fraction - cur.t) <= Math.abs(fraction - cur.b) ? "t" : "b";
-    moveRail(sash, rail, fraction);
-    dragRef.current = { sash, rail };
+    if (e.pointerType !== "mouse" && e.pointerType !== "pen") {
+      // palec: nic nie przechwytujemy - strona ma się przewijać; ewentualne stuknięcie obsłuży onStagePointerUp
+      tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now() };
+      return;
+    }
+    const hit = jumpRailTo(e.clientX, e.clientY);
+    if (!hit) return;
+    dragRef.current = hit;
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
-    setTouched(true);
   };
 
   const onKeyDown = (e: React.KeyboardEvent, sash: Sash, rail: "t" | "b") => {
@@ -353,8 +378,11 @@ export default function PlisyVisualizer() {
           className="plisy-viz-svg"
           onPointerDown={onStagePointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
+          onPointerUp={onStagePointerUp}
+          onPointerCancel={() => {
+            tapRef.current = null;
+            endDrag();
+          }}
           onPointerLeave={endDrag}
           role="group"
           aria-label="Wizualizacja plisy: przeciągnij górną lub dolną listwę, aby zasłonić dowolny fragment okna"
@@ -487,7 +515,8 @@ export default function PlisyVisualizer() {
                         onKeyDown={(e) => onKeyDown(e, sash, rail)}
                       >
                         {/* Fat invisible hit area; the rail itself is too thin to grab. */}
-                        <rect x={sash.x - 4} y={railY - 13} width={sash.w + 8} height={RAIL_H + 26} fill="transparent" />
+                        {/* 22.11: szersze pole chwytu - palec na szybie przewija stronę, więc listwę trzeba łatwo złapać */}
+                        <rect x={sash.x - 4} y={railY - 20} width={sash.w + 8} height={RAIL_H + 40} fill="transparent" />
                         <rect x={sash.x - 3} y={railY} width={sash.w + 6} height={RAIL_H} rx={RAIL_H * 0.3} fill={`url(#${ids.rail})`} />
                         <rect x={sash.x - 3} y={railY} width="9" height={RAIL_H} rx="3" fill={`url(#${ids.cap})`} />
                         <rect x={sash.x + sash.w - 6} y={railY} width="9" height={RAIL_H} rx="3" fill={`url(#${ids.cap})`} />

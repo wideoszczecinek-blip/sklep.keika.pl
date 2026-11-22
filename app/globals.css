@@ -27076,3 +27076,13 @@ html.cart-item-editing body > .rd-modal--top:not(.plisy-mount-alert) { z-index: 
 .pe-cta-pod > span:first-child { font-weight: 700; color: #15803d; }
 .pe-fakty-tel { color: inherit; text-decoration: underline; text-decoration-color: #94a3b8; text-underline-offset: 3px; }
 @media (min-width: 1101px) { .pe-cta-pod { justify-content: start; } }
+/* 22.11 (właściciel: „Jak działa plisa blokuje skrolowanie na telefonie”): palec na szybie przewija stronę,
+   tylko uchwyty listew przechwytują przeciąganie. Większe pole chwytu listew na telefonie. */
+.plisy-viz-svg { touch-action: pan-y; }
+.plisy-viz-rail { touch-action: none; }
+/* 22.11: montaż widoczny w sekcji pomiaru, „Doba z plisą” po galerii (po dotknięciu, z lektorką) */
+.pe-pod-h { margin: 1.4rem 0 0.4rem !important; font-size: 1.12rem !important; font-weight: 800; color: #12233a; line-height: 1.3 !important; }
+.home-root.plisy-v2 .plisy-guide > .plv2-film--montaz { max-width: 420px; margin-inline: auto; }
+.plisy-doba-film { position: relative; margin: 0 auto; max-width: 420px; border-radius: 1rem; overflow: hidden; background: #0f172a; }
+.plisy-doba-film video { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: #0f172a; }
+.plisy-doba-uwaga { margin: 0.45rem auto 0 !important; max-width: 420px; font-size: 0.78rem !important; color: #64748b !important; text-align: center; }
