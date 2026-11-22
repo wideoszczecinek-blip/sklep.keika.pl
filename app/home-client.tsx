@@ -155,7 +155,7 @@ import type { ZaluzjaDetailGroup } from "@/features/rolety/zaluzja-drawing-data"
 import { ssStoredOptions } from "@/features/rolety/ss-options";
 import { crmGetJson } from "@/lib/crm-get";
 import { useBackToClose } from "@/lib/use-back-to-close";
-import PdHeroPhotos from "@/features/plisy-dachowe/PdHeroPhotos";
+import PdHeroGallery from "@/features/plisy-dachowe/PdHeroGallery";
 import PdQuickPrice from "@/features/plisy-dachowe/PdQuickPrice";
 import { PdHardwareStrip, PdHowItWorks } from "@/features/plisy-dachowe/PdLandingBlocks";
 import PdReviews from "@/features/plisy-dachowe/Reviews";
@@ -4054,8 +4054,9 @@ export default function Home({
                       2026-09-24): dwuwierszowa ramka pod tytułem spychała na
                       mobile wszystko poniżej ekranu. */}
                   {plisyV2 ? <PlisyHeroGallery /> : null}
-                  {/* plisy dachowe 22.11: zdjęcie (animacja, o którą prosił właściciel 19.09) przed tytułem, jak na /plisy */}
-                  {pdV2 ? <PdHeroPhotos /> : null}
+                  {/* plisy dachowe 22.11: zdjęcia przed tytułem, jak na /plisy (właściciel: „animacja niekoniecznie wygląda dobrze,
+                      zastąp ją zdjęciami” - PdHeroPhotos z animacją zostaje w repo, nieużywany) */}
+                  {pdV2 ? <PdHeroGallery /> : null}
                   {/* Promocja ilościowa „CAŁY DOM" (29.10.2026, w miejsce
                       SEZON20): jedna linia bez aktywacji i odliczania - rabat
                       nalicza koszyk z reguł CRM (lib/bundle-discount.ts). Ta
