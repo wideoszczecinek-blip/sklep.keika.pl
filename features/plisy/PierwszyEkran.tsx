@@ -43,10 +43,11 @@ export function PlisyPierwszyEkran({
   return (
     <div className="pe-gora pe-gora--v3">
       <p className="pe-lead">
-        Przesuwasz je od góry i od dołu – zasłaniasz tylko tę część okna, którą chcesz. Resztą wpada światło.
+        Zasłaniasz tyle okna, ile chcesz: dół przed sąsiadami, górę przed słońcem albo całość na noc.
       </p>
       <p className="pe-wybor">
-        Ponad 150 tkanin, od jasnych po zaciemniające. Montaż z wierceniem albo bez. Robimy je sami, w Polsce, od 2015 r.
+        Plisę przesuwasz od góry i od dołu, a okno otwierasz jak zwykle. Ponad 150 tkanin, od jasnych po zaciemniające.
+        Każdą produkujemy na Twój wymiar, u siebie w Polsce.
       </p>
       <LejekOcena onOpinie={onOpinie} />
       <div className="pe-cta">
@@ -74,7 +75,7 @@ export function PlisyPierwszyEkran({
       <ul className="pe-fakty" aria-label="Bezpieczny zakup">
         <li>30 dni na zwrot – także na wymiar</li>
         <li>5 lat gwarancji</li>
-        <li>Dostawa 0 zł · wysyłka do {wysylka}</li>
+        <li>Dostawa 0 zł, wysyłka najpóźniej {wysylka}</li>
       </ul>
     </div>
   );

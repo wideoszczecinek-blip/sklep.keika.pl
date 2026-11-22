@@ -4113,7 +4113,7 @@ export default function Home({
                         <p className="pm-eyebrow">Jak działa plisa</p>
                         <h2 id="plisy-jak-dziala" className="pm-title">Zasłoń dokładnie tę część okna, którą chcesz</h2>
                         <p className="plisy-viz-lead">
-                          Przeciągnij palcem górną i dolną listwę: dół zasłonięty przed sąsiadami, górą wpada światło. Albo całe okno, gdy chcesz.
+                          Przeciągnij górną i dolną listwę – zobaczysz, jak plisa zasłania tylko wybrany fragment szyby.
                         </p>
                         <PlisyVisualizer />
                       </section>

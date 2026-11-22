@@ -61,19 +61,12 @@ export function usePaypoEnabled(): boolean {
   return enabled;
 }
 
-const HERO_BENEFITS = [
-  ["5 lat gwarancji", "M12 22s7-3 7-10V5l-7-3-7 3v7c0 7 7 10 7 10Z M9 12l2 2 4-4"],
-  ["30 dni na zwrot", "M12 21S3 16 3 9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 7-9 12-9 12Z M9 12l2 2 4-4"],
-  ["Produkt polski", "M4 22V3h16v12H4 M4 9h16"],
-  ["Aluminiowa belka", "M3 8h18v8H3z M7 8v8 M17 8v8"],
-  ["Grube tkaniny", "m3 8 9-5 9 5-9 5-9-5Z M3 12l9 5 9-5 M3 16l9 5 9-5"],
-] as const;
-
+// 22.11: znaczki na zdjęciu (gwarancja, zwrot, „produkt polski”…) zdjęte - zasłaniały plisę, a te same fakty stoją
+// teraz pod przyciskiem „Sprawdź cenę swojej plisy” (PierwszyEkran, lista pe-fakty).
 export function PlisyHeroGallery() {
   const photos = ["/plisy/hero-salon-inspiracja.webp", "/plisy/hero-sypialnia-inspiracja.webp", PLISY_HERO_PHOTOS[0]];
   const [active, setActive] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const benefitGroups = [HERO_BENEFITS.slice(0, 2), HERO_BENEFITS.slice(2, 4), HERO_BENEFITS.slice(4)];
 
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -91,14 +84,6 @@ export function PlisyHeroGallery() {
           </figure>
         ))}
         {active < 2 ? <span className="plv2-inspiration-note">Wizualizacja aranżacji</span> : null}
-        <ul className="plv2-photo-benefits" key={active}>
-          {(benefitGroups[active] || benefitGroups[0]).map(([label, path]) => (
-            <li key={label}>
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={path} /></svg>
-              {label}
-            </li>
-          ))}
-        </ul>
 
         <div className="plv2-gallery-dots" aria-label="Sterowanie zdjęciami">
           {photos.map((src, index) => (
