@@ -22,19 +22,67 @@ const ZAMOWIEN_2026 = "ponad 7 000";
 // właściciel 3.11: „cena na końcu” - bez „od … zł” na pierwszym ekranie; pierwsza cena, jaką klient widzi,
 // to cena jego okna po wyborze materiału (wycena v2, QuickPrice).
 // właściciel 21.11: pod opisem „mały dowód społeczny” - ostatnie opinie kupujących ze sklepu (karuzela).
-export function PlisyPierwszyEkran({ opinie = null }: { opinie?: OstatniaOpinia[] | null }) {
+//
+// 22.11 (właściciel: „skonfrontuj wątek GPT ze swoją wiedzą i stwórz definitywny landing”): nagłówek mówi, CO to jest
+// (H1 „Plisy okienne na wymiar” w home-client), jedno zdanie o tym, jak działa, jedno o wyborze - zamiast hasła
+// reklamowego i trzech akapitów. Pod spodem jedna linia oceny, jeden przycisk do wyceny i trzy fakty bezpiecznego
+// zakupu. Cena dalej dopiero po wyborze materiału (właściciel 3.11; cena „od” na górze 4–7.11 dała mniej koszyków).
+// Karuzela ostatnich opinii przeszła pod wycenę - wita klienta, który właśnie zobaczył cenę.
+export function PlisyPierwszyEkran({
+  onCena,
+  onJakDziala,
+  onOpinie,
+}: {
+  onCena: () => void;
+  onJakDziala: () => void;
+  onOpinie: () => void;
+}) {
+  const d = dzienWysylki();
+  const kiedy = ["nd.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."][d.getDay()];
+  const wysylka = `${kiedy} ${d.toLocaleDateString("pl-PL", { day: "numeric", month: "long" })}`;
   return (
-    <div className="pe-gora">
-      <p className="pe-naglowek">Prywatność, kiedy chcesz. Światło, kiedy potrzebujesz.</p>
-      <div className="pe-opis">
-        <p>Plisy to osłony okienne, które pozwalają zasłonić dowolną część szyby. Dwie ruchome belki połączone plisowaną tkaniną możesz przesuwać od góry i od dołu.</p>
-        <p>Wybierz tkaninę dekoracyjną lub podgumowaną i dopasuj plisę do swoich potrzeb.</p>
-        <p><strong>Ponad 150 tkanin i 10 kolorów belek</strong> pozwoli Ci dopasować osłonę do okna i wnętrza.</p>
+    <div className="pe-gora pe-gora--v3">
+      <p className="pe-lead">
+        Przesuwasz je od góry i od dołu – zasłaniasz tylko tę część okna, którą chcesz. Resztą wpada światło.
+      </p>
+      <p className="pe-wybor">
+        Ponad 150 tkanin, od jasnych po zaciemniające. Montaż z wierceniem albo bez. Robimy je sami, w Polsce, od 2015 r.
+      </p>
+      <LejekOcena onOpinie={onOpinie} />
+      <div className="pe-cta">
+        <button
+          type="button"
+          className="pm-btn pe-cta-btn"
+          onClick={() => {
+            trackShopStep("hero_cta", "plisy", { cel: "wycena" });
+            onCena();
+          }}
+        >
+          Sprawdź cenę swojej plisy
+        </button>
+        <button
+          type="button"
+          className="pe-cta-link"
+          onClick={() => {
+            trackShopStep("hero_cta", "plisy", { cel: "jak_dziala" });
+            onJakDziala();
+          }}
+        >
+          Zobacz, jak działa ↓
+        </button>
       </div>
-      <OstatnieOpinie opinie={opinie} />
-
+      <ul className="pe-fakty" aria-label="Bezpieczny zakup">
+        <li>30 dni na zwrot – także na wymiar</li>
+        <li>5 lat gwarancji</li>
+        <li>Dostawa 0 zł · wysyłka do {wysylka}</li>
+      </ul>
     </div>
   );
+}
+
+/** Ostatnie opinie pod wyceną (22.11) - ten sam komponent co wcześniej na pierwszym ekranie. */
+export function LejekOstatnieOpinie({ opinie }: { opinie?: OstatniaOpinia[] | null }) {
+  return <OstatnieOpinie opinie={opinie} />;
 }
 
 /** Jedna linia oceny pod polami wymiarów. */

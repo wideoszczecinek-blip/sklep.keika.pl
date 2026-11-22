@@ -249,7 +249,7 @@ import { PlisyHeroGallery, PlisyStickyBar } from "@/features/plisy/LandingV2";
 import { welcomePromoPreview } from "@/lib/welcome-offer";
 import { PERSONAL_CODE_EVENT } from "@/lib/personal-code";
 import { LejekGaleria } from "@/features/plisy/LejekGaleria";
-import { LejekBezpiecznie, LejekDlaczego, LejekKoniec, LejekOcena, PlisyPierwszyEkran } from "@/features/plisy/PierwszyEkran";
+import { LejekBezpiecznie, LejekDlaczego, LejekKoniec, LejekOstatnieOpinie, PlisyPierwszyEkran } from "@/features/plisy/PierwszyEkran";
 import type { OstatniaOpinia } from "@/features/plisy/OstatnieOpinie";
 import LiveConfiguring from "@/app/components/live-configuring";
 import { DachBezRyzyka, DachCeny, DachOpis, DachPomiar, dachFaqWgObiekcji, typoweOkna } from "@/features/dachowe/LejekDachowy";
@@ -3051,6 +3051,18 @@ export default function Home({
       document.querySelector<HTMLInputElement>(".pl-quick--v2 input")?.focus({ preventScroll: true });
     }, 500);
   }
+  // Przewinięcie do sekcji strony plis (na telefonie przewija się .hero-full, nie okno) - 22.11, „Zobacz, jak działa”.
+  function scrollToPlisyElement(selector: string) {
+    const target = document.querySelector<HTMLElement>(selector);
+    if (!target) return;
+    const container = target.closest<HTMLElement>(".hero-full");
+    if (container && container.scrollHeight > container.clientHeight) {
+      const delta = target.getBoundingClientRect().top - container.getBoundingClientRect().top - 72;
+      container.scrollTo({ top: Math.max(0, container.scrollTop + delta), behavior: "smooth" });
+    } else {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
   useEffect(() => {
     if (plisyV2) trackShopStep("landing_variant", "plisy", { variant: "v2" });
   }, [plisyV2]);
@@ -4089,21 +4101,29 @@ export default function Home({
                     <>
                       {/* Strona plis 3.11 (plan Agencji, jedna wersja): pierwszy ekran z wyceną → wizualizator → opinie →
                           galeria → Dlaczego KEIKA; niżej tkanina, pomiar, bezpieczny zakup, FAQ, końcowy przycisk. */}
-                      <PlisyPierwszyEkran opinie={plisyOpinie} />
+                      {/* 22.11 (właściciel: wątek GPT + nasze dane → jedna, definitywna strona): co to jest → jak działa →
+                          cena (wymiary, materiał, cena) → opinie kupujących → pomiar i montaż → reszta bez zmian. */}
+                      <PlisyPierwszyEkran
+                        onCena={scrollToPlisyQuote}
+                        onJakDziala={() => scrollToPlisyElement("#plisy-jak-dziala")}
+                        onOpinie={() => scrollToProductSection("opinie")}
+                      />
                       {/* właściciel 8.11: po opisie „Jak działa plisa” → wizualizator → szybka wycena; reszta bez zmian */}
                       <section className="pm-section plisy-viz-section" aria-labelledby="plisy-jak-dziala">
-                        <h2 id="plisy-jak-dziala" className="pm-title">Jak działa plisa</h2>
+                        <p className="pm-eyebrow">Jak działa plisa</p>
+                        <h2 id="plisy-jak-dziala" className="pm-title">Zasłoń dokładnie tę część okna, którą chcesz</h2>
                         <p className="plisy-viz-lead">
-                          Przeciągnij górną i dolną listwę — plisa zasłoni dowolny fragment okna, resztę zostawi odsłoniętą.
+                          Przeciągnij palcem górną i dolną listwę: dół zasłonięty przed sąsiadami, górą wpada światło. Albo całe okno, gdy chcesz.
                         </p>
                         <PlisyVisualizer />
                       </section>
                       <WizPowrot />
                       <WizButton zrodlo="plisy-oferta" onKonfiguruj={scrollToConfigPanel} />
                       <section className="pm-section" aria-labelledby="plisy-szybka-wycena">
-                        <h2 id="plisy-szybka-wycena" className="pm-title">Sprawdź szybką wycenę</h2>
-                        <p className="pm-lead">Wpisz przybliżone wymiary i porównaj orientacyjne ceny różnych tkanin.</p>
-                        <button type="button" className="pm-link" onClick={scrollToConfigPanel}>Przejdź do pełnej konfiguracji →</button>
+                        <p className="pm-eyebrow">Cena</p>
+                        <h2 id="plisy-szybka-wycena" className="pm-title">Ile kosztuje plisa do Twojego okna?</h2>
+                        <p className="pm-lead">Wpisz wymiary i wybierz materiał – cenę zobaczysz od razu. Bez rejestracji i bez zobowiązań.</p>
+                        <button type="button" className="pm-link" onClick={scrollToConfigPanel}>Wolisz od razu pełną konfigurację? →</button>
                       </section>
                       <PromoCountdownBanner code={PROMO_CODE} productSlug="plisy">
                         {(promo) => (
@@ -4126,7 +4146,7 @@ export default function Home({
                           />
                         )}
                       </PromoCountdownBanner>
-                      <LejekOcena onOpinie={() => scrollToProductSection("opinie")} />
+                      <LejekOstatnieOpinie opinie={plisyOpinie} />
                       <section className="pm-section plisy-guide" aria-labelledby="plisy-guide-title">
                         <h2 id="plisy-guide-title" className="pm-title">Pomiar i montaż plisy</h2>
                         {/* właściciel 22.11: instrukcja pomiaru widoczna tutaj (była zwinięta, a pełna stała nisko pod tkaninami) */}
@@ -4138,7 +4158,7 @@ export default function Home({
                       <button type="button" className="pm-btn" onClick={scrollToConfigPanel}>Skonfiguruj swoją plisę</button>
                       <WizHost />
                       <WizPlywajacy zrodlo="plisy-plywajacy" />
-                      <PremiumQuotes rotate onAll={() => scrollToProductSection("opinie")} />
+                      {/* 22.11: bez drugiego bloku cytatów - opinie kupujących stoją już pod wyceną */}
                       <LejekGaleria onZoom={(title, urls, index) => setZoomPreview({ title, urls, index })} />
                       <LejekTkaniny onKolekcje={scrollToConfigPanel} />
                       <button type="button" className="pm-btn" onClick={scrollToConfigPanel}>Wybierz tkaninę w konfiguratorze</button>
