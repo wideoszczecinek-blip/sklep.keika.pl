@@ -172,7 +172,7 @@ export function ZaluzjeMaterialCards({
               <span className="zl-hub-photo" aria-hidden="true" style={{ backgroundImage: `url(${optimizeImageUrl(copy.cover, 640)})` }} />
               <span className="zl-hub-body">
                 <strong>{copy.name}</strong>
-                <span className="zl-hub-desc">{copy.lead}</span>
+                <span className="zl-hub-desc">{copy.pitch}</span>
                 <span className="zl-hub-meta">
                   {summary?.widthsMm.length ? <span>Lamele {summary.widthsMm.join(" · ")} mm</span> : null}
                   {summary?.colorCount ? <span>{colorCountText(summary.colorCount)}</span> : null}
@@ -189,7 +189,7 @@ export function ZaluzjeMaterialCards({
         className="zl-hub-extra"
         onClick={() => trackShopStep("zaluzje_rodzaj", ZALUZJE_EXTRA_SLUG, { source: "hub_extra" })}
       >
-        <span className="zl-hub-extra-photo" aria-hidden="true" style={{ backgroundImage: `url(${optimizeImageUrl(extra.cover, 200)})` }} />
+        <span className="zl-hub-extra-photo" aria-hidden="true" style={{ backgroundImage: `url(${optimizeImageUrl(extra.cover, 220)})` }} />
         <span className="zl-hub-extra-body">
           <small>Do łazienki i kuchni</small>
           <strong>{extra.name}</strong>
@@ -241,7 +241,7 @@ export function ZaluzjePorownanie({ current }: { current: ZaluzjeRodzajSlug | nu
             const copy = ZALUZJE_RODZAJE[slug];
             const inner = (
               <>
-                <span className="zl-cmp-photo" aria-hidden="true" style={{ backgroundImage: `url(${optimizeImageUrl(copy.cover, 200)})` }} />
+                <span className="zl-cmp-photo" aria-hidden="true" style={{ backgroundImage: `url(${optimizeImageUrl(copy.cover, 220)})` }} />
                 <strong>{copy.short}</strong>
                 <small>{slug === current ? "Oglądasz" : "Zobacz →"}</small>
               </>

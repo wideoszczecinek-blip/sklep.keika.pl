@@ -526,21 +526,23 @@ export default function RoletyConfiguratorPanel({
       return;
     }
     if (selectedFabricGroupId) setSelectedFabricGroupId("");
-    // Okno z innego materiału: ta sama grubość lameli, jeśli ten materiał ją ma
-    // (jedna wersja przy tej grubości = od razu wybrana). Powrót na ten sam
-    // materiał: także wersja i kolor sprzed wyjścia.
-    if (!carrySeed?.slatWidthMm) return;
-    const entry = rodzajWidths.find((item) => item.widthMm === carrySeed.slatWidthMm);
+    // Powrót na materiał oglądany wcześniej w tej wizycie: jego grubość,
+    // wersja i kolor. Pierwsze wejście z innego materiału: ta sama grubość
+    // lameli, jeśli ten materiał ją ma (jedna wersja przy tej grubości = od
+    // razu wybrana).
+    if (!carrySeed) return;
+    const ownPick = carrySeed.picks?.[rodzaj] || (carrySeed.rodzaj === rodzaj && carrySeed.slatWidthMm ? carrySeed : null);
+    const wantedWidth = ownPick?.slatWidthMm || carrySeed.slatWidthMm;
+    const entry = wantedWidth ? rodzajWidths.find((item) => item.widthMm === wantedWidth) : null;
     if (!entry) return;
     setSlatWidthMm(entry.widthMm);
-    const sameRodzajGroup =
-      carrySeed.rodzaj === rodzaj && carrySeed.fabricGroupId ? entry.groups.find((item) => item.id === carrySeed.fabricGroupId) || null : null;
-    const carriedGroup = sameRodzajGroup || (entry.groups.length === 1 ? entry.groups[0] : null);
+    const pickedGroup = ownPick?.fabricGroupId ? entry.groups.find((item) => item.id === ownPick.fabricGroupId) || null : null;
+    const carriedGroup = pickedGroup || (entry.groups.length === 1 ? entry.groups[0] : null);
     if (carriedGroup) {
       setSelectedFabricGroupId(carriedGroup.id);
       setStepGroupCollapsed(true);
-      if (sameRodzajGroup && carrySeed.fabricId && carriedGroup.swatches.some((swatch) => swatch.id === carrySeed.fabricId)) {
-        setSelectedFabricId(carrySeed.fabricId);
+      if (pickedGroup && ownPick?.fabricId && carriedGroup.swatches.some((swatch) => swatch.id === ownPick.fabricId)) {
+        setSelectedFabricId(ownPick.fabricId);
         setStepFabricCollapsed(true);
       }
     } else {

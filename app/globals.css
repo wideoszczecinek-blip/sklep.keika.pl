@@ -27165,7 +27165,7 @@ a.zl-mat-extra:hover strong { text-decoration: underline; }
 .zl-mat--panel .zl-mat-extra { margin-top: 0.45rem; font-size: 0.75rem; }
 .zl-mat--panel .zl-mat-carry { margin-top: 0.35rem; font-size: 0.72rem; font-weight: 500; color: #64748b; }
 /* strona zbiorcza: 3 materiały + PCV jako dodatkowa opcja */
-.zl-hub-grid--3 { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+.zl-hub-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .zl-hub-extra { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; margin-top: 0.7rem; padding: 0.5rem 0.85rem 0.5rem 0.5rem; border-radius: 1rem; border: 1px dashed rgba(19, 40, 67, 0.28); background: #fff; color: inherit; text-decoration: none; transition: border-color 0.15s ease; }
 .zl-hub-extra:hover,
 .zl-hub-extra:focus-visible { border-color: #f59e0b; border-style: solid; }
@@ -27178,8 +27178,8 @@ a.zl-mat-extra:hover strong { text-decoration: underline; }
 /* porównanie materiałów */
 .zl-cmp-section { scroll-margin-top: 6rem; }
 .zl-cmp { border: 1px solid #e6ebf1; border-radius: 0.9rem; overflow-x: auto; background: #fff; font-size: 0.8rem; max-width: 100%; }
-.zl-cmp-row { display: grid; grid-template-columns: minmax(5.3rem, 0.85fr) repeat(var(--zl-cmp-cols, 3), minmax(4.9rem, 1fr)); min-width: calc(5.3rem + var(--zl-cmp-cols, 3) * 4.9rem); }
-.zl-cmp-row > span { padding: 0.5rem 0.45rem; border-top: 1px solid #eef2f6; line-height: 1.3; color: #475569; min-width: 0; overflow-wrap: anywhere; }
+.zl-cmp-row { display: grid; grid-template-columns: minmax(6.1rem, 0.9fr) repeat(var(--zl-cmp-cols, 3), minmax(4.55rem, 1fr)); min-width: calc(6.1rem + var(--zl-cmp-cols, 3) * 4.55rem); }
+.zl-cmp-row > span { padding: 0.5rem 0.4rem; border-top: 1px solid #eef2f6; line-height: 1.3; color: #475569; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
 .zl-cmp-row.is-head > span { border-top: 0; padding: 0.5rem 0.35rem 0.4rem; }
 .zl-cmp-row > span[role="rowheader"] { font-weight: 700; color: #12233a; }
 .zl-cmp-row > span.is-current { background: #fffaf0; color: #12233a; font-weight: 650; }
@@ -27195,3 +27195,27 @@ button.zl-rodzaj-width { font: inherit; text-align: left; color: inherit; cursor
 button.zl-rodzaj-width:hover,
 button.zl-rodzaj-width:focus-visible { border-color: #f59e0b; box-shadow: 0 6px 16px rgba(19, 40, 67, 0.1); }
 .zl-rodzaj-width-go { margin-top: 0.2rem; font-style: normal; font-size: 0.78rem; font-weight: 800; color: #d97706; }
+.zl-hub-trust { margin: 0.9rem 0 0.2rem; }
+/* telefon: kafle materiałów poziomo (zdjęcie obok opisu) - trzy materiały na jednym ekranie */
+@media (max-width: 560px) {
+  .zl-hub-grid--3 { grid-template-columns: minmax(0, 1fr); gap: 0.55rem; }
+  .zl-hub-grid--3 .zl-hub-card { grid-template-rows: none; grid-template-columns: 7rem minmax(0, 1fr); border-radius: 1rem; }
+  .zl-hub-grid--3 .zl-hub-photo { aspect-ratio: auto; height: 100%; min-height: 8rem; }
+  .zl-hub-grid--3 .zl-hub-body { padding: 0.55rem 0.7rem 0.65rem; gap: 0.22rem; }
+  .zl-hub-grid--3 .zl-hub-body strong { font-size: 1rem; }
+  .zl-hub-grid--3 .zl-hub-desc { font-size: 0.8rem; line-height: 1.35; }
+  .zl-hub-grid--3 .zl-hub-meta { gap: 0.15rem 0.6rem; font-size: 0.72rem; }
+  .zl-hub-grid--3 .zl-hub-rooms { display: none; }
+  .zl-hub-grid--3 .zl-hub-go { margin-top: 0.05rem; font-size: 0.82rem; }
+}
+.zl-mat p.zl-mat-carry { margin: 0.45rem 0 0; font-size: 0.78rem; line-height: 1.4; }
+.zl-mat--panel p.zl-mat-carry { margin-top: 0.35rem; font-size: 0.72rem; }
+/* komputer: przełącznik pod tytułem w jednym niskim rzędzie (zdjęcie obok nazwy) */
+@media (min-width: 761px) {
+  .zl-mat--strip .zl-mat-row { gap: 0.6rem; }
+  .zl-mat--strip .zl-mat-tile { grid-template-rows: none; grid-template-columns: 5.2rem minmax(0, 1fr); align-items: stretch; border-radius: 0.9rem; }
+  .zl-mat--strip .zl-mat-photo { aspect-ratio: auto; height: 100%; min-height: 4rem; }
+  .zl-mat--strip .zl-mat-text { align-content: center; padding: 0.45rem 0.7rem; }
+  .zl-mat--strip .zl-mat-text strong { font-size: 1rem; }
+  .zl-mat--strip .zl-mat-text small { font-size: 0.75rem; }
+}

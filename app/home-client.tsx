@@ -4740,11 +4740,7 @@ export default function Home({
                           />
                         ) : zaluzjeCatalogMode ? (
                           <div className="pl-landing rl-landing">
-                            <div className="pl-trust-row">
-                              <span className="pl-chip">Na wymiar co do milimetra</span>
-                              <span className="pl-chip">Realizacja {ROLETY_COPY.zaluzje.leadTimeLabel}</span>
-                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
-                            </div>
+                            {/* 23.11.2026: najpierw opis i wybór materiału (właściciel: materiał = główny wybór); plakietki pod kaflami (ZaluzjeHub). */}
                             <p className="pl-subtitle">
                               Żaluzje poziome z aluminium, drewna albo bambusa, wykonane pod Twoje okno co do milimetra. Obracasz lamele i sam decydujesz, ile światła wpuścić, a z zewnątrz nikt nie zajrzy do środka.
                             </p>

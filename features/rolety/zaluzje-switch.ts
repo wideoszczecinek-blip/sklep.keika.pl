@@ -28,11 +28,18 @@ export type ZaluzjeCarry = {
   spaceChoice: "" | "full" | "less";
   spaceLessCm: string;
   slatWidthMm: number;
-  /** Wersja i kolor - wracają tylko na tę samą stronę materiału (inny materiał = inne modele). */
+  /** Wersja i kolor bieżącego materiału (inny materiał = inne modele). */
   fabricGroupId: string;
   fabricId: string;
+  /**
+   * Ostatni wybór na stronie każdego materiału - przy porównywaniu „tam i z
+   * powrotem” klient wraca do swojej wersji i koloru, a nie do pustego kroku.
+   */
+  picks?: Partial<Record<ZaluzjeRodzajSlug, ZaluzjePick>>;
   savedAt: number;
 };
+
+export type ZaluzjePick = { slatWidthMm: number; fabricGroupId: string; fabricId: string };
 
 export function readZaluzjeCarry(): ZaluzjeCarry | null {
   try {
@@ -58,11 +65,16 @@ function notifyCarryChange() {
   }
 }
 
-export function writeZaluzjeCarry(carry: Omit<ZaluzjeCarry, "savedAt">) {
+export function writeZaluzjeCarry(carry: Omit<ZaluzjeCarry, "savedAt" | "picks">) {
   try {
-    const empty = !carry.mountId && !carry.inputWidthMm && !carry.inputHeightMm && !carry.slatWidthMm;
+    const previous = readZaluzjeCarry();
+    const picks: Partial<Record<ZaluzjeRodzajSlug, ZaluzjePick>> = { ...(previous?.picks || {}) };
+    if (carry.slatWidthMm) {
+      picks[carry.rodzaj] = { slatWidthMm: carry.slatWidthMm, fabricGroupId: carry.fabricGroupId, fabricId: carry.fabricId };
+    }
+    const empty = !carry.mountId && !carry.inputWidthMm && !carry.inputHeightMm && !carry.slatWidthMm && !Object.keys(picks).length;
     if (empty) window.sessionStorage.removeItem(CARRY_KEY);
-    else window.sessionStorage.setItem(CARRY_KEY, JSON.stringify({ ...carry, savedAt: Date.now() }));
+    else window.sessionStorage.setItem(CARRY_KEY, JSON.stringify({ ...carry, picks, savedAt: Date.now() }));
   } catch {
     /* tryb prywatny - przeniesienie wymiarów to wygoda, nic od niego nie zależy */
   }

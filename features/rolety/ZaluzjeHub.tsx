@@ -7,7 +7,7 @@
 // kuchni. Bez ceny „od” (materiał przed ceną, właściciel 3.11). Stare
 // ?model=ss-NN i ?kategoria=<stara kategoria> przekierowują na właściwy rodzaj.
 import { useEffect, useMemo } from "react";
-import type { RoletyProfile } from "./shared";
+import { ROLETY_COPY, type RoletyProfile } from "./shared";
 import { zaluzjeRodzajOfGroup, zaluzjeRodzajSummaries, type ZaluzjeRodzajSlug } from "./zaluzje-rodzaje";
 import { ZaluzjeBezpiecznie, ZaluzjePomiar } from "./ZaluzjeLejek";
 import { ZaluzjeMaterialCards, ZaluzjePorownanie } from "./ZaluzjeMaterialy";
@@ -81,10 +81,14 @@ export default function ZaluzjeHub({ profile }: { profile: RoletyProfile | null 
     <div id={ZALUZJE_CATALOG_ID} className="zl-hub">
       <h2 className="zl-hub-title">Wybierz materiał lameli</h2>
       <p className="zl-hub-lead">
-        Materiał decyduje o wyglądzie i o tym, gdzie żaluzja się sprawdzi. Grubość lameli i kolor wybierzesz w konfiguratorze na stronie materiału -
-        a materiał zmienisz tam jednym kliknięciem.
+        Materiał decyduje o wyglądzie i o tym, gdzie żaluzja się sprawdzi. Grubość lameli i kolor wybierzesz w konfiguratorze.
       </p>
       <ZaluzjeMaterialCards summaries={summaries} />
+      <div className="pl-trust-row zl-hub-trust">
+        <span className="pl-chip">Na wymiar co do milimetra</span>
+        <span className="pl-chip">Realizacja {ROLETY_COPY.zaluzje.leadTimeLabel}</span>
+        <span className="pl-chip">Darmowa dostawa od 79 zł</span>
+      </div>
 
       <ZaluzjePorownanie current={null} />
 

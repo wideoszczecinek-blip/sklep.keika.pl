@@ -52,6 +52,8 @@ export type ZaluzjeRodzajCopy = {
   faq: Array<{ question: string; answer: string }>;
   /** Kafel przełącznika materiału: krótka cecha (2-3 słowa) i zdjęcie. */
   tileNote: string;
+  /** Jedno zdanie na kafel strony zbiorczej (długi lead stoi na stronie rodzaju). */
+  pitch: string;
   cover: string;
   /**
    * Galeria (pierwsze 4 zdjęcia stoją pod opisem). 23.11.2026: tylko ostre
@@ -175,6 +177,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       WHERE_FAQ,
     ],
     tileNote: "do kuchni i łazienki",
+    pitch: "Odporne na wilgoć, z najwęższymi lamelami i największym wyborem kolorów.",
     cover: zaluzjeRodzajPhotoUrl(58, 5),
     gallery: [
       zaluzjeRodzajPhotoUrl(58, 5),
@@ -236,6 +239,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       WHERE_FAQ,
     ],
     tileNote: "wygląd drewna, odporne na wilgoć",
+    pitch: "Wygląd drewna, ale nie chłoną wody - do łazienki i kuchni.",
     cover: foto("pcv-1"),
     gallery: [foto("pcv-1"), foto("pcv-3"), foto("pcv-2"), foto("pcv-4"), zaluzjeRodzajPhotoUrl(57, 0), zaluzjeRodzajPhotoUrl(57, 4)],
   },
@@ -288,6 +292,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       WHERE_FAQ,
     ],
     tileNote: "prawdziwe drewno",
+    pitch: "Prawdziwe drewno: ciepłe w dotyku i najmniej nagrzewa się w słońcu.",
     cover: foto("drewniane-basswood-3"),
     gallery: [
       foto("drewniane-basswood-3"),
@@ -352,6 +357,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       WHERE_FAQ,
     ],
     tileNote: "naturalny bambus",
+    pitch: "Naturalny bambus o żywym rysunku - do wnętrz boho, japandi i skandynawskich.",
     cover: foto("bambusowe-1"),
     // Zdjęcia modeli bambusowych z B2B mają 200 × 200 px - tylko zdjęcia kolekcji.
     gallery: [foto("bambusowe-1"), foto("bambusowe-4"), foto("bambusowe-3"), foto("bambusowe-2")],
