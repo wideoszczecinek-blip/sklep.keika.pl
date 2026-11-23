@@ -362,3 +362,6 @@
   margin: 1px 0 0;
   accent-color: #0f2859;
 }
+
+/* 23.11: na pierwszym ekranie rolet dachowych znaczek zasłaniał główny przycisk – chowamy go, dopóki przycisk widać (RdPierwszyEkran) */
+body.hero-cta-widoczny .wo-pill { visibility: hidden; pointer-events: none; }

@@ -9,11 +9,13 @@ import { trackShopStep } from "@/lib/track-step";
 
 const src = (path: string, w = 900) => `/_next/image?url=${encodeURIComponent(path)}&w=${w}&q=75`;
 
-type Slajd = { id: string; zdjecie: string; alt: string; contain?: boolean };
+type Slajd = { id: string; zdjecie: string; alt: string; contain?: boolean; gora?: boolean };
 
 const SLAJDY: Slajd[] = [
-  { id: "sypialnia", zdjecie: "/rolety-dachowe/wnetrze-02.jpg", alt: "Ciemna roleta dachowa zasłaniająca okno w sypialni na poddaszu – wizualizacja" },
-  { id: "salon", zdjecie: "/rolety-dachowe/wnetrze-03.jpg", alt: "Roleta dachowa w oknie pokoju na poddaszu – wizualizacja" },
+  // hero-pokoj.jpg = wnetrze-03 przycięte (700×440 od y=30) – w oryginale z Allegro przy górnej i prawej krawędzi są doklejone
+  // fragmenty innych zdjęć; wnetrze-02 odpada z tego samego powodu (szew po lewej i na dole).
+  { id: "pokoj", zdjecie: "/rolety-dachowe/hero-pokoj.jpg", alt: "Szara roleta dachowa zasłaniająca okno w pokoju na poddaszu – wizualizacja" },
+  { id: "sypialnia", zdjecie: "/rolety-dachowe/wnetrze-04.jpg", alt: "Jasna roleta dachowa w oknie sypialni na poddaszu – wizualizacja", gora: true },
   { id: "produkt", zdjecie: "/rolety-dachowe/produkt-02.jpg", alt: "Rolety dachowe KEIKA z bliska – kaseta, prowadnice i kolory tkanin", contain: true },
 ];
 
@@ -32,7 +34,7 @@ export default function RdHeroGallery() {
       <div className="plv2-photo-stage">
         {SLAJDY.map((s, index) => (
           <figure key={s.id} className={`plv2-slide ${s.contain ? "rd-slide-contain" : ""} ${index === active ? "is-active" : ""}`} aria-hidden={index !== active}>
-            <img src={src(s.zdjecie)} alt={s.alt} decoding="async" fetchPriority={index === 0 ? "high" : "low"} />
+            <img src={src(s.zdjecie)} alt={s.alt} decoding="async" fetchPriority={index === 0 ? "high" : "low"} style={s.gora ? { objectPosition: "center top" } : undefined} />
           </figure>
         ))}
         <div className="plv2-gallery-dots" aria-label="Sterowanie zdjęciami">
