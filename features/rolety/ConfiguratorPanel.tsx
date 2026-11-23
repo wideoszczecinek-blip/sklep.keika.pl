@@ -1050,10 +1050,14 @@ export default function RoletyConfiguratorPanel({
   }, [rodzaj, lockModel, profile, selectedMountId, inputWidthMm, inputHeightMm, exactBlindSize, hasVent, spaceChoice, spaceLessCm, slatWidthMm, selectedFabricGroupId, selectedFabricId]);
 
   // Przełącznik materiału w konfiguratorze: na nowej stronie od razu konfigurator (telefon: przewinięcie do panelu).
+  // Sklep po dociągnięciu konfiguracji z CRM (ok. 1 s po wejściu, na wolnym łączu później) przewija
+  // .hero-full na górę (activateProductView w home-client) - na produkcji już PO naszym przewinięciu
+  // (sprawdzone 23.11 na sklep.keika.pl). Przez pierwsze sekundy wracamy więc do konfiguratora, dopóki
+  // klient sam nie dotknie ekranu, myszy, kółka ani klawiatury.
   const [jumpOnLoad] = useState(() => (rodzaj && !lockModel ? takeZaluzjeJumpToConfigurator(rodzaj) : false));
   useEffect(() => {
     if (!jumpOnLoad || loadState !== "ready") return;
-    const timer = window.setTimeout(() => {
+    const jump = () => {
       const panel = document.querySelector<HTMLElement>(".hero-product-config-panel");
       if (!panel) return;
       const container = panel.closest<HTMLElement>(".hero-full");
@@ -1064,8 +1068,29 @@ export default function RoletyConfiguratorPanel({
         panel.scrollIntoView({ behavior: "auto", block: "start" });
       }
       if (getComputedStyle(panel).overflowY === "auto") panel.scrollTop = 0;
-    }, 120);
-    return () => window.clearTimeout(timer);
+    };
+    const timer = window.setTimeout(jump, 120);
+    const guardUntil = Date.now() + 6000;
+    let userActed = false;
+    const onUser = () => {
+      userActed = true;
+    };
+    const onScroll = (event: Event) => {
+      if (userActed || Date.now() > guardUntil) return;
+      const target = event.target;
+      const pageScroll = target === document || (target instanceof HTMLElement && target.classList.contains("hero-full"));
+      if (!pageScroll) return;
+      const top = target instanceof HTMLElement ? target.scrollTop : window.scrollY;
+      if (top < 40) jump();
+    };
+    const userEvents = ["pointerdown", "touchstart", "wheel", "keydown"];
+    userEvents.forEach((name) => window.addEventListener(name, onUser, { capture: true, passive: true }));
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => {
+      window.clearTimeout(timer);
+      userEvents.forEach((name) => window.removeEventListener(name, onUser, { capture: true }));
+      window.removeEventListener("scroll", onScroll, { capture: true });
+    };
   }, [jumpOnLoad, loadState]);
 
   // Karta grubości w opisie strony („Warianty”) wybiera tę grubość tutaj.
