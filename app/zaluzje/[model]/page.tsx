@@ -7,12 +7,14 @@ import {
   isZaluzjeRodzajSlug,
   ZALUZJE_RODZAJ_SLUGS,
   ZALUZJE_RODZAJE,
+  zaluzjeAbsoluteUrl,
   zaluzjeRodzajGallery,
   zaluzjeRodzajOfGroup,
   zaluzjeRodzajSummaries,
 } from "@/features/rolety/zaluzje-rodzaje";
 
-// Strona jednego rodzaju żaluzji (właściciel, 7.11.2026): /zaluzje/aluminiowe,
+// Strona jednego rodzaju żaluzji (właściciel, 7.11.2026; 23.11 główny wybór = aluminiowe,
+// drewniane, bambusowe, PCV jako dodatkowa opcja): /zaluzje/aluminiowe,
 // /zaluzje/drewniane, /zaluzje/bambusowe, /zaluzje/pcv - każdy rodzaj lameli
 // to osobny produkt z własnym opisem, galerią i FAQ; grubość lameli i wersja
 // to warianty w konfiguratorze. Dawne strony modeli (/zaluzje/<model>, do
@@ -34,7 +36,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!isZaluzjeRodzajSlug(slug)) return { title: "Żaluzje na wymiar | KEIKA" };
   const copy = ZALUZJE_RODZAJE[slug];
   const url = `${SITE}/zaluzje/${slug}`;
-  const image = zaluzjeRodzajGallery(slug)[0];
+  const image = zaluzjeAbsoluteUrl(zaluzjeRodzajGallery(slug)[0]);
   return {
     title: copy.seoTitle,
     description: copy.seoDescription,
@@ -66,7 +68,7 @@ export default async function ZaluzjeRodzajPage({ params }: Params) {
       "@type": "Product",
       name: copy.h1,
       description: copy.seoDescription,
-      image: zaluzjeRodzajGallery(slug).slice(0, 4),
+      image: zaluzjeRodzajGallery(slug).slice(0, 4).map(zaluzjeAbsoluteUrl),
       brand: { "@type": "Brand", name: "KEIKA" },
       sku: `zaluzje-${slug}`,
       category: "Żaluzje poziome",

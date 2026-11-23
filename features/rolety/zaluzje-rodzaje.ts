@@ -13,7 +13,17 @@ import { roletyGroupCategory, roletyGroupStartingPrice, zaluzjeSlatWidthMm, type
 
 export type ZaluzjeRodzajSlug = "aluminiowe" | "pcv" | "drewniane" | "bambusowe";
 
+/** Wszystkie strony rodzajów (trasy, mapa strony). */
 export const ZALUZJE_RODZAJ_SLUGS: ZaluzjeRodzajSlug[] = ["aluminiowe", "drewniane", "bambusowe", "pcv"];
+
+/**
+ * Główny wybór klienta (właściciel 23.11.2026: „głównym wyborem żaluzji jest
+ * to, czy mają być aluminiowe, drewniane czy bambusowe”). PCV drewnopodobne
+ * zostaje w sprzedaży jako dodatkowa opcja do łazienki i kuchni - bez
+ * własnego kafla w głównym wyborze.
+ */
+export const ZALUZJE_MAIN_SLUGS: ZaluzjeRodzajSlug[] = ["aluminiowe", "drewniane", "bambusowe"];
+export const ZALUZJE_EXTRA_SLUG: ZaluzjeRodzajSlug = "pcv";
 
 export function isZaluzjeRodzajSlug(value: string | null | undefined): value is ZaluzjeRodzajSlug {
   return value === "aluminiowe" || value === "pcv" || value === "drewniane" || value === "bambusowe";
@@ -40,9 +50,29 @@ export type ZaluzjeRodzajCopy = {
   /** Do jakich pomieszczeń - plakietki. */
   rooms: string[];
   faq: Array<{ question: string; answer: string }>;
-  /** Kolejność zdjęć do galerii: pid modelu -> numery zdjęć (ss_prod_<pid>_<n>_1200.jpg). */
-  gallery: Array<[number, number]>;
+  /** Kafel przełącznika materiału: krótka cecha (2-3 słowa) i zdjęcie. */
+  tileNote: string;
+  cover: string;
+  /**
+   * Galeria (pierwsze 4 zdjęcia stoją pod opisem). 23.11.2026: tylko ostre
+   * zdjęcia - większość zdjęć modeli z B2B ma 200 × 200 px (bambusowe
+   * wszystkie), więc obok zdjęć 1200 px z CRM są zdjęcia kolekcji ze strony
+   * producenta (public/zaluzje-foto, 700 × 466).
+   */
+  gallery: string[];
 };
+
+const MEDIA = "https://crm-keika.groovemedia.pl/views/biuro/api/shop/media_public.php?path=";
+
+/** Zdjęcie modelu z CRM (ss_prod_<pid>_<n>_1200.jpg). */
+export function zaluzjeRodzajPhotoUrl(pid: number, n: number): string {
+  return `${MEDIA}ss_prod_${pid}_${n}_1200.jpg`;
+}
+
+/** Zdjęcie kolekcji producenta (public/zaluzje-foto). */
+function foto(name: string): string {
+  return `/zaluzje-foto/${name}.webp`;
+}
 
 const MEASURE_FAQ = {
   question: "Jak zmierzyć okno pod żaluzję?",
@@ -88,6 +118,11 @@ const TAPE_FAQ = {
   answer:
     "Sznurek jest w cenie i prawie go nie widać. Taśma to dodatek dekoracyjny: zasłania otworki w lamelach i daje klasyczny wygląd. Producent zastrzega, że przy niektórych zestawieniach kolorów barwnik taśmy może z czasem lekko przebarwić jasną lamelę - najbezpieczniej wybrać taśmę dobraną do koloru lameli.",
 };
+const MATERIAL_FAQ = {
+  question: "Aluminium, drewno czy bambus - czym się różnią?",
+  answer:
+    "Aluminium nie chłonie wody (kuchnia, łazienka), ma najwięcej kolorów i najwęższe lamele. Drewno jest ciepłe w dotyku i najmniej nagrzewa się w słońcu. Bambus ma żywy, nieregularny rysunek i pasuje do wnętrz w naturalnym stylu. Materiał zmienisz przełącznikiem na górze strony albo w konfiguratorze - wpisane wymiary przechodzą z Tobą, więc porównasz cenę dla tego samego okna.",
+};
 const WARRANTY_FAQ = {
   question: "Jaka jest gwarancja?",
   answer:
@@ -118,6 +153,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
     rooms: ["Kuchnia", "Łazienka", "Biuro", "Sypialnia"],
     faq: [
       MEASURE_FAQ,
+      MATERIAL_FAQ,
       TAPE_FAQ,
       {
         question: "Czym różnią się lamele perforowane?",
@@ -138,8 +174,23 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       WARRANTY_FAQ,
       WHERE_FAQ,
     ],
+    tileNote: "do kuchni i łazienki",
+    cover: zaluzjeRodzajPhotoUrl(58, 5),
     gallery: [
-      [58, 0], [59, 3], [12, 8], [11, 3], [50, 2], [58, 5], [59, 4], [12, 3], [50, 0], [98, 0], [65, 0], [60, 3], [11, 1], [138, 0],
+      zaluzjeRodzajPhotoUrl(58, 5),
+      foto("aluminiowe-1"),
+      zaluzjeRodzajPhotoUrl(58, 0),
+      zaluzjeRodzajPhotoUrl(98, 2),
+      zaluzjeRodzajPhotoUrl(12, 0),
+      zaluzjeRodzajPhotoUrl(58, 6),
+      zaluzjeRodzajPhotoUrl(11, 2),
+      zaluzjeRodzajPhotoUrl(50, 1),
+      zaluzjeRodzajPhotoUrl(50, 2),
+      zaluzjeRodzajPhotoUrl(65, 5),
+      zaluzjeRodzajPhotoUrl(98, 0),
+      zaluzjeRodzajPhotoUrl(65, 7),
+      foto("aluminiowe-2"),
+      foto("aluminiowe-3"),
     ],
   },
   pcv: {
@@ -165,6 +216,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
     rooms: ["Łazienka", "Kuchnia", "Salon", "Sypialnia"],
     faq: [
       MEASURE_FAQ,
+      MATERIAL_FAQ,
       {
         question: "Czym różni się PCV od żaluzji drewnianej?",
         answer:
@@ -183,9 +235,9 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       WARRANTY_FAQ,
       WHERE_FAQ,
     ],
-    gallery: [
-      [57, 0], [87, 0], [89, 0], [88, 0], [90, 0], [57, 4], [87, 4], [89, 6], [57, 8], [88, 1], [95, 0], [90, 3], [87, 6], [89, 8],
-    ],
+    tileNote: "wygląd drewna, odporne na wilgoć",
+    cover: foto("pcv-1"),
+    gallery: [foto("pcv-1"), foto("pcv-3"), foto("pcv-2"), foto("pcv-4"), zaluzjeRodzajPhotoUrl(57, 0), zaluzjeRodzajPhotoUrl(57, 4)],
   },
   drewniane: {
     slug: "drewniane",
@@ -210,6 +262,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
     rooms: ["Salon", "Sypialnia", "Gabinet", "Jadalnia"],
     faq: [
       MEASURE_FAQ,
+      MATERIAL_FAQ,
       {
         question: "Czy żaluzje drewniane nadają się do łazienki?",
         answer:
@@ -234,8 +287,26 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       WARRANTY_FAQ,
       WHERE_FAQ,
     ],
+    tileNote: "prawdziwe drewno",
+    cover: foto("drewniane-basswood-3"),
     gallery: [
-      [39, 0], [38, 0], [66, 0], [114, 0], [81, 0], [118, 0], [82, 0], [126, 0], [39, 3], [38, 4], [109, 0], [125, 0], [114, 4], [81, 4],
+      foto("drewniane-basswood-3"),
+      foto("drewniane-basswood-4"),
+      foto("drewniane-abachi-2"),
+      foto("drewniane-primewood-2"),
+      zaluzjeRodzajPhotoUrl(39, 0),
+      zaluzjeRodzajPhotoUrl(38, 0),
+      zaluzjeRodzajPhotoUrl(38, 1),
+      zaluzjeRodzajPhotoUrl(51, 0),
+      foto("drewniane-basswood-2"),
+      foto("drewniane-abachi-3"),
+      foto("drewniane-primewood-1"),
+      zaluzjeRodzajPhotoUrl(39, 2),
+      zaluzjeRodzajPhotoUrl(38, 5),
+      foto("drewniane-abachi-4"),
+      foto("drewniane-basswood-1"),
+      foto("drewniane-primewood-4"),
+      zaluzjeRodzajPhotoUrl(109, 1),
     ],
   },
   bambusowe: {
@@ -261,6 +332,7 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
     rooms: ["Salon", "Sypialnia", "Pokój dzienny", "Gabinet"],
     faq: [
       MEASURE_FAQ,
+      MATERIAL_FAQ,
       {
         question: "Czy żaluzje bambusowe nadają się do łazienki?",
         answer:
@@ -279,21 +351,31 @@ export const ZALUZJE_RODZAJE: Record<ZaluzjeRodzajSlug, ZaluzjeRodzajCopy> = {
       WARRANTY_FAQ,
       WHERE_FAQ,
     ],
-    gallery: [
-      [76, 0], [84, 0], [85, 0], [86, 0], [117, 0], [76, 3], [84, 3], [85, 3], [117, 8], [86, 1], [76, 6], [84, 7], [134, 0], [136, 0],
-    ],
+    tileNote: "naturalny bambus",
+    cover: foto("bambusowe-1"),
+    // Zdjęcia modeli bambusowych z B2B mają 200 × 200 px - tylko zdjęcia kolekcji.
+    gallery: [foto("bambusowe-1"), foto("bambusowe-4"), foto("bambusowe-3"), foto("bambusowe-2")],
   },
 };
 
-const MEDIA = "https://crm-keika.groovemedia.pl/views/biuro/api/shop/media_public.php?path=";
-
-export function zaluzjeRodzajPhotoUrl(pid: number, n: number): string {
-  return `${MEDIA}ss_prod_${pid}_${n}_1200.jpg`;
-}
-
 export function zaluzjeRodzajGallery(slug: ZaluzjeRodzajSlug): string[] {
-  return ZALUZJE_RODZAJE[slug].gallery.map(([pid, n]) => zaluzjeRodzajPhotoUrl(pid, n));
+  return ZALUZJE_RODZAJE[slug].gallery;
 }
+
+/** Adres bezwzględny zdjęcia (dane strukturalne, Open Graph). */
+export function zaluzjeAbsoluteUrl(url: string): string {
+  return url.startsWith("/") ? `https://sklep.keika.pl${url}` : url;
+}
+
+/** Porównanie materiałów - fakty, bez cen (strona zbiorcza i strony rodzajów). */
+export const ZALUZJE_COMPARE: Array<{ label: string; values: Record<ZaluzjeRodzajSlug, string> }> = [
+  { label: "Kuchnia, łazienka", values: { aluminiowe: "tak", pcv: "tak", drewniane: "nie polecamy", bambusowe: "nie polecamy" } },
+  { label: "Wygląd", values: { aluminiowe: "lekki, nowoczesny", pcv: "jak drewno", drewniane: "naturalne drewno", bambusowe: "naturalny bambus" } },
+  { label: "Lamele", values: { aluminiowe: "16-50 mm", pcv: "35-65 mm", drewniane: "25-65 mm", bambusowe: "25-65 mm" } },
+  { label: "Nagrzewanie w słońcu", values: { aluminiowe: "największe", pcv: "małe", drewniane: "najmniejsze (abachi)", bambusowe: "małe" } },
+  { label: "Waga", values: { aluminiowe: "najlżejsze", pcv: "najcięższe", drewniane: "średnia", bambusowe: "średnia" } },
+  { label: "Mycie", values: { aluminiowe: "na mokro", pcv: "na mokro", drewniane: "na sucho", bambusowe: "na sucho" } },
+];
 
 /** Rodzaj modelu po kategorii z opisu grupy w CRM. */
 export function zaluzjeRodzajOfGroup(group: Pick<FabricGroup, "note" | "label">): ZaluzjeRodzajSlug | null {
@@ -387,14 +469,13 @@ export function zaluzjeRodzajSummaries(profile: RoletyProfile | null): ZaluzjeRo
         }
       }
     }
-    const [pid, n] = copy.gallery[0];
     return {
       slug,
       copy,
       widthsMm: widths.map((width) => width.widthMm),
       colorCount: widths.reduce((sum, width) => sum + width.colorCount, 0),
       modelCount: widths.reduce((sum, width) => sum + width.groups.length, 0),
-      imageUrl: zaluzjeRodzajPhotoUrl(pid, n),
+      imageUrl: copy.cover,
       lowPrice,
     };
   });
@@ -404,7 +485,11 @@ export function zaluzjeRodzajSummaries(profile: RoletyProfile | null): ZaluzjeRo
 export const ZALUZJE_HUB_FAQ: Array<{ question: string; answer: string }> = [
   {
     question: "Które żaluzje do łazienki i kuchni?",
-    answer: "Aluminiowe albo PCV drewnopodobne - nie chłoną wody i można je myć na mokro; w łazience zadbaj o wentylację. Drewniane i bambusowe polecamy do salonu, sypialni i gabinetu.",
+    answer: "Aluminiowe - nie chłoną wody i można je myć na mokro; w łazience zadbaj o wentylację. Jeśli chcesz tam wyglądu drewna, wybierz żaluzje PCV drewnopodobne. Drewniane i bambusowe polecamy do salonu, sypialni i gabinetu.",
+  },
+  {
+    question: "Czy mogę porównać materiały dla mojego okna?",
+    answer: "Tak. Na stronie każdego materiału jest przełącznik: aluminiowe, drewniane, bambusowe. Wymiary i sposób montażu, które wpiszesz w konfiguratorze, przechodzą z Tobą na stronę innego materiału - wybierasz tylko wersję i kolor i od razu widzisz cenę dla tego samego okna.",
   },
   MEASURE_FAQ,
   {

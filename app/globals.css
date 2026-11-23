@@ -27116,3 +27116,68 @@ html.cart-item-editing body > .rd-modal--top:not(.plisy-mount-alert) { z-index: 
 .pd-gallery .pd-slide-para { grid-template-rows: minmax(0, 1fr); }
 .pd-gallery .pd-slide-para img { object-fit: contain; width: 100%; height: 100%; min-height: 0; }
 @media (min-width: 761px) { .pd-gallery .plv2-slide { aspect-ratio: 16 / 10; } }
+/* ---- Żaluzje 23.11.2026 (właściciel: „głównym wyborem jest materiał … łatwe przełączanie między podproduktami”):
+   features/rolety/ZaluzjeMaterialy.tsx - przełącznik materiału pod tytułem i w konfiguratorze, kafle strony
+   zbiorczej, porównanie materiałów; karty grubości w opisie wybierają grubość w konfiguratorze. ---- */
+.zl-mat { margin: 0.15rem 0 1rem; min-width: 0; }
+.zl-mat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.45rem; }
+.zl-mat-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #a07d33; }
+.zl-mat-compare { border: 0; background: none; padding: 0; font: inherit; font-size: 0.82rem; font-weight: 700; color: #0f766e; cursor: pointer; white-space: nowrap; }
+.zl-mat-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.zl-mat-tile { position: relative; display: grid; grid-template-rows: auto 1fr; overflow: hidden; border-radius: 0.95rem; border: 2px solid rgba(19, 40, 67, 0.14); background: #fff; color: inherit; text-decoration: none; transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; -webkit-tap-highlight-color: transparent; }
+a.zl-mat-tile:hover,
+a.zl-mat-tile:focus-visible { border-color: #f59e0b; box-shadow: 0 8px 20px rgba(19, 40, 67, 0.12); transform: translateY(-1px); }
+.zl-mat-tile.is-active { border-color: #f59e0b; box-shadow: 0 0 0 1px #d97706; background: #fffaf0; }
+.zl-mat-photo { display: block; aspect-ratio: 4 / 3; background-color: #eef2f6; background-position: center; background-size: cover; background-repeat: no-repeat; }
+.zl-mat-text { display: grid; gap: 0.05rem; padding: 0.4rem 0.5rem 0.5rem; min-width: 0; }
+.zl-mat-text strong { font-size: 0.92rem; font-weight: 800; color: #12233a; line-height: 1.2; overflow-wrap: anywhere; }
+.zl-mat-text small { font-size: 0.7rem; color: #64748b; line-height: 1.25; }
+.zl-mat-check { position: absolute; top: 0.35rem; right: 0.35rem; width: 1.45rem; height: 1.45rem; border-radius: 50%; display: grid; place-items: center; background: #f59e0b; color: #fff; font-size: 0.8rem; font-weight: 900; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); }
+.zl-mat-extra { display: block; margin-top: 0.5rem; font-size: 0.8rem; color: #475569; text-decoration: none; line-height: 1.4; }
+a.zl-mat-extra strong { color: #0f766e; font-weight: 750; }
+a.zl-mat-extra:hover strong { text-decoration: underline; }
+.zl-mat-extra.is-active { padding: 0.45rem 0.6rem; border-radius: 0.7rem; background: #fffaf0; border: 1px solid #f5d08b; color: #12233a; }
+.zl-mat-extra.is-active > span { color: #d97706; font-weight: 900; }
+.zl-mat-carry { margin: 0.45rem 0 0; font-size: 0.78rem; font-weight: 600; color: #0f766e; line-height: 1.4; }
+/* w konfiguratorze: zwarty wybór na górze panelu */
+.zl-mat--panel { margin: 0 0 0.8rem; padding: 0.55rem 0.6rem 0.6rem; border-radius: 0.9rem; background: #f6f8fb; border: 1px solid #e6ebf1; }
+.zl-mat--panel .zl-mat-head { margin-bottom: 0.4rem; }
+.zl-mat--panel .zl-mat-row { gap: 0.4rem; }
+.zl-mat--panel .zl-mat-tile { grid-template-rows: 2.5rem auto; border-radius: 0.75rem; overflow: visible; }
+.zl-mat--panel .zl-mat-photo { aspect-ratio: auto; height: 2.5rem; border-radius: 0.6rem 0.6rem 0 0; }
+.zl-mat--panel .zl-mat-text { padding: 0.25rem 0.3rem 0.3rem; text-align: center; }
+.zl-mat--panel .zl-mat-text strong { font-size: 0.8rem; }
+.zl-mat--panel .zl-mat-check { top: -0.45rem; right: -0.45rem; width: 1.2rem; height: 1.2rem; font-size: 0.66rem; }
+.zl-mat--panel .zl-mat-extra { margin-top: 0.45rem; font-size: 0.75rem; }
+.zl-mat--panel .zl-mat-carry { margin-top: 0.35rem; font-size: 0.72rem; font-weight: 500; color: #64748b; }
+/* strona zbiorcza: 3 materiały + PCV jako dodatkowa opcja */
+.zl-hub-grid--3 { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+.zl-hub-extra { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; margin-top: 0.7rem; padding: 0.5rem 0.85rem 0.5rem 0.5rem; border-radius: 1rem; border: 1px dashed rgba(19, 40, 67, 0.28); background: #fff; color: inherit; text-decoration: none; transition: border-color 0.15s ease; }
+.zl-hub-extra:hover,
+.zl-hub-extra:focus-visible { border-color: #f59e0b; border-style: solid; }
+.zl-hub-extra-photo { width: 4.4rem; height: 3.3rem; border-radius: 0.7rem; background-color: #eef2f6; background-position: center; background-size: cover; }
+.zl-hub-extra-body { display: grid; gap: 0.05rem; min-width: 0; }
+.zl-hub-extra-body small { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #a07d33; }
+.zl-hub-extra-body strong { font-size: 0.95rem; font-weight: 800; color: #12233a; }
+.zl-hub-extra-body span { font-size: 0.8rem; color: #64748b; line-height: 1.35; }
+.zl-hub-extra-go { font-size: 1.15rem; font-weight: 800; color: #d97706; }
+/* porównanie materiałów */
+.zl-cmp-section { scroll-margin-top: 6rem; }
+.zl-cmp { border: 1px solid #e6ebf1; border-radius: 0.9rem; overflow-x: auto; background: #fff; font-size: 0.8rem; max-width: 100%; }
+.zl-cmp-row { display: grid; grid-template-columns: minmax(5.3rem, 0.85fr) repeat(var(--zl-cmp-cols, 3), minmax(4.9rem, 1fr)); min-width: calc(5.3rem + var(--zl-cmp-cols, 3) * 4.9rem); }
+.zl-cmp-row > span { padding: 0.5rem 0.45rem; border-top: 1px solid #eef2f6; line-height: 1.3; color: #475569; min-width: 0; overflow-wrap: anywhere; }
+.zl-cmp-row.is-head > span { border-top: 0; padding: 0.5rem 0.35rem 0.4rem; }
+.zl-cmp-row > span[role="rowheader"] { font-weight: 700; color: #12233a; }
+.zl-cmp-row > span.is-current { background: #fffaf0; color: #12233a; font-weight: 650; }
+.zl-cmp-head { display: grid; justify-items: center; gap: 0.2rem; text-align: center; color: inherit; text-decoration: none; }
+.zl-cmp-photo { width: 100%; max-width: 5.6rem; aspect-ratio: 4 / 3; border-radius: 0.55rem; background-color: #eef2f6; background-position: center; background-size: cover; }
+.zl-cmp-head strong { font-size: 0.82rem; color: #12233a; line-height: 1.2; }
+.zl-cmp-head small { font-size: 0.7rem; font-weight: 750; color: #d97706; }
+span.is-current .zl-cmp-head small { color: #0f766e; }
+a.zl-cmp-head:hover .zl-cmp-photo,
+a.zl-cmp-head:focus-visible .zl-cmp-photo { box-shadow: 0 0 0 2px #f59e0b; }
+/* karty grubości w opisie = wybór grubości w konfiguratorze */
+button.zl-rodzaj-width { font: inherit; text-align: left; color: inherit; cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+button.zl-rodzaj-width:hover,
+button.zl-rodzaj-width:focus-visible { border-color: #f59e0b; box-shadow: 0 6px 16px rgba(19, 40, 67, 0.1); }
+.zl-rodzaj-width-go { margin-top: 0.2rem; font-style: normal; font-size: 0.78rem; font-weight: 800; color: #d97706; }

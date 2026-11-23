@@ -234,9 +234,9 @@ export const ROLETY_COPY: Record<RoletySlug, RoletyProductCopy> = {
     path: "/zaluzje",
     shortName: "żaluzję",
     h1: "Żaluzje na wymiar",
-    seoTitle: "Żaluzje na wymiar - aluminiowe, drewniane, bambusowe, PCV | KEIKA",
+    seoTitle: "Żaluzje na wymiar - aluminiowe, drewniane i bambusowe | KEIKA",
     seoDescription:
-      "Żaluzje poziome na wymiar w 4 rodzajach: aluminiowe, drewniane, bambusowe i PCV drewnopodobne, lamele 16-65 mm, kilkaset kolorów. Montaż w świetle szyby, na skrzydło lub na ścianę, sterowanie po wybranej stronie. Wycena online, realizacja do 15 dni roboczych.",
+      "Żaluzje poziome na wymiar z aluminium, drewna albo bambusa (do łazienki także PCV drewnopodobne), lamele 16-65 mm, kilkaset kolorów. Montaż w świetle szyby, na skrzydło lub na ścianę, sterowanie po wybranej stronie. Wycena online, realizacja do 15 dni roboczych.",
     startingPriceFallback: 177.9,
     sku: "zaluzja-pozioma-na-wymiar",
     category: "Żaluzje poziome",

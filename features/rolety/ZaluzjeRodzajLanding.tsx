@@ -1,34 +1,23 @@
 "use client";
 
 // Opisowa część strony rodzaju żaluzji (/zaluzje/<rodzaj>, właściciel
-// 7.11.2026): okruszek, plakietki (bez ceny - materiał przed ceną), lead,
-// zdjęcia, warianty grubości lameli z wersjami, opis, atuty, pomieszczenia,
-// inne rodzaje. Konfigurator stoi obok (na telefonie pod spodem): grubość ->
-// wersja -> montaż -> pomiar -> kolor -> drabinka -> cena.
-import Link from "next/link";
-import { useMemo } from "react";
+// 7.11.2026): przełącznik materiału, plakietki (bez ceny - materiał przed
+// ceną), lead, zdjęcia, opis, warianty grubości lameli, budowa, obiekcje,
+// pomiar, porównanie materiałów. Konfigurator stoi obok (na telefonie pod
+// spodem): grubość -> wersja -> montaż -> pomiar -> kolor -> drabinka -> cena.
+// 23.11.2026 (właściciel): głównym wyborem jest materiał (aluminiowe,
+// drewniane, bambusowe) - przełącznik pod tytułem, na górze konfiguratora i
+// w porównaniu; wymiary wpisane w konfiguratorze przechodzą z klientem.
+import { useEffect, useMemo, useRef } from "react";
 import { optimizeImageUrl } from "@/lib/image-optim";
+import { trackShopStep } from "@/lib/track-step";
 import { colorCountLabel } from "./ZaluzjeCategoryGrid";
 import { ROLETY_COPY, type RoletyProfile } from "./shared";
-import {
-  ZaluzjeBezpiecznie,
-  ZaluzjeBudowa,
-  ZaluzjeDlaKogo,
-  ZaluzjeDopasujesz,
-  ZaluzjeKorzysci,
-  ZaluzjeOpinie,
-  ZaluzjePomiar,
-  ZaluzjeProofLine,
-} from "./ZaluzjeLejek";
+import { ZaluzjeBezpiecznie, ZaluzjeBudowa, ZaluzjeDlaKogo, ZaluzjeDopasujesz, ZaluzjeKorzysci, ZaluzjePomiar, ZaluzjeProofLine } from "./ZaluzjeLejek";
+import { ZaluzjeMaterialSwitch, ZaluzjePorownanie } from "./ZaluzjeMaterialy";
 import { ZALUZJE_LEJEK } from "./zaluzje-lejek";
-import {
-  ZALUZJE_RODZAJ_SLUGS,
-  ZALUZJE_RODZAJE,
-  zaluzjeRodzajGallery,
-  zaluzjeRodzajWidths,
-  zaluzjeVersionName,
-  type ZaluzjeRodzajSlug,
-} from "./zaluzje-rodzaje";
+import { ZALUZJE_RODZAJE, zaluzjeRodzajGallery, zaluzjeRodzajWidths, zaluzjeVersionName, type ZaluzjeRodzajSlug } from "./zaluzje-rodzaje";
+import { requestZaluzjeSlatWidth } from "./zaluzje-switch";
 
 export default function ZaluzjeRodzajLanding({
   rodzaj,
@@ -46,13 +35,23 @@ export default function ZaluzjeRodzajLanding({
   const photos = zaluzjeRodzajGallery(rodzaj);
   const strip = photos.slice(0, 4);
   const widths = useMemo(() => (profile ? zaluzjeRodzajWidths(profile, rodzaj) : []), [profile, rodzaj]);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const previousRodzaj = useRef(rodzaj);
+
+  // Przejście na inny materiał (ta sama strona, inne dane): na telefonie strona
+  // przewija się w .hero-full, którego Next nie wraca na górę - wracamy sami.
+  // Przełącznik w konfiguratorze przewinie potem do konfiguratora.
+  useEffect(() => {
+    if (previousRodzaj.current === rodzaj) return;
+    previousRodzaj.current = rodzaj;
+    const container = rootRef.current?.closest<HTMLElement>(".hero-full");
+    if (container) container.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, [rodzaj]);
 
   return (
-    <div className="pl-landing zl-model-landing zl-rodzaj-landing">
-      <nav className="zl-model-crumb" aria-label="Ścieżka">
-        <Link href="/zaluzje">Żaluzje</Link>
-        <span>{copy.short}</span>
-      </nav>
+    <div ref={rootRef} className="pl-landing zl-model-landing zl-rodzaj-landing">
+      <ZaluzjeMaterialSwitch current={rodzaj} variant="strip" />
 
       <div className="pl-trust-row">
         <span className="pl-chip">Na wymiar co do milimetra</span>
@@ -88,17 +87,25 @@ export default function ZaluzjeRodzajLanding({
 
       {widths.length ? (
         <section className="zlf-section">
-          <p className="zlf-eyebrow">Warianty</p>
+          <p className="zlf-eyebrow">Grubość lameli</p>
           <h2 className="zlf-title">Grubość lameli dobierasz do okna</h2>
           <div className="zl-rodzaj-widths">
             {widths.map((width) => (
-              <div key={width.widthMm} className="zl-rodzaj-width">
+              <button
+                key={width.widthMm}
+                type="button"
+                className="zl-rodzaj-width"
+                onClick={() => {
+                  trackShopStep("zaluzje_slat_width_opis", `${width.widthMm} mm`, { rodzaj });
+                  requestZaluzjeSlatWidth(width.widthMm);
+                  onConfigure();
+                }}
+              >
                 <strong>{width.widthMm} mm</strong>
-                <span>
-                  {width.groups.map((group) => zaluzjeVersionName(group).name).join(" · ")}
-                </span>
+                <span>{width.groups.map((group) => zaluzjeVersionName(group).name).join(" · ")}</span>
                 <small>{colorCountLabel(width.colorCount)}</small>
-              </div>
+                <em className="zl-rodzaj-width-go">Wybierz {width.widthMm} mm →</em>
+              </button>
             ))}
           </div>
           <p className="zl-rodzaj-hint">
@@ -109,19 +116,10 @@ export default function ZaluzjeRodzajLanding({
 
       <ZaluzjeBudowa copy={lejek} />
       <ZaluzjeDopasujesz onConfigure={onConfigure} />
-      <ZaluzjeOpinie />
       <ZaluzjeBezpiecznie />
       <ZaluzjePomiar onConfigure={onConfigure} pid={lejek.pomiarPid} />
       <ZaluzjeDlaKogo copy={lejek} />
-
-      <h3 className="zl-model-subtitle">Inne rodzaje żaluzji</h3>
-      <div className="zl-rodzaj-others">
-        {ZALUZJE_RODZAJ_SLUGS.filter((slug) => slug !== rodzaj).map((slug) => (
-          <Link key={slug} href={`/zaluzje/${slug}`} className="zl-chip">
-            <strong>{ZALUZJE_RODZAJE[slug].name}</strong>
-          </Link>
-        ))}
-      </div>
+      <ZaluzjePorownanie current={rodzaj} />
     </div>
   );
 }
