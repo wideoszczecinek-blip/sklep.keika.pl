@@ -39,7 +39,7 @@ const CRM_HOMEPAGE_PUBLIC = "https://crm-keika.groovemedia.pl/biuro/api/shop/hom
 export const SHOP_POLICY = {
   freeShippingThreshold: 79,
   shippingFee: 12.9,
-  codSurcharge: 14.9,
+  codSurcharge: 9.9,
   returnDays: 30,
   warrantyYears: 5,
   expressFee: 19.9,
