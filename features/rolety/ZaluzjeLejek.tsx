@@ -8,19 +8,27 @@
 // Fakty o produkcie: strony producenta (Sun & Shade) streszczone własnymi
 // słowami - teksty w zaluzje-lejek.ts. Żaluzje to dystrybucja: gwarancja
 // producenta, bez „5 lat / 30 dni” i bez „produkujemy”.
-import { useState } from "react";
 import { COMPANY_LEGAL } from "@/lib/company-legal";
 import { trackShopStep } from "@/lib/track-step";
 import { opinieLabel } from "@/features/plisy/LandingV2";
-import { useCompanyRating, useCompanyReviews } from "@/features/plisy/Reviews";
+import { useCompanyRating } from "@/features/plisy/Reviews";
 import { ZaluzjeMeasureGuide } from "./ZaluzjeMeasure";
 import { ZALUZJE_BEZPIECZNIE, ZALUZJE_DOPASUJESZ, type ZaluzjeLejekCopy } from "./zaluzje-lejek";
 
-export const ZALUZJE_OPINIE_ID = "zaluzje-opinie";
+/** Sekcja opinii strony produktu (home-client: product-section-opinie) - jedna lista opinii na stronie żaluzji. */
+const OPINIE_SECTION_ID = "product-section-opinie";
 
 function scrollToId(id: string) {
+  const target = document.getElementById(id);
+  if (!target) return;
+  const container = target.closest<HTMLElement>(".hero-full");
+  if (container && container.scrollHeight > container.clientHeight) {
+    const delta = target.getBoundingClientRect().top - container.getBoundingClientRect().top - 96;
+    container.scrollTo({ top: Math.max(0, container.scrollTop + delta), behavior: "smooth" });
+    return;
+  }
   try {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch {
     /* ignore */
   }
@@ -37,7 +45,7 @@ export function ZaluzjeProofLine({ source }: { source: string }) {
       className="plv2-proof zlf-proof"
       onClick={() => {
         trackShopStep("zaluzje_proof_click", source, {});
-        scrollToId(ZALUZJE_OPINIE_ID);
+        scrollToId(OPINIE_SECTION_ID);
       }}
     >
       <span className="plv2-proof-stars" aria-hidden="true">
@@ -184,54 +192,6 @@ export function ZaluzjeBezpiecznie() {
         {COMPANY_LEGAL.legalName}, {COMPANY_LEGAL.street}, {COMPANY_LEGAL.postalCode} {COMPANY_LEGAL.city} · NIP {COMPANY_LEGAL.nip} ·{" "}
         <a href={COMPANY_LEGAL.phoneHref}>{COMPANY_LEGAL.phone}</a> · {COMPANY_LEGAL.email}
       </p>
-    </section>
-  );
-}
-
-/** Prawdziwe opinie klientów KEIKA (ten sam feed co plisy) - 3 na start. */
-export function ZaluzjeOpinie() {
-  const rating = useCompanyRating();
-  const reviews = useCompanyReviews();
-  const [visible, setVisible] = useState(3);
-  if (!rating?.total && !reviews.length) return null;
-  const shown = reviews.slice(0, visible);
-  return (
-    <section id={ZALUZJE_OPINIE_ID} className="zlf-section" aria-labelledby="zlf-op">
-      <p className="zlf-eyebrow">Opinie</p>
-      <h2 id="zlf-op" className="zlf-title">
-        Co mówią klienci KEIKA
-      </h2>
-      {rating?.total ? (
-        <p className="zlf-rating">
-          <strong>{rating.average.toLocaleString("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</strong>
-          <span className="zlf-rating-stars" aria-hidden="true">
-            ★★★★★
-          </span>
-          <span>
-            {opinieLabel(rating.total)} - ocena firmy KEIKA w kanałach sprzedaży. Żaluzje są u nas nowością, dlatego pokazujemy opinie o wszystkich
-            naszych osłonach.
-          </span>
-        </p>
-      ) : null}
-      {shown.length ? (
-        <ul className="zlf-reviews">
-          {shown.map((review) => (
-            <li key={review.id}>
-              <div className="zlf-review-meta">
-                <span aria-label={`${review.stars} na 5`}>{"★".repeat(review.stars)}</span>
-                <strong>{review.author}</strong>
-                <span>{review.date}</span>
-              </div>
-              <p>{review.text}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {shown.length < reviews.length ? (
-        <button type="button" className="pm-link" onClick={() => setVisible((v) => v + 3)}>
-          Pokaż więcej opinii ({reviews.length - shown.length})
-        </button>
-      ) : null}
     </section>
   );
 }

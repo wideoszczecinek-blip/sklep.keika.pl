@@ -42,6 +42,15 @@ import { zaluzjeTapeColor, type ZaluzjaDrawingData } from "./zaluzja-drawing-dat
 import ZaluzjeSsSteps from "./ZaluzjeSsSteps";
 import ZaluzjeLadderSteps from "./ZaluzjeLadderSteps";
 import { ZALUZJE_RODZAJE, zaluzjeRodzajOfGroup, zaluzjeRodzajWidths, zaluzjeVersionName, type ZaluzjeRodzajSlug } from "./zaluzje-rodzaje";
+import { ZaluzjeMaterialSwitch } from "./ZaluzjeMaterialy";
+import {
+  clearZaluzjeCarry,
+  readZaluzjeCarry,
+  takeZaluzjeJumpToConfigurator,
+  writeZaluzjeCarry,
+  ZALUZJE_PICK_WIDTH_EVENT,
+  type ZaluzjeCarry,
+} from "./zaluzje-switch";
 import {
   loadSsOptions,
   ssApplyNoDrill,
@@ -249,6 +258,12 @@ export default function RoletyConfiguratorPanel({
     seed.fabricGroupId = initialValues?.fabricGroupId;
     seed.fabricId = initialValues?.fabricId;
   }
+  // Żaluzje, strona materiału: okno wpisane na stronie innego materiału (albo
+  // na tej, przed przejściem gdzie indziej) - montaż, pomiar, grubość lameli
+  // (zaluzje-switch.ts, właściciel 23.11.2026). Nie przy edycji pozycji w koszyku (lockModel).
+  const [carrySeed] = useState<ZaluzjeCarry | null>(() => (rodzaj && !lockModel ? readZaluzjeCarry() : null));
+  const carryDims = Boolean(carrySeed && !initialValues?.widthMm && (carrySeed.inputWidthMm > 0 || carrySeed.inputHeightMm > 0));
+  if (carrySeed && !seed.mountId && carrySeed.mountId) seed.mountId = carrySeed.mountId;
 
   const [selectedMountId, setSelectedMountId] = useState(seed.mountId || "");
   const [stepMountCollapsed, setStepMountCollapsed] = useState(Boolean(seed.mountId));
@@ -266,30 +281,34 @@ export default function RoletyConfiguratorPanel({
 
   const [dimensionUnit, setDimensionUnit] = useState<DimensionUnit>(readStoredUnit);
   const [width, setWidth] = useState(() => {
-    const mm = initialValues?.measuredWidthMm || initialValues?.widthMm;
+    const mm = initialValues?.measuredWidthMm || initialValues?.widthMm || (carryDims ? carrySeed?.inputWidthMm : 0);
     return mm ? mmToInput(mm, readStoredUnit()) : "";
   });
   const [height, setHeight] = useState(() => {
-    const mm = initialValues?.measuredHeightMm || initialValues?.heightMm;
+    const mm = initialValues?.measuredHeightMm || initialValues?.heightMm || (carryDims ? carrySeed?.inputHeightMm : 0);
     return mm ? mmToInput(mm, readStoredUnit()) : "";
   });
   // Żaluzje: "Znam dokładny wymiar żaluzji" - pola przyjmują wymiar żaluzji
   // bez przeliczeń. Pozycja z koszyka bez zapisanego pomiaru (stara albo
   // wpisana wprost) wraca w tym trybie.
   const [exactBlindSize, setExactBlindSize] = useState(() =>
-    Boolean(modelFirst && initialValues?.widthMm && !initialValues?.measuredWidthMm),
+    carryDims ? Boolean(carrySeed?.exactBlindSize) : Boolean(modelFirst && initialValues?.widthMm && !initialValues?.measuredWidthMm),
   );
   const [measureGuideOpen, setMeasureGuideOpen] = useState(false);
   // Żaluzje, montaż na skrzydło: nawiewnik na górze skrzydła - wysokość mierzy
   // się od jego dołu (żaluzja wisi pod nawiewnikiem).
-  const [hasVent, setHasVent] = useState(Boolean(initialValues?.hasVent));
+  const [hasVent, setHasVent] = useState(Boolean(initialValues?.hasVent || (carryDims && carrySeed?.hasVent)));
   // Żaluzje, montaż na ścianę: ile miejsca nad wnęką ("full" = co najmniej
   // tyle, ile zajmie pakiet; "less" = mniej, wartość w cm). Klient musi wybrać.
   const [spaceChoice, setSpaceChoice] = useState<"" | "full" | "less">(() =>
-    initialValues?.spaceAboveMm !== undefined && initialValues.spaceAboveMm !== null && initialValues.spaceAboveMm >= 0 ? "less" : "",
+    carryDims && carrySeed
+      ? carrySeed.spaceChoice
+      : initialValues?.spaceAboveMm !== undefined && initialValues.spaceAboveMm !== null && initialValues.spaceAboveMm >= 0
+        ? "less"
+        : "",
   );
   const [spaceLessCm, setSpaceLessCm] = useState(() =>
-    initialValues?.spaceAboveMm ? String(Math.round(initialValues.spaceAboveMm / 10)) : "",
+    carryDims && carrySeed ? carrySeed.spaceLessCm : initialValues?.spaceAboveMm ? String(Math.round(initialValues.spaceAboveMm / 10)) : "",
   );
   const spaceRestoredRef = useRef(false);
   // Żaluzje: opcje dostawcy Sun & Shade dla wybranego modelu (ss-options.ts).
@@ -504,8 +523,28 @@ export default function RoletyConfiguratorPanel({
       setSlatWidthMm(zaluzjeSlatWidthMm(group.label));
       if (group.id !== selectedFabricGroupId) setSelectedFabricGroupId(group.id);
       setStepGroupCollapsed(true);
-    } else if (selectedFabricGroupId) {
-      setSelectedFabricGroupId("");
+      return;
+    }
+    if (selectedFabricGroupId) setSelectedFabricGroupId("");
+    // Okno z innego materiału: ta sama grubość lameli, jeśli ten materiał ją ma
+    // (jedna wersja przy tej grubości = od razu wybrana). Powrót na ten sam
+    // materiał: także wersja i kolor sprzed wyjścia.
+    if (!carrySeed?.slatWidthMm) return;
+    const entry = rodzajWidths.find((item) => item.widthMm === carrySeed.slatWidthMm);
+    if (!entry) return;
+    setSlatWidthMm(entry.widthMm);
+    const sameRodzajGroup =
+      carrySeed.rodzaj === rodzaj && carrySeed.fabricGroupId ? entry.groups.find((item) => item.id === carrySeed.fabricGroupId) || null : null;
+    const carriedGroup = sameRodzajGroup || (entry.groups.length === 1 ? entry.groups[0] : null);
+    if (carriedGroup) {
+      setSelectedFabricGroupId(carriedGroup.id);
+      setStepGroupCollapsed(true);
+      if (sameRodzajGroup && carrySeed.fabricId && carriedGroup.swatches.some((swatch) => swatch.id === carrySeed.fabricId)) {
+        setSelectedFabricId(carrySeed.fabricId);
+        setStepFabricCollapsed(true);
+      }
+    } else {
+      setStepGroupCollapsed(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, rodzaj]);
@@ -989,6 +1028,59 @@ export default function RoletyConfiguratorPanel({
   }, [slug, copy.groupUnit, copy.controlLabelWord, hasHardwareStep, selectedMount, dimensionsValid, selectedHardware, selectedFabricGroup, selectedFabric, chainSide, widthNum, heightNum, canSubmit, totalPrice, quantityNum, dimensionUnit, selectedUnavailable]);
   useEffect(() => () => clearConfiguratorState(slug), [slug]);
 
+  // Żaluzje, strona materiału: okno klienta na bieżąco w sessionStorage - po
+  // przejściu na inny materiał konfigurator wystartuje z tym samym oknem.
+  useEffect(() => {
+    if (!rodzaj || lockModel || !profile) return;
+    writeZaluzjeCarry({
+      rodzaj,
+      mountId: selectedMountId,
+      inputWidthMm,
+      inputHeightMm,
+      exactBlindSize,
+      hasVent,
+      spaceChoice,
+      spaceLessCm,
+      slatWidthMm,
+      fabricGroupId: selectedFabricGroupId,
+      fabricId: selectedFabricId,
+    });
+  }, [rodzaj, lockModel, profile, selectedMountId, inputWidthMm, inputHeightMm, exactBlindSize, hasVent, spaceChoice, spaceLessCm, slatWidthMm, selectedFabricGroupId, selectedFabricId]);
+
+  // Przełącznik materiału w konfiguratorze: na nowej stronie od razu konfigurator (telefon: przewinięcie do panelu).
+  const [jumpOnLoad] = useState(() => (rodzaj && !lockModel ? takeZaluzjeJumpToConfigurator(rodzaj) : false));
+  useEffect(() => {
+    if (!jumpOnLoad || loadState !== "ready") return;
+    const timer = window.setTimeout(() => {
+      const panel = document.querySelector<HTMLElement>(".hero-product-config-panel");
+      if (!panel) return;
+      const container = panel.closest<HTMLElement>(".hero-full");
+      if (container && container.scrollHeight > container.clientHeight) {
+        const delta = panel.getBoundingClientRect().top - container.getBoundingClientRect().top - 96;
+        container.scrollTo({ top: Math.max(0, Math.min(container.scrollTop + delta, container.scrollHeight - container.clientHeight)), behavior: "auto" });
+      } else if (panel.getBoundingClientRect().top > window.innerHeight * 0.5) {
+        panel.scrollIntoView({ behavior: "auto", block: "start" });
+      }
+      if (getComputedStyle(panel).overflowY === "auto") panel.scrollTop = 0;
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [jumpOnLoad, loadState]);
+
+  // Karta grubości w opisie strony („Warianty”) wybiera tę grubość tutaj.
+  const pickSlatWidthRef = useRef<(widthMm: number) => void>(() => {});
+  useEffect(() => {
+    pickSlatWidthRef.current = pickSlatWidth;
+  });
+  useEffect(() => {
+    if (!rodzaj) return;
+    const onPick = (event: Event) => {
+      const widthMm = Number((event as CustomEvent<{ widthMm?: number }>).detail?.widthMm) || 0;
+      if (widthMm > 0) pickSlatWidthRef.current(widthMm);
+    };
+    window.addEventListener(ZALUZJE_PICK_WIDTH_EVENT, onPick);
+    return () => window.removeEventListener(ZALUZJE_PICK_WIDTH_EVENT, onPick);
+  }, [rodzaj]);
+
   function handleSubmit() {
     if (!canSubmit || !selectedMount || !selectedFabricGroup || !selectedFabric || (!modelFirst && !chainSide) || unitPrice === null || totalPrice === null) return;
     const tilter = modelFirst && ssModel ? ssOption(ssField(ssModel, "16"), ssSelection["16"]) : null;
@@ -1036,6 +1128,8 @@ export default function RoletyConfiguratorPanel({
       unitPrice,
       totalPrice,
     });
+    // Okno w koszyku - kolejna żaluzja (inne okno) zaczyna od pustych wymiarów.
+    if (rodzaj && !lockModel) clearZaluzjeCarry();
   }
 
   const headerTitle = `Wyceń ${copy.shortName} do swojego okna`;
@@ -2161,6 +2255,8 @@ export default function RoletyConfiguratorPanel({
             {rodzaj ? `Wyceń: ${ZALUZJE_RODZAJE[rodzaj].name}` : modelLocked && selectedModelInfo ? `Wyceń: ${selectedModelInfo.name}` : headerTitle}
           </strong>
         </header>
+        {/* 23.11.2026 (właściciel): materiał to główny wybór - przełącznik na górze konfiguratora, wymiary przechodzą z klientem. */}
+        {rodzaj && !lockModel ? <ZaluzjeMaterialSwitch current={rodzaj} variant="panel" /> : null}
         {rodzaj ? renderRodzajSection() : showGroupStep ? renderGroupSection(0) : null}
         {collectionInfoModal}
         {selectedFabricGroup ? (

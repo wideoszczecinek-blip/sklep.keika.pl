@@ -4746,7 +4746,7 @@ export default function Home({
                               <span className="pl-chip">Darmowa dostawa od 79 zł</span>
                             </div>
                             <p className="pl-subtitle">
-                              Żaluzje poziome wykonane pod Twoje okno co do milimetra: aluminiowe, drewniane, bambusowe i PCV drewnopodobne. Obracasz lamele i sam decydujesz, ile światła wpuścić - bez rezygnowania z prywatności.
+                              Żaluzje poziome z aluminium, drewna albo bambusa, wykonane pod Twoje okno co do milimetra. Obracasz lamele i sam decydujesz, ile światła wpuścić, a z zewnątrz nikt nie zajrzy do środka.
                             </p>
                             <ZaluzjeProofLine source="hub" />
                             <ZaluzjeHub profile={roletyProfiles.zaluzje || null} />

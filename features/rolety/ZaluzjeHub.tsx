@@ -1,18 +1,16 @@
 "use client";
 
 // /zaluzje - jedna pozycja „Żaluzje” na liście produktów (właściciel,
-// 7.11.2026). Klient wybiera rodzaj lameli: aluminiowe, drewniane, bambusowe,
-// PCV drewnopodobne - każdy rodzaj to osobny produkt /zaluzje/<rodzaj>.
-// Bez ceny „od” (materiał przed ceną, właściciel 3.11). Stare ?model=ss-NN
-// i ?kategoria=<stara kategoria> przekierowują na właściwy rodzaj.
-import Link from "next/link";
+// 7.11.2026). 23.11.2026 (właściciel): głównym wyborem jest materiał -
+// aluminiowe, drewniane albo bambusowe (każdy to osobny produkt
+// /zaluzje/<rodzaj>); PCV drewnopodobne jako dodatkowa opcja do łazienki i
+// kuchni. Bez ceny „od” (materiał przed ceną, właściciel 3.11). Stare
+// ?model=ss-NN i ?kategoria=<stara kategoria> przekierowują na właściwy rodzaj.
 import { useEffect, useMemo } from "react";
-import { optimizeImageUrl } from "@/lib/image-optim";
-import { trackShopStep } from "@/lib/track-step";
-import { colorCountLabel } from "./ZaluzjeCategoryGrid";
 import type { RoletyProfile } from "./shared";
-import { ZALUZJE_RODZAJE, zaluzjeRodzajOfGroup, zaluzjeRodzajSummaries, type ZaluzjeRodzajSlug } from "./zaluzje-rodzaje";
-import { ZaluzjeBezpiecznie, ZaluzjeOpinie, ZaluzjePomiar } from "./ZaluzjeLejek";
+import { zaluzjeRodzajOfGroup, zaluzjeRodzajSummaries, type ZaluzjeRodzajSlug } from "./zaluzje-rodzaje";
+import { ZaluzjeBezpiecznie, ZaluzjePomiar } from "./ZaluzjeLejek";
+import { ZaluzjeMaterialCards, ZaluzjePorownanie } from "./ZaluzjeMaterialy";
 
 export const ZALUZJE_CATALOG_ID = "zaluzje-katalog";
 
@@ -26,26 +24,33 @@ const LEGACY_CATEGORY: Record<string, ZaluzjeRodzajSlug> = {
   drewnopodobne: "aluminiowe",
 };
 
-/** Porównanie rodzajów - fakty, bez cen. */
-const COMPARE: Array<{ label: string; values: Record<ZaluzjeRodzajSlug, string> }> = [
-  { label: "Wilgoć (kuchnia, łazienka)", values: { aluminiowe: "tak", pcv: "tak", drewniane: "nie polecamy", bambusowe: "nie polecamy" } },
-  { label: "Wygląd", values: { aluminiowe: "lekki, nowoczesny", pcv: "jak drewno", drewniane: "naturalne drewno", bambusowe: "naturalny bambus" } },
-  { label: "Lamele", values: { aluminiowe: "16-50 mm", pcv: "35-65 mm", drewniane: "25-65 mm", bambusowe: "25-65 mm" } },
-  { label: "Nagrzewanie w słońcu", values: { aluminiowe: "największe", pcv: "małe", drewniane: "najmniejsze (abachi)", bambusowe: "małe" } },
-  { label: "Waga", values: { aluminiowe: "najlżejsze", pcv: "najcięższe", drewniane: "średnia", bambusowe: "średnia" } },
-  { label: "Mycie", values: { aluminiowe: "na mokro", pcv: "na mokro", drewniane: "na sucho", bambusowe: "na sucho" } },
-];
-
 /** Jak wybrać w 3 krokach - pytania, które klient i tak sobie zadaje. */
 const HOWTO: Array<{ title: string; text: string }> = [
-  { title: "Gdzie jest okno?", text: "Kuchnia, łazienka, pralnia - aluminium albo PCV drewnopodobne, bo nie chłoną wody. Salon, sypialnia, gabinet - każdy rodzaj, a drewno i bambus dodadzą wnętrzu ciepła." },
-  { title: "Jaki masz styl?", text: "Nowocześnie i minimalistycznie - aluminium. Klasycznie i przytulnie - drewno, także z ozdobną taśmą. Boho, japandi, skandynawsko - bambus. Wygląd drewna bez obaw o wilgoć - PCV." },
-  { title: "Gdzie zawiśnie?", text: "Na skrzydle okna wybierz cieńszą lamelę (16-35 mm) - mniej odstaje od szyby i nie zahacza o klamkę. Na ścianę nad wnęką i na duże okna - lamele 50-65 mm." },
+  {
+    title: "Gdzie jest okno?",
+    text: "Kuchnia, łazienka, pralnia - aluminium, bo nie chłonie wody (wygląd drewna da tam PCV drewnopodobne). Salon, sypialnia, gabinet - każdy materiał, a drewno i bambus dodadzą wnętrzu ciepła.",
+  },
+  {
+    title: "Jaki masz styl?",
+    text: "Nowocześnie i minimalistycznie - aluminium. Klasycznie i przytulnie - drewno, także z ozdobną taśmą. Boho, japandi, skandynawsko - bambus.",
+  },
+  {
+    title: "Gdzie zawiśnie?",
+    text: "Na skrzydle okna wybierz cieńszą lamelę (16-35 mm) - mniej odstaje od szyby i nie zahacza o klamkę. Na ścianę nad wnęką i na duże okna - lamele 50-65 mm. Grubość wybierasz w konfiguratorze.",
+  },
 ];
 
 function scrollToCards() {
+  const target = document.getElementById(ZALUZJE_CATALOG_ID);
+  if (!target) return;
+  const container = target.closest<HTMLElement>(".hero-full");
+  if (container && container.scrollHeight > container.clientHeight) {
+    const delta = target.getBoundingClientRect().top - container.getBoundingClientRect().top - 96;
+    container.scrollTo({ top: Math.max(0, container.scrollTop + delta), behavior: "smooth" });
+    return;
+  }
   try {
-    document.getElementById(ZALUZJE_CATALOG_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch {
     /* ignore */
   }
@@ -74,53 +79,14 @@ export default function ZaluzjeHub({ profile }: { profile: RoletyProfile | null 
 
   return (
     <div id={ZALUZJE_CATALOG_ID} className="zl-hub">
-      <h2 className="zl-hub-title">Wybierz rodzaj lameli</h2>
+      <h2 className="zl-hub-title">Wybierz materiał lameli</h2>
       <p className="zl-hub-lead">
-        Rodzaj lameli decyduje o wyglądzie i o tym, gdzie żaluzja się sprawdzi. Grubość lameli i kolor wybierzesz na stronie rodzaju.
+        Materiał decyduje o wyglądzie i o tym, gdzie żaluzja się sprawdzi. Grubość lameli i kolor wybierzesz w konfiguratorze na stronie materiału -
+        a materiał zmienisz tam jednym kliknięciem.
       </p>
-      <div className="zl-hub-grid">
-        {summaries.map((entry) => (
-          <Link
-            key={entry.slug}
-            href={`/zaluzje/${entry.slug}`}
-            className="zl-hub-card"
-            onClick={() => trackShopStep("zaluzje_rodzaj", entry.slug, { source: "hub" })}
-          >
-            <span className="zl-hub-photo" aria-hidden="true" style={{ backgroundImage: `url(${optimizeImageUrl(entry.imageUrl, 500)})` }} />
-            <span className="zl-hub-body">
-              <strong>{entry.copy.name}</strong>
-              <span className="zl-hub-desc">{entry.copy.lead}</span>
-              <span className="zl-hub-meta">
-                {entry.widthsMm.length ? <span>Lamele {entry.widthsMm.join(" · ")} mm</span> : null}
-                {entry.colorCount ? <span>{colorCountLabel(entry.colorCount)}</span> : null}
-              </span>
-              <span className="zl-hub-rooms">{entry.copy.rooms.join(" · ")}</span>
-              <span className="zl-hub-go">Zobacz {entry.copy.name.replace(/^Żaluzje /, "")} →</span>
-            </span>
-          </Link>
-        ))}
-      </div>
+      <ZaluzjeMaterialCards summaries={summaries} />
 
-      <div className="zl-hub-compare" role="table" aria-label="Porównanie rodzajów żaluzji">
-        <div className="zl-hub-compare-row is-head" role="row">
-          <span role="columnheader" />
-          {summaries.map((entry) => (
-            <span key={entry.slug} role="columnheader">
-              {ZALUZJE_RODZAJE[entry.slug].short}
-            </span>
-          ))}
-        </div>
-        {COMPARE.map((row) => (
-          <div className="zl-hub-compare-row" role="row" key={row.label}>
-            <span role="rowheader">{row.label}</span>
-            {summaries.map((entry) => (
-              <span key={entry.slug} role="cell">
-                {row.values[entry.slug]}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
+      <ZaluzjePorownanie current={null} />
 
       <section className="zlf-section" aria-labelledby="zlf-howto">
         <p className="zlf-eyebrow">Jak wybrać</p>
@@ -141,9 +107,8 @@ export default function ZaluzjeHub({ profile }: { profile: RoletyProfile | null 
         </p>
       </section>
 
-      <ZaluzjeOpinie />
       <ZaluzjeBezpiecznie />
-      <ZaluzjePomiar onConfigure={scrollToCards} ctaLabel="Wybierz rodzaj lameli" />
+      <ZaluzjePomiar onConfigure={scrollToCards} ctaLabel="Wybierz materiał lameli" />
     </div>
   );
 }
