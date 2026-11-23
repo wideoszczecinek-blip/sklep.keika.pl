@@ -117,7 +117,6 @@ import {
   type ConfiguratorResult as RoletyDachoweConfiguratorResult,
   type RoofBlindProfile,
 } from "@/features/rolety-dachowe/shared";
-import RoofHeroPhotos from "@/features/rolety-dachowe/RoofHeroPhotos";
 import { RdBezRyzyka, RdCenySlajdy, RdOpis, RdSzukajOkna, RdTkaniny } from "@/features/rolety-dachowe/RoofLejek";
 import RoofQuickPrice from "@/features/rolety-dachowe/RoofQuickPrice";
 import { RoofFabricsGuide, RoofHardwareStrip, RoofHowItWorks } from "@/features/rolety-dachowe/RoofLandingBlocks";
@@ -156,6 +155,8 @@ import { ssStoredOptions } from "@/features/rolety/ss-options";
 import { crmGetJson } from "@/lib/crm-get";
 import { useBackToClose } from "@/lib/use-back-to-close";
 import PdHeroGallery from "@/features/plisy-dachowe/PdHeroGallery";
+import RdHeroGallery from "@/features/rolety-dachowe/RdHeroGallery";
+import { RdPierwszyEkran } from "@/features/rolety-dachowe/PierwszyEkran";
 import PdQuickPrice from "@/features/plisy-dachowe/PdQuickPrice";
 import { PdHardwareStrip, PdHowItWorks } from "@/features/plisy-dachowe/PdLandingBlocks";
 import PdReviews from "@/features/plisy-dachowe/Reviews";
@@ -2999,6 +3000,8 @@ export default function Home({
   const plisyV2 = Boolean(displayedProduct) && productSlugFromSelected(displayedProduct) === "plisy" && plisyLandingV2;
   // Plisy dachowe, wersja definitywna 22.11 (właściciel: „na tej samej zasadzie opracuj z GPT landing plis dachowych”).
   const pdV2 = Boolean(displayedProduct) && productSlugFromSelected(displayedProduct) === "plisy-dachowe";
+  // Rolety dachowe, pierwszy ekran 23.11 (właściciel: „Tak, przebuduj” – wzorem plis dachowych).
+  const rdV2 = Boolean(displayedProduct) && productSlugFromSelected(displayedProduct) === "rolety-dachowe";
   const plisyQuickMount = plisyProfile
     ? plisyProfile.mountOptions.find((option) => option.id === plisyQuickMountId) || plisyProfile.mountOptions[0] || null
     : null;
@@ -3048,6 +3051,12 @@ export default function Home({
     }, 500);
   }
   // Plisy dachowe 22.11: przycisk z pierwszego ekranu prowadzi do jednej wyceny (model okna → tkanina → cena).
+  function scrollToRdWycena() {
+    scrollToPlisyElement("#dach-wycena");
+    window.setTimeout(() => {
+      document.querySelector<HTMLInputElement>("#dach-wycena .rdl-input")?.focus({ preventScroll: true });
+    }, 650);
+  }
   function scrollToPdWycena() {
     scrollToPlisyElement("#dach-wycena");
     window.setTimeout(() => {
@@ -3660,7 +3669,7 @@ export default function Home({
 
   return (
     <div
-      className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${displayedProduct ? "product-focus-active" : ""} ${plisyV2 ? "plisy-v2" : ""} ${pdV2 ? "pd-v2" : ""}`}
+      className={`home-root ${mobileMenuOpen ? "mobile-menu-open" : ""} boot-${bootPhase} ${displayedProduct ? "product-focus-active" : ""} ${plisyV2 ? "plisy-v2" : ""} ${pdV2 ? "pd-v2" : ""} ${rdV2 ? "rd-v2" : ""}`}
     >
       <div className={`boot-overlay ${bootPhase === "ready" ? "is-hidden" : ""}`} aria-hidden={bootPhase === "ready" ? "true" : "false"}>
         <div className="boot-overlay-core">
@@ -4057,6 +4066,8 @@ export default function Home({
                   {/* plisy dachowe 22.11: zdjęcia przed tytułem, jak na /plisy (właściciel: „animacja niekoniecznie wygląda dobrze,
                       zastąp ją zdjęciami” - PdHeroPhotos z animacją zostaje w repo, nieużywany) */}
                   {pdV2 ? <PdHeroGallery /> : null}
+                  {/* rolety dachowe 23.11: zdjęcia przed tytułem zamiast mozaiki z grafiką ze znaczkami (RoofHeroPhotos) */}
+                  {rdV2 ? <RdHeroGallery /> : null}
                   {/* Promocja ilościowa „CAŁY DOM" (29.10.2026, w miejsce
                       SEZON20): jedna linia bez aktywacji i odliczania - rabat
                       nalicza koszyk z reguł CRM (lib/bundle-discount.ts). Ta
@@ -4065,6 +4076,7 @@ export default function Home({
                       SEASONAL_PROMO_ENABLED (lib/promo.ts). */}
                   {displayedProduct &&
                   !plisyV2 &&
+                  !rdV2 &&
                   ["plisy", "moskitiery-ramkowe", "rolety-dachowe"].includes(
                     productSlugFromSelected(displayedProduct),
                   ) ? (
@@ -4102,6 +4114,13 @@ export default function Home({
                                 ? ROLETY_COPY[productSlugFromSelected(displayedProduct) as RoletySlug].h1
                                 : displayedProduct.label}
                     </h1>
+                  ) : null}
+                  {rdV2 ? (
+                    <RdPierwszyEkran
+                      onCena={() => nudgeConfigurator(scrollToRdWycena)}
+                      onZestaw={() => scrollToPlisyElement(".rdl-opis")}
+                      onOpinie={() => scrollToProductSection("opinie")}
+                    />
                   ) : null}
                   {pdV2 ? (
                     <PdPierwszyEkran
@@ -4674,19 +4693,8 @@ export default function Home({
                                 them. Same section order as plisy. */}
                             {/* Lejek (właściciel 2.11, wzorem /plisy): zdjęcia → co to jest → opinie → bez ryzyka (dobór po tabliczce) → jakość →
                                 ceny typowych okien z CAŁY DOM → wycena → tkaniny → pomiar → opinie. Bez wizualizatora (wersja dachowa niegotowa). */}
-                            <RoofHeroPhotos />
-
-                            <div className="pl-trust-row">
-                              <span className="pl-price">
-                                od {formatStartingPrice(roletyStartingPrice)} zł
-                                <span className="pl-price-unit"> / szt.</span>
-                              </span>
-                              <span className="pl-chip">{rdLibrary.length ? `${rdLibrary.length} modeli okien` : "420+ modeli okien"}</span>
-                              <span className="pl-chip">Polski producent</span>
-                              <span className="pl-chip">5 lat gwarancji</span>
-                              <span className="pl-chip">30 dni na zwrot</span>
-                              <span className="pl-chip">Darmowa dostawa od 79 zł</span>
-                            </div>
+                            {/* 23.11 (właściciel: „Tak, przebuduj”): mozaika RoofHeroPhotos i pasek „od … zł” + 5 chipów usunięte -
+                                zdjęcia stoją nad tytułem (RdHeroGallery), fakty i przycisk w RdPierwszyEkran pod tytułem. */}
 
                             {/* Lejek v2 (właściciel 9.11, kolejność od właściciela): opis zwarty i konkretny → wizualizator (test) → dowód → bez ryzyka
                                 (animowane kafle) → przykładowe ceny DEKO/TERMO (slajdy) → wyszukaj swoje okno → przymierzalnia tkanin; dalej opinie, galeria,
