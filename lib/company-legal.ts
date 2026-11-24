@@ -16,7 +16,7 @@ export const COMPANY_LEGAL = {
   phone: "+48 790 215 251",
   phoneHref: "tel:+48790215251",
   email: "biuro@keika.pl",
-  hours: "pon.–sb. 8:00–21:00",
+  hours: "codziennie 9:00–20:00",
   producingSince: 2015,
 } as const;
 
