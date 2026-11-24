@@ -26501,21 +26501,25 @@ button.rdl-r:hover { background: rgba(255, 255, 255, 0.1); }
 .rdl-szukaj-pole { position: relative; display: flex; gap: 0.5rem; }
 .rdl-input { flex: 1 1 auto; min-width: 0; height: 3.2rem; padding: 0 1rem; border-radius: 0.85rem; border: 2px solid #12233a; font: inherit; font-size: 1.02rem; color: #12233a; background: #fff; }
 .rdl-input:focus { outline: none; border-color: #f28c28; box-shadow: 0 0 0 4px rgba(242, 140, 40, 0.18); }
-.rdl-lista-btn { flex: 0 0 auto; height: 3.2rem; padding: 0 1rem; border-radius: 0.85rem; border: 1px solid #d6dbe3; background: #f6f8fb; font: inherit; font-weight: 800; color: #12233a; cursor: pointer; }
-.rdl-lista-btn.is-on { background: #12233a; color: #fff; }
-@media (max-width: 520px) { .rdl-szukaj-pole { flex-wrap: wrap; } .rdl-lista-btn { width: 100%; height: 2.7rem; } }
+/* 24.11: „Wybierz z listy” jako wyraźny przycisk pod polem + dwie listy rozwijane (producent → model) */
+.rdl-lista-cta { display: flex; align-items: center; gap: 0.75rem; width: 100%; margin-top: 0.6rem; padding: 0.7rem 1rem; border-radius: 0.85rem; border: 2px solid #f28c28; background: #fff7ef; font: inherit; color: #12233a; text-align: left; cursor: pointer; transition: background 0.2s ease; }
+.rdl-lista-cta:hover { background: #ffeedd; }
+.rdl-lista-cta > span:nth-child(2) { display: grid; flex: 1 1 auto; line-height: 1.25; }
+.rdl-lista-cta b { font-size: 1.02rem; font-weight: 800; }
+.rdl-lista-cta small { font-size: 0.84rem; color: #64748b; }
+.rdl-lista-cta-ikona { display: grid; place-items: center; flex: 0 0 auto; width: 2.2rem; height: 2.2rem; border-radius: 0.6rem; background: #f28c28; color: #fff; font-size: 1.05rem; }
+.rdl-lista-cta-strz { flex: 0 0 auto; font-size: 1.1rem; color: #f28c28; }
+.rdl-lista-cta.is-on { background: #fff; }
+.rdl-select { display: grid; gap: 0.3rem; margin: 0 0 0.6rem; }
+.rdl-select > span { font-size: 0.84rem; font-weight: 800; color: #12233a; }
+.rdl-select select { width: 100%; height: 3rem; padding: 0 0.85rem; border-radius: 0.75rem; border: 2px solid #12233a; background: #fff; font: inherit; font-size: 1rem; color: #12233a; cursor: pointer; }
+.rdl-select select:focus { outline: none; border-color: #f28c28; box-shadow: 0 0 0 4px rgba(242, 140, 40, 0.18); }
+.rdl-select.is-off select { border-color: #d6dbe3; color: #94a3b8; background: #f8fafc; cursor: not-allowed; }
 .rdl-wyniki { position: absolute; left: 0; right: 0; top: calc(3.2rem + 0.3rem); z-index: 5; list-style: none; margin: 0; padding: 0.3rem; border-radius: 0.85rem; background: #fff; border: 1px solid #e3e8ef; box-shadow: 0 14px 30px rgba(18, 35, 58, 0.16); }
 .rdl-wyniki button { display: flex; justify-content: space-between; gap: 0.6rem; width: 100%; padding: 0.6rem 0.7rem; border: 0; border-radius: 0.6rem; background: none; font: inherit; text-align: left; color: #12233a; cursor: pointer; }
 .rdl-wyniki button:hover { background: #f6f8fb; }
 .rdl-wyniki small { color: #64748b; }
 .rdl-lista { margin-top: 0.6rem; padding: 0.7rem; border-radius: 0.9rem; background: #f6f8fb; border: 1px solid #e3e8ef; animation: rdlWjazd 0.35s ease both; }
-.rdl-producenci { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.rdl-producenci button { padding: 0.45rem 0.75rem; border-radius: 999px; border: 1px solid #d6dbe3; background: #fff; font: inherit; font-weight: 800; font-size: 0.85rem; color: #12233a; cursor: pointer; }
-.rdl-producenci button small { color: #94a3b8; font-weight: 600; }
-.rdl-producenci button.is-on { background: #12233a; border-color: #12233a; color: #fff; }
-.rdl-modele { margin-top: 0.6rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0.35rem; max-height: 260px; overflow-y: auto; }
-.rdl-modele button { padding: 0.5rem 0.6rem; border-radius: 0.55rem; border: 1px solid #e3e8ef; background: #fff; font: inherit; font-size: 0.85rem; text-align: left; color: #12233a; cursor: pointer; }
-.rdl-modele button:hover { border-color: #f28c28; }
 .rdl-lista-pusto { margin: 0.5rem 0 0; font-size: 0.86rem; color: #64748b; }
 .rdl-wybrane { margin-top: 0.7rem; display: grid; gap: 0.5rem; padding: 0.85rem; border-radius: 0.95rem; background: #f0faf5; border: 1px solid #bfe5d1; animation: rdlWjazd 0.4s ease both; }
 .rdl-wybrane-t { margin: 0; color: #12233a; }

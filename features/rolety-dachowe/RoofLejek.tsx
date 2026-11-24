@@ -362,6 +362,19 @@ export function RdCenySlajdy({
 
 // ---------------------------------------------------------------- 5. wyszukaj swoje okno
 
+/** Najpopularniejsze marki okien najpierw, reszta wg liczby modeli. */
+const KOLEJNOSC_MAREK = ["velux", "fakro", "roto", "okpol"];
+
+/** Tekst opcji w liście modeli: model z tabliczki (+ oznaczenie zamienne). Bez wymiaru – window_width/height
+ *  mają w bibliotece różne jednostki u różnych producentów (ROTO 5/7 = „400×638”). */
+function etykietaModelu(i: RoofWindowLibraryItem) {
+  const model = i.window_model || i.producer_name;
+  const alt = i.alternate_window_model && !/^\d{1,2}$/.test(i.alternate_window_model) && i.alternate_window_model !== model ? i.alternate_window_model : "";
+  // VELUX: nowsze oznaczenie literowe (CK02, MK06) jest na tabliczce częściej niż stary numer (102, 306) – idzie pierwsze.
+  if (alt && /^\d+$/.test(model) && /[a-z]/i.test(alt)) return `${alt} (${model})`;
+  return alt ? `${model} (${alt})` : model;
+}
+
 export function RdSzukajOkna({
   profile,
   library,
@@ -381,16 +394,32 @@ export function RdSzukajOkna({
   const [producent, setProducent] = useState<string | null>(null);
   const [wybrane, setWybrane] = useState<RoofWindowLibraryItem | null>(null);
   const wyniki = useMemo(() => (query.trim() && !wybrane ? searchRoofWindowLibrary(library, query).slice(0, 6) : []), [library, query, wybrane]);
-  const producenci = useMemo(() => libraryProducers(library).slice(0, 8), [library]);
-  const modele = useMemo(
+  // 24.11.2026 (właściciel): „pod wyszukiwarką CTA wybierz z listy – wybieramy producenta i model”. Zamiast chipów
+  // i siatki 252 przycisków (ROTO) – dwie listy rozwijane; modele pogrupowane wg serii (producer_name bez marki).
+  const producenci = useMemo(
     () =>
-      producent
-        ? library
-            .filter((i) => (i.producer_name.trim().split(/\s+/)[0] || "").toLocaleLowerCase("pl-PL") === producent.toLocaleLowerCase("pl-PL"))
-            .sort((a, b) => buildRoofWindowDisplayLabel(a).localeCompare(buildRoofWindowDisplayLabel(b), "pl", { numeric: true }))
-        : [],
-    [library, producent],
+      libraryProducers(library).sort((a, b) => {
+        const ka = KOLEJNOSC_MAREK.indexOf(a.name.toLocaleLowerCase("pl-PL"));
+        const kb = KOLEJNOSC_MAREK.indexOf(b.name.toLocaleLowerCase("pl-PL"));
+        return (ka < 0 ? 99 : ka) - (kb < 0 ? 99 : kb) || b.count - a.count;
+      }),
+    [library],
   );
+  const serie = useMemo(() => {
+    if (!producent) return [];
+    const mapa = new Map<string, RoofWindowLibraryItem[]>();
+    for (const i of library) {
+      const nazwa = i.producer_name.trim();
+      const [marka, ...reszta] = nazwa.split(/\s+/);
+      if ((marka || "").toLocaleLowerCase("pl-PL") !== producent.toLocaleLowerCase("pl-PL")) continue;
+      const seria = reszta.join(" ").replace(/^velux\s*/i, "");
+      if (!mapa.has(seria)) mapa.set(seria, []);
+      mapa.get(seria)!.push(i);
+    }
+    return Array.from(mapa.entries())
+      .sort(([a], [b]) => (a ? (b ? a.localeCompare(b, "pl", { numeric: true }) : 1) : -1))
+      .map(([seria, okna]) => ({ seria, okna: okna.sort((a, b) => etykietaModelu(a).localeCompare(etykietaModelu(b), "pl", { numeric: true })) }));
+  }, [library, producent]);
   const ceny = useMemo(() => {
     if (!wybrane || !profile) return [];
     const { widthMm, heightMm } = resolveRoofWindowDimensions(wybrane);
@@ -399,7 +428,8 @@ export function RdSzukajOkna({
   const wybierz = (item: RoofWindowLibraryItem, zrodlo: string) => {
     setWybrane(item);
     setQuery(buildRoofWindowDisplayLabel(item));
-    setLista(false);
+    // Z listy rozwijanej zostawiamy obie listy na ekranie – widać wybór i łatwo go zmienić.
+    if (zrodlo !== "lista") setLista(false);
     trackShopStep("lejek_szukaj_okna", "rolety-dachowe", { zrodlo, okno: buildRoofWindowDisplayLabel(item) });
   };
 
@@ -421,9 +451,6 @@ export function RdSzukajOkna({
             setWybrane(null);
           }}
         />
-        <button type="button" className={`rdl-lista-btn ${lista ? "is-on" : ""}`} aria-expanded={lista} onClick={() => setLista((v) => !v)}>
-          {lista ? "Zamknij listę" : "Wybierz z listy"}
-        </button>
         {wyniki.length ? (
           <ul className="rdl-wyniki" role="listbox">
             {wyniki.map((r) => (
@@ -437,26 +464,75 @@ export function RdSzukajOkna({
         ) : null}
       </div>
 
+      <button
+        type="button"
+        className={`rdl-lista-cta ${lista ? "is-on" : ""}`}
+        aria-expanded={lista}
+        aria-controls="rdl-lista"
+        onClick={() => {
+          if (!lista) trackShopStep("lejek_lista_okien", "rolety-dachowe", { krok: "otworz" });
+          setLista((v) => !v);
+        }}
+      >
+        <span className="rdl-lista-cta-ikona" aria-hidden="true">☰</span>
+        <span>
+          <b>{lista ? "Zamknij listę" : "Wybierz z listy"}</b>
+          <small>producent i model okna</small>
+        </span>
+        <span className="rdl-lista-cta-strz" aria-hidden="true">{lista ? "▴" : "▾"}</span>
+      </button>
+
       {lista ? (
-        <div className="rdl-lista">
-          <div className="rdl-producenci" role="tablist" aria-label="Producent okna">
-            {producenci.map((p) => (
-              <button key={p.name} type="button" role="tab" aria-selected={producent === p.name} className={producent === p.name ? "is-on" : ""} onClick={() => setProducent(p.name)}>
-                {p.name.toUpperCase()} <small>{p.count}</small>
-              </button>
-            ))}
-          </div>
-          {producent ? (
-            <div className="rdl-modele">
-              {modele.map((m) => (
-                <button key={m.id} type="button" onClick={() => wybierz(m, "lista")}>
-                  {buildRoofWindowDisplayLabel(m)}
-                </button>
+        <div id="rdl-lista" className="rdl-lista">
+          <label className="rdl-select">
+            <span>1. Producent okna</span>
+            <select
+              value={producent ?? ""}
+              onChange={(e) => {
+                const p = e.target.value || null;
+                setProducent(p);
+                if (p) trackShopStep("lejek_lista_okien", "rolety-dachowe", { krok: "producent", producent: p });
+              }}
+            >
+              <option value="">{library.length ? "Wybierz producenta" : "Ładuję listę okien…"}</option>
+              {producenci.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name.toUpperCase()} ({p.count} {p.count === 1 ? "model" : p.count % 10 >= 2 && p.count % 10 <= 4 && (p.count % 100 < 12 || p.count % 100 > 14) ? "modele" : "modeli"})
+                </option>
               ))}
-            </div>
-          ) : (
-            <p className="rdl-lista-pusto">Wybierz producenta okna – pokażemy wszystkie jego modele.</p>
-          )}
+            </select>
+          </label>
+          <label className={`rdl-select ${producent ? "" : "is-off"}`}>
+            <span>2. Model okna</span>
+            <select
+              disabled={!producent}
+              value={wybrane && serie.some((s) => s.okna.some((o) => o.id === wybrane.id)) ? String(wybrane.id) : ""}
+              onChange={(e) => {
+                const m = library.find((i) => String(i.id) === e.target.value);
+                if (m) wybierz(m, "lista");
+              }}
+            >
+              <option value="">{producent ? "Wybierz model z tabliczki" : "Najpierw wybierz producenta"}</option>
+              {serie.map(({ seria, okna }) =>
+                seria ? (
+                  <optgroup key={seria} label={`${producent?.toUpperCase()} ${seria}`}>
+                    {okna.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {etykietaModelu(o)}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : (
+                  okna.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {etykietaModelu(o)}
+                    </option>
+                  ))
+                ),
+              )}
+            </select>
+          </label>
+          <p className="rdl-lista-pusto">Model znajdziesz na tabliczce znamionowej – na górze skrzydła, widać ją po otwarciu okna.</p>
         </div>
       ) : null}
 
