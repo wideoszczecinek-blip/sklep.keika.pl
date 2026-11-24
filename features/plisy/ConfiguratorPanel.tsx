@@ -54,6 +54,9 @@ import {
   PLISY_OVERSIZE_WIDTH_MM,
   fetchPlisyProfile,
   formatPriceDeltaBadge,
+  plisyGroupMatches,
+  plisySwatchMatches,
+  withCartFabric,
   findPlisyMountByLabel,
   plisyMountLabel,
   plisyMountNazwa,
@@ -239,7 +242,8 @@ export default function ConfiguratorPanel({
         trackShopStep("configurator_load_failed", "plisy", { ms_since_nav: Math.round(performance.now()) });
         return;
       }
-      setProfile(result);
+      // Klient wraca z tkaniną wycofaną z oferty (koszyk / zapisana wycena) - dokładamy ją tylko dla niego.
+      setProfile(withCartFabric(result, initialValues?.fabricGroupLabel, initialValues?.fabricLabel));
       setLoadState("ready");
       trackShopStep("configurator_ready", "plisy", { ms_since_nav: Math.round(performance.now()) });
     });
@@ -534,7 +538,9 @@ export default function ConfiguratorPanel({
       }
     }
     if (!selectedFabricGroupId && initialValues?.fabricGroupLabel) {
-      const match = profile.fabricGroups.find((group) => group.label === initialValues.fabricGroupLabel);
+      const match =
+        profile.fabricGroups.find((group) => plisyGroupMatches(group, initialValues.fabricGroupLabel)) ||
+        profile.fabricGroups.find((group) => group.swatches.some((swatch) => plisySwatchMatches(swatch, initialValues.fabricLabel)));
       if (match) {
         setSelectedFabricGroupId(match.id);
         setStepTwoCollapsed(true);
@@ -575,7 +581,7 @@ export default function ConfiguratorPanel({
   // later than the effect above.
   useEffect(() => {
     if (!selectedFabricId && initialValues?.fabricLabel && swatchesForGroup.length > 0) {
-      const match = swatchesForGroup.find((swatch) => swatch.label === initialValues.fabricLabel);
+      const match = swatchesForGroup.find((swatch) => plisySwatchMatches(swatch, initialValues.fabricLabel));
       if (match) {
         setSelectedFabricId(match.id);
         setStepThreeCollapsed(true);

@@ -23,7 +23,7 @@ import { SEASONAL_PROMO_ENABLED, activatePromoCode, applyPromoToPrice, getPromoR
 import { ensurePromoQuoteCode, hasSavedPromoLink } from "@/lib/promo-save";
 import PlisyFabricGallery from "@/features/plisy/FabricGallery";
 import { PlisyCollectionVisual, plisyCollectionKind, plisyCollectionMeta, plisyColorCountLabel } from "@/features/plisy/CollectionVisual";
-import { buildPlisyHardwareSwatchStyle, fetchPlisyProfile, formatPriceDeltaBadge, type FabricSwatch, type PlisyProfile } from "@/features/plisy/shared";
+import { buildPlisyHardwareSwatchStyle, fetchPlisyProfile, formatPriceDeltaBadge, plisyGroupMatches, plisySwatchMatches, withCartFabric, type FabricSwatch, type PlisyProfile } from "@/features/plisy/shared";
 import RoofWindowSearchSelector from "@/features/rolety-dachowe/RoofWindowSearchSelector";
 import MissingModelForm from "@/features/rolety-dachowe/MissingModelForm";
 import { fetchRoofBlindProfile, type RoofBlindProfile } from "@/features/rolety-dachowe/shared";
@@ -135,7 +135,8 @@ export default function ConfiguratorPanel({
         trackShopStep("configurator_load_failed", PD_PRODUCT_SLUG, { ms_since_nav: Math.round(performance.now()) });
         return;
       }
-      setProfile(result);
+      // Klient wraca z tkaniną wycofaną z oferty (koszyk / zapisana wycena) - dokładamy ją tylko dla niego.
+      setProfile(withCartFabric(result, initialValues?.fabricGroupLabel, initialValues?.fabricLabel));
       setLoadState("ready");
       trackShopStep("configurator_ready", PD_PRODUCT_SLUG, { ms_since_nav: Math.round(performance.now()) });
     });
@@ -203,7 +204,9 @@ export default function ConfiguratorPanel({
     setLabelsResolved(true);
     let groupId = selectedFabricGroupId;
     if (!groupId && initialValues?.fabricGroupLabel) {
-      const hit = profile.fabricGroups.find((group) => group.label.toLowerCase() === initialValues.fabricGroupLabel!.toLowerCase());
+      const hit =
+        profile.fabricGroups.find((group) => plisyGroupMatches(group, initialValues.fabricGroupLabel)) ||
+        profile.fabricGroups.find((group) => group.swatches.some((swatch) => plisySwatchMatches(swatch, initialValues.fabricLabel)));
       if (hit) {
         groupId = hit.id;
         setSelectedFabricGroupId(hit.id);
@@ -213,7 +216,7 @@ export default function ConfiguratorPanel({
     if (!selectedFabricId && initialValues?.fabricLabel) {
       const groups = groupId ? profile.fabricGroups.filter((group) => group.id === groupId) : profile.fabricGroups;
       for (const group of groups) {
-        const hit = group.swatches.find((swatch) => swatch.label.toLowerCase() === initialValues.fabricLabel!.toLowerCase());
+        const hit = group.swatches.find((swatch) => plisySwatchMatches(swatch, initialValues.fabricLabel));
         if (hit) {
           setSelectedFabricId(hit.id);
           setStepThreeCollapsed(true);

@@ -80,6 +80,8 @@ export type PlisyProfile = {
   mountOptions: MountOption[];
   hardware: HardwareOption[];
   fabricGroups: FabricGroup[];
+  /** Tkaniny wycofane z oferty (24.11.2026): niewidoczne, tylko do odtworzenia koszyka / zapisanej wyceny. */
+  retiredFabricGroups: FabricGroup[];
   tables: PriceTable[];
   priceAdjustmentPercent: number;
   priceAdjustmentAmount: number;
@@ -98,6 +100,7 @@ type RawStep = {
     price_delta?: number;
     price_delta_type?: string;
   }>;
+  retired_groups?: RawStep["groups"];
   groups?: Array<{
     id: string;
     label: string;
@@ -220,7 +223,7 @@ async function fetchPlisyProfileUncached(init: RequestInit = { cache: "no-store"
       priceDeltaType: toPriceDeltaType(option.price_delta_type),
     }));
 
-    const fabricGroups: FabricGroup[] = (fabricStep?.groups || []).map((group) => ({
+    const mapFabricGroup = (group: NonNullable<RawStep["groups"]>[number]): FabricGroup => ({
       id: group.id,
       label: group.label,
       note: group.note || "",
@@ -236,7 +239,9 @@ async function fetchPlisyProfileUncached(init: RequestInit = { cache: "no-store"
         priceDeltaType: toPriceDeltaType(swatch.price_delta_type),
         badge: String(swatch.badge || "").trim(),
       })),
-    }));
+    });
+    const fabricGroups: FabricGroup[] = (fabricStep?.groups || []).map(mapFabricGroup);
+    const retiredFabricGroups: FabricGroup[] = (fabricStep?.retired_groups || []).map(mapFabricGroup);
 
     const tables: PriceTable[] = (product.pricing_calculation?.tables || []).map((table) => ({
       id: table.id,
@@ -280,6 +285,7 @@ async function fetchPlisyProfileUncached(init: RequestInit = { cache: "no-store"
       mountOptions,
       hardware,
       fabricGroups,
+      retiredFabricGroups,
       tables,
       priceAdjustmentPercent: Number(defaultProfile?.price_adjustment_percent) || 0,
       priceAdjustmentAmount: Number(defaultProfile?.price_adjustment_amount) || 0,
@@ -648,3 +654,57 @@ export type ConfiguratorResult = {
   sagNoticeShown?: boolean;
   sagLimitMm?: number;
 };
+
+// ---------------------------------------------------------------------------
+// Koszyk / zapisana wycena z tkaniną, której nie ma już w ofercie (właściciel
+// 24.11.2026: „klienci, którzy wrócą z tamtymi tkaninami w koszyku, muszą móc je
+// kupić”). Pozycja w koszyku i tak przechodzi przez kasę (cena jest zapisana),
+// ale "Edytuj pozycję" otwiera konfigurator, który szuka tkaniny po etykiecie.
+// Tu: dopasowanie po kodzie (nazwy kolorów się zmieniają) i dołożenie wycofanej
+// tkaniny do profilu tylko dla tego klienta.
+
+/** Kod tkaniny z etykiety „PP 254 (piaskowy)” → "PP254". */
+export function plisyFabricCode(label: string): string {
+  return String(label || "").replace(/\s*\(.*$/, "").replace(/[\s\-_.]+/g, "").toUpperCase();
+}
+
+export function plisySwatchMatches(swatch: FabricSwatch, label: string | undefined): boolean {
+  if (!label) return false;
+  if (swatch.label.toLowerCase() === label.toLowerCase()) return true;
+  const code = plisyFabricCode(label);
+  return code !== "" && plisyFabricCode(swatch.code || swatch.label) === code;
+}
+
+/** Grupa po etykiecie; „DUO TERMO” pasuje też do „DUO TERMO (Honeycomb)”. */
+export function plisyGroupMatches(group: FabricGroup, label: string | undefined): boolean {
+  if (!label) return false;
+  const a = group.label.toLowerCase().replace(/\s*\(.*\)\s*$/, "").trim();
+  const b = label.toLowerCase().replace(/\s*\(.*\)\s*$/, "").trim();
+  return a === b;
+}
+
+export const PLISY_CART_FABRIC_BADGE = "Z Twojego koszyka";
+
+/**
+ * Gdy klient wraca z tkaniną wycofaną z oferty, dokłada ją do profilu (do jej
+ * kolekcji albo z całą wycofaną kolekcją, np. DUO plaster miodu), żeby dało się
+ * ją wybrać, edytować pozycję i kupić. Bez trafienia zwraca profil bez zmian.
+ */
+export function withCartFabric(profile: PlisyProfile, groupLabel: string | undefined, fabricLabel: string | undefined): PlisyProfile {
+  if (!fabricLabel) return profile;
+  for (const group of profile.fabricGroups) {
+    if (group.swatches.some((swatch) => plisySwatchMatches(swatch, fabricLabel))) return profile;
+  }
+  for (const retired of profile.retiredFabricGroups || []) {
+    const swatch = retired.swatches.find((entry) => plisySwatchMatches(entry, fabricLabel));
+    if (!swatch) continue;
+    const extra: FabricSwatch = { ...swatch, badge: PLISY_CART_FABRIC_BADGE };
+    const target = profile.fabricGroups.find((group) => group.id === retired.id);
+    const fabricGroups = target
+      ? profile.fabricGroups.map((group) => (group.id === retired.id ? { ...group, swatches: [...group.swatches, extra] } : group))
+      : [...profile.fabricGroups, { ...retired, swatches: [extra] }];
+    return { ...profile, fabricGroups };
+  }
+  void groupLabel;
+  return profile;
+}
