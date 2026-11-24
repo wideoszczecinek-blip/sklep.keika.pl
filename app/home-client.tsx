@@ -3343,6 +3343,10 @@ export default function Home({
     });
   }
 
+  // Produkt otwarty jako ostatni (z adresu albo z menu) - patrz refreshOnly niżej.
+  // null = od wejścia na stronę nic jeszcze nie otwarto, "" = widok produktu zamknięty.
+  const shownProductSlugRef = useRef<string | null>(null);
+
   function activateProductView(
     group: HeroMenuGroup,
     groupIndex: number,
@@ -3380,20 +3384,36 @@ export default function Home({
       return;
     }
     const nextProduct = buildProductView(group, groupIndex, subItem, heroMedia);
+    // Właściciel 24.11.2026 („Tak, napraw”): na telefonie klient, który zaczął
+    // przewijać w pierwszej sekundzie, wracał na górę strony.
+    // - Ten sam produkt ponownie rozpoznany z adresu (konfiguracja z CRM dociąga
+    //   się ok. 1 s po wejściu i potem co 10 min - efekt activateFromUrl rusza
+    //   wtedy jeszcze raz): tylko świeże dane, bez przewijania na górę, zmiany
+    //   zakładki i zamykania menu.
+    // - Pierwsze otwarcie z adresu po wejściu na stronę: .hero-full jest świeży
+    //   (każda strona montuje home-client od nowa), więc przewinięcie na górę
+    //   cofałoby tylko klienta, który przewinął, zanim strona się uruchomiła.
+    const previousSlug = shownProductSlugRef.current;
+    const fromUrl = options?.updateUrl === false;
+    const refreshOnly = fromUrl && previousSlug === shareSlug;
+    const firstFromUrl = fromUrl && previousSlug === null;
+    shownProductSlugRef.current = shareSlug;
     setSelectedProduct(nextProduct);
     setDisplayedProduct(nextProduct);
     // On mobile .hero-full scrolls internally (the configurator has far more
     // content than one screen) - without this, opening a product while
     // already scrolled down in it (or in the previous product) would land
     // the customer mid-page instead of at the top of the new panel.
-    document.querySelector(".hero-full")?.scrollTo({ top: 0, behavior: "auto" });
+    if (!refreshOnly && !firstFromUrl) document.querySelector(".hero-full")?.scrollTo({ top: 0, behavior: "auto" });
     window.requestAnimationFrame(() => {
       setIsProductView(true);
     });
-    setActiveProductTab("opis");
-    setActiveProductGallerySlide(0);
-    setOpenMenuIndex(null);
-    setMobileMenuOpen(false);
+    if (!refreshOnly) {
+      setActiveProductTab("opis");
+      setActiveProductGallerySlide(0);
+      setOpenMenuIndex(null);
+      setMobileMenuOpen(false);
+    }
     if (options?.updateUrl !== false && typeof window !== "undefined") {
       const nextUrl = new URL(window.location.href);
       if (shareSlug === initialProductSlug) {
@@ -3434,6 +3454,7 @@ export default function Home({
         (current.searchParams.get("produkt") || "").trim().toLowerCase() ||
         String(initialProductSlug || "").trim().toLowerCase();
       if (!slug) {
+        shownProductSlugRef.current = "";
         setIsProductView(false);
         setSelectedProduct(null);
         return;
