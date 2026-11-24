@@ -42,14 +42,14 @@ export function isPdPlaceholderCopy(text: string | null | undefined): boolean {
 export const PD_H1 = "Plisy do okien dachowych na wymiar";
 
 export const PD_SUBTITLE =
-  "Plisa z aluminiowymi prowadnicami, dopasowana do modelu Twojego okna dachowego: Velux, Fakro, Roto, OKPOL, Dakstra i inne — ponad 420 modeli w bibliotece. Te same 150 tkanin co w plisach okiennych, trzy kolory osprzętu, cena od razu.";
+  "Plisa z aluminiowymi prowadnicami, dopasowana do modelu Twojego okna dachowego: Velux, Fakro, Roto, OKPOL, Dakstra i inne — ponad 420 modeli w bibliotece. Te same tkaniny co w plisach okiennych (ponad 80 do wyboru), trzy kolory osprzętu, cena od razu.";
 
 export const PD_PRIMARY_CTA = "Dobierz plisę do swojego okna";
 
 export const PD_DESCRIPTION_HTML =
   "<p><strong>Plisy dachowe KEIKA</strong> to plisa zaprojektowana pod okno połaciowe: dwie aluminiowe belki połączone tkaniną pracują w bocznych prowadnicach, więc materiał zostaje w płaszczyźnie okna niezależnie od kąta nachylenia i nie wybrzusza się pod własnym ciężarem. Każdą belkę ustawisz w dowolnym miejscu — zasłonisz całe okno, tylko górę, tylko dół albo pas na środku.</p>" +
   "<p><strong>Dopasowana do modelu okna — bez mierzenia.</strong> Wybierz swoje okno z biblioteki ponad 420 modeli (Velux, Fakro, Roto, OKPOL, Dakstra i inne) albo zrób zdjęcie tabliczki znamionowej — model odczytamy automatycznie i dobierzemy wymiar plisy. Okna spoza listy? Podajesz dwa wymiary, a plisę wykonamy na miarę.</p>" +
-  "<p><strong>Te same tkaniny, co w plisach okiennych.</strong> Pięć kolekcji — Klasyczne, Reflex, Podgumowane (blackout), DUO plaster miodu i DUO TERMO — razem ok. 150 kolorów, od lekkich, rozpraszających światło po całkowicie zaciemniające z powłoką termiczną. Osprzęt (belki i prowadnice) w kolorze białym, anoda lub sosna.</p>" +
+  "<p><strong>Te same tkaniny, co w plisach okiennych.</strong> Cztery kolekcje — Klasyczne, Reflex, Podgumowane (blackout) i DUO TERMO (Honeycomb) — razem ponad 80 kolorów, od lekkich, rozpraszających światło po całkowicie zaciemniające z powłoką termiczną. Osprzęt (belki i prowadnice) w kolorze białym, anoda lub sosna.</p>" +
   "<p><strong>Kompletna, gotowa do montażu.</strong> W paczce plisa z belkami i prowadnicami, elementy montażowe i obrazkowa instrukcja. Montaż do skrzydła okna wkrętarką lub śrubokrętem PZ1, zwykle 10–15 minut. 5 lat gwarancji, 30 dni na zwrot, darmowa dostawa od 79 zł.</p>";
 
 export const PD_SPEC_ITEMS: PdSpecItem[] = [
@@ -78,7 +78,7 @@ export const PD_SPEC_ITEMS: PdSpecItem[] = [
 export const PD_FEATURE_BULLETS: PdFeatureBullet[] = [
   { lead: "Pod model okna, bez mierzenia", detail: "biblioteka ponad 420 modeli — Velux, Fakro, Roto, OKPOL, Dakstra i inne" },
   { lead: "Rozpoznawanie ze zdjęcia", detail: "zrób zdjęcie tabliczki znamionowej na skrzydle, a model okna odczytamy automatycznie" },
-  { lead: "150 tkanin w 5 kolekcjach", detail: "Klasyczne, Reflex, Podgumowane (blackout), DUO plaster miodu i DUO TERMO — te same, co w plisach okiennych" },
+  { lead: "Ponad 80 tkanin w 4 kolekcjach", detail: "Klasyczne, Reflex, Podgumowane (blackout) i DUO TERMO (Honeycomb) — te same, co w plisach okiennych" },
   { lead: "3 kolory osprzętu", detail: "belki i prowadnice w kolorze białym, anoda (szary) lub sosna" },
   { lead: "Tkanina w płaszczyźnie okna", detail: "prowadnice trzymają materiał na skosie i przy uchylonym skrzydle, bez wybrzuszeń" },
   { lead: "Zasłaniasz dowolny fragment", detail: "górna i dolna belka niezależnie — całe okno, góra, dół albo środek" },
@@ -142,7 +142,7 @@ export const PD_FAQ: PdFaqEntry[] = [
   {
     question: "Którą kolekcję tkanin wybrać?",
     answer:
-      "Klasyczne i DUO plaster miodu rozpraszają światło i nie zaciemniają — do salonu i kuchni na poddaszu. Reflex ma powłokę odbijającą słońce od strony szyby — na okna od południa. Podgumowane (blackout) zaciemniają — do sypialni. DUO TERMO to plaster miodu z powłoką termiczną: pełne zaciemnienie i najlepsza izolacja — do sypialni i nasłonecznionych poddaszy.",
+      "Klasyczne rozpraszają światło i nie zaciemniają — do salonu i kuchni na poddaszu. Reflex ma powłokę odbijającą słońce od strony szyby — na okna od południa. Podgumowane (blackout) zaciemniają — do sypialni. DUO TERMO to plaster miodu z powłoką termiczną: pełne zaciemnienie i najlepsza izolacja — do sypialni i nasłonecznionych poddaszy.",
   },
   {
     question: "Czy plisa dachowa całkowicie zaciemnia?",

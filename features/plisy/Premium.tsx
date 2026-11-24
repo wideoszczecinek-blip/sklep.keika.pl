@@ -3,7 +3,7 @@
 // Strona plis jako lejek (właściciel 2.11, od 2.11 jedna wersja bez testu; wcześniej: „pokazać klientom, że te plisy
 // to coś więcej, że to premium look – dać wizualizację, podkreślić 5 lat gwarancji – jakość”). Treść tylko z faktów,
 // które strona już podaje (landing-content.ts): produkujemy sami od 2015, 5 lat gwarancji, 30 dni na zwrot,
-// 150 tkanin w 5 kolekcjach (antystatyczne), aluminiowe profile w 10 kolorach, dwie ruchome listwy, sznurki
+// ponad 80 tkanin w 4 kolekcjach (antystatyczne), aluminiowe profile w 10 kolorach, dwie ruchome listwy, sznurki
 // prowadzące, montaż bez wiercenia. Ceny i promocje bez zmian. Zdjęcia poniżej pierwszego ekranu - leniwie (LCP).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trackShopStep } from "@/lib/track-step";
@@ -64,7 +64,7 @@ const MATERIALY = [
     src: "/plisy/detal-04.jpg",
     alt: "Zbliżenie tkaniny plisowanej KEIKA - równe fałdy",
     tytul: "Tkanina",
-    tekst: "150 tkanin w 5 kolekcjach – od dekoracyjnych po zaciemniające i termoizolacyjne DUO TERMO. Antystatyczne: nie przyciągają kurzu, czyścisz je wilgotną ściereczką.",
+    tekst: "Ponad 80 tkanin w 4 kolekcjach – od dekoracyjnych po zaciemniające i termoizolacyjne DUO TERMO. Antystatyczne: nie przyciągają kurzu, czyścisz je wilgotną ściereczką.",
   },
   {
     src: "/plisy/detal-01.jpg",
@@ -283,7 +283,7 @@ export function LejekOpis({ cena, szer, wys }: { cena: number | null; szer: numb
         <li><b>Ty decydujesz o świetle</b> – zasłaniasz górę, dół albo środek szyby</li>
         <li><b>Montaż w ok. 15 minut</b> – bez wiercenia i bez śladów, albo przykręcana</li>
         <li><b>Okno działa jak dawniej</b> – plisa jedzie razem ze skrzydłem</li>
-        <li><b>Od delikatnej po pełne zaciemnienie</b> – 150 tkanin w 5 kolekcjach</li>
+        <li><b>Od delikatnej po pełne zaciemnienie</b> – ponad 80 tkanin w 4 kolekcjach</li>
         <li><b>Pasuje do Twojej ramy</b> – 10 kolorów aluminiowych profili</li>
         <li><b>Bez zwisających sznurków</b> – tkaniny antystatyczne, łatwe w czyszczeniu</li>
       </ul>

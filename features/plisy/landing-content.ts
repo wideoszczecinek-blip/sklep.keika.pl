@@ -95,7 +95,7 @@ export const PLISY_LANDING_V2 = true;
 export const PLISY_H1_V2 = "Plisy okienne na wymiar"; // 22.11: H1 mówi, co to jest (wcześniej „Plisy na wymiar · własna produkcja od 2015” małym drukiem nad hasłem)
 
 export const PLISY_SUBTITLE =
-  "Plisy okienne na wymiar od polskiego producenta. Regulacja z góry i z dołu, montaż bez wiercenia lub z wierceniem, 150 tkanin i 10 kolorów profili do wyboru. Cenę dla swojego okna sprawdzisz od razu w konfiguratorze.";
+  "Plisy okienne na wymiar od polskiego producenta. Regulacja z góry i z dołu, montaż bez wiercenia lub z wierceniem, ponad 80 tkanin i 10 kolorów profili do wyboru. Cenę dla swojego okna sprawdzisz od razu w konfiguratorze.";
 
 /** Primary CTA wording, repeated on the landing (mobile hero button, callout,
  * end-of-section nudges). One promise everywhere: the price, for your
@@ -105,7 +105,7 @@ export const PLISY_PRIMARY_CTA = "Sprawdź cenę dla swojego okna";
 /** Fallback for the CRM "description" field (HTML). */
 export const PLISY_DESCRIPTION_HTML =
   "<p><strong>Plisy okienne</strong> to osłony z tkaniny plisowanej, montowane bezpośrednio na skrzydle okna. W odróżnieniu od rolety mają dwie ruchome listwy: tkaninę przesuwasz z góry i z dołu i zasłaniasz tylko tę część okna, którą chcesz. Plisa nie przeszkadza w otwieraniu i uchylaniu okna, nie ma sznurków ani łańcuszków, a złożona zajmuje zaledwie kilka centymetrów.</p>" +
-  "<p><strong>Produkujemy plisy sami, w Polsce.</strong> Jesteśmy producentem osłon okiennych. Każdą plisę wykonujemy na indywidualny wymiar, z aluminiowymi profilami w 10 kolorach i tkaninami z 5 kolekcji: od dekoracyjnych, rozpraszających światło, przez zaciemniające, po zaciemniająco-termoizolacyjne DUO TERMO. Wszystkie tkaniny są antystatyczne i łatwe w czyszczeniu.</p>" +
+  "<p><strong>Produkujemy plisy sami, w Polsce.</strong> Jesteśmy producentem osłon okiennych. Każdą plisę wykonujemy na indywidualny wymiar, z aluminiowymi profilami w 10 kolorach i tkaninami z 4 kolekcji: od dekoracyjnych, rozpraszających światło, przez zaciemniające, po zaciemniająco-termoizolacyjne DUO TERMO (Honeycomb). Wszystkie tkaniny są antystatyczne i łatwe w czyszczeniu.</p>" +
   "<p><strong>Zamawiasz online w kilka minut.</strong> Wybierasz sposób montażu, kolor profili i tkaninę, wpisujesz wymiary i od razu widzisz cenę. Plisę produkujemy w 7 dni roboczych i wysyłamy kurierem w 24 h od wyprodukowania. Darmowa dostawa od 79 zł, 5 lat gwarancji, 30 dni na zwrot.</p>";
 
 export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
@@ -145,8 +145,8 @@ export const PLISY_FEATURE_BULLETS: PlisyFeatureBullet[] = [
     detail: "uchwyty zakładane na skrzydło okna, bez wiercenia, z możliwością demontażu bez śladu; w kolorze białym, jasnym lub ciemnym brązie",
   },
   {
-    lead: "150 tkanin w 5 kolekcjach",
-    detail: "Klasyczne, Reflex, Blackout, DUO plaster miodu i DUO TERMO: od dekoracyjnych, rozpraszających światło, po w pełni zaciemniające",
+    lead: "Ponad 80 tkanin w 4 kolekcjach",
+    detail: "Klasyczne, Reflex, Podgumowane (Blackout) i DUO TERMO (Honeycomb): od dekoracyjnych, rozpraszających światło, po w pełni zaciemniające",
   },
   {
     lead: "10 kolorów profili",
@@ -195,19 +195,8 @@ export const PLISY_COLLECTIONS: PlisyCollectionRow[] = [
     thermalNote: "Bez powłoki termicznej",
   },
   {
-    groupId: "duo",
-    name: "DUO plaster miodu",
-    what: "Dekoracyjna, podwójna tkanina o strukturze plastra miodu: rozprasza światło, bez otworów pod sznurki, nie zaciemnia",
-    where: "Salon, jadalnia, gabinet",
-    blackout: false,
-    thermal: false,
-    decorative: true,
-    lightNote: "Półprzepuszczalna — rozprasza światło, bez otworów pod sznurki, żadnych punktów światła",
-    thermalNote: "Bez powłoki termicznej — termoizolację ma DUO TERMO",
-  },
-  {
     groupId: "duo-blackout",
-    name: "DUO TERMO",
+    name: "DUO TERMO (Honeycomb)",
     what: "Plaster miodu z wewnętrzną powłoką termiczną: całkowite zaciemnienie i najlepsza termoizolacja",
     where: "Sypialnia od słonecznej strony, poddasze",
     blackout: true,
@@ -258,7 +247,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Ile uchwytów do przesuwania ma plisa?",
     answer:
-      "Plisy do 100 cm szerokości mają jeden uchwyt na środku każdej listwy. Plisy szersze niż 100 cm dostają po dwa uchwyty na listwę, żeby szeroka belka szła równo — ciągniesz za oba naraz. Przy szerokościach powyżej 110 cm (tkaniny pojedyncze) i 90 cm (plaster miodu DUO) profil aluminiowy może się lekko ugiąć pod ciężarem tkaniny — to naturalne, nie wpływa na działanie plisy, tylko na jej wygląd; konfigurator poprosi Cię o potwierdzenie.",
+      "Plisy do 100 cm szerokości mają jeden uchwyt na środku każdej listwy. Plisy szersze niż 100 cm dostają po dwa uchwyty na listwę, żeby szeroka belka szła równo — ciągniesz za oba naraz. Przy szerokościach powyżej 110 cm (tkaniny pojedyncze) i 90 cm (DUO TERMO) profil aluminiowy może się lekko ugiąć pod ciężarem tkaniny — to naturalne, nie wpływa na działanie plisy, tylko na jej wygląd; konfigurator poprosi Cię o potwierdzenie.",
   },
   {
     question: "Jak zmierzyć okno?",
@@ -278,27 +267,27 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Która tkanina do sypialni?",
     answer:
-      "Podgumowane (Blackout) albo DUO TERMO. Blackout blokuje światło podgumowanym rdzeniem. DUO TERMO to plaster miodu z powłoką termiczną: pełne zaciemnienie, bez otworów pod sznurki (więc bez punktowych prześwitów) i najlepsza izolacja w ofercie. Przy każdej osłonie montowanej w skrzydle zostaje kilka milimetrów prześwitu na krawędziach — to cecha plis i rolet, nie wada egzemplarza.",
+      "Podgumowane (Blackout) albo DUO TERMO (Honeycomb). Blackout blokuje światło podgumowanym rdzeniem. DUO TERMO to plaster miodu z powłoką termiczną: pełne zaciemnienie, bez otworów pod sznurki (więc bez punktowych prześwitów) i najlepsza izolacja w ofercie. Przy każdej osłonie montowanej w skrzydle zostaje kilka milimetrów prześwitu na krawędziach — to cecha plis i rolet, nie wada egzemplarza.",
   },
   {
     question: "Która tkanina do salonu, a która do kuchni i łazienki?",
     answer:
-      "Do salonu Klasyczne lub DUO plaster miodu — obie kolekcje są dekoracyjne: rozpraszają światło, chronią prywatność w dzień, nie zaciemniają. Do kuchni i łazienki Klasyczne lub Reflex — gładki poliester, który wystarczy przetrzeć wilgotną ściereczką. Wszystkie tkaniny mają powłokę antystatyczną, więc kurz osiada wolniej.",
+      "Do salonu Klasyczne — dekoracyjna kolekcja, która rozprasza światło, chroni prywatność w dzień i nie zaciemnia. Do kuchni i łazienki Klasyczne lub Reflex — gładki poliester, który wystarczy przetrzeć wilgotną ściereczką. Wszystkie tkaniny mają powłokę antystatyczną, więc kurz osiada wolniej.",
   },
   {
     question: "Czy plisa chroni przed nagrzewaniem latem i zimnem od okna zimą?",
     answer:
-      "Tak, dwie kolekcje. Reflex ma od strony szyby powłokę odbijającą słońce — do okien południowych i zachodnich. DUO TERMO to plaster miodu z wewnętrzną powłoką termiczną: latem ogranicza nagrzewanie, zimą ucieczkę ciepła przez szybę. Klasyczne, Podgumowane i DUO plaster miodu nie mają właściwości termicznych — DUO plaster miodu to kolekcja dekoracyjna, która rozprasza światło.",
+      "Tak, dwie kolekcje. Reflex ma od strony szyby powłokę odbijającą słońce — do okien południowych i zachodnich. DUO TERMO to plaster miodu z wewnętrzną powłoką termiczną: latem ogranicza nagrzewanie, zimą ucieczkę ciepła przez szybę. Klasyczne i Podgumowane nie mają właściwości termicznych.",
   },
   {
     question: "Ile światła przepuszcza plisa?",
     answer:
-      "Klasyczne, Reflex i DUO plaster miodu są półprzepuszczalne: w dzień w pokoju jest jasno, ale nie widać, co dzieje się w środku. Podgumowane i DUO TERMO są zaciemniające. Kolor ma znaczenie w obu grupach — ciemna tkanina półprzepuszczalna przepuści wyraźnie mniej światła niż jasna.",
+      "Klasyczne i Reflex są półprzepuszczalne: w dzień w pokoju jest jasno, ale nie widać, co dzieje się w środku. Podgumowane i DUO TERMO są zaciemniające. Kolor ma znaczenie w obu grupach — ciemna tkanina półprzepuszczalna przepuści wyraźnie mniej światła niż jasna.",
   },
   {
     question: "Jak dobrać kolor tkaniny i profili?",
     answer:
-      "Tkanina: 150 kolorów w 5 kolekcjach; jasne optycznie powiększają pokój, ciemne wyglądają elegancko, ale przy tkaninach półprzepuszczalnych zabierają więcej światła. Profile: 10 kolorów — biel, brąz, anoda, antracyt, oliwka, czarny mat i cztery drewnopodobne — dobierasz do stolarki. Część kolorów profili jest z dopłatą; konfigurator pokaże cenę od razu po wyborze.",
+      "Tkanina: ponad 80 kolorów w 4 kolekcjach; jasne optycznie powiększają pokój, ciemne wyglądają elegancko, ale przy tkaninach półprzepuszczalnych zabierają więcej światła. Profile: 10 kolorów — biel, brąz, anoda, antracyt, oliwka, czarny mat i cztery drewnopodobne — dobierasz do stolarki. Część kolorów profili jest z dopłatą; konfigurator pokaże cenę od razu po wyborze.",
   },
   {
     question: "Czy szeroka plisa kosztuje więcej w dostawie?",

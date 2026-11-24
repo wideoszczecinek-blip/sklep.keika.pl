@@ -1939,6 +1939,12 @@ export default function ConfiguratorPanel({
                               style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)}
                             />
                             <strong>{swatch.label}</strong>
+                            {/* Plakietki tkaniny (właściciel 24.11.2026): melanże = tkanina premium z dopłatą,
+                                tkaniny z wyprzedaży = „Do wyczerpania zapasów” (CRM ukrywa je po wyczerpaniu). */}
+                            {swatch.priceDelta > 0 && swatch.priceDeltaType === "percent" ? (
+                              <span className="plisy-swatch-tag is-premium">Premium {formatPriceDeltaBadge(swatch.priceDelta, swatch.priceDeltaType)}</span>
+                            ) : null}
+                            {swatch.badge ? <span className="plisy-swatch-tag is-sale">{swatch.badge}</span> : null}
                           </button>
                           <button
                             type="button"

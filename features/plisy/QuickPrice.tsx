@@ -411,7 +411,7 @@ export default function PlisyQuickPrice({
               {PLISY_COLLECTIONS.map((c) => {
                 const amount = pricesReady && profile && inRange ? plisyQuickPrice(profile, widthMm, heightMm, priceAdjustmentPercent, selectedMount, c.groupId) : null;
                 const tier = bundleRule?.wholeOrder ? bundleRule.tiers[bundleRule.tiers.length - 1] : null;
-                const names: Record<string, string> = { clasic: "Dekoracyjna", reflex: "Dekoracyjna Reflex", blackout: "Blackout", duo: "DUO plaster miodu", "duo-blackout": "DUO Termo" };
+                const names: Record<string, string> = { clasic: "Dekoracyjna", reflex: "Dekoracyjna Reflex", blackout: "Blackout", "duo-blackout": "DUO TERMO (Honeycomb)" };
                 return <div className="pl-quick-comparison-row" key={c.groupId}>
                   <button type="button" role="radio" aria-checked={groupId === c.groupId} className={`pl-quick-comparison-choice ${groupId === c.groupId ? "is-active" : ""}`} onClick={() => {
                     trackShopStep("quick_price_tkanina", "plisy", { group: c.groupId, width_mm: widthMm, height_mm: heightMm });
@@ -488,7 +488,7 @@ export default function PlisyQuickPrice({
         <button type="button" className="pl-quick-cta pl-quick-cta--v2" disabled={!inRange} onClick={configure}>
           {kolekcja ? "Wybierz kolor tkaniny →" : "Wybierz tkaninę i kolor →"}
         </button>
-        <span className="pl-quick-note">W cenie 5 lat gwarancji i 30 dni na zwrot. 150 tkanin i 10 kolorów listew wybierzesz w następnym kroku.</span>
+        <span className="pl-quick-note">W cenie 5 lat gwarancji i 30 dni na zwrot. Ponad 80 tkanin i 10 kolorów listew wybierzesz w następnym kroku.</span>
         {onSaveLater ? (
           <button
             type="button"

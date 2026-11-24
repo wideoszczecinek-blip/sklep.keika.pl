@@ -46,7 +46,7 @@ export function PlisyPierwszyEkran({
         Zasłoń dół okna przed spojrzeniami sąsiadów, górę przed słońcem albo całą szybę na noc.
       </p>
       <p className="pe-wybor">
-        Plisę przesuwasz góra–dół, a okno otwierasz jak zwykle. Ponad 150 tkanin do wyboru. Nowoczesna produkcja daje
+        Plisę przesuwasz góra–dół, a okno otwierasz jak zwykle. Ponad 80 tkanin do wyboru. Nowoczesna produkcja daje
         dobrą cenę bez oszczędzania na jakości.
       </p>
       {/* właściciel 22.11: „zaraz pod opisem banerek, że X osób konfiguruje w tej chwili” - ten sam prawdziwy licznik

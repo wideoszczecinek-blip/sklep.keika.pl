@@ -239,7 +239,7 @@ export default function PlisyCollectionsPicker({
       <h3 className="pl-coll-title">{title || "Którą kolekcję tkanin wybrać?"}</h3>
       <p className="pl-coll-lead">
         {lead ||
-          "Pięć kolekcji, od lekkich po zaciemniające. Ceny poglądowe — dokładną cenę z montażem, kolorem profilu i kilkoma sztukami policzy konfigurator."}
+          "Cztery kolekcje, od lekkich po zaciemniające. Ceny poglądowe — dokładną cenę z montażem, kolorem profilu i kilkoma sztukami policzy konfigurator."}
       </p>
 
       <details className="pl-mini-acc pl-coll-sizeacc">

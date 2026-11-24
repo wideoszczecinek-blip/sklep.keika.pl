@@ -20,7 +20,7 @@ function zl(value: number): string {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 }
 
-/** Short chip labels for the five CRM collections. */
+/** Short chip labels for the CRM collections. */
 export function pdCollectionShortLabel(group: { id: string; label: string }): string {
   if (/duo-blackout|duo.*termo/i.test(group.id) || /termo/i.test(group.label)) return "DUO TERMO";
   if (/^duo/i.test(group.id) || /plaster/i.test(group.label)) return "DUO";
@@ -36,7 +36,7 @@ const PD_EFEKTY: { tytul: string; kolekcje: { krotka: string; nazwa: string; opi
   {
     tytul: "Chcę zaciemnić pokój",
     kolekcje: [
-      { krotka: "DUO TERMO", nazwa: "DUO TERMO", opis: "Zaciemnia i najlepiej izoluje przed ciepłem." },
+      { krotka: "DUO TERMO", nazwa: "DUO TERMO (Honeycomb)", opis: "Zaciemnia i najlepiej izoluje przed ciepłem." },
       { krotka: "Blackout", nazwa: "Podgumowane", opis: "Zaciemnia dzięki podgumowanemu rdzeniowi." },
     ],
   },
@@ -44,7 +44,6 @@ const PD_EFEKTY: { tytul: string; kolekcje: { krotka: string; nazwa: string; opi
     tytul: "Chcę zachować światło dzienne",
     kolekcje: [
       { krotka: "Reflex", nazwa: "Reflex", opis: "Rozprasza światło i ogranicza nagrzewanie." },
-      { krotka: "DUO", nazwa: "DUO plaster miodu", opis: "Podwójna tkanina, miękko rozprasza światło." },
       { krotka: "Klasyczne", nazwa: "Klasyczne", opis: "Przepuszcza i delikatnie rozprasza światło." },
     ],
   },

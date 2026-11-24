@@ -26,7 +26,7 @@ const POKOJE: { id: string; nazwa: string; swiatlo: Swiatlo }[] = [
 
 const SWIATLO: { id: Swiatlo; nazwa: string; kolekcje: string[]; czemu: string }[] = [
   { id: "zaciemnienie", nazwa: "Pełne zaciemnienie", kolekcje: ["blackout", "duo-blackout"], czemu: "Podgumowany rdzeń albo podwójny plaster miodu blokuje światło – śpisz dłużej, także latem o świcie." },
-  { id: "rozproszone", nazwa: "Jasno, ale bez wglądu", kolekcje: ["clasic", "duo"], czemu: "Tkaniny półprzepuszczalne rozpraszają światło i chronią prywatność – w pokoju dalej jest jasno." },
+  { id: "rozproszone", nazwa: "Jasno, ale bez wglądu", kolekcje: ["clasic"], czemu: "Tkaniny półprzepuszczalne rozpraszają światło i chronią prywatność – w pokoju dalej jest jasno." },
   { id: "slonce", nazwa: "Mniej słońca i ciepła", kolekcje: ["reflex"], czemu: "Powłoka refleksyjna od strony szyby odbija słońce – latem pokój mniej się nagrzewa." },
 ];
 
@@ -241,7 +241,7 @@ export function DoradcaTkanin({ onKolekcje }: { onKolekcje: () => void }) {
       ) : null}
 
       <button type="button" className="pm-link dt-cennik" onClick={onKolekcje}>
-        Wszystkie 150 tkanin z cenami w konfiguratorze →
+        Wszystkie tkaniny z cenami w konfiguratorze →
       </button>
     </section>
   );

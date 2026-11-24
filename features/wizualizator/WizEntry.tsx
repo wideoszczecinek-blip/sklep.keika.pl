@@ -235,7 +235,7 @@ export function WizButton({ zrodlo, variant = "karta", tkanina, listwa, onKonfig
       <BanerAnimacja onClick={open} />
       <div className="wiz-baner-tresc">
         <b>Wygeneruj wizualizację plis na zdjęciu swojego okna</b>
-        <small>Wrzuć zdjęcie pokoju – pokażemy plisy we wszystkich oknach. Przesuwasz belki, zmieniasz kolor (150 tkanin). Za darmo, bez rejestracji.</small>
+        <small>Wrzuć zdjęcie pokoju – pokażemy plisy we wszystkich oknach. Przesuwasz belki, zmieniasz kolor (ponad 80 tkanin). Za darmo, bez rejestracji.</small>
       </div>
       <button type="button" className="wiz-baner-cta" onClick={open}>📸 Wrzuć zdjęcie i wygeneruj wizualizację</button>
     </div>

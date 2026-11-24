@@ -13802,6 +13802,26 @@ html[data-theme="light"] .plmg > .plmg-fixed strong {
 .plisy-swatch-cell > .hero-product-mesh-option {
   width: 100%;
 }
+/* Plakietki tkaniny (24.11.2026): premium (melanże, dopłata %) i „Do wyczerpania zapasów”. */
+.plisy-swatch-tag {
+  display: block;
+  margin-top: 0.2rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
+}
+.plisy-swatch-tag.is-premium {
+  background: #f3ecdc;
+  color: #6b4f12;
+}
+.plisy-swatch-tag.is-sale {
+  background: #fde8e4;
+  color: #a3261a;
+}
 .plisy-swatch-zoom {
   position: absolute;
   top: 0.55rem;

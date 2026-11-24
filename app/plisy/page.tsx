@@ -16,9 +16,9 @@ import type { OstatniaOpinia } from "@/features/plisy/OstatnieOpinie";
 const SITE = "https://sklep.keika.pl";
 const URL_PATH = "/plisy";
 const SLUG = "plisy";
-const TITLE = "Plisy okienne na wymiar od producenta - 150 tkanin | KEIKA";
+const TITLE = "Plisy okienne na wymiar od producenta - ponad 80 tkanin | KEIKA";
 const DESCRIPTION =
-  "Plisy okienne na wymiar prosto od producenta: regulacja z góry i z dołu, montaż bez wiercenia lub przykręcany do listwy, 150 tkanin w 5 kolekcjach (od przepuszczających światło po zaciemniające DUO TERMO). Wycena online, realizacja " +
+  "Plisy okienne na wymiar prosto od producenta: regulacja z góry i z dołu, montaż bez wiercenia lub przykręcany do listwy, ponad 80 tkanin w 4 kolekcjach (od przepuszczających światło po zaciemniające DUO TERMO). Wycena online, realizacja " +
   PLISY_LEAD_TIME_LABEL +
   ", 5 lat gwarancji, 30 dni na zwrot.";
 const IMAGE = SITE + "/plisy/produkt-01.jpg";

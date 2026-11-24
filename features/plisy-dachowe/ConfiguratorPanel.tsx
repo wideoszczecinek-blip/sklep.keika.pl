@@ -909,7 +909,8 @@ export default function ConfiguratorPanel({
                           >
                             <span className="hero-product-mesh-option-image" style={buildPlisyHardwareSwatchStyle(swatch.thumbnailUrl, swatch.color)} />
                             <strong>{swatch.label}</strong>
-                            {badge ? <span className="pd-delta-badge">{badge}</span> : null}
+                            {badge ? <span className="pd-delta-badge">{swatch.priceDeltaType === "percent" && swatch.priceDelta > 0 ? `Premium ${badge}` : badge}</span> : null}
+                            {swatch.badge ? <span className="plisy-swatch-tag is-sale">{swatch.badge}</span> : null}
                           </button>
                           <button
                             type="button"

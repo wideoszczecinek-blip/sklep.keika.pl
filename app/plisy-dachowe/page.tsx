@@ -15,7 +15,7 @@ export const revalidate = 3600;
 const SLUG = "plisy-dachowe";
 const TITLE = "Plisy do okien dachowych na wymiar - pod model okna | KEIKA";
 const DESCRIPTION =
-  "Plisa do okna dachowego z aluminiowymi prowadnicami, dobrana do modelu Twojego okna (VELUX, FAKRO, ROTO, OKPOL i inne - ponad 420 modeli). Ok. 150 tkanin w 5 kolekcjach, od rozpraszających po zaciemniające DUO TERMO, osprzęt biały, anoda lub sosna. Montaż w 10-15 minut, 5 lat gwarancji, 30 dni na zwrot.";
+  "Plisa do okna dachowego z aluminiowymi prowadnicami, dobrana do modelu Twojego okna (VELUX, FAKRO, ROTO, OKPOL i inne - ponad 420 modeli). Ponad 80 tkanin w 4 kolekcjach, od rozpraszających po zaciemniające DUO TERMO, osprzęt biały, anoda lub sosna. Montaż w 10-15 minut, 5 lat gwarancji, 30 dni na zwrot.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const product = await getPricedProduct(SLUG);

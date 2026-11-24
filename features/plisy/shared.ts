@@ -47,6 +47,8 @@ export type FabricSwatch = {
   thumbnailUrl: string;
   priceDelta: number;
   priceDeltaType: PriceDeltaType;
+  /** Plakietka z CRM, np. „Do wyczerpania zapasów” (tkanina z wyprzedaży; po wyczerpaniu CRM ją ukrywa). */
+  badge?: string;
 };
 
 export type FabricGroup = {
@@ -110,6 +112,7 @@ type RawStep = {
       thumbnail_url?: string;
       price_delta?: number;
       price_delta_type?: string;
+      badge?: string;
     }>;
   }>;
 };
@@ -231,6 +234,7 @@ async function fetchPlisyProfileUncached(init: RequestInit = { cache: "no-store"
         thumbnailUrl: swatch.thumbnail_url || swatch.image_url || "",
         priceDelta: Number(swatch.price_delta) || 0,
         priceDeltaType: toPriceDeltaType(swatch.price_delta_type),
+        badge: String(swatch.badge || "").trim(),
       })),
     }));
 

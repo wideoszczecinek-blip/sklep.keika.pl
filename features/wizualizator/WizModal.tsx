@@ -1379,7 +1379,7 @@ export default function WizModal({ zrodlo, onClose, startTkanina, startListwa, q
                   <>
                     <li><span aria-hidden="true">📷</span><b>Zrób zdjęcie okna</b><small>na wprost, całe okno w kadrze, w dzień</small></li>
                     <li><span aria-hidden="true">✨</span><b>AI dopasuje plisę</b><small>szyby, perspektywa i światło</small></li>
-                    <li><span aria-hidden="true">🎨</span><b>Wybierz kolor i zamów</b><small>150 tkanin, wycena od razu</small></li>
+                    <li><span aria-hidden="true">🎨</span><b>Wybierz kolor i zamów</b><small>Ponad 80 tkanin, wycena od razu</small></li>
                   </>
                 )}
               </ol>
