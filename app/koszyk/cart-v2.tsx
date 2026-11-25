@@ -77,6 +77,8 @@ export type CartV2Props = {
   combinedSavings: number;
   appliedDiscount: AppliedDiscount | null;
   rescueRow: { label: string; amount: number } | null;
+  /** Rabat z polecenia kontrahenta (lib/partner-ref.ts) - liczony na końcu, po wszystkich promocjach. */
+  referralRow: { label: string; amount: number } | null;
   bundleRow: { label: string; amount: number } | null;
   bundleHint: string;
   bundleProdukty: LinkProduktu[];
@@ -489,6 +491,12 @@ export default function CartV2(props: CartV2Props) {
           <span className="is-minus">-{formatPln(p.rescueRow.amount)}</span>
         </div>
       ) : null}
+      {p.referralRow ? (
+        <div className="cv2-row">
+          <span>{p.referralRow.label}</span>
+          <span className="is-minus">-{formatPln(p.referralRow.amount)}</span>
+        </div>
+      ) : null}
       {!p.isPickup ? (
         <div className="cv2-row">
           <span>Dostawa</span>
@@ -749,9 +757,17 @@ export default function CartV2(props: CartV2Props) {
           ) : null}
         </div>
         <div className="cv2-code">
-          {p.appliedDiscount ? null : !p.discountOpen && !p.discountError ? (
-            <button type="button" className="cv2-link" onClick={() => p.setDiscountOpen(true)}>
-              Masz kod rabatowy?
+          {p.appliedDiscount && p.referralRow ? null : !p.discountOpen && !p.discountError ? (
+            <button
+              type="button"
+              className="cv2-link"
+              onClick={() => {
+                // Przy aktywnym rabacie pole służy tylko do kodu polecenia - zaczyna puste.
+                if (p.appliedDiscount) p.setDiscountCodeInput("");
+                p.setDiscountOpen(true);
+              }}
+            >
+              {p.appliedDiscount ? "Masz kod polecenia?" : "Masz kod rabatowy?"}
             </button>
           ) : (
             <div className="cv2-code-row">
@@ -763,7 +779,7 @@ export default function CartV2(props: CartV2Props) {
                   p.setDiscountCodeInput(event.target.value);
                   if (p.discountError) p.clearDiscountError();
                 }}
-                placeholder="Kod rabatowy"
+                placeholder={p.appliedDiscount ? "Kod polecenia" : "Kod rabatowy"}
                 disabled={p.discountChecking}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {

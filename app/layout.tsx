@@ -10,6 +10,7 @@ import ConsentBar from "./components/consent-bar";
 import VideoGuard from "./components/video-guard";
 import AnimacjeNaEkranie from "./components/animacje-na-ekranie";
 import PersonalCodeCapture from "./components/personal-code-capture";
+import PartnerRefCapture from "./components/partner-ref-capture";
 import WelcomeOffer from "./components/welcome-offer";
 import SiteFooter from "@/app/components/site-footer";
 
@@ -80,6 +81,7 @@ export default function RootLayout({
         <SiteAnalytics />
         <TrackingBoot />
         <PersonalCodeCapture />
+        <PartnerRefCapture />
         {children}
         <SiteFooter />
         <ChatBubble />

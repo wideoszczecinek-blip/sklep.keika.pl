@@ -1124,7 +1124,7 @@ export default function OrderVerify({ orderCode }: { orderCode: string }) {
 
 // ----- pozycje zamówienia z zapisanej wyceny -----
 
-const DISCOUNT_SLUGS = new Set(["rabat", "rabat-ratunek", "oszczednosc-obwod-moskitiery"]);
+const DISCOUNT_SLUGS = new Set(["rabat", "rabat-ratunek", "rabat-polecenie", "oszczednosc-obwod-moskitiery"]);
 // Te produkty da się odtworzyć w koszyku z wyceny bez utraty danych
 // (lib/rescue.ts -> mapQuoteToResumeState).
 const RESTORABLE_SLUGS = new Set(["moskitiery-ramkowe", "plisy"]);

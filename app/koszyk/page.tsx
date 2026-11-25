@@ -81,6 +81,7 @@ import {
   setExpressSelected,
 } from "@/lib/express";
 import { getRescueGrant, RESCUE_GRANT_EVENT, type RescueGrant } from "@/lib/rescue";
+import { applyPartnerRefFromCode, formatPartnerPercent, getPartnerRef, PARTNER_REF_EVENT, type PartnerRef, type PartnerRefCheck } from "@/lib/partner-ref";
 import { formatEscapeDeadline } from "@/lib/escape-offer";
 import { EscapeOfferCartReveal, EscapeOfferCountdownChip, useCartEscapeOffer } from "../components/escape-offer";
 import { RescueSignup } from "../components/rescue-signup";
@@ -358,6 +359,8 @@ type DiscountCheckResponse = {
   // powracających WRACAM-…) - pasek u góry pokazuje termin (lib/personal-code.ts).
   discount?: { code: string; type: "percent" | "amount"; value: number; amount: number; expires_at?: string | null; personal?: boolean; label?: string };
   error?: string;
+  /** Wpisany kod jest kodem polecenia kontrahenta (lib/partner-ref.ts), a nie kodem rabatowym. */
+  partner?: PartnerRefCheck;
 };
 
 // Real checkout, reusing the exact quote -> order -> Stripe pipeline the
@@ -523,6 +526,7 @@ function buildQuotePayloadFromCart(
   extraCharges: ExtraCharge[] = [],
   discount: AppliedDiscount | null = null,
   rescueGrant: RescueGrant | null = null,
+  partnerRef: PartnerRef | null = null,
 ) {
   const positions = items.map((item, index) => {
     const fieldLabels = cartItemFieldLabels(item.productSlug);
@@ -754,9 +758,35 @@ function buildQuotePayloadFromCart(
     });
   }
 
+  // Rabat z polecenia kontrahenta (lib/partner-ref.ts) - ZAWSZE ostatni: od ceny po CAŁY DOM,
+  // kodzie i dodatkowym rabacie (właściciel 25.11.2026: „dodatkowe 3 % za skorzystanie z polecenia”).
+  // Pozycja jest też nośnikiem przypisania zamówienia do kontrahenta. Kwota tutaj to podgląd -
+  // CRM liczy ją wiążąco jako ostatni przebieg quote_save.php (partner_referral_reapply_to_quote_input).
+  const referralAmount = partnerRef
+    ? roundMoney(
+        Math.max(
+          0,
+          (itemsSubtotal - combinedSavings - bundle.savings - (discount && discount.amount > 0 ? discount.amount : 0) - rescueAmount) * (partnerRef.percent / 100),
+        ),
+      )
+    : 0;
+  if (partnerRef && items.length > 0) {
+    positions.push({
+      id: `rabat-polecenie-${partnerRef.slug}--${partnerRef.source}`,
+      product_slug: "rabat-polecenie",
+      product_label: "Rabat z polecenia",
+      quantity: 1,
+      purchase_units: null,
+      total_amount: (-referralAmount).toFixed(2),
+      currency: "PLN",
+      summary: `Rabat z polecenia: ${partnerRef.name} (-${formatPartnerPercent(partnerRef.percent)}%, -${referralAmount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł)`,
+      summary_rows: [],
+    });
+  }
+
   const extraTotal = extraCharges.reduce((sum, extra) => sum + (extra.amount > 0 ? extra.amount : 0), 0);
   const discountTotal = discount && discount.amount > 0 ? discount.amount : 0;
-  const totalAmount = itemsSubtotal - combinedSavings - bundle.savings + extraTotal - discountTotal - rescueAmount;
+  const totalAmount = itemsSubtotal - combinedSavings - bundle.savings + extraTotal - discountTotal - rescueAmount - referralAmount;
 
   return {
     quote_code: "",
@@ -1146,6 +1176,23 @@ export default function CartPage() {
       window.clearInterval(timer);
     };
   }, []);
+  // Polecenie kontrahenta (lib/partner-ref.ts): dodatkowy rabat liczony na końcu, łączy się
+  // z każdą promocją i kodem. Może się pojawić w trakcie wizyty (wpisany kod polecenia,
+  // sprawdzenie linku w CRM), stąd nasłuch zdarzenia.
+  const [partnerRef, setPartnerRefState] = useState<PartnerRef | null>(null);
+  useEffect(() => {
+    const syncPartnerRef = () => {
+      const next = getPartnerRef();
+      setPartnerRefState((current) =>
+        current?.slug === next?.slug && current?.percent === next?.percent && current?.source === next?.source && current?.name === next?.name
+          ? current
+          : next,
+      );
+    };
+    syncPartnerRef();
+    window.addEventListener(PARTNER_REF_EVENT, syncPartnerRef);
+    return () => window.removeEventListener(PARTNER_REF_EVENT, syncPartnerRef);
+  }, []);
   // Kod osobisty >= 25 % (WRACAM-… dla powracających, bon za opinię) NIE łączy
   // się z 5 % dla wychodzących ani z rabatem za zapisanie wyceny (właściciel,
   // 23.10.2026) - CRM i tak nie przyzna nowej oferty przy takim kodzie, a tu
@@ -1161,6 +1208,8 @@ export default function CartPage() {
   // Wchodzi do "odcisku" zamówienia w toku: zmiana rabatu (przyznanie, koniec
   // terminu) to zmiana kwoty, więc szkic zamówienia musi powstać od nowa.
   const rescueSnapshotKey = rescueGrant ? `${rescueGrant.quoteCode}:${rescueGrant.percent}` : "";
+  // Tak samo polecenie kontrahenta: pojawienie się rabatu z polecenia zmienia kwotę zamówienia w toku.
+  const partnerSnapshotKey = partnerRef ? `${partnerRef.slug}:${partnerRef.percent}:${partnerRef.source}` : "";
   const [discountChecking, setDiscountChecking] = useState(false);
   const [discountError, setDiscountError] = useState("");
   // Spokojna informacja (nie błąd), gdy klient wpisze nazwę promocji CAŁY DOM
@@ -1359,6 +1408,16 @@ export default function CartPage() {
         ),
       )
     : 0;
+  // Rabat z polecenia: ostatni, od ceny po wszystkich promocjach - tak samo liczy CRM.
+  const referralAmount =
+    partnerRef && items.length > 0
+      ? roundMoney(
+          Math.max(
+            0,
+            (summary.total - combinedSavings - bundle.savings - (appliedDiscount ? appliedDiscount.amount : 0) - rescueAmount) * (partnerRef.percent / 100),
+          ),
+        )
+      : 0;
   const orderSurcharge = calcCartOversizeSurcharge(items);
   const availableDeliveryMethods = getAvailableDeliveryMethods(items, summary.total);
   // Odbiór osobisty nigdy nie ma kosztu wysyłki - nic nie jest wysyłane.
@@ -1366,7 +1425,7 @@ export default function CartPage() {
   // (kod, wspólne rozliczenie obwodu moskitier, rabat za zapisanie wyceny).
   // Pokazujemy to przy kwocie do zapłaty, bo inaczej rabat ginie w wierszach.
   const totalSavings =
-    Math.round((combinedSavings + bundle.savings + (appliedDiscount ? appliedDiscount.amount : 0) + rescueAmount) * 100) / 100;
+    Math.round((combinedSavings + bundle.savings + (appliedDiscount ? appliedDiscount.amount : 0) + rescueAmount + referralAmount) * 100) / 100;
   const freeShippingPilot = cartHasFreeShippingPilot(items);
   const shippingFee =
     deliveryMethod === PICKUP_METHOD.id || freeShippingPilot || summary.total >= FREE_SHIPPING_THRESHOLD
@@ -1611,7 +1670,8 @@ export default function CartPage() {
       combinedSavings -
       bundle.savings -
       (appliedDiscount?.amount || 0) -
-      rescueAmount +
+      rescueAmount -
+      referralAmount +
       shippingFee +
       orderSurcharge +
       expressFee +
@@ -1873,7 +1933,7 @@ export default function CartPage() {
   // fix shouldn't require starting over") - this brings the code in line
   // with it instead of contradicting it.
   useEffect(() => {
-    const snapshot = JSON.stringify({ items, deliveryMethod, appliedDiscount, expressSelected, rescue: rescueSnapshotKey });
+    const snapshot = JSON.stringify({ items, deliveryMethod, appliedDiscount, expressSelected, rescue: rescueSnapshotKey, partner: partnerSnapshotKey });
     const current = orderStateRef.current;
     if (
       current &&
@@ -1888,7 +1948,7 @@ export default function CartPage() {
       submittedRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, deliveryMethod, appliedDiscount, expressSelected, paymentConfirmed, rescueSnapshotKey]);
+  }, [items, deliveryMethod, appliedDiscount, expressSelected, paymentConfirmed, rescueSnapshotKey, partnerSnapshotKey]);
 
   async function sendCodSms(phoneOverride?: string) {
     const phone = phoneOverride ?? form.phone;
@@ -1902,7 +1962,8 @@ export default function CartPage() {
         summary.total -
           combinedSavings -
           (appliedDiscount?.amount || 0) -
-          rescueAmount +
+          rescueAmount -
+          referralAmount +
           shippingFee +
           orderSurcharge +
           expressFee +
@@ -2031,6 +2092,27 @@ export default function CartPage() {
       // kod (bundleOrCode), kod liczy się tylko od sztuk spoza pakietu.
       const fullBase = Math.max(0, summary.total - combinedSavings);
       let json = await checkOn(fullBase);
+      // Kod polecenia kontrahenta: nie jest kodem rabatowym, więc nie zastępuje aktywnego rabatu
+      // (BW25, WRACAM…) - koszyk dolicza „Rabat z polecenia” na końcu (lib/partner-ref.ts).
+      if (json.partner) {
+        const ref = applyPartnerRefFromCode(json.partner);
+        setDiscountError("");
+        setDiscountOpen(false);
+        setDiscountCodeInput(appliedDiscount ? appliedDiscount.code : "");
+        setDiscountNotice(
+          ref
+            ? `Kod polecenia przyjęty: dodatkowe -${formatPartnerPercent(ref.percent)}% (${ref.name}). Rabat jest w podsumowaniu.`
+            : "Ten kod polecenia nie działa w tym sklepie.",
+        );
+        trackCheckoutIssue("partner_code_applied", json.partner.slug);
+        return;
+      }
+      // Przy aktywnym rabacie pole przyjmuje tylko kod polecenia - innego kodu nie podmieniamy po cichu.
+      if (!codeOverride && appliedDiscount && code.toUpperCase() !== appliedDiscount.code.toUpperCase()) {
+        setDiscountError(`To nie jest kod polecenia. Twój rabat ${appliedDiscount.code} zostaje bez zmian.`);
+        trackCheckoutIssue("partner_code_invalid", code);
+        return;
+      }
       if (json.ok && json.discount && json.discount.code.toUpperCase().startsWith('WIZ5-')) {
         json = await checkOn(Math.max(0, fullBase - bundleRaw.savings));
       } else if (json.ok && json.discount && bundleRaw.discountedBase > 0 && bundleOrCode(bundleRaw, json.discount, fullBase) === bundleRaw) {
@@ -2193,7 +2275,7 @@ export default function CartPage() {
     }
 
     setCartShareSaving(true);
-    const payload = buildQuotePayloadFromCart(items, buildCurrentExtraCharges(), appliedDiscount, rescueGrant);
+    const payload = buildQuotePayloadFromCart(items, buildCurrentExtraCharges(), appliedDiscount, rescueGrant, partnerRef);
     const result = await saveQuoteForSharing({
       positions: payload.positions,
       sessionToken,
@@ -2311,7 +2393,7 @@ export default function CartPage() {
     const bd = w ? false : buyerDifferent;
     const wi = w ? false : wantsInvoice;
     const sp = w ? null : selectedPaczkomat;
-    draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod: dm, appliedDiscount, expressSelected, rescue: rescueSnapshotKey });
+    draftSnapshotRef.current = JSON.stringify({ items, deliveryMethod: dm, appliedDiscount, expressSelected, rescue: rescueSnapshotKey, partner: partnerSnapshotKey });
     setError("");
     setIsSubmitting(true);
     try {
@@ -2352,7 +2434,7 @@ export default function CartPage() {
         // sessionStorage niedostępny - wycena i tak się zapisze.
       }
       const quotePayload = {
-        ...buildQuotePayloadFromCart(items, extraCharges, appliedDiscount, rescueGrant),
+        ...buildQuotePayloadFromCart(items, extraCharges, appliedDiscount, rescueGrant, partnerRef),
         // Reuse this checkout session's own quote_code if we already have
         // one (see lastQuoteCodeRef's doc comment above) - quote_save.php
         // re-validates the discount fresh from these exact positions either
@@ -3521,6 +3603,10 @@ export default function CartPage() {
             amount: rescueAmount,
           }
         : null,
+    referralRow:
+      partnerRef && items.length > 0
+        ? { label: `Rabat z polecenia: ${partnerRef.name} (-${formatPartnerPercent(partnerRef.percent)}%)`, amount: referralAmount }
+        : null,
     shippingFee,
     expressFee,
     orderSurcharge,
@@ -4064,6 +4150,12 @@ export default function CartPage() {
                       <span>-{formatPln(rescueAmount)}</span>
                     </div>
                   ) : null}
+                  {partnerRef && items.length > 0 ? (
+                    <div className="cart-page-summary-row is-muted">
+                      <span>Rabat z polecenia: {partnerRef.name} (-{formatPartnerPercent(partnerRef.percent)}%)</span>
+                      <span>-{formatPln(referralAmount)}</span>
+                    </div>
+                  ) : null}
                   {deliveryMethod !== PICKUP_METHOD.id ? (
                     <div className="cart-page-summary-row is-muted">
                       <span>Koszt dostawy</span>
@@ -4158,6 +4250,46 @@ export default function CartPage() {
                         </button>
                       </div>
                     )}
+                    {/* Kod polecenia kontrahenta (lib/partner-ref.ts) przy aktywnym rabacie: osobne wejście,
+                        bo pole kodu jest wtedy zajęte przez aktywny kod (np. BW25). Aktywnego rabatu nie rusza. */}
+                    {appliedDiscount && !partnerRef ? (
+                      !discountOpen && !discountError ? (
+                        <button
+                          type="button"
+                          className="cart-discount-code-toggle"
+                          onClick={() => {
+                            setDiscountCodeInput("");
+                            setDiscountOpen(true);
+                          }}
+                        >
+                          Masz kod polecenia?
+                        </button>
+                      ) : (
+                        <div className="cart-discount-code-row">
+                          <input
+                            type="text"
+                            autoFocus
+                            value={discountCodeInput}
+                            onChange={(event) => {
+                              setDiscountCodeInput(event.target.value);
+                              if (discountError) setDiscountError("");
+                              if (discountNotice) setDiscountNotice("");
+                            }}
+                            placeholder="Kod polecenia"
+                            disabled={discountChecking}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                checkDiscountCode();
+                              }
+                            }}
+                          />
+                          <button type="button" onClick={() => checkDiscountCode()} disabled={discountChecking || !discountCodeInput.trim()}>
+                            {discountChecking ? "Sprawdzam…" : "Sprawdź"}
+                          </button>
+                        </div>
+                      )
+                    ) : null}
                     {discountError ? <p className="cart-discount-code-error">{discountError}</p> : null}
                     {discountNotice ? <Reveal><p className="cart-discount-code-notice">{discountNotice}</p></Reveal> : null}
                   </div>
