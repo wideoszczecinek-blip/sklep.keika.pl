@@ -95,7 +95,7 @@ export const PLISY_LANDING_V2 = true;
 export const PLISY_H1_V2 = "Plisy okienne na wymiar"; // 22.11: H1 mówi, co to jest (wcześniej „Plisy na wymiar · własna produkcja od 2015” małym drukiem nad hasłem)
 
 export const PLISY_SUBTITLE =
-  "Plisy okienne na wymiar od polskiego producenta. Regulacja z góry i z dołu, montaż bez wiercenia lub z wierceniem, ponad 80 tkanin i 10 kolorów profili do wyboru. Cenę dla swojego okna sprawdzisz od razu w konfiguratorze.";
+  "Plisy okienne na wymiar od polskiego producenta. Regulacja z góry i z dołu, montaż bez wiercenia lub z wierceniem, ponad 80 tkanin i 9 kolorów profili do wyboru. Cenę dla swojego okna sprawdzisz od razu w konfiguratorze.";
 
 /** Primary CTA wording, repeated on the landing (mobile hero button, callout,
  * end-of-section nudges). One promise everywhere: the price, for your
@@ -105,7 +105,7 @@ export const PLISY_PRIMARY_CTA = "Sprawdź cenę dla swojego okna";
 /** Fallback for the CRM "description" field (HTML). */
 export const PLISY_DESCRIPTION_HTML =
   "<p><strong>Plisy okienne</strong> to osłony z tkaniny plisowanej, montowane bezpośrednio na skrzydle okna. W odróżnieniu od rolety mają dwie ruchome listwy: tkaninę przesuwasz z góry i z dołu i zasłaniasz tylko tę część okna, którą chcesz. Plisa nie przeszkadza w otwieraniu i uchylaniu okna, nie ma sznurków ani łańcuszków, a złożona zajmuje zaledwie kilka centymetrów.</p>" +
-  "<p><strong>Produkujemy plisy sami, w Polsce.</strong> Jesteśmy producentem osłon okiennych. Każdą plisę wykonujemy na indywidualny wymiar, z aluminiowymi profilami w 10 kolorach i tkaninami z 4 kolekcji: od dekoracyjnych, rozpraszających światło, przez zaciemniające, po zaciemniająco-termoizolacyjne DUO TERMO (Honeycomb). Wszystkie tkaniny są antystatyczne i łatwe w czyszczeniu.</p>" +
+  "<p><strong>Produkujemy plisy sami, w Polsce.</strong> Jesteśmy producentem osłon okiennych. Każdą plisę wykonujemy na indywidualny wymiar, z aluminiowymi profilami w 9 kolorach i tkaninami z 4 kolekcji: od dekoracyjnych, rozpraszających światło, przez zaciemniające, po zaciemniająco-termoizolacyjne DUO TERMO (Honeycomb). Wszystkie tkaniny są antystatyczne i łatwe w czyszczeniu.</p>" +
   "<p><strong>Zamawiasz online w kilka minut.</strong> Wybierasz sposób montażu, kolor profili i tkaninę, wpisujesz wymiary i od razu widzisz cenę. Plisę produkujemy w 7 dni roboczych i wysyłamy kurierem w 24 h od wyprodukowania. Darmowa dostawa od 79 zł, 5 lat gwarancji, 30 dni na zwrot.</p>";
 
 export const PLISY_SPEC_ITEMS: PlisySpecItem[] = [
@@ -149,7 +149,7 @@ export const PLISY_FEATURE_BULLETS: PlisyFeatureBullet[] = [
     detail: "Klasyczne, Reflex, Podgumowane (Blackout) i DUO TERMO (Honeycomb): od dekoracyjnych, rozpraszających światło, po w pełni zaciemniające",
   },
   {
-    lead: "10 kolorów profili",
+    lead: "9 kolorów profili",
     detail: "biel, brąz, anoda, antracyt, oliwka, czarny mat, sosna, winchester, złoty dąb, orzech",
   },
   {
@@ -287,7 +287,7 @@ export const PLISY_FAQ: PlisyFaqEntry[] = [
   {
     question: "Jak dobrać kolor tkaniny i profili?",
     answer:
-      "Tkanina: ponad 80 kolorów w 4 kolekcjach; jasne optycznie powiększają pokój, ciemne wyglądają elegancko, ale przy tkaninach półprzepuszczalnych zabierają więcej światła. Profile: 10 kolorów — biel, brąz, anoda, antracyt, oliwka, czarny mat i cztery drewnopodobne — dobierasz do stolarki. Część kolorów profili jest z dopłatą; konfigurator pokaże cenę od razu po wyborze.",
+      "Tkanina: ponad 80 kolorów w 4 kolekcjach; jasne optycznie powiększają pokój, ciemne wyglądają elegancko, ale przy tkaninach półprzepuszczalnych zabierają więcej światła. Profile: 9 kolorów — biel, anoda, antracyt, oliwka, czarny mat i cztery drewnopodobne — dobierasz do stolarki. Część kolorów profili jest z dopłatą; konfigurator pokaże cenę od razu po wyborze.",
   },
   {
     question: "Czy szeroka plisa kosztuje więcej w dostawie?",

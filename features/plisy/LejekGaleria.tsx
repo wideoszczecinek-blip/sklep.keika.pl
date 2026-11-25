@@ -19,7 +19,7 @@ const ZDJECIA: Zdjecie[] = [
   { src: "dom-balkon-antracyt", grupa: "dom", opis: "Drzwi balkonowe z antracytowymi plisami na obu skrzydłach" },
   { src: "biuro-sala", grupa: "biuro", opis: "Sala konferencyjna: plisy w trzech rzędach okien" },
   { src: "dom-balkon-szara", grupa: "dom", opis: "Szara plisa na drzwiach balkonowych" },
-  { src: "detal-profile-kolory", grupa: "detal", opis: "Profile w 10 kolorach, w tym 4 drewnopodobne – tu pięć z nich" },
+  { src: "detal-profile-kolory", grupa: "detal", opis: "Profile w 9 kolorach, w tym 4 drewnopodobne – tu pięć z nich" },
   { src: "biuro-okna", grupa: "biuro", opis: "Biuro: plisy w górnych i środkowych skrzydłach okien" },
   { src: "detal-dwie-tkaniny", grupa: "detal", opis: "Z bliska: fałdy tkaniny i górny profil z uchwytem" },
   { src: "detal-plaster-miodu", grupa: "detal", opis: "Tkanina o strukturze plastra miodu" },

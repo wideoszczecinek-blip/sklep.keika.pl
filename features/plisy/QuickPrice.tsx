@@ -488,7 +488,7 @@ export default function PlisyQuickPrice({
         <button type="button" className="pl-quick-cta pl-quick-cta--v2" disabled={!inRange} onClick={configure}>
           {kolekcja ? "Wybierz kolor tkaniny →" : "Wybierz tkaninę i kolor →"}
         </button>
-        <span className="pl-quick-note">W cenie 5 lat gwarancji i 30 dni na zwrot. Ponad 80 tkanin i 10 kolorów listew wybierzesz w następnym kroku.</span>
+        <span className="pl-quick-note">W cenie 5 lat gwarancji i 30 dni na zwrot. Ponad 80 tkanin i 9 kolorów listew wybierzesz w następnym kroku.</span>
         {onSaveLater ? (
           <button
             type="button"

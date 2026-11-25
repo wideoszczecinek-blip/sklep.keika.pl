@@ -192,7 +192,7 @@ export const CATALOG: CatalogProduct[] = [
     freeShippingAlways: true,
     mounting: "bez wiercenia (bezinwazyjny, na listwę przyszybową) albo przykręcany do listwy",
     measuring: "szerokość i wysokość szyby z listwami (montaż bez wiercenia) albo od uszczelki do uszczelki (przykręcany); instrukcja: " + SHOP_URL + "/plisy/jak-mierzyc",
-    options: ["4 kolekcje tkanin, ponad 80 kolorów", "10 kolorów profili", "montaż bez wiercenia lub przykręcany"],
+    options: ["4 kolekcje tkanin, ponad 80 kolorów", "9 kolorów profili", "montaż bez wiercenia lub przykręcany"],
     faq: PLISY_FAQ,
     sku: "plisa-okienna-na-wymiar",
     mpn: "KEIKA-PL",
