@@ -98,7 +98,12 @@ export default function WelcomeOffer() {
   // Jeden rabat na gościa, 24 h (właściciel 11.11: „kod jest na 24 godziny - warunki się nie zmieniają”):
   // uruchomiony wcześniej, a wygasły albo wykorzystany = panelu już nie ma.
   const claimedBefore = Boolean(state.claimedCode);
-  const spent = claimedBefore && !active;
+  // Finał Black Weeks (właściciel 25.11: „wracający + nowy kod”): od 29.11 gość z wygasłym albo wykorzystanym kodem
+  // dostaje z CRM jeden nowy kod ważny do końca oferty - panel pokazuje się mu jeszcze raz (jedna próba na urządzenie).
+  const renewMode = Boolean(settings?.renew) && claimedBefore;
+  const renewable = renewMode && !active && !state.renewedAt;
+  const renewTryRef = useRef(false);
+  const spent = claimedBefore && !active && !renewable;
   const available = Boolean(settings?.active) && !otherCode && !spent;
 
   useEffect(() => {
@@ -119,6 +124,12 @@ export default function WelcomeOffer() {
       return;
     }
     if (res.expired || res.used) {
+      // Próba nowego kodu na finał, a CRM go nie dał (np. odnowiony już na innym urządzeniu) - bez komunikatu o błędzie.
+      if (renewTryRef.current) {
+        writeWelcomeState({ renewedAt: Date.now() });
+        setOpen(false);
+        return;
+      }
       setError(res.used ? "Ten rabat został już wykorzystany w zamówieniu." : "Twój rabat już wygasł.");
       return;
     }
@@ -133,7 +144,7 @@ export default function WelcomeOffer() {
 
   // Pierwsze wejście: panel sam po 2,5 s (poza stronami płatności i koszykiem).
   useEffect(() => {
-    if (autoTriedRef.current || !available || hidden || quiet || active || claimedBefore) return;
+    if (autoTriedRef.current || !available || hidden || quiet || active || (claimedBefore && !renewable)) return;
     const dismissedAt = state.dismissedAt || 0;
     if (dismissedAt && Date.now() - dismissedAt < DISMISS_QUIET_MS) return;
     // Znacznik dopiero przy otwarciu: gdy w ciągu 2,5 s zmieni się adres albo stan (np. przejście na inną
@@ -141,6 +152,7 @@ export default function WelcomeOffer() {
     // stawiany przed licznikiem blokował panel do końca wizyty (11.11: ok. 25 zaangażowanych gości bez panelu).
     const t = window.setTimeout(() => {
       autoTriedRef.current = true;
+      renewTryRef.current = renewable;
       setOpen(true);
       writeWelcomeState({ shownAt: Date.now() });
       trackWelcome("welcome_shown", "auto", { page: pathname });
@@ -148,7 +160,7 @@ export default function WelcomeOffer() {
       void claim();
     }, AUTO_OPEN_DELAY_MS);
     return () => window.clearTimeout(t);
-  }, [available, hidden, quiet, active, claimedBefore, state.dismissedAt, pathname, claim]);
+  }, [available, hidden, quiet, active, claimedBefore, renewable, state.dismissedAt, pathname, claim]);
 
 
   const close = useCallback(() => {
@@ -226,18 +238,18 @@ export default function WelcomeOffer() {
             <div className="wo-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.30) 0%, rgba(0,0,0,.55) 45%, rgba(0,0,0,.88) 100%), url(${HERO_PHOTO})` }}>
               <span className="wo-bw" aria-label="Black Weeks">BLACK <b>WEEKS</b></span>
               <h2 id="wo-title" className="wo-title">
-                <span className="wo-congrats">🎉 GRATULACJE</span>
-                <span className="wo-lead">Właśnie uruchomiliśmy Ci specjalny rabat</span>
+                <span className="wo-congrats">{renewMode ? "⏰ OSTATNIA SZANSA" : "🎉 GRATULACJE"}</span>
+                <span className="wo-lead">{renewMode ? "Black Weeks się kończy - uruchomiliśmy Ci nowy rabat" : "Właśnie uruchomiliśmy Ci specjalny rabat"}</span>
               </h2>
               <div className="wo-big">−{pct}<span>%</span></div>
               <p className="wo-sub">na całe zakupy</p>
               <div className={`wo-timer${active ? "" : " is-pending"}`} aria-live="off">
-                {active ? <>⏱ zostało <strong>{formatRemaining(remaining)}</strong></> : busy ? <>⏳ uruchamiamy rabat…</> : <>⏱ {hours} godziny na zakupy</>}
+                {active ? <>⏱ zostało <strong>{formatRemaining(remaining)}</strong></> : busy ? <>⏳ uruchamiamy rabat…</> : renewMode ? <>⏱ ważny {settings.renewLabel}</> : <>⏱ {hours} godziny na zakupy</>}
               </div>
             </div>
             <div className="wo-body">
               <p className="wo-text">
-                <strong>Rabat jest automatycznie przyznany w koszyku.</strong> Wykorzystaj go w ciągu {hours} godzin{deadline ? ` – do ${deadline}` : ""}.
+                <strong>Rabat jest automatycznie przyznany w koszyku.</strong> {renewMode ? <>Wykorzystaj go {settings.renewLabel} - wtedy kończy się Black Weeks.</> : <>Wykorzystaj go w ciągu {hours} godzin{deadline ? ` – do ${deadline}` : ""}.</>}
               </p>
               {error ? (
                 <div className="wo-error-box" role="alert">
@@ -271,7 +283,7 @@ export default function WelcomeOffer() {
                 </form>
               )}
               <p className="wo-fine">
-                Rabat przyznany jest na zakup dokonany w ciągu {hours} godzin, przypisywany jest do urządzenia i/lub adresu e-mail. Jednorazowy, obejmuje całe zamówienie w sklep.keika.pl, zastępuje promocję CAŁY DOM i nie łączy się z innymi kodami.
+                Rabat przyznany jest na zakup dokonany {renewMode ? settings.renewLabel : <>w ciągu {hours} godzin</>}, przypisywany jest do urządzenia i/lub adresu e-mail. Jednorazowy, obejmuje całe zamówienie w sklep.keika.pl, zastępuje promocję CAŁY DOM i nie łączy się z innymi kodami.
                 {code ? <> Twój kod: <strong>{code}</strong>.</> : null}
               </p>
             </div>

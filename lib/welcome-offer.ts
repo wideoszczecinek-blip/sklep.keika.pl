@@ -33,6 +33,9 @@ export type WelcomeSettings = {
   percent: number;
   hours: number;
   consentText: string;
+  /** Finał Black Weeks (właściciel 25.11): wracający z wygasłym/wykorzystanym kodem dostaje jeden nowy do końca oferty. */
+  renew: boolean;
+  renewLabel: string;
 };
 
 export type WelcomeClaim = {
@@ -44,6 +47,7 @@ export type WelcomeClaim = {
   expired?: boolean;
   used?: boolean;
   email?: boolean;
+  renewed?: boolean;
   error?: string;
 };
 
@@ -54,6 +58,7 @@ export type WelcomeDeviceState = {
   claimedCode?: string;
   expiresAtMs?: number;
   emailGiven?: boolean;
+  renewedAt?: number;
 };
 
 export function isOknowoHost(): boolean {
@@ -79,6 +84,8 @@ function parseSettings(raw: unknown): WelcomeSettings | null {
     percent: Number(r.percent) || 25,
     hours: Number(r.hours) || 24,
     consentText: String(r.consent_text ?? ""),
+    renew: r.renew === true,
+    renewLabel: String(r.renew_label ?? ""),
   };
 }
 
@@ -185,6 +192,7 @@ async function post(body: Record<string, unknown>): Promise<WelcomeClaim> {
       expired: json.expired === true,
       used: json.used === true,
       email: json.email === true,
+      renewed: json.renewed === true,
     };
   } catch {
     return { ok: false, error: "Brak połączenia. Spróbuj ponownie za chwilę." };
@@ -196,7 +204,7 @@ export async function claimWelcome(): Promise<WelcomeClaim> {
   const res = await post({ action: "claim" });
   if (!res.ok || !res.code) return res;
   const expiresAtMs = res.expiresAt ? Date.parse(res.expiresAt) : NaN;
-  writeWelcomeState({ claimedCode: res.code, expiresAtMs: Number.isFinite(expiresAtMs) ? expiresAtMs : undefined, emailGiven: res.email === true });
+  writeWelcomeState({ claimedCode: res.code, expiresAtMs: Number.isFinite(expiresAtMs) ? expiresAtMs : undefined, emailGiven: res.email === true, ...(res.renewed ? { renewedAt: Date.now() } : {}) });
   if (!res.expired && !res.used && Number.isFinite(expiresAtMs)) {
     savePersonalCode({
       code: res.code,
